@@ -3,6 +3,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/rhasky-ast-chirho",
   "crates/rhasky-backend-llvm-chirho",
   "crates/rhasky-backend-wasm-chirho",
   "crates/rhasky-cli-chirho",
