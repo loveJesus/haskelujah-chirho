@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use rhasky_ast_chirho::ModuleChirho;
 use rhasky_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
 use rhasky_backend_wasm_chirho::compile_to_wasm_stub_chirho;
+use rhasky_core_chirho::{desugar_module_chirho, CoreModuleChirho};
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
 use rhasky_naming_chirho::resolve_chirho::resolve_module_chirho;
 use rhasky_typing_chirho::infer_chirho::infer_module_chirho;
@@ -77,14 +78,21 @@ pub fn check_source_file_chirho(
     })
 }
 
+/// Result of the full compilation pipeline.
+#[derive(Debug, Clone)]
+pub struct CompileResultChirho {
+    pub module_chirho: ModuleChirho,
+    pub core_chirho: CoreModuleChirho,
+}
+
 /// Run the full compiler pipeline: lex → layout → CST parse → AST lower →
-/// name resolve → type infer.
-/// Returns the typed AST module.
+/// name resolve → type infer → desugar to Core.
+/// Returns the AST module and its Core IR translation.
 pub fn compile_source_chirho(
     source_chirho: &str,
     source_map_chirho: &mut SourceMapChirho,
     file_name_chirho: &str,
-) -> Result<ModuleChirho, DiagnosticBundleChirho> {
+) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
     let source_file_chirho =
         SourceFileChirho::from_source_map_chirho(source_map_chirho, file_name_chirho, source_chirho);
     let file_id_chirho = source_file_chirho.file_id_chirho();
@@ -108,7 +116,13 @@ pub fn compile_source_chirho(
         return Err(infer_result_chirho.diagnostics_chirho);
     }
 
-    Ok(module_chirho)
+    // Phase 5: Desugar AST → Core IR
+    let core_chirho = desugar_module_chirho(&module_chirho);
+
+    Ok(CompileResultChirho {
+        module_chirho,
+        core_chirho,
+    })
 }
 
 pub fn render_summary_chirho(check_summary_chirho: &CheckSummaryChirho) -> String {
@@ -157,15 +171,18 @@ mod tests_chirho {
     fn full_pipeline_parses_and_resolves_chirho() {
         use super::compile_source_chirho;
         let mut source_map_chirho = SourceMapChirho::new_chirho();
-        let module_chirho = compile_source_chirho(
+        let result_chirho = compile_source_chirho(
             "module Test where\ndata Color = Red | Green\nf x = x\n",
             &mut source_map_chirho,
             "TestChirho.hs",
         )
         .expect("full pipeline should succeed");
 
-        assert_eq!(module_chirho.name_chirho.text_chirho(), "Test");
-        assert!(module_chirho.decls_chirho.len() >= 2);
+        assert_eq!(result_chirho.module_chirho.name_chirho.text_chirho(), "Test");
+        assert!(result_chirho.module_chirho.decls_chirho.len() >= 2);
+        // Core module was produced by desugaring
+        assert_eq!(result_chirho.core_chirho.name_chirho, "Test");
+        assert!(!result_chirho.core_chirho.bindings_chirho.is_empty());
     }
 
     #[test]

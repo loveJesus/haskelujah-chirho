@@ -13,6 +13,7 @@ path = "src/lib.rs"
 [dependencies]
 rhasky-ast-chirho = { path = "../rhasky-ast-chirho" }
 rhasky-backend-llvm-chirho = { path = "../rhasky-backend-llvm-chirho" }
+rhasky-core-chirho = { path = "../rhasky-core-chirho" }
 rhasky-backend-wasm-chirho = { path = "../rhasky-backend-wasm-chirho" }
 rhasky-diagnostics-chirho = { path = "../rhasky-diagnostics-chirho" }
 rhasky-naming-chirho = { path = "../rhasky-naming-chirho" }
