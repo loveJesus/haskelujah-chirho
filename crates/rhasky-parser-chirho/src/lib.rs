@@ -9,6 +9,7 @@
 pub mod cst_parser_chirho;
 pub mod layout_chirho;
 pub mod lexer_chirho;
+pub mod lower_chirho;
 
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use rhasky_span_chirho::{ByteOffsetChirho, SpanChirho};
