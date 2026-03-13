@@ -13,6 +13,7 @@ use rhasky_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
 use rhasky_backend_wasm_chirho::compile_to_wasm_stub_chirho;
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
 use rhasky_naming_chirho::resolve_chirho::resolve_module_chirho;
+use rhasky_typing_chirho::infer_chirho::infer_module_chirho;
 use rhasky_parser_chirho::cst_parser_chirho::ParserChirho;
 use rhasky_parser_chirho::lower_chirho::lower_module_chirho;
 use rhasky_parser_chirho::parse_source_file_chirho;
@@ -76,7 +77,8 @@ pub fn check_source_file_chirho(
     })
 }
 
-/// Run the full compiler pipeline: lex → layout → CST parse → AST lower → name resolve.
+/// Run the full compiler pipeline: lex → layout → CST parse → AST lower →
+/// name resolve → type infer.
 /// Returns the typed AST module.
 pub fn compile_source_chirho(
     source_chirho: &str,
@@ -98,6 +100,12 @@ pub fn compile_source_chirho(
     let resolve_result_chirho = resolve_module_chirho(&module_chirho);
     if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(resolve_result_chirho.diagnostics_chirho);
+    }
+
+    // Phase 4: Type inference
+    let infer_result_chirho = infer_module_chirho(&module_chirho);
+    if infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(infer_result_chirho.diagnostics_chirho);
     }
 
     Ok(module_chirho)
