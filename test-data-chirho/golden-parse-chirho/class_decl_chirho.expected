@@ -1,0 +1,41 @@
+<!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. -->
+
+SourceFileChirho
+  ModuleHeaderChirho
+    ModuleKeywordChirho "module"
+    WhitespaceTriviaChirho " "
+    ConIdChirho "ClassDeclChirho"
+    WhitespaceTriviaChirho " "
+    WhereKeywordChirho "where"
+  WhitespaceTriviaChirho "\n"
+  VirtualLeftBraceChirho ""
+  ClassDeclChirho
+    ClassKeywordChirho "class"
+    WhitespaceTriviaChirho " "
+    ConIdChirho "DescribableChirho"
+    WhitespaceTriviaChirho " "
+    VarIdChirho "aChirho"
+    WhitespaceTriviaChirho " "
+    WhereClauseChirho
+      WhereKeywordChirho "where"
+      WhitespaceTriviaChirho " "
+      LeftBraceChirho "{"
+      WhitespaceTriviaChirho " "
+      TypeSigDeclChirho
+        VarIdChirho "describeChirho"
+        WhitespaceTriviaChirho " "
+        DoubleColonChirho "::"
+        WhitespaceTriviaChirho " "
+        FunTypeChirho
+          VarTypeChirho
+            VarIdChirho "aChirho"
+          WhitespaceTriviaChirho " "
+          RightArrowChirho "->"
+          WhitespaceTriviaChirho " "
+          ConTypeChirho
+            ConIdChirho "String"
+          WhitespaceTriviaChirho " "
+      RightBraceChirho "}"
+  WhitespaceTriviaChirho "\n"
+  VirtualRightBraceChirho ""
+  VarIdChirho ""

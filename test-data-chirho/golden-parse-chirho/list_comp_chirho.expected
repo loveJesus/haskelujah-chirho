@@ -1,0 +1,60 @@
+<!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. -->
+
+SourceFileChirho
+  ModuleHeaderChirho
+    ModuleKeywordChirho "module"
+    WhitespaceTriviaChirho " "
+    ConIdChirho "ListCompChirho"
+    WhitespaceTriviaChirho " "
+    WhereKeywordChirho "where"
+  WhitespaceTriviaChirho "\n"
+  VirtualLeftBraceChirho ""
+  FunBindChirho
+    MatchChirho
+      VarIdChirho "listCompValueChirho"
+      WhitespaceTriviaChirho " "
+      EqualsChirho "="
+      WhitespaceTriviaChirho " "
+      ListExprChirho
+        LeftBracketChirho "["
+        InfixExprChirho
+          NameExprChirho
+            VarIdChirho "xChirho"
+          WhitespaceTriviaChirho " "
+          VarSymChirho "+"
+          WhitespaceTriviaChirho " "
+          LiteralExprChirho
+            IntegerLiteralChirho "1"
+          WhitespaceTriviaChirho " "
+        PipeChirho "|"
+        WhitespaceTriviaChirho " "
+        NameExprChirho
+          VarIdChirho "xChirho"
+        WhitespaceTriviaChirho " "
+  FunBindChirho
+    MatchChirho
+  ErrorNodeChirho
+    LeftArrowChirho "<-"
+  WhitespaceTriviaChirho " "
+  FunBindChirho
+    MatchChirho
+      ListPatChirho
+        LeftBracketChirho "["
+        LitPatChirho
+          IntegerLiteralChirho "1"
+        CommaChirho ","
+        WhitespaceTriviaChirho " "
+        LitPatChirho
+          IntegerLiteralChirho "2"
+        CommaChirho ","
+        WhitespaceTriviaChirho " "
+        LitPatChirho
+          IntegerLiteralChirho "3"
+        RightBracketChirho "]"
+  FunBindChirho
+    MatchChirho
+  ErrorNodeChirho
+    RightBracketChirho "]"
+  WhitespaceTriviaChirho "\n"
+  VirtualRightBraceChirho ""
+  VarIdChirho ""

@@ -1,0 +1,72 @@
+<!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. -->
+
+SourceFileChirho
+  ModuleHeaderChirho
+    ModuleKeywordChirho "module"
+    WhitespaceTriviaChirho " "
+    ConIdChirho "RecordChirho"
+    WhitespaceTriviaChirho " "
+    WhereKeywordChirho "where"
+  WhitespaceTriviaChirho "\n"
+  VirtualLeftBraceChirho ""
+  DataDeclChirho
+    DataKeywordChirho "data"
+    WhitespaceTriviaChirho " "
+    ConIdChirho "PersonChirho"
+    WhitespaceTriviaChirho " "
+    EqualsChirho "="
+    WhitespaceTriviaChirho " "
+    ConDeclChirho
+      ConIdChirho "PersonChirho"
+      WhitespaceTriviaChirho " "
+      RecordFieldsChirho
+        LeftBraceChirho "{"
+        WhitespaceTriviaChirho " "
+        FieldDeclChirho
+          VarIdChirho "nameChirho"
+          WhitespaceTriviaChirho " "
+          DoubleColonChirho "::"
+          WhitespaceTriviaChirho " "
+          ConIdChirho "String"
+        CommaChirho ","
+        WhitespaceTriviaChirho " "
+        FieldDeclChirho
+          VarIdChirho "ageChirho"
+          WhitespaceTriviaChirho " "
+          DoubleColonChirho "::"
+          WhitespaceTriviaChirho " "
+          ConIdChirho "Int"
+          WhitespaceTriviaChirho " "
+        RightBraceChirho "}"
+    WhitespaceTriviaChirho "\n"
+  VirtualSemicolonChirho ""
+  FunBindChirho
+    MatchChirho
+      VarIdChirho "recordValueChirho"
+      WhitespaceTriviaChirho " "
+      EqualsChirho "="
+      WhitespaceTriviaChirho " "
+      NameExprChirho
+        ConIdChirho "PersonChirho"
+        WhitespaceTriviaChirho " "
+        LeftBraceChirho "{"
+        WhitespaceTriviaChirho " "
+        FieldAssignChirho
+          VarIdChirho "nameChirho"
+          WhitespaceTriviaChirho " "
+          EqualsChirho "="
+          WhitespaceTriviaChirho " "
+          StringLiteralChirho ""Ada""
+        CommaChirho ","
+        WhitespaceTriviaChirho " "
+        FieldAssignChirho
+          VarIdChirho "ageChirho"
+          WhitespaceTriviaChirho " "
+          EqualsChirho "="
+          WhitespaceTriviaChirho " "
+          IntegerLiteralChirho "36"
+          WhitespaceTriviaChirho " "
+        RightBraceChirho "}"
+      WhitespaceTriviaChirho "\n"
+  VirtualRightBraceChirho ""
+  VarIdChirho ""
