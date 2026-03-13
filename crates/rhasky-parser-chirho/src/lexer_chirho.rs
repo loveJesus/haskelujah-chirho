@@ -359,7 +359,58 @@ impl<'src> LexerChirho<'src> {
             // Any other symbol character
             _ if is_symbol_char_chirho(byte_chirho) => self.lex_operator_chirho(start_chirho),
 
-            // Unknown / error
+            // Non-ASCII bytes — could be Unicode identifiers, BOM, etc.
+            _ if byte_chirho > 0x7F => {
+                // Decode the UTF-8 character to advance by the right number of bytes
+                let rest_chirho = match self.source_chirho.get(self.pos_chirho..) {
+                    Some(s_chirho) => s_chirho,
+                    None => {
+                        self.pos_chirho += 1;
+                        return self.make_token_chirho(RawTokenKindChirho::ErrorChirho, start_chirho);
+                    }
+                };
+                if let Some(ch_chirho) = rest_chirho.chars().next() {
+                    if ch_chirho.is_alphabetic() || ch_chirho == '\u{FEFF}' {
+                        // Unicode identifier or BOM — treat as ident start
+                        self.pos_chirho += ch_chirho.len_utf8();
+                        // Continue eating ident chars
+                        while self.pos_chirho < self.bytes_chirho.len()
+                            && is_ident_char_chirho(self.bytes_chirho[self.pos_chirho])
+                        {
+                            self.pos_chirho += 1;
+                        }
+                        // Determine if it's lower or upper
+                        if ch_chirho.is_uppercase() {
+                            self.make_token_chirho(RawTokenKindChirho::ConIdChirho, start_chirho)
+                        } else {
+                            self.make_token_chirho(RawTokenKindChirho::VarIdChirho, start_chirho)
+                        }
+                    } else if ch_chirho.is_whitespace() {
+                        // Unicode whitespace (e.g. non-breaking space \u{A0})
+                        self.pos_chirho += ch_chirho.len_utf8();
+                        while self.pos_chirho < self.source_chirho.len() {
+                            let rest2_chirho = &self.source_chirho[self.pos_chirho..];
+                            match rest2_chirho.chars().next() {
+                                Some(c_chirho) if c_chirho.is_whitespace() && c_chirho != '\n' => {
+                                    self.pos_chirho += c_chirho.len_utf8();
+                                }
+                                _ => break,
+                            }
+                        }
+                        self.make_token_chirho(RawTokenKindChirho::WhitespaceChirho, start_chirho)
+                    } else {
+                        // Unicode symbol/punctuation — treat as operator or error
+                        self.pos_chirho += ch_chirho.len_utf8();
+                        self.make_token_chirho(RawTokenKindChirho::VarSymChirho, start_chirho)
+                    }
+                } else {
+                    // Invalid UTF-8 — advance one byte
+                    self.pos_chirho += 1;
+                    self.make_token_chirho(RawTokenKindChirho::ErrorChirho, start_chirho)
+                }
+            }
+
+            // Unknown ASCII / error
             _ => {
                 self.pos_chirho += 1;
                 self.make_token_chirho(RawTokenKindChirho::ErrorChirho, start_chirho)
@@ -637,7 +688,9 @@ impl<'src> LexerChirho<'src> {
             self.pos_chirho += 1;
         }
 
-        let text_chirho = &self.source_chirho[start_chirho..self.pos_chirho];
+        let text_chirho = self.source_chirho
+            .get(start_chirho..self.pos_chirho)
+            .unwrap_or("");
 
         // Check for _ (wildcard) as a special case
         if text_chirho == "_" {
@@ -748,7 +801,10 @@ fn is_symbol_char_chirho(byte_chirho: u8) -> bool {
 
 /// Whether a byte can appear in an identifier (after the first character).
 fn is_ident_char_chirho(byte_chirho: u8) -> bool {
-    byte_chirho.is_ascii_alphanumeric() || byte_chirho == b'_' || byte_chirho == b'\''
+    byte_chirho.is_ascii_alphanumeric()
+        || byte_chirho == b'_'
+        || byte_chirho == b'\''
+        || byte_chirho > 0x7F // Non-ASCII bytes (part of multi-byte UTF-8 chars)
 }
 
 /// Look up a keyword kind from text, returning `None` for identifiers.

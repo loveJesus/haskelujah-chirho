@@ -677,13 +677,7 @@ impl<'src> ParserChirho<'src> {
 
     fn current_text_chirho(&self) -> &str {
         if let Some(tok_chirho) = self.current_chirho() {
-            let start_chirho = tok_chirho.span_chirho.start_chirho().as_usize_chirho();
-            let end_chirho = tok_chirho.span_chirho.end_chirho().as_usize_chirho();
-            if start_chirho < end_chirho && end_chirho <= self.source_chirho.len() {
-                &self.source_chirho[start_chirho..end_chirho]
-            } else {
-                ""
-            }
+            self.token_text_chirho(tok_chirho)
         } else {
             ""
         }
@@ -692,19 +686,20 @@ impl<'src> ParserChirho<'src> {
     /// Advance one token, adding it to the current green node.
     fn bump_chirho(&mut self) {
         if let Some(tok_chirho) = self.current_chirho().copied() {
-            let text_chirho = {
-                let start_chirho = tok_chirho.span_chirho.start_chirho().as_usize_chirho();
-                let end_chirho = tok_chirho.span_chirho.end_chirho().as_usize_chirho();
-                if start_chirho < end_chirho && end_chirho <= self.source_chirho.len() {
-                    &self.source_chirho[start_chirho..end_chirho]
-                } else {
-                    ""
-                }
-            };
+            let text_chirho = self.token_text_chirho(&tok_chirho);
             let kind_chirho = map_token_kind_chirho(tok_chirho.kind_chirho);
             self.builder_chirho.token_chirho(kind_chirho, text_chirho);
             self.pos_chirho += 1;
         }
+    }
+
+    /// Safely extract the source text for a token, handling multi-byte UTF-8.
+    fn token_text_chirho(&self, tok_chirho: &RawTokenChirho) -> &'src str {
+        let start_chirho = tok_chirho.span_chirho.start_chirho().as_usize_chirho();
+        let end_chirho = tok_chirho.span_chirho.end_chirho().as_usize_chirho();
+        self.source_chirho
+            .get(start_chirho..end_chirho)
+            .unwrap_or("")
     }
 
     /// Eat all trivia tokens (whitespace, comments), adding them to the tree.
