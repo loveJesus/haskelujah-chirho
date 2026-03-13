@@ -1,0 +1,21 @@
+# For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
+
+[workspace]
+resolver = "3"
+members = [
+  "crates/rhasky-backend-llvm-chirho",
+  "crates/rhasky-backend-wasm-chirho",
+  "crates/rhasky-cli-chirho",
+  "crates/rhasky-diagnostics-chirho",
+  "crates/rhasky-driver-chirho",
+  "crates/rhasky-parser-chirho",
+  "crates/rhasky-runtime-chirho",
+  "crates/rhasky-syntax-chirho",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.93.0"
+version = "0.1.0"
+
