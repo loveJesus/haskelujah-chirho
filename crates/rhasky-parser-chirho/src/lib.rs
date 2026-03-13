@@ -6,6 +6,7 @@
 //! Parser for Haskell source files. Currently handles module header extraction;
 //! will be expanded to a full recursive-descent parser with layout rule support.
 
+pub mod cst_parser_chirho;
 pub mod layout_chirho;
 pub mod lexer_chirho;
 

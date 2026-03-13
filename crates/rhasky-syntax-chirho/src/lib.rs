@@ -6,6 +6,8 @@
 //! Core syntax types for the Rhasky compiler: source files, module headers,
 //! and (soon) token kinds and CST node kinds.
 
+pub mod cst_chirho;
+pub mod green_chirho;
 pub mod token_chirho;
 
 use std::fs;
