@@ -9,6 +9,8 @@
 //! - Converts if/where/guards into Core let/case
 //! - Removes syntactic sugar (do notation, list comprehensions, etc.)
 
+use std::collections::HashMap;
+
 use rhasky_ast_chirho::decl_chirho::DeclChirho;
 use rhasky_ast_chirho::expr_chirho::{ExprChirho, MatchArmChirho, RhsChirho};
 use rhasky_ast_chirho::lit_chirho::LitChirho;
@@ -22,20 +24,36 @@ use crate::expr_chirho::{
     CoreLitChirho, CoreModuleChirho,
 };
 
+/// Result of desugaring: the Core module plus a symbol table mapping
+/// CoreIdChirho → source name for use by downstream passes.
+#[derive(Debug)]
+pub struct DesugarOutputChirho {
+    pub module_chirho: CoreModuleChirho,
+    /// Maps every CoreIdChirho to the source name it originated from.
+    pub names_chirho: HashMap<CoreIdChirho, String>,
+}
+
 /// The desugaring context — generates fresh Core IDs.
 pub struct DesugarCtxChirho {
     next_id_chirho: u32,
+    /// Tracks CoreId → source name associations.
+    names_chirho: HashMap<CoreIdChirho, String>,
 }
 
 impl DesugarCtxChirho {
     pub fn new_chirho() -> Self {
-        Self { next_id_chirho: 0 }
+        Self {
+            next_id_chirho: 0,
+            names_chirho: HashMap::new(),
+        }
     }
 
-    /// Generate a fresh Core ID.
-    fn fresh_id_chirho(&mut self) -> CoreIdChirho {
+    /// Generate a fresh Core ID and record its name.
+    fn fresh_id_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
         let id_chirho = CoreIdChirho(self.next_id_chirho);
         self.next_id_chirho += 1;
+        self.names_chirho
+            .insert(id_chirho, name_chirho.to_string());
         id_chirho
     }
 
@@ -47,15 +65,15 @@ impl DesugarCtxChirho {
         span_chirho: SpanChirho,
     ) -> BinderChirho {
         BinderChirho {
-            id_chirho: self.fresh_id_chirho(),
+            id_chirho: self.fresh_id_chirho(name_chirho),
             name_chirho: name_chirho.to_string(),
             ty_chirho,
             span_chirho,
         }
     }
 
-    /// Desugar an entire AST module into a Core module.
-    pub fn desugar_module_chirho(&mut self, module_chirho: &ModuleChirho) -> CoreModuleChirho {
+    /// Desugar an entire AST module into a Core module with name map.
+    pub fn desugar_module_chirho(&mut self, module_chirho: &ModuleChirho) -> DesugarOutputChirho {
         let mut bindings_chirho = Vec::new();
 
         for decl_chirho in &module_chirho.decls_chirho {
@@ -104,9 +122,12 @@ impl DesugarCtxChirho {
             }
         }
 
-        CoreModuleChirho {
-            name_chirho: module_chirho.name_chirho.text_chirho().to_string(),
-            bindings_chirho,
+        DesugarOutputChirho {
+            module_chirho: CoreModuleChirho {
+                name_chirho: module_chirho.name_chirho.text_chirho().to_string(),
+                bindings_chirho,
+            },
+            names_chirho: self.names_chirho.clone(),
         }
     }
 
@@ -230,9 +251,8 @@ impl DesugarCtxChirho {
         match expr_chirho {
             ExprChirho::VarChirho(name_chirho) | ExprChirho::ConChirho(name_chirho) => {
                 // In a full compiler, we'd resolve to a CoreIdChirho.
-                // For now, create a fresh ID (placeholder).
-                let id_chirho = self.fresh_id_chirho();
-                let _ = name_chirho; // name info carried in binder when fully wired
+                // For now, create a fresh ID (placeholder) and record the name.
+                let id_chirho = self.fresh_id_chirho(name_chirho.text_chirho());
                 CoreExprChirho::VarChirho(id_chirho)
             }
 
@@ -410,7 +430,7 @@ impl DesugarCtxChirho {
                 if elements_chirho.is_empty() {
                     CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)) // unit
                 } else {
-                    let con_id_chirho = self.fresh_id_chirho();
+                    let con_id_chirho = self.fresh_id_chirho("$tuple");
                     let mut result_chirho = CoreExprChirho::VarChirho(con_id_chirho);
                     for elem_chirho in elements_chirho {
                         let arg_chirho = self.desugar_expr_chirho(elem_chirho);
@@ -427,10 +447,10 @@ impl DesugarCtxChirho {
                 elements_chirho, ..
             } => {
                 // Desugar [a, b, c] → a : b : c : []
-                let nil_id_chirho = self.fresh_id_chirho();
+                let nil_id_chirho = self.fresh_id_chirho("[]");
                 let mut result_chirho = CoreExprChirho::VarChirho(nil_id_chirho); // []
                 for elem_chirho in elements_chirho.iter().rev() {
-                    let cons_id_chirho = self.fresh_id_chirho();
+                    let cons_id_chirho = self.fresh_id_chirho(":");
                     let elem_core_chirho = self.desugar_expr_chirho(elem_chirho);
                     result_chirho = CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::AppChirho {
@@ -445,7 +465,7 @@ impl DesugarCtxChirho {
 
             ExprChirho::NegChirho { expr_chirho: inner_chirho, .. } => {
                 // -x → negate x
-                let negate_id_chirho = self.fresh_id_chirho();
+                let negate_id_chirho = self.fresh_id_chirho("negate");
                 CoreExprChirho::AppChirho {
                     fun_chirho: Box::new(CoreExprChirho::VarChirho(negate_id_chirho)),
                     arg_chirho: Box::new(self.desugar_expr_chirho(inner_chirho)),
@@ -462,7 +482,7 @@ impl DesugarCtxChirho {
 
             // Remaining forms: produce a placeholder
             _ => {
-                let id_chirho = self.fresh_id_chirho();
+                let id_chirho = self.fresh_id_chirho("$placeholder");
                 CoreExprChirho::VarChirho(id_chirho)
             }
         }
@@ -483,8 +503,8 @@ fn all_var_pats_chirho(pats_chirho: &[PatChirho]) -> bool {
     pats_chirho.iter().all(|p_chirho| matches!(p_chirho, PatChirho::VarChirho(_)))
 }
 
-/// Desugar a module from AST to Core.
-pub fn desugar_module_chirho(module_chirho: &ModuleChirho) -> CoreModuleChirho {
+/// Desugar a module from AST to Core, returning the Core module and a name map.
+pub fn desugar_module_chirho(module_chirho: &ModuleChirho) -> DesugarOutputChirho {
     let mut ctx_chirho = DesugarCtxChirho::new_chirho();
     ctx_chirho.desugar_module_chirho(module_chirho)
 }
@@ -522,7 +542,8 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
-        let core_chirho = desugar_module_chirho(&module_chirho);
+        let output_chirho = desugar_module_chirho(&module_chirho);
+        let core_chirho = &output_chirho.module_chirho;
         assert_eq!(core_chirho.name_chirho, "Test");
         assert_eq!(core_chirho.bindings_chirho.len(), 1);
         assert_eq!(core_chirho.bindings_chirho[0].binder_chirho.name_chirho, "f");
@@ -530,6 +551,8 @@ mod tests_chirho {
             core_chirho.bindings_chirho[0].rhs_chirho,
             CoreExprChirho::LamChirho { .. }
         ));
+        // Name map should contain the binder's name
+        assert!(output_chirho.names_chirho.values().any(|n_chirho| n_chirho == "f"));
     }
 
     #[test]
@@ -617,8 +640,8 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
-        let core_chirho = desugar_module_chirho(&module_chirho);
-        let output_chirho = crate::pretty_chirho::pretty_module_chirho(&core_chirho);
+        let desugar_out_chirho = desugar_module_chirho(&module_chirho);
+        let output_chirho = crate::pretty_chirho::pretty_module_chirho(&desugar_out_chirho.module_chirho);
         assert!(output_chirho.contains("-- module Pretty"));
         assert!(output_chirho.contains("main"));
         assert!(output_chirho.contains("0"));

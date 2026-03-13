@@ -14,7 +14,8 @@ use rhasky_backend_llvm_chirho::compile_core_to_llvm_chirho;
 use rhasky_backend_wasm_chirho::compile_to_wasm_stub_chirho;
 use rhasky_backend_wasm_chirho::compile_core_to_wasm_chirho;
 use rhasky_core_chirho::{
-    desugar_module_chirho, simplify_module_chirho, CoreModuleChirho, SimplifyConfigChirho,
+    desugar_module_chirho, dict_pass_module_chirho, simplify_module_chirho, CoreModuleChirho,
+    SimplifyConfigChirho,
 };
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
 use rhasky_naming_chirho::resolve_chirho::resolve_module_chirho;
@@ -123,7 +124,16 @@ pub fn compile_source_chirho(
     }
 
     // Phase 5: Desugar AST → Core IR
-    let core_chirho = desugar_module_chirho(&module_chirho);
+    let desugar_output_chirho = desugar_module_chirho(&module_chirho);
+
+    // Phase 5.5: Dictionary-passing transform (desugar typeclass constraints)
+    let dict_result_chirho = dict_pass_module_chirho(
+        &desugar_output_chirho.module_chirho,
+        desugar_output_chirho.names_chirho,
+        &infer_result_chirho.env_chirho,
+        &infer_result_chirho.class_env_chirho,
+    );
+    let core_chirho = dict_result_chirho.module_chirho;
 
     // Phase 6: Core-to-Core simplification (beta reduction, dead code, case-of-known)
     let config_chirho = SimplifyConfigChirho::default();

@@ -17,11 +17,13 @@
 //! - `TyLam` / `TyApp` — type abstraction and application (polymorphism)
 
 pub mod desugar_chirho;
+pub mod dict_chirho;
 pub mod expr_chirho;
 pub mod pretty_chirho;
 pub mod simplify_chirho;
 
-pub use desugar_chirho::desugar_module_chirho;
+pub use desugar_chirho::{desugar_module_chirho, DesugarOutputChirho};
+pub use dict_chirho::{dict_pass_module_chirho, DictPassResultChirho};
 pub use expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
     CoreLitChirho, CoreModuleChirho,

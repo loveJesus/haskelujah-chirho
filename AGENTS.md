@@ -140,8 +140,8 @@ The compiler has a working 7-phase pipeline wired end-to-end in `rhasky-driver-c
 3. **CST Parse** — `rhasky-parser-chirho` concrete syntax tree (green tree)
 4. **AST Lower** — `rhasky-ast-chirho` abstract syntax tree from CST
 5. **Name Resolve** — `rhasky-naming-chirho` scope resolution
-6. **Type Infer** — `rhasky-typing-chirho` Hindley-Milner Algorithm W with unification, type schemes, let-generalization; typeclass infrastructure (PredChirho, QualTyChirho, ClassEnvChirho with instance resolution and context reduction) now available but not yet wired into inference
-7. **Desugar → Core → Simplify → Backends** — `rhasky-core-chirho` System FC-style Core IR with AST-to-Core desugaring, Core-to-Core simplifier (beta reduction, dead code elimination, case-of-known-literal); dual backend output via `rhasky-backend-llvm-chirho` (textual LLVM IR) and `rhasky-backend-wasm-chirho` (binary Wasm modules)
+6. **Type Infer** — `rhasky-typing-chirho` Hindley-Milner Algorithm W with unification, type schemes, let-generalization; typeclass infrastructure fully integrated (PredChirho, QualTyChirho, ClassEnvChirho with instance resolution, context reduction, deferred predicate collection, predicate partitioning at generalization, constrained polymorphic type schemes)
+7. **Desugar → Dict Pass → Core → Simplify → Backends** — `rhasky-core-chirho` System FC-style Core IR with AST-to-Core desugaring (with name tracking via DesugarOutputChirho), dictionary-passing transform (dict_chirho.rs: dictionary layouts, method selectors, dictionary lambda wrapping for constrained bindings), Core-to-Core simplifier (beta reduction, dead code elimination, case-of-known-literal); dual backend output via `rhasky-backend-llvm-chirho` (textual LLVM IR) and `rhasky-backend-wasm-chirho` (binary Wasm modules)
 
 ### Workspace Crates (15 crates)
 
@@ -154,7 +154,7 @@ The compiler has a working 7-phase pipeline wired end-to-end in `rhasky-driver-c
 | `rhasky-ast-chirho` | Abstract syntax tree types, CST→AST lowering |
 | `rhasky-naming-chirho` | Name resolution / scope analysis |
 | `rhasky-typing-chirho` | HM type inference, unification, substitution, type schemes, typeclass infrastructure |
-| `rhasky-core-chirho` | Core IR (System FC-style), AST→Core desugaring, Core→Core simplifier, pretty-printer |
+| `rhasky-core-chirho` | Core IR (System FC-style), AST→Core desugaring (with name map), dictionary-passing transform, Core→Core simplifier, pretty-printer |
 | `rhasky-backend-llvm-chirho` | Core → textual LLVM IR codegen |
 | `rhasky-backend-wasm-chirho` | Core → binary WebAssembly codegen |
 | `rhasky-driver-chirho` | Pipeline orchestration, CompileResultChirho (AST + Core + LLVM IR + Wasm bytes) |
@@ -166,13 +166,14 @@ The compiler has a working 7-phase pipeline wired end-to-end in `rhasky-driver-c
 
 - **Golden parse tests**: 10 cases in `rhasky-parser-chirho` (type_sig, data_decl, fun_bind, lambda, case, do_block, let_expr, list_comp, record, class_decl)
 - **Typing integration tests**: 8 end-to-end tests in `rhasky-driver-chirho` (identity fn, data constructors, if-expr, list literal, tuple literal, let-expr, lambda, negative type error)
-- **Unit tests per crate**: subst (6), unify, infer, Core expr, Core pretty, Core simplifier (9), LLVM codegen (7), Wasm codegen (5), typeclass/class_chirho (11)
+- **Unit tests per crate**: subst (6), unify, infer (incl. typeclass predicate tests), Core expr, Core pretty, Core simplifier (9), Core dict pass (7), LLVM codegen (7), Wasm codegen (5), typeclass/class_chirho (11)
+- **Total**: 205 tests passing across all crates
 
 ### Next Priorities
 
-1. Wire typeclass predicates into the type inference pass so constrained types are checked
-2. Complete STG runtime in `rhasky-runtime-chirho` (closures, thunks, GC, evaluation)
-3. Dictionary-passing transform: desugar typeclass constraints into explicit dictionary arguments in Core
+1. Method call-site rewriting: replace overloaded operator references with dictionary projections inside function bodies
+2. Instance dictionary generation: create top-level dictionary values for each typeclass instance
+3. Complete STG runtime in `rhasky-runtime-chirho` (closures, thunks, GC, evaluation)
 4. Pattern match exhaustiveness checking
 5. Module system: imports/exports, qualified names, multi-module compilation
 6. Kind inference for higher-kinded types
