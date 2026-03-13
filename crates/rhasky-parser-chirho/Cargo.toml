@@ -12,5 +12,6 @@ path = "src/lib.rs"
 
 [dependencies]
 rhasky-diagnostics-chirho = { path = "../rhasky-diagnostics-chirho" }
+rhasky-span-chirho = { path = "../rhasky-span-chirho" }
 rhasky-syntax-chirho = { path = "../rhasky-syntax-chirho" }
 

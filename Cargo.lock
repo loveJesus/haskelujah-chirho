@@ -208,6 +208,7 @@ dependencies = [
  "rhasky-diagnostics-chirho",
  "rhasky-parser-chirho",
  "rhasky-runtime-chirho",
+ "rhasky-span-chirho",
  "rhasky-syntax-chirho",
 ]
 
@@ -216,6 +217,7 @@ name = "rhasky-parser-chirho"
 version = "0.1.0"
 dependencies = [
  "rhasky-diagnostics-chirho",
+ "rhasky-span-chirho",
  "rhasky-syntax-chirho",
 ]
 
@@ -230,6 +232,9 @@ version = "0.1.0"
 [[package]]
 name = "rhasky-syntax-chirho"
 version = "0.1.0"
+dependencies = [
+ "rhasky-span-chirho",
+]
 
 [[package]]
 name = "rhasky-test-harness-chirho"

@@ -1,6 +1,13 @@
-// For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
+// For God so loved the world that he gave his only begotten Son, that whoever
+// believes in him should not perish but have eternal life. — John 3:16
 
-use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
+//! # rhasky-parser-chirho
+//!
+//! Parser for Haskell source files. Currently handles module header extraction;
+//! will be expanded to a full recursive-descent parser with layout rule support.
+
+use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
+use rhasky_span_chirho::{ByteOffsetChirho, SpanChirho};
 use rhasky_syntax_chirho::{ModuleHeaderChirho, SourceFileChirho};
 
 pub const DEFAULT_MODULE_NAME_CHIRHO: &str = "Main";
@@ -14,10 +21,16 @@ pub struct ParsedModuleChirho {
 pub fn parse_source_file_chirho(
     source_file_chirho: SourceFileChirho,
 ) -> Result<ParsedModuleChirho, DiagnosticBundleChirho> {
+    let file_id_chirho = source_file_chirho.file_id_chirho();
     let mut saw_non_comment_code_chirho = false;
+    let mut byte_offset_chirho: usize = 0;
 
-    for (line_index_chirho, raw_line_chirho) in source_file_chirho.contents_chirho().lines().enumerate()
-    {
+    for raw_line_chirho in source_file_chirho.contents_chirho().lines() {
+        let line_start_chirho = byte_offset_chirho;
+        let line_len_chirho = raw_line_chirho.len();
+        // Advance past this line + newline
+        byte_offset_chirho += line_len_chirho + 1; // +1 for \n
+
         let trimmed_line_chirho = raw_line_chirho.trim();
 
         if trimmed_line_chirho.is_empty() {
@@ -29,7 +42,7 @@ pub fn parse_source_file_chirho(
         }
 
         if let Some(module_header_chirho) =
-            parse_module_header_line_chirho(trimmed_line_chirho, line_index_chirho + 1)?
+            parse_module_header_line_chirho(trimmed_line_chirho, file_id_chirho, line_start_chirho)?
         {
             return Ok(ParsedModuleChirho {
                 module_header_chirho,
@@ -41,12 +54,20 @@ pub fn parse_source_file_chirho(
         break;
     }
 
-    let line_number_chirho = if saw_non_comment_code_chirho { 1 } else { 0 };
+    let span_chirho = if saw_non_comment_code_chirho {
+        SpanChirho::new_chirho(
+            file_id_chirho,
+            ByteOffsetChirho::new_chirho(0),
+            ByteOffsetChirho::new_chirho(0),
+        )
+    } else {
+        SpanChirho::DUMMY_CHIRHO
+    };
 
     Ok(ParsedModuleChirho {
         module_header_chirho: ModuleHeaderChirho {
             module_name_chirho: DEFAULT_MODULE_NAME_CHIRHO.to_owned(),
-            line_number_chirho,
+            span_chirho,
         },
         source_file_chirho,
     })
@@ -54,7 +75,8 @@ pub fn parse_source_file_chirho(
 
 fn parse_module_header_line_chirho(
     trimmed_line_chirho: &str,
-    line_number_chirho: usize,
+    file_id_chirho: rhasky_span_chirho::FileIdChirho,
+    line_start_offset_chirho: usize,
 ) -> Result<Option<ModuleHeaderChirho>, DiagnosticBundleChirho> {
     if !trimmed_line_chirho.starts_with("module ") {
         return Ok(None);
@@ -71,26 +93,48 @@ fn parse_module_header_line_chirho(
         .filter(|module_name_chirho| !module_name_chirho.is_empty());
 
     match module_name_chirho {
-        Some(module_name_chirho) => Ok(Some(ModuleHeaderChirho {
-            module_name_chirho: module_name_chirho.to_owned(),
-            line_number_chirho,
-        })),
-        None => Err(DiagnosticChirho::error_chirho(
-            "malformed module header; expected `module <Name> where`",
-            Some(line_number_chirho),
-        )
-        .into()),
+        Some(module_name_chirho) => {
+            let span_chirho = SpanChirho::new_chirho(
+                file_id_chirho,
+                ByteOffsetChirho::from_usize_chirho(line_start_offset_chirho),
+                ByteOffsetChirho::from_usize_chirho(
+                    line_start_offset_chirho + trimmed_line_chirho.len(),
+                ),
+            );
+            Ok(Some(ModuleHeaderChirho {
+                module_name_chirho: module_name_chirho.to_owned(),
+                span_chirho,
+            }))
+        }
+        None => {
+            let span_chirho = SpanChirho::new_chirho(
+                file_id_chirho,
+                ByteOffsetChirho::from_usize_chirho(line_start_offset_chirho),
+                ByteOffsetChirho::from_usize_chirho(
+                    line_start_offset_chirho + trimmed_line_chirho.len(),
+                ),
+            );
+            Err(DiagnosticChirho::error_with_code_chirho(
+                ErrorCodeChirho::error_chirho(1),
+                "malformed module header; expected `module <Name> where`",
+                span_chirho,
+            )
+            .into())
+        }
     }
 }
 
 #[cfg(test)]
 mod tests_chirho {
     use super::{DEFAULT_MODULE_NAME_CHIRHO, parse_source_file_chirho};
+    use rhasky_span_chirho::SourceMapChirho;
     use rhasky_syntax_chirho::SourceFileChirho;
 
     #[test]
     fn parses_explicit_module_header_chirho() {
-        let source_file_chirho = SourceFileChirho::new_chirho(
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+            &mut source_map_chirho,
             "SampleChirho.hs",
             "module SampleChirho where\nvalueChirho = 1\n",
         );
@@ -102,13 +146,16 @@ mod tests_chirho {
             parsed_module_chirho.module_header_chirho.module_name_chirho,
             "SampleChirho"
         );
-        assert_eq!(parsed_module_chirho.module_header_chirho.line_number_chirho, 1);
     }
 
     #[test]
     fn defaults_to_main_when_no_module_header_exists_chirho() {
-        let source_file_chirho =
-            SourceFileChirho::new_chirho("MainChirho.hs", "mainChirho = putStrLn \"hi\"\n");
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+            &mut source_map_chirho,
+            "MainChirho.hs",
+            "mainChirho = putStrLn \"hi\"\n",
+        );
 
         let parsed_module_chirho = parse_source_file_chirho(source_file_chirho)
             .expect("parser should accept scripts without a module header");
@@ -119,4 +166,3 @@ mod tests_chirho {
         );
     }
 }
-

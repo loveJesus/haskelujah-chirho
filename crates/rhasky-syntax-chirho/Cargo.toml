@@ -7,6 +7,9 @@ license.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[dependencies]
+rhasky-span-chirho = { path = "../rhasky-span-chirho" }
+
 [lib]
 path = "src/lib.rs"
 
