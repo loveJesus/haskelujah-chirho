@@ -45,6 +45,13 @@ impl TyEnvChirho {
         }
     }
 
+    /// Remove a name from the current (innermost) scope.
+    pub fn remove_chirho(&mut self, name_chirho: &str) {
+        if let Some(scope_chirho) = self.scopes_chirho.last_mut() {
+            scope_chirho.remove(name_chirho);
+        }
+    }
+
     /// Look up a name, searching from innermost to outermost scope.
     pub fn lookup_chirho(&self, name_chirho: &str) -> Option<&SchemeChirho> {
         for scope_chirho in self.scopes_chirho.iter().rev() {

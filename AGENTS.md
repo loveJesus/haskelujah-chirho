@@ -130,3 +130,50 @@ You can modify  the following section
 - Solver preference: evaluate crates such as `propagators-chirho` for constraint propagation, type inference support, dependency solving, or incremental analysis only where they simplify the architecture measurably; do not force them into the design without a clear benefit.
 - Rust implementation preference: use strong domain types, arenas or stable ids where they simplify compiler graphs, structured diagnostics, explicit crate boundaries, and testable subsystems with golden tests and property tests where useful.
 - Git workflow preference: when repository metadata is present, the primary branch is `main_chirho` and the Git remote name for GitHub is `gh_chirho`.
+
+### Current Pipeline State (as of 2026-03-13)
+
+The compiler has a working 7-phase pipeline wired end-to-end in `rhasky-driver-chirho`:
+
+1. **Lex** — `rhasky-syntax-chirho` tokenizer
+2. **Layout** — `rhasky-syntax-chirho` layout rule insertion (braces/semicolons)
+3. **CST Parse** — `rhasky-parser-chirho` concrete syntax tree (green tree)
+4. **AST Lower** — `rhasky-ast-chirho` abstract syntax tree from CST
+5. **Name Resolve** — `rhasky-naming-chirho` scope resolution
+6. **Type Infer** — `rhasky-typing-chirho` Hindley-Milner Algorithm W with unification, type schemes, let-generalization; typeclass infrastructure (PredChirho, QualTyChirho, ClassEnvChirho with instance resolution and context reduction) now available but not yet wired into inference
+7. **Desugar → Core → Simplify → Backends** — `rhasky-core-chirho` System FC-style Core IR with AST-to-Core desugaring, Core-to-Core simplifier (beta reduction, dead code elimination, case-of-known-literal); dual backend output via `rhasky-backend-llvm-chirho` (textual LLVM IR) and `rhasky-backend-wasm-chirho` (binary Wasm modules)
+
+### Workspace Crates (15 crates)
+
+| Crate | Purpose |
+|---|---|
+| `rhasky-span-chirho` | Source locations, file IDs, source map |
+| `rhasky-diagnostics-chirho` | Structured compiler diagnostics |
+| `rhasky-syntax-chirho` | Tokens, SyntaxKind, green tree nodes, lexer, layout |
+| `rhasky-parser-chirho` | CST parser (green tree builder) |
+| `rhasky-ast-chirho` | Abstract syntax tree types, CST→AST lowering |
+| `rhasky-naming-chirho` | Name resolution / scope analysis |
+| `rhasky-typing-chirho` | HM type inference, unification, substitution, type schemes, typeclass infrastructure |
+| `rhasky-core-chirho` | Core IR (System FC-style), AST→Core desugaring, Core→Core simplifier, pretty-printer |
+| `rhasky-backend-llvm-chirho` | Core → textual LLVM IR codegen |
+| `rhasky-backend-wasm-chirho` | Core → binary WebAssembly codegen |
+| `rhasky-driver-chirho` | Pipeline orchestration, CompileResultChirho (AST + Core + LLVM IR + Wasm bytes) |
+| `rhasky-runtime-chirho` | STG runtime types (in progress — closures, info tables, thunks, heap, stack) |
+| `rhasky-cli-chirho` | Command-line interface (scaffold) |
+| `rhasky-test-harness-chirho` | Golden test utilities (assert/bless) |
+
+### Test Coverage
+
+- **Golden parse tests**: 10 cases in `rhasky-parser-chirho` (type_sig, data_decl, fun_bind, lambda, case, do_block, let_expr, list_comp, record, class_decl)
+- **Typing integration tests**: 8 end-to-end tests in `rhasky-driver-chirho` (identity fn, data constructors, if-expr, list literal, tuple literal, let-expr, lambda, negative type error)
+- **Unit tests per crate**: subst (6), unify, infer, Core expr, Core pretty, Core simplifier (9), LLVM codegen (7), Wasm codegen (5), typeclass/class_chirho (11)
+
+### Next Priorities
+
+1. Wire typeclass predicates into the type inference pass so constrained types are checked
+2. Complete STG runtime in `rhasky-runtime-chirho` (closures, thunks, GC, evaluation)
+3. Dictionary-passing transform: desugar typeclass constraints into explicit dictionary arguments in Core
+4. Pattern match exhaustiveness checking
+5. Module system: imports/exports, qualified names, multi-module compilation
+6. Kind inference for higher-kinded types
+7. Cabal file parsing and Hackage package loading

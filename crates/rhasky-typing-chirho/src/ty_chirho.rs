@@ -154,19 +154,32 @@ impl fmt::Display for TyChirho {
     }
 }
 
-/// A type scheme: `forall a1 a2 ... . ty`. Represents polymorphism.
+/// A predicate reference used in type schemes. Kept lightweight:
+/// just a class name and the type it constrains. Full `PredChirho`
+/// lives in `class_chirho`; this avoids a circular dependency.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SchemePredChirho {
+    pub class_name_chirho: String,
+    pub ty_chirho: TyChirho,
+}
+
+/// A type scheme: `forall a1 a2 ... . (preds =>) ty`. Represents polymorphism.
 /// When `vars` is empty, the scheme is monomorphic.
+/// When `preds` is non-empty, the scheme is constrained (qualified).
 #[derive(Debug, Clone, PartialEq)]
 pub struct SchemeChirho {
     pub vars_chirho: Vec<TyVarChirho>,
+    /// Typeclass predicates on the quantified variables, e.g. `Num a`.
+    pub preds_chirho: Vec<SchemePredChirho>,
     pub ty_chirho: TyChirho,
 }
 
 impl SchemeChirho {
-    /// A monomorphic scheme (no quantified variables).
+    /// A monomorphic scheme (no quantified variables, no predicates).
     pub fn mono_chirho(ty_chirho: TyChirho) -> Self {
         Self {
             vars_chirho: vec![],
+            preds_chirho: vec![],
             ty_chirho,
         }
     }
@@ -181,16 +194,35 @@ impl SchemeChirho {
     }
 }
 
+impl fmt::Display for SchemePredChirho {
+    fn fmt(&self, f_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f_chirho, "{} {}", self.class_name_chirho, self.ty_chirho)
+    }
+}
+
 impl fmt::Display for SchemeChirho {
     fn fmt(&self, f_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.vars_chirho.is_empty() {
+        if self.vars_chirho.is_empty() && self.preds_chirho.is_empty() {
             write!(f_chirho, "{}", self.ty_chirho)
         } else {
-            write!(f_chirho, "forall")?;
-            for v_chirho in &self.vars_chirho {
-                write!(f_chirho, " {v_chirho}")?;
+            if !self.vars_chirho.is_empty() {
+                write!(f_chirho, "forall")?;
+                for v_chirho in &self.vars_chirho {
+                    write!(f_chirho, " {v_chirho}")?;
+                }
+                write!(f_chirho, ". ")?;
             }
-            write!(f_chirho, ". {}", self.ty_chirho)
+            if !self.preds_chirho.is_empty() {
+                write!(f_chirho, "(")?;
+                for (i_chirho, p_chirho) in self.preds_chirho.iter().enumerate() {
+                    if i_chirho > 0 {
+                        write!(f_chirho, ", ")?;
+                    }
+                    write!(f_chirho, "{p_chirho}")?;
+                }
+                write!(f_chirho, ") => ")?;
+            }
+            write!(f_chirho, "{}", self.ty_chirho)
         }
     }
 }
@@ -223,6 +255,7 @@ mod tests_chirho {
         let b_chirho = TyVarChirho(1);
         let scheme_chirho = SchemeChirho {
             vars_chirho: vec![a_chirho],
+            preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(a_chirho),
                 TyChirho::VarChirho(b_chirho),
@@ -256,6 +289,7 @@ mod tests_chirho {
     fn scheme_display_chirho() {
         let scheme_chirho = SchemeChirho {
             vars_chirho: vec![TyVarChirho(0), TyVarChirho(1)],
+            preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(TyVarChirho(0)),
                 TyChirho::VarChirho(TyVarChirho(1)),

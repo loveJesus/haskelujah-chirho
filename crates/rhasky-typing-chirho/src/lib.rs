@@ -7,11 +7,13 @@
 //! Implements Algorithm W with unification, type schemes, substitution,
 //! and let-generalization.
 
+pub mod class_chirho;
 pub mod env_chirho;
 pub mod infer_chirho;
 pub mod subst_chirho;
 pub mod ty_chirho;
 pub mod unify_chirho;
 
+pub use class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredChirho, QualTyChirho};
 pub use infer_chirho::infer_module_chirho;
-pub use ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
+pub use ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};

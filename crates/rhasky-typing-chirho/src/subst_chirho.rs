@@ -116,6 +116,14 @@ impl SubstChirho {
         }
         SchemeChirho {
             vars_chirho: scheme_chirho.vars_chirho.clone(),
+            preds_chirho: scheme_chirho
+                .preds_chirho
+                .iter()
+                .map(|p_chirho| crate::ty_chirho::SchemePredChirho {
+                    class_name_chirho: p_chirho.class_name_chirho.clone(),
+                    ty_chirho: restricted_chirho.apply_ty_chirho(&p_chirho.ty_chirho),
+                })
+                .collect(),
             ty_chirho: restricted_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho),
         }
     }
@@ -197,6 +205,7 @@ mod tests_chirho {
         };
         let scheme_chirho = SchemeChirho {
             vars_chirho: vec![TyVarChirho(0)],
+            preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(TyVarChirho(0)),
                 TyChirho::VarChirho(TyVarChirho(1)),
