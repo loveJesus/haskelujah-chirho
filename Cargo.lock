@@ -220,6 +220,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rhasky-naming-chirho"
+version = "0.1.0"
+dependencies = [
+ "rhasky-ast-chirho",
+ "rhasky-diagnostics-chirho",
+ "rhasky-span-chirho",
+]
+
+[[package]]
 name = "rhasky-parser-chirho"
 version = "0.1.0"
 dependencies = [

@@ -9,6 +9,7 @@ members = [
   "crates/rhasky-cli-chirho",
   "crates/rhasky-diagnostics-chirho",
   "crates/rhasky-driver-chirho",
+  "crates/rhasky-naming-chirho",
   "crates/rhasky-parser-chirho",
   "crates/rhasky-runtime-chirho",
   "crates/rhasky-span-chirho",
