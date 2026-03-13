@@ -24,3 +24,6 @@ Thumbs.db
 *~
 .idea/
 .vscode/
+
+# GHC test suite (local verification only)
+/ghc-tests-chirho/

@@ -15,3 +15,6 @@ rhasky-diagnostics-chirho = { path = "../rhasky-diagnostics-chirho" }
 rhasky-span-chirho = { path = "../rhasky-span-chirho" }
 rhasky-syntax-chirho = { path = "../rhasky-syntax-chirho" }
 
+[dev-dependencies]
+rhasky-test-harness-chirho = { path = "../rhasky-test-harness-chirho" }
+

@@ -6,6 +6,9 @@
 //! Parser for Haskell source files. Currently handles module header extraction;
 //! will be expanded to a full recursive-descent parser with layout rule support.
 
+pub mod layout_chirho;
+pub mod lexer_chirho;
+
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use rhasky_span_chirho::{ByteOffsetChirho, SpanChirho};
 use rhasky_syntax_chirho::{ModuleHeaderChirho, SourceFileChirho};
