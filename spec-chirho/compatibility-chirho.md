@@ -72,3 +72,88 @@ The compiler should be better without being needlessly different:
 - stronger invariants are good
 - silently incompatible semantics are not good
 
+## Extension Priority Tiers
+
+Extension support should be staged by measured ecosystem need:
+
+### Tier 1 — Target: Milestone 2
+
+Extensions needed by nearly every non-trivial Haskell package:
+
+OverloadedStrings, ScopedTypeVariables, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, DeriveGeneric, DeriveFunctor, DeriveTraversable, DeriveFoldable, GeneralizedNewtypeDeriving, TypeApplications, LambdaCase, TupleSections, BangPatterns, RecordWildCards, NamedFieldPuns, StandaloneDeriving, DerivingStrategies, DerivingVia, InstanceSigs, KindSignatures, ExplicitForAll.
+
+### Tier 2 — Target: Milestones 3–5
+
+Extensions needed by important libraries (aeson, lens, servant, mtl, transformers):
+
+GADTs, TypeFamilies, DataKinds, RankNTypes, FunctionalDependencies, ExistentialQuantification, ConstraintKinds, TypeOperators, MultiWayIf, PatternSynonyms, ViewPatterns, OverloadedLists, DefaultSignatures, DeriveAnyClass, QuantifiedConstraints, RoleAnnotations.
+
+### Tier 3 — Target: Milestone 8+
+
+Advanced extensions deferred without shame:
+
+TemplateHaskell, QuasiQuotes, UnboxedTuples, UnboxedSums, MagicHash, LinearTypes, ImpredicativeTypes, TypeInType, Backpack, OverloadedRecordDot, OverloadedRecordUpdate, MonadComprehensions, RebindableSyntax, CApiFFI.
+
+Extensions move tiers only when a concrete ecosystem need is demonstrated, not by novelty or request.
+
+## Base Library Strategy
+
+The project must ship its own base library (`rhasky-base-chirho`) because GHC's `base` is tightly coupled to GHC-specific primitive operations (MagicHash, unboxed types, GHC.Prim) that are impractical to replicate in early milestones.
+
+### Initial Scope
+
+- Prelude (standard functions, type classes, basic IO)
+- Data.List, Data.Maybe, Data.Either, Data.Tuple
+- Data.Char, Data.String
+- Data.Int, Data.Word (fixed-width integers)
+- System.IO (basic file IO)
+- Control.Monad (core monad operations)
+- Data.IORef (mutable references)
+
+### Expansion Strategy
+
+Add modules as package compatibility demands. When a real package fails to compile because a base module is missing, that module is prioritized. Track coverage gaps explicitly in the compatibility corpus.
+
+### Primitive Operations
+
+Define a small set of compiler-known primitive operations (arithmetic, IO, array access, etc.) that the base library calls into. These primops are the interface between Haskell code and the Rhasky runtime. They should be documented, versioned, and stable enough that base library code does not break across compiler updates.
+
+## C Foreign Function Interface Strategy
+
+Many important Hackage packages depend on C libraries. FFI support is not optional for ecosystem compatibility.
+
+### Haskell Side
+
+Parse `foreign import` and `foreign export` declarations uniformly regardless of backend. Support the `ccall` and `capi` calling conventions as specified by the Haskell FFI addendum.
+
+### LLVM Path
+
+Standard C calling convention via LLVM IR `declare`/`call` instructions. Link against system C libraries using the platform linker. Header locations and library paths resolved through package metadata (`.cabal` `extra-lib-dirs`, `includes`) or environment variables.
+
+### WebAssembly Path
+
+WASI imports for system calls (filesystem, clock, random). For non-WASI FFI, C libraries must be compiled to `wasm32-wasi` or shimmed with JavaScript/host imports. This is an inherent limitation of the Wasm sandbox model.
+
+### Known Hard Cases
+
+- Packages with `c-sources` in `.cabal`: require compiling C to the target backend
+- Platform-specific FFI (`Win32`, `POSIX`): need conditional compilation support in the package system
+- Callbacks from C to Haskell: require stable pointers and the ability to create Haskell closures callable from C
+- `CApiFFI` extension: deferred to Tier 3 but architecturally supported
+
+## Template Haskell Acknowledgment
+
+Template Haskell is used by many of the most popular Hackage packages: `aeson`, `lens`, `persistent`, `servant`, `yesod`, `optics`, and others. It is deferred to Milestone 8+ but the architecture must not preclude it.
+
+### Architectural Implication
+
+TH requires the compiler to execute Haskell code at compile time. This means:
+
+- the runtime must be available during compilation (the driver crate must be able to call into the runtime crate)
+- compiled TH splices must be able to inspect and generate AST structures
+- cross-compilation with TH requires either a host-target split or a Wasm-based evaluator
+
+### Tracking
+
+TH-dependent packages should be tracked separately in the compatibility corpus. When TH is eventually supported, the compatibility gap should narrow significantly.
+

@@ -86,3 +86,77 @@ The REPL should eventually support:
 - balancing interpreter simplicity against eventual JIT needs
 - aligning package loading semantics across batch, script, and REPL modes
 
+## Memory Management Direction
+
+### Native Path
+
+Copying generational garbage collector, following GHC's proven approach for lazy languages with high allocation rates:
+
+- two-space copying collector for the nursery (young generation)
+- aging-based promotion to older generations
+- start with a simple two-space collector, add generational support incrementally
+- heap objects carry header words with GC metadata and tag bits
+
+### WebAssembly Path
+
+Linear-memory GC implemented within Wasm's linear memory space:
+
+- same logical algorithm as the native collector, different memory layout
+- more portable than depending on the Wasm GC proposal (still evolving)
+- trade implementation effort for deployment portability
+
+### Abstraction
+
+GC operations abstracted behind a trait boundary in `rhasky-runtime-chirho` so that native and Wasm backends provide different implementations without changing the STG lowering or thunk evaluation protocol.
+
+### Early Requirements
+
+Even before GC is implemented, runtime data structures must be designed with GC in mind:
+
+- object headers must reserve space for GC metadata
+- pointer identification must be unambiguous (no tagged unions that confuse the collector)
+- stack maps or conservative scanning must be planned for
+
+## Concurrency Model
+
+### Target Milestone
+
+Full concurrency support is targeted for Milestone 8, but runtime data structures must be designed thread-safe from the start.
+
+### Native Path
+
+Green threads multiplexed on OS threads with a work-stealing scheduler (following GHC's approach). Primitives: `forkIO`, `MVar`, `STM` (basic), `IORef` with atomic operations.
+
+### WebAssembly Path
+
+Single-threaded with cooperative scheduling initially. `SharedArrayBuffer` and atomics for multi-threaded Wasm when browser/runtime support is sufficient.
+
+### Early Requirements
+
+These must be addressed from Milestone 0, not retrofitted:
+
+- thunk updates must use atomic operations (compare-and-swap) so that concurrent forcing is safe
+- heap layout must be safe for concurrent GC (no torn reads of multi-word objects)
+- no global mutable state without explicit synchronization
+- blackhole detection must work correctly under concurrent evaluation
+
+Retrofitting concurrency into a single-threaded runtime is effectively a rewrite. The cost of atomic thunk updates is negligible on modern hardware.
+
+## Exception Model
+
+### Synchronous Exceptions
+
+Implemented through the IO monad evaluation path. `try`, `catch`, `throw`, and `throwIO` as runtime primitives. Key subtlety: a forced thunk can throw an exception, which the evaluator must handle by propagating the exception to the forcing context.
+
+### Asynchronous Exceptions
+
+Deferred to Milestone 8, arriving with the concurrency model. GHC's `throwTo` semantics (one thread throws to another) requires interruptible operations, exception masking (`mask`, `uninterruptibleMask`), and careful interaction with MVars and STM.
+
+### Script Mode
+
+Top-level exception handler that catches all exceptions, prints them to stderr, and exits with a non-zero exit code. This ensures scripts fail visibly rather than silently.
+
+### Imprecise Exceptions
+
+Pure code that evaluates to bottom (e.g. `error "msg"`) should produce imprecise exceptions following GHC's semantics. The choice of which exception to surface when multiple bottoms exist is implementation-defined.
+

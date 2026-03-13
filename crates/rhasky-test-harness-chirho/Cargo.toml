@@ -1,7 +1,8 @@
 # For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
 
 [package]
-name = "rhasky-diagnostics-chirho"
+name = "rhasky-test-harness-chirho"
+description = "Golden tests, compatibility suites, and property-test utilities for the Rhasky compiler"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -9,7 +10,7 @@ version.workspace = true
 
 [dependencies]
 rhasky-span-chirho = { path = "../rhasky-span-chirho" }
+rhasky-diagnostics-chirho = { path = "../rhasky-diagnostics-chirho" }
 
-[lib]
-path = "src/lib.rs"
-
+[dev-dependencies]
+tempfile = "3"

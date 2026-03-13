@@ -19,7 +19,9 @@ The design target is maximal practical compatibility with real-world Haskell and
 - [compatibility-chirho.md](./compatibility-chirho.md): compatibility contract for source, packages, and runtime behavior
 - [runtime-chirho.md](./runtime-chirho.md): execution model for batch, scripting, REPL, LLVM, and WebAssembly
 - [roadmap-chirho.md](./roadmap-chirho.md): staged delivery plan and milestone acceptance criteria
-- [review-questions-chirho.md](./review-questions-chirho.md): open review prompts for Claude, GPT, and human reviewers
+- [review-questions-chirho.md](./review-questions-chirho.md): review prompts with resolutions
+- [prior-art-chirho.md](./prior-art-chirho.md): lessons from Eta, GRIN, UHC, PureScript, and other projects
+- [prd-chirho.json](./prd-chirho.json): machine-readable product requirements document for iteration
 
 ## Hard Requirements
 

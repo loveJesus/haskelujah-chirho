@@ -10,7 +10,9 @@ members = [
   "crates/rhasky-driver-chirho",
   "crates/rhasky-parser-chirho",
   "crates/rhasky-runtime-chirho",
+  "crates/rhasky-span-chirho",
   "crates/rhasky-syntax-chirho",
+  "crates/rhasky-test-harness-chirho",
 ]
 
 [workspace.package]

@@ -1,4 +1,26 @@
 # For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
 
+# Build artifacts
+/target/
+
+# Environment and secrets
+.env
+.env.*
 .env-chirho
-target/
+*.env
+
+# SQLite WAL/journal (the .sqlite itself is tracked)
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor state
+*.swp
+*.swo
+*~
+.idea/
+.vscode/

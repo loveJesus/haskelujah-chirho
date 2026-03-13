@@ -1,0 +1,657 @@
+{
+  "meta_chirho": {
+    "project_chirho": "Rhasky Chirho",
+    "tagline_chirho": "A production-grade Haskell compiler implemented in Rust",
+    "prd_version_chirho": "1.0.0",
+    "compiler_version_chirho": "0.1.0-pre",
+    "date_chirho": "2026-03-12",
+    "current_milestone_chirho": "M0",
+    "status_chirho": "in-progress"
+  },
+
+  "goals_chirho": [
+    "Build a production-grade Haskell compiler in Rust approaching 1:1 source compatibility with GHC",
+    "Support three execution modes: batch compilation, script execution, interactive REPL",
+    "Target LLVM IR for native codegen and WebAssembly as a first-class backend",
+    "Compile real Hackage packages, not just toy examples",
+    "Improve on GHC internal modularity, diagnostics, portability, and maintainability",
+    "Split the implementation into focused Rust crates for fast iteration and portability",
+    "Seamless Rust interop: easy to call Haskell from Rust and Rust from Haskell",
+    "Portable wherever Rust compiles: the compiler itself should be easy to build and run on any Rust-supported platform",
+    "Compile more optimized code via LLVM than GHC where possible",
+    "Fault-tolerant architecture: changes in one subsystem should not silently break others; breakage should be caught at compile time via typed phase boundaries",
+    "Well-documented codebase structured for AI-assisted development (Claude Code, Codex, etc.)",
+    "Compile all Cabal/Hackage libraries as the long-term target",
+    "Support compilation profiles: nostd-chirho (minimal runtime, no GC, for demoscene/4k intros), lean-chirho (small runtime), full-chirho (complete runtime with concurrency), compat-chirho (bug-for-bug GHC behavior)"
+  ],
+
+  "non_goals_chirho": [
+    "Immediate support for every GHC extension",
+    "Peak native-code performance before correctness and compatibility are solid",
+    "Locking the project into LLVM-only codegen",
+    "Competing with GHC on compile speed in early milestones"
+  ],
+
+  "compilation_profiles_chirho": {
+    "description_chirho": "Feature-flag-driven compilation profiles that control runtime size, compatibility, and optimization. Selectable via CLI flags or Cabal-level configuration.",
+    "profiles_chirho": [
+      {
+        "name_chirho": "nostd-chirho",
+        "description_chirho": "Minimal or no runtime. No GC, no laziness overhead, no Prelude. For demoscene 4k intros, embedded systems, or bare-metal targets. Haskell as a better C with algebraic types.",
+        "features_chirho": ["No GC", "No Prelude", "Strict evaluation only", "Minimal binary size", "Direct LLVM/Wasm output"],
+        "target_milestone_chirho": "M4+"
+      },
+      {
+        "name_chirho": "lean-chirho",
+        "description_chirho": "Small runtime with basic laziness and simple GC. No concurrency, no profiling. For scripts and small tools.",
+        "features_chirho": ["Simple two-space GC", "Basic laziness", "No threading", "No profiling", "Small binary"],
+        "target_milestone_chirho": "M3+"
+      },
+      {
+        "name_chirho": "full-chirho",
+        "description_chirho": "Complete runtime with concurrency, profiling, full GC. Default for production applications.",
+        "features_chirho": ["Generational GC", "Green threads", "Profiling", "Full FFI", "STM"],
+        "target_milestone_chirho": "M8"
+      },
+      {
+        "name_chirho": "compat-chirho",
+        "description_chirho": "Bug-for-bug GHC compatibility mode. Preserves quirky behaviors that real packages depend on. Activated via --compat-profile ghc-9.x flags.",
+        "features_chirho": ["GHC-compatible error messages", "GHC-specific extension behaviors", "GHC runtime semantics where they diverge"],
+        "target_milestone_chirho": "M8+"
+      }
+    ],
+    "mechanism_chirho": "Rust feature flags in rhasky-runtime-chirho and rhasky-driver-chirho. CLI: rhasky build --profile nostd-chirho. Cabal-level: rhasky-profile: nostd-chirho in .cabal files."
+  },
+
+  "success_criteria_chirho": [
+    "Parse, resolve, and typecheck non-trivial Haskell modules",
+    "Compile a curated compatibility suite of real Hackage libraries",
+    "Execute scripts with acceptable startup latency",
+    "Run an interactive REPL on the same runtime foundations",
+    "Emit both LLVM IR and WebAssembly artifacts from the same core pipeline"
+  ],
+
+  "architecture_decisions_chirho": [
+    {
+      "id_chirho": "AD-001",
+      "title_chirho": "Implementation language",
+      "decision_chirho": "Rust",
+      "status_chirho": "decided",
+      "rationale_chirho": "Memory safety without GC, strong type system, excellent LLVM/Wasm ecosystem support"
+    },
+    {
+      "id_chirho": "AD-002",
+      "title_chirho": "Pipeline structure",
+      "decision_chirho": "Typed phase boundaries with explicit IR transformations",
+      "status_chirho": "decided",
+      "rationale_chirho": "Prevents phase confusion, enables independent testing of each pass"
+    },
+    {
+      "id_chirho": "AD-003",
+      "title_chirho": "Core intermediate representations",
+      "decision_chirho": "Typed core IR followed by STG-like runtime-oriented IR",
+      "status_chirho": "decided",
+      "rationale_chirho": "Proven by GHC, Eta, and UHC. Core handles typed optimization, STG handles closure conversion and laziness"
+    },
+    {
+      "id_chirho": "AD-004",
+      "title_chirho": "Syntax tree representation",
+      "decision_chirho": "Red-green lossless concrete syntax tree",
+      "status_chirho": "decided",
+      "rationale_chirho": "Required by REPL, IDE integration, and formatting tools. Proven by Roslyn and rust-analyzer"
+    },
+    {
+      "id_chirho": "AD-005",
+      "title_chirho": "Layout rule implementation",
+      "decision_chirho": "Lexer-level virtual token insertion (virtual braces and semicolons)",
+      "status_chirho": "decided",
+      "rationale_chirho": "Haskell Report specifies layout as a lexer transformation. Keeps parser grammar context-free"
+    },
+    {
+      "id_chirho": "AD-006",
+      "title_chirho": "Backend strategy",
+      "decision_chirho": "Backend-agnostic pipeline; LLVM IR first, WebAssembly first-class",
+      "status_chirho": "decided",
+      "rationale_chirho": "LLVM provides mature optimization and codegen. Wasm enables browser REPL, sandboxed execution, portability"
+    },
+    {
+      "id_chirho": "AD-007",
+      "title_chirho": "Crate granularity",
+      "decision_chirho": "19 focused crates; some start as modules within parent crates and split when they grow",
+      "status_chirho": "decided",
+      "rationale_chirho": "Fine-grained crates enable parallel compilation and clear ownership. Starting some as modules avoids premature API stabilization"
+    },
+    {
+      "id_chirho": "AD-008",
+      "title_chirho": "Memory management",
+      "decision_chirho": "Copying generational GC for native; linear-memory GC for Wasm. GC interface abstracted behind a trait",
+      "status_chirho": "decided-directional",
+      "rationale_chirho": "Copying GC proven for lazy languages. Wasm GC proposal still evolving so linear-memory is more portable. Trait abstraction lets backends diverge",
+      "needs_design_doc_chirho": true
+    },
+    {
+      "id_chirho": "AD-009",
+      "title_chirho": "Base library strategy",
+      "decision_chirho": "Ship minimal rhasky-base-chirho reimplementing core Prelude and primitives, expand incrementally",
+      "status_chirho": "decided",
+      "rationale_chirho": "GHC base uses GHC-specific primops impractical to replicate. Clean reimplementation gives full control"
+    },
+    {
+      "id_chirho": "AD-010",
+      "title_chirho": "Interface file format",
+      "decision_chirho": "Custom binary format for serialized module signatures; not GHC .hi compatible",
+      "status_chirho": "decided",
+      "rationale_chirho": "GHC .hi is tightly coupled to GHC internals. Custom format designed for Rhasky type representation and incremental compilation"
+    },
+    {
+      "id_chirho": "AD-011",
+      "title_chirho": "C FFI strategy",
+      "decision_chirho": "Standard ccall/capi for LLVM path; WASI imports for Wasm path. FFI declarations parsed uniformly",
+      "status_chirho": "decided",
+      "rationale_chirho": "ccall is standard Haskell FFI. WASI provides closest Wasm equivalent. Parsing is backend-independent"
+    },
+    {
+      "id_chirho": "AD-012",
+      "title_chirho": "Template Haskell",
+      "decision_chirho": "Deferred to M8+, but architecture must not preclude it",
+      "status_chirho": "deferred",
+      "rationale_chirho": "TH requires executing Haskell at compile time. Many popular packages depend on it. Crate graph must allow runtime to be used by driver"
+    },
+    {
+      "id_chirho": "AD-013",
+      "title_chirho": "Concurrency model",
+      "decision_chirho": "Deferred to M8, but runtime data structures designed thread-safe from the start",
+      "status_chirho": "deferred",
+      "rationale_chirho": "GHC green thread scheduler is complex. Retrofitting concurrency is a rewrite, so thunk atomicity and heap safety designed in early"
+    },
+    {
+      "id_chirho": "AD-014",
+      "title_chirho": "Propagators library",
+      "decision_chirho": "Evaluate for narrow use cases; do not force into the design",
+      "status_chirho": "decided",
+      "rationale_chirho": "May help with constraint propagation but a purpose-built solver is likely clearer for type inference"
+    },
+    {
+      "id_chirho": "AD-015",
+      "title_chirho": "Error modeling",
+      "decision_chirho": "Structured diagnostics with byte-offset spans, error codes, labeled secondary spans, fix suggestions",
+      "status_chirho": "decided",
+      "rationale_chirho": "Good diagnostics are a stated quality goal. Structured errors enable CLI, IDE, and REPL rendering from same data"
+    },
+    {
+      "id_chirho": "AD-016",
+      "title_chirho": "Compatibility posture",
+      "decision_chirho": "Source-compatible with shims where needed; not bug-for-bug",
+      "status_chirho": "decided",
+      "rationale_chirho": "Preserve compatibility by default, improve architecture internally. Deviations explicit, testable, documented"
+    },
+    {
+      "id_chirho": "AD-017",
+      "title_chirho": "Package loading timeline",
+      "decision_chirho": "Cabal file parsing in M1, local package databases in M2, Hackage retrieval in M5",
+      "status_chirho": "decided",
+      "rationale_chirho": "Testing against real code requires package loading earlier than original M5 placement"
+    }
+  ],
+
+  "extension_tiers_chirho": {
+    "tier_1_chirho": {
+      "target_milestone_chirho": "M2",
+      "description_chirho": "Needed by nearly every non-trivial Haskell package",
+      "extensions_chirho": [
+        "OverloadedStrings", "ScopedTypeVariables", "FlexibleInstances",
+        "FlexibleContexts", "MultiParamTypeClasses", "DeriveGeneric",
+        "DeriveFunctor", "DeriveTraversable", "DeriveFoldable",
+        "GeneralizedNewtypeDeriving", "TypeApplications", "LambdaCase",
+        "TupleSections", "BangPatterns", "RecordWildCards", "NamedFieldPuns",
+        "StandaloneDeriving", "DerivingStrategies", "DerivingVia",
+        "InstanceSigs", "KindSignatures", "ExplicitForAll"
+      ]
+    },
+    "tier_2_chirho": {
+      "target_milestone_chirho": "M3-M5",
+      "description_chirho": "Needed by important libraries like aeson, lens, servant, mtl",
+      "extensions_chirho": [
+        "GADTs", "TypeFamilies", "DataKinds", "RankNTypes",
+        "FunctionalDependencies", "ExistentialQuantification", "ConstraintKinds",
+        "TypeOperators", "MultiWayIf", "PatternSynonyms", "ViewPatterns",
+        "OverloadedLists", "DefaultSignatures", "DeriveAnyClass",
+        "QuantifiedConstraints", "RoleAnnotations"
+      ]
+    },
+    "tier_3_chirho": {
+      "target_milestone_chirho": "M8+",
+      "description_chirho": "Advanced extensions deferred without shame",
+      "extensions_chirho": [
+        "TemplateHaskell", "QuasiQuotes", "UnboxedTuples", "UnboxedSums",
+        "MagicHash", "LinearTypes", "ImpredicativeTypes", "TypeInType",
+        "Backpack", "OverloadedRecordDot", "OverloadedRecordUpdate",
+        "MonadComprehensions", "RebindableSyntax", "CApiFFI"
+      ]
+    }
+  },
+
+  "crate_graph_chirho": [
+    {
+      "name_chirho": "rhasky-span-chirho",
+      "purpose_chirho": "Source offsets, file IDs, byte-offset spans, span arithmetic",
+      "depends_on_chirho": [],
+      "milestone_chirho": "M0",
+      "status_chirho": "not-started"
+    },
+    {
+      "name_chirho": "rhasky-diagnostics-chirho",
+      "purpose_chirho": "Structured diagnostics with spans, error codes, labels, fix suggestions",
+      "depends_on_chirho": ["rhasky-span-chirho"],
+      "milestone_chirho": "M0",
+      "status_chirho": "scaffold"
+    },
+    {
+      "name_chirho": "rhasky-syntax-chirho",
+      "purpose_chirho": "Token kinds, trivia, red-green syntax node kinds, CST node wrappers",
+      "depends_on_chirho": ["rhasky-span-chirho"],
+      "milestone_chirho": "M0-M1",
+      "status_chirho": "scaffold"
+    },
+    {
+      "name_chirho": "rhasky-parser-chirho",
+      "purpose_chirho": "Lexer with layout rule, recursive-descent parser, error recovery, CST construction",
+      "depends_on_chirho": ["rhasky-syntax-chirho", "rhasky-diagnostics-chirho", "rhasky-span-chirho"],
+      "milestone_chirho": "M1",
+      "status_chirho": "scaffold"
+    },
+    {
+      "name_chirho": "rhasky-ast-chirho",
+      "purpose_chirho": "Typed AST wrappers providing convenient access over CST structures",
+      "depends_on_chirho": ["rhasky-syntax-chirho", "rhasky-span-chirho"],
+      "milestone_chirho": "M1",
+      "status_chirho": "not-started"
+    },
+    {
+      "name_chirho": "rhasky-hir-chirho",
+      "purpose_chirho": "Resolved module-level representation after name resolution",
+      "depends_on_chirho": ["rhasky-ast-chirho", "rhasky-span-chirho", "rhasky-diagnostics-chirho"],
+      "milestone_chirho": "M2",
+      "status_chirho": "not-started"
+    },
+    {
+      "name_chirho": "rhasky-namer-chirho",
+      "purpose_chirho": "Name resolution, import/export handling, module graph, package visibility",
+      "depends_on_chirho": ["rhasky-hir-chirho", "rhasky-ast-chirho", "rhasky-diagnostics-chirho", "rhasky-package-db-chirho"],
+      "milestone_chirho": "M2",
+      "status_chirho": "not-started"
+    },
+    {
+      "name_chirho": "rhasky-types-chirho",
+      "purpose_chirho": "Kinds, types, substitutions, predicates, type class data, evidence types",
+      "depends_on_chirho": ["rhasky-hir-chirho", "rhasky-span-chirho", "rhasky-diagnostics-chirho"],
+      "milestone_chirho": "M2",
+      "status_chirho": "not-started"
+    },
+    {
+      "name_chirho": "rhasky-typecheck-chirho",
+      "purpose_chirho": "Type inference, checking, instance resolution, evidence elaboration, kind checking",
+      "depends_on_chirho": ["rhasky-types-chirho", "rhasky-hir-chirho", "rhasky-namer-chirho", "rhasky-diagnostics-chirho"],
+      "milestone_chirho": "M2",
+      "status_chirho": "not-started"
+    },
+    {
+      "name_chirho": "rhasky-core-chirho",
+      "purpose_chirho": "Small typed core IR for optimization passes",
+      "depends_on_chirho": ["rhasky-types-chirho", "rhasky-span-chirho"],
+      "milestone_chirho": "M3",
+      "status_chirho": "not-started"
+    },
+    {
+      "name_chirho": "rhasky-simplify-chirho",
+      "purpose_chirho": "Core-to-core optimization: inlining, case-of-case, let-floating, specialization, rewrite rules",
+      "depends_on_chirho": ["rhasky-core-chirho"],
+      "milestone_chirho": "M3",
+      "status_chirho": "not-started"
+    },
+    {
+      "name_chirho": "rhasky-stg-chirho",
+      "purpose_chirho": "Runtime-oriented IR for laziness, closure conversion, thunk representation",
+      "depends_on_chirho": ["rhasky-core-chirho", "rhasky-types-chirho"],
+      "milestone_chirho": "M3",
+      "status_chirho": "not-started"
+    },
+    {
+      "name_chirho": "rhasky-runtime-chirho",
+      "purpose_chirho": "Shared runtime: evaluation, memory management, exceptions, module init",
+      "depends_on_chirho": [],
+      "milestone_chirho": "M0-M3",
+      "status_chirho": "scaffold"
+    },
+    {
+      "name_chirho": "rhasky-backend-llvm-chirho",
+      "purpose_chirho": "LLVM IR lowering and native code generation from STG",
+      "depends_on_chirho": ["rhasky-stg-chirho", "rhasky-runtime-chirho"],
+      "milestone_chirho": "M4",
+      "status_chirho": "scaffold"
+    },
+    {
+      "name_chirho": "rhasky-backend-wasm-chirho",
+      "purpose_chirho": "WebAssembly lowering and runtime integration from STG",
+      "depends_on_chirho": ["rhasky-stg-chirho", "rhasky-runtime-chirho"],
+      "milestone_chirho": "M6",
+      "status_chirho": "scaffold"
+    },
+    {
+      "name_chirho": "rhasky-package-db-chirho",
+      "purpose_chirho": "Cabal parsing, package database, Hackage index, dependency solving",
+      "depends_on_chirho": ["rhasky-diagnostics-chirho"],
+      "milestone_chirho": "M1-M5",
+      "status_chirho": "not-started"
+    },
+    {
+      "name_chirho": "rhasky-driver-chirho",
+      "purpose_chirho": "Build orchestration, incremental cache, build planning, mode dispatch",
+      "depends_on_chirho": ["all"],
+      "milestone_chirho": "M0+",
+      "status_chirho": "scaffold"
+    },
+    {
+      "name_chirho": "rhasky-cli-chirho",
+      "purpose_chirho": "Command-line interface for check, build, script, repl",
+      "depends_on_chirho": ["rhasky-driver-chirho"],
+      "milestone_chirho": "M0+",
+      "status_chirho": "scaffold"
+    },
+    {
+      "name_chirho": "rhasky-repl-chirho",
+      "purpose_chirho": "Interactive loop, session state, incremental evaluation",
+      "depends_on_chirho": ["rhasky-driver-chirho", "rhasky-runtime-chirho"],
+      "milestone_chirho": "M7",
+      "status_chirho": "not-started"
+    },
+    {
+      "name_chirho": "rhasky-test-harness-chirho",
+      "purpose_chirho": "Golden tests, compatibility suites, property-test utilities",
+      "depends_on_chirho": ["rhasky-driver-chirho"],
+      "milestone_chirho": "M0",
+      "status_chirho": "not-started"
+    }
+  ],
+
+  "milestones_chirho": [
+    {
+      "id_chirho": "M0",
+      "name_chirho": "Workspace Bootstrap",
+      "status_chirho": "in-progress",
+      "acceptance_criteria_chirho": [
+        "Workspace crate graph matches architecture spec",
+        "rhasky-span-chirho provides file IDs, byte offsets, and span types",
+        "rhasky-diagnostics-chirho uses real spans with error codes and labeled secondary spans",
+        "Golden-test and property-test infrastructure exists",
+        "Git repository initialized on main_chirho with gh_chirho remote",
+        "progress-chirho.sqlite tracking active"
+      ]
+    },
+    {
+      "id_chirho": "M1",
+      "name_chirho": "Lexer, Parser, and Module Loading",
+      "status_chirho": "not-started",
+      "acceptance_criteria_chirho": [
+        "Lex all Haskell 2010 tokens including string gaps, numeric literals, qualified operators",
+        "Layout rule via virtual brace/semicolon insertion at lexer level",
+        "Parse non-trivial modules into red-green lossless CST with error recovery",
+        "Typed AST wrappers over CST for downstream consumption",
+        "Parse basic Cabal package descriptions",
+        "Resolve module imports across package-local file graph",
+        "Test corpus of valid and invalid Haskell with golden tests"
+      ]
+    },
+    {
+      "id_chirho": "M2",
+      "name_chirho": "Name Resolution, Kinds, and Typechecking",
+      "status_chirho": "not-started",
+      "acceptance_criteria_chirho": [
+        "Resolve names across multi-module packages with import/export semantics",
+        "Build and validate module dependency graphs",
+        "Infer and check kinds for type-level constructs",
+        "Type inference with Tier 1 extension support",
+        "Type class instance resolution and evidence elaboration",
+        "Local package databases for multi-package builds",
+        "Typecheck curated library compatibility corpus",
+        "Unsupported features recorded with structured diagnostics"
+      ]
+    },
+    {
+      "id_chirho": "M3",
+      "name_chirho": "Core IR, Desugaring, and Script Execution",
+      "status_chirho": "not-started",
+      "acceptance_criteria_chirho": [
+        "Desugar do-notation, list comprehensions, guards, pattern match compilation, where clauses",
+        "Lower typed programs into STG-like runtime IR",
+        "Execute simple programs in script mode via tree-walking interpreter",
+        "Serialize and load interface files for separate compilation",
+        "Reuse package and interface caches across script runs",
+        "Tier 2 extension support in frontend pipeline"
+      ]
+    },
+    {
+      "id_chirho": "M4",
+      "name_chirho": "LLVM Backend",
+      "status_chirho": "not-started",
+      "acceptance_criteria_chirho": [
+        "Emit correct LLVM IR for a meaningful program subset",
+        "Native closure and thunk representation",
+        "Copying GC integration with LLVM-generated code",
+        "Produce executable binaries through shared runtime",
+        "Compare outputs against compatibility test suite"
+      ]
+    },
+    {
+      "id_chirho": "M5",
+      "name_chirho": "Package Ecosystem Integration",
+      "status_chirho": "not-started",
+      "acceptance_criteria_chirho": [
+        "Retrieve and index Hackage packages",
+        "Solve dependency graphs with version constraints and flags",
+        "Build plans handling conditional sections and platform code",
+        "Compile selected real-world libraries with tracked gaps",
+        "Consume interface files across package boundaries"
+      ]
+    },
+    {
+      "id_chirho": "M6",
+      "name_chirho": "WebAssembly Backend",
+      "status_chirho": "not-started",
+      "acceptance_criteria_chirho": [
+        "Emit Wasm artifacts from shared STG lowered form",
+        "Wasm-compatible closure/thunk representation",
+        "Linear-memory GC or Wasm GC integration",
+        "WASI FFI bridge",
+        "Run scripted workloads in Wasm environment",
+        "Validate package loading for browser-hosted tooling"
+      ]
+    },
+    {
+      "id_chirho": "M7",
+      "name_chirho": "Interactive REPL",
+      "status_chirho": "not-started",
+      "acceptance_criteria_chirho": [
+        "Session state persists across evaluations",
+        "Incremental module loading and reloading",
+        "Type and value inspection through shared diagnostics",
+        "Multiline declarations supported",
+        "Package imports and environment introspection",
+        "REPL runs on both native and Wasm-hosted runtime"
+      ]
+    },
+    {
+      "id_chirho": "M8",
+      "name_chirho": "Ecosystem Hardening",
+      "status_chirho": "not-started",
+      "acceptance_criteria_chirho": [
+        "Compatibility corpus covers larger Hackage slice",
+        "Failures categorized by extension, runtime gap, or package gap",
+        "Green thread scheduler with forkIO, MVar, basic STM",
+        "Profiling for time and allocation",
+        "Tier 2 stable, selected Tier 3 supported",
+        "Build performance improved without architectural churn"
+      ]
+    }
+  ],
+
+  "runtime_design_chirho": {
+    "evaluation_model_chirho": {
+      "strategy_chirho": "eval/apply with lazy thunks",
+      "thunk_chirho": "Header word (tag + GC info) + payload. Tag bit distinguishes thunks from values. Blackholing for deadlock detection.",
+      "status_chirho": "directional"
+    },
+    "memory_management_chirho": {
+      "native_chirho": "Copying generational GC. Two-space nursery, aging promotion. Start simple, add generations incrementally.",
+      "wasm_chirho": "Linear-memory GC. Same algorithm, different memory layout. More portable than Wasm GC proposal.",
+      "abstraction_chirho": "GC ops behind a trait so backends diverge without changing STG lowering"
+    },
+    "concurrency_chirho": {
+      "target_chirho": "M8",
+      "native_chirho": "Green threads on OS threads with work-stealing",
+      "wasm_chirho": "Single-threaded cooperative scheduling initially",
+      "early_requirement_chirho": "Atomic thunk updates, safe-for-concurrent-GC heap layout from M0"
+    },
+    "exception_model_chirho": {
+      "synchronous_chirho": "Through IO monad evaluation. try/catch/throw as runtime primitives. Forced thunks can throw.",
+      "asynchronous_chirho": "Deferred to M8. throwTo semantics requires interruptible ops and masking.",
+      "script_chirho": "Top-level handler prints exception and exits non-zero"
+    }
+  },
+
+  "base_library_strategy_chirho": {
+    "approach_chirho": "Ship minimal rhasky-base-chirho package",
+    "initial_scope_chirho": [
+      "Prelude (standard functions, type classes, basic IO)",
+      "Data.List, Data.Maybe, Data.Either, Data.Tuple",
+      "Data.Char, Data.String",
+      "Data.Int, Data.Word",
+      "System.IO (basic file IO)",
+      "Control.Monad",
+      "Data.IORef"
+    ],
+    "expansion_chirho": "Add modules as package compatibility demands. Track missing modules when packages fail.",
+    "primops_chirho": "Small set of compiler-known primitives (arithmetic, IO, array access) that base calls into the runtime"
+  },
+
+  "ffi_strategy_chirho": {
+    "haskell_side_chirho": "Parse foreign import/export uniformly. Support ccall and capi conventions.",
+    "llvm_path_chirho": "C calling convention via LLVM extern declarations. System linker for C libraries.",
+    "wasm_path_chirho": "WASI imports for syscalls. C libs compiled to wasm32-wasi or shimmed.",
+    "hard_cases_chirho": [
+      "Packages with c-sources: require compiling C to target backend",
+      "Platform-specific FFI (Win32, POSIX): need conditional compilation",
+      "C-to-Haskell callbacks: require stable pointers and callable closures"
+    ]
+  },
+
+  "risks_chirho": [
+    {
+      "id_chirho": "R-001",
+      "title_chirho": "Layout rule complexity",
+      "severity_chirho": "high",
+      "mitigation_chirho": "Implement in isolation with extensive golden tests against GHC lexer output"
+    },
+    {
+      "id_chirho": "R-002",
+      "title_chirho": "Base library bootstrap",
+      "severity_chirho": "high",
+      "mitigation_chirho": "Write rhasky-base-chirho incrementally. Use interpreter (M3) to test before native codegen"
+    },
+    {
+      "id_chirho": "R-003",
+      "title_chirho": "Type inference completeness",
+      "severity_chirho": "high",
+      "mitigation_chirho": "Start with HM, extend per tier plan. Use GHC test suite as reference"
+    },
+    {
+      "id_chirho": "R-004",
+      "title_chirho": "Lazy evaluation on WebAssembly",
+      "severity_chirho": "medium",
+      "mitigation_chirho": "Design thunk/closure abstractly in STG. Prototype Wasm lowering early to validate"
+    },
+    {
+      "id_chirho": "R-005",
+      "title_chirho": "Package compatibility breadth",
+      "severity_chirho": "medium",
+      "mitigation_chirho": "Curated corpus with tracked failure categories. Prioritize by download count"
+    },
+    {
+      "id_chirho": "R-006",
+      "title_chirho": "Memory management divergence",
+      "severity_chirho": "medium",
+      "mitigation_chirho": "Abstract GC interface. Test both backends against same semantic suite"
+    },
+    {
+      "id_chirho": "R-007",
+      "title_chirho": "Template Haskell exclusion",
+      "severity_chirho": "medium",
+      "mitigation_chirho": "Keep architecture TH-ready. Track TH-dependent packages separately"
+    },
+    {
+      "id_chirho": "R-008",
+      "title_chirho": "Scope creep from extensions",
+      "severity_chirho": "medium",
+      "mitigation_chirho": "Strict tier plan. Extensions move tiers only with demonstrated ecosystem need"
+    }
+  ],
+
+  "prior_art_chirho": [
+    {
+      "project_chirho": "Eta",
+      "lesson_chirho": "Runtime performance on non-native platforms is hard. Focus correctness first. Reusing GHC frontend is viable but creates tight coupling."
+    },
+    {
+      "project_chirho": "GRIN",
+      "lesson_chirho": "Whole-program optimization yields great code but doesn't compose with separate compilation. Use per-module optimization with limited cross-module inlining."
+    },
+    {
+      "project_chirho": "UHC",
+      "lesson_chirho": "Multi-backend modularity is achievable. Ecosystem adoption requires package compatibility, not just language compatibility."
+    },
+    {
+      "project_chirho": "PureScript",
+      "lesson_chirho": "Diverging from Haskell semantics gains simplicity but loses the ecosystem. Preserve semantics even when inconvenient."
+    },
+    {
+      "project_chirho": "Hugs",
+      "lesson_chirho": "Interpreter-first gives excellent REPL but limits performance ceiling. Support interpretation for scripting while keeping compilation primary."
+    },
+    {
+      "project_chirho": "jhc",
+      "lesson_chirho": "Alternative GC (region inference) can work but requires deep commitment. Start with proven copying GC."
+    },
+    {
+      "project_chirho": "rust-analyzer",
+      "lesson_chirho": "Red-green trees and salsa-style incremental computation are proven for IDE-quality tooling. Adopt similar patterns."
+    }
+  ],
+
+  "open_questions_chirho": [
+    {
+      "id_chirho": "OQ-001",
+      "question_chirho": "Should the interpreter share the exact same STG representation as compiled backends?",
+      "thinking_chirho": "Start with interpreting STG directly. Consider bytecode only if performance or complexity demands it."
+    },
+    {
+      "id_chirho": "OQ-002",
+      "question_chirho": "What granularity for interface file invalidation?",
+      "thinking_chirho": "Start per-module hashing, refine to per-declaration fingerprinting if build times warrant."
+    },
+    {
+      "id_chirho": "OQ-003",
+      "question_chirho": "Should rhasky-base-chirho support rewrite rules from the start?",
+      "thinking_chirho": "Yes, in the simplifier (M3). Rewrite rules are heavily used in base for list fusion and are critical for performance of idiomatic Haskell."
+    },
+    {
+      "id_chirho": "OQ-004",
+      "question_chirho": "When should cross-compilation be designed in?",
+      "thinking_chirho": "Backend-agnostic pipeline supports it conceptually. Explicit cross-compilation deferred to M5+ without architectural risk."
+    },
+    {
+      "id_chirho": "OQ-005",
+      "question_chirho": "Should Rhasky consume GHC-compiled packages?",
+      "thinking_chirho": "No. GHC .hi format is unstable and deeply coupled to GHC internals. Only Rhasky-compiled packages for the foreseeable future."
+    }
+  ]
+}
