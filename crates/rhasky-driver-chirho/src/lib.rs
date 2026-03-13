@@ -10,7 +10,9 @@ use std::path::{Path, PathBuf};
 
 use rhasky_ast_chirho::ModuleChirho;
 use rhasky_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
+use rhasky_backend_llvm_chirho::compile_core_to_llvm_chirho;
 use rhasky_backend_wasm_chirho::compile_to_wasm_stub_chirho;
+use rhasky_backend_wasm_chirho::compile_core_to_wasm_chirho;
 use rhasky_core_chirho::{
     desugar_module_chirho, simplify_module_chirho, CoreModuleChirho, SimplifyConfigChirho,
 };
@@ -85,6 +87,8 @@ pub fn check_source_file_chirho(
 pub struct CompileResultChirho {
     pub module_chirho: ModuleChirho,
     pub core_chirho: CoreModuleChirho,
+    pub llvm_ir_chirho: String,
+    pub wasm_bytes_chirho: Vec<u8>,
 }
 
 /// Run the full compiler pipeline: lex → layout → CST parse → AST lower →
@@ -125,9 +129,15 @@ pub fn compile_source_chirho(
     let config_chirho = SimplifyConfigChirho::default();
     let core_chirho = simplify_module_chirho(&core_chirho, &config_chirho);
 
+    // Phase 7: Backend lowering
+    let llvm_ir_chirho = compile_core_to_llvm_chirho(&core_chirho);
+    let wasm_bytes_chirho = compile_core_to_wasm_chirho(&core_chirho);
+
     Ok(CompileResultChirho {
         module_chirho,
         core_chirho,
+        llvm_ir_chirho,
+        wasm_bytes_chirho,
     })
 }
 
@@ -189,6 +199,9 @@ mod tests_chirho {
         // Core module was produced by desugaring
         assert_eq!(result_chirho.core_chirho.name_chirho, "Test");
         assert!(!result_chirho.core_chirho.bindings_chirho.is_empty());
+        // Backend output was produced
+        assert!(result_chirho.llvm_ir_chirho.contains("; ModuleID = 'Test'"));
+        assert_eq!(&result_chirho.wasm_bytes_chirho[0..4], b"\0asm");
     }
 
     #[test]

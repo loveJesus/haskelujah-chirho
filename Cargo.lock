@@ -186,10 +186,20 @@ dependencies = [
 [[package]]
 name = "rhasky-backend-llvm-chirho"
 version = "0.1.0"
+dependencies = [
+ "rhasky-core-chirho",
+ "rhasky-span-chirho",
+ "rhasky-typing-chirho",
+]
 
 [[package]]
 name = "rhasky-backend-wasm-chirho"
 version = "0.1.0"
+dependencies = [
+ "rhasky-core-chirho",
+ "rhasky-span-chirho",
+ "rhasky-typing-chirho",
+]
 
 [[package]]
 name = "rhasky-cli-chirho"

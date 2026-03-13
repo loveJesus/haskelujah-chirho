@@ -10,3 +10,8 @@ version.workspace = true
 [lib]
 path = "src/lib.rs"
 
+[dependencies]
+rhasky-core-chirho = { path = "../rhasky-core-chirho" }
+rhasky-span-chirho = { path = "../rhasky-span-chirho" }
+rhasky-typing-chirho = { path = "../rhasky-typing-chirho" }
+
