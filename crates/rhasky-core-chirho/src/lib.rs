@@ -19,6 +19,7 @@
 pub mod desugar_chirho;
 pub mod expr_chirho;
 pub mod pretty_chirho;
+pub mod simplify_chirho;
 
 pub use desugar_chirho::desugar_module_chirho;
 pub use expr_chirho::{
@@ -26,3 +27,4 @@ pub use expr_chirho::{
     CoreLitChirho, CoreModuleChirho,
 };
 pub use pretty_chirho::pretty_module_chirho;
+pub use simplify_chirho::{simplify_module_chirho, SimplifyConfigChirho};

@@ -11,7 +11,9 @@ use std::path::{Path, PathBuf};
 use rhasky_ast_chirho::ModuleChirho;
 use rhasky_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
 use rhasky_backend_wasm_chirho::compile_to_wasm_stub_chirho;
-use rhasky_core_chirho::{desugar_module_chirho, CoreModuleChirho};
+use rhasky_core_chirho::{
+    desugar_module_chirho, simplify_module_chirho, CoreModuleChirho, SimplifyConfigChirho,
+};
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
 use rhasky_naming_chirho::resolve_chirho::resolve_module_chirho;
 use rhasky_typing_chirho::infer_chirho::infer_module_chirho;
@@ -86,8 +88,8 @@ pub struct CompileResultChirho {
 }
 
 /// Run the full compiler pipeline: lex → layout → CST parse → AST lower →
-/// name resolve → type infer → desugar to Core.
-/// Returns the AST module and its Core IR translation.
+/// name resolve → type infer → desugar to Core → simplify.
+/// Returns the AST module and its optimized Core IR.
 pub fn compile_source_chirho(
     source_chirho: &str,
     source_map_chirho: &mut SourceMapChirho,
@@ -118,6 +120,10 @@ pub fn compile_source_chirho(
 
     // Phase 5: Desugar AST → Core IR
     let core_chirho = desugar_module_chirho(&module_chirho);
+
+    // Phase 6: Core-to-Core simplification (beta reduction, dead code, case-of-known)
+    let config_chirho = SimplifyConfigChirho::default();
+    let core_chirho = simplify_module_chirho(&core_chirho, &config_chirho);
 
     Ok(CompileResultChirho {
         module_chirho,
