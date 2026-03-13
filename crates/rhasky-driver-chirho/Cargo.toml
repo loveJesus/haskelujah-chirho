@@ -11,9 +11,11 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+rhasky-ast-chirho = { path = "../rhasky-ast-chirho" }
 rhasky-backend-llvm-chirho = { path = "../rhasky-backend-llvm-chirho" }
 rhasky-backend-wasm-chirho = { path = "../rhasky-backend-wasm-chirho" }
 rhasky-diagnostics-chirho = { path = "../rhasky-diagnostics-chirho" }
+rhasky-naming-chirho = { path = "../rhasky-naming-chirho" }
 rhasky-parser-chirho = { path = "../rhasky-parser-chirho" }
 rhasky-runtime-chirho = { path = "../rhasky-runtime-chirho" }
 rhasky-span-chirho = { path = "../rhasky-span-chirho" }

@@ -8,9 +8,13 @@
 
 use std::path::{Path, PathBuf};
 
+use rhasky_ast_chirho::ModuleChirho;
 use rhasky_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
 use rhasky_backend_wasm_chirho::compile_to_wasm_stub_chirho;
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
+use rhasky_naming_chirho::resolve_chirho::resolve_module_chirho;
+use rhasky_parser_chirho::cst_parser_chirho::ParserChirho;
+use rhasky_parser_chirho::lower_chirho::lower_module_chirho;
 use rhasky_parser_chirho::parse_source_file_chirho;
 use rhasky_runtime_chirho::{ExecutionModeChirho, RuntimePlanChirho};
 use rhasky_span_chirho::SourceMapChirho;
@@ -72,6 +76,33 @@ pub fn check_source_file_chirho(
     })
 }
 
+/// Run the full compiler pipeline: lex → layout → CST parse → AST lower → name resolve.
+/// Returns the typed AST module.
+pub fn compile_source_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+) -> Result<ModuleChirho, DiagnosticBundleChirho> {
+    let source_file_chirho =
+        SourceFileChirho::from_source_map_chirho(source_map_chirho, file_name_chirho, source_chirho);
+    let file_id_chirho = source_file_chirho.file_id_chirho();
+
+    // Phase 1: CST parse (lex + layout + recursive-descent)
+    let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
+    let green_chirho = parser_chirho.parse_chirho();
+
+    // Phase 2: CST → AST lowering
+    let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+
+    // Phase 3: Name resolution
+    let resolve_result_chirho = resolve_module_chirho(&module_chirho);
+    if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(resolve_result_chirho.diagnostics_chirho);
+    }
+
+    Ok(module_chirho)
+}
+
 pub fn render_summary_chirho(check_summary_chirho: &CheckSummaryChirho) -> String {
     format!(
         "source: {}\nmodule: {}\nmode: {:?}\nincremental_session: {}\nllvm_preview: {}\nwasm_stub_size: {}",
@@ -112,6 +143,21 @@ mod tests_chirho {
         assert!(
             render_summary_chirho(&check_summary_chirho).contains("llvm_preview: ; rhasky llvm stub")
         );
+    }
+
+    #[test]
+    fn full_pipeline_parses_and_resolves_chirho() {
+        use super::compile_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let module_chirho = compile_source_chirho(
+            "module Test where\ndata Color = Red | Green\nf x = x\n",
+            &mut source_map_chirho,
+            "TestChirho.hs",
+        )
+        .expect("full pipeline should succeed");
+
+        assert_eq!(module_chirho.name_chirho.text_chirho(), "Test");
+        assert!(module_chirho.decls_chirho.len() >= 2);
     }
 
     #[test]
