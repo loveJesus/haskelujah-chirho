@@ -13,6 +13,8 @@
 //! - Error recovery wraps unexpected tokens in `ErrorNodeChirho` and continues.
 //! - The parser is organized by syntactic category: module, imports, decls,
 //!   types, expressions, patterns.
+//! - Uses the checkpoint mechanism for retroactive node wrapping (needed for
+//!   infix expressions, function types, type annotations).
 
 use std::sync::Arc;
 
@@ -199,9 +201,10 @@ impl<'src> ParserChirho<'src> {
         self.eat_trivia_chirho();
 
         while !self.at_chirho(RawTokenKindChirho::RightParenChirho) && !self.at_eof_chirho() {
+            let before_chirho = self.pos_chirho;
             self.builder_chirho
                 .start_node_chirho(SyntaxKindChirho::ExportSpecChirho);
-            // Simple: eat tokens until comma or close paren
+            // Eat tokens until comma or close paren
             while !self.at_chirho(RawTokenKindChirho::CommaChirho)
                 && !self.at_chirho(RawTokenKindChirho::RightParenChirho)
                 && !self.at_eof_chirho()
@@ -209,6 +212,7 @@ impl<'src> ParserChirho<'src> {
                 self.eat_trivia_chirho();
                 if !self.at_chirho(RawTokenKindChirho::CommaChirho)
                     && !self.at_chirho(RawTokenKindChirho::RightParenChirho)
+                    && !self.at_eof_chirho()
                 {
                     self.bump_chirho();
                 }
@@ -219,6 +223,9 @@ impl<'src> ParserChirho<'src> {
             if self.at_chirho(RawTokenKindChirho::CommaChirho) {
                 self.bump_chirho(); // comma
                 self.eat_trivia_chirho();
+            }
+            if self.pos_chirho == before_chirho {
+                break;
             }
         }
 
@@ -266,7 +273,20 @@ impl<'src> ParserChirho<'src> {
                 continue;
             }
 
+            let before_chirho = self.pos_chirho;
             self.parse_decl_chirho();
+            // Safety: if no progress was made, consume a token to avoid
+            // infinite loops on unexpected tokens.
+            if self.pos_chirho == before_chirho {
+                if !self.at_eof_chirho() {
+                    self.builder_chirho
+                        .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                    self.bump_chirho();
+                    self.builder_chirho.finish_node_chirho();
+                } else {
+                    break;
+                }
+            }
         }
     }
 
@@ -283,6 +303,8 @@ impl<'src> ParserChirho<'src> {
             Some(RawTokenKindChirho::InfixChirho)
             | Some(RawTokenKindChirho::InfixlChirho)
             | Some(RawTokenKindChirho::InfixrChirho) => self.parse_fixity_decl_chirho(),
+            Some(RawTokenKindChirho::DefaultChirho) => self.parse_default_decl_chirho(),
+            Some(RawTokenKindChirho::ForeignChirho) => self.parse_foreign_decl_chirho(),
             _ => self.parse_value_decl_chirho(),
         }
     }
@@ -343,6 +365,7 @@ impl<'src> ParserChirho<'src> {
         self.eat_trivia_chirho();
 
         while !self.at_chirho(RawTokenKindChirho::RightParenChirho) && !self.at_eof_chirho() {
+            let before_chirho = self.pos_chirho;
             self.builder_chirho
                 .start_node_chirho(SyntaxKindChirho::ImportSpecChirho);
 
@@ -354,6 +377,7 @@ impl<'src> ParserChirho<'src> {
                 self.eat_trivia_chirho();
                 if !self.at_chirho(RawTokenKindChirho::CommaChirho)
                     && !self.at_chirho(RawTokenKindChirho::RightParenChirho)
+                    && !self.at_eof_chirho()
                 {
                     self.bump_chirho();
                 }
@@ -365,6 +389,9 @@ impl<'src> ParserChirho<'src> {
             if self.at_chirho(RawTokenKindChirho::CommaChirho) {
                 self.bump_chirho();
                 self.eat_trivia_chirho();
+            }
+            if self.pos_chirho == before_chirho {
+                break;
             }
         }
 
@@ -422,15 +449,86 @@ impl<'src> ParserChirho<'src> {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::ConDeclChirho);
 
-        // Eat until | or deriving or semicolon or end of block
-        self.eat_until_any_chirho(&[
-            RawTokenKindChirho::PipeChirho,
-            RawTokenKindChirho::DerivingChirho,
-            RawTokenKindChirho::VirtualSemicolonChirho,
-            RawTokenKindChirho::VirtualRightBraceChirho,
-            RawTokenKindChirho::SemicolonChirho,
-            RawTokenKindChirho::RightBraceChirho,
-        ]);
+        // Constructor name
+        if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+
+            // Record syntax: { field :: Type, ... }
+            if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+                self.parse_record_fields_chirho();
+            } else {
+                // Ordinary constructor: parse atomic types as fields
+                while self.can_start_atype_chirho() {
+                    let before_chirho = self.pos_chirho;
+                    self.parse_atype_chirho();
+                    self.eat_trivia_chirho();
+                    if self.pos_chirho == before_chirho {
+                        break;
+                    }
+                }
+            }
+        } else {
+            // Fallback: eat until boundary
+            self.eat_until_any_chirho(&[
+                RawTokenKindChirho::PipeChirho,
+                RawTokenKindChirho::DerivingChirho,
+                RawTokenKindChirho::VirtualSemicolonChirho,
+                RawTokenKindChirho::VirtualRightBraceChirho,
+                RawTokenKindChirho::SemicolonChirho,
+                RawTokenKindChirho::RightBraceChirho,
+            ]);
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    fn parse_record_fields_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::RecordFieldsChirho);
+
+        self.expect_chirho(RawTokenKindChirho::LeftBraceChirho);
+        self.eat_trivia_chirho();
+
+        while !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+            && !self.at_decl_boundary_chirho()
+            && !self.at_eof_chirho()
+        {
+            let outer_before_chirho = self.pos_chirho;
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::FieldDeclChirho);
+
+            // field names, ::, type
+            while !self.at_chirho(RawTokenKindChirho::CommaChirho)
+                && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                && !self.at_decl_boundary_chirho()
+                && !self.at_eof_chirho()
+            {
+                self.eat_trivia_chirho();
+                if !self.at_chirho(RawTokenKindChirho::CommaChirho)
+                    && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                    && !self.at_decl_boundary_chirho()
+                    && !self.at_eof_chirho()
+                {
+                    self.bump_chirho();
+                }
+            }
+
+            self.builder_chirho.finish_node_chirho();
+
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+            if self.pos_chirho == outer_before_chirho {
+                break;
+            }
+        }
+
+        if self.at_chirho(RawTokenKindChirho::RightBraceChirho) {
+            self.bump_chirho();
+        }
 
         self.builder_chirho.finish_node_chirho();
     }
@@ -479,8 +577,18 @@ impl<'src> ParserChirho<'src> {
         self.expect_chirho(RawTokenKindChirho::TypeChirho);
         self.eat_trivia_chirho();
 
-        // Eat everything until end of declaration
-        self.eat_until_decl_end_chirho();
+        // Type name and variables until =
+        self.eat_until_any_chirho(&[
+            RawTokenKindChirho::EqualsChirho,
+            RawTokenKindChirho::VirtualSemicolonChirho,
+            RawTokenKindChirho::VirtualRightBraceChirho,
+        ]);
+
+        if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+            self.bump_chirho(); // =
+            self.eat_trivia_chirho();
+            self.parse_type_chirho();
+        }
 
         self.builder_chirho.finish_node_chirho();
     }
@@ -496,7 +604,24 @@ impl<'src> ParserChirho<'src> {
         self.expect_chirho(RawTokenKindChirho::NewtypeChirho);
         self.eat_trivia_chirho();
 
-        self.eat_until_decl_end_chirho();
+        // Type name and variables until =
+        self.eat_until_any_chirho(&[
+            RawTokenKindChirho::EqualsChirho,
+            RawTokenKindChirho::VirtualSemicolonChirho,
+            RawTokenKindChirho::VirtualRightBraceChirho,
+        ]);
+
+        if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+            self.bump_chirho(); // =
+            self.eat_trivia_chirho();
+            self.parse_con_decl_chirho();
+        }
+
+        // Optional deriving clause
+        self.eat_trivia_chirho();
+        if self.at_chirho(RawTokenKindChirho::DerivingChirho) {
+            self.parse_deriving_clause_chirho();
+        }
 
         self.builder_chirho.finish_node_chirho();
     }
@@ -547,7 +672,7 @@ impl<'src> ParserChirho<'src> {
     }
 
     // -----------------------------------------------------------------------
-    // Fixity declarations
+    // Fixity / Default / Foreign declarations
     // -----------------------------------------------------------------------
 
     fn parse_fixity_decl_chirho(&mut self) {
@@ -563,13 +688,29 @@ impl<'src> ParserChirho<'src> {
         self.builder_chirho.finish_node_chirho();
     }
 
+    fn parse_default_decl_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::DefaultDeclChirho);
+        self.bump_chirho(); // default
+        self.eat_trivia_chirho();
+        self.eat_until_decl_end_chirho();
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    fn parse_foreign_decl_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::ForeignDeclChirho);
+        self.bump_chirho(); // foreign
+        self.eat_trivia_chirho();
+        self.eat_until_decl_end_chirho();
+        self.builder_chirho.finish_node_chirho();
+    }
+
     // -----------------------------------------------------------------------
     // Value declarations (type sigs and bindings)
     // -----------------------------------------------------------------------
 
     fn parse_value_decl_chirho(&mut self) {
-        // Lookahead: if we see `name :: type`, it's a type signature.
-        // Otherwise, it's a function/pattern binding.
         if self.is_type_sig_chirho() {
             self.parse_type_sig_chirho();
         } else {
@@ -581,8 +722,28 @@ impl<'src> ParserChirho<'src> {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::TypeSigDeclChirho);
 
-        // Eat everything until end of declaration
-        self.eat_until_decl_end_chirho();
+        // Name (or operator in parens)
+        if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+            // Operator in parens: (+!)
+            self.bump_chirho(); // (
+            self.eat_trivia_chirho();
+            while !self.at_chirho(RawTokenKindChirho::RightParenChirho) && !self.at_eof_chirho() {
+                self.bump_chirho();
+            }
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho();
+            }
+        } else {
+            self.bump_chirho(); // name
+        }
+        self.eat_trivia_chirho();
+
+        // ::
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+            self.parse_type_chirho();
+        }
 
         self.builder_chirho.finish_node_chirho();
     }
@@ -594,13 +755,86 @@ impl<'src> ParserChirho<'src> {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::MatchChirho);
 
-        // Eat everything until end of declaration
-        // This is simplified — a full parser would parse patterns, RHS, guards,
-        // and where clauses properly.
-        self.eat_until_decl_end_chirho();
+        // Function name or pattern head
+        if self.at_chirho(RawTokenKindChirho::VarIdChirho)
+            || self.at_chirho(RawTokenKindChirho::ConIdChirho)
+        {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+        } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+            // Operator in parens or tuple pattern
+            self.parse_apat_chirho();
+            self.eat_trivia_chirho();
+        } else if self.can_start_apat_chirho() {
+            self.parse_apat_chirho();
+            self.eat_trivia_chirho();
+        }
+
+        // Parse argument patterns until = or |
+        while self.can_start_apat_chirho() {
+            let before_chirho = self.pos_chirho;
+            self.parse_apat_chirho();
+            self.eat_trivia_chirho();
+            if self.pos_chirho == before_chirho {
+                break;
+            }
+        }
+
+        // Guards or = RHS
+        if self.at_chirho(RawTokenKindChirho::PipeChirho) {
+            self.parse_guarded_rhs_chirho();
+        } else if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+            self.bump_chirho(); // =
+            self.eat_trivia_chirho();
+            self.parse_expr_chirho();
+        }
 
         self.builder_chirho.finish_node_chirho(); // Match
+
+        // Optional where clause
+        self.eat_trivia_chirho();
+        if self.at_chirho(RawTokenKindChirho::WhereChirho) {
+            self.parse_where_block_chirho();
+        }
+
         self.builder_chirho.finish_node_chirho(); // FunBind
+    }
+
+    fn parse_guarded_rhs_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::GuardedRhsChirho);
+
+        while self.at_chirho(RawTokenKindChirho::PipeChirho) {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::GuardChirho);
+
+            self.bump_chirho(); // |
+            self.eat_trivia_chirho();
+
+            // Guard expression (parse until = )
+            self.parse_guard_expr_chirho();
+
+            if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+                self.bump_chirho(); // =
+                self.eat_trivia_chirho();
+                self.parse_expr_chirho();
+            }
+
+            self.builder_chirho.finish_node_chirho(); // Guard
+            self.eat_trivia_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho(); // GuardedRhs
+    }
+
+    /// Parse a guard expression (the part between | and =).
+    fn parse_guard_expr_chirho(&mut self) {
+        // Parse expression atoms until = or decl boundary
+        while !self.at_chirho(RawTokenKindChirho::EqualsChirho)
+            && !self.at_decl_boundary_chirho()
+        {
+            self.bump_chirho();
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -638,8 +872,16 @@ impl<'src> ParserChirho<'src> {
                     self.eat_trivia_chirho();
                     continue;
                 }
+                let before_chirho = self.pos_chirho;
                 self.parse_decl_chirho();
                 self.eat_trivia_chirho();
+                if self.pos_chirho == before_chirho {
+                    if !self.at_eof_chirho() {
+                        self.bump_chirho();
+                    } else {
+                        break;
+                    }
+                }
             }
         }
 
@@ -647,7 +889,1278 @@ impl<'src> ParserChirho<'src> {
     }
 
     // -----------------------------------------------------------------------
-    // Utility methods
+    // Type parsing
+    // -----------------------------------------------------------------------
+
+    /// Parse a type. Handles qualified types (context => type) and function
+    /// types (a -> b). Uses checkpoints for retroactive wrapping.
+    fn parse_type_chirho(&mut self) {
+        let cp_chirho = self.builder_chirho.checkpoint_chirho();
+
+        self.parse_btype_chirho();
+        self.eat_trivia_chirho();
+
+        // Check for => (qualified type) — but only if we haven't gone
+        // past the declaration boundary.
+        if self.at_chirho(RawTokenKindChirho::FatArrowChirho) {
+            // Retroactively wrap the parsed btype as a context
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::QualTypeChirho,
+            );
+            self.bump_chirho(); // =>
+            self.eat_trivia_chirho();
+            self.parse_type_chirho(); // the actual type
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        // Check for -> (function type)
+        if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::FunTypeChirho,
+            );
+            self.bump_chirho(); // ->
+            self.eat_trivia_chirho();
+            self.parse_type_chirho(); // right-recursive
+            self.builder_chirho.finish_node_chirho();
+        }
+        // Otherwise, just the btype stands as-is (no wrapping needed).
+    }
+
+    /// Parse a "btype" — type application (juxtaposition of atomic types).
+    fn parse_btype_chirho(&mut self) {
+        if !self.can_start_atype_chirho() {
+            return;
+        }
+
+        let cp_chirho = self.builder_chirho.checkpoint_chirho();
+        self.parse_atype_chirho();
+        self.eat_trivia_chirho();
+
+        let mut count_chirho = 1u32;
+        while self.can_start_atype_chirho() {
+            let before_chirho = self.pos_chirho;
+            if count_chirho == 1 {
+                self.builder_chirho.start_node_at_chirho(
+                    cp_chirho,
+                    SyntaxKindChirho::AppTypeChirho,
+                );
+            }
+            count_chirho += 1;
+            self.parse_atype_chirho();
+            self.eat_trivia_chirho();
+            if self.pos_chirho == before_chirho {
+                break;
+            }
+        }
+
+        if count_chirho > 1 {
+            self.builder_chirho.finish_node_chirho(); // AppType
+        }
+    }
+
+    /// Parse an atomic type: variable, constructor, parenthesized, tuple,
+    /// list, or unit.
+    fn parse_atype_chirho(&mut self) {
+        match self.current_kind_chirho() {
+            Some(RawTokenKindChirho::VarIdChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::VarTypeChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::ConIdChirho)
+            | Some(RawTokenKindChirho::QualifiedIdChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ConTypeChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::LeftParenChirho) => {
+                self.parse_paren_type_chirho();
+            }
+            Some(RawTokenKindChirho::LeftBracketChirho) => {
+                self.parse_list_type_chirho();
+            }
+            _ => {
+                // Unexpected — wrap in error node
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                if !self.at_eof_chirho() {
+                    self.bump_chirho();
+                }
+                self.builder_chirho.finish_node_chirho();
+            }
+        }
+    }
+
+    /// Parse a parenthesized, tuple, or function-type-constructor type.
+    fn parse_paren_type_chirho(&mut self) {
+        // Could be: (type), (type, type, ...), (->), ()
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::ParenTypeChirho);
+
+        self.bump_chirho(); // (
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+            // Unit type ()
+            self.bump_chirho();
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        // Could be (->) or operator as type constructor
+        if self.at_chirho(RawTokenKindChirho::RightArrowChirho)
+            || self.at_chirho(RawTokenKindChirho::VarSymChirho)
+            || self.at_chirho(RawTokenKindChirho::ConSymChirho)
+        {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+                return;
+            }
+        }
+
+        // Parse first type
+        self.parse_type_chirho();
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+            // It's a tuple type — change the node kind would be ideal,
+            // but we just keep ParenType and it wraps the contents.
+            while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                self.bump_chirho(); // ,
+                self.eat_trivia_chirho();
+                self.parse_type_chirho();
+                self.eat_trivia_chirho();
+            }
+        }
+
+        if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+            self.bump_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a list type: [type]
+    fn parse_list_type_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::ListTypeChirho);
+
+        self.bump_chirho(); // [
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+            // [] — empty list type constructor
+            self.bump_chirho();
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        self.parse_type_chirho();
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+            self.bump_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    // -----------------------------------------------------------------------
+    // Expression parsing
+    // -----------------------------------------------------------------------
+
+    /// Parse an expression. Handles type annotations (expr :: type) and
+    /// infix operators. Stops at expression boundaries.
+    fn parse_expr_chirho(&mut self) {
+        let cp_chirho = self.builder_chirho.checkpoint_chirho();
+
+        self.parse_infixexp_chirho();
+        self.eat_trivia_chirho();
+
+        // Type annotation: expr :: Type
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::TypeAnnotExprChirho,
+            );
+            self.bump_chirho(); // ::
+            self.eat_trivia_chirho();
+            self.parse_type_chirho();
+            self.builder_chirho.finish_node_chirho();
+        }
+    }
+
+    /// Parse an infix expression: lexp op lexp op ...
+    /// Kept flat for CST — precedence resolved later.
+    fn parse_infixexp_chirho(&mut self) {
+        let cp_chirho = self.builder_chirho.checkpoint_chirho();
+
+        self.parse_lexp_chirho();
+        self.eat_trivia_chirho();
+
+        let mut has_infix_chirho = false;
+
+        while self.at_infix_op_chirho() {
+            let before_chirho = self.pos_chirho;
+            if !has_infix_chirho {
+                self.builder_chirho.start_node_at_chirho(
+                    cp_chirho,
+                    SyntaxKindChirho::InfixExprChirho,
+                );
+                has_infix_chirho = true;
+            }
+
+            // The operator (VarSym, ConSym, or backticked name)
+            if self.at_chirho(RawTokenKindChirho::BacktickChirho) {
+                self.bump_chirho(); // `
+                self.eat_trivia_chirho();
+                if !self.at_chirho(RawTokenKindChirho::BacktickChirho) && !self.at_eof_chirho() {
+                    self.bump_chirho(); // the name
+                }
+                self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::BacktickChirho) {
+                    self.bump_chirho(); // `
+                }
+            } else {
+                self.bump_chirho(); // operator
+            }
+            self.eat_trivia_chirho();
+
+            self.parse_lexp_chirho();
+            self.eat_trivia_chirho();
+            // Safety: break if no progress to avoid infinite loop
+            if self.pos_chirho == before_chirho {
+                break;
+            }
+        }
+
+        if has_infix_chirho {
+            self.builder_chirho.finish_node_chirho(); // InfixExpr
+        }
+    }
+
+    /// Parse an lexp (left-hand expression): lambda, let, if, case, do,
+    /// negation, or function application.
+    fn parse_lexp_chirho(&mut self) {
+        match self.current_kind_chirho() {
+            Some(RawTokenKindChirho::BackslashChirho) => self.parse_lambda_chirho(),
+            Some(RawTokenKindChirho::LetChirho) => self.parse_let_expr_chirho(),
+            Some(RawTokenKindChirho::IfChirho) => self.parse_if_expr_chirho(),
+            Some(RawTokenKindChirho::CaseChirho) => self.parse_case_expr_chirho(),
+            Some(RawTokenKindChirho::DoChirho) => self.parse_do_expr_chirho(),
+            Some(RawTokenKindChirho::VarSymChirho)
+                if self.current_text_chirho() == "-"
+                    && !self.at_decl_boundary_chirho() =>
+            {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::NegateExprChirho);
+                self.bump_chirho(); // -
+                self.eat_trivia_chirho();
+                self.parse_fexp_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            _ => self.parse_fexp_chirho(),
+        }
+    }
+
+    /// Parse a lambda expression: \pat ... -> expr
+    fn parse_lambda_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::LambdaExprChirho);
+
+        self.bump_chirho(); // backslash
+        self.eat_trivia_chirho();
+
+        // Parse patterns until ->
+        while self.can_start_apat_chirho() {
+            let before_chirho = self.pos_chirho;
+            self.parse_apat_chirho();
+            self.eat_trivia_chirho();
+            if self.pos_chirho == before_chirho {
+                break;
+            }
+        }
+
+        if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
+            self.bump_chirho(); // ->
+            self.eat_trivia_chirho();
+            self.parse_expr_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a let expression: let { decls } in expr
+    fn parse_let_expr_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::LetExprChirho);
+
+        self.bump_chirho(); // let
+        self.eat_trivia_chirho();
+
+        // Parse the let-bindings layout block
+        self.parse_layout_block_chirho();
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::InChirho) {
+            self.bump_chirho(); // in
+            self.eat_trivia_chirho();
+            self.parse_expr_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse an if expression: if expr then expr else expr
+    fn parse_if_expr_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::IfExprChirho);
+
+        self.bump_chirho(); // if
+        self.eat_trivia_chirho();
+
+        self.parse_expr_chirho();
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::ThenChirho) {
+            self.bump_chirho(); // then
+            self.eat_trivia_chirho();
+            self.parse_expr_chirho();
+            self.eat_trivia_chirho();
+        }
+
+        if self.at_chirho(RawTokenKindChirho::ElseChirho) {
+            self.bump_chirho(); // else
+            self.eat_trivia_chirho();
+            self.parse_expr_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a case expression: case expr of { alts }
+    fn parse_case_expr_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::CaseExprChirho);
+
+        self.bump_chirho(); // case
+        self.eat_trivia_chirho();
+
+        self.parse_expr_chirho();
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::OfChirho) {
+            self.bump_chirho(); // of
+            self.eat_trivia_chirho();
+            self.parse_case_alts_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse case alternatives layout block.
+    fn parse_case_alts_chirho(&mut self) {
+        if self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
+            || self.at_chirho(RawTokenKindChirho::LeftBraceChirho)
+        {
+            self.bump_chirho(); // {
+        }
+        self.eat_trivia_chirho();
+
+        loop {
+            if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
+                || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+            {
+                self.bump_chirho(); // }
+                break;
+            }
+            if self.at_eof_chirho() {
+                break;
+            }
+            if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
+                || self.at_chirho(RawTokenKindChirho::SemicolonChirho)
+            {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+                continue;
+            }
+
+            let before_chirho = self.pos_chirho;
+            self.parse_case_alt_chirho();
+            self.eat_trivia_chirho();
+            // Safety: if no progress, bump to avoid infinite loop
+            if self.pos_chirho == before_chirho {
+                if !self.at_eof_chirho() {
+                    self.bump_chirho();
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Parse a single case alternative: pat -> expr or pat | guard -> expr
+    fn parse_case_alt_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::CaseAltChirho);
+
+        // Parse the pattern
+        if self.can_start_apat_chirho() {
+            self.parse_pat_chirho();
+            self.eat_trivia_chirho();
+        }
+
+        // -> or guards
+        if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
+            self.bump_chirho(); // ->
+            self.eat_trivia_chirho();
+            self.parse_expr_chirho();
+        } else if self.at_chirho(RawTokenKindChirho::PipeChirho) {
+            // Guarded case alt
+            while self.at_chirho(RawTokenKindChirho::PipeChirho) {
+                self.bump_chirho(); // |
+                self.eat_trivia_chirho();
+                self.parse_guard_expr_case_chirho();
+                if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
+                    self.bump_chirho(); // ->
+                    self.eat_trivia_chirho();
+                    self.parse_expr_chirho();
+                }
+                self.eat_trivia_chirho();
+            }
+        }
+
+        // Optional where in case alt
+        self.eat_trivia_chirho();
+        if self.at_chirho(RawTokenKindChirho::WhereChirho) {
+            self.parse_where_block_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse guard expression in case alt (between | and ->).
+    fn parse_guard_expr_case_chirho(&mut self) {
+        while !self.at_chirho(RawTokenKindChirho::RightArrowChirho)
+            && !self.at_decl_boundary_chirho()
+        {
+            self.bump_chirho();
+        }
+    }
+
+    /// Parse a do expression: do { stmts }
+    fn parse_do_expr_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::DoExprChirho);
+
+        self.bump_chirho(); // do
+        self.eat_trivia_chirho();
+
+        // Parse do stmts layout block
+        if self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
+            || self.at_chirho(RawTokenKindChirho::LeftBraceChirho)
+        {
+            self.bump_chirho(); // {
+            self.eat_trivia_chirho();
+
+            loop {
+                if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
+                    || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                {
+                    self.bump_chirho(); // }
+                    break;
+                }
+                if self.at_eof_chirho() {
+                    break;
+                }
+                if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
+                    || self.at_chirho(RawTokenKindChirho::SemicolonChirho)
+                {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    continue;
+                }
+
+                let before_chirho = self.pos_chirho;
+                self.parse_do_stmt_chirho();
+                self.eat_trivia_chirho();
+                if self.pos_chirho == before_chirho {
+                    if !self.at_eof_chirho() {
+                        self.bump_chirho();
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a single do statement.
+    fn parse_do_stmt_chirho(&mut self) {
+        // Check for let statement
+        if self.at_chirho(RawTokenKindChirho::LetChirho) {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::LetStmtChirho);
+            self.bump_chirho(); // let
+            self.eat_trivia_chirho();
+            self.parse_layout_block_chirho();
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        // Try to detect bind statement: pat <- expr
+        // We use a heuristic: parse as expression, then check for <-
+        let cp_chirho = self.builder_chirho.checkpoint_chirho();
+        let saved_pos_chirho = self.pos_chirho;
+
+        // Check if there's a <- by scanning ahead (without building tree)
+        let has_bind_chirho = self.scan_for_bind_arrow_chirho();
+
+        if has_bind_chirho {
+            // It's a bind statement: pat <- expr
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::BindStmtChirho,
+            );
+            // We need to re-parse the position for the pattern
+            // Actually we haven't bumped yet, so just parse normally
+            self.parse_pat_chirho();
+            self.eat_trivia_chirho();
+
+            if self.at_chirho(RawTokenKindChirho::LeftArrowChirho) {
+                self.bump_chirho(); // <-
+                self.eat_trivia_chirho();
+                self.parse_expr_chirho();
+            }
+            self.builder_chirho.finish_node_chirho();
+        } else {
+            // Regular expression statement
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::DoStmtChirho,
+            );
+            // Restore position since scan_for_bind_arrow didn't consume
+            self.pos_chirho = saved_pos_chirho;
+            self.parse_expr_chirho();
+            self.builder_chirho.finish_node_chirho();
+        }
+    }
+
+    /// Scan ahead (without consuming) to check if there's a <- in the
+    /// current statement.
+    fn scan_for_bind_arrow_chirho(&self) -> bool {
+        let mut i_chirho = self.pos_chirho;
+        let mut paren_depth_chirho = 0u32;
+        let mut bracket_depth_chirho = 0u32;
+
+        while i_chirho < self.tokens_chirho.len() {
+            let k_chirho = self.tokens_chirho[i_chirho].kind_chirho;
+            match k_chirho {
+                RawTokenKindChirho::LeftArrowChirho if paren_depth_chirho == 0 && bracket_depth_chirho == 0 => {
+                    return true;
+                }
+                RawTokenKindChirho::LeftParenChirho => paren_depth_chirho += 1,
+                RawTokenKindChirho::RightParenChirho => {
+                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                }
+                RawTokenKindChirho::LeftBracketChirho => bracket_depth_chirho += 1,
+                RawTokenKindChirho::RightBracketChirho => {
+                    bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
+                }
+                // Statement boundaries
+                RawTokenKindChirho::VirtualSemicolonChirho
+                | RawTokenKindChirho::SemicolonChirho
+                | RawTokenKindChirho::VirtualRightBraceChirho
+                | RawTokenKindChirho::RightBraceChirho
+                | RawTokenKindChirho::EofChirho => {
+                    return false;
+                }
+                _ => {}
+            }
+            i_chirho += 1;
+        }
+        false
+    }
+
+    /// Parse a function application: f x y z
+    fn parse_fexp_chirho(&mut self) {
+        if !self.can_start_aexp_chirho() {
+            return;
+        }
+
+        let cp_chirho = self.builder_chirho.checkpoint_chirho();
+        self.parse_aexp_chirho();
+        self.eat_trivia_chirho();
+
+        let mut count_chirho = 1u32;
+        while self.can_start_aexp_chirho() {
+            let before_chirho = self.pos_chirho;
+            if count_chirho == 1 {
+                self.builder_chirho.start_node_at_chirho(
+                    cp_chirho,
+                    SyntaxKindChirho::AppExprChirho,
+                );
+            }
+            count_chirho += 1;
+            self.parse_aexp_chirho();
+            self.eat_trivia_chirho();
+            // Safety: break if no progress to avoid infinite loop
+            if self.pos_chirho == before_chirho {
+                break;
+            }
+        }
+
+        if count_chirho > 1 {
+            self.builder_chirho.finish_node_chirho(); // AppExpr
+        }
+    }
+
+    /// Parse an atomic expression: literal, variable, constructor,
+    /// parenthesized, tuple, list, section.
+    fn parse_aexp_chirho(&mut self) {
+        match self.current_kind_chirho() {
+            Some(RawTokenKindChirho::VarIdChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::NameExprChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::ConIdChirho)
+            | Some(RawTokenKindChirho::QualifiedIdChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::NameExprChirho);
+                self.bump_chirho();
+                // Check for record construction: Con { field = val }
+                self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+                    // Could be record construction — but in a CST we
+                    // need to be careful. This might also be a layout
+                    // thing. Only treat as record if it's an explicit brace.
+                    self.parse_record_expr_chirho();
+                }
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::IntLitChirho)
+            | Some(RawTokenKindChirho::FloatLitChirho)
+            | Some(RawTokenKindChirho::CharLitChirho)
+            | Some(RawTokenKindChirho::StringLitChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::LiteralExprChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::LeftParenChirho) => {
+                self.parse_paren_expr_chirho();
+            }
+            Some(RawTokenKindChirho::LeftBracketChirho) => {
+                self.parse_list_expr_chirho();
+            }
+            _ => {
+                // Unexpected token — wrap in error
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                if !self.at_eof_chirho() {
+                    self.bump_chirho();
+                }
+                self.builder_chirho.finish_node_chirho();
+            }
+        }
+    }
+
+    /// Parse a parenthesized expression, tuple, section, or unit.
+    fn parse_paren_expr_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::ParenExprChirho);
+
+        self.bump_chirho(); // (
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+            // Unit ()
+            self.bump_chirho();
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        // Could be a left section: (op) or (op expr) or (expr op)
+        // or just (expr) or (expr, expr, ...)
+        self.parse_expr_chirho();
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+            // Tuple
+            while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                self.bump_chirho(); // ,
+                self.eat_trivia_chirho();
+                if !self.at_chirho(RawTokenKindChirho::RightParenChirho)
+                    && !self.at_eof_chirho()
+                {
+                    self.parse_expr_chirho();
+                    self.eat_trivia_chirho();
+                }
+            }
+        }
+
+        if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+            self.bump_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a list expression, arithmetic sequence, or list comprehension.
+    fn parse_list_expr_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::ListExprChirho);
+
+        self.bump_chirho(); // [
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+            // Empty list
+            self.bump_chirho();
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        self.parse_expr_chirho();
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::PipeChirho) {
+            // List comprehension: [expr | quals]
+            self.bump_chirho(); // |
+            self.eat_trivia_chirho();
+            // Parse qualifiers until ]
+            while !self.at_chirho(RawTokenKindChirho::RightBracketChirho)
+                && !self.at_eof_chirho()
+                && !self.at_decl_boundary_chirho()
+            {
+                let before_chirho = self.pos_chirho;
+                self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                }
+                if !self.at_chirho(RawTokenKindChirho::RightBracketChirho)
+                    && !self.at_eof_chirho()
+                    && !self.at_decl_boundary_chirho()
+                {
+                    self.parse_expr_chirho();
+                    self.eat_trivia_chirho();
+                }
+                if self.pos_chirho == before_chirho {
+                    break;
+                }
+            }
+        } else if self.at_chirho(RawTokenKindChirho::DotDotChirho) {
+            // Arithmetic sequence: [a..], [a..b], [a,b..], [a,b..c]
+            self.bump_chirho(); // ..
+            self.eat_trivia_chirho();
+            if !self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+                self.parse_expr_chirho();
+                self.eat_trivia_chirho();
+            }
+        } else if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+            // List or arithmetic sequence with step
+            self.bump_chirho(); // ,
+            self.eat_trivia_chirho();
+
+            if !self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+                self.parse_expr_chirho();
+                self.eat_trivia_chirho();
+            }
+
+            if self.at_chirho(RawTokenKindChirho::DotDotChirho) {
+                // [a, b .. c]
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+                if !self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+                    self.parse_expr_chirho();
+                    self.eat_trivia_chirho();
+                }
+            } else {
+                // Regular list: more elements
+                while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                    self.bump_chirho(); // ,
+                    self.eat_trivia_chirho();
+                    if !self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+                        self.parse_expr_chirho();
+                        self.eat_trivia_chirho();
+                    }
+                }
+            }
+        }
+
+        if self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+            self.bump_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse record expression fields: { field = expr, ... }
+    fn parse_record_expr_chirho(&mut self) {
+        // We're inside a NameExpr that started with ConId.
+        // Just eat the record fields.
+        self.bump_chirho(); // {
+        self.eat_trivia_chirho();
+
+        while !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+            && !self.at_eof_chirho()
+            && !self.at_decl_boundary_chirho()
+        {
+            let outer_before_chirho = self.pos_chirho;
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::FieldAssignChirho);
+
+            while !self.at_chirho(RawTokenKindChirho::CommaChirho)
+                && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                && !self.at_eof_chirho()
+                && !self.at_decl_boundary_chirho()
+            {
+                self.eat_trivia_chirho();
+                if !self.at_chirho(RawTokenKindChirho::CommaChirho)
+                    && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                    && !self.at_decl_boundary_chirho()
+                    && !self.at_eof_chirho()
+                {
+                    self.bump_chirho();
+                }
+            }
+
+            self.builder_chirho.finish_node_chirho();
+
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+            if self.pos_chirho == outer_before_chirho {
+                break;
+            }
+        }
+
+        if self.at_chirho(RawTokenKindChirho::RightBraceChirho) {
+            self.bump_chirho();
+        }
+    }
+
+    /// Parse a layout block (shared by let, do, where, etc.)
+    fn parse_layout_block_chirho(&mut self) {
+        if self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
+            || self.at_chirho(RawTokenKindChirho::LeftBraceChirho)
+        {
+            self.bump_chirho(); // {
+            self.eat_trivia_chirho();
+
+            loop {
+                if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
+                    || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                {
+                    self.bump_chirho(); // }
+                    break;
+                }
+                if self.at_eof_chirho() {
+                    break;
+                }
+                if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
+                    || self.at_chirho(RawTokenKindChirho::SemicolonChirho)
+                {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    continue;
+                }
+                let before_chirho = self.pos_chirho;
+                self.parse_decl_chirho();
+                self.eat_trivia_chirho();
+                if self.pos_chirho == before_chirho {
+                    if !self.at_eof_chirho() {
+                        self.bump_chirho();
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Pattern parsing
+    // -----------------------------------------------------------------------
+
+    /// Parse a pattern. Handles infix constructor patterns (p1 :+: p2).
+    fn parse_pat_chirho(&mut self) {
+        let cp_chirho = self.builder_chirho.checkpoint_chirho();
+
+        self.parse_lpat_chirho();
+        self.eat_trivia_chirho();
+
+        // Check for infix constructor pattern
+        if self.at_chirho(RawTokenKindChirho::ConSymChirho)
+            || self.at_chirho(RawTokenKindChirho::BacktickChirho)
+        {
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::InfixConPatChirho,
+            );
+
+            if self.at_chirho(RawTokenKindChirho::BacktickChirho) {
+                self.bump_chirho(); // `
+                self.eat_trivia_chirho();
+                if !self.at_eof_chirho() {
+                    self.bump_chirho(); // name
+                }
+                self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::BacktickChirho) {
+                    self.bump_chirho(); // `
+                }
+            } else {
+                self.bump_chirho(); // ConSym
+            }
+            self.eat_trivia_chirho();
+
+            self.parse_lpat_chirho();
+            self.builder_chirho.finish_node_chirho();
+        }
+    }
+
+    /// Parse a "left pattern": constructor application, negation, as,
+    /// lazy (~pat), bang (!pat).
+    fn parse_lpat_chirho(&mut self) {
+        match self.current_kind_chirho() {
+            Some(RawTokenKindChirho::VarIdChirho) => {
+                // Could be as-pattern: x@pat or just variable
+                let cp_chirho = self.builder_chirho.checkpoint_chirho();
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::VarPatChirho);
+                self.bump_chirho(); // var name
+                self.builder_chirho.finish_node_chirho();
+                self.eat_trivia_chirho();
+
+                if self.at_chirho(RawTokenKindChirho::AtChirho) {
+                    // As pattern: x@pat
+                    self.builder_chirho.start_node_at_chirho(
+                        cp_chirho,
+                        SyntaxKindChirho::AsPatChirho,
+                    );
+                    self.bump_chirho(); // @
+                    self.eat_trivia_chirho();
+                    self.parse_apat_chirho();
+                    self.builder_chirho.finish_node_chirho();
+                }
+            }
+            Some(RawTokenKindChirho::ConIdChirho)
+            | Some(RawTokenKindChirho::QualifiedIdChirho) => {
+                // Constructor pattern possibly with argument patterns
+                let cp_chirho = self.builder_chirho.checkpoint_chirho();
+                self.bump_chirho(); // ConId
+                self.eat_trivia_chirho();
+
+                // Check for record pattern
+                if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+                    self.builder_chirho.start_node_at_chirho(
+                        cp_chirho,
+                        SyntaxKindChirho::RecordPatChirho,
+                    );
+                    self.parse_record_pat_fields_chirho();
+                    self.builder_chirho.finish_node_chirho();
+                } else if self.can_start_apat_chirho() {
+                    // Constructor application pattern
+                    self.builder_chirho.start_node_at_chirho(
+                        cp_chirho,
+                        SyntaxKindChirho::ConPatChirho,
+                    );
+                    while self.can_start_apat_chirho() {
+                        let before_chirho = self.pos_chirho;
+                        self.parse_apat_chirho();
+                        self.eat_trivia_chirho();
+                        if self.pos_chirho == before_chirho {
+                            break;
+                        }
+                    }
+                    self.builder_chirho.finish_node_chirho();
+                }
+                // Otherwise, just the ConId stands (no wrapping)
+            }
+            Some(RawTokenKindChirho::TildeChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::LazyPatChirho);
+                self.bump_chirho(); // ~
+                self.eat_trivia_chirho();
+                self.parse_apat_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::VarSymChirho) if self.current_text_chirho() == "!" => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::BangPatChirho);
+                self.bump_chirho(); // !
+                self.eat_trivia_chirho();
+                self.parse_apat_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::VarSymChirho) if self.current_text_chirho() == "-" => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::NegPatChirho);
+                self.bump_chirho(); // -
+                self.eat_trivia_chirho();
+                self.parse_apat_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            _ => self.parse_apat_chirho(),
+        }
+    }
+
+    /// Parse an atomic pattern: variable, constructor, literal, wildcard,
+    /// parenthesized, tuple, list.
+    fn parse_apat_chirho(&mut self) {
+        match self.current_kind_chirho() {
+            Some(RawTokenKindChirho::VarIdChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::VarPatChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::ConIdChirho)
+            | Some(RawTokenKindChirho::QualifiedIdChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ConPatChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::IntLitChirho)
+            | Some(RawTokenKindChirho::FloatLitChirho)
+            | Some(RawTokenKindChirho::CharLitChirho)
+            | Some(RawTokenKindChirho::StringLitChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::LitPatChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::UnderscoreChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::WildcardPatChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::LeftParenChirho) => {
+                self.parse_paren_pat_chirho();
+            }
+            Some(RawTokenKindChirho::LeftBracketChirho) => {
+                self.parse_list_pat_chirho();
+            }
+            _ => {
+                // Unexpected — wrap in error
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                if !self.at_eof_chirho() {
+                    self.bump_chirho();
+                }
+                self.builder_chirho.finish_node_chirho();
+            }
+        }
+    }
+
+    /// Parse parenthesized or tuple pattern.
+    fn parse_paren_pat_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::ParenPatChirho);
+
+        self.bump_chirho(); // (
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+            // Unit pattern ()
+            self.bump_chirho();
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        self.parse_pat_chirho();
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+            // Tuple pattern
+            while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                self.bump_chirho(); // ,
+                self.eat_trivia_chirho();
+                if !self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                    self.parse_pat_chirho();
+                    self.eat_trivia_chirho();
+                }
+            }
+        }
+
+        if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+            self.bump_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse list pattern.
+    fn parse_list_pat_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::ListPatChirho);
+
+        self.bump_chirho(); // [
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+            self.bump_chirho();
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        self.parse_pat_chirho();
+        self.eat_trivia_chirho();
+
+        while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+            self.bump_chirho(); // ,
+            self.eat_trivia_chirho();
+            self.parse_pat_chirho();
+            self.eat_trivia_chirho();
+        }
+
+        if self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+            self.bump_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse record pattern fields: { field = pat, ... }
+    fn parse_record_pat_fields_chirho(&mut self) {
+        self.bump_chirho(); // {
+        self.eat_trivia_chirho();
+
+        while !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+            && !self.at_eof_chirho()
+            && !self.at_decl_boundary_chirho()
+        {
+            let before_chirho = self.pos_chirho;
+            while !self.at_chirho(RawTokenKindChirho::CommaChirho)
+                && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                && !self.at_eof_chirho()
+                && !self.at_decl_boundary_chirho()
+            {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+            if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+            if self.pos_chirho == before_chirho {
+                break;
+            }
+        }
+
+        if self.at_chirho(RawTokenKindChirho::RightBraceChirho) {
+            self.bump_chirho();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Predicates — what can start various constructs
+    // -----------------------------------------------------------------------
+
+    /// Can the current token start an atomic type?
+    fn can_start_atype_chirho(&self) -> bool {
+        matches!(
+            self.current_kind_chirho(),
+            Some(RawTokenKindChirho::VarIdChirho)
+                | Some(RawTokenKindChirho::ConIdChirho)
+                | Some(RawTokenKindChirho::QualifiedIdChirho)
+                | Some(RawTokenKindChirho::LeftParenChirho)
+                | Some(RawTokenKindChirho::LeftBracketChirho)
+        )
+    }
+
+    /// Can the current token start an atomic expression?
+    fn can_start_aexp_chirho(&self) -> bool {
+        matches!(
+            self.current_kind_chirho(),
+            Some(RawTokenKindChirho::VarIdChirho)
+                | Some(RawTokenKindChirho::ConIdChirho)
+                | Some(RawTokenKindChirho::QualifiedIdChirho)
+                | Some(RawTokenKindChirho::IntLitChirho)
+                | Some(RawTokenKindChirho::FloatLitChirho)
+                | Some(RawTokenKindChirho::CharLitChirho)
+                | Some(RawTokenKindChirho::StringLitChirho)
+                | Some(RawTokenKindChirho::LeftParenChirho)
+                | Some(RawTokenKindChirho::LeftBracketChirho)
+        )
+    }
+
+    /// Can the current token start an atomic pattern?
+    fn can_start_apat_chirho(&self) -> bool {
+        matches!(
+            self.current_kind_chirho(),
+            Some(RawTokenKindChirho::VarIdChirho)
+                | Some(RawTokenKindChirho::ConIdChirho)
+                | Some(RawTokenKindChirho::QualifiedIdChirho)
+                | Some(RawTokenKindChirho::IntLitChirho)
+                | Some(RawTokenKindChirho::FloatLitChirho)
+                | Some(RawTokenKindChirho::CharLitChirho)
+                | Some(RawTokenKindChirho::StringLitChirho)
+                | Some(RawTokenKindChirho::UnderscoreChirho)
+                | Some(RawTokenKindChirho::LeftParenChirho)
+                | Some(RawTokenKindChirho::LeftBracketChirho)
+                | Some(RawTokenKindChirho::TildeChirho)
+        )
+    }
+
+    /// Is the current token an infix operator?
+    fn at_infix_op_chirho(&self) -> bool {
+        if self.at_decl_boundary_chirho() || self.at_expr_boundary_chirho() {
+            return false;
+        }
+        matches!(
+            self.current_kind_chirho(),
+            Some(RawTokenKindChirho::VarSymChirho)
+                | Some(RawTokenKindChirho::ConSymChirho)
+                | Some(RawTokenKindChirho::BacktickChirho)
+        )
+    }
+
+    /// Is the current token at a declaration boundary?
+    fn at_decl_boundary_chirho(&self) -> bool {
+        self.at_eof_chirho()
+            || matches!(
+                self.current_kind_chirho(),
+                Some(RawTokenKindChirho::VirtualSemicolonChirho)
+                    | Some(RawTokenKindChirho::VirtualRightBraceChirho)
+                    | Some(RawTokenKindChirho::SemicolonChirho)
+                    | Some(RawTokenKindChirho::RightBraceChirho)
+            )
+    }
+
+    /// Is the current token at an expression boundary?
+    /// These are keywords/tokens that cannot continue an expression.
+    fn at_expr_boundary_chirho(&self) -> bool {
+        self.at_decl_boundary_chirho()
+            || matches!(
+                self.current_kind_chirho(),
+                Some(RawTokenKindChirho::WhereChirho)
+                    | Some(RawTokenKindChirho::InChirho)
+                    | Some(RawTokenKindChirho::ThenChirho)
+                    | Some(RawTokenKindChirho::ElseChirho)
+                    | Some(RawTokenKindChirho::OfChirho)
+            )
+    }
+
+    // -----------------------------------------------------------------------
+    // Core utility methods
     // -----------------------------------------------------------------------
 
     fn current_chirho(&self) -> Option<&RawTokenChirho> {
@@ -728,8 +2241,7 @@ impl<'src> ParserChirho<'src> {
         }
     }
 
-    /// Eat tokens until we reach one of the given kinds (used for simplified
-    /// parsing of constructs we haven't fully implemented yet).
+    /// Eat tokens until we reach one of the given kinds.
     fn eat_until_any_chirho(&mut self, stops_chirho: &[RawTokenKindChirho]) {
         while let Some(kind_chirho) = self.current_kind_chirho() {
             if stops_chirho.contains(&kind_chirho) || kind_chirho == RawTokenKindChirho::EofChirho {
@@ -739,8 +2251,7 @@ impl<'src> ParserChirho<'src> {
         }
     }
 
-    /// Eat tokens until the end of the current declaration (virtual semicolon,
-    /// virtual right brace, or EOF).
+    /// Eat tokens until the end of the current declaration.
     fn eat_until_decl_end_chirho(&mut self) {
         self.eat_until_any_chirho(&[
             RawTokenKindChirho::VirtualSemicolonChirho,
@@ -752,7 +2263,6 @@ impl<'src> ParserChirho<'src> {
 
     /// Lookahead: is this a type signature? (name :: ...)
     fn is_type_sig_chirho(&self) -> bool {
-        // Scan forward from current position, skipping trivia
         let mut i_chirho = self.pos_chirho;
 
         // Skip the name(s) — could be `(+!)` for operator type sigs
@@ -875,14 +2385,19 @@ mod tests_chirho {
     }
 
     #[test]
-    fn parse_type_sig_chirho() {
-        let source_chirho = "module M where\nfoo :: Int -> Int\nfoo x = x + 1\n";
+    fn parse_type_sig_with_types_chirho() {
+        let source_chirho = "module M where\nfoo :: Int -> String -> Bool\nfoo x y = True\n";
         let root_chirho = parse_chirho(source_chirho);
         let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
 
         assert!(
             kinds_chirho.contains(&SyntaxKindChirho::TypeSigDeclChirho),
             "should have TypeSigDecl"
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::FunTypeChirho),
+            "should have FunType for -> : {:?}",
+            kinds_chirho
         );
         assert!(
             kinds_chirho.contains(&SyntaxKindChirho::FunBindChirho),
@@ -938,5 +2453,141 @@ mod tests_chirho {
             .filter(|k_chirho| **k_chirho == SyntaxKindChirho::ImportDeclChirho)
             .count();
         assert_eq!(import_count_chirho, 2);
+    }
+
+    #[test]
+    fn parse_expression_nodes_chirho() {
+        let source_chirho = "module M where\nresult = f x + g y\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::AppExprChirho)
+                || kinds_chirho.contains(&SyntaxKindChirho::InfixExprChirho),
+            "should have application or infix expression nodes: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_if_expression_chirho() {
+        let source_chirho = "module M where\nx = if True then 1 else 2\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::IfExprChirho),
+            "should have IfExpr: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_lambda_expression_chirho() {
+        let source_chirho = "module M where\nf = \\x -> x + 1\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::LambdaExprChirho),
+            "should have LambdaExpr: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_do_expression_chirho() {
+        let source_chirho = "module M where\nmain = do\n  putStrLn \"hello\"\n  return ()\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::DoExprChirho),
+            "should have DoExpr: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_case_expression_chirho() {
+        let source_chirho = "module M where\nf x = case x of\n  True -> 1\n  False -> 0\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::CaseExprChirho),
+            "should have CaseExpr: {:?}",
+            kinds_chirho
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::CaseAltChirho),
+            "should have CaseAlt: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_list_and_tuple_chirho() {
+        let source_chirho = "module M where\nxs = [1, 2, 3]\np = (1, True)\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::ListExprChirho),
+            "should have ListExpr: {:?}",
+            kinds_chirho
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::ParenExprChirho),
+            "should have ParenExpr (tuple): {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_type_alias_with_type_nodes_chirho() {
+        let source_chirho = "module M where\ntype Name = String\ntype Pair a b = (a, b)\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        let alias_count_chirho = kinds_chirho
+            .iter()
+            .filter(|k_chirho| **k_chirho == SyntaxKindChirho::TypeAliasDeclChirho)
+            .count();
+        assert_eq!(alias_count_chirho, 2, "should parse 2 type aliases");
+    }
+
+    #[test]
+    fn parse_where_clause_chirho() {
+        let source_chirho = "module M where\nf x = y + z\n  where\n    y = x + 1\n    z = x * 2\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::WhereClauseChirho),
+            "should have WhereClause: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn roundtrip_text_len_various_chirho() {
+        let sources_chirho = [
+            "main = putStrLn \"hello\"\n",
+            "module M where\nf :: Int -> Int\nf x = x + 1\n",
+            "module M where\nimport Data.List\ndata T = A | B\n",
+            "x = if True then 1 else 2\n",
+            "f = \\x y -> x + y\n",
+            "main = do\n  putStrLn \"hi\"\n  return 42\n",
+        ];
+        for src_chirho in &sources_chirho {
+            let root_chirho = parse_chirho(src_chirho);
+            assert_eq!(
+                root_chirho.text_len_chirho(),
+                src_chirho.len(),
+                "text_len mismatch for: {}",
+                src_chirho.trim()
+            );
+        }
     }
 }

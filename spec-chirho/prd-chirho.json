@@ -237,28 +237,28 @@
       "purpose_chirho": "Source offsets, file IDs, byte-offset spans, span arithmetic",
       "depends_on_chirho": [],
       "milestone_chirho": "M0",
-      "status_chirho": "not-started"
+      "status_chirho": "complete"
     },
     {
       "name_chirho": "rhasky-diagnostics-chirho",
       "purpose_chirho": "Structured diagnostics with spans, error codes, labels, fix suggestions",
       "depends_on_chirho": ["rhasky-span-chirho"],
       "milestone_chirho": "M0",
-      "status_chirho": "scaffold"
+      "status_chirho": "complete"
     },
     {
       "name_chirho": "rhasky-syntax-chirho",
       "purpose_chirho": "Token kinds, trivia, red-green syntax node kinds, CST node wrappers",
       "depends_on_chirho": ["rhasky-span-chirho"],
       "milestone_chirho": "M0-M1",
-      "status_chirho": "scaffold"
+      "status_chirho": "in-progress"
     },
     {
       "name_chirho": "rhasky-parser-chirho",
       "purpose_chirho": "Lexer with layout rule, recursive-descent parser, error recovery, CST construction",
       "depends_on_chirho": ["rhasky-syntax-chirho", "rhasky-diagnostics-chirho", "rhasky-span-chirho"],
       "milestone_chirho": "M1",
-      "status_chirho": "scaffold"
+      "status_chirho": "in-progress"
     },
     {
       "name_chirho": "rhasky-ast-chirho",
@@ -370,7 +370,7 @@
       "purpose_chirho": "Golden tests, compatibility suites, property-test utilities",
       "depends_on_chirho": ["rhasky-driver-chirho"],
       "milestone_chirho": "M0",
-      "status_chirho": "not-started"
+      "status_chirho": "complete"
     }
   ],
 
@@ -378,7 +378,7 @@
     {
       "id_chirho": "M0",
       "name_chirho": "Workspace Bootstrap",
-      "status_chirho": "in-progress",
+      "status_chirho": "complete",
       "acceptance_criteria_chirho": [
         "Workspace crate graph matches architecture spec",
         "rhasky-span-chirho provides file IDs, byte offsets, and span types",
@@ -391,7 +391,7 @@
     {
       "id_chirho": "M1",
       "name_chirho": "Lexer, Parser, and Module Loading",
-      "status_chirho": "not-started",
+      "status_chirho": "in-progress",
       "acceptance_criteria_chirho": [
         "Lex all Haskell 2010 tokens including string gaps, numeric literals, qualified operators",
         "Layout rule via virtual brace/semicolon insertion at lexer level",

@@ -140,6 +140,14 @@ impl From<Arc<GreenNodeChirho>> for GreenElementChirho {
 // GreenBuilderChirho — incremental tree builder
 // ---------------------------------------------------------------------------
 
+/// A checkpoint in the builder that records the current position.
+/// Used to retroactively wrap previously-parsed content in a new node.
+#[derive(Debug, Clone, Copy)]
+pub struct CheckpointChirho {
+    stack_depth_chirho: usize,
+    children_count_chirho: usize,
+}
+
 /// Builds a green tree bottom-up using a stack of in-progress nodes.
 ///
 /// Usage:
@@ -167,6 +175,43 @@ impl GreenBuilderChirho {
     /// Start building a new node of the given kind.
     pub fn start_node_chirho(&mut self, kind_chirho: SyntaxKindChirho) {
         self.stack_chirho.push((kind_chirho, Vec::new()));
+    }
+
+    /// Create a checkpoint at the current builder position.
+    /// Later, `start_node_at_chirho()` can retroactively wrap everything
+    /// added since this checkpoint in a new node.
+    pub fn checkpoint_chirho(&self) -> CheckpointChirho {
+        let children_count_chirho = self
+            .stack_chirho
+            .last()
+            .map_or(0, |(_, children_chirho)| children_chirho.len());
+        CheckpointChirho {
+            stack_depth_chirho: self.stack_chirho.len(),
+            children_count_chirho,
+        }
+    }
+
+    /// Retroactively start a node at the checkpoint position.
+    /// Everything added to the current parent since the checkpoint
+    /// becomes the initial children of this new node.
+    pub fn start_node_at_chirho(
+        &mut self,
+        checkpoint_chirho: CheckpointChirho,
+        kind_chirho: SyntaxKindChirho,
+    ) {
+        assert_eq!(
+            self.stack_chirho.len(),
+            checkpoint_chirho.stack_depth_chirho,
+            "checkpoint must be at the same stack depth"
+        );
+        let parent_chirho = self
+            .stack_chirho
+            .last_mut()
+            .expect("stack should not be empty");
+        let wrapped_children_chirho =
+            parent_chirho.1.split_off(checkpoint_chirho.children_count_chirho);
+        self.stack_chirho
+            .push((kind_chirho, wrapped_children_chirho));
     }
 
     /// Add a token leaf to the current node.
@@ -254,6 +299,37 @@ mod tests_chirho {
         assert_eq!(tok_chirho.kind_chirho(), TokenKindChirho::IntegerLiteralChirho);
         assert_eq!(tok_chirho.text_chirho(), "42");
         assert_eq!(tok_chirho.text_len_chirho(), 2);
+    }
+
+    #[test]
+    fn checkpoint_wraps_retroactively_chirho() {
+        let mut builder_chirho = GreenBuilderChirho::new_chirho();
+        builder_chirho.start_node_chirho(SyntaxKindChirho::SourceFileChirho);
+
+        // Parse "Int -> String" — checkpoint before Int, wrap in FunType after ->
+        let cp_chirho = builder_chirho.checkpoint_chirho();
+        builder_chirho.token_chirho(TokenKindChirho::ConIdChirho, "Int");
+        builder_chirho.token_chirho(TokenKindChirho::WhitespaceTriviaChirho, " ");
+
+        // Retroactively wrap "Int " in a FunType node
+        builder_chirho.start_node_at_chirho(cp_chirho, SyntaxKindChirho::FunTypeChirho);
+        builder_chirho.token_chirho(TokenKindChirho::VarSymChirho, "->");
+        builder_chirho.token_chirho(TokenKindChirho::WhitespaceTriviaChirho, " ");
+        builder_chirho.token_chirho(TokenKindChirho::ConIdChirho, "String");
+        builder_chirho.finish_node_chirho(); // FunType
+
+        builder_chirho.finish_node_chirho(); // SourceFile
+
+        let root_chirho = builder_chirho.finish_chirho();
+        assert_eq!(root_chirho.text_len_chirho(), "Int -> String".len());
+        assert_eq!(root_chirho.child_count_chirho(), 1); // FunType
+        if let GreenElementChirho::NodeChirho(fun_chirho) = &root_chirho.children_chirho()[0] {
+            assert_eq!(fun_chirho.kind_chirho(), SyntaxKindChirho::FunTypeChirho);
+            // Children: "Int", " ", "->", " ", "String"
+            assert_eq!(fun_chirho.child_count_chirho(), 5);
+        } else {
+            panic!("expected FunType node");
+        }
     }
 
     #[test]

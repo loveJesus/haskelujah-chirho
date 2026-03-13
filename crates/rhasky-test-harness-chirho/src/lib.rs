@@ -41,7 +41,10 @@ pub fn discover_golden_tests_chirho(
         let entry_chirho = entry_chirho?;
         let path_chirho = entry_chirho.path();
 
-        if path_chirho.extension().is_some_and(|ext_chirho| ext_chirho == "hs") {
+        if path_chirho
+            .extension()
+            .is_some_and(|ext_chirho| ext_chirho == "hs")
+        {
             let name_chirho = path_chirho
                 .file_stem()
                 .unwrap_or_default()
@@ -72,15 +75,19 @@ pub fn assert_golden_chirho(
             actual_chirho: actual_chirho.to_owned(),
             path_chirho: expected_path_chirho.to_path_buf(),
             missing_expected_chirho: true,
+            read_error_chirho: None,
         });
     }
 
     let expected_chirho =
-        fs::read_to_string(expected_path_chirho).map_err(|_err_chirho| GoldenMismatchChirho {
-            expected_chirho: String::new(),
-            actual_chirho: actual_chirho.to_owned(),
-            path_chirho: expected_path_chirho.to_path_buf(),
-            missing_expected_chirho: true,
+        fs::read_to_string(expected_path_chirho).map_err(|read_error_chirho| {
+            GoldenMismatchChirho {
+                expected_chirho: String::new(),
+                actual_chirho: actual_chirho.to_owned(),
+                path_chirho: expected_path_chirho.to_path_buf(),
+                missing_expected_chirho: false,
+                read_error_chirho: Some(read_error_chirho.to_string()),
+            }
         })?;
 
     let expected_normalized_chirho = normalize_line_endings_chirho(&expected_chirho);
@@ -94,6 +101,7 @@ pub fn assert_golden_chirho(
             actual_chirho: actual_chirho.to_owned(),
             path_chirho: expected_path_chirho.to_path_buf(),
             missing_expected_chirho: false,
+            read_error_chirho: None,
         })
     }
 }
@@ -116,6 +124,7 @@ pub struct GoldenMismatchChirho {
     pub actual_chirho: String,
     pub path_chirho: PathBuf,
     pub missing_expected_chirho: bool,
+    pub read_error_chirho: Option<String>,
 }
 
 impl std::fmt::Display for GoldenMismatchChirho {
@@ -125,6 +134,14 @@ impl std::fmt::Display for GoldenMismatchChirho {
                 f_chirho,
                 "Golden file missing: {}\nActual output:\n{}",
                 self.path_chirho.display(),
+                self.actual_chirho
+            )
+        } else if let Some(read_error_chirho) = &self.read_error_chirho {
+            write!(
+                f_chirho,
+                "Golden file unreadable: {}\nRead error: {}\nActual output:\n{}",
+                self.path_chirho.display(),
+                read_error_chirho,
                 self.actual_chirho
             )
         } else {
@@ -176,5 +193,14 @@ mod tests_chirho {
         let result_chirho = assert_golden_chirho("output\n", &path_chirho);
         assert!(result_chirho.is_err());
         assert!(result_chirho.unwrap_err().missing_expected_chirho);
+    }
+
+    #[test]
+    fn golden_read_error_is_distinct_from_missing_chirho() {
+        let dir_chirho = tempfile::tempdir().unwrap();
+        let result_chirho = assert_golden_chirho("output\n", dir_chirho.path());
+        let error_chirho = result_chirho.unwrap_err();
+        assert!(!error_chirho.missing_expected_chirho);
+        assert!(error_chirho.read_error_chirho.is_some());
     }
 }

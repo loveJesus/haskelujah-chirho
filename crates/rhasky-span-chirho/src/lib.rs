@@ -111,11 +111,15 @@ pub struct SpanChirho {
 impl SpanChirho {
     /// Create a span covering `[start, end)` in the given file.
     #[inline]
-    pub const fn new_chirho(
+    pub fn new_chirho(
         file_id_chirho: FileIdChirho,
         start_chirho: ByteOffsetChirho,
         end_chirho: ByteOffsetChirho,
     ) -> Self {
+        debug_assert!(
+            start_chirho <= end_chirho,
+            "SpanChirho::new_chirho requires start <= end"
+        );
         Self {
             file_id_chirho,
             start_chirho,
@@ -146,6 +150,12 @@ impl SpanChirho {
     #[inline]
     pub const fn end_chirho(self) -> ByteOffsetChirho {
         self.end_chirho
+    }
+
+    /// Whether this span satisfies the core invariant `start <= end`.
+    #[inline]
+    pub const fn is_valid_chirho(self) -> bool {
+        self.start_chirho.0 <= self.end_chirho.0
     }
 
     /// Length in bytes.
@@ -202,13 +212,27 @@ impl SpanChirho {
     ) -> SpanChirho {
         SpanChirho {
             file_id_chirho: self.file_id_chirho,
-            start_chirho: ByteOffsetChirho::new_chirho(
-                self.start_chirho.0 + relative_start_chirho,
-            ),
-            end_chirho: ByteOffsetChirho::new_chirho(
-                self.start_chirho.0 + relative_end_chirho,
-            ),
+            start_chirho: ByteOffsetChirho::new_chirho(self.start_chirho.0 + relative_start_chirho),
+            end_chirho: ByteOffsetChirho::new_chirho(self.start_chirho.0 + relative_end_chirho),
         }
+    }
+
+    /// Clamp the span end to the available source length while preserving the
+    /// `start <= end` invariant.
+    #[inline]
+    pub fn clamp_to_source_chirho(self, source_len_chirho: usize) -> SpanChirho {
+        let source_end_chirho = ByteOffsetChirho::from_usize_chirho(source_len_chirho);
+        let clamped_end_chirho = if self.end_chirho < source_end_chirho {
+            self.end_chirho
+        } else {
+            source_end_chirho
+        };
+        let clamped_end_chirho = if clamped_end_chirho < self.start_chirho {
+            self.start_chirho
+        } else {
+            clamped_end_chirho
+        };
+        SpanChirho::new_chirho(self.file_id_chirho, self.start_chirho, clamped_end_chirho)
     }
 
     /// Extract the spanned text from source content.
@@ -264,9 +288,7 @@ impl LineIndexChirho {
         let mut line_starts_chirho = vec![ByteOffsetChirho::new_chirho(0)];
         for (byte_index_chirho, byte_chirho) in source_chirho.bytes().enumerate() {
             if byte_chirho == b'\n' {
-                line_starts_chirho.push(ByteOffsetChirho::from_usize_chirho(
-                    byte_index_chirho + 1,
-                ));
+                line_starts_chirho.push(ByteOffsetChirho::from_usize_chirho(byte_index_chirho + 1));
             }
         }
         Self { line_starts_chirho }
@@ -371,7 +393,9 @@ impl SourceMapChirho {
         &self,
         span_chirho: SpanChirho,
     ) -> Option<(&str, LineColChirho)> {
-        let entry_chirho = self.files_chirho.get(span_chirho.file_id_chirho.0 as usize)?;
+        let entry_chirho = self
+            .files_chirho
+            .get(span_chirho.file_id_chirho.0 as usize)?;
         let line_col_chirho = entry_chirho
             .line_index_chirho
             .line_col_chirho(span_chirho.start_chirho);
@@ -426,11 +450,7 @@ impl<T> SpannedChirho<T> {
 
 impl<T: fmt::Debug> fmt::Debug for SpannedChirho<T> {
     fn fmt(&self, f_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f_chirho,
-            "{:?} @ {:?}",
-            self.node_chirho, self.span_chirho
-        )
+        write!(f_chirho, "{:?} @ {:?}", self.node_chirho, self.span_chirho)
     }
 }
 
@@ -462,6 +482,7 @@ mod tests_chirho {
         );
         assert_eq!(span_chirho.len_chirho(), 5);
         assert!(!span_chirho.is_empty_chirho());
+        assert!(span_chirho.is_valid_chirho());
         assert_eq!(span_chirho.file_id_chirho(), file_chirho);
     }
 
@@ -486,7 +507,10 @@ mod tests_chirho {
             ByteOffsetChirho::new_chirho(12),
         );
         let merged_chirho = a_chirho.merge_chirho(b_chirho).unwrap();
-        assert_eq!(merged_chirho.start_chirho(), ByteOffsetChirho::new_chirho(2));
+        assert_eq!(
+            merged_chirho.start_chirho(),
+            ByteOffsetChirho::new_chirho(2)
+        );
         assert_eq!(merged_chirho.end_chirho(), ByteOffsetChirho::new_chirho(12));
     }
 
@@ -548,6 +572,89 @@ mod tests_chirho {
     }
 
     #[test]
+    fn span_clamp_to_source_chirho() {
+        let span_chirho = SpanChirho::new_chirho(
+            FileIdChirho(0),
+            ByteOffsetChirho::new_chirho(3),
+            ByteOffsetChirho::new_chirho(12),
+        );
+        let clamped_span_chirho = span_chirho.clamp_to_source_chirho(8);
+        assert!(clamped_span_chirho.is_valid_chirho());
+        assert_eq!(
+            clamped_span_chirho.end_chirho(),
+            ByteOffsetChirho::new_chirho(8)
+        );
+    }
+
+    #[test]
+    fn merge_contains_inputs_property_chirho() {
+        let file_chirho = FileIdChirho(0);
+        for start_a_raw_chirho in 0_u32..=8 {
+            for end_a_raw_chirho in start_a_raw_chirho..=8 {
+                let span_a_chirho = SpanChirho::new_chirho(
+                    file_chirho,
+                    ByteOffsetChirho::new_chirho(start_a_raw_chirho),
+                    ByteOffsetChirho::new_chirho(end_a_raw_chirho),
+                );
+
+                for start_b_raw_chirho in 0_u32..=8 {
+                    for end_b_raw_chirho in start_b_raw_chirho..=8 {
+                        let span_b_chirho = SpanChirho::new_chirho(
+                            file_chirho,
+                            ByteOffsetChirho::new_chirho(start_b_raw_chirho),
+                            ByteOffsetChirho::new_chirho(end_b_raw_chirho),
+                        );
+                        let merged_span_chirho = span_a_chirho.merge_chirho(span_b_chirho).unwrap();
+                        assert!(merged_span_chirho.contains_chirho(span_a_chirho));
+                        assert!(merged_span_chirho.contains_chirho(span_b_chirho));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn subspan_stays_within_parent_property_chirho() {
+        let parent_span_chirho = SpanChirho::new_chirho(
+            FileIdChirho(0),
+            ByteOffsetChirho::new_chirho(10),
+            ByteOffsetChirho::new_chirho(20),
+        );
+        let parent_len_chirho = parent_span_chirho.len_chirho();
+
+        for relative_start_chirho in 0_u32..=parent_len_chirho {
+            for relative_end_chirho in relative_start_chirho..=parent_len_chirho {
+                let subspan_chirho =
+                    parent_span_chirho.subspan_chirho(relative_start_chirho, relative_end_chirho);
+                assert!(parent_span_chirho.contains_chirho(subspan_chirho));
+            }
+        }
+    }
+
+    #[test]
+    fn text_returns_none_for_out_of_bounds_spans_property_chirho() {
+        let source_chirho = "module Main where";
+        let file_chirho = FileIdChirho(0);
+        let source_len_chirho = source_chirho.len() as u32;
+
+        for start_raw_chirho in 0_u32..=source_len_chirho + 2 {
+            for extra_len_chirho in 1_u32..=3 {
+                let end_raw_chirho = start_raw_chirho + extra_len_chirho;
+                if end_raw_chirho <= source_len_chirho {
+                    continue;
+                }
+
+                let span_chirho = SpanChirho::new_chirho(
+                    file_chirho,
+                    ByteOffsetChirho::new_chirho(start_raw_chirho),
+                    ByteOffsetChirho::new_chirho(end_raw_chirho),
+                );
+                assert_eq!(span_chirho.text_chirho(source_chirho), None);
+            }
+        }
+    }
+
+    #[test]
     fn line_index_single_line_chirho() {
         let index_chirho = LineIndexChirho::new_chirho("hello world");
         assert_eq!(index_chirho.line_count_chirho(), 1);
@@ -585,7 +692,8 @@ mod tests_chirho {
     #[test]
     fn source_map_basics_chirho() {
         let mut map_chirho = SourceMapChirho::new_chirho();
-        let id_chirho = map_chirho.add_file_chirho("Main.hs", "module Main where\nmain = putStrLn \"hi\"\n");
+        let id_chirho =
+            map_chirho.add_file_chirho("Main.hs", "module Main where\nmain = putStrLn \"hi\"\n");
 
         assert_eq!(map_chirho.file_count_chirho(), 1);
         assert_eq!(map_chirho.file_name_chirho(id_chirho), Some("Main.hs"));
