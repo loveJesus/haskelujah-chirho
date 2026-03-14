@@ -3302,6 +3302,12 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho::mono_chirho(TyChirho::io_chirho(TyChirho::char_chirho())),
     );
 
+    // getContents :: IO String — read all stdin as a single lazy String
+    env_chirho.bind_chirho(
+        "getContents".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::io_chirho(TyChirho::string_chirho())),
+    );
+
     // readFile :: String -> IO String
     env_chirho.bind_chirho(
         "readFile".to_string(),
@@ -5831,6 +5837,42 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                         TyChirho::VarChirho(bo_b_chirho),
                         TyChirho::VarChirho(bo_b_chirho),
                     ]),
+                ),
+            },
+        );
+    }
+
+    // tails :: forall a. [a] -> [[a]]
+    {
+        let tl_a_chirho = TyVarChirho(4130);
+        env_chirho.bind_chirho(
+            "tails".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![tl_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(tl_a_chirho))),
+                    TyChirho::ListChirho(Box::new(TyChirho::ListChirho(Box::new(
+                        TyChirho::VarChirho(tl_a_chirho),
+                    )))),
+                ),
+            },
+        );
+    }
+
+    // inits :: forall a. [a] -> [[a]]
+    {
+        let in_a_chirho = TyVarChirho(4131);
+        env_chirho.bind_chirho(
+            "inits".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![in_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(in_a_chirho))),
+                    TyChirho::ListChirho(Box::new(TyChirho::ListChirho(Box::new(
+                        TyChirho::VarChirho(in_a_chirho),
+                    )))),
                 ),
             },
         );

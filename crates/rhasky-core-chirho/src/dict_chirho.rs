@@ -715,6 +715,14 @@ impl DictPassCtxChirho {
             ("Show", "show", "(Int,String)", 2),
             ("Show", "show", "(String,Int)", 2),
             ("Show", "show", "(String,String)", 2),
+            ("Show", "show", "(Int,Bool)", 2),
+            ("Show", "show", "(Bool,Int)", 2),
+            ("Show", "show", "(Int,Double)", 2),
+            ("Show", "show", "(Double,Int)", 2),
+            ("Show", "show", "(Bool,Bool)", 2),
+            ("Show", "show", "(Double,Double)", 2),
+            ("Show", "show", "(Bool,String)", 2),
+            ("Show", "show", "(String,Bool)", 2),
             // Either
             ("Show", "show", "Either Int Int", 2),
             ("Show", "show", "Either String Int", 2),
@@ -757,11 +765,24 @@ impl DictPassCtxChirho {
                     ("Show", "show", "(Int,String)") => "showTuple2#",
                     ("Show", "show", "(String,Int)") => "showTuple2#",
                     ("Show", "show", "(String,String)") => "showTuple2#",
+                    ("Show", "show", "(Int,Bool)") => "showTuple2#",
+                    ("Show", "show", "(Bool,Int)") => "showTuple2#",
+                    ("Show", "show", "(Int,Double)") => "showTuple2#",
+                    ("Show", "show", "(Double,Int)") => "showTuple2#",
+                    ("Show", "show", "(Bool,Bool)") => "showTuple2#",
+                    ("Show", "show", "(Double,Double)") => "showTuple2#",
+                    ("Show", "show", "(Bool,String)") => "showTuple2#",
+                    ("Show", "show", "(String,Bool)") => "showTuple2#",
                     ("Show", "show", "Either Int Int") => "showEither#",
                     ("Show", "show", "Either String Int") => "showEither#",
                     ("Show", "show", "Either Int String") => "showEither#",
                     ("Show", "show", "Either String String") => "showEither#",
                     ("Show", "show", "Ordering") => "showOrdering#",
+                    ("Show", "show", tk_chirho) if tk_chirho.starts_with('(') => "showTuple2#",
+                    ("Show", "show", tk_chirho) if tk_chirho.starts_with("Maybe") => "showMaybe#",
+                    ("Show", "show", tk_chirho) if tk_chirho.starts_with("Either") => "showEither#",
+                    ("Show", "show", tk_chirho) if tk_chirho.starts_with('[') => "showList#",
+                    ("Show", "show", "Bool") => "showBool#",
                     ("Show", "show", _) => "showInt#",
                     ("Read", "read", "Int") => "readInt#",
                     ("Read", "read", "Double") => "readFloat#",
@@ -8203,6 +8224,25 @@ impl DictPassCtxChirho {
             });
         }
 
+        // getContents :: IO String — read all stdin as a single String
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("getContents");
+            let rhs_chirho = CoreExprChirho::PrimOpChirho {
+                name_chirho: "getContents#".to_string(),
+                args_chirho: vec![],
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "getContents".to_string(),
+                    ty_chirho: TyChirho::string_chirho(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
         // putChar :: Char -> IO ()
         {
             let putchar_id_chirho = self.resolve_or_fresh_id_chirho("putChar");
@@ -8589,7 +8629,7 @@ impl DictPassCtxChirho {
         }
 
         // interact :: (String -> String) -> IO ()
-        // interact f = getLine >>= \input -> putStrLn (f input)
+        // interact f = getContents >>= \input -> putStr (f input)
         {
             let interact_id_chirho = self.resolve_or_fresh_id_chirho("interact");
             let f_chirho = self.fresh_binder_chirho(
@@ -8603,22 +8643,22 @@ impl DictPassCtxChirho {
                 fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(input_chirho.id_chirho)),
             };
-            // putStrLn (f input)
-            let putstrln_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "putStrLn#".to_string(),
+            // putStr (f input)  — standard interact uses putStr, not putStrLn
+            let putstr_chirho = CoreExprChirho::PrimOpChirho {
+                name_chirho: "putStr#".to_string(),
                 args_chirho: vec![apply_f_chirho],
             };
-            // \input -> putStrLn (f input)
+            // \input -> putStr (f input)
             let callback_chirho = CoreExprChirho::LamChirho {
                 binder_chirho: input_chirho,
-                body_chirho: Box::new(putstrln_chirho),
+                body_chirho: Box::new(putstr_chirho),
             };
-            // getLine >>= \input -> ...
+            // getContents >>= \input -> ...
             let bind_chirho = CoreExprChirho::PrimOpChirho {
                 name_chirho: "bindIO#".to_string(),
                 args_chirho: vec![
                     CoreExprChirho::PrimOpChirho {
-                        name_chirho: "getLine#".to_string(),
+                        name_chirho: "getContents#".to_string(),
                         args_chirho: vec![],
                     },
                     callback_chirho,
@@ -14041,6 +14081,8 @@ impl DictPassCtxChirho {
             for type_key_chirho in &[
                 "Maybe Int", "Maybe String", "Maybe Double",
                 "(Int,Int)", "(Int,String)", "(String,Int)", "(String,String)",
+                "(Int,Bool)", "(Bool,Int)", "(Int,Double)", "(Double,Int)",
+                "(Bool,Bool)", "(Double,Double)", "(Bool,String)", "(String,Bool)",
             ] {
                 if !eligible_chirho.iter().any(|(c_chirho, t_chirho, _)| c_chirho == "Show" && t_chirho == *type_key_chirho) {
                     eligible_chirho.push((
@@ -17608,6 +17650,160 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+            });
+        }
+
+        // ── tails :: [a] -> [[a]] ──
+        // tails []     = [[]]
+        // tails (x:xs) = (x:xs) : tails xs
+        {
+            let tails_id_chirho = self.resolve_or_fresh_id_chirho("tails");
+            let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
+            let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
+            let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
+            let scr_chirho = self.fresh_binder_chirho("_tscr", list_a_chirho.clone());
+
+            let list_list_a_chirho = TyChirho::ListChirho(Box::new(list_a_chirho.clone()));
+
+            // tails xs in the cons case
+            let rec_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(tails_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(t_chirho.id_chirho)),
+            };
+            // (h:t) : tails t
+            let whole_list_chirho = cons_chirho(
+                CoreExprChirho::VarChirho(h_chirho.id_chirho),
+                CoreExprChirho::VarChirho(t_chirho.id_chirho),
+            );
+            let cons_case_chirho = cons_chirho(whole_list_chirho, rec_call_chirho);
+
+            // [[]] — a list containing the empty list
+            let singleton_nil_chirho = cons_chirho(nil_chirho(), nil_chirho());
+
+            let body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(xs_chirho.id_chirho)),
+                bind_chirho: scr_chirho,
+                result_ty_chirho: list_list_a_chirho.clone(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("[]".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: singleton_nil_chirho,
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho(":".to_string()),
+                        binders_chirho: vec![h_chirho, t_chirho],
+                        rhs_chirho: cons_case_chirho,
+                    },
+                ],
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: xs_chirho,
+                body_chirho: Box::new(body_chirho),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: tails_id_chirho,
+                    name_chirho: "tails".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(list_a_chirho.clone(), list_list_a_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: true,
+            });
+        }
+
+        // ── inits :: [a] -> [[a]] ──
+        // inits []     = [[]]
+        // inits (x:xs) = [] : map (x:) (inits xs)
+        // We implement this using a helper that accumulates the prefix.
+        // Simpler recursive version:
+        // inits xs = [] : case xs of
+        //   []   -> []
+        //   x:xs' -> map (x:) (inits xs')
+        // But map (x:) requires partial application. Instead we use a direct
+        // recursive approach:
+        // inits [] = [[]]
+        // inits (x:xs) = [] : prependAll x (inits xs)
+        // where prependAll x [[]]        = [[x]]
+        //       prependAll x (ys:rest)    = (x:ys) : prependAll x rest
+        //       prependAll x []           = []
+        //
+        // Actually the simplest correct definition:
+        // inits []     = [[]]
+        // inits (x:xs) = [] : map (\ys -> x : ys) (inits xs)
+        // which needs map. Since map is already in the Prelude, we can reference it.
+        {
+            let inits_id_chirho = self.resolve_or_fresh_id_chirho("inits");
+            let map_id_chirho = self.resolve_or_fresh_id_chirho("map");
+            let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
+            let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
+            let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
+            let scr_chirho = self.fresh_binder_chirho("_iscr", list_a_chirho.clone());
+
+            let list_list_a_chirho = TyChirho::ListChirho(Box::new(list_a_chirho.clone()));
+
+            // (\ys -> h : ys)
+            let ys_chirho = self.fresh_binder_chirho("ys", list_a_chirho.clone());
+            let prepend_lam_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: ys_chirho.clone(),
+                body_chirho: Box::new(cons_chirho(
+                    CoreExprChirho::VarChirho(h_chirho.id_chirho),
+                    CoreExprChirho::VarChirho(ys_chirho.id_chirho),
+                )),
+            };
+
+            // inits t
+            let rec_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(inits_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(t_chirho.id_chirho)),
+            };
+
+            // map (\ys -> h:ys) (inits t)
+            let mapped_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(map_id_chirho)),
+                    arg_chirho: Box::new(prepend_lam_chirho),
+                }),
+                arg_chirho: Box::new(rec_call_chirho),
+            };
+
+            // [] : map (\ys -> h:ys) (inits t)
+            let cons_case_chirho = cons_chirho(nil_chirho(), mapped_chirho);
+
+            // [[]]
+            let singleton_nil_chirho = cons_chirho(nil_chirho(), nil_chirho());
+
+            let body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(xs_chirho.id_chirho)),
+                bind_chirho: scr_chirho,
+                result_ty_chirho: list_list_a_chirho.clone(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("[]".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: singleton_nil_chirho,
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho(":".to_string()),
+                        binders_chirho: vec![h_chirho, t_chirho],
+                        rhs_chirho: cons_case_chirho,
+                    },
+                ],
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: xs_chirho,
+                body_chirho: Box::new(body_chirho),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: inits_id_chirho,
+                    name_chirho: "inits".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(list_a_chirho.clone(), list_list_a_chirho),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: true,
             });
         }
     }

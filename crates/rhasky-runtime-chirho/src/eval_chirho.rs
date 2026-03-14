@@ -473,6 +473,7 @@ impl MachineChirho {
 
             let code_chirho = self.code_table_chirho[pc_chirho as usize].clone();
 
+
             match code_chirho {
                 // ── Enter a closure ─────────────────────────────────
                 CodeChirho::EnterChirho(addr_chirho) => {
@@ -1558,7 +1559,6 @@ impl MachineChirho {
                 // The body's result will pass through the CatchChirho frame
                 // transparently on success. On error, run_chirho unwinds
                 // to the CatchChirho frame and invokes the handler.
-                eprintln!("[DEBUG catch#] args={:?}", args_chirho);
                 let body_val_chirho = args_chirho.first().cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
                 let handler_val_chirho = args_chirho.get(1).cloned()
@@ -1670,6 +1670,12 @@ impl MachineChirho {
             PrimOpKindChirho::BindIOChirho | PrimOpKindChirho::ThenIOChirho => {
                 // For now these are handled at the lowering level
                 return Ok(ValueChirho::IntChirho(0));
+            }
+            PrimOpKindChirho::GetContentsChirho => {
+                // Read all remaining stdin as a single String (newline-joined)
+                let all_lines_chirho: Vec<String> = self.io_input_chirho.drain(..).collect();
+                let contents_chirho = all_lines_chirho.join("\n");
+                return Ok(ValueChirho::StringChirho(contents_chirho));
             }
             PrimOpKindChirho::GetLineChirho => {
                 // Read a line from the input feed (or empty string if exhausted)
@@ -2540,6 +2546,28 @@ impl MachineChirho {
             _ => {}
         }
 
+        // Fallback for Show primops receiving HeapPtrChirho (compound values
+        // like nested lists, tuples, etc.): use show_value_as_string_chirho
+        // which handles all runtime value types recursively.
+        let is_show_primop_chirho = matches!(
+            op_chirho,
+            PrimOpKindChirho::ShowIntChirho
+            | PrimOpKindChirho::ShowFloatChirho
+            | PrimOpKindChirho::ShowStrChirho
+            | PrimOpKindChirho::ShowBoolChirho
+        );
+        if is_show_primop_chirho {
+            if let Some(val_chirho) = args_chirho.first() {
+                match val_chirho {
+                    ValueChirho::HeapPtrChirho(_) => {
+                        let s_chirho = self.show_value_as_string_chirho(val_chirho);
+                        return Ok(ValueChirho::StringChirho(s_chirho));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         // Resolve HeapPtr arguments to their underlying values when
         // they point to nullary constructors (e.g. True, False, Nothing).
         // This allows primops like showBool# to receive a concrete value
@@ -2762,24 +2790,50 @@ impl MachineChirho {
                     }
                     "[]" => "[]".to_string(),
                     ":" => {
-                        // Show as a list
-                        let mut elements_chirho: Vec<String> = Vec::new();
+                        // Show as a list — first collect raw values to detect
+                        // all-Char lists (i.e., Strings) for pretty display.
+                        let mut raw_values_chirho: Vec<ValueChirho> = Vec::new();
                         let mut cur_chirho = forced_addr_chirho;
+                        let mut all_char_chirho = true;
                         loop {
                             let cl_chirho = self.heap_chirho.read_chirho(cur_chirho).clone();
                             let cn_chirho = &cl_chirho.info_chirho.name_chirho;
                             if cn_chirho == "[]" { break; }
                             if cn_chirho == ":" && cl_chirho.payload_chirho.len() >= 2 {
-                                elements_chirho.push(self.show_value_as_string_chirho(&cl_chirho.payload_chirho[0]));
+                                let hd_chirho = &cl_chirho.payload_chirho[0];
+                                // Check if element is a Char
+                                match hd_chirho {
+                                    ValueChirho::CharChirho(_) => {}
+                                    _ => { all_char_chirho = false; }
+                                }
+                                raw_values_chirho.push(hd_chirho.clone());
                                 match &cl_chirho.payload_chirho[1] {
                                     ValueChirho::HeapPtrChirho(t_chirho) => {
-                                        cur_chirho = self.heap_chirho.follow_ind_chirho(*t_chirho);
+                                        // Force thunks in the tail to ensure
+                                        // lazy list spines are fully evaluated.
+                                        match self.force_addr_to_whnf_chirho(*t_chirho) {
+                                            Ok(resolved_chirho) => {
+                                                cur_chirho = resolved_chirho;
+                                            }
+                                            Err(_) => break,
+                                        }
                                     }
                                     _ => break,
                                 }
                             } else { break; }
                         }
-                        format!("[{}]", elements_chirho.join(","))
+                        // Display all-Char lists as strings
+                        if all_char_chirho && !raw_values_chirho.is_empty() {
+                            let s_chirho: String = raw_values_chirho.iter().map(|v_chirho| {
+                                if let ValueChirho::CharChirho(c_chirho) = v_chirho { *c_chirho } else { '?' }
+                            }).collect();
+                            format!("\"{}\"", s_chirho)
+                        } else {
+                            let elements_chirho: Vec<String> = raw_values_chirho.iter().map(|v_chirho| {
+                                self.show_value_as_string_chirho(v_chirho)
+                            }).collect();
+                            format!("[{}]", elements_chirho.join(","))
+                        }
                     }
                     _ => {
                         // Generic constructor: "Con field1 field2 ..."

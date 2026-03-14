@@ -8808,16 +8808,36 @@ main = case safeDivide 20 2 of
     }
 
     #[test]
-    fn eval_mapm_chirho() {
+    fn eval_unless_true_chirho() {
+        // For God so loved the world, that He gave His only begotten Son,
+        // that whosoever believeth in Him should not perish, but have everlasting life. John 3:16
         use super::eval_source_with_machine_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
+        // unless True should NOT execute the action
         let result_chirho = eval_source_with_machine_chirho(
-            "module Test where\nmain = mapM_ (\\x -> putStrLn (show x)) [1, 2, 3]\n",
+            "module Test where\nmain = unless True (putStrLn \"no\")\n",
             &mut sm_chirho, "TestChirho.hs", None,
         );
         match result_chirho {
-            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "1\n2\n3\n"),
-            Err(e_chirho) => panic!("mapM_ should print each element: {}", e_chirho),
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, ""),
+            Err(e_chirho) => panic!("unless True should not print: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_mapm_chirho() {
+        // For God so loved the world, that He gave His only begotten Son,
+        // that whosoever believeth in Him should not perish, but have everlasting life. John 3:16
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // mapM_ putStrLn ["hello", "world"] should print each string on its own line
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = mapM_ putStrLn [\"hello\", \"world\"]\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "hello\nworld\n"),
+            Err(e_chirho) => panic!("mapM_ putStrLn should print each element: {}", e_chirho),
         }
     }
 
@@ -13691,6 +13711,126 @@ main = peek s + stackSize s
 "#;
         let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(33));
+    }
+
+    // ── tails / inits ─────────────────────────────────────────────────
+
+    #[test]
+    fn eval_tails_length_chirho() {
+        // tails [1,2,3] has length 4: [1,2,3], [2,3], [3], []
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = length (tails [1,2,3])
+"#;
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(4));
+    }
+
+    #[test]
+    fn eval_tails_head_sum_chirho() {
+        // head (tails [10,20,30]) = [10,20,30], sum = 60
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = sum (head (tails [10,20,30]))
+"#;
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(60));
+    }
+
+    #[test]
+    fn eval_inits_length_chirho() {
+        // inits [1,2,3] has length 4: [], [1], [1,2], [1,2,3]
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = length (inits [1,2,3])
+"#;
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(4));
+    }
+
+    #[test]
+    fn eval_inits_last_sum_chirho() {
+        // last (inits [10,20,30]) = [10,20,30], sum = 60
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = sum (last (inits [10,20,30]))
+"#;
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(60));
+    }
+
+    // ── Type annotations in expressions ───────────────────────────────
+
+    #[test]
+    fn eval_type_annotation_expr_chirho() {
+        // (42 :: Int) should evaluate to 42
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = (42 :: Int) + 1
+"#;
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(43));
+    }
+
+    #[test]
+    fn eval_type_annotation_let_chirho() {
+        // let binding with type annotation
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = let x = (10 :: Int) in x + 5
+"#;
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15));
+    }
+
+    // ── Show for compound types ───────────────────────────────────────
+
+    #[test]
+    fn eval_show_string_list_chirho() {
+        // show "hello" should produce "\"hello\""
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = putStrLn (show "hello")
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap();
+        assert_eq!(m_chirho.io_output_chirho, "\"hello\"\n");
+    }
+
+    #[test]
+    fn eval_show_nested_list_chirho() {
+        // show [[1,2],[3]] — list of lists
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = putStrLn (show [[1,2],[3]])
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap();
+        assert_eq!(m_chirho.io_output_chirho, "[[1,2],[3]]\n");
+    }
+
+    #[test]
+    fn eval_show_tuple_string_chirho() {
+        // show (42, "hi") — tuple with mixed types
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = putStrLn (show (42, True))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap();
+        assert_eq!(m_chirho.io_output_chirho, "(42,True)\n");
     }
 
 }

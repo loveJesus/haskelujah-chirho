@@ -622,6 +622,7 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::CompareCharChirho
         | PrimOpKindChirho::CompareFloatChirho
         | PrimOpKindChirho::CompareStrChirho
+        | PrimOpKindChirho::GetContentsChirho
         | PrimOpKindChirho::GetLineChirho
         | PrimOpKindChirho::GetCharChirho
         | PrimOpKindChirho::ReadFileChirho

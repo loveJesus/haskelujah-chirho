@@ -116,8 +116,9 @@ impl LowerCtxChirho {
         let name_chirho = self.id_names_chirho.get(&id_chirho)?;
         match name_chirho.as_str() {
             "putStrLn" | "putStr" | "putChar" | "print" | "interact"
-            | "getLine" | "getChar"
+            | "getLine" | "getChar" | "getContents"
             | "readFile" | "writeFile" | "appendFile"
+            | "return" | "pure" | ">>=" | ">>"
             | "newIORef" | "readIORef" | "writeIORef"
             | "newSTRef" | "readSTRef" | "writeSTRef" | "runST"
             | "error" | "undefined" | "seq"
@@ -1338,6 +1339,10 @@ pub fn lower_module_to_stg_chirho(
     // Phase 2: Lower each binding's RHS and patch the closures
     for (i_chirho, binding_chirho) in module_chirho.bindings_chirho.iter().enumerate() {
         let addr_chirho = binding_addrs_chirho[i_chirho];
+        // Each top-level binding starts with a clean arg-parameter map.
+        // Previous bindings may have inserted let-bound or letrec-bound
+        // entries that must not leak into the next top-level binding.
+        ctx_chirho.arg_param_indices_chirho.clear();
         let (binders_chirho, inner_body_chirho) =
             collect_lam_chirho(&binding_chirho.rhs_chirho);
 
@@ -1594,8 +1599,9 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "return" | "pure" | "returnIO#" => PrimOpKindChirho::ReturnIOChirho,
         ">>=" | "bindIO#" => PrimOpKindChirho::BindIOChirho,
         ">>" | "thenIO#" => PrimOpKindChirho::ThenIOChirho,
-        "getLine" => PrimOpKindChirho::GetLineChirho,
+        "getLine" | "getLine#" => PrimOpKindChirho::GetLineChirho,
         "getChar" => PrimOpKindChirho::GetCharChirho,
+        "getContents" | "getContents#" => PrimOpKindChirho::GetContentsChirho,
         "readFile" => PrimOpKindChirho::ReadFileChirho,
         "writeFile" => PrimOpKindChirho::WriteFileChirho,
         "appendFile" => PrimOpKindChirho::AppendFileChirho,

@@ -264,6 +264,8 @@ pub enum PrimOpKindChirho {
     ShowOrderingChirho,
 
     // ── Additional IO operations ──
+    /// getContents :: IO String — read all stdin as a single String
+    GetContentsChirho,
     /// interact :: (String -> String) -> IO () — apply function to stdin, write result to stdout
     InteractChirho,
     /// print :: Show a => a -> IO () — show value then putStrLn
