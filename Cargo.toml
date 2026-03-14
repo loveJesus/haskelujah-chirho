@@ -19,6 +19,9 @@ members = [
   "crates/rhasky-core-chirho",
   "crates/rhasky-package-chirho",
   "crates/rhasky-incremental-chirho",
+  "crates/rhasky-backend-cranelift-chirho",
+  "crates/rhasky-backend-jvm-chirho",
+  "crates/rhasky-backend-beam-chirho",
 ]
 
 [workspace.package]
