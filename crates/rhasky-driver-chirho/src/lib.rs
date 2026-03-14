@@ -10435,4 +10435,114 @@ main = if Point 3 4 == Point 3 5 then 1 else 0
         }
     }
 
+    // ── Nested pattern matching in case ─────────────────────────────
+
+    #[test]
+    fn eval_case_nested_tuple_chirho() {
+        // case (1, 2) of { (a, b) -> a + b }
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = case (1, 2) of { (a, b) -> a + b }\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("case nested tuple: {}", e_chirho),
+        }
+    }
+
+    // ── Type annotation expressions ─────────────────────────────────
+
+    #[test]
+    fn eval_type_annotation_chirho() {
+        // (42 :: Int) → 42
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = (42 :: Int)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("type annotation: {}", e_chirho),
+        }
+    }
+
+    // ── Lambda with tuple pattern ────────────────────────────────────
+
+    #[test]
+    fn eval_lambda_tuple_pattern_chirho() {
+        // (\(x, y) -> x + y) (3, 4)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = (\\(x, y) -> x + y) (3, 4)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(7)),
+            Err(e_chirho) => panic!("lambda tuple pattern: {}", e_chirho),
+        }
+    }
+
+    // ── Let with multiple bindings ──────────────────────────────────
+
+    #[test]
+    fn eval_let_multi_bind_chirho() {
+        // let { a = 10; b = 20; c = 30 } in a + b + c
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = let a = 10\n           b = 20\n           c = 30\n       in a + b + c\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(60)),
+            Err(e_chirho) => panic!("let multi bind: {}", e_chirho),
+        }
+    }
+
+    // ── Data constructor as function ────────────────────────────────
+
+    #[test]
+    fn eval_map_just_chirho() {
+        // map Just [1,2,3] → [Just 1, Just 2, Just 3], length → 3
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (map Just [1,2,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("map Just: {}", e_chirho),
+        }
+    }
+
+    // ── If in where ─────────────────────────────────────────────────
+
+    #[test]
+    fn eval_if_in_where_chirho() {
+        // classify with where clause using if
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+classify x = result
+  where result = if x > 0 then 1 else 0
+main = classify 42
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("if in where: {}", e_chirho),
+        }
+    }
+
+    // ── Chained function application ────────────────────────────────
+
+    #[test]
+    fn eval_chained_dollar_chirho() {
+        // head $ filter even $ [1..10] → 2
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = head $ filter even $ [1..10]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("chained $: {}", e_chirho),
+        }
+    }
+
 }

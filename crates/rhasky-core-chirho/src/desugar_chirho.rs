@@ -1673,14 +1673,21 @@ impl DesugarCtxChirho {
                 body_chirho,
                 ..
             } => {
-                // Create binders and bind them in scope before desugaring body
+                // Create binders and bind them in scope before desugaring body.
+                // For non-variable patterns (tuples, constructors, etc.), we
+                // bind a fresh name and wrap the body in a case expression to
+                // destructure the argument.
                 self.push_scope_chirho();
+
+                let mut complex_pats_chirho: Vec<(BinderChirho, &PatChirho)> = Vec::new();
                 let binders_chirho: Vec<BinderChirho> = pats_chirho
                     .iter()
-                    .map(|pat_chirho| {
+                    .enumerate()
+                    .map(|(i_chirho, pat_chirho)| {
                         let name_chirho = match pat_chirho {
                             PatChirho::VarChirho(n_chirho) => n_chirho.text_chirho().to_string(),
-                            _ => "_lam".to_string(),
+                            PatChirho::WildcardChirho { .. } => format!("_lam{}", i_chirho),
+                            _ => format!("_lam{}", i_chirho),
                         };
                         let binder_chirho = self.fresh_binder_chirho(
                             &name_chirho,
@@ -1689,12 +1696,85 @@ impl DesugarCtxChirho {
                             )),
                             SpanChirho::DUMMY_CHIRHO,
                         );
-                        self.bind_in_scope_chirho(&name_chirho, binder_chirho.id_chirho);
+                        match pat_chirho {
+                            PatChirho::VarChirho(n_chirho) => {
+                                self.bind_in_scope_chirho(
+                                    &n_chirho.text_chirho(),
+                                    binder_chirho.id_chirho,
+                                );
+                            }
+                            PatChirho::WildcardChirho { .. } => {}
+                            _ => {
+                                // Non-trivial pattern: record for wrapping
+                                complex_pats_chirho
+                                    .push((binder_chirho.clone(), pat_chirho));
+                            }
+                        }
                         binder_chirho
                     })
                     .collect();
 
+                // For complex patterns, create binders FIRST (via
+                // pat_to_binders_chirho which also binds them in scope),
+                // then desugar the body so body references match alt
+                // binder IDs.
+                let mut pat_binder_info_chirho: Vec<(
+                    &BinderChirho,
+                    &PatChirho,
+                    Vec<BinderChirho>,
+                )> = Vec::new();
+                for (binder_chirho, pat_chirho) in &complex_pats_chirho {
+                    let alt_binders_chirho =
+                        self.pat_to_binders_chirho(pat_chirho);
+                    pat_binder_info_chirho.push((
+                        binder_chirho,
+                        pat_chirho,
+                        alt_binders_chirho,
+                    ));
+                }
+
                 let mut result_chirho = self.desugar_expr_chirho(body_chirho);
+
+                // Wrap body in case expressions for complex patterns
+                // (innermost first, so process in reverse)
+                for (binder_chirho, pat_chirho, alt_binders_chirho) in
+                    pat_binder_info_chirho.iter().rev()
+                {
+                    let con_chirho = self.pat_to_alt_con_chirho(pat_chirho);
+                    // Wrap with nested cases for sub-patterns
+                    let rhs_nested_chirho = self.wrap_nested_cases_chirho(
+                        result_chirho,
+                        alt_binders_chirho,
+                        pat_chirho,
+                    );
+                    let rhs_final_chirho = self.wrap_as_bindings_chirho(
+                        rhs_nested_chirho,
+                        pat_chirho,
+                        binder_chirho.id_chirho,
+                    );
+                    let wild_chirho = self.fresh_binder_chirho(
+                        "wild",
+                        TyChirho::VarChirho(rhasky_typing_chirho::ty_chirho::TyVarChirho(
+                            self.next_id_chirho,
+                        )),
+                        SpanChirho::DUMMY_CHIRHO,
+                    );
+                    result_chirho = CoreExprChirho::CaseChirho {
+                        scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
+                            binder_chirho.id_chirho,
+                        )),
+                        bind_chirho: wild_chirho,
+                        result_ty_chirho: TyChirho::VarChirho(
+                            rhasky_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
+                        ),
+                        alts_chirho: vec![CoreAltChirho {
+                            con_chirho,
+                            binders_chirho: alt_binders_chirho.clone(),
+                            rhs_chirho: rhs_final_chirho,
+                        }],
+                    };
+                }
+
                 self.pop_scope_chirho();
 
                 for binder_chirho in binders_chirho.into_iter().rev() {
