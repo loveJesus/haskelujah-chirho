@@ -639,7 +639,7 @@ impl DictPassCtxChirho {
             ("Show", "show", "Int", 2),
             ("Show", "show", "Char", 0),
             // Show Bool is handled specially below (case True/False -> string)
-            // ("Show", "show", "Bool", 0),
+            ("Show", "show", "Bool", 0),
             // Num
             ("Num", "+", "Int", 1),
             ("Num", "*", "Int", 1),

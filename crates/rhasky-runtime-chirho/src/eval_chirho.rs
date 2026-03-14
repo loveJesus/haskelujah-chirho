@@ -2103,14 +2103,36 @@ impl MachineChirho {
             _ => {}
         }
 
-        match args_chirho.len() {
-            2 => apply_prim_binop_chirho(op_chirho, &args_chirho[0], &args_chirho[1])
+        // Resolve HeapPtr arguments to their underlying values when
+        // they point to nullary constructors (e.g. True, False, Nothing).
+        // This allows primops like showBool# to receive a concrete value
+        // instead of a raw heap address.
+        let resolved_args_chirho: Vec<ValueChirho> = args_chirho
+            .iter()
+            .map(|v_chirho| {
+                if let ValueChirho::HeapPtrChirho(addr_chirho) = v_chirho {
+                    let resolved_addr_chirho = self.heap_chirho.follow_ind_chirho(*addr_chirho);
+                    let closure_chirho = self.heap_chirho.read_chirho(resolved_addr_chirho).clone();
+                    let name_chirho = &closure_chirho.info_chirho.name_chirho;
+                    match name_chirho.as_str() {
+                        "True" => ValueChirho::BoolChirho(true),
+                        "False" => ValueChirho::BoolChirho(false),
+                        _ => v_chirho.clone(),
+                    }
+                } else {
+                    v_chirho.clone()
+                }
+            })
+            .collect();
+
+        match resolved_args_chirho.len() {
+            2 => apply_prim_binop_chirho(op_chirho, &resolved_args_chirho[0], &resolved_args_chirho[1])
                 .map_err(EvalErrorChirho::PrimFailChirho),
             1 => {
                 // Unary ops (NegInt)
                 apply_prim_binop_chirho(
                     op_chirho,
-                    &args_chirho[0],
+                    &resolved_args_chirho[0],
                     &ValueChirho::IntChirho(0), // dummy second arg for unary
                 )
                 .map_err(EvalErrorChirho::PrimFailChirho)

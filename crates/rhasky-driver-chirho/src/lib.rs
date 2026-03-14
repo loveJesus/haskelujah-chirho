@@ -9660,4 +9660,34 @@ main = myLookup 5 (myInsert 3 99 (myInsert 5 42 Leaf))
             Err(e_chirho) => panic!("Map three keys sum should be 60: {}", e_chirho),
         }
     }
+
+    #[test]
+    fn eval_show_true_typeclass_chirho() {
+        // show True through real typeclass Show machinery (not manual showBool)
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = putStrLn (show True)\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "True\n"),
+            Err(e_chirho) => panic!("show True through typeclass should print: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_show_false_typeclass_chirho() {
+        // show False through real typeclass Show machinery
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = putStrLn (show False)\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "False\n"),
+            Err(e_chirho) => panic!("show False through typeclass should print: {}", e_chirho),
+        }
+    }
 }
