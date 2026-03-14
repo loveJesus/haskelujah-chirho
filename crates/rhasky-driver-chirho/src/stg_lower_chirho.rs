@@ -853,6 +853,7 @@ impl LowerCtxChirho {
                                     captures_chirho,
                                     dest_reg_chirho,
                                     body_chirho: current_body_chirho,
+                                    patch_addr_chirho,
                                 },
                             ),
                         };

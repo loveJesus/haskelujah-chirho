@@ -9035,6 +9035,42 @@ main = case safeDivide 20 2 of
     }
 
     #[test]
+    fn eval_where_value_and_function_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // where clause with both value bindings and function bindings
+        // (function does NOT reference other where bindings — that's a separate issue)
+        let result_chirho = eval_source_chirho(
+            "module Test where\nf x = a + g x\n  where\n    a = x * 3\n    g y = y + 10\nmain = f 5\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => {
+                // a = 15, g 5 = 15, total = 30
+                assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(30));
+            }
+            Err(e_chirho) => panic!("where value and function should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_where_helper_function_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // where clause containing a function binding (takes a parameter)
+        let result_chirho = eval_source_chirho(
+            "module Test where\nf x = g x\n  where\n    g y = y + 10\nmain = f 5\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15));
+            }
+            Err(e_chirho) => panic!("where helper function should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
     fn eval_interact_chirho() {
         use super::eval_source_with_input_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();

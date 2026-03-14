@@ -228,6 +228,9 @@ pub enum CodeChirho {
         dest_reg_chirho: usize,
         /// Code entry for the continuation body.
         body_chirho: u32,
+        /// If set, write an indirection from this heap address to the
+        /// newly allocated thunk. Used for letrec thunk bindings.
+        patch_addr_chirho: Option<HeapAddrChirho>,
     },
 }
 
@@ -746,6 +749,7 @@ impl MachineChirho {
                     captures_chirho,
                     dest_reg_chirho,
                     body_chirho,
+                    patch_addr_chirho,
                 } => {
                     let payload_chirho = self.resolve_args_chirho(&captures_chirho);
                     let closure_chirho = ClosureChirho::thunk_chirho(
@@ -754,6 +758,11 @@ impl MachineChirho {
                         payload_chirho,
                     );
                     let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
+                    // Patch letrec placeholder if needed
+                    if let Some(placeholder_chirho) = patch_addr_chirho {
+                        self.heap_chirho
+                            .update_to_ind_chirho(placeholder_chirho, addr_chirho);
+                    }
                     self.maybe_gc_chirho();
                     // Store in dest arg register and continue to body
                     if self.arg_regs_chirho.len() <= dest_reg_chirho {
