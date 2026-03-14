@@ -12468,4 +12468,76 @@ main = mapM_ printItem [1, 2, 3]
         assert_eq!(output_chirho, "1\n2\n3\n");
     }
 
+    // ── sequence_ / void / guard / interact tests ──────────────────────
+
+    #[test]
+    fn eval_sequence_io_chirho() {
+        // sequence_ [putStrLn "a", putStrLn "b", putStrLn "c"]
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = sequence_ [putStrLn \"a\", putStrLn \"b\", putStrLn \"c\"]
+";
+        let (_, machine_chirho) = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        let output_chirho = machine_chirho.io_output_chirho.clone();
+        assert_eq!(output_chirho, "a\nb\nc\n");
+    }
+
+    #[test]
+    fn eval_void_io_chirho() {
+        // void (putStrLn "hello") — should still print, result discarded
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = void (putStrLn \"hello\")
+";
+        let (_, machine_chirho) = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        let output_chirho = machine_chirho.io_output_chirho.clone();
+        assert_eq!(output_chirho, "hello\n");
+    }
+
+    #[test]
+    fn eval_builtin_when_true_io_chirho() {
+        // when True (putStrLn "yes") — uses builtin when binding
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = when True (putStrLn \"yes\")
+";
+        let (_, machine_chirho) = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        let output_chirho = machine_chirho.io_output_chirho.clone();
+        assert_eq!(output_chirho, "yes\n");
+    }
+
+    #[test]
+    fn eval_builtin_unless_true_io_chirho() {
+        // unless True (putStrLn "skipped") — should produce no output
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = unless True (putStrLn \"skipped\")
+";
+        let (_, machine_chirho) = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        let output_chirho = machine_chirho.io_output_chirho.clone();
+        assert_eq!(output_chirho, "");
+    }
+
+    #[test]
+    fn eval_guard_true_chirho() {
+        // guard True >> putStrLn "passed"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = guard True >> putStrLn \"passed\"
+";
+        let (_, machine_chirho) = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        let output_chirho = machine_chirho.io_output_chirho.clone();
+        assert_eq!(output_chirho, "passed\n");
+    }
+
 }
