@@ -162,6 +162,10 @@ pub enum ValueChirho {
     /// Keys are kept in ascending order by `compare_values_chirho`.
     /// Used by the mapEmpty#/mapInsert#/mapLookup#/etc. primops.
     MapChirho(Vec<(ValueChirho, ValueChirho)>),
+    /// A runtime Set value: sorted, deduplicated Vec of elements.
+    /// Elements are kept in ascending order by `compare_values_chirho`.
+    /// Used by the setEmpty#/setInsert#/setMember#/etc. primops.
+    SetChirho(Vec<ValueChirho>),
 }
 
 impl fmt::Display for ValueChirho {
@@ -180,6 +184,16 @@ impl fmt::Display for ValueChirho {
                         write!(f_chirho, ",")?;
                     }
                     write!(f_chirho, "{}->{}", k_chirho, v_chirho)?;
+                }
+                write!(f_chirho, "}}")
+            }
+            Self::SetChirho(elems_chirho) => {
+                write!(f_chirho, "Set{{")?;
+                for (idx_chirho, e_chirho) in elems_chirho.iter().enumerate() {
+                    if idx_chirho > 0 {
+                        write!(f_chirho, ",")?;
+                    }
+                    write!(f_chirho, "{}", e_chirho)?;
                 }
                 write!(f_chirho, "}}")
             }

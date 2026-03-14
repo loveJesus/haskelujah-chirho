@@ -371,6 +371,32 @@ pub enum PrimOpKindChirho {
     MapFilterChirho,
     /// mapFilterWithKey# :: (k -> v -> Bool) -> Map k v -> Map k v — keep entries matching key-value predicate
     MapFilterWithKeyChirho,
+
+    // ── Data.Set runtime primops ──
+    /// setEmpty# :: Set a — create an empty set
+    SetEmptyChirho,
+    /// setSingleton# :: a -> Set a — create a single-element set
+    SetSingletonChirho,
+    /// setInsert# :: Ord a => a -> Set a -> Set a — insert element (dedup)
+    SetInsertChirho,
+    /// setMember# :: Ord a => a -> Set a -> Bool — test if element is in set
+    SetMemberChirho,
+    /// setDelete# :: Ord a => a -> Set a -> Set a — remove element
+    SetDeleteChirho,
+    /// setSize# :: Set a -> Int — number of elements
+    SetSizeChirho,
+    /// setFromList# :: Ord a => [a] -> Set a — build set from list
+    SetFromListChirho,
+    /// setToList# :: Set a -> [a] — convert set to sorted list
+    SetToListChirho,
+    /// setUnion# :: Ord a => Set a -> Set a -> Set a — union of two sets
+    SetUnionChirho,
+    /// setIntersection# :: Ord a => Set a -> Set a -> Set a — elements in both sets
+    SetIntersectionChirho,
+    /// setDifference# :: Ord a => Set a -> Set a -> Set a — elements in first not in second
+    SetDifferenceChirho,
+    /// setNull# :: Set a -> Bool — test if set is empty
+    SetNullChirho,
 }
 
 /// The evaluation stack.

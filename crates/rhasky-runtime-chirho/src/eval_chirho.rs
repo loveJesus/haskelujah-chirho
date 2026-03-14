@@ -3057,6 +3057,104 @@ impl MachineChirho {
                 return Ok(ValueChirho::MapChirho(kept_chirho));
             }
 
+            // ── Data.Set primops ──────────────────────────────────────────
+            PrimOpKindChirho::SetEmptyChirho => {
+                return Ok(ValueChirho::SetChirho(vec![]));
+            }
+            PrimOpKindChirho::SetSingletonChirho => {
+                let e_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                return Ok(ValueChirho::SetChirho(vec![e_chirho]));
+            }
+            PrimOpKindChirho::SetInsertChirho => {
+                let e_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                let set_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let mut elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
+                match elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho)) {
+                    Ok(_) => {} // already present — dedup
+                    Err(pos_chirho) => { elems_chirho.insert(pos_chirho, e_chirho); }
+                }
+                return Ok(ValueChirho::SetChirho(elems_chirho));
+            }
+            PrimOpKindChirho::SetMemberChirho => {
+                let e_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                let set_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
+                let found_chirho = elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho)).is_ok();
+                return Ok(ValueChirho::BoolChirho(found_chirho));
+            }
+            PrimOpKindChirho::SetDeleteChirho => {
+                let e_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                let set_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let mut elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
+                if let Ok(pos_chirho) = elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho)) {
+                    elems_chirho.remove(pos_chirho);
+                }
+                return Ok(ValueChirho::SetChirho(elems_chirho));
+            }
+            PrimOpKindChirho::SetSizeChirho => {
+                let set_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
+                return Ok(ValueChirho::IntChirho(elems_chirho.len() as i64));
+            }
+            PrimOpKindChirho::SetNullChirho => {
+                let set_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
+                return Ok(ValueChirho::BoolChirho(elems_chirho.is_empty()));
+            }
+            PrimOpKindChirho::SetFromListChirho => {
+                // Build a sorted deduplicated set from a heap list
+                let list_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::HeapPtrChirho(HeapAddrChirho(0)));
+                let elems_chirho = self.collect_set_from_list_chirho(list_arg_chirho);
+                return Ok(ValueChirho::SetChirho(elems_chirho));
+            }
+            PrimOpKindChirho::SetToListChirho => {
+                let set_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
+                let heap_list_chirho = self.build_value_list_chirho(elems_chirho);
+                return Ok(heap_list_chirho);
+            }
+            PrimOpKindChirho::SetUnionChirho => {
+                // Merge two sorted vecs — union of sets
+                let left_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let right_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let left_elems_chirho = self.extract_set_elems_chirho(left_arg_chirho);
+                let right_elems_chirho = self.extract_set_elems_chirho(right_arg_chirho);
+                let mut result_chirho = left_elems_chirho;
+                for e_chirho in right_elems_chirho {
+                    match result_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho)) {
+                        Ok(_) => {} // already present
+                        Err(pos_chirho) => { result_chirho.insert(pos_chirho, e_chirho); }
+                    }
+                }
+                return Ok(ValueChirho::SetChirho(result_chirho));
+            }
+            PrimOpKindChirho::SetIntersectionChirho => {
+                // Keep elements common to both sets
+                let left_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let right_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let left_elems_chirho = self.extract_set_elems_chirho(left_arg_chirho);
+                let right_elems_chirho = self.extract_set_elems_chirho(right_arg_chirho);
+                let result_chirho: Vec<ValueChirho> = left_elems_chirho.into_iter()
+                    .filter(|e_chirho| {
+                        right_elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, e_chirho)).is_ok()
+                    })
+                    .collect();
+                return Ok(ValueChirho::SetChirho(result_chirho));
+            }
+            PrimOpKindChirho::SetDifferenceChirho => {
+                // Elements in left not in right
+                let left_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let right_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let left_elems_chirho = self.extract_set_elems_chirho(left_arg_chirho);
+                let right_elems_chirho = self.extract_set_elems_chirho(right_arg_chirho);
+                let result_chirho: Vec<ValueChirho> = left_elems_chirho.into_iter()
+                    .filter(|e_chirho| {
+                        right_elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, e_chirho)).is_err()
+                    })
+                    .collect();
+                return Ok(ValueChirho::SetChirho(result_chirho));
+            }
+
             _ => {}
         }
 
@@ -3247,6 +3345,17 @@ impl MachineChirho {
                         })
                         .collect();
                     format!("fromList [{}]", entries_chirho.join(","))
+                }
+            }
+            ValueChirho::SetChirho(elems_chirho) => {
+                let elems_clone_chirho = elems_chirho.clone();
+                if elems_clone_chirho.is_empty() {
+                    "fromList []".to_string()
+                } else {
+                    let items_chirho: Vec<String> = elems_clone_chirho.iter()
+                        .map(|e_chirho| self.show_value_as_string_chirho(e_chirho))
+                        .collect();
+                    format!("fromList [{}]", items_chirho.join(","))
                 }
             }
             ValueChirho::HeapPtrChirho(addr_chirho) => {
@@ -3583,6 +3692,15 @@ impl MachineChirho {
                     vec![ValueChirho::MapChirho(pairs_chirho.clone())],
                 )
             }
+            ValueChirho::SetChirho(elems_chirho) => {
+                // Store the entire set in the payload of a "SetBox" constructor
+                // so it can be retrieved by extract_set_elems_chirho later.
+                ClosureChirho::con_chirho(
+                    DataConTagChirho(0),
+                    "SetBox",
+                    vec![ValueChirho::SetChirho(elems_chirho.clone())],
+                )
+            }
         }
     }
 
@@ -3627,6 +3745,81 @@ impl MachineChirho {
             }
             _ => vec![],
         }
+    }
+
+    // ── Data.Set helper methods ──────────────────────────────────────────
+
+    /// Extract sorted elements from a `ValueChirho::SetChirho` or a boxed heap
+    /// pointer wrapping one (via "SetBox" constructor).
+    fn extract_set_elems_chirho(&mut self, val_chirho: ValueChirho) -> Vec<ValueChirho> {
+        match val_chirho {
+            ValueChirho::SetChirho(elems_chirho) => elems_chirho,
+            ValueChirho::HeapPtrChirho(addr_chirho) => {
+                let whnf_addr_chirho = match self.force_addr_to_whnf_chirho(addr_chirho) {
+                    Ok(a_chirho) => a_chirho,
+                    Err(_) => return vec![],
+                };
+                let resolved_chirho = self.heap_chirho.follow_ind_chirho(whnf_addr_chirho);
+                let closure_chirho = self.heap_chirho.read_chirho(resolved_chirho).clone();
+                let name_chirho = &closure_chirho.info_chirho.name_chirho;
+                if name_chirho == "SetBox" {
+                    if let Some(ValueChirho::SetChirho(elems_chirho)) = closure_chirho.payload_chirho.first() {
+                        return elems_chirho.clone();
+                    }
+                }
+                // Check any payload slot for a SetChirho (fallback)
+                for payload_val_chirho in &closure_chirho.payload_chirho {
+                    if let ValueChirho::SetChirho(elems_chirho) = payload_val_chirho {
+                        return elems_chirho.clone();
+                    }
+                }
+                // Single-field wrapper — recurse
+                if closure_chirho.payload_chirho.len() == 1 {
+                    return self.extract_set_elems_chirho(closure_chirho.payload_chirho[0].clone());
+                }
+                vec![]
+            }
+            _ => vec![],
+        }
+    }
+
+    /// Collect elements from a heap list of values, building a sorted deduplicated set.
+    fn collect_set_from_list_chirho(&mut self, list_val_chirho: ValueChirho) -> Vec<ValueChirho> {
+        let mut elems_chirho: Vec<ValueChirho> = Vec::new();
+        let start_addr_chirho = match list_val_chirho {
+            ValueChirho::HeapPtrChirho(addr_chirho) => addr_chirho,
+            _ => return elems_chirho,
+        };
+        let mut current_chirho = start_addr_chirho;
+        loop {
+            let resolved_chirho = match self.force_addr_to_whnf_chirho(current_chirho) {
+                Ok(a_chirho) => a_chirho,
+                Err(_) => break,
+            };
+            let closure_chirho = self.heap_chirho.read_chirho(resolved_chirho).clone();
+            let name_chirho = closure_chirho.info_chirho.name_chirho.clone();
+            if name_chirho == "[]" {
+                break;
+            } else if name_chirho == ":" && closure_chirho.payload_chirho.len() >= 2 {
+                let raw_e_chirho = closure_chirho.payload_chirho[0].clone();
+                let e_chirho = self.force_to_prim_chirho(raw_e_chirho);
+                // Insert in sorted order, dedup
+                match elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho)) {
+                    Ok(_) => {} // duplicate — skip
+                    Err(pos_chirho) => { elems_chirho.insert(pos_chirho, e_chirho); }
+                }
+                // Advance to tail
+                match &closure_chirho.payload_chirho[1] {
+                    ValueChirho::HeapPtrChirho(tail_addr_chirho) => {
+                        current_chirho = *tail_addr_chirho;
+                    }
+                    _ => break,
+                }
+            } else {
+                break;
+            }
+        }
+        elems_chirho
     }
 
     /// Force a `ValueChirho` to a primitive (unboxed) value.

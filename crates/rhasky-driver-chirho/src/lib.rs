@@ -12961,6 +12961,92 @@ main = putStrLn (show (Just (Just 42)))
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(4));
     }
 
+    // ── Data.Set primop-based end-to-end tests ──────────────────────────
+
+    #[test]
+    fn eval_set_basic_chirho() {
+        // let s = setInsert 3 (setInsert 1 (setInsert 2 setEmpty))
+        // in putStrLn (show (setSize s)) → "3\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = let s = setInsert 3 (setInsert 1 (setInsert 2 setEmpty))
+       in putStrLn (show (setSize s))
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho,
+            &mut sm_chirho,
+            "TestChirho.hs",
+            None,
+        )
+        .expect("eval_set_basic_chirho should evaluate");
+        assert_eq!(result_chirho.1.io_output_chirho, "3\n");
+    }
+
+    #[test]
+    fn eval_set_member_chirho() {
+        // let s = setFromList [1,2,3]
+        // putStrLn (if setMember 2 s then "True" else "False") → "True\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = let s = setFromList [1,2,3]
+       in putStrLn (if setMember 2 s then \"True\" else \"False\")
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho,
+            &mut sm_chirho,
+            "TestChirho.hs",
+            None,
+        )
+        .expect("eval_set_member_chirho should evaluate");
+        assert_eq!(result_chirho.1.io_output_chirho, "True\n");
+    }
+
+    #[test]
+    fn eval_set_tolist_chirho() {
+        // let s = setFromList [3,1,2] in putStrLn (show (sum (setToList s))) → "6\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = let s = setFromList [3,1,2]
+       in putStrLn (show (sum (setToList s)))
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho,
+            &mut sm_chirho,
+            "TestChirho.hs",
+            None,
+        )
+        .expect("eval_set_tolist_chirho should evaluate");
+        assert_eq!(result_chirho.1.io_output_chirho, "6\n");
+    }
+
+    #[test]
+    fn eval_set_union_new_chirho() {
+        // let s1 = setFromList [1,2]; s2 = setFromList [2,3]
+        // in putStrLn (show (setSize (setUnion s1 s2))) → "3\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = let s1 = setFromList [1,2]
+           s2 = setFromList [2,3]
+       in putStrLn (show (setSize (setUnion s1 s2)))
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho,
+            &mut sm_chirho,
+            "TestChirho.hs",
+            None,
+        )
+        .expect("eval_set_union_new_chirho should evaluate");
+        assert_eq!(result_chirho.1.io_output_chirho, "3\n");
+    }
+
     // ── Deriving Ord end-to-end ─────────────────────────────────────────
 
     #[test]

@@ -1711,6 +1711,19 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "mapUnionWith#" | "mapUnionWith" => PrimOpKindChirho::MapUnionWithChirho,
         "mapFilter#" | "mapFilter" => PrimOpKindChirho::MapFilterChirho,
         "mapFilterWithKey#" | "mapFilterWithKey" => PrimOpKindChirho::MapFilterWithKeyChirho,
+        // Data.Set primops
+        "setEmpty#" | "setEmpty" => PrimOpKindChirho::SetEmptyChirho,
+        "setSingleton#" | "setSingleton" => PrimOpKindChirho::SetSingletonChirho,
+        "setInsert#" | "setInsert" => PrimOpKindChirho::SetInsertChirho,
+        "setMember#" | "setMember" => PrimOpKindChirho::SetMemberChirho,
+        "setDelete#" | "setDelete" => PrimOpKindChirho::SetDeleteChirho,
+        "setSize#" | "setSize" => PrimOpKindChirho::SetSizeChirho,
+        "setFromList#" | "setFromList" => PrimOpKindChirho::SetFromListChirho,
+        "setToList#" | "setToList" => PrimOpKindChirho::SetToListChirho,
+        "setUnion#" | "setUnion" => PrimOpKindChirho::SetUnionChirho,
+        "setIntersection#" | "setIntersection" => PrimOpKindChirho::SetIntersectionChirho,
+        "setDifference#" | "setDifference" => PrimOpKindChirho::SetDifferenceChirho,
+        "setNull#" | "setNull" => PrimOpKindChirho::SetNullChirho,
         _ => PrimOpKindChirho::AddIntChirho, // fallback
     }
 }

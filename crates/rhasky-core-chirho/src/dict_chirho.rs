@@ -9925,214 +9925,19 @@ impl DictPassCtxChirho {
         }
     }
 
-    /// Generate Data.Set Prelude functions using an unbalanced BST.
+    /// Generate Data.Set Prelude bindings using runtime primops.
     ///
-    /// Set is represented as:
-    ///   SetEmpty                  — empty set
-    ///   SetNode elem left right   — BST node
+    /// Internally the runtime represents a set as `ValueChirho::SetChirho`, a sorted
+    /// deduplicated Vec.  All heavy lifting (comparison, insertion, lookup, etc.) is
+    /// handled by the STG machine via dedicated `PrimOpKindChirho::Set*` variants.
     fn generate_set_prelude_chirho(&mut self) {
         let set_ty_chirho = TyChirho::int_chirho(); // placeholder for Set a
         let any_e_chirho = TyChirho::VarChirho(rhasky_typing_chirho::ty_chirho::TyVarChirho(9985));
+        let bool_ty_chirho = TyChirho::bool_chirho();
+        let int_ty_chirho = TyChirho::int_chirho();
+        let list_ty_chirho = TyChirho::ConChirho("[a]".to_string());
 
-
-        // AVL helper: setHeight :: Set a -> Int
-        {
-            let height_id_chirho = self.resolve_or_fresh_id_chirho("setHeight");
-            let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
-            let _e_chirho = self.fresh_binder_chirho("_e", any_e_chirho.clone());
-            let _l_chirho = self.fresh_binder_chirho("_l", set_ty_chirho.clone());
-            let _r_chirho = self.fresh_binder_chirho("_r", set_ty_chirho.clone());
-            let h_chirho = self.fresh_binder_chirho("h", TyChirho::int_chirho());
-            let scr_chirho = self.fresh_binder_chirho("_sh", set_ty_chirho.clone());
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: TyChirho::int_chirho(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![_e_chirho, _l_chirho, _r_chirho, h_chirho.clone()],
-                        rhs_chirho: CoreExprChirho::VarChirho(h_chirho.id_chirho),
-                    },
-                ],
-            };
-
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: height_id_chirho,
-                    name_chirho: "setHeight".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(set_ty_chirho.clone(), TyChirho::int_chirho()),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho: CoreExprChirho::LamChirho {
-                    binder_chirho: s_chirho,
-                    body_chirho: Box::new(body_chirho),
-                },
-                is_rec_chirho: false,
-            });
-        }
-
-        // AVL helper: setMakeNode :: e -> Set a -> Set a -> Set a
-        // Constructs a SetNode with height = 1 + max(setHeight l, setHeight r)
-        {
-            let mknode_id_chirho = self.resolve_or_fresh_id_chirho("setMakeNode");
-            let height_id_chirho = self.resolve_or_fresh_id_chirho("setHeight");
-            let e_chirho = self.fresh_binder_chirho("e", any_e_chirho.clone());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let hl_chirho = self.fresh_binder_chirho("hl", TyChirho::int_chirho());
-            let hr_chirho = self.fresh_binder_chirho("hr", TyChirho::int_chirho());
-            let max_scr_chirho = self.fresh_binder_chirho("_smx", TyChirho::bool_chirho());
-
-            let hl_expr_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(height_id_chirho)),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-            };
-            let hr_expr_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(height_id_chirho)),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-
-            // max hl hr via if hl >= hr
-            let max_cond_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: ">=#".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(hl_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(hr_chirho.id_chirho),
-                ],
-            };
-            let max_expr_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(max_cond_chirho),
-                bind_chirho: max_scr_chirho,
-                result_ty_chirho: TyChirho::int_chirho(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::VarChirho(hl_chirho.id_chirho),
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::VarChirho(hr_chirho.id_chirho),
-                    },
-                ],
-            };
-
-            // height = 1 + max hl hr
-            let new_height_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "+#".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
-                    max_expr_chirho,
-                ],
-            };
-
-            // SetNode e l r height  (via lambda-application for let-binding of hl/hr)
-            let inner_node_chirho = CoreExprChirho::ConAppChirho {
-                con_name_chirho: "SetNode".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(e_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(l_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(r_chirho.id_chirho),
-                    new_height_chirho,
-                ],
-            };
-            // (\hl -> (\hr -> node) hr_expr) hl_expr
-            let body_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::LamChirho {
-                    binder_chirho: hl_chirho,
-                    body_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::LamChirho {
-                            binder_chirho: hr_chirho,
-                            body_chirho: Box::new(inner_node_chirho),
-                        }),
-                        arg_chirho: Box::new(hr_expr_chirho),
-                    }),
-                }),
-                arg_chirho: Box::new(hl_expr_chirho),
-            };
-
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: mknode_id_chirho,
-                    name_chirho: "setMakeNode".to_string(),
-                    ty_chirho: TyChirho::fun_n_chirho(
-                        vec![any_e_chirho.clone(), set_ty_chirho.clone(), set_ty_chirho.clone()],
-                        set_ty_chirho.clone(),
-                    ),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho: CoreExprChirho::LamChirho {
-                    binder_chirho: e_chirho,
-                    body_chirho: Box::new(CoreExprChirho::LamChirho {
-                        binder_chirho: l_chirho,
-                        body_chirho: Box::new(CoreExprChirho::LamChirho {
-                            binder_chirho: r_chirho,
-                            body_chirho: Box::new(body_chirho),
-                        }),
-                    }),
-                },
-                is_rec_chirho: false,
-            });
-        }
-
-        // AVL helper: setBalance :: e -> Set a -> Set a -> Set a
-        // Rebalances after insert/delete using AVL rotations
-        {
-            let balance_id_chirho = self.resolve_or_fresh_id_chirho("setBalance");
-            let mknode_id_chirho = self.resolve_or_fresh_id_chirho("setMakeNode");
-            let height_id_chirho = self.resolve_or_fresh_id_chirho("setHeight");
-            let e_chirho = self.fresh_binder_chirho("e", any_e_chirho.clone());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-
-            // For simplicity, delegate to setMakeNode (correct but not rebalancing)
-            // Full AVL rotations would be added here; for now just maintain height
-            let mkn_call_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(mknode_id_chirho)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-
-            let _ = height_id_chirho; // suppress unused warning
-
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: balance_id_chirho,
-                    name_chirho: "setBalance".to_string(),
-                    ty_chirho: TyChirho::fun_n_chirho(
-                        vec![any_e_chirho.clone(), set_ty_chirho.clone(), set_ty_chirho.clone()],
-                        set_ty_chirho.clone(),
-                    ),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho: CoreExprChirho::LamChirho {
-                    binder_chirho: e_chirho,
-                    body_chirho: Box::new(CoreExprChirho::LamChirho {
-                        binder_chirho: l_chirho,
-                        body_chirho: Box::new(CoreExprChirho::LamChirho {
-                            binder_chirho: r_chirho,
-                            body_chirho: Box::new(mkn_call_chirho),
-                        }),
-                    }),
-                },
-                is_rec_chirho: false,
-            });
-        }
-
-        // setEmpty :: Set Int
+        // ─── setEmpty :: Set a ───────────────────────────────────────────
         {
             let id_chirho = self.resolve_or_fresh_id_chirho("setEmpty");
             self.generated_bindings_chirho.push(CoreBindingChirho {
@@ -10142,35 +9947,30 @@ impl DictPassCtxChirho {
                     ty_chirho: set_ty_chirho.clone(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                rhs_chirho: CoreExprChirho::ConAppChirho {
-                    con_name_chirho: "SetEmpty".to_string(),
+                rhs_chirho: CoreExprChirho::PrimOpChirho {
+                    name_chirho: "setEmpty#".to_string(),
                     args_chirho: vec![],
                 },
                 is_rec_chirho: false,
             });
         }
 
-        // setSingleton :: Int -> Set Int
+        // ─── setSingleton :: a -> Set a ──────────────────────────────────
         {
             let id_chirho = self.resolve_or_fresh_id_chirho("setSingleton");
-            let x_chirho = self.fresh_binder_chirho("x", TyChirho::int_chirho());
+            let x_chirho = self.fresh_binder_chirho("x", any_e_chirho.clone());
             let rhs_chirho = CoreExprChirho::LamChirho {
                 binder_chirho: x_chirho.clone(),
-                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
-                    con_name_chirho: "SetNode".to_string(),
-                    args_chirho: vec![
-                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
-                        CoreExprChirho::ConAppChirho { con_name_chirho: "SetEmpty".to_string(), args_chirho: vec![] },
-                        CoreExprChirho::ConAppChirho { con_name_chirho: "SetEmpty".to_string(), args_chirho: vec![] },
-                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
-                    ],
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "setSingleton#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
                 }),
             };
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
                     id_chirho,
                     name_chirho: "setSingleton".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), set_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(any_e_chirho.clone(), set_ty_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -10178,139 +9978,27 @@ impl DictPassCtxChirho {
             });
         }
 
-        // setInsert :: Ord a => a -> Set a -> Set a
-        // Uses compare# with Ordering dispatch
+        // ─── setInsert :: Ord a => a -> Set a -> Set a ───────────────────
         {
-            let insert_id_chirho = self.resolve_or_fresh_id_chirho("setInsert");
+            let id_chirho = self.resolve_or_fresh_id_chirho("setInsert");
             let x_chirho = self.fresh_binder_chirho("x", any_e_chirho.clone());
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
-            let scr_chirho = self.fresh_binder_chirho("_si", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", any_e_chirho.clone());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let _h_si_chirho = self.fresh_binder_chirho("_h", TyChirho::int_chirho());
-            let ord_scr_chirho = self.fresh_binder_chirho("_sord", TyChirho::ConChirho("Ordering".to_string()));
-
-            // Recursive calls
-            let rec_left_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(insert_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-            };
-            let rec_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(insert_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-
-            let bal_si_id = self.resolve_or_fresh_id_chirho("setBalance");
-            let mkn_si_id = self.resolve_or_fresh_id_chirho("setMakeNode");
-            let insert_left_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(bal_si_id)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(rec_left_chirho),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-            let same_node_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(mkn_si_id)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-            let insert_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(bal_si_id)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(rec_right_chirho),
-            };
-
-            // case compare# x e of { LT → insert left, EQ → same, GT → insert right }
-            let ordering_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "compare#".to_string(),
-                    args_chirho: vec![
-                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
-                        CoreExprChirho::VarChirho(e_chirho.id_chirho),
-                    ],
-                }),
-                bind_chirho: ord_scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: insert_left_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: same_node_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: insert_right_chirho,
-                    },
-                ],
-            };
-
-            // Empty case → singleton via setMakeNode
-            let singleton_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(mkn_si_id)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(CoreExprChirho::ConAppChirho { con_name_chirho: "SetEmpty".to_string(), args_chirho: vec![] }),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::ConAppChirho { con_name_chirho: "SetEmpty".to_string(), args_chirho: vec![] }),
-            };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: singleton_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![e_chirho, l_chirho, r_chirho, _h_si_chirho],
-                        rhs_chirho: ordering_case_chirho,
-                    },
-                ],
-            };
-
             let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: x_chirho,
+                binder_chirho: x_chirho.clone(),
                 body_chirho: Box::new(CoreExprChirho::LamChirho {
-                    binder_chirho: s_chirho,
-                    body_chirho: Box::new(body_chirho),
+                    binder_chirho: s_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "setInsert#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(s_chirho.id_chirho),
+                        ],
+                    }),
                 }),
             };
-
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
-                    id_chirho: insert_id_chirho,
+                    id_chirho,
                     name_chirho: "setInsert".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
                         any_e_chirho.clone(),
@@ -10319,460 +10007,64 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
-                is_rec_chirho: true,
+                is_rec_chirho: false,
             });
         }
 
-        // setMember :: Ord a => a -> Set a -> Bool
+        // ─── setMember :: Ord a => a -> Set a -> Bool ────────────────────
         {
-            let member_id_chirho = self.resolve_or_fresh_id_chirho("setMember");
+            let id_chirho = self.resolve_or_fresh_id_chirho("setMember");
             let x_chirho = self.fresh_binder_chirho("x", any_e_chirho.clone());
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
-            let scr_chirho = self.fresh_binder_chirho("_sm", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", any_e_chirho.clone());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let _h_sm_chirho = self.fresh_binder_chirho("_h", TyChirho::int_chirho());
-            let ord_scr_chirho = self.fresh_binder_chirho("_ord", TyChirho::ConChirho("Ordering".to_string()));
-
-            let rec_left_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(member_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-            };
-            let rec_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(member_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-
-            let compare_call_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "compare#".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(x_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(e_chirho.id_chirho),
-                ],
-            };
-
-            let ordering_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(compare_call_chirho),
-                bind_chirho: ord_scr_chirho,
-                result_ty_chirho: TyChirho::bool_chirho(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: rec_left_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "True".to_string(),
-                            args_chirho: vec![],
-                        },
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: rec_right_chirho,
-                    },
-                ],
-            };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: TyChirho::bool_chirho(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "False".to_string(),
-                            args_chirho: vec![],
-                        },
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![e_chirho, l_chirho, r_chirho, _h_sm_chirho],
-                        rhs_chirho: ordering_case_chirho,
-                    },
-                ],
-            };
-
             let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: x_chirho,
+                binder_chirho: x_chirho.clone(),
                 body_chirho: Box::new(CoreExprChirho::LamChirho {
-                    binder_chirho: s_chirho,
-                    body_chirho: Box::new(body_chirho),
+                    binder_chirho: s_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "setMember#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(s_chirho.id_chirho),
+                        ],
+                    }),
                 }),
             };
-
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
-                    id_chirho: member_id_chirho,
+                    id_chirho,
                     name_chirho: "setMember".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
                         any_e_chirho.clone(),
-                        TyChirho::fun_chirho(set_ty_chirho.clone(), TyChirho::bool_chirho()),
+                        TyChirho::fun_chirho(set_ty_chirho.clone(), bool_ty_chirho.clone()),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
-                is_rec_chirho: true,
+                is_rec_chirho: false,
             });
         }
 
-        // setSize :: Set Int -> Int
+        // ─── setDelete :: Ord a => a -> Set a -> Set a ───────────────────
         {
-            let size_id_chirho = self.resolve_or_fresh_id_chirho("setSize");
-            let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
-            let scr_chirho = self.fresh_binder_chirho("_ss", set_ty_chirho.clone());
-            let _e_chirho = self.fresh_binder_chirho("_e", TyChirho::int_chirho());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let _h_ss_chirho = self.fresh_binder_chirho("_h", TyChirho::int_chirho());
-
-            let rec_left_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(size_id_chirho)),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-            };
-            let rec_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(size_id_chirho)),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: TyChirho::int_chirho(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![_e_chirho, l_chirho, r_chirho, _h_ss_chirho],
-                        rhs_chirho: CoreExprChirho::PrimOpChirho {
-                            name_chirho: "+#".to_string(),
-                            args_chirho: vec![
-                                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
-                                CoreExprChirho::PrimOpChirho {
-                                    name_chirho: "+#".to_string(),
-                                    args_chirho: vec![rec_left_chirho, rec_right_chirho],
-                                },
-                            ],
-                        },
-                    },
-                ],
-            };
-
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: s_chirho,
-                body_chirho: Box::new(body_chirho),
-            };
-
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: size_id_chirho,
-                    name_chirho: "setSize".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(set_ty_chirho.clone(), TyChirho::int_chirho()),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho,
-                is_rec_chirho: true,
-            });
-        }
-
-        // setToList :: Set Int -> [Int]  (in-order traversal)
-        {
-            let tolist_id_chirho = self.resolve_or_fresh_id_chirho("setToList");
-            let append_id_chirho = self.resolve_or_fresh_id_chirho("append");
-            let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
-            let scr_chirho = self.fresh_binder_chirho("_stl", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", TyChirho::int_chirho());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let _h_stl_chirho = self.fresh_binder_chirho("_h", TyChirho::int_chirho());
-
-            let left_call_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(tolist_id_chirho)),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-            };
-            let right_call_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(tolist_id_chirho)),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-            let singleton_chirho = CoreExprChirho::ConAppChirho {
-                con_name_chirho: ":".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(e_chirho.id_chirho),
-                    CoreExprChirho::ConAppChirho { con_name_chirho: "[]".to_string(), args_chirho: vec![] },
-                ],
-            };
-            let mid_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(append_id_chirho)),
-                    arg_chirho: Box::new(singleton_chirho),
-                }),
-                arg_chirho: Box::new(right_call_chirho),
-            };
-            let full_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(append_id_chirho)),
-                    arg_chirho: Box::new(left_call_chirho),
-                }),
-                arg_chirho: Box::new(mid_right_chirho),
-            };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: TyChirho::int_chirho(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "[]".to_string(),
-                            args_chirho: vec![],
-                        },
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![e_chirho, l_chirho, r_chirho, _h_stl_chirho],
-                        rhs_chirho: full_chirho,
-                    },
-                ],
-            };
-
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: s_chirho,
-                body_chirho: Box::new(body_chirho),
-            };
-
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: tolist_id_chirho,
-                    name_chirho: "setToList".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(
-                        set_ty_chirho.clone(),
-                        TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
-                    ),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho,
-                is_rec_chirho: true,
-            });
-        }
-
-        // setFromList :: [Int] -> Set Int
-        {
-            let fromlist_id_chirho = self.resolve_or_fresh_id_chirho("setFromList");
-            let insert_id_chirho = self.resolve_or_fresh_id_chirho("setInsert");
-            let xs_chirho = self.fresh_binder_chirho("xs", TyChirho::int_chirho());
-            let scr_chirho = self.fresh_binder_chirho("_sfl", TyChirho::int_chirho());
-            let h_chirho = self.fresh_binder_chirho("h", TyChirho::int_chirho());
-            let t_chirho = self.fresh_binder_chirho("t", TyChirho::int_chirho());
-
-            let rec_call_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(fromlist_id_chirho)),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(t_chirho.id_chirho)),
-            };
-            let insert_call_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(insert_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(h_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(rec_call_chirho),
-            };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(xs_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("[]".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "SetEmpty".to_string(),
-                            args_chirho: vec![],
-                        },
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho(":".to_string()),
-                        binders_chirho: vec![h_chirho, t_chirho],
-                        rhs_chirho: insert_call_chirho,
-                    },
-                ],
-            };
-
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: xs_chirho,
-                body_chirho: Box::new(body_chirho),
-            };
-
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: fromlist_id_chirho,
-                    name_chirho: "setFromList".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
-                        set_ty_chirho.clone(),
-                    ),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho,
-                is_rec_chirho: true,
-            });
-        }
-
-        // setDelete :: Ord a => a -> Set a -> Set a
-        {
-            let delete_id_chirho = self.resolve_or_fresh_id_chirho("setDelete");
+            let id_chirho = self.resolve_or_fresh_id_chirho("setDelete");
             let x_chirho = self.fresh_binder_chirho("x", any_e_chirho.clone());
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
-            let scr_chirho = self.fresh_binder_chirho("_sd", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", any_e_chirho.clone());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let _h_sd_chirho = self.fresh_binder_chirho("_h", TyChirho::int_chirho());
-            let ord_scr_chirho = self.fresh_binder_chirho("_ord", TyChirho::ConChirho("Ordering".to_string()));
-
-            // For delete when found (eq): merge left and right subtrees
-            let tolist_id_chirho = self.resolve_or_fresh_id_chirho("setToList");
-            let fromlist_id_chirho = self.resolve_or_fresh_id_chirho("setFromList");
-            let append_id_chirho = self.resolve_or_fresh_id_chirho("append");
-
-            let tolist_l_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(tolist_id_chirho)),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-            };
-            let tolist_r_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(tolist_id_chirho)),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-            let merged_list_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(append_id_chirho)),
-                    arg_chirho: Box::new(tolist_l_chirho),
-                }),
-                arg_chirho: Box::new(tolist_r_chirho),
-            };
-            let merge_result_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(fromlist_id_chirho)),
-                arg_chirho: Box::new(merged_list_chirho),
-            };
-
-            // Recursive calls for left/right subtree deletion
-            let rec_left_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(delete_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-            };
-            let rec_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(delete_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-
-            let bal_sd_id = self.resolve_or_fresh_id_chirho("setBalance");
-            let delete_left_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(bal_sd_id)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(rec_left_chirho),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-            let delete_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(bal_sd_id)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(rec_right_chirho),
-            };
-
-            let compare_call_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "compare#".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(x_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(e_chirho.id_chirho),
-                ],
-            };
-
-            let ordering_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(compare_call_chirho),
-                bind_chirho: ord_scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: delete_left_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: merge_result_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: delete_right_chirho,
-                    },
-                ],
-            };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "SetEmpty".to_string(),
-                            args_chirho: vec![],
-                        },
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![e_chirho, l_chirho, r_chirho, _h_sd_chirho],
-                        rhs_chirho: ordering_case_chirho,
-                    },
-                ],
-            };
-
             let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: x_chirho,
+                binder_chirho: x_chirho.clone(),
                 body_chirho: Box::new(CoreExprChirho::LamChirho {
-                    binder_chirho: s_chirho,
-                    body_chirho: Box::new(body_chirho),
+                    binder_chirho: s_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "setDelete#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(s_chirho.id_chirho),
+                        ],
+                    }),
                 }),
             };
-
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
-                    id_chirho: delete_id_chirho,
+                    id_chirho,
                     name_chirho: "setDelete".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
                         any_e_chirho.clone(),
@@ -10781,75 +10073,123 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
-                is_rec_chirho: true,
+                is_rec_chirho: false,
             });
         }
 
-        // setUnion :: Set Int -> Set Int -> Set Int
-        // Fold elements of second set into first via setInsert
+        // ─── setSize :: Set a -> Int ─────────────────────────────────────
         {
-            let union_id_chirho = self.resolve_or_fresh_id_chirho("setUnion");
-            let a_chirho = self.fresh_binder_chirho("a", set_ty_chirho.clone());
-            let b_chirho = self.fresh_binder_chirho("b", set_ty_chirho.clone());
-            let scr_chirho = self.fresh_binder_chirho("_su", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", TyChirho::int_chirho());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let _h_su_chirho = self.fresh_binder_chirho("_h", TyChirho::int_chirho());
-            let insert_id_chirho = self.resolve_or_fresh_id_chirho("setInsert");
-
-            // union a (SetNode e l r) = union (union (setInsert e a) l) r
-            let insert_e_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(insert_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(a_chirho.id_chirho)),
-            };
-            let union_l_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(union_id_chirho)),
-                    arg_chirho: Box::new(insert_e_chirho),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-            };
-            let union_r_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(union_id_chirho)),
-                    arg_chirho: Box::new(union_l_chirho),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(b_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::VarChirho(a_chirho.id_chirho),
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![e_chirho, l_chirho, r_chirho, _h_su_chirho],
-                        rhs_chirho: union_r_chirho,
-                    },
-                ],
-            };
-
+            let id_chirho = self.resolve_or_fresh_id_chirho("setSize");
+            let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
             let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: a_chirho,
-                body_chirho: Box::new(CoreExprChirho::LamChirho {
-                    binder_chirho: b_chirho,
-                    body_chirho: Box::new(body_chirho),
+                binder_chirho: s_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "setSize#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(s_chirho.id_chirho)],
                 }),
             };
-
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
-                    id_chirho: union_id_chirho,
+                    id_chirho,
+                    name_chirho: "setSize".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(set_ty_chirho.clone(), int_ty_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ─── setNull :: Set a -> Bool ────────────────────────────────────
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("setNull");
+            let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: s_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "setNull#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(s_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "setNull".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(set_ty_chirho.clone(), bool_ty_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ─── setFromList :: Ord a => [a] -> Set a ────────────────────────
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("setFromList");
+            let xs_chirho = self.fresh_binder_chirho("xs", list_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: xs_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "setFromList#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(xs_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "setFromList".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(list_ty_chirho.clone(), set_ty_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ─── setToList :: Set a -> [a] ───────────────────────────────────
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("setToList");
+            let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: s_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "setToList#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(s_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "setToList".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(set_ty_chirho.clone(), list_ty_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ─── setUnion :: Ord a => Set a -> Set a -> Set a ────────────────
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("setUnion");
+            let a_chirho = self.fresh_binder_chirho("a", set_ty_chirho.clone());
+            let b_chirho = self.fresh_binder_chirho("b", set_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: a_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: b_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "setUnion#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                        ],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
                     name_chirho: "setUnion".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
                         set_ty_chirho.clone(),
@@ -10858,119 +10198,31 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
-                is_rec_chirho: true,
+                is_rec_chirho: false,
             });
         }
 
-        // setIntersection :: Set Int -> Set Int -> Set Int
-        // Filter elements of first set that are also in second
+        // ─── setIntersection :: Ord a => Set a -> Set a -> Set a ─────────
         {
-            let inter_id_chirho = self.resolve_or_fresh_id_chirho("setIntersection");
+            let id_chirho = self.resolve_or_fresh_id_chirho("setIntersection");
             let a_chirho = self.fresh_binder_chirho("a", set_ty_chirho.clone());
             let b_chirho = self.fresh_binder_chirho("b", set_ty_chirho.clone());
-            let scr_chirho = self.fresh_binder_chirho("_si2", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", TyChirho::int_chirho());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let _h_si2_chirho = self.fresh_binder_chirho("_h", TyChirho::int_chirho());
-            let mem_scr_chirho = self.fresh_binder_chirho("_sim", TyChirho::bool_chirho());
-            let member_id_chirho = self.resolve_or_fresh_id_chirho("setMember");
-
-            // Recurse on left and right, then check if e is in b
-            let rec_left_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(inter_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(b_chirho.id_chirho)),
-            };
-            let rec_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(inter_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(b_chirho.id_chirho)),
-            };
-            let _insert_id_chirho = self.resolve_or_fresh_id_chirho("setInsert");
-            let union_id_chirho = self.resolve_or_fresh_id_chirho("setUnion");
-
-            // If e in b: setMakeNode e rec_left rec_right (keep it)
-            let mkn_si2_id = self.resolve_or_fresh_id_chirho("setMakeNode");
-            let keep_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(mkn_si2_id)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(rec_left_chirho.clone()),
-                }),
-                arg_chirho: Box::new(rec_right_chirho.clone()),
-            };
-            // If e not in b: union rec_left rec_right (drop it)
-            let drop_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(union_id_chirho)),
-                    arg_chirho: Box::new(rec_left_chirho),
-                }),
-                arg_chirho: Box::new(rec_right_chirho),
-            };
-
-            let member_check_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(member_id_chirho)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(b_chirho.id_chirho)),
-                }),
-                bind_chirho: mem_scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: keep_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: drop_chirho,
-                    },
-                ],
-            };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(a_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "SetEmpty".to_string(),
-                            args_chirho: vec![],
-                        },
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![e_chirho, l_chirho, r_chirho, _h_si2_chirho],
-                        rhs_chirho: member_check_chirho,
-                    },
-                ],
-            };
-
             let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: a_chirho,
+                binder_chirho: a_chirho.clone(),
                 body_chirho: Box::new(CoreExprChirho::LamChirho {
-                    binder_chirho: b_chirho,
-                    body_chirho: Box::new(body_chirho),
+                    binder_chirho: b_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "setIntersection#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                        ],
+                    }),
                 }),
             };
-
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
-                    id_chirho: inter_id_chirho,
+                    id_chirho,
                     name_chirho: "setIntersection".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
                         set_ty_chirho.clone(),
@@ -10979,117 +10231,31 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
-                is_rec_chirho: true,
+                is_rec_chirho: false,
             });
         }
 
-        // setDifference :: Set Int -> Set Int -> Set Int
-        // Elements in first set but not in second
+        // ─── setDifference :: Ord a => Set a -> Set a -> Set a ───────────
         {
-            let diff_id_chirho = self.resolve_or_fresh_id_chirho("setDifference");
+            let id_chirho = self.resolve_or_fresh_id_chirho("setDifference");
             let a_chirho = self.fresh_binder_chirho("a", set_ty_chirho.clone());
             let b_chirho = self.fresh_binder_chirho("b", set_ty_chirho.clone());
-            let scr_chirho = self.fresh_binder_chirho("_sdf", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", TyChirho::int_chirho());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let _h_sdf_chirho = self.fresh_binder_chirho("_h", TyChirho::int_chirho());
-            let mem_scr_chirho = self.fresh_binder_chirho("_sdm", TyChirho::bool_chirho());
-            let member_id_chirho = self.resolve_or_fresh_id_chirho("setMember");
-            let union_id_chirho = self.resolve_or_fresh_id_chirho("setUnion");
-
-            let rec_left_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(diff_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(b_chirho.id_chirho)),
-            };
-            let rec_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(diff_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(b_chirho.id_chirho)),
-            };
-
-            // If e in b: union rec_left rec_right (drop it)
-            let drop_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(union_id_chirho)),
-                    arg_chirho: Box::new(rec_left_chirho.clone()),
-                }),
-                arg_chirho: Box::new(rec_right_chirho.clone()),
-            };
-            // If e not in b: setMakeNode e rec_left rec_right (keep it)
-            let mkn_sdf_id = self.resolve_or_fresh_id_chirho("setMakeNode");
-            let keep_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(mkn_sdf_id)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(rec_left_chirho),
-                }),
-                arg_chirho: Box::new(rec_right_chirho),
-            };
-
-            let member_check_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(member_id_chirho)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(b_chirho.id_chirho)),
-                }),
-                bind_chirho: mem_scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: drop_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: keep_chirho,
-                    },
-                ],
-            };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(a_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "SetEmpty".to_string(),
-                            args_chirho: vec![],
-                        },
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![e_chirho, l_chirho, r_chirho, _h_sdf_chirho],
-                        rhs_chirho: member_check_chirho,
-                    },
-                ],
-            };
-
             let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: a_chirho,
+                binder_chirho: a_chirho.clone(),
                 body_chirho: Box::new(CoreExprChirho::LamChirho {
-                    binder_chirho: b_chirho,
-                    body_chirho: Box::new(body_chirho),
+                    binder_chirho: b_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "setDifference#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                        ],
+                    }),
                 }),
             };
-
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
-                    id_chirho: diff_id_chirho,
+                    id_chirho,
                     name_chirho: "setDifference".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
                         set_ty_chirho.clone(),
@@ -11098,299 +10264,226 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
-                is_rec_chirho: true,
+                is_rec_chirho: false,
             });
         }
 
-        // setFilter :: (Int -> Bool) -> Set Int -> Set Int
+        // ─── setFilter :: (a -> Bool) -> Set a -> Set a ──────────────────
+        // Implemented via setToList → filter → setFromList
         {
-            let filter_id_chirho = self.resolve_or_fresh_id_chirho("setFilter");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::int_chirho());
+            let id_chirho = self.resolve_or_fresh_id_chirho("setFilter");
+            let filter_id_chirho = self.resolve_or_fresh_id_chirho("filter");
+            let to_list_id_chirho = self.resolve_or_fresh_id_chirho("setToList");
+            let from_list_id_chirho = self.resolve_or_fresh_id_chirho("setFromList");
+            let pred_chirho = self.fresh_binder_chirho("pred", TyChirho::fun_chirho(any_e_chirho.clone(), bool_ty_chirho.clone()));
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
-            let scr_chirho = self.fresh_binder_chirho("_sflt", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", TyChirho::int_chirho());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let _h_sflt_chirho = self.fresh_binder_chirho("_h", TyChirho::int_chirho());
-            let pred_scr_chirho = self.fresh_binder_chirho("_sfp", TyChirho::bool_chirho());
-            let union_id_chirho = self.resolve_or_fresh_id_chirho("setUnion");
-
-            let rec_left_chirho = CoreExprChirho::AppChirho {
+            // setFilter pred s = setFromList (filter pred (setToList s))
+            let to_list_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(to_list_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
+            };
+            let filter_call_chirho = CoreExprChirho::AppChirho {
                 fun_chirho: Box::new(CoreExprChirho::AppChirho {
                     fun_chirho: Box::new(CoreExprChirho::VarChirho(filter_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(pred_chirho.id_chirho)),
                 }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
+                arg_chirho: Box::new(to_list_call_chirho),
             };
-            let rec_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(filter_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
+            let from_list_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(from_list_id_chirho)),
+                arg_chirho: Box::new(filter_call_chirho),
             };
-
-            // If f e → True: setMakeNode e rec_left rec_right (keep e)
-            let mkn_sflt_id = self.resolve_or_fresh_id_chirho("setMakeNode");
-            let keep_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(mkn_sflt_id)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(rec_left_chirho.clone()),
-                }),
-                arg_chirho: Box::new(rec_right_chirho.clone()),
-            };
-            // If f e → False: union rec_left rec_right
-            let drop_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(union_id_chirho)),
-                    arg_chirho: Box::new(rec_left_chirho),
-                }),
-                arg_chirho: Box::new(rec_right_chirho),
-            };
-
-            let pred_check_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                }),
-                bind_chirho: pred_scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: keep_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: drop_chirho,
-                    },
-                ],
-            };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "SetEmpty".to_string(),
-                            args_chirho: vec![],
-                        },
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![e_chirho, l_chirho, r_chirho, _h_sflt_chirho],
-                        rhs_chirho: pred_check_chirho,
-                    },
-                ],
-            };
-
             let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: f_chirho,
+                binder_chirho: pred_chirho,
                 body_chirho: Box::new(CoreExprChirho::LamChirho {
                     binder_chirho: s_chirho,
-                    body_chirho: Box::new(body_chirho),
+                    body_chirho: Box::new(from_list_call_chirho),
                 }),
             };
-
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
-                    id_chirho: filter_id_chirho,
+                    id_chirho,
                     name_chirho: "setFilter".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::bool_chirho()),
+                        TyChirho::fun_chirho(any_e_chirho.clone(), bool_ty_chirho.clone()),
                         TyChirho::fun_chirho(set_ty_chirho.clone(), set_ty_chirho.clone()),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
-                is_rec_chirho: true,
+                is_rec_chirho: false,
             });
         }
 
-        // setMap :: (Int -> Int) -> Set Int -> Set Int
+        // ─── setMap :: Ord b => (a -> b) -> Set a -> Set b ───────────────
+        // Implemented via setToList → map → setFromList
         {
-            let smap_id_chirho = self.resolve_or_fresh_id_chirho("setMap");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::int_chirho());
+            let id_chirho = self.resolve_or_fresh_id_chirho("setMap");
+            let map_id_chirho = self.resolve_or_fresh_id_chirho("map");
+            let to_list_id_chirho = self.resolve_or_fresh_id_chirho("setToList");
+            let from_list_id_chirho = self.resolve_or_fresh_id_chirho("setFromList");
+            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(any_e_chirho.clone(), any_e_chirho.clone()));
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
-            let scr_chirho = self.fresh_binder_chirho("_smp", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", TyChirho::int_chirho());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let _h_smp_chirho = self.fresh_binder_chirho("_h", TyChirho::int_chirho());
-
-            let rec_left_chirho = CoreExprChirho::AppChirho {
+            // setMap f s = setFromList (map f (setToList s))
+            let to_list_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(to_list_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
+            };
+            let map_call_chirho = CoreExprChirho::AppChirho {
                 fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(smap_id_chirho)),
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(map_id_chirho)),
                     arg_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
                 }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
+                arg_chirho: Box::new(to_list_call_chirho),
             };
-            let rec_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(smap_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
+            let from_list_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(from_list_id_chirho)),
+                arg_chirho: Box::new(map_call_chirho),
             };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "SetEmpty".to_string(),
-                            args_chirho: vec![],
-                        },
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![e_chirho.clone(), l_chirho, r_chirho, _h_smp_chirho],
-                        rhs_chirho: {
-                            let mkn_smp_id = self.resolve_or_fresh_id_chirho("setMakeNode");
-                            CoreExprChirho::AppChirho {
-                                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                                        fun_chirho: Box::new(CoreExprChirho::VarChirho(mkn_smp_id)),
-                                        arg_chirho: Box::new(CoreExprChirho::AppChirho {
-                                            fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
-                                            arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                                        }),
-                                    }),
-                                    arg_chirho: Box::new(rec_left_chirho),
-                                }),
-                                arg_chirho: Box::new(rec_right_chirho),
-                            }
-                        },
-                    },
-                ],
-            };
-
             let rhs_chirho = CoreExprChirho::LamChirho {
                 binder_chirho: f_chirho,
                 body_chirho: Box::new(CoreExprChirho::LamChirho {
                     binder_chirho: s_chirho,
-                    body_chirho: Box::new(body_chirho),
+                    body_chirho: Box::new(from_list_call_chirho),
                 }),
             };
-
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
-                    id_chirho: smap_id_chirho,
+                    id_chirho,
                     name_chirho: "setMap".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho()),
+                        TyChirho::fun_chirho(any_e_chirho.clone(), any_e_chirho.clone()),
                         TyChirho::fun_chirho(set_ty_chirho.clone(), set_ty_chirho.clone()),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
-                is_rec_chirho: true,
+                is_rec_chirho: false,
             });
         }
 
-        // setFold :: (Int -> b -> b) -> b -> Set Int -> b  (in-order fold)
+        // ─── setFold :: (a -> b -> b) -> b -> Set a -> b ─────────────────
+        // Implemented via foldr over setToList
         {
-            let fold_id_chirho = self.resolve_or_fresh_id_chirho("setFold");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::int_chirho());
-            let z_chirho = self.fresh_binder_chirho("z", TyChirho::int_chirho());
+            let id_chirho = self.resolve_or_fresh_id_chirho("setFold");
+            let foldr_id_chirho = self.resolve_or_fresh_id_chirho("foldr");
+            let to_list_id_chirho = self.resolve_or_fresh_id_chirho("setToList");
+            let any_b_chirho = TyChirho::VarChirho(rhasky_typing_chirho::ty_chirho::TyVarChirho(9986));
+            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(any_e_chirho.clone(), TyChirho::fun_chirho(any_b_chirho.clone(), any_b_chirho.clone())));
+            let z_chirho = self.fresh_binder_chirho("z", any_b_chirho.clone());
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
-            let scr_chirho = self.fresh_binder_chirho("_sfld", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", TyChirho::int_chirho());
-            let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
-            let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let _h_sfld_chirho = self.fresh_binder_chirho("_h", TyChirho::int_chirho());
-
-            // fold f z (SetNode e l r) = fold f (f e (fold f z l)) r
-            let fold_left_chirho = CoreExprChirho::AppChirho {
+            // setFold f z s = foldr f z (setToList s)
+            let to_list_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(to_list_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
+            };
+            let fold_call_chirho = CoreExprChirho::AppChirho {
                 fun_chirho: Box::new(CoreExprChirho::AppChirho {
                     fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(fold_id_chirho)),
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(foldr_id_chirho)),
                         arg_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
                     }),
                     arg_chirho: Box::new(CoreExprChirho::VarChirho(z_chirho.id_chirho)),
                 }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(l_chirho.id_chirho)),
+                arg_chirho: Box::new(to_list_call_chirho),
             };
-            let f_e_left_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(e_chirho.id_chirho)),
-                }),
-                arg_chirho: Box::new(fold_left_chirho),
-            };
-            let fold_right_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(fold_id_chirho)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
-                    }),
-                    arg_chirho: Box::new(f_e_left_chirho),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
-            };
-
-            let body_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
-                bind_chirho: scr_chirho,
-                result_ty_chirho: TyChirho::int_chirho(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetEmpty".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: CoreExprChirho::VarChirho(z_chirho.id_chirho),
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
-                        binders_chirho: vec![e_chirho, l_chirho, r_chirho, _h_sfld_chirho],
-                        rhs_chirho: fold_right_chirho,
-                    },
-                ],
-            };
-
             let rhs_chirho = CoreExprChirho::LamChirho {
                 binder_chirho: f_chirho,
                 body_chirho: Box::new(CoreExprChirho::LamChirho {
                     binder_chirho: z_chirho,
                     body_chirho: Box::new(CoreExprChirho::LamChirho {
                         binder_chirho: s_chirho,
-                        body_chirho: Box::new(body_chirho),
+                        body_chirho: Box::new(fold_call_chirho),
                     }),
                 }),
             };
-
-            let b_chirho = TyChirho::VarChirho(TyVarChirho(3230));
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
-                    id_chirho: fold_id_chirho,
+                    id_chirho,
                     name_chirho: "setFold".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
                         vec![
-                            TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::fun_chirho(b_chirho.clone(), b_chirho.clone())),
-                            b_chirho.clone(),
+                            TyChirho::fun_chirho(any_e_chirho.clone(), TyChirho::fun_chirho(any_b_chirho.clone(), any_b_chirho.clone())),
+                            any_b_chirho.clone(),
                             set_ty_chirho.clone(),
                         ],
-                        b_chirho,
+                        any_b_chirho,
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
-                is_rec_chirho: true,
+                is_rec_chirho: false,
             });
         }
+
+        // ─── setUnionSize :: Set a -> Set a -> Int  (helper for tests) ───
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("setUnionSize");
+            let union_id_chirho = self.resolve_or_fresh_id_chirho("setUnion");
+            let size_id_chirho = self.resolve_or_fresh_id_chirho("setSize");
+            let a_chirho = self.fresh_binder_chirho("a", set_ty_chirho.clone());
+            let b_chirho = self.fresh_binder_chirho("b", set_ty_chirho.clone());
+            let union_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(union_id_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(a_chirho.id_chirho)),
+                }),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(b_chirho.id_chirho)),
+            };
+            let size_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(size_id_chirho)),
+                arg_chirho: Box::new(union_call_chirho),
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: a_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: b_chirho,
+                    body_chirho: Box::new(size_call_chirho),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "setUnionSize".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        set_ty_chirho.clone(),
+                        TyChirho::fun_chirho(set_ty_chirho.clone(), int_ty_chirho.clone()),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ─── setFromListDedup :: [a] -> Set a (alias for setFromList) ────
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("setFromListDedup");
+            let from_list_id_chirho = self.resolve_or_fresh_id_chirho("setFromList");
+            let xs_chirho = self.fresh_binder_chirho("xs", list_ty_chirho.clone());
+            let call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(from_list_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(xs_chirho.id_chirho)),
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: xs_chirho,
+                body_chirho: Box::new(call_chirho),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "setFromListDedup".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(list_ty_chirho.clone(), set_ty_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        let _ = any_e_chirho; // suppress unused warning if any path removed
     }
+
 
     /// Generate instance dictionary bindings for ground instances.
     ///
