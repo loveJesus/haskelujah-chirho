@@ -238,7 +238,13 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver String-keyed map tests**: 3 tests (insertStr, lookupStr not found, multiple str keys)
 - **Driver misc feature tests**: 9 tests (guards, let/where, string eq, map fold, pipeline, map double, string map values, show bool, type alias usage)
 - **Driver push-to-1000 tests**: 10 tests (foldr cons, foldl subtract, zip sum, map singleton lookup, set from list dedup, enum from then, where recursive fib, product list, any/all, takewhile sum)
-- **Total**: 1000 tests passing across all crates (1 ignored)
+- **Driver Data.Maybe extra tests**: 6 tests (maybeToList Just/Nothing, listToMaybe cons/empty, catMaybes, mapMaybe filter)
+- **Driver IORef tests**: 2 tests (newIORef+readIORef+show, writeIORef overwrite)
+- **Driver when/unless tests**: 3 tests (when True output, when False silent, unless False output)
+- **Driver flip/either tests**: 3 tests (flip const, either Left, either Right)
+- **Driver feature combination tests**: 20 tests (type synonym, nested where, guard multi eq, let-in-do complex, map square, multiple IO, nested fn app, maybe chain, iterate take, scanl, concatMap, show negative, char ops, list comp even squares, where pattern, succ/pred, show list, zipWith add, complex pipeline, multi-line do IO)
+- **Driver fromJust/swap/mapDelete tests**: 5 tests (fromJust, swap fst, swap snd, mapDelete preserves, mapDelete both subtrees)
+- **Total**: 1039 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -343,4 +349,7 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 99. ~~Additional list functions~~ — DONE (nub, zip3, intersperse, isPrefixOf, isSuffixOf, unzip3 in generate_list_extra_prelude_chirho; 6 new e2e tests; 981 tests total)
 100. ~~String-keyed Data.Map~~ — DONE (mapInsertStr, mapLookupStr, mapMemberStr, mapFindWithDefaultStr using ltStr#/eqStr# primops in generate_map_str_prelude_chirho; 3 new e2e tests; 990 tests total)
 101. ~~1000 tests milestone~~ — DONE (10 push-to-1000 tests: foldr cons, foldl subtract, zip sum, map singleton lookup, set from list dedup, enum from then, where recursive fib, product list, any/all, takewhile sum; 1000 tests total)
-102. Next priorities: Data.Map with polymorphic keys, Data.Map/Set balanced (AVL/red-black), type synonyms in instance heads, type class defaulting improvements, where-clause type annotations, type-level improvements, IO monad proper threading, Data.IORef, ST monad
+102. ~~Data.Maybe extras + Data.IORef Core IR wrappers~~ — DONE (catMaybes, mapMaybe, listToMaybe, maybeToList as recursive Core IR functions; newIORef/readIORef/writeIORef/modifyIORef Core IR wrappers delegating to primops; type signatures for all; when/unless/flip/either e2e tests; 1014 tests total)
+103. ~~Feature combination e2e tests~~ — DONE (20 tests covering type synonyms, guards, let-in-do, iterate, scanl, concatMap, char ops, list comprehension with guards, pipelines, show negative/list, zipWith; 1034 tests total)
+104. ~~fromJust/swap + mapDelete fix~~ — DONE (fromJust via case on Just/Nothing with error# for Nothing; swap via case on $tuple2 with reversed fields; mapDelete fixed to merge both subtrees via mapFoldlWithKey+mapInsert instead of dropping right subtree; 1039 tests total)
+105. Next priorities: Data.Map with polymorphic keys, Data.Map/Set balanced (AVL/red-black), type synonyms in instance heads, type class defaulting improvements, where-clause type annotations, type-level improvements, IO monad proper threading, ST monad, negative literal patterns
