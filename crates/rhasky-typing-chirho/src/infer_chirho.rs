@@ -640,6 +640,13 @@ impl InferCtxChirho {
                 .map(|t_chirho| self.ast_type_to_ty_chirho(t_chirho, &mut var_map_chirho))
                 .collect();
 
+            // Expand type synonyms in the instance head (e.g. String → [Char])
+            let head_ty_chirho = self.expand_type_synonyms_chirho(&head_ty_chirho);
+            let extra_head_tys_chirho: Vec<TyChirho> = extra_head_tys_chirho
+                .into_iter()
+                .map(|t_chirho| self.expand_type_synonyms_chirho(&t_chirho))
+                .collect();
+
             self.class_env_chirho.add_instance_chirho(InstDeclChirho {
                 class_name_chirho,
                 head_ty_chirho,
@@ -2041,6 +2048,12 @@ impl InferCtxChirho {
                 .extra_tys_chirho
                 .iter()
                 .map(|t_chirho| final_subst_chirho.apply_ty_chirho(t_chirho))
+                .collect();
+            // Expand type synonyms in predicate type (e.g. String → [Char])
+            let resolved_ty_chirho = self.expand_type_synonyms_chirho(&resolved_ty_chirho);
+            let resolved_extra_tys_chirho: Vec<TyChirho> = resolved_extra_tys_chirho
+                .into_iter()
+                .map(|t_chirho| self.expand_type_synonyms_chirho(&t_chirho))
                 .collect();
             let mut resolved_pred_chirho = PredChirho {
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),

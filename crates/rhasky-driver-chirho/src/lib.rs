@@ -12113,6 +12113,48 @@ main = if all odd [1,3,5,7] then 1 else 0
         }
     }
 
+    // ── Type synonyms in instance heads ──────────────────────────────
+
+    #[test]
+    fn eval_type_synonym_instance_chirho() {
+        // type String = [Char] is built-in; test that Show String resolves
+        // to Show [Char] which we already have
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+greet :: String -> String
+greet name = name
+main = putStrLn (greet \"hello\")
+";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(machine_chirho.io_output_chirho, "hello\n");
+            }
+            Err(e_chirho) => panic!("type synonym instance: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_user_type_synonym_chirho() {
+        // User-defined type synonym
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+type Age = Int
+addAge :: Age -> Age -> Age
+addAge x y = x + y
+main = addAge 25 17
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("user type synonym: {}", e_chirho),
+        }
+    }
+
     // ── Where-clause / let type annotations ────────────────────────────
 
     #[test]
