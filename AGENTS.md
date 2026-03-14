@@ -217,8 +217,10 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver power operator tests**: 2 tests (2^10=1024, 3^0=1, 5^3=125, 2.0**3.0=8.0, 4.0**0.5=2.0)
 - **Driver error/undefined/seq tests**: 3 tests (error "kaboom" halts, undefined halts, seq 1 42 → 42)
 - **Driver Data.Map tests**: 10 tests (singleton insert+lookup, lookup-missing, size=1, member, nested insert+lookup, nested lookup-other-key, size=2, insert overwrite, three-key sum)
+- **Driver Data.Map extended tests**: 9 tests (mapDelete, mapDelete missing, mapKeys, mapElems, mapNull, mapMap, mapFoldlWithKey, mapFromList, mapToList)
+- **Driver Data.Set tests**: 6 tests (setSingleton+setMember, setMember not-found, setSize 3 inserts, setInsert duplicate, setToList sum, setFromList dedup)
 - **Driver free-var cache tests**: 2 tests (nested bool case recursive, user-defined BST insert)
-- **Total**: 894 tests passing across all crates (1 ignored)
+- **Total**: 910 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -312,4 +314,5 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 88. ~~Free-variable cache in desugarer~~ — DONE (root cause of Data.Map nested insert failure: each unscoped name reference in the desugarer created a NEW CoreId, so when a Prelude function like `mapInsert` was referenced twice in user code, only the first CoreId got a dict-pass binding while the second resolved to IntChirho(0) via lookup_chirho fallback; fix: added `free_var_cache_chirho` HashMap to DesugarCtxChirho that caches CoreIds for free variables so repeated references to the same unscoped name share a single CoreId; this also fixes potential issues with any other Prelude function referenced multiple times; 894 tests total)
 89. ~~Show True/False through typeclass machinery~~ — DONE (two fixes: (a) uncommented Show Bool entry in generate_builtin_prim_bindings_chirho so $prim_Show_show_Bool binding is generated via showBool# primop, (b) added HeapPtr→Bool resolution in eval_prim_chirho for nullary constructors True/False so primops receive concrete BoolChirho values instead of raw heap addresses; 2 new e2e tests: `putStrLn (show True)` → "True\n", `putStrLn (show False)` → "False\n"; 897 tests total)
 90. ~~Data.Map extended operations~~ — DONE (mapDelete with BST-aware key removal, mapToList in-order traversal, mapKeys sorted key extraction, mapElems value list, mapNull emptiness check, mapMap higher-order value transformation, mapFoldlWithKey left fold with key access; DataConChirho True/False case dispatch for ==# and <# primop results; type signatures in seed_builtins; 9 new e2e tests; 904 tests total)
-91. Next priorities: String-as-[Char] interop (list ops on strings), where-clause mutual recursion fix, improved interact with function application, Data.Set BST Prelude, more numeric class instances, type-level improvements
+91. ~~Data.Set BST Prelude~~ — DONE (setEmpty/setSingleton/setInsert/setMember/setSize/setToList/setFromList as recursive Core IR functions; SetEmpty/SetNode constructors in exhaustiveness checker; BST insert with ==#/<# dispatch using DataConChirho True/False; BST member search; recursive size; in-order traversal to sorted list via append; fold-insert fromList with dedup; type signatures in seed_builtins; 6 new e2e tests; 910 tests total)
+92. Next priorities: setDelete/setUnion/setIntersection/setDifference/setMap/setFilter, String-as-[Char] interop (list ops on strings), where-clause mutual recursion fix, improved interact with function application, more numeric class instances, type-level improvements
