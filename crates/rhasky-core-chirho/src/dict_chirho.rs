@@ -7980,24 +7980,26 @@ impl DictPassCtxChirho {
             });
         }
 
-        // mapInsert :: Int -> v -> Map Int v -> Map Int v
+        // mapInsert :: Ord k => k -> v -> Map k v -> Map k v
+        // Uses compare# for Int keys, Ordering-based dispatch (LT/EQ/GT)
         // mapInsert k v MapEmpty = MapNode k v MapEmpty MapEmpty
-        // mapInsert k v (MapNode k' v' l r)
-        //   | k <# k'  = MapNode k' v' (mapInsert k v l) r
-        //   | k ==# k' = MapNode k v l r
-        //   | otherwise = MapNode k' v' l (mapInsert k v r)
+        // mapInsert k v (MapNode k' v' l r) = case compare# k k' of
+        //   LT -> MapNode k' v' (mapInsert k v l) r
+        //   EQ -> MapNode k v l r
+        //   GT -> MapNode k' v' l (mapInsert k v r)
         {
             let insert_id_chirho = self.resolve_or_fresh_id_chirho("mapInsert");
-            let k_chirho = self.fresh_binder_chirho("k", TyChirho::int_chirho());
+            let k_chirho = self.fresh_binder_chirho("k", any_k_chirho.clone());
             let v_chirho = self.fresh_binder_chirho("v", any_v_chirho.clone());
             let m_chirho = self.fresh_binder_chirho("m", map_ty_chirho.clone());
 
             // Binders for the MapNode pattern
-            let k2_chirho = self.fresh_binder_chirho("k2", TyChirho::int_chirho());
+            let k2_chirho = self.fresh_binder_chirho("k2", any_k_chirho.clone());
             let v2_chirho = self.fresh_binder_chirho("v2", any_v_chirho.clone());
             let l_chirho = self.fresh_binder_chirho("l", map_ty_chirho.clone());
             let r_chirho = self.fresh_binder_chirho("r", map_ty_chirho.clone());
             let scr_chirho = self.fresh_binder_chirho("_ms", map_ty_chirho.clone());
+            let ord_scr_chirho = self.fresh_binder_chirho("_ord", TyChirho::ConChirho("Ordering".to_string()));
 
             let empty_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "MapEmpty".to_string(),
@@ -8019,7 +8021,7 @@ impl DictPassCtxChirho {
                 },
             };
 
-            // Recursive call: mapInsert k v subtree
+            // Recursive calls: mapInsert k v subtree
             let rec_left_chirho = CoreExprChirho::AppChirho {
                 fun_chirho: Box::new(CoreExprChirho::AppChirho {
                     fun_chirho: Box::new(CoreExprChirho::AppChirho {
@@ -8042,28 +8044,24 @@ impl DictPassCtxChirho {
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
             };
 
-            // Compare k with k2: if k <# k2 then insert left, elif k ==# k2 then replace, else insert right
-            let lt_check_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "<#".to_string(),
+            // case compare# k k2 of { LT -> go left; EQ -> replace; GT -> go right }
+            let compare_call_chirho = CoreExprChirho::PrimOpChirho {
+                name_chirho: "compare#".to_string(),
                 args_chirho: vec![
                     CoreExprChirho::VarChirho(k_chirho.id_chirho),
                     CoreExprChirho::VarChirho(k2_chirho.id_chirho),
                 ],
             };
 
-            let eq_check_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "==#".to_string(),
+            let insert_left_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "MapNode".to_string(),
                 args_chirho: vec![
-                    CoreExprChirho::VarChirho(k_chirho.id_chirho),
                     CoreExprChirho::VarChirho(k2_chirho.id_chirho),
+                    CoreExprChirho::VarChirho(v2_chirho.id_chirho),
+                    rec_left_chirho,
+                    CoreExprChirho::VarChirho(r_chirho.id_chirho),
                 ],
             };
-
-            // if k <# k2 then MapNode k2 v2 (mapInsert k v l) r
-            // else if k ==# k2 then MapNode k v l r
-            // else MapNode k2 v2 l (mapInsert k v r)
-            let eq_scr_chirho = self.fresh_binder_chirho("_eq", TyChirho::bool_chirho());
-            let lt_scr_chirho = self.fresh_binder_chirho("_lt", TyChirho::bool_chirho());
 
             let replace_node_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "MapNode".to_string(),
@@ -8085,50 +8083,25 @@ impl DictPassCtxChirho {
                 ],
             };
 
-            // Inner case: if k ==# k2 then replace else insert right
-            let inner_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(eq_check_chirho),
-                bind_chirho: eq_scr_chirho,
+            let ordering_case_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(compare_call_chirho),
+                bind_chirho: ord_scr_chirho,
                 result_ty_chirho: map_ty_chirho.clone(),
                 alts_chirho: vec![
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: replace_node_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: insert_right_chirho,
-                    },
-                ],
-            };
-
-            let insert_left_chirho = CoreExprChirho::ConAppChirho {
-                con_name_chirho: "MapNode".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(k2_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(v2_chirho.id_chirho),
-                    rec_left_chirho,
-                    CoreExprChirho::VarChirho(r_chirho.id_chirho),
-                ],
-            };
-
-            // Outer case: if k <# k2 then insert left else inner_case
-            let outer_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(lt_check_chirho),
-                bind_chirho: lt_scr_chirho,
-                result_ty_chirho: map_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: insert_left_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: inner_case_chirho,
+                        rhs_chirho: replace_node_chirho,
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: insert_right_chirho,
                     },
                 ],
             };
@@ -8137,7 +8110,7 @@ impl DictPassCtxChirho {
             let node_alt_chirho = CoreAltChirho {
                 con_chirho: AltConChirho::DataConChirho("MapNode".to_string()),
                 binders_chirho: vec![k2_chirho, v2_chirho, l_chirho, r_chirho],
-                rhs_chirho: outer_case_chirho,
+                rhs_chirho: ordering_case_chirho,
             };
 
             let body_chirho = CoreExprChirho::CaseChirho {
@@ -8163,7 +8136,7 @@ impl DictPassCtxChirho {
                     id_chirho: insert_id_chirho,
                     name_chirho: "mapInsert".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
-                        vec![TyChirho::int_chirho(), any_v_chirho.clone(), map_ty_chirho.clone()],
+                        vec![any_k_chirho.clone(), any_v_chirho.clone(), map_ty_chirho.clone()],
                         map_ty_chirho.clone(),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -8173,22 +8146,24 @@ impl DictPassCtxChirho {
             });
         }
 
-        // mapLookup :: Int -> Map Int v -> Maybe v
+        // mapLookup :: Ord k => k -> Map k v -> Maybe v
+        // Uses compare# for Ordering-based dispatch
         // mapLookup _ MapEmpty = Nothing
-        // mapLookup k (MapNode k' v l r)
-        //   | k <# k'  = mapLookup k l
-        //   | k ==# k' = Just v
-        //   | otherwise = mapLookup k r
+        // mapLookup k (MapNode k' v l r) = case compare# k k' of
+        //   LT -> mapLookup k l
+        //   EQ -> Just v
+        //   GT -> mapLookup k r
         {
             let lookup_id_chirho = self.resolve_or_fresh_id_chirho("mapLookup");
-            let k_chirho = self.fresh_binder_chirho("k", TyChirho::int_chirho());
+            let k_chirho = self.fresh_binder_chirho("k", any_k_chirho.clone());
             let m_chirho = self.fresh_binder_chirho("m", map_ty_chirho.clone());
 
-            let k2_chirho = self.fresh_binder_chirho("k2", TyChirho::int_chirho());
+            let k2_chirho = self.fresh_binder_chirho("k2", any_k_chirho.clone());
             let v2_chirho = self.fresh_binder_chirho("v2", any_v_chirho.clone());
             let l_chirho = self.fresh_binder_chirho("l", map_ty_chirho.clone());
             let r_chirho = self.fresh_binder_chirho("r", map_ty_chirho.clone());
             let scr_chirho = self.fresh_binder_chirho("_ms", map_ty_chirho.clone());
+            let ord_scr_chirho = self.fresh_binder_chirho("_ord", TyChirho::ConChirho("Ordering".to_string()));
 
             let nothing_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "Nothing".to_string(),
@@ -8216,57 +8191,33 @@ impl DictPassCtxChirho {
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
             };
 
-            let lt_check_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "<#".to_string(),
+            let compare_call_chirho = CoreExprChirho::PrimOpChirho {
+                name_chirho: "compare#".to_string(),
                 args_chirho: vec![
                     CoreExprChirho::VarChirho(k_chirho.id_chirho),
                     CoreExprChirho::VarChirho(k2_chirho.id_chirho),
                 ],
             };
 
-            let eq_check_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "==#".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(k_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(k2_chirho.id_chirho),
-                ],
-            };
-
-            let eq_scr_chirho = self.fresh_binder_chirho("_eq", TyChirho::bool_chirho());
-            let lt_scr_chirho = self.fresh_binder_chirho("_lt", TyChirho::bool_chirho());
-
-            let inner_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(eq_check_chirho),
-                bind_chirho: eq_scr_chirho,
+            let ordering_case_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(compare_call_chirho),
+                bind_chirho: ord_scr_chirho,
                 result_ty_chirho: any_v_chirho.clone(),
                 alts_chirho: vec![
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: just_v_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: rec_right_chirho,
-                    },
-                ],
-            };
-
-            let outer_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(lt_check_chirho),
-                bind_chirho: lt_scr_chirho,
-                result_ty_chirho: any_v_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: rec_left_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: inner_case_chirho,
+                        rhs_chirho: just_v_chirho,
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: rec_right_chirho,
                     },
                 ],
             };
@@ -8274,7 +8225,7 @@ impl DictPassCtxChirho {
             let node_alt_chirho = CoreAltChirho {
                 con_chirho: AltConChirho::DataConChirho("MapNode".to_string()),
                 binders_chirho: vec![k2_chirho, v2_chirho, l_chirho, r_chirho],
-                rhs_chirho: outer_case_chirho,
+                rhs_chirho: ordering_case_chirho,
             };
 
             let empty_alt_chirho = CoreAltChirho {
@@ -8303,7 +8254,7 @@ impl DictPassCtxChirho {
                     id_chirho: lookup_id_chirho,
                     name_chirho: "mapLookup".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::int_chirho(),
+                        any_k_chirho.clone(),
                         TyChirho::fun_chirho(map_ty_chirho.clone(), any_v_chirho.clone()),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -8384,12 +8335,12 @@ impl DictPassCtxChirho {
             });
         }
 
-        // mapMember :: Int -> Map Int v -> Bool
+        // mapMember :: Ord k => k -> Map k v -> Bool
         // Implemented as: isJust (mapLookup k m)
         {
             let member_id_chirho = self.resolve_or_fresh_id_chirho("mapMember");
             let lookup_id_chirho = self.resolve_or_fresh_id_chirho("mapLookup");
-            let k_chirho = self.fresh_binder_chirho("k", TyChirho::int_chirho());
+            let k_chirho = self.fresh_binder_chirho("k", any_k_chirho.clone());
             let m_chirho = self.fresh_binder_chirho("m", map_ty_chirho.clone());
             let scr_chirho = self.fresh_binder_chirho("_mr", any_v_chirho.clone());
             let _v_chirho = self.fresh_binder_chirho("_v", any_v_chirho.clone());
@@ -8439,7 +8390,7 @@ impl DictPassCtxChirho {
                     id_chirho: member_id_chirho,
                     name_chirho: "mapMember".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::int_chirho(),
+                        any_k_chirho.clone(),
                         TyChirho::fun_chirho(map_ty_chirho.clone(), TyChirho::bool_chirho()),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -8531,27 +8482,23 @@ impl DictPassCtxChirho {
             });
         }
 
-        // mapDelete :: Int -> Map Int v -> Map Int v
+        // mapDelete :: Ord k => k -> Map k v -> Map k v
+        // Uses compare# with Ordering-based dispatch
         // mapDelete k MapEmpty = MapEmpty
-        // mapDelete k (MapNode k' v' l r)
-        //   | k ==# k' = merge l r  (simplified: left-biased)
-        //   | k <# k'  = MapNode k' v' (mapDelete k l) r
-        //   | otherwise = MapNode k' v' l (mapDelete k r)
-        // For simplicity, when key matches we return left child (loses right subtree
-        // entries that would need rebalancing). This is correct for single-delete
-        // on unbalanced BSTs if we accept that deleted nodes' subtrees are handled
-        // by re-inserting from right into left.
+        // mapDelete k (MapNode k' v' l r) = case compare# k k' of
+        //   LT -> MapNode k' v' (mapDelete k l) r
+        //   EQ -> merge l r
+        //   GT -> MapNode k' v' l (mapDelete k r)
         {
             let delete_id_chirho = self.resolve_or_fresh_id_chirho("mapDelete");
-            let k_chirho = self.fresh_binder_chirho("k", TyChirho::int_chirho());
+            let k_chirho = self.fresh_binder_chirho("k", any_k_chirho.clone());
             let m_chirho = self.fresh_binder_chirho("m", map_ty_chirho.clone());
             let scr_chirho = self.fresh_binder_chirho("_md", map_ty_chirho.clone());
-            let k2_chirho = self.fresh_binder_chirho("k2", TyChirho::int_chirho());
+            let k2_chirho = self.fresh_binder_chirho("k2", any_k_chirho.clone());
             let v2_chirho = self.fresh_binder_chirho("v2", any_v_chirho.clone());
             let l_chirho = self.fresh_binder_chirho("l", map_ty_chirho.clone());
             let r_chirho = self.fresh_binder_chirho("r", map_ty_chirho.clone());
-            let scr_eq_chirho = self.fresh_binder_chirho("_deq", TyChirho::int_chirho());
-            let scr_lt_chirho = self.fresh_binder_chirho("_dlt", TyChirho::int_chirho());
+            let ord_scr_chirho = self.fresh_binder_chirho("_dord", TyChirho::ConChirho("Ordering".to_string()));
 
             // Recursive calls
             let delete_left_chirho = CoreExprChirho::AppChirho {
@@ -8569,7 +8516,7 @@ impl DictPassCtxChirho {
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
             };
 
-            // k <# k' → MapNode k' v' (mapDelete k l) r
+            // LT → MapNode k' v' (mapDelete k l) r
             let lt_branch_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "MapNode".to_string(),
                 args_chirho: vec![
@@ -8580,7 +8527,7 @@ impl DictPassCtxChirho {
                 ],
             };
 
-            // otherwise → MapNode k' v' l (mapDelete k r)
+            // GT → MapNode k' v' l (mapDelete k r)
             let gt_branch_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "MapNode".to_string(),
                 args_chirho: vec![
@@ -8591,44 +8538,19 @@ impl DictPassCtxChirho {
                 ],
             };
 
-            // case k <# k' of { True → lt_branch, False → gt_branch }
-            let lt_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "<#".to_string(),
-                    args_chirho: vec![
-                        CoreExprChirho::VarChirho(k_chirho.id_chirho),
-                        CoreExprChirho::VarChirho(k2_chirho.id_chirho),
-                    ],
-                }),
-                bind_chirho: scr_lt_chirho,
-                result_ty_chirho: map_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: lt_branch_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: gt_branch_chirho,
-                    },
-                ],
-            };
-
-            // When equal: merge l and r subtrees properly.
+            // EQ: merge l and r subtrees
             // case l of
             //   MapEmpty -> r
             //   _ -> case r of
             //     MapEmpty -> l
             //     _ -> mapFoldlWithKey (\acc ki vi -> mapInsert ki vi acc) l r
             let foldl_id_chirho = self.resolve_or_fresh_id_chirho("mapFoldlWithKey");
-            let insert_ref_chirho = CoreExprChirho::VarChirho(delete_id_chirho); // reuse insert from scope
+            let _insert_ref_chirho = CoreExprChirho::VarChirho(delete_id_chirho);
             let insert_id_for_merge_chirho = self.resolve_or_fresh_id_chirho("mapInsert");
 
             // Build: \acc ki vi -> mapInsert ki vi acc
             let acc_chirho = self.fresh_binder_chirho("acc", map_ty_chirho.clone());
-            let ki_chirho = self.fresh_binder_chirho("ki", TyChirho::int_chirho());
+            let ki_chirho = self.fresh_binder_chirho("ki", any_k_chirho.clone());
             let vi_chirho = self.fresh_binder_chirho("vi", any_v_chirho.clone());
             let merge_fn_chirho = CoreExprChirho::LamChirho {
                 binder_chirho: acc_chirho.clone(),
@@ -8664,7 +8586,7 @@ impl DictPassCtxChirho {
 
             // case r of { MapEmpty -> l; MapNode _ _ _ _ -> fold_merge }
             let scr_r2_chirho = self.fresh_binder_chirho("_mr2", map_ty_chirho.clone());
-            let rk_chirho = self.fresh_binder_chirho("_rk", TyChirho::int_chirho());
+            let rk_chirho = self.fresh_binder_chirho("_rk", any_k_chirho.clone());
             let rv_chirho = self.fresh_binder_chirho("_rv", any_v_chirho.clone());
             let rl_chirho = self.fresh_binder_chirho("_rl", map_ty_chirho.clone());
             let rr_chirho = self.fresh_binder_chirho("_rr", map_ty_chirho.clone());
@@ -8689,7 +8611,7 @@ impl DictPassCtxChirho {
 
             // case l of { MapEmpty -> r; MapNode _ _ _ _ -> r_case }
             let scr_l2_chirho = self.fresh_binder_chirho("_ml2", map_ty_chirho.clone());
-            let lk_chirho = self.fresh_binder_chirho("_lk", TyChirho::int_chirho());
+            let lk_chirho = self.fresh_binder_chirho("_lk", any_k_chirho.clone());
             let lv_chirho = self.fresh_binder_chirho("_lv", any_v_chirho.clone());
             let ll_chirho = self.fresh_binder_chirho("_ll", map_ty_chirho.clone());
             let lr_chirho = self.fresh_binder_chirho("_lr", map_ty_chirho.clone());
@@ -8712,32 +8634,35 @@ impl DictPassCtxChirho {
                 ],
             };
 
-            // case k ==# k' of { True → l, False → lt_case }
-            let eq_case_chirho = CoreExprChirho::CaseChirho {
+            // case compare# k k' of { LT -> lt_branch; EQ -> merge; GT -> gt_branch }
+            let ordering_case_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "==#".to_string(),
+                    name_chirho: "compare#".to_string(),
                     args_chirho: vec![
                         CoreExprChirho::VarChirho(k_chirho.id_chirho),
                         CoreExprChirho::VarChirho(k2_chirho.id_chirho),
                     ],
                 }),
-                bind_chirho: scr_eq_chirho,
+                bind_chirho: ord_scr_chirho,
                 result_ty_chirho: map_ty_chirho.clone(),
                 alts_chirho: vec![
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: lt_branch_chirho,
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: eq_branch_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: lt_case_chirho,
+                        rhs_chirho: gt_branch_chirho,
                     },
                 ],
             };
-
-            let node_body_chirho = eq_case_chirho;
 
             let body_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(m_chirho.id_chirho)),
@@ -8755,7 +8680,7 @@ impl DictPassCtxChirho {
                     CoreAltChirho {
                         con_chirho: AltConChirho::DataConChirho("MapNode".to_string()),
                         binders_chirho: vec![k2_chirho, v2_chirho, l_chirho, r_chirho],
-                        rhs_chirho: node_body_chirho,
+                        rhs_chirho: ordering_case_chirho,
                     },
                 ],
             };
@@ -8773,7 +8698,7 @@ impl DictPassCtxChirho {
                     id_chirho: delete_id_chirho,
                     name_chirho: "mapDelete".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::int_chirho(),
+                        any_k_chirho.clone(),
                         TyChirho::fun_chirho(map_ty_chirho.clone(), map_ty_chirho.clone()),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -9284,23 +9209,25 @@ impl DictPassCtxChirho {
         let any_v_chirho = TyChirho::VarChirho(TyVarChirho(9981));
         let map_ty_chirho = TyChirho::int_chirho(); // placeholder for Map k v
 
-        // mapInsertWith :: (v -> v -> v) -> Int -> v -> Map Int v -> Map Int v
+        // mapInsertWith :: (v -> v -> v) -> k -> v -> Map k v -> Map k v
         // mapInsertWith f k v MapEmpty = MapNode k v MapEmpty MapEmpty
-        // mapInsertWith f k v (MapNode k' v' l r)
-        //   | k <# k'  = MapNode k' v' (mapInsertWith f k v l) r
-        //   | k ==# k' = MapNode k (f v v') l r
-        //   | otherwise = MapNode k' v' l (mapInsertWith f k v r)
+        // mapInsertWith f k v (MapNode k' v' l r) = case compare# k k' of
+        //   LT -> MapNode k' v' (mapInsertWith f k v l) r
+        //   EQ -> MapNode k (f v v') l r
+        //   GT -> MapNode k' v' l (mapInsertWith f k v r)
         {
+            let any_k_chirho = TyChirho::VarChirho(TyVarChirho(9980));
             let iw_id_chirho = self.resolve_or_fresh_id_chirho("mapInsertWith");
             let f_chirho = self.fresh_binder_chirho("f", any_v_chirho.clone());
-            let k_chirho = self.fresh_binder_chirho("k", TyChirho::int_chirho());
+            let k_chirho = self.fresh_binder_chirho("k", any_k_chirho.clone());
             let v_chirho = self.fresh_binder_chirho("v", any_v_chirho.clone());
             let m_chirho = self.fresh_binder_chirho("m", map_ty_chirho.clone());
-            let k2_chirho = self.fresh_binder_chirho("k2", TyChirho::int_chirho());
+            let k2_chirho = self.fresh_binder_chirho("k2", any_k_chirho.clone());
             let v2_chirho = self.fresh_binder_chirho("v2", any_v_chirho.clone());
             let l_chirho = self.fresh_binder_chirho("l", map_ty_chirho.clone());
             let r_chirho = self.fresh_binder_chirho("r", map_ty_chirho.clone());
             let scr_chirho = self.fresh_binder_chirho("_ms", map_ty_chirho.clone());
+            let ord_scr_chirho = self.fresh_binder_chirho("_ord", TyChirho::ConChirho("Ordering".to_string()));
 
             let empty_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "MapEmpty".to_string(),
@@ -9360,23 +9287,14 @@ impl DictPassCtxChirho {
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(v2_chirho.id_chirho)),
             };
 
-            let lt_check_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "<#".to_string(),
+            // case compare# k k2 of { LT -> insert left; EQ -> replace with combined; GT -> insert right }
+            let compare_call_chirho = CoreExprChirho::PrimOpChirho {
+                name_chirho: "compare#".to_string(),
                 args_chirho: vec![
                     CoreExprChirho::VarChirho(k_chirho.id_chirho),
                     CoreExprChirho::VarChirho(k2_chirho.id_chirho),
                 ],
             };
-            let eq_check_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "==#".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(k_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(k2_chirho.id_chirho),
-                ],
-            };
-
-            let eq_scr_chirho = self.fresh_binder_chirho("_eq", TyChirho::bool_chirho());
-            let lt_scr_chirho = self.fresh_binder_chirho("_lt", TyChirho::bool_chirho());
 
             let replace_node_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "MapNode".to_string(),
@@ -9384,6 +9302,16 @@ impl DictPassCtxChirho {
                     CoreExprChirho::VarChirho(k_chirho.id_chirho),
                     combine_chirho,
                     CoreExprChirho::VarChirho(l_chirho.id_chirho),
+                    CoreExprChirho::VarChirho(r_chirho.id_chirho),
+                ],
+            };
+
+            let insert_left_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "MapNode".to_string(),
+                args_chirho: vec![
+                    CoreExprChirho::VarChirho(k2_chirho.id_chirho),
+                    CoreExprChirho::VarChirho(v2_chirho.id_chirho),
+                    rec_left_chirho,
                     CoreExprChirho::VarChirho(r_chirho.id_chirho),
                 ],
             };
@@ -9398,48 +9326,25 @@ impl DictPassCtxChirho {
                 ],
             };
 
-            let inner_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(eq_check_chirho),
-                bind_chirho: eq_scr_chirho,
+            let ordering_case_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(compare_call_chirho),
+                bind_chirho: ord_scr_chirho,
                 result_ty_chirho: map_ty_chirho.clone(),
                 alts_chirho: vec![
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: replace_node_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: insert_right_chirho,
-                    },
-                ],
-            };
-
-            let insert_left_chirho = CoreExprChirho::ConAppChirho {
-                con_name_chirho: "MapNode".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(k2_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(v2_chirho.id_chirho),
-                    rec_left_chirho,
-                    CoreExprChirho::VarChirho(r_chirho.id_chirho),
-                ],
-            };
-
-            let outer_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(lt_check_chirho),
-                bind_chirho: lt_scr_chirho,
-                result_ty_chirho: map_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: insert_left_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: inner_case_chirho,
+                        rhs_chirho: replace_node_chirho,
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: insert_right_chirho,
                     },
                 ],
             };
@@ -9447,7 +9352,7 @@ impl DictPassCtxChirho {
             let node_alt_chirho = CoreAltChirho {
                 con_chirho: AltConChirho::DataConChirho("MapNode".to_string()),
                 binders_chirho: vec![k2_chirho, v2_chirho, l_chirho, r_chirho],
-                rhs_chirho: outer_case_chirho,
+                rhs_chirho: ordering_case_chirho,
             };
 
             let body_chirho = CoreExprChirho::CaseChirho {
@@ -9475,7 +9380,18 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: iw_id_chirho,
                     name_chirho: "mapInsertWith".to_string(),
-                    ty_chirho: any_v_chirho.clone(),
+                    ty_chirho: TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::fun_n_chirho(
+                                vec![any_v_chirho.clone(), any_v_chirho.clone()],
+                                any_v_chirho.clone(),
+                            ),
+                            any_k_chirho.clone(),
+                            any_v_chirho.clone(),
+                            map_ty_chirho.clone(),
+                        ],
+                        map_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -9483,22 +9399,24 @@ impl DictPassCtxChirho {
             });
         }
 
-        // mapFindWithDefault :: v -> Int -> Map Int v -> v
+        // mapFindWithDefault :: v -> k -> Map k v -> v
         // mapFindWithDefault def _ MapEmpty = def
-        // mapFindWithDefault def k (MapNode k' v l r)
-        //   | k ==# k' = v
-        //   | k <# k'  = mapFindWithDefault def k l
-        //   | otherwise = mapFindWithDefault def k r
+        // mapFindWithDefault def k (MapNode k' v l r) = case compare# k k' of
+        //   EQ -> v
+        //   LT -> mapFindWithDefault def k l
+        //   GT -> mapFindWithDefault def k r
         {
+            let any_k_chirho = TyChirho::VarChirho(TyVarChirho(9980));
             let fwd_id_chirho = self.resolve_or_fresh_id_chirho("mapFindWithDefault");
             let def_chirho = self.fresh_binder_chirho("def", any_v_chirho.clone());
-            let k_chirho = self.fresh_binder_chirho("k", TyChirho::int_chirho());
+            let k_chirho = self.fresh_binder_chirho("k", any_k_chirho.clone());
             let m_chirho = self.fresh_binder_chirho("m", map_ty_chirho.clone());
-            let k2_chirho = self.fresh_binder_chirho("k2", TyChirho::int_chirho());
+            let k2_chirho = self.fresh_binder_chirho("k2", any_k_chirho.clone());
             let v2_chirho = self.fresh_binder_chirho("v2", any_v_chirho.clone());
             let l_chirho = self.fresh_binder_chirho("l", map_ty_chirho.clone());
             let r_chirho = self.fresh_binder_chirho("r", map_ty_chirho.clone());
             let scr_chirho = self.fresh_binder_chirho("_ms", map_ty_chirho.clone());
+            let ord_scr_chirho = self.fresh_binder_chirho("_ord", TyChirho::ConChirho("Ordering".to_string()));
 
             let rec_left_chirho = CoreExprChirho::AppChirho {
                 fun_chirho: Box::new(CoreExprChirho::AppChirho {
@@ -9521,56 +9439,34 @@ impl DictPassCtxChirho {
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
             };
 
-            let eq_check_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "==#".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(k_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(k2_chirho.id_chirho),
-                ],
-            };
-            let lt_check_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "<#".to_string(),
+            // case compare# k k2 of { LT -> recurse left; EQ -> return v; GT -> recurse right }
+            let compare_call_chirho = CoreExprChirho::PrimOpChirho {
+                name_chirho: "compare#".to_string(),
                 args_chirho: vec![
                     CoreExprChirho::VarChirho(k_chirho.id_chirho),
                     CoreExprChirho::VarChirho(k2_chirho.id_chirho),
                 ],
             };
 
-            let eq_scr_chirho = self.fresh_binder_chirho("_eq", TyChirho::bool_chirho());
-            let lt_scr_chirho = self.fresh_binder_chirho("_lt", TyChirho::bool_chirho());
-
-            let inner_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(lt_check_chirho),
-                bind_chirho: lt_scr_chirho,
+            let ordering_case_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(compare_call_chirho),
+                bind_chirho: ord_scr_chirho,
                 result_ty_chirho: any_v_chirho.clone(),
                 alts_chirho: vec![
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: rec_left_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: rec_right_chirho,
-                    },
-                ],
-            };
-
-            let outer_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(eq_check_chirho),
-                bind_chirho: eq_scr_chirho,
-                result_ty_chirho: any_v_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::VarChirho(v2_chirho.id_chirho),
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: inner_case_chirho,
+                        rhs_chirho: rec_right_chirho,
                     },
                 ],
             };
@@ -9578,7 +9474,7 @@ impl DictPassCtxChirho {
             let node_alt_chirho = CoreAltChirho {
                 con_chirho: AltConChirho::DataConChirho("MapNode".to_string()),
                 binders_chirho: vec![k2_chirho, v2_chirho, l_chirho, r_chirho],
-                rhs_chirho: outer_case_chirho,
+                rhs_chirho: ordering_case_chirho,
             };
 
             let empty_alt_chirho = CoreAltChirho {
@@ -9610,7 +9506,7 @@ impl DictPassCtxChirho {
                     id_chirho: fwd_id_chirho,
                     name_chirho: "mapFindWithDefault".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
-                        vec![any_v_chirho.clone(), TyChirho::int_chirho(), map_ty_chirho.clone()],
+                        vec![any_v_chirho.clone(), any_k_chirho.clone(), map_ty_chirho.clone()],
                         any_v_chirho.clone(),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -9620,22 +9516,24 @@ impl DictPassCtxChirho {
             });
         }
 
-        // mapAdjust :: (v -> v) -> Int -> Map Int v -> Map Int v
+        // mapAdjust :: (v -> v) -> k -> Map k v -> Map k v
         // mapAdjust f _ MapEmpty = MapEmpty
-        // mapAdjust f k (MapNode k' v l r)
-        //   | k ==# k' = MapNode k (f v) l r
-        //   | k <# k'  = MapNode k' v (mapAdjust f k l) r
-        //   | otherwise = MapNode k' v l (mapAdjust f k r)
+        // mapAdjust f k (MapNode k' v l r) = case compare# k k' of
+        //   EQ -> MapNode k' (f v) l r
+        //   LT -> MapNode k' v (mapAdjust f k l) r
+        //   GT -> MapNode k' v l (mapAdjust f k r)
         {
+            let any_k_chirho = TyChirho::VarChirho(TyVarChirho(9980));
             let adj_id_chirho = self.resolve_or_fresh_id_chirho("mapAdjust");
             let f_chirho = self.fresh_binder_chirho("f", any_v_chirho.clone());
-            let k_chirho = self.fresh_binder_chirho("k", TyChirho::int_chirho());
+            let k_chirho = self.fresh_binder_chirho("k", any_k_chirho.clone());
             let m_chirho = self.fresh_binder_chirho("m", map_ty_chirho.clone());
-            let k2_chirho = self.fresh_binder_chirho("k2", TyChirho::int_chirho());
+            let k2_chirho = self.fresh_binder_chirho("k2", any_k_chirho.clone());
             let v2_chirho = self.fresh_binder_chirho("v2", any_v_chirho.clone());
             let l_chirho = self.fresh_binder_chirho("l", map_ty_chirho.clone());
             let r_chirho = self.fresh_binder_chirho("r", map_ty_chirho.clone());
             let scr_chirho = self.fresh_binder_chirho("_ms", map_ty_chirho.clone());
+            let ord_scr_chirho = self.fresh_binder_chirho("_ord", TyChirho::ConChirho("Ordering".to_string()));
 
             let empty_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "MapEmpty".to_string(),
@@ -9669,23 +9567,14 @@ impl DictPassCtxChirho {
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(v2_chirho.id_chirho)),
             };
 
-            let eq_check_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "==#".to_string(),
+            // case compare# k k2 of { LT -> adjust left; EQ -> replace; GT -> adjust right }
+            let compare_call_chirho = CoreExprChirho::PrimOpChirho {
+                name_chirho: "compare#".to_string(),
                 args_chirho: vec![
                     CoreExprChirho::VarChirho(k_chirho.id_chirho),
                     CoreExprChirho::VarChirho(k2_chirho.id_chirho),
                 ],
             };
-            let lt_check_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "<#".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(k_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(k2_chirho.id_chirho),
-                ],
-            };
-
-            let eq_scr_chirho = self.fresh_binder_chirho("_eq", TyChirho::bool_chirho());
-            let lt_scr_chirho = self.fresh_binder_chirho("_lt", TyChirho::bool_chirho());
 
             let replace_node_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "MapNode".to_string(),
@@ -9717,38 +9606,25 @@ impl DictPassCtxChirho {
                 ],
             };
 
-            let inner_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(lt_check_chirho),
-                bind_chirho: lt_scr_chirho,
+            let ordering_case_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(compare_call_chirho),
+                bind_chirho: ord_scr_chirho,
                 result_ty_chirho: map_ty_chirho.clone(),
                 alts_chirho: vec![
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: adj_left_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: adj_right_chirho,
-                    },
-                ],
-            };
-
-            let outer_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(eq_check_chirho),
-                bind_chirho: eq_scr_chirho,
-                result_ty_chirho: map_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: replace_node_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: inner_case_chirho,
+                        rhs_chirho: adj_right_chirho,
                     },
                 ],
             };
@@ -9756,7 +9632,7 @@ impl DictPassCtxChirho {
             let node_alt_chirho = CoreAltChirho {
                 con_chirho: AltConChirho::DataConChirho("MapNode".to_string()),
                 binders_chirho: vec![k2_chirho, v2_chirho, l_chirho, r_chirho],
-                rhs_chirho: outer_case_chirho,
+                rhs_chirho: ordering_case_chirho,
             };
 
             let empty_alt_chirho = CoreAltChirho {
@@ -9790,7 +9666,7 @@ impl DictPassCtxChirho {
                     ty_chirho: TyChirho::fun_n_chirho(
                         vec![
                             TyChirho::fun_chirho(any_v_chirho.clone(), any_v_chirho.clone()),
-                            TyChirho::int_chirho(),
+                            any_k_chirho.clone(),
                             map_ty_chirho.clone(),
                         ],
                         map_ty_chirho.clone(),
@@ -10741,7 +10617,8 @@ impl DictPassCtxChirho {
     ///   SetEmpty                  — empty set
     ///   SetNode elem left right   — BST node
     fn generate_set_prelude_chirho(&mut self) {
-        let set_ty_chirho = TyChirho::int_chirho(); // placeholder for Set Int
+        let set_ty_chirho = TyChirho::int_chirho(); // placeholder for Set a
+        let any_e_chirho = TyChirho::VarChirho(rhasky_typing_chirho::ty_chirho::TyVarChirho(9985));
 
         // setEmpty :: Set Int
         {
@@ -10788,17 +10665,17 @@ impl DictPassCtxChirho {
             });
         }
 
-        // setInsert :: Int -> Set Int -> Set Int
+        // setInsert :: Ord a => a -> Set a -> Set a
+        // Uses compare# with Ordering dispatch
         {
             let insert_id_chirho = self.resolve_or_fresh_id_chirho("setInsert");
-            let x_chirho = self.fresh_binder_chirho("x", TyChirho::int_chirho());
+            let x_chirho = self.fresh_binder_chirho("x", any_e_chirho.clone());
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
             let scr_chirho = self.fresh_binder_chirho("_si", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", TyChirho::int_chirho());
+            let e_chirho = self.fresh_binder_chirho("e", any_e_chirho.clone());
             let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
             let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let eq_scr_chirho = self.fresh_binder_chirho("_seq", TyChirho::bool_chirho());
-            let lt_scr_chirho = self.fresh_binder_chirho("_slt", TyChirho::bool_chirho());
+            let ord_scr_chirho = self.fresh_binder_chirho("_sord", TyChirho::ConChirho("Ordering".to_string()));
 
             // Recursive calls
             let rec_left_chirho = CoreExprChirho::AppChirho {
@@ -10824,6 +10701,14 @@ impl DictPassCtxChirho {
                     CoreExprChirho::VarChirho(r_chirho.id_chirho),
                 ],
             };
+            let same_node_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "SetNode".to_string(),
+                args_chirho: vec![
+                    CoreExprChirho::VarChirho(e_chirho.id_chirho),
+                    CoreExprChirho::VarChirho(l_chirho.id_chirho),
+                    CoreExprChirho::VarChirho(r_chirho.id_chirho),
+                ],
+            };
             let insert_right_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "SetNode".to_string(),
                 args_chirho: vec![
@@ -10833,62 +10718,32 @@ impl DictPassCtxChirho {
                 ],
             };
 
-            // case x <# e of { True → insert left, False → insert right }
-            let lt_case_chirho = CoreExprChirho::CaseChirho {
+            // case compare# x e of { LT → insert left, EQ → same, GT → insert right }
+            let ordering_case_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "<#".to_string(),
+                    name_chirho: "compare#".to_string(),
                     args_chirho: vec![
                         CoreExprChirho::VarChirho(x_chirho.id_chirho),
                         CoreExprChirho::VarChirho(e_chirho.id_chirho),
                     ],
                 }),
-                bind_chirho: lt_scr_chirho,
+                bind_chirho: ord_scr_chirho,
                 result_ty_chirho: set_ty_chirho.clone(),
                 alts_chirho: vec![
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: insert_left_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: insert_right_chirho,
-                    },
-                ],
-            };
-
-            // If equal, return same node (already present)
-            let same_node_chirho = CoreExprChirho::ConAppChirho {
-                con_name_chirho: "SetNode".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(e_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(l_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(r_chirho.id_chirho),
-                ],
-            };
-
-            // case x ==# e of { True → same, False → lt_case }
-            let eq_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "==#".to_string(),
-                    args_chirho: vec![
-                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
-                        CoreExprChirho::VarChirho(e_chirho.id_chirho),
-                    ],
-                }),
-                bind_chirho: eq_scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: same_node_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: lt_case_chirho,
+                        rhs_chirho: insert_right_chirho,
                     },
                 ],
             };
@@ -10916,7 +10771,7 @@ impl DictPassCtxChirho {
                     CoreAltChirho {
                         con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
                         binders_chirho: vec![e_chirho, l_chirho, r_chirho],
-                        rhs_chirho: eq_case_chirho,
+                        rhs_chirho: ordering_case_chirho,
                     },
                 ],
             };
@@ -10934,7 +10789,7 @@ impl DictPassCtxChirho {
                     id_chirho: insert_id_chirho,
                     name_chirho: "setInsert".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::int_chirho(),
+                        any_e_chirho.clone(),
                         TyChirho::fun_chirho(set_ty_chirho.clone(), set_ty_chirho.clone()),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -10944,17 +10799,16 @@ impl DictPassCtxChirho {
             });
         }
 
-        // setMember :: Int -> Set Int -> Bool
+        // setMember :: Ord a => a -> Set a -> Bool
         {
             let member_id_chirho = self.resolve_or_fresh_id_chirho("setMember");
-            let x_chirho = self.fresh_binder_chirho("x", TyChirho::int_chirho());
+            let x_chirho = self.fresh_binder_chirho("x", any_e_chirho.clone());
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
             let scr_chirho = self.fresh_binder_chirho("_sm", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", TyChirho::int_chirho());
+            let e_chirho = self.fresh_binder_chirho("e", any_e_chirho.clone());
             let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
             let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let eq_scr_chirho = self.fresh_binder_chirho("_smeq", TyChirho::bool_chirho());
-            let lt_scr_chirho = self.fresh_binder_chirho("_smlt", TyChirho::bool_chirho());
+            let ord_scr_chirho = self.fresh_binder_chirho("_ord", TyChirho::ConChirho("Ordering".to_string()));
 
             let rec_left_chirho = CoreExprChirho::AppChirho {
                 fun_chirho: Box::new(CoreExprChirho::AppChirho {
@@ -10971,43 +10825,26 @@ impl DictPassCtxChirho {
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
             };
 
-            let lt_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "<#".to_string(),
-                    args_chirho: vec![
-                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
-                        CoreExprChirho::VarChirho(e_chirho.id_chirho),
-                    ],
-                }),
-                bind_chirho: lt_scr_chirho,
+            let compare_call_chirho = CoreExprChirho::PrimOpChirho {
+                name_chirho: "compare#".to_string(),
+                args_chirho: vec![
+                    CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                    CoreExprChirho::VarChirho(e_chirho.id_chirho),
+                ],
+            };
+
+            let ordering_case_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(compare_call_chirho),
+                bind_chirho: ord_scr_chirho,
                 result_ty_chirho: TyChirho::bool_chirho(),
                 alts_chirho: vec![
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: rec_left_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: rec_right_chirho,
-                    },
-                ],
-            };
-
-            let eq_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "==#".to_string(),
-                    args_chirho: vec![
-                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
-                        CoreExprChirho::VarChirho(e_chirho.id_chirho),
-                    ],
-                }),
-                bind_chirho: eq_scr_chirho,
-                result_ty_chirho: TyChirho::bool_chirho(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::ConAppChirho {
                             con_name_chirho: "True".to_string(),
@@ -11015,9 +10852,9 @@ impl DictPassCtxChirho {
                         },
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: lt_case_chirho,
+                        rhs_chirho: rec_right_chirho,
                     },
                 ],
             };
@@ -11038,7 +10875,7 @@ impl DictPassCtxChirho {
                     CoreAltChirho {
                         con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
                         binders_chirho: vec![e_chirho, l_chirho, r_chirho],
-                        rhs_chirho: eq_case_chirho,
+                        rhs_chirho: ordering_case_chirho,
                     },
                 ],
             };
@@ -11056,7 +10893,7 @@ impl DictPassCtxChirho {
                     id_chirho: member_id_chirho,
                     name_chirho: "setMember".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::int_chirho(),
+                        any_e_chirho.clone(),
                         TyChirho::fun_chirho(set_ty_chirho.clone(), TyChirho::bool_chirho()),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -11271,25 +11108,18 @@ impl DictPassCtxChirho {
             });
         }
 
-        // setDelete :: Int -> Set Int -> Set Int
+        // setDelete :: Ord a => a -> Set a -> Set a
         {
             let delete_id_chirho = self.resolve_or_fresh_id_chirho("setDelete");
-            let x_chirho = self.fresh_binder_chirho("x", TyChirho::int_chirho());
+            let x_chirho = self.fresh_binder_chirho("x", any_e_chirho.clone());
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
             let scr_chirho = self.fresh_binder_chirho("_sd", set_ty_chirho.clone());
-            let e_chirho = self.fresh_binder_chirho("e", TyChirho::int_chirho());
+            let e_chirho = self.fresh_binder_chirho("e", any_e_chirho.clone());
             let l_chirho = self.fresh_binder_chirho("l", set_ty_chirho.clone());
             let r_chirho = self.fresh_binder_chirho("r", set_ty_chirho.clone());
-            let eq_scr_chirho = self.fresh_binder_chirho("_sdeq", TyChirho::bool_chirho());
-            let lt_scr_chirho = self.fresh_binder_chirho("_sdlt", TyChirho::bool_chirho());
+            let ord_scr_chirho = self.fresh_binder_chirho("_ord", TyChirho::ConChirho("Ordering".to_string()));
 
             // For delete when found (eq): merge left and right subtrees
-            // Simple approach: fold right into left via setInsert
-            let merge_id_chirho = self.resolve_or_fresh_id_chirho("setInsert");
-            // Actually simpler: use setFromList (setToList l ++ setToList r)
-            // But that's expensive. Instead: find min of right, use as new node.
-            // Simplest correct: fold right subtree into left via setInsert calls
-            // Use setFromList (setToList ...) approach but via append
             let tolist_id_chirho = self.resolve_or_fresh_id_chirho("setToList");
             let fromlist_id_chirho = self.resolve_or_fresh_id_chirho("setFromList");
             let append_id_chirho = self.resolve_or_fresh_id_chirho("append");
@@ -11347,50 +11177,33 @@ impl DictPassCtxChirho {
                 ],
             };
 
-            let lt_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "<#".to_string(),
-                    args_chirho: vec![
-                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
-                        CoreExprChirho::VarChirho(e_chirho.id_chirho),
-                    ],
-                }),
-                bind_chirho: lt_scr_chirho,
+            let compare_call_chirho = CoreExprChirho::PrimOpChirho {
+                name_chirho: "compare#".to_string(),
+                args_chirho: vec![
+                    CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                    CoreExprChirho::VarChirho(e_chirho.id_chirho),
+                ],
+            };
+
+            let ordering_case_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(compare_call_chirho),
+                bind_chirho: ord_scr_chirho,
                 result_ty_chirho: set_ty_chirho.clone(),
                 alts_chirho: vec![
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("LT".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: delete_left_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: delete_right_chirho,
-                    },
-                ],
-            };
-
-            let eq_case_chirho = CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "==#".to_string(),
-                    args_chirho: vec![
-                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
-                        CoreExprChirho::VarChirho(e_chirho.id_chirho),
-                    ],
-                }),
-                bind_chirho: eq_scr_chirho,
-                result_ty_chirho: set_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: merge_result_chirho,
                     },
                     CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
+                        con_chirho: AltConChirho::DataConChirho("GT".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: lt_case_chirho,
+                        rhs_chirho: delete_right_chirho,
                     },
                 ],
             };
@@ -11411,7 +11224,7 @@ impl DictPassCtxChirho {
                     CoreAltChirho {
                         con_chirho: AltConChirho::DataConChirho("SetNode".to_string()),
                         binders_chirho: vec![e_chirho, l_chirho, r_chirho],
-                        rhs_chirho: eq_case_chirho,
+                        rhs_chirho: ordering_case_chirho,
                     },
                 ],
             };
@@ -11429,7 +11242,7 @@ impl DictPassCtxChirho {
                     id_chirho: delete_id_chirho,
                     name_chirho: "setDelete".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::int_chirho(),
+                        any_e_chirho.clone(),
                         TyChirho::fun_chirho(set_ty_chirho.clone(), set_ty_chirho.clone()),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,

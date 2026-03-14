@@ -3320,39 +3320,47 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // mapInsert :: Int -> v -> Map -> Map
+    // mapInsert :: Ord k => k -> v -> Map k v -> Map k v
     {
-        let v_chirho = TyChirho::VarChirho(TyVarChirho(3212));
+        let k_chirho = TyVarChirho(3212);
+        let v_chirho = TyVarChirho(3800);
         env_chirho.bind_chirho(
             "mapInsert".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3212)],
-                preds_chirho: vec![],
+                vars_chirho: vec![k_chirho, v_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                }],
                 ty_chirho: TyChirho::fun_n_chirho(
-                    vec![TyChirho::int_chirho(), v_chirho, TyChirho::int_chirho()],
+                    vec![TyChirho::VarChirho(k_chirho), TyChirho::VarChirho(v_chirho), TyChirho::int_chirho()],
                     TyChirho::int_chirho(),
                 ),
             },
         );
     }
 
-    // mapLookup :: Int -> Map -> Maybe v
+    // mapLookup :: Ord k => k -> Map k v -> Maybe v
     {
-        let v_chirho = TyChirho::VarChirho(TyVarChirho(3213));
+        let k_chirho = TyVarChirho(3801);
+        let v_chirho = TyVarChirho(3213);
         env_chirho.bind_chirho(
             "mapLookup".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3213)],
-                preds_chirho: vec![],
+                vars_chirho: vec![k_chirho, v_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                }],
                 ty_chirho: TyChirho::fun_chirho(
-                    TyChirho::int_chirho(),
-                    TyChirho::fun_chirho(TyChirho::int_chirho(), v_chirho),
+                    TyChirho::VarChirho(k_chirho),
+                    TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::VarChirho(v_chirho)),
                 ),
             },
         );
     }
 
-    // mapSize :: Map -> Int
+    // mapSize :: Map k v -> Int
     env_chirho.bind_chirho(
         "mapSize".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
@@ -3361,27 +3369,41 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
-    // mapMember :: Int -> Map -> Bool
-    env_chirho.bind_chirho(
-        "mapMember".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::bool_chirho()),
-        )),
-    );
-
-    // mapFromList :: [(Int, v)] -> Map
+    // mapMember :: Ord k => k -> Map k v -> Bool
     {
-        let v_chirho = TyChirho::VarChirho(TyVarChirho(3214));
+        let k_chirho = TyVarChirho(3802);
+        env_chirho.bind_chirho(
+            "mapMember".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![k_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(k_chirho),
+                    TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::bool_chirho()),
+                ),
+            },
+        );
+    }
+
+    // mapFromList :: Ord k => [(k, v)] -> Map k v
+    {
+        let k_chirho = TyVarChirho(3803);
+        let v_chirho = TyVarChirho(3214);
         env_chirho.bind_chirho(
             "mapFromList".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3214)],
-                preds_chirho: vec![],
+                vars_chirho: vec![k_chirho, v_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::ListChirho(Box::new(TyChirho::TupleChirho(vec![
-                        TyChirho::int_chirho(),
-                        v_chirho,
+                        TyChirho::VarChirho(k_chirho),
+                        TyChirho::VarChirho(v_chirho),
                     ]))),
                     TyChirho::int_chirho(),
                 ),
@@ -3389,14 +3411,24 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // mapDelete :: Int -> Map -> Map
-    env_chirho.bind_chirho(
-        "mapDelete".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
-            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
-            TyChirho::int_chirho(),
-        )),
-    );
+    // mapDelete :: Ord k => k -> Map k v -> Map k v
+    {
+        let k_chirho = TyVarChirho(3804);
+        env_chirho.bind_chirho(
+            "mapDelete".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![k_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                }],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![TyChirho::VarChirho(k_chirho), TyChirho::int_chirho()],
+                    TyChirho::int_chirho(),
+                ),
+            },
+        );
+    }
 
     // mapToList :: Map -> [(Int, v)]
     {
@@ -3495,18 +3527,22 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // mapInsertWith :: (v -> v -> v) -> Int -> v -> Map -> Map
+    // mapInsertWith :: Ord k => (v -> v -> v) -> k -> v -> Map k v -> Map k v
     {
+        let k_chirho = TyVarChirho(3805);
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3230));
         env_chirho.bind_chirho(
             "mapInsertWith".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3230)],
-                preds_chirho: vec![],
+                vars_chirho: vec![k_chirho, TyVarChirho(3230)],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         TyChirho::fun_chirho(v_chirho.clone(), TyChirho::fun_chirho(v_chirho.clone(), v_chirho.clone())),
-                        TyChirho::int_chirho(),
+                        TyChirho::VarChirho(k_chirho),
                         v_chirho,
                         TyChirho::int_chirho(),
                     ],
@@ -3516,34 +3552,42 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // mapFindWithDefault :: v -> Int -> Map -> v
+    // mapFindWithDefault :: Ord k => v -> k -> Map k v -> v
     {
+        let k_chirho = TyVarChirho(3806);
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3231));
         env_chirho.bind_chirho(
             "mapFindWithDefault".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3231)],
-                preds_chirho: vec![],
+                vars_chirho: vec![k_chirho, TyVarChirho(3231)],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                }],
                 ty_chirho: TyChirho::fun_n_chirho(
-                    vec![v_chirho.clone(), TyChirho::int_chirho(), TyChirho::int_chirho()],
+                    vec![v_chirho.clone(), TyChirho::VarChirho(k_chirho), TyChirho::int_chirho()],
                     v_chirho,
                 ),
             },
         );
     }
 
-    // mapAdjust :: (v -> v) -> Int -> Map -> Map
+    // mapAdjust :: Ord k => (v -> v) -> k -> Map k v -> Map k v
     {
+        let k_chirho = TyVarChirho(3807);
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3232));
         env_chirho.bind_chirho(
             "mapAdjust".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3232)],
-                preds_chirho: vec![],
+                vars_chirho: vec![k_chirho, TyVarChirho(3232)],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         TyChirho::fun_chirho(v_chirho.clone(), v_chirho),
-                        TyChirho::int_chirho(),
+                        TyChirho::VarChirho(k_chirho),
                         TyChirho::int_chirho(),
                     ],
                     TyChirho::int_chirho(),
