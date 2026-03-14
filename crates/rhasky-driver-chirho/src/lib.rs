@@ -10278,5 +10278,120 @@ main = case lookup 5 [(1,10),(2,20)] of
         }
     }
 
+    // ── Deriving Show for product types + advanced features ─────────
+
+    #[test]
+    fn eval_deriving_show_product_chirho() {
+        // data Point = Point Int Int deriving (Show)
+        // show (Point 3 4) → "Point 3 4"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+data Point = Point Int Int deriving (Show)
+main = putStrLn (show (Point 3 4))
+"#;
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(machine_chirho.io_output_chirho, "Point 3 4\n");
+            }
+            Err(e_chirho) => panic!("deriving Show product: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_deriving_show_multi_con_chirho() {
+        // data Shape = Circle Int | Rect Int Int deriving (Show)
+        // show (Circle 5) → "Circle 5", show (Rect 3 4) → "Rect 3 4"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+data Shape = Circle Int | Rect Int Int deriving (Show)
+main = putStrLn (show (Rect 3 4))
+"#;
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(machine_chirho.io_output_chirho, "Rect 3 4\n");
+            }
+            Err(e_chirho) => panic!("deriving Show multi-con: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_deriving_eq_product_chirho() {
+        // data Point = Point Int Int deriving (Eq)
+        // Point 3 4 == Point 3 4 → True → 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+data Point = Point Int Int deriving (Eq)
+main = if Point 3 4 == Point 3 4 then 1 else 0
+"#;
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("deriving Eq product: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_deriving_eq_product_neq_chirho() {
+        // Point 3 4 == Point 3 5 → False → 0
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+data Point = Point Int Int deriving (Eq)
+main = if Point 3 4 == Point 3 5 then 1 else 0
+"#;
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0)),
+            Err(e_chirho) => panic!("deriving Eq product neq: {}", e_chirho),
+        }
+    }
+
+    // ── List comprehension with guards and transforms ──────────────
+
+    #[test]
+    fn eval_list_comp_transform_filter_chirho() {
+        // [x*x | x <- [1..10], even x] → [4,16,36,64,100] → sum → 220
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum [x*x | x <- [1..10], even x]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(220)),
+            Err(e_chirho) => panic!("list comp transform+filter: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_list_comp_cartesian_chirho() {
+        // length [(x,y) | x <- [1,2,3], y <- [1,2]] → 6
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length [(x,y) | x <- [1,2,3], y <- [1,2]]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(6)),
+            Err(e_chirho) => panic!("list comp cartesian: {}", e_chirho),
+        }
+    }
+
+    // ── Higher-order function composition ─────────────────────────
+
+    #[test]
+    fn eval_higher_order_compose_chirho() {
+        // (length . filter even) [1..10] → 5
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = (length . filter even) [1..10]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5)),
+            Err(e_chirho) => panic!("higher order compose: {}", e_chirho),
+        }
+    }
 
 }
