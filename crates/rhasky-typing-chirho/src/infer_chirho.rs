@@ -2520,6 +2520,34 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // flip :: forall a b c. (a -> b -> c) -> b -> a -> c
+    let flip_a_chirho = TyVarChirho(1003);
+    let flip_b_chirho = TyVarChirho(1004);
+    let flip_c_chirho = TyVarChirho(1005);
+    env_chirho.bind_chirho(
+        "flip".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![flip_a_chirho, flip_b_chirho, flip_c_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::fun_chirho(
+                    TyChirho::VarChirho(flip_a_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(flip_b_chirho),
+                        TyChirho::VarChirho(flip_c_chirho),
+                    ),
+                ),
+                TyChirho::fun_chirho(
+                    TyChirho::VarChirho(flip_b_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(flip_a_chirho),
+                        TyChirho::VarChirho(flip_c_chirho),
+                    ),
+                ),
+            ),
+        },
+    );
+
     // even :: Int -> Bool
     env_chirho.bind_chirho(
         "even".to_string(),

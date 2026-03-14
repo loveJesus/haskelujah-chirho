@@ -9018,6 +9018,23 @@ main = case safeDivide 20 2 of
     }
 
     #[test]
+    fn eval_flip_builtin_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // flip (-) 3 10 = (-) 10 3 = 7, using built-in flip
+        let result_chirho = eval_source_chirho(
+            "module Test where\nmain = flip (-) 3 10\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(7));
+            }
+            Err(e_chirho) => panic!("built-in flip should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
     fn eval_interact_chirho() {
         use super::eval_source_with_input_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();

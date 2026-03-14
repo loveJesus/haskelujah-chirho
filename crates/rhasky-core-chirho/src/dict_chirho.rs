@@ -1070,6 +1070,63 @@ impl DictPassCtxChirho {
                     }
                 }),
             ),
+            // flip :: (a -> b -> c) -> b -> a -> c
+            (
+                "flip",
+                {
+                    let a_chirho = TyChirho::VarChirho(
+                        rhasky_typing_chirho::ty_chirho::TyVarChirho(9990),
+                    );
+                    let b_chirho = TyChirho::VarChirho(
+                        rhasky_typing_chirho::ty_chirho::TyVarChirho(9991),
+                    );
+                    let c_chirho = TyChirho::VarChirho(
+                        rhasky_typing_chirho::ty_chirho::TyVarChirho(9992),
+                    );
+                    TyChirho::fun_chirho(
+                        TyChirho::fun_chirho(
+                            a_chirho.clone(),
+                            TyChirho::fun_chirho(b_chirho.clone(), c_chirho.clone()),
+                        ),
+                        TyChirho::fun_chirho(
+                            b_chirho,
+                            TyChirho::fun_chirho(a_chirho, c_chirho),
+                        ),
+                    )
+                },
+                Box::new(|ctx_chirho: &mut Self| {
+                    let a_chirho = TyChirho::VarChirho(
+                        rhasky_typing_chirho::ty_chirho::TyVarChirho(9990),
+                    );
+                    let b_chirho = TyChirho::VarChirho(
+                        rhasky_typing_chirho::ty_chirho::TyVarChirho(9991),
+                    );
+                    let c_chirho = TyChirho::VarChirho(
+                        rhasky_typing_chirho::ty_chirho::TyVarChirho(9992),
+                    );
+                    let f_chirho = ctx_chirho.fresh_binder_chirho("f",
+                        TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(b_chirho.clone(), c_chirho)));
+                    let x_chirho = ctx_chirho.fresh_binder_chirho("x", b_chirho);
+                    let y_chirho = ctx_chirho.fresh_binder_chirho("y", a_chirho);
+                    // flip f x y = f y x
+                    CoreExprChirho::LamChirho {
+                        binder_chirho: f_chirho.clone(),
+                        body_chirho: Box::new(CoreExprChirho::LamChirho {
+                            binder_chirho: x_chirho.clone(),
+                            body_chirho: Box::new(CoreExprChirho::LamChirho {
+                                binder_chirho: y_chirho.clone(),
+                                body_chirho: Box::new(CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                                        fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
+                                        arg_chirho: Box::new(CoreExprChirho::VarChirho(y_chirho.id_chirho)),
+                                    }),
+                                    arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+                                }),
+                            }),
+                        }),
+                    }
+                }),
+            ),
         ];
 
         for (name_chirho, ty_chirho, make_rhs_chirho) in prelude_fns_chirho {
