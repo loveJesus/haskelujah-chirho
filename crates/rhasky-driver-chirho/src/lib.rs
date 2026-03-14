@@ -12361,6 +12361,42 @@ main = fromMaybe 0 (Just 42)
     }
 
     #[test]
+    fn eval_import_qualified_data_list_chirho() {
+        // import qualified Data.List as L
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import qualified Data.List as L
+main = L.head (L.sort [3, 1, 2])
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("import qualified Data.List: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_import_qualified_data_map_chirho() {
+        // import qualified Data.Map as Map
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import qualified Data.Map as Map
+main = case Map.mapLookup 42 (Map.mapInsert 42 100 Map.mapEmpty) of
+         Just v  -> v
+         Nothing -> 0
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(100)),
+            Err(e_chirho) => panic!("import qualified Data.Map: {}", e_chirho),
+        }
+    }
+
+    #[test]
     fn eval_import_data_set_chirho() {
         // import Data.Set functions
         use super::eval_source_chirho;
@@ -12377,6 +12413,59 @@ main = case setMember 5 (setInsert 5 (setInsert 3 setEmpty)) of
             Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
             Err(e_chirho) => panic!("import Data.Set: {}", e_chirho),
         }
+    }
+
+    #[test]
+    fn eval_import_data_ioref_chirho() {
+        // import Data.IORef for mutable state
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import Data.IORef (newIORef, readIORef, writeIORef)
+main = do
+  ref <- newIORef 10
+  writeIORef ref 42
+  v <- readIORef ref
+  putStrLn (show v)
+";
+        let (_, machine_chirho) = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        let output_chirho = machine_chirho.io_output_chirho.clone();
+        assert_eq!(output_chirho, "42\n");
+    }
+
+    #[test]
+    fn eval_import_hiding_chirho() {
+        // import Data.Map hiding (mapDelete)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import Data.Map hiding (mapDelete)
+main = mapSize (mapInsert 1 10 mapEmpty)
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("import hiding: {}", e_chirho),
+        }
+    }
+
+    // ── mapM_ / forM_ IO sequencing ────────────────────────────────────
+
+    #[test]
+    fn eval_builtin_mapM_io_chirho() {
+        // mapM_ with putStrLn over a list
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+printItem x = putStrLn (show x)
+main = mapM_ printItem [1, 2, 3]
+";
+        let (_, machine_chirho) = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        let output_chirho = machine_chirho.io_output_chirho.clone();
+        assert_eq!(output_chirho, "1\n2\n3\n");
     }
 
 }
