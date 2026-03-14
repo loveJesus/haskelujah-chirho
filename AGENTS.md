@@ -232,7 +232,13 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver section/pipeline tests**: 5 tests (uncurry section `uncurry (+) (3,4)`, map section subtract, where multi helpers, nested maybe case safe_head, complex list pipeline `sum (map (^2) (filter odd [1..10]))`)
 - **Driver misc tests**: 4 tests (case nested tuple, type annotation `(42::Int)`, let multi bind, map Just length)
 - **Driver type alias tests**: 1 test (type synonym `type IntList = [Int]`)
-- **Total**: 961 tests passing across all crates (1 ignored)
+- **Driver numeric escape tests**: 3 tests (decimal \65, hex \x41, octal \o101 in putStrLn output)
+- **Driver Data.Map extended ops tests**: 8 tests (insertWith, findWithDefault×2, adjust, union, difference, filter, unionWith)
+- **Driver list extra tests**: 6 tests (nub_length, nub_head, intersperse_sum, isPrefixOf true/false, isSuffixOf)
+- **Driver String-keyed map tests**: 3 tests (insertStr, lookupStr not found, multiple str keys)
+- **Driver misc feature tests**: 9 tests (guards, let/where, string eq, map fold, pipeline, map double, string map values, show bool, type alias usage)
+- **Driver push-to-1000 tests**: 10 tests (foldr cons, foldl subtract, zip sum, map singleton lookup, set from list dedup, enum from then, where recursive fib, product list, any/all, takewhile sum)
+- **Total**: 1000 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -332,4 +338,9 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 94. ~~String ordering primops + Ord [Char]~~ — DONE (CompareStrChirho/LtStrChirho primops; Ord/Eq/Show [Char] instances in class_chirho; STG lowerer mappings ltStr#/compareStr#; compareStr# in primop_for_chirho and builtins; CompareStrChirho in eval_chirho via resolve_value_to_string_chirho + make_ordering_chirho; CompareStrChirho added to catch-all in prim_chirho; 3 new e2e tests: compare string LT/EQ/GT; 929 tests total)
 95. ~~Operator sections (left/right)~~ — DONE (CST parser detects left sections `(op e)` and right sections `(e op)` in parse_paren_expr_chirho; excludes `-` from left-section detection since `(-e)` is negation; lowerer inspects InfixExprChirho children for trailing operators without RHS to detect right sections consumed by infix parsing; LeftSectionExprChirho/RightSectionExprChirho CST kinds added; desugarer already handles both via lambda wrapping; 3 new e2e tests: `(2*)`, `(*3)`, `(+10)` mapped over lists; fixes 5 pre-existing test failures from incomplete section parser; 947 tests total)
 96. ~~Lambda pattern matching in lambdas~~ — DONE (non-variable patterns in lambda args (tuples, constructors) desugar to case-wrapped bodies; pat_to_binders_chirho called BEFORE body desugaring so IDs match; build_section_body_chirho helper emits PrimOpChirho directly for known operators in sections; section argument order fixed to match Haskell spec; 14 new e2e tests; 961 tests total)
-97. Next priorities: more numeric class instances, Data.Map with polymorphic keys, type-level improvements, Data.Map/Set balanced (AVL/red-black), type class defaulting improvements, type synonyms in instance heads
+97. ~~Numeric escape sequences~~ — DONE (\65 decimal, \x41 hex, \o101 octal in string/char literals; collect_decimal_escape_chirho/collect_octal_escape_chirho/collect_hex_escape_chirho helpers in lower_chirho.rs; 3 new e2e tests; 972 tests total)
+98. ~~Data.Map extended operations~~ — DONE (mapInsertWith, mapFindWithDefault, mapAdjust, mapUnionWith, mapUnion, mapDifference, mapIntersectionWith, mapFilter; fold-based compositions over existing BST primitives; 8 new e2e tests; 978 tests total)
+99. ~~Additional list functions~~ — DONE (nub, zip3, intersperse, isPrefixOf, isSuffixOf, unzip3 in generate_list_extra_prelude_chirho; 6 new e2e tests; 981 tests total)
+100. ~~String-keyed Data.Map~~ — DONE (mapInsertStr, mapLookupStr, mapMemberStr, mapFindWithDefaultStr using ltStr#/eqStr# primops in generate_map_str_prelude_chirho; 3 new e2e tests; 990 tests total)
+101. ~~1000 tests milestone~~ — DONE (10 push-to-1000 tests: foldr cons, foldl subtract, zip sum, map singleton lookup, set from list dedup, enum from then, where recursive fib, product list, any/all, takewhile sum; 1000 tests total)
+102. Next priorities: Data.Map with polymorphic keys, Data.Map/Set balanced (AVL/red-black), type synonyms in instance heads, type class defaulting improvements, where-clause type annotations, type-level improvements, IO monad proper threading, Data.IORef, ST monad
