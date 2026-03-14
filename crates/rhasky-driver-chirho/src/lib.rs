@@ -9071,6 +9071,23 @@ main = case safeDivide 20 2 of
     }
 
     #[test]
+    fn eval_dot_compose_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // Test the (.) operator: (double . succ) 20 = double (succ 20) = double 21 = 42
+        let result_chirho = eval_source_chirho(
+            "module Test where\ndouble x = x + x\nsucc x = x + 1\nmain = (double . succ) 20\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+            }
+            Err(e_chirho) => panic!("dot compose should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
     fn eval_interact_chirho() {
         use super::eval_source_with_input_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();

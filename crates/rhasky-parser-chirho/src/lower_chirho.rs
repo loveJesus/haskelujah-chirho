@@ -3605,18 +3605,20 @@ impl LowerCtxChirho {
     // -----------------------------------------------------------------------
 
     fn name_from_text_chirho(&self, text_chirho: &str, span_chirho: SpanChirho) -> NameChirho {
-        // Split qualified names like "Data.List.sort"
+        // Split qualified names like "Data.List.sort", but NOT bare operators
+        // like "." where both qualifier and local parts would be empty.
         if let Some(dot_pos_chirho) = text_chirho.rfind('.') {
             let qualifier_chirho = &text_chirho[..dot_pos_chirho];
             let local_chirho = &text_chirho[dot_pos_chirho + 1..];
-            NameChirho::RawChirho(RawNameChirho::qualified_chirho(
-                qualifier_chirho,
-                local_chirho,
-                span_chirho,
-            ))
-        } else {
-            NameChirho::RawChirho(RawNameChirho::unqualified_chirho(text_chirho, span_chirho))
+            if !qualifier_chirho.is_empty() && !local_chirho.is_empty() {
+                return NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+                    qualifier_chirho,
+                    local_chirho,
+                    span_chirho,
+                ));
+            }
         }
+        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(text_chirho, span_chirho))
     }
 
     fn name_from_token_chirho(
