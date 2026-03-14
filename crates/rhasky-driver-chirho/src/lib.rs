@@ -10394,4 +10394,45 @@ main = if Point 3 4 == Point 3 5 then 1 else 0
         }
     }
 
+    // ── Operator sections ────────────────────────────────────────────
+
+    #[test]
+    fn eval_left_section_chirho() {
+        // map (2*) [1,2,3] → [2,4,6], sum → 12
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (map (2*) [1,2,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(12)),
+            Err(e_chirho) => panic!("left section (2*): {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_right_section_chirho() {
+        // map (*3) [1,2,3] → [3,6,9], sum → 18
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (map (*3) [1,2,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(18)),
+            Err(e_chirho) => panic!("right section (*3): {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_section_addition_chirho() {
+        // map (+10) [1,2,3] → [11,12,13], sum → 36
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (map (+10) [1,2,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(36)),
+            Err(e_chirho) => panic!("section (+10): {}", e_chirho),
+        }
+    }
+
 }

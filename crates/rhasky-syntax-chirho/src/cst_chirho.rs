@@ -110,6 +110,10 @@ pub enum SyntaxKindChirho {
     LetStmtChirho,
     /// Parenthesized expression (`(expr)`).
     ParenExprChirho,
+    /// Left operator section (`(+ 1)`).
+    LeftSectionExprChirho,
+    /// Right operator section (`(1 +)`).
+    RightSectionExprChirho,
     /// Tuple expression (`(a, b, c)`).
     TupleExprChirho,
     /// List expression (`[a, b, c]`).
@@ -227,6 +231,8 @@ impl SyntaxKindChirho {
                 | Self::CaseExprChirho
                 | Self::DoExprChirho
                 | Self::ParenExprChirho
+                | Self::LeftSectionExprChirho
+                | Self::RightSectionExprChirho
                 | Self::TupleExprChirho
                 | Self::ListExprChirho
                 | Self::ArithSeqExprChirho

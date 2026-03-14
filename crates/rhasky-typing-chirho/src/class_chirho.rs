@@ -1078,6 +1078,30 @@ impl ClassEnvChirho {
             });
         }
 
+        // Ord [Char] (String ordering)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Ord".to_string(),
+            head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::ConChirho("Char".to_string()))),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // Eq [Char] (String equality)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Eq".to_string(),
+            head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::ConChirho("Char".to_string()))),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // Show [Char]
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Show".to_string(),
+            head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::ConChirho("Char".to_string()))),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
         // Enum instances
         for ty_name_chirho in &["Int", "Char", "Bool"] {
             self.add_instance_chirho(InstDeclChirho {

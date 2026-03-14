@@ -1602,6 +1602,8 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "not#" => PrimOpKindChirho::NotBoolChirho,
         "++#" => PrimOpKindChirho::AppendStrChirho,
         "eqStr#" => PrimOpKindChirho::EqStrChirho,
+        "ltStr#" => PrimOpKindChirho::LtStrChirho,
+        "compareStr#" => PrimOpKindChirho::CompareStrChirho,
         "eqFloat#" => PrimOpKindChirho::EqFloatChirho,
         "+.#" => PrimOpKindChirho::AddFloatChirho,
         "*.#" => PrimOpKindChirho::MulFloatChirho,

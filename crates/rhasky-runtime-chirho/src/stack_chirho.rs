@@ -123,6 +123,10 @@ pub enum PrimOpKindChirho {
     AppendStrChirho,
     /// String equality: eqStr# :: String -> String -> Bool
     EqStrChirho,
+    /// String less-than: ltStr# :: String -> String -> Bool
+    LtStrChirho,
+    /// String compare: compareStr# :: String -> String -> Ordering
+    CompareStrChirho,
     /// String length: lengthStr# :: String -> Int
     LengthStrChirho,
     /// Show a String: showStr# :: String -> String (wraps in quotes)

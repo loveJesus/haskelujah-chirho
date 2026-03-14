@@ -2555,12 +2555,157 @@ impl LowerCtxChirho {
             }
             SyntaxKindChirho::ParenExprChirho => {
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                let expr_nodes_chirho: Vec<_> = children_chirho
-                    .iter()
-                    .filter(|c_chirho| {
-                        matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(_))
-                    })
-                    .collect();
+
+                // Detect operator sections by checking for operator tokens
+                // outside of expression nodes.
+                let mut leading_op_chirho: Option<String> = None;
+                let mut trailing_op_chirho: Option<String> = None;
+                let mut expr_nodes_chirho: Vec<&ChildChirho<'_>> = Vec::new();
+
+                for (idx_chirho, child_chirho) in children_chirho.iter().enumerate() {
+                    match &child_chirho.element_chirho {
+                        GreenElementChirho::NodeChirho(_) => {
+                            expr_nodes_chirho.push(child_chirho);
+                        }
+                        GreenElementChirho::TokenChirho(tok_chirho) => {
+                            let kind_chirho = tok_chirho.kind_chirho();
+                            if kind_chirho == TokenKindChirho::VarSymChirho
+                                || kind_chirho == TokenKindChirho::ConSymChirho
+                            {
+                                if expr_nodes_chirho.is_empty() {
+                                    leading_op_chirho = Some(tok_chirho.text_chirho().to_string());
+                                } else {
+                                    trailing_op_chirho = Some(tok_chirho.text_chirho().to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Left section: (op expr) — operator token before any expr node
+                if let Some(ref op_text_chirho) = leading_op_chirho {
+                    if let Some(arg_child_chirho) = expr_nodes_chirho.first() {
+                        let arg_expr_chirho = self.lower_expr_from_child_chirho(arg_child_chirho);
+                        return ExprChirho::LeftSectionChirho {
+                            op_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                                op_text_chirho.clone(),
+                                span_chirho,
+                            )),
+                            arg_chirho: Box::new(arg_expr_chirho),
+                            span_chirho,
+                        };
+                    }
+                }
+
+                // Right section: (expr op) — operator token after an expr node
+                if let Some(ref op_text_chirho) = trailing_op_chirho {
+                    if let Some(arg_child_chirho) = expr_nodes_chirho.first() {
+                        let arg_expr_chirho = self.lower_expr_from_child_chirho(arg_child_chirho);
+                        return ExprChirho::RightSectionChirho {
+                            arg_chirho: Box::new(arg_expr_chirho),
+                            op_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                                op_text_chirho.clone(),
+                                span_chirho,
+                            )),
+                            span_chirho,
+                        };
+                    }
+                }
+
+                // Fallback: check if the single child node is an InfixExprChirho
+                // with a trailing operator (right section) or leading operator
+                // (left section). The parser consumes the operator into an
+                // InfixExprChirho, so it won't appear as a direct token child
+                // of ParenExprChirho.
+                if expr_nodes_chirho.len() == 1
+                    && leading_op_chirho.is_none()
+                    && trailing_op_chirho.is_none()
+                {
+                    if let GreenElementChirho::NodeChirho(inner_node_chirho) =
+                        expr_nodes_chirho[0].element_chirho
+                    {
+                        if inner_node_chirho.kind_chirho() == SyntaxKindChirho::InfixExprChirho {
+                            let inner_children_chirho = self.semantic_children_chirho(
+                                inner_node_chirho,
+                                expr_nodes_chirho[0].start_chirho,
+                            );
+                            // Collect expression nodes and operator tokens from InfixExpr
+                            let mut inner_expr_nodes_chirho: Vec<&ChildChirho<'_>> = Vec::new();
+                            let mut inner_ops_chirho: Vec<(String, SpanChirho)> = Vec::new();
+                            for ic_chirho in &inner_children_chirho {
+                                match ic_chirho.element_chirho {
+                                    GreenElementChirho::NodeChirho(_) => {
+                                        inner_expr_nodes_chirho.push(ic_chirho);
+                                    }
+                                    GreenElementChirho::TokenChirho(tok_chirho) => {
+                                        let k_chirho = tok_chirho.kind_chirho();
+                                        if k_chirho == TokenKindChirho::VarSymChirho
+                                            || k_chirho == TokenKindChirho::ConSymChirho
+                                        {
+                                            let s_chirho = self.span_chirho(
+                                                ic_chirho.start_chirho,
+                                                ic_chirho.end_chirho,
+                                            );
+                                            inner_ops_chirho.push((
+                                                tok_chirho.text_chirho().to_string(),
+                                                s_chirho,
+                                            ));
+                                        }
+                                    }
+                                }
+                            }
+                            // Right section: N exprs, N ops → trailing operator has no RHS
+                            if !inner_ops_chirho.is_empty()
+                                && inner_expr_nodes_chirho.len() == inner_ops_chirho.len()
+                            {
+                                let (op_text_chirho, _op_span_chirho) =
+                                    inner_ops_chirho.last().unwrap().clone();
+                                // Lower the expression part (everything before the trailing op)
+                                let arg_expr_chirho = if inner_expr_nodes_chirho.len() == 1 {
+                                    self.lower_expr_from_child_chirho(inner_expr_nodes_chirho[0])
+                                } else {
+                                    // Multiple exprs before trailing op: rebuild infix
+                                    let sub_exprs_chirho: Vec<ExprChirho> = inner_expr_nodes_chirho
+                                        .iter()
+                                        .map(|c_chirho| self.lower_expr_from_child_chirho(c_chirho))
+                                        .collect();
+                                    let sub_ops_chirho: Vec<NameChirho> = inner_ops_chirho
+                                        [..inner_ops_chirho.len() - 1]
+                                        .iter()
+                                        .map(|(t_chirho, s_chirho)| {
+                                            NameChirho::RawChirho(
+                                                RawNameChirho::unqualified_chirho(
+                                                    t_chirho.clone(),
+                                                    *s_chirho,
+                                                ),
+                                            )
+                                        })
+                                        .collect();
+                                    resolve_infix_precedence_chirho(
+                                        sub_exprs_chirho,
+                                        sub_ops_chirho,
+                                        span_chirho,
+                                    )
+                                };
+                                return ExprChirho::RightSectionChirho {
+                                    arg_chirho: Box::new(arg_expr_chirho),
+                                    op_chirho: NameChirho::RawChirho(
+                                        RawNameChirho::unqualified_chirho(
+                                            op_text_chirho,
+                                            span_chirho,
+                                        ),
+                                    ),
+                                    span_chirho,
+                                };
+                            }
+                            // Left section: 0 exprs before first op, 1+ exprs after
+                            // (op expr) already handled above for direct tokens;
+                            // this catches case where parse_expr made the op part of InfixExpr
+                        }
+                    }
+                }
+
+                // Normal parenthesized expr or tuple
                 if expr_nodes_chirho.len() == 1 {
                     let inner_chirho = self.lower_expr_from_child_chirho(expr_nodes_chirho[0]);
                     ExprChirho::ParenChirho {
@@ -2582,6 +2727,11 @@ impl LowerCtxChirho {
                         span_chirho,
                     }
                 }
+            }
+            SyntaxKindChirho::LeftSectionExprChirho
+            | SyntaxKindChirho::RightSectionExprChirho => {
+                // These are unused — sections are handled inside ParenExprChirho
+                self.placeholder_expr_chirho()
             }
             SyntaxKindChirho::ListExprChirho => {
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
@@ -3934,6 +4084,8 @@ fn is_expr_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::CaseExprChirho
             | SyntaxKindChirho::DoExprChirho
             | SyntaxKindChirho::ParenExprChirho
+            | SyntaxKindChirho::LeftSectionExprChirho
+            | SyntaxKindChirho::RightSectionExprChirho
             | SyntaxKindChirho::TupleExprChirho
             | SyntaxKindChirho::ListExprChirho
             | SyntaxKindChirho::ArithSeqExprChirho

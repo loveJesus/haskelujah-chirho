@@ -1873,10 +1873,63 @@ impl<'src> ParserChirho<'src> {
             return;
         }
 
-        // Could be a left section: (op expr) or (expr op)
-        // or just (expr) or (expr, expr, ...)
+        // Check for left section: (op expr) — operator NOT immediately
+        // followed by ')'.  Emit operator token and then the expression
+        // inside the ParenExprChirho; the CST→AST lowerer will detect
+        // the leading operator token and produce LeftSectionChirho.
+        // IMPORTANT: exclude `-` (minus) because `(-e)` is always negation
+        // in Haskell, never a section.
+        let is_op_chirho = matches!(
+            self.current_kind_chirho(),
+            Some(RawTokenKindChirho::VarSymChirho)
+                | Some(RawTokenKindChirho::ConSymChirho)
+        );
+        let is_minus_chirho = is_op_chirho && self.current_text_chirho() == "-";
+        if is_op_chirho && !is_minus_chirho && !self.is_operator_section_chirho() {
+            self.bump_chirho(); // the operator
+            self.eat_trivia_chirho();
+            self.parse_expr_chirho();
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho();
+            }
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        // Could be a right section: (expr op) or just (expr) or (expr, expr, ...)
         self.parse_expr_chirho();
         self.eat_trivia_chirho();
+
+        // Check for right section: after expr, we have op followed by ')'
+        let is_right_op_chirho = matches!(
+            self.current_kind_chirho(),
+            Some(RawTokenKindChirho::VarSymChirho)
+                | Some(RawTokenKindChirho::ConSymChirho)
+        );
+        if is_right_op_chirho {
+            // Look ahead past operator + trivia for ')'
+            let mut look_chirho = self.pos_chirho + 1;
+            while look_chirho < self.tokens_chirho.len()
+                && self.tokens_chirho[look_chirho].kind_chirho.is_trivia_chirho()
+            {
+                look_chirho += 1;
+            }
+            let is_right_section_chirho = look_chirho < self.tokens_chirho.len()
+                && self.tokens_chirho[look_chirho].kind_chirho
+                    == RawTokenKindChirho::RightParenChirho;
+
+            if is_right_section_chirho {
+                // Right section: emit the operator token; lowerer detects it
+                self.bump_chirho(); // the operator
+                self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                    self.bump_chirho();
+                }
+                self.builder_chirho.finish_node_chirho();
+                return;
+            }
+        }
 
         if self.at_chirho(RawTokenKindChirho::CommaChirho) {
             // Tuple

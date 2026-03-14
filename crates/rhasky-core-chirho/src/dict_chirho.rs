@@ -635,6 +635,7 @@ impl DictPassCtxChirho {
             ("Ord", "compare", "Char", 1),
             ("Ord", "compare", "Double", 1),
             ("Ord", "compare", "Bool", 1),
+            ("Ord", "compare", "[Char]", 1),
             // Show
             ("Show", "show", "Int", 2),
             ("Show", "show", "Char", 0),
@@ -686,6 +687,7 @@ impl DictPassCtxChirho {
                     ("Eq", "==", _) => "==#",
                     ("Ord", "compare", "Char") => "compareChar#",
                     ("Ord", "compare", "Double") => "compareFloat#",
+                    ("Ord", "compare", "[Char]") => "compareStr#",
                     ("Ord", "compare", "Bool") => "compare#",
                     ("Ord", "compare", _) => "compare#",
                     ("Num", "+", "Double") => "+.#",
