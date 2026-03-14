@@ -935,6 +935,17 @@ impl DesugarCtxChirho {
                 let binders_chirho = self.pat_to_binders_chirho(pat_ref_chirho);
                 self.prebind_all_pat_vars_chirho(pat_ref_chirho);
 
+                // For Default alt with a VarChirho pattern, bind the variable
+                // name to the scrutinee ID so references in the RHS resolve to
+                // the actual argument value (e.g. `f x = x + 1` with `f 0 = 100`
+                // as the literal arm — `x` must refer to the param binder holding
+                // the scrutinee, not a fresh unbound id).
+                if con_chirho == AltConChirho::DefaultChirho {
+                    if let PatChirho::VarChirho(n_chirho) = pat_ref_chirho {
+                        self.bind_in_scope_chirho(n_chirho.text_chirho(), scrut_id_chirho);
+                    }
+                }
+
                 // Recurse: compile remaining pattern columns for this group.
                 let rhs_chirho = if pat_idx_chirho + 1 >= arity_chirho {
                     // Last pattern column — desugar the RHS.

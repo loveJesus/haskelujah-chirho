@@ -11859,4 +11859,77 @@ main = if all odd [1,3,5,7] then 1 else 0
         }
     }
 
+    // ── Literal pattern matching in function equations ──
+
+    #[test]
+    fn eval_literal_pattern_zero_chirho() {
+        // f 0 = 100; f x = x + 1; main = f 0 → 100
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nf 0 = 100\nf x = x + 1\nmain = f 0\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(100)),
+            Err(e_chirho) => panic!("literal pattern zero: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_literal_pattern_nonzero_chirho() {
+        // f 0 = 100; f x = x + 1; main = f 5 → 6
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nf 0 = 100\nf x = x + 1\nmain = f 5\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(6)),
+            Err(e_chirho) => panic!("literal pattern nonzero: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_literal_pattern_multi_lit_chirho() {
+        // Multiple literal arms with a catch-all default
+        // f 0 = 10; f 1 = 20; f 2 = 30; f n = n * 100; main = f 2 + f 5
+        // f 2 = 30, f 5 = 500, total = 530
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nf 0 = 10\nf 1 = 20\nf 2 = 30\nf n = n * 100\nmain = f 2 + f 5\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(530)),
+            Err(e_chirho) => panic!("literal pattern multi: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_literal_pattern_negative_chirho() {
+        // Negative literal pattern
+        // abs2 0 = 0; abs2 x | x > 0 = x | otherwise = 0 - x
+        // main = abs2 (-3) → 3
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nabs2 0 = 0\nabs2 x\n  | x > 0 = x\n  | otherwise = 0 - x\nmain = abs2 (-3)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("literal pattern negative: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_literal_pattern_reuse_var_chirho() {
+        // Default arm variable used in complex expression
+        // fib2 0 = 0; fib2 1 = 1; fib2 n = n + 10; main = fib2 5
+        // fib2 5 hits default → 5 + 10 = 15
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nfib2 0 = 0\nfib2 1 = 1\nfib2 n = n + 10\nmain = fib2 5\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15)),
+            Err(e_chirho) => panic!("literal pattern reuse var: {}", e_chirho),
+        }
+    }
+
 }
