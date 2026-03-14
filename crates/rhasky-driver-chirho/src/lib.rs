@@ -11306,4 +11306,211 @@ main = if all odd [1,3,5,7] then 1 else 0
         }
     }
 
+    // ── Data.Maybe extras ──
+
+    #[test]
+    fn eval_maybe_to_list_just_chirho() {
+        // maybeToList (Just 42) → [42] → head = 42
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = head (maybeToList (Just 42))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("maybeToList Just: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_maybe_to_list_nothing_chirho() {
+        // maybeToList Nothing → [] → length = 0
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (maybeToList Nothing)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0)),
+            Err(e_chirho) => panic!("maybeToList Nothing: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_list_to_maybe_chirho() {
+        // listToMaybe [10,20,30] → Just 10 → fromMaybe 0 = 10
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = fromMaybe 0 (listToMaybe [10,20,30])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10)),
+            Err(e_chirho) => panic!("listToMaybe: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_list_to_maybe_empty_chirho() {
+        // listToMaybe [] → Nothing → fromMaybe 99 = 99
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = fromMaybe 99 (listToMaybe [])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99)),
+            Err(e_chirho) => panic!("listToMaybe empty: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_cat_maybes_chirho() {
+        // catMaybes [Just 1, Nothing, Just 3, Nothing, Just 5] → [1,3,5] → sum = 9
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (catMaybes [Just 1, Nothing, Just 3, Nothing, Just 5])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(9)),
+            Err(e_chirho) => panic!("catMaybes: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_maybe_filter_chirho() {
+        // mapMaybe (\x -> if x > 3 then Just (x * 10) else Nothing) [1,2,3,4,5] → [40,50] → sum = 90
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (mapMaybe (\\x -> if x > 3 then Just (x * 10) else Nothing) [1,2,3,4,5])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(90)),
+            Err(e_chirho) => panic!("mapMaybe filter: {}", e_chirho),
+        }
+    }
+
+    // ── Data.IORef ──
+
+    #[test]
+    fn eval_ioref_new_read_show_chirho() {
+        // newIORef 42, readIORef, show → "42\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = do\n  r <- newIORef 42\n  v <- readIORef r\n  putStrLn (show v)\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "42\n");
+            }
+            Err(e_chirho) => panic!("ioref new/read/show: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_ioref_write_overwrite_chirho() {
+        // newIORef 1, writeIORef r 99, readIORef r → 99
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = do\n  r <- newIORef 1\n  writeIORef r 99\n  v <- readIORef r\n  putStrLn (show v)\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "99\n");
+            }
+            Err(e_chirho) => panic!("ioref write overwrite: {}", e_chirho),
+        }
+    }
+
+    // ── when/unless ──
+
+    #[test]
+    fn eval_when_true_output_chirho() {
+        // when True (putStrLn "yes") → "yes\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = when True (putStrLn \"yes\")\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "yes\n");
+            }
+            Err(e_chirho) => panic!("when True output: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_when_false_silent_chirho() {
+        // when False (putStrLn "no") → ""
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = when False (putStrLn \"no\")\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "");
+            }
+            Err(e_chirho) => panic!("when False silent: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_unless_false_output_chirho() {
+        // unless False (putStrLn "ran") → "ran\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = unless False (putStrLn \"ran\")\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "ran\n");
+            }
+            Err(e_chirho) => panic!("unless False output: {}", e_chirho),
+        }
+    }
+
+    // ── flip ──
+
+    #[test]
+    fn eval_flip_const_chirho() {
+        // flip const 1 2 → 2
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = flip const 1 2\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("flip const: {}", e_chirho),
+        }
+    }
+
+    // ── Data.Either extras ──
+
+    #[test]
+    fn eval_either_left_chirho() {
+        // either (+10) (*2) (Left 5) → 15
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = either (+10) (*2) (Left 5)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15)),
+            Err(e_chirho) => panic!("either Left: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_either_right_chirho() {
+        // either (+10) (*2) (Right 5) → 10
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = either (+10) (*2) (Right 5)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10)),
+            Err(e_chirho) => panic!("either Right: {}", e_chirho),
+        }
+    }
+
 }

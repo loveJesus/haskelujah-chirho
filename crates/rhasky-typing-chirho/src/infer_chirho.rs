@@ -2880,6 +2880,81 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // maybeToList :: forall a. Maybe a -> [a]
+    let mtl_a_chirho = TyVarChirho(1030);
+    env_chirho.bind_chirho(
+        "maybeToList".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![mtl_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(TyChirho::VarChirho(mtl_a_chirho)),
+                ),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(mtl_a_chirho))),
+            ),
+        },
+    );
+
+    // listToMaybe :: forall a. [a] -> Maybe a
+    let ltm_a_chirho = TyVarChirho(1031);
+    env_chirho.bind_chirho(
+        "listToMaybe".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![ltm_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(ltm_a_chirho))),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(TyChirho::VarChirho(ltm_a_chirho)),
+                ),
+            ),
+        },
+    );
+
+    // catMaybes :: forall a. [Maybe a] -> [a]
+    let cm_a_chirho = TyVarChirho(1032);
+    env_chirho.bind_chirho(
+        "catMaybes".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![cm_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(TyChirho::VarChirho(cm_a_chirho)),
+                ))),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(cm_a_chirho))),
+            ),
+        },
+    );
+
+    // mapMaybe :: forall a b. (a -> Maybe b) -> [a] -> [b]
+    let mm_a_chirho = TyVarChirho(1033);
+    let mm_b_chirho = TyVarChirho(1034);
+    env_chirho.bind_chirho(
+        "mapMaybe".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![mm_a_chirho, mm_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(mm_a_chirho),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                            Box::new(TyChirho::VarChirho(mm_b_chirho)),
+                        ),
+                    ),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(mm_a_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(mm_b_chirho))),
+            ),
+        },
+    );
+
     // either :: forall a b c. (a -> c) -> (b -> c) -> Either a b -> c
     let either_a_chirho = TyVarChirho(1025);
     let either_b_chirho = TyVarChirho(1026);
