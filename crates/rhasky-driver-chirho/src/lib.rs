@@ -10415,19 +10415,49 @@ main = putStrLn (show (Point 3 4))
     }
 
     #[test]
-    fn eval_deriving_show_multi_con_chirho() {
-        // data Shape = Circle Int | Rect Int Int deriving (Show)
-        // show (Circle 5) → "Circle 5", show (Rect 3 4) → "Rect 3 4"
+    fn eval_deriving_show_fields_chirho() {
+        // data Point = Point Int Int deriving (Show)
+        // putStrLn (show (Point 3 4)) → "Point 3 4\n"
         use super::eval_source_with_machine_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
         let src_chirho = r#"module Test where
-data Shape = Circle Int | Rect Int Int deriving (Show)
-main = putStrLn (show (Rect 3 4))
+data Point = Point Int Int deriving (Show)
+main = putStrLn (show (Point 3 4))
 "#;
         let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
         match result_chirho {
             Ok((_val_chirho, machine_chirho)) => {
-                assert_eq!(machine_chirho.io_output_chirho, "Rect 3 4\n");
+                assert_eq!(
+                    machine_chirho.io_output_chirho,
+                    "Point 3 4\n",
+                    "show (Point 3 4) should produce \"Point 3 4\""
+                );
+            }
+            Err(e_chirho) => panic!("deriving Show with fields: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_deriving_show_multi_con_chirho() {
+        // data Shape = Circle Int | Rect Int Int deriving (Show)
+        // do { putStrLn (show (Circle 5)); putStrLn (show (Rect 3 4)) }
+        // → "Circle 5\nRect 3 4\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+data Shape = Circle Int | Rect Int Int deriving (Show)
+main = do
+  putStrLn (show (Circle 5))
+  putStrLn (show (Rect 3 4))
+"#;
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(
+                    machine_chirho.io_output_chirho,
+                    "Circle 5\nRect 3 4\n",
+                    "show Circle 5 and show Rect 3 4 in do-block"
+                );
             }
             Err(e_chirho) => panic!("deriving Show multi-con: {}", e_chirho),
         }
