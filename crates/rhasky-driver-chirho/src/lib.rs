@@ -10085,4 +10085,60 @@ main = myLookup 5 (myInsert 3 99 (myInsert 5 42 Leaf))
         }
     }
 
+    // ── String comparison / Ord [Char] tests ─────────────────────────
+
+    #[test]
+    fn eval_compare_string_lt_chirho() {
+        // compare "abc" "def" should yield LT → pattern match to 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = case compare "abc" "def" of
+         LT -> 1
+         EQ -> 2
+         GT -> 3
+"#;
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("compare string LT: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_compare_string_eq_chirho() {
+        // compare "hello" "hello" should yield EQ → 2
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = case compare "hello" "hello" of
+         LT -> 1
+         EQ -> 2
+         GT -> 3
+"#;
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("compare string EQ: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_compare_string_gt_chirho() {
+        // compare "xyz" "abc" should yield GT → 3
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = case compare "xyz" "abc" of
+         LT -> 1
+         EQ -> 2
+         GT -> 3
+"#;
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("compare string GT: {}", e_chirho),
+        }
+    }
+
 }

@@ -158,6 +158,18 @@ pub fn apply_prim_binop_chirho(
             }),
         },
 
+        // String less-than
+        PrimOpKindChirho::LtStrChirho => match (left_chirho, right_chirho) {
+            (ValueChirho::StringChirho(a_chirho), ValueChirho::StringChirho(b_chirho)) => {
+                Ok(ValueChirho::BoolChirho(a_chirho < b_chirho))
+            }
+            _ => Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho,
+                expected_chirho: "String",
+                got_chirho: format!("{left_chirho}, {right_chirho}"),
+            }),
+        },
+
         // String length (unary)
         PrimOpKindChirho::LengthStrChirho => match left_chirho {
             ValueChirho::StringChirho(s_chirho) => {
@@ -609,6 +621,7 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::CompareIntChirho
         | PrimOpKindChirho::CompareCharChirho
         | PrimOpKindChirho::CompareFloatChirho
+        | PrimOpKindChirho::CompareStrChirho
         | PrimOpKindChirho::GetLineChirho
         | PrimOpKindChirho::GetCharChirho
         | PrimOpKindChirho::ReadFileChirho
