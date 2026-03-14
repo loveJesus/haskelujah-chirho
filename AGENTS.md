@@ -222,7 +222,13 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver free-var cache tests**: 2 tests (nested bool case recursive, user-defined BST insert)
 - **Driver String-as-[Char] interop tests**: 6 tests (head "hello", length "hello", map toUpper "hello", filter isDigit "abc123", reverse "hello", null "")
 - **Driver string comparison tests**: 3 tests (compare "abc" "def"→LT, compare "hello" "hello"→EQ, compare "xyz" "abc"→GT)
-- **Total**: 929 tests passing across all crates (1 ignored)
+- **Driver interact tests**: 3 tests (interact identity, interact map toUpper, interact reverse)
+- **Driver mapM_/lookup/product/replicate tests**: 4 tests (mapM_ putStrLn, lookup found, lookup not found, replicate sum)
+- **Driver deriving product type tests**: 4 tests (deriving Show product, deriving Show multi-constructor, deriving Eq product equal, deriving Eq product not-equal)
+- **Driver list comp advanced tests**: 2 tests (transform+filter, cartesian product)
+- **Driver higher-order compose test**: 1 test (length . filter even)
+- **Driver operator section tests**: 3 tests (left section (2*), right section (*3), addition section (+10))
+- **Total**: 947 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -320,4 +326,5 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 92. ~~Data.Set extended operations~~ — DONE (setDelete via subtree merge through setToList+setFromList, setUnion via fold-insert, setIntersection/setDifference via setMember filter with DataConChirho True/False case dispatch, setFilter with predicate function, setMap for element transformation, setFold for in-order fold; 7 new e2e tests; 917 tests total)
 93. ~~String-as-[Char] interop~~ — DONE (fixed resolve_string_arg_chirho to force HeapPtrChirho head values in cons cells so putStrLn correctly outputs transformed char lists from map/filter; all standard list operations work on strings via box_literal_chirho decomposition; 6 new e2e tests: head/length/map toUpper/filter isDigit/reverse/null on strings; 923 tests total)
 94. ~~String ordering primops + Ord [Char]~~ — DONE (CompareStrChirho/LtStrChirho primops; Ord/Eq/Show [Char] instances in class_chirho; STG lowerer mappings ltStr#/compareStr#; compareStr# in primop_for_chirho and builtins; CompareStrChirho in eval_chirho via resolve_value_to_string_chirho + make_ordering_chirho; CompareStrChirho added to catch-all in prim_chirho; 3 new e2e tests: compare string LT/EQ/GT; 929 tests total)
-95. Next priorities: improved interact with function application, more numeric class instances, Data.Map with polymorphic keys, type-level improvements, Data.Map/Set balanced (AVL/red-black)
+95. ~~Operator sections (left/right)~~ — DONE (CST parser detects left sections `(op e)` and right sections `(e op)` in parse_paren_expr_chirho; excludes `-` from left-section detection since `(-e)` is negation; lowerer inspects InfixExprChirho children for trailing operators without RHS to detect right sections consumed by infix parsing; LeftSectionExprChirho/RightSectionExprChirho CST kinds added; desugarer already handles both via lambda wrapping; 3 new e2e tests: `(2*)`, `(*3)`, `(+10)` mapped over lists; fixes 5 pre-existing test failures from incomplete section parser; 947 tests total)
+96. Next priorities: more numeric class instances, Data.Map with polymorphic keys, type-level improvements, Data.Map/Set balanced (AVL/red-black), where-clause in case alternatives, type class defaulting improvements, type synonyms in instance heads
