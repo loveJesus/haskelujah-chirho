@@ -1166,6 +1166,14 @@ impl DesugarCtxChirho {
                 let arity_chirho = elements_chirho.len();
                 AltConChirho::DataConChirho(format!("$tuple{}", arity_chirho))
             }
+            // List pattern `[]` → DataCon("[]"); `[a,b,c]` → DataCon(":") (matches head).
+            PatChirho::ListChirho { elements_chirho, .. } => {
+                if elements_chirho.is_empty() {
+                    AltConChirho::DataConChirho("[]".to_string())
+                } else {
+                    AltConChirho::DataConChirho(":".to_string())
+                }
+            }
             PatChirho::LitChirho(lit_chirho) => {
                 AltConChirho::LitConChirho(self.desugar_lit_chirho(lit_chirho))
             }
@@ -1196,7 +1204,6 @@ impl DesugarCtxChirho {
             PatChirho::LazyChirho { .. } => AltConChirho::DefaultChirho,
             PatChirho::WildcardChirho(_) => AltConChirho::DefaultChirho,
             PatChirho::VarChirho(_) => AltConChirho::DefaultChirho,
-            _ => AltConChirho::DefaultChirho,
         }
     }
 
@@ -1231,6 +1238,29 @@ impl DesugarCtxChirho {
                 let left_binder_chirho = self.pat_to_single_binder_chirho(left_chirho);
                 let right_binder_chirho = self.pat_to_single_binder_chirho(right_chirho);
                 vec![left_binder_chirho, right_binder_chirho]
+            }
+            // List pattern: `[]` has no binders; `[a, b, c]` desugars to
+            // `a : [b, c]` — two binders: the head element and the tail.
+            PatChirho::ListChirho {
+                elements_chirho,
+                span_chirho,
+            } => {
+                if elements_chirho.is_empty() {
+                    // `[]` — no fields
+                    vec![]
+                } else {
+                    // `[head, rest..]` — head binder + tail binder (tail is
+                    // a synthetic ListChirho of the remaining elements)
+                    let head_binder_chirho =
+                        self.pat_to_single_binder_chirho(&elements_chirho[0]);
+                    let tail_pat_chirho = PatChirho::ListChirho {
+                        elements_chirho: elements_chirho[1..].to_vec(),
+                        span_chirho: *span_chirho,
+                    };
+                    let tail_binder_chirho =
+                        self.pat_to_single_binder_chirho(&tail_pat_chirho);
+                    vec![head_binder_chirho, tail_binder_chirho]
+                }
             }
             PatChirho::TupleChirho {
                 elements_chirho, ..
@@ -1357,6 +1387,14 @@ impl DesugarCtxChirho {
                     }
                 }
             }
+            // List pattern: recurse into each element to bind variables.
+            // Empty list `[]` has no variables. Non-empty `[a, b, c]` are
+            // treated as head `a` plus tail `[b, c]` recursively.
+            PatChirho::ListChirho { elements_chirho, .. } => {
+                for elem_chirho in elements_chirho {
+                    self.prebind_nested_pat_vars_chirho(elem_chirho);
+                }
+            }
             PatChirho::AsChirho { pattern_chirho, .. } => {
                 self.prebind_all_pat_vars_chirho(pattern_chirho);
             }
@@ -1365,7 +1403,6 @@ impl DesugarCtxChirho {
             | PatChirho::LazyChirho { inner_chirho, .. } => {
                 self.prebind_all_pat_vars_chirho(inner_chirho);
             }
-            _ => {}
         }
     }
 
@@ -1439,7 +1476,12 @@ impl DesugarCtxChirho {
             }
             PatChirho::WildcardChirho(_) | PatChirho::LitChirho(_)
             | PatChirho::NegChirho { .. } => {}
-            _ => {}
+            // List pattern: recurse into each element.
+            PatChirho::ListChirho { elements_chirho, .. } => {
+                for elem_chirho in elements_chirho {
+                    self.prebind_nested_pat_vars_chirho(elem_chirho);
+                }
+            }
         }
     }
 
@@ -1450,7 +1492,10 @@ impl DesugarCtxChirho {
             PatChirho::ConChirho { .. }
             | PatChirho::InfixConChirho { .. }
             | PatChirho::TupleChirho { .. }
-            | PatChirho::RecordChirho { .. } => true,
+            | PatChirho::RecordChirho { .. }
+            // List patterns always need case decomposition — even `[]` needs
+            // a DataCon("[]") alt rather than being treated as a wildcard.
+            | PatChirho::ListChirho { .. } => true,
             PatChirho::ParenChirho { inner_chirho, .. } => {
                 Self::is_nested_con_pat_chirho(inner_chirho)
             }

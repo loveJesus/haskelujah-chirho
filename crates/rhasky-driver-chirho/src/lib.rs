@@ -14689,4 +14689,90 @@ main = sum (pascal 10)
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1024));
     }
 
+    // ── Multi-equation list-pattern tests ───────────────────────────────
+
+    #[test]
+    fn eval_multi_eq_list_pat_empty_chirho() {
+        // myLen [] = 0 (base case of multi-equation list pattern matching)
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+myLen [] = 0
+myLen (_:xs) = 1 + myLen xs
+main = putStrLn (show (myLen []))
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_input_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None, &[])
+                .unwrap_or_else(|e_chirho| panic!("myLen [] failed: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "0\n");
+    }
+
+    #[test]
+    fn eval_multi_eq_list_pat_one_chirho() {
+        // myLen [1] = 1 (single element recursive case)
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+myLen [] = 0
+myLen (_:xs) = 1 + myLen xs
+main = putStrLn (show (myLen [1]))
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_input_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None, &[])
+                .unwrap_or_else(|e_chirho| panic!("myLen [1] failed: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "1\n");
+    }
+
+    #[test]
+    fn eval_multi_eq_list_pat_io_chirho() {
+        // Uses putStrLn version to capture output
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+myLen [] = 0
+myLen (_:xs) = 1 + myLen xs
+main = putStrLn (show (myLen [1,2,3]))
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_input_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None, &[])
+                .unwrap_or_else(|e_chirho| panic!("multi-eq list IO: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "3\n");
+    }
+
+    #[test]
+    fn eval_multi_eq_bool_pat_chirho() {
+        // myNot True = False
+        // myNot False = True
+        // main = putStrLn (show (myNot True))  → "False\n"
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+myNot True = False
+myNot False = True
+main = putStrLn (show (myNot True))
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_input_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None, &[])
+                .unwrap_or_else(|e_chirho| panic!("multi-eq bool pattern: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "False\n");
+    }
+
+    #[test]
+    fn eval_multi_eq_maybe_pat_chirho() {
+        // fromJust2 (Just x) = x
+        // fromJust2 Nothing = 0
+        // main = putStrLn (show (fromJust2 (Just 42)))  → "42\n"
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+fromJust2 (Just x) = x
+fromJust2 Nothing = 0
+main = putStrLn (show (fromJust2 (Just 42)))
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_input_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None, &[])
+                .unwrap_or_else(|e_chirho| panic!("multi-eq maybe pattern: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "42\n");
+    }
+
 }

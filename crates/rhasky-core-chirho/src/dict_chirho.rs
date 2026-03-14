@@ -426,9 +426,24 @@ impl DictPassCtxChirho {
                     }
                 }
                 // For general App chains like `f 1.5 2.5`, try to infer
-                // from the argument first, then recurse into the function
-                // (which is itself an App for curried calls).
+                // from the argument first, but ONLY when the outermost
+                // function is a literal, primop, or non-list-typed expression.
+                // Propagating the arg's list type (e.g. [Int]) for a user
+                // function like `myLen []` would be wrong: myLen returns Int
+                // but its argument is [Int].  Guard against this: only
+                // propagate a list-type inference if the function itself
+                // also returns a list type.
                 if let Some(tk_chirho) = self.infer_type_key_chirho(arg_chirho) {
+                    let is_list_type_chirho = tk_chirho.starts_with('[');
+                    // Only propagate list arg types if the function also
+                    // returns a list (fun_ty is Some list) or is unknown.
+                    // For user-defined functions (fun_ty = None), list types
+                    // should NOT be propagated as the result type.
+                    if is_list_type_chirho && fun_ty_chirho.is_none() {
+                        // Don't propagate: user function likely returns a
+                        // scalar, not a list.
+                        return None;
+                    }
                     return Some(tk_chirho);
                 }
                 fun_ty_chirho
