@@ -3183,6 +3183,99 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // ── Data.Map operations ──
+    // mapEmpty :: Map k v  (simplified as Int)
+    env_chirho.bind_chirho(
+        "mapEmpty".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::int_chirho()),
+    );
+
+    // mapSingleton :: k -> v -> Map k v
+    {
+        let k_chirho = TyChirho::VarChirho(TyVarChirho(3210));
+        let v_chirho = TyChirho::VarChirho(TyVarChirho(3211));
+        env_chirho.bind_chirho(
+            "mapSingleton".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3210), TyVarChirho(3211)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    k_chirho,
+                    TyChirho::fun_chirho(v_chirho, TyChirho::int_chirho()),
+                ),
+            },
+        );
+    }
+
+    // mapInsert :: Int -> v -> Map -> Map
+    {
+        let v_chirho = TyChirho::VarChirho(TyVarChirho(3212));
+        env_chirho.bind_chirho(
+            "mapInsert".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3212)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![TyChirho::int_chirho(), v_chirho, TyChirho::int_chirho()],
+                    TyChirho::int_chirho(),
+                ),
+            },
+        );
+    }
+
+    // mapLookup :: Int -> Map -> Maybe v
+    {
+        let v_chirho = TyChirho::VarChirho(TyVarChirho(3213));
+        env_chirho.bind_chirho(
+            "mapLookup".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3213)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::fun_chirho(TyChirho::int_chirho(), v_chirho),
+                ),
+            },
+        );
+    }
+
+    // mapSize :: Map -> Int
+    env_chirho.bind_chirho(
+        "mapSize".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // mapMember :: Int -> Map -> Bool
+    env_chirho.bind_chirho(
+        "mapMember".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::bool_chirho()),
+        )),
+    );
+
+    // mapFromList :: [(Int, v)] -> Map
+    {
+        let v_chirho = TyChirho::VarChirho(TyVarChirho(3214));
+        env_chirho.bind_chirho(
+            "mapFromList".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3214)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::TupleChirho(vec![
+                        TyChirho::int_chirho(),
+                        v_chirho,
+                    ]))),
+                    TyChirho::int_chirho(),
+                ),
+            },
+        );
+    }
+
     // when :: Bool -> IO () -> IO ()  (simplified: IO () ≈ ())
     env_chirho.bind_chirho(
         "when".to_string(),

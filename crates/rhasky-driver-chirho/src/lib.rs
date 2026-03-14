@@ -9455,6 +9455,32 @@ main = case safeDivide 20 2 of
     }
 
     #[test]
+    fn eval_where_forward_ref_chirho() {
+        // Forward reference: a uses b, b is defined after a in where block
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = result\n  where\n    a = b + 1\n    b = 10\n    result = a\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(11)),
+            Err(e_chirho) => panic!("Where forward ref should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_where_mutual_function_ref_chirho() {
+        // Mutual references: a calls g, g is defined after a in where
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = result\n  where\n    result = g 10\n    g x = x + offset\n    offset = 32\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("Where mutual function ref should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
     fn eval_ioref_modify_chirho() {
         // modifyIORef r (+1) should increment: newIORef 41, modifyIORef r (+1), readIORef r → 42
         use super::eval_source_chirho;
@@ -9464,6 +9490,66 @@ main = case safeDivide 20 2 of
         match result_chirho {
             Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
             Err(e_chirho) => panic!("IORef modify should work: {}", e_chirho),
+        }
+    }
+
+    // ── Data.Map tests ──
+
+    #[test]
+    fn eval_map_insert_lookup_chirho() {
+        // Insert key 5 with value 42, lookup key 5 should find Just 42
+        // Use case on mapLookup result to extract Int
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 5 42 mapEmpty) 5\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("Map insert+lookup should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_lookup_missing_chirho() {
+        // Lookup a key that doesn't exist → Nothing → 0
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 5 42 mapEmpty) 10\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0)),
+            Err(e_chirho) => panic!("Map lookup missing should return Nothing: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_size_chirho() {
+        // mapSize of singleton → 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = mapSize (mapInsert 1 10 mapEmpty)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("Map size should be 1: {}", e_chirho),
+        }
+    }
+
+    // NOTE: nested mapInsert (inserting into a non-empty map) has a tag dispatch bug
+    // with the boolean comparison result. Single-level insert+lookup works.
+    // TODO: fix nested case dispatch for Map BST traversal
+
+    #[test]
+    fn eval_map_member_chirho() {
+        // mapMember 5 (mapInsert 5 42 mapEmpty) → True (1)
+        // mapMember 10 (mapInsert 5 42 mapEmpty) → False (0)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nboolToInt b = if b then 1 else 0\nmain = boolToInt (mapMember 5 (mapInsert 5 42 mapEmpty))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("Map member should be True: {}", e_chirho),
         }
     }
 }

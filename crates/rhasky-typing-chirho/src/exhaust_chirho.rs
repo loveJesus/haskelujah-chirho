@@ -143,6 +143,21 @@ impl TypeConEnvChirho {
             ],
         );
 
+        // Seed Map constructors (BST representation)
+        env_chirho.register_type_chirho(
+            "Map".to_string(),
+            vec![
+                ConInfoChirho {
+                    name_chirho: "MapEmpty".to_string(),
+                    arity_chirho: 0,
+                },
+                ConInfoChirho {
+                    name_chirho: "MapNode".to_string(),
+                    arity_chirho: 4, // key, value, left, right
+                },
+            ],
+        );
+
         for decl_chirho in &module_chirho.decls_chirho {
             match decl_chirho {
                 DeclChirho::DataDeclChirho {
