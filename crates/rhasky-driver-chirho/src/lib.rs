@@ -9102,4 +9102,140 @@ main = case safeDivide 20 2 of
             Err(e_chirho) => panic!("interact pattern should work: {}", e_chirho),
         }
     }
+
+    #[test]
+    fn eval_dot_compose_chain_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // Chained composition: (f . g . h) x = f (g (h x))
+        // add1 . double . add1 $ 5 = add1(double(add1(5))) = add1(double(6)) = add1(12) = 13
+        let result_chirho = eval_source_chirho(
+            "module Test where\nadd1 x = x + 1\ndouble x = x + x\nmain = (add1 . double . add1) 5\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(13)),
+            Err(e_chirho) => panic!("chained composition should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_dot_compose_with_dollar_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // (.) combined with ($): double . succ $ 20 = (double . succ) 20 = 42
+        let result_chirho = eval_source_chirho(
+            "module Test where\ndouble x = x + x\nsucc x = x + 1\nmain = double . succ $ 20\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("dot with dollar should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_dot_compose_io_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // Use (.) with IO: putStrLn . show $ 42
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = putStrLn . show $ 42\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "42\n"),
+            Err(e_chirho) => panic!("dot compose with IO should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_mapM_print_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // mapM_ passing putStrLn directly as first-class function
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmapM_ f xs = case xs of\n  [] -> return 0\n  (y:ys) -> f y >> mapM_ f ys\nmain = mapM_ putStrLn [\"hello\", \"world\"]\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "hello\nworld\n"),
+            Err(e_chirho) => panic!("mapM_ should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_when_cond_action_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // when True action executes the action
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nwhenF cond action = if cond then action else return ()\nmain = whenF True (putStrLn \"yes\")\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "yes\n"),
+            Err(e_chirho) => panic!("when True should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_when_skip_action_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // when False does nothing
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nwhenF cond action = if cond then action else return ()\nmain = do\n  putStrLn \"before\"\n  whenF False (putStrLn \"skip\")\n  putStrLn \"after\"\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "before\nafter\n"),
+            Err(e_chirho) => panic!("when False should skip: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_unless_cond_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // unless False action = when (not False) action → executes
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nunlessF cond action = if cond then return () else action\nmain = unlessF False (putStrLn \"executed\")\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "executed\n"),
+            Err(e_chirho) => panic!("unless False should execute: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_forM_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // forM_ (flip of mapM_) — iterate list with action
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nforM_ xs f = case xs of\n  [] -> return ()\n  (y:ys) -> f y >> forM_ ys f\nmain = forM_ [1,2,3] (\\x -> putStrLn (show x))\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "1\n2\n3\n"),
+            Err(e_chirho) => panic!("forM_ should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_show_list_bool_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // show [True, False]
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nshowBool b = if b then \"True\" else \"False\"\nshowList xs = case xs of\n  [] -> \"[]\"\n  (y:ys) -> \"[\" ++ showBool y ++ showRest ys\nshowRest xs = case xs of\n  [] -> \"]\"\n  (y:ys) -> \",\" ++ showBool y ++ showRest ys\nmain = putStrLn (showList [True, False, True])\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "[True,False,True]\n"),
+            Err(e_chirho) => panic!("show list bool should work: {}", e_chirho),
+        }
+    }
 }
