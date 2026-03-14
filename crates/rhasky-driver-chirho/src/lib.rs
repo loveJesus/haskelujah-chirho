@@ -10197,4 +10197,86 @@ main = case compare "xyz" "abc" of
         }
     }
 
+    // ── mapM_ / forM_ tests ─────────────────────────
+
+    #[test]
+    fn eval_mapm_underscore_chirho() {
+        // mapM_ putStrLn ["a","b","c"] should output "a\nb\nc\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = mapM_ putStrLn ["a","b","c"]
+"#;
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(machine_chirho.io_output_chirho, "a\nb\nc\n");
+            }
+            Err(e_chirho) => panic!("mapM_: {}", e_chirho),
+        }
+    }
+
+    // ── lookup / additional Prelude tests ─────────────────────
+
+    #[test]
+    fn eval_lookup_found_chirho() {
+        // lookup 2 [(1,10),(2,20),(3,30)] → Just 20 → 20
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = case lookup 2 [(1,10),(2,20),(3,30)] of
+         Just x -> x
+         Nothing -> 0
+"#;
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(20)),
+            Err(e_chirho) => panic!("lookup found: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_lookup_not_found_chirho() {
+        // lookup 5 [(1,10),(2,20)] → Nothing → 0
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = case lookup 5 [(1,10),(2,20)] of
+         Just x -> x
+         Nothing -> 0
+"#;
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0)),
+            Err(e_chirho) => panic!("lookup not found: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_product_chirho() {
+        // product [1,2,3,4,5] → 120
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = product [1,2,3,4,5]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(120)),
+            Err(e_chirho) => panic!("product: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_replicate_sum_chirho() {
+        // sum (replicate 3 7) → 21
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (replicate 3 7)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(21)),
+            Err(e_chirho) => panic!("replicate sum: {}", e_chirho),
+        }
+    }
+
+
 }
