@@ -223,8 +223,10 @@ pub fn compile_source_chirho(
     let _deriving_warnings_chirho =
         rhasky_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
 
-    // Phase 3: Name resolution
-    let resolve_result_chirho = resolve_module_chirho(&module_chirho);
+    // Phase 3: Name resolution (with built-in module interfaces for Data.Map etc.)
+    let builtin_ifaces_chirho = rhasky_naming_chirho::builtin_module_ifaces_chirho();
+    let resolve_result_chirho =
+        resolve_module_with_imports_chirho(&module_chirho, &builtin_ifaces_chirho);
     if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(resolve_result_chirho.diagnostics_chirho);
     }
@@ -298,7 +300,9 @@ pub fn compile_modules_chirho(
     source_map_chirho: &mut SourceMapChirho,
 ) -> Result<Vec<CompileResultChirho>, DiagnosticBundleChirho> {
     let mut results_chirho = Vec::new();
-    let mut ifaces_chirho: Vec<ModuleIfaceChirho> = Vec::new();
+    // Seed with synthetic interfaces for built-in modules (Data.Map, Data.Set, etc.)
+    let mut ifaces_chirho: Vec<ModuleIfaceChirho> =
+        rhasky_naming_chirho::builtin_module_ifaces_chirho();
     // Accumulated type schemes from all previously-compiled modules,
     // keyed by unqualified name. Downstream modules receive all upstream
     // exports so that type inference can resolve cross-module references.
@@ -804,7 +808,8 @@ pub fn compile_modules_incremental_chirho(
         });
 
     let mut results_chirho: Vec<(CompileResultChirho, bool)> = Vec::new();
-    let mut ifaces_chirho: Vec<ModuleIfaceChirho> = Vec::new();
+    let mut ifaces_chirho: Vec<ModuleIfaceChirho> =
+        rhasky_naming_chirho::builtin_module_ifaces_chirho();
     // TODO: cache serialized CompileResultChirho in the artifact store
     // so the cache-hit branch can skip recompilation entirely.
 
@@ -12263,6 +12268,114 @@ main = f 10
             // double 10 = 20, add3 20 = 23
             Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(23)),
             Err(e_chirho) => panic!("where multiple annotated: {}", e_chirho),
+        }
+    }
+
+    // ── Synthetic module imports ─────────────────────────────────────────
+
+    #[test]
+    fn eval_import_data_map_chirho() {
+        // import Data.Map functions via synthetic module interface
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import Data.Map (mapInsert, mapLookup, mapEmpty)
+main = case mapLookup 1 (mapInsert 1 99 mapEmpty) of
+         Just x  -> x
+         Nothing -> 0
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99)),
+            Err(e_chirho) => panic!("import Data.Map: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_import_data_map_size_chirho() {
+        // import Data.Map, use mapSize
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import Data.Map
+main = mapSize (mapInsert 2 20 (mapInsert 1 10 mapEmpty))
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("import Data.Map size: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_import_data_list_chirho() {
+        // import Data.List functions
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import Data.List (sort)
+main = head (sort [3, 1, 2])
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("import Data.List: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_import_data_char_chirho() {
+        // import Data.Char functions
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import Data.Char (ord)
+main = ord 'A'
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(65)),
+            Err(e_chirho) => panic!("import Data.Char: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_import_data_maybe_chirho() {
+        // import Data.Maybe functions
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import Data.Maybe (fromMaybe)
+main = fromMaybe 0 (Just 42)
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("import Data.Maybe: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_import_data_set_chirho() {
+        // import Data.Set functions
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import Data.Set (setInsert, setMember, setEmpty)
+main = case setMember 5 (setInsert 5 (setInsert 3 setEmpty)) of
+         True  -> 1
+         False -> 0
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("import Data.Set: {}", e_chirho),
         }
     }
 

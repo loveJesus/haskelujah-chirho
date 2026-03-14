@@ -80,6 +80,154 @@ pub fn build_iface_chirho(module_chirho: &ModuleChirho) -> ModuleIfaceChirho {
     }
 }
 
+/// Build synthetic module interfaces for built-in modules like `Data.Map`,
+/// `Data.Set`, `Data.List`, `Data.Char`, `Data.Maybe`, `Data.Either`.
+/// These are generated at compile time and don't correspond to source files.
+pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
+    let mut modules_chirho = Vec::new();
+
+    // Helper: create an IfaceValueChirho with DUMMY span
+    let mk_val_chirho = |name_chirho: &str| -> (String, IfaceValueChirho) {
+        (name_chirho.to_string(), IfaceValueChirho {
+            name_chirho: name_chirho.to_string(),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        })
+    };
+    let mk_type_chirho = |name_chirho: &str, cons_chirho: &[&str]| -> (String, IfaceTypeChirho) {
+        (name_chirho.to_string(), IfaceTypeChirho {
+            name_chirho: name_chirho.to_string(),
+            constructors_chirho: cons_chirho.iter().map(|c_chirho| c_chirho.to_string()).collect(),
+            methods_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        })
+    };
+
+    // Data.Map
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "mapEmpty", "mapInsert", "mapLookup", "mapMember", "mapDelete",
+            "mapFromList", "mapToList", "mapSize", "mapKeys", "mapElems",
+            "mapFoldlWithKey", "mapInsertWith", "mapFindWithDefault", "mapAdjust",
+            "mapUnionWith", "mapMap", "mapFilter", "mapNull",
+            "mapInsertStr", "mapLookupStr", "mapMemberStr", "mapDeleteStr",
+            "mapFindWithDefaultStr",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Map", &["MapEmpty", "MapNode"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        // Also export constructors as values
+        for con_chirho in &["MapEmpty", "MapNode"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Map".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Set
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "setEmpty", "setInsert", "setMember", "setDelete",
+            "setFromList", "setToList", "setSize", "setUnion",
+            "setIntersection", "setDifference", "setNull",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Set", &["SetEmpty", "SetNode"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for con_chirho in &["SetEmpty", "SetNode"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Set".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.List
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "map", "filter", "foldr", "foldl", "head", "tail", "last", "init",
+            "null", "length", "reverse", "zip", "zipWith", "unzip",
+            "take", "drop", "takeWhile", "dropWhile", "span", "break",
+            "elem", "notElem", "lookup", "sum", "product", "minimum", "maximum",
+            "sort", "insert", "nub", "concat", "concatMap", "any", "all",
+            "iterate", "scanl", "partition",
+            "sortBy", "insertBy", "nubBy", "maximumBy", "minimumBy",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.List".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Char
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "ord", "chr", "isDigit", "isAlpha", "isAlphaNum", "isUpper", "isLower",
+            "isSpace", "toLower", "toUpper", "digitToInt", "intToDigit",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Char".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Maybe
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "maybe", "isJust", "isNothing", "fromMaybe", "fromJust",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Maybe", &["Nothing", "Just"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for con_chirho in &["Nothing", "Just"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Maybe".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.IORef
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "newIORef", "readIORef", "writeIORef", "modifyIORef",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.IORef".to_string(),
+            exports_chirho,
+        });
+    }
+
+    modules_chirho
+}
+
 /// Collect all definitions (types + values) from a module's declarations.
 fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsChirho {
     let mut exports_chirho = IfaceExportsChirho::default();

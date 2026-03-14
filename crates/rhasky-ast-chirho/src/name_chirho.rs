@@ -86,6 +86,14 @@ impl NameChirho {
             Self::ResolvedChirho(n_chirho) => &n_chirho.raw_chirho.text_chirho,
         }
     }
+
+    /// Full qualified name (e.g. `Data.Map` instead of just `Map`).
+    pub fn full_name_chirho(&self) -> String {
+        match self {
+            Self::RawChirho(n_chirho) => n_chirho.full_name_chirho(),
+            Self::ResolvedChirho(n_chirho) => n_chirho.raw_chirho.full_name_chirho(),
+        }
+    }
 }
 
 #[cfg(test)]

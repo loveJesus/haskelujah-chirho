@@ -241,7 +241,7 @@ fn resolve_imports_chirho(
     diagnostics_chirho: &mut DiagnosticBundleChirho,
 ) {
     for import_chirho in imports_chirho {
-        let module_name_chirho = import_chirho.module_chirho.text_chirho();
+        let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
 
         // Find the module interface.
         let iface_chirho = available_chirho

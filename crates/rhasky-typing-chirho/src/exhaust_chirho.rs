@@ -153,7 +153,7 @@ impl TypeConEnvChirho {
                 },
                 ConInfoChirho {
                     name_chirho: "MapNode".to_string(),
-                    arity_chirho: 4, // key, value, left, right
+                    arity_chirho: 5, // key, value, left, right, height
                 },
             ],
         );
@@ -168,7 +168,7 @@ impl TypeConEnvChirho {
                 },
                 ConInfoChirho {
                     name_chirho: "SetNode".to_string(),
-                    arity_chirho: 3, // element, left, right
+                    arity_chirho: 4, // element, left, right, height
                 },
             ],
         );
