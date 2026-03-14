@@ -9238,4 +9238,155 @@ main = case safeDivide 20 2 of
             Err(e_chirho) => panic!("show list bool should work: {}", e_chirho),
         }
     }
+
+    #[test]
+    fn eval_lines_unlines_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // lines splits a string by newlines, unlines joins with newlines
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = putStrLn (unwords (words \"hello world test\"))\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "hello world test\n"),
+            Err(e_chirho) => panic!("words/unwords roundtrip should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_assoc_list_lookup_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // Simple association list lookup by key
+        let result_chirho = eval_source_chirho(
+            "module Test where\nlookupA k xs = case xs of\n  [] -> 0\n  ((k2,v):rest) -> if k == k2 then v else lookupA k rest\nmain = lookupA 2 [(1,10),(2,20),(3,30)]\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(20)),
+            Err(e_chirho) => panic!("assoc list lookup should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_assoc_list_not_found_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // Association list lookup with key not found
+        let result_chirho = eval_source_chirho(
+            "module Test where\nlookupA k xs = case xs of\n  [] -> 0\n  ((k2,v):rest) -> if k == k2 then v else lookupA k rest\nmain = lookupA 5 [(1,10),(2,20),(3,30)]\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0)),
+            Err(e_chirho) => panic!("assoc list lookup not found should return 0: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_higher_order_composition_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // map ((*2) . (+1)) [1,2,3] = [4,6,8]
+        // Using user-defined compose and apply functions
+        let result_chirho = eval_source_chirho(
+            "module Test where\ncomp f g x = f (g x)\ntimes2 x = x * 2\nadd1 x = x + 1\nmain = sum (map (comp times2 add1) [1,2,3])\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(18)),
+            Err(e_chirho) => panic!("higher order composition should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_powers_of_two_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // Build list of powers of two via recursion: [1,2,4,8,16], sum = 31
+        let result_chirho = eval_source_chirho(
+            "module Test where\npowers n x = if n == 0 then [] else x : powers (n - 1) (x * 2)\nmain = sum (powers 5 1)\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(31)),
+            Err(e_chirho) => panic!("powers of two should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_catmaybes_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // catMaybes filters out Nothing and unwraps Just values
+        let result_chirho = eval_source_chirho(
+            "module Test where\ncatMaybes xs = case xs of\n  [] -> []\n  (y:ys) -> case y of\n    Nothing -> catMaybes ys\n    Just v -> v : catMaybes ys\nmain = sum (catMaybes [Just 1, Nothing, Just 3, Nothing, Just 5])\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(9)),
+            Err(e_chirho) => panic!("catMaybes should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_maybe_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // mapMaybe applies function and collects Just results
+        let result_chirho = eval_source_chirho(
+            "module Test where\nmapMaybe f xs = case xs of\n  [] -> []\n  (y:ys) -> case f y of\n    Nothing -> mapMaybe f ys\n    Just v -> v : mapMaybe f ys\nsafeDiv x = if x == 0 then Nothing else Just (100 `div` x)\nmain = sum (mapMaybe safeDiv [5, 0, 10, 0, 2])\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(80)),
+            Err(e_chirho) => panic!("mapMaybe should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_do_notation_sequence_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // Complex do-notation with let, bind, and sequence
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = do\n  let x = 42\n  putStrLn (show x)\n  let y = x + 8\n  putStrLn (show y)\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "42\n50\n"),
+            Err(e_chirho) => panic!("do-notation sequence should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_builtin_mapM_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // Use the builtin mapM_ with show + putStrLn
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = mapM_ (\\x -> putStrLn (show x)) [1,2,3]\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "1\n2\n3\n"),
+            Err(e_chirho) => panic!("builtin mapM_ should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_where_local_helper_with_compose_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // where clause with local helper using (.)
+        let result_chirho = eval_source_chirho(
+            "module Test where\nprocess x = result\n  where\n    double y = y + y\n    result = double (double x)\nmain = process 3\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(12)),
+            Err(e_chirho) => panic!("where local helper should work: {}", e_chirho),
+        }
+    }
 }
