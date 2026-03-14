@@ -50,6 +50,8 @@ pub enum FrameChirho {
         alt_entries_chirho: Vec<(ValueChirho, u32)>,
         /// Default branch, if any.
         default_entry_chirho: Option<u32>,
+        /// Saved arg registers to restore after forcing the scrutinee thunk.
+        saved_arg_regs_chirho: Vec<ValueChirho>,
     },
 
     /// A primitive operation waiting for its arguments to be forced.

@@ -587,6 +587,7 @@ impl MachineChirho {
                             self.stack_chirho.push_chirho(FrameChirho::CaseLitChirho {
                                 alt_entries_chirho: alts_chirho,
                                 default_entry_chirho: default_chirho,
+                                saved_arg_regs_chirho: self.arg_regs_chirho.clone(),
                             });
                             pc_chirho = self.emit_enter_chirho(addr_chirho);
                         }
@@ -894,7 +895,11 @@ impl MachineChirho {
                 Some(FrameChirho::CaseLitChirho {
                     alt_entries_chirho,
                     default_entry_chirho,
+                    saved_arg_regs_chirho,
                 }) => {
+                    // Restore arg_regs from the frame so alt RHS code can
+                    // access enclosing function parameters correctly.
+                    self.arg_regs_chirho = saved_arg_regs_chirho;
                     // A constructor returned to a literal case frame.
                     // Try to unbox the constructor (e.g. I# n → IntChirho(n))
                     // and dispatch against the literal alternatives.
@@ -1113,7 +1118,11 @@ impl MachineChirho {
                 Some(FrameChirho::CaseLitChirho {
                     alt_entries_chirho,
                     default_entry_chirho,
+                    saved_arg_regs_chirho,
                 }) => {
+                    // Restore arg_regs from the frame so alt RHS code can
+                    // access enclosing function parameters correctly.
+                    self.arg_regs_chirho = saved_arg_regs_chirho;
                     // The scrutinee has been forced to a literal.
                     // Match it against the literal alternatives.
                     let entry_chirho = self.dispatch_case_lit_chirho(
@@ -1203,7 +1212,10 @@ impl MachineChirho {
                 Some(FrameChirho::CaseLitChirho {
                     alt_entries_chirho,
                     default_entry_chirho,
+                    saved_arg_regs_chirho,
                 }) => {
+                    // Restore arg_regs from the frame.
+                    self.arg_regs_chirho = saved_arg_regs_chirho;
                     let entry_chirho = self.dispatch_case_lit_chirho(
                         &ValueChirho::HeapPtrChirho(addr_chirho),
                         &alt_entries_chirho,

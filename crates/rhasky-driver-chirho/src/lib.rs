@@ -11932,4 +11932,32 @@ main = if all odd [1,3,5,7] then 1 else 0
         }
     }
 
+    #[test]
+    fn eval_two_arg_lit_match_chirho() {
+        // Two-arg function: g 0 y = y; g x y = x + y
+        // g 0 42 should return 42 (literal match)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ng 0 y = y\ng x y = x + y\nmain = g 0 42\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("two-arg lit match: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_two_arg_lit_default_chirho() {
+        // Two-arg function: g 0 y = y; g x y = x + y
+        // g 3 7 should return 10 (default match)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ng 0 y = y\ng x y = x + y\nmain = g 3 7\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10)),
+            Err(e_chirho) => panic!("two-arg lit default: {}", e_chirho),
+        }
+    }
+
 }

@@ -239,9 +239,15 @@ pub fn extract_roots_from_stack_chirho(
             }
             FrameChirho::CaseLitChirho {
                 alt_entries_chirho,
+                saved_arg_regs_chirho,
                 ..
             } => {
                 for (val_chirho, _) in alt_entries_chirho {
+                    if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
+                        roots_chirho.push(*addr_chirho);
+                    }
+                }
+                for val_chirho in saved_arg_regs_chirho {
                     if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
                         roots_chirho.push(*addr_chirho);
                     }

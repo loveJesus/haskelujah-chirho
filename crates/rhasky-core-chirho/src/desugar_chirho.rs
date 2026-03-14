@@ -927,6 +927,38 @@ impl DesugarCtxChirho {
             }
         }
 
+        // Optimization: if ALL groups at this pattern column are DefaultChirho
+        // (every arm has a Var/Wildcard pattern), skip generating a case
+        // expression entirely. Just bind the variable names to the scrutinee
+        // and recurse or desugar the RHS directly.  This avoids emitting a
+        // redundant `case scrut of { DEFAULT -> ... }` which corrupts
+        // arg_regs in the STG runtime when boxing/unboxing through
+        // return_con_chirho.
+        let all_default_chirho = groups_chirho.iter().all(|(c_chirho, _)| *c_chirho == AltConChirho::DefaultChirho);
+        if all_default_chirho && !groups_chirho.is_empty() {
+            let all_arms_chirho: Vec<&MatchArmChirho> = groups_chirho
+                .iter()
+                .flat_map(|(_, arms_chirho)| arms_chirho.iter().copied())
+                .collect();
+            // Bind any VarChirho pattern at this column to the scrutinee
+            if let Some(first_arm_chirho) = all_arms_chirho.first() {
+                if let PatChirho::VarChirho(n_chirho) = &first_arm_chirho.pats_chirho[pat_idx_chirho] {
+                    self.bind_in_scope_chirho(n_chirho.text_chirho(), scrut_id_chirho);
+                }
+            }
+            if pat_idx_chirho + 1 >= arity_chirho {
+                return self.desugar_arm_rhs_chirho(all_arms_chirho[0]);
+            } else {
+                let sub_arms_chirho: Vec<MatchArmChirho> =
+                    all_arms_chirho.iter().map(|a_chirho| (*a_chirho).clone()).collect();
+                return self.compile_multi_pattern_case_chirho(
+                    &sub_arms_chirho,
+                    param_binders_chirho,
+                    pat_idx_chirho + 1,
+                );
+            }
+        }
+
         let alts_chirho: Vec<CoreAltChirho> = groups_chirho
             .into_iter()
             .map(|(con_chirho, arms_chirho)| {
