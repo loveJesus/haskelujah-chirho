@@ -14457,4 +14457,62 @@ main = sum (map head (groupBy (==) [1,1,2,3,3]))
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(6));
     }
 
+    // ── Feature 1: tails / inits (named per spec) ─────────────────────
+
+    #[test]
+    fn eval_tails_chirho() {
+        // tails [1,2,3] returns [[1,2,3],[2,3],[3],[]], which has length 4
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = length (tails [1,2,3])
+"#;
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("tails length failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(4));
+    }
+
+    #[test]
+    fn eval_inits_chirho() {
+        // inits [1,2,3] returns [[],[1],[1,2],[1,2,3]], which has length 4
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = length (inits [1,2,3])
+"#;
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("inits length failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(4));
+    }
+
+    // ── Feature 2: type annotations in expressions (named per spec) ───
+
+    #[test]
+    fn eval_type_ann_chirho() {
+        // putStrLn (show (42 :: Int)) → "42\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = putStrLn (show (42 :: Int))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("type ann show failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn eval_type_ann_read_chirho() {
+        // putStrLn (show (read "10" :: Int)) → "10\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = putStrLn (show (read "10" :: Int))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("type ann read show failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "10\n");
+    }
+
 }

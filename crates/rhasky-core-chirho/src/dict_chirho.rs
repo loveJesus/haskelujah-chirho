@@ -408,13 +408,30 @@ impl DictPassCtxChirho {
                         }
                     }
                 }
+                // If the function is a PrimOp with a known return type (e.g. readInt#
+                // returns Int, not [Char]), prefer the function's type over the argument's.
+                // This prevents `show (readInt# "10")` from dispatching as ShowStr.
+                let fun_ty_chirho = self.infer_type_key_chirho(fun_chirho);
+                if let Some(ref fty_chirho) = fun_ty_chirho {
+                    // readInt# / readFloat# / readBool# have unambiguous return types —
+                    // always use them.  Other primops (like ++#) return [Char] which
+                    // already matched in the PrimOpChirho arm above, so we won't reach
+                    // here for those.  General function types are inferred below.
+                    let is_typed_primop_chirho = matches!(
+                        fun_chirho.as_ref(),
+                        CoreExprChirho::PrimOpChirho { .. }
+                    ) && !fty_chirho.is_empty();
+                    if is_typed_primop_chirho {
+                        return Some(fty_chirho.clone());
+                    }
+                }
                 // For general App chains like `f 1.5 2.5`, try to infer
                 // from the argument first, then recurse into the function
                 // (which is itself an App for curried calls).
                 if let Some(tk_chirho) = self.infer_type_key_chirho(arg_chirho) {
                     return Some(tk_chirho);
                 }
-                self.infer_type_key_chirho(fun_chirho)
+                fun_ty_chirho
             }
             _ => None,
         }
