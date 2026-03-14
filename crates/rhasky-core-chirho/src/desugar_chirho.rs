@@ -112,6 +112,49 @@ impl DesugarCtxChirho {
         }
     }
 
+    /// Build the body of an operator section, emitting PrimOp for
+    /// known built-in operators so they work without dict-pass
+    /// bindings. `left_chirho` is the first arg, `right_chirho` is
+    /// the second arg (already in correct application order).
+    fn build_section_body_chirho(
+        &mut self,
+        op_name_chirho: &str,
+        left_chirho: CoreExprChirho,
+        right_chirho: CoreExprChirho,
+    ) -> CoreExprChirho {
+        // Direct primop operators
+        let primop_chirho = match op_name_chirho {
+            "+" => Some("+#"),
+            "-" => Some("-#"),
+            "*" => Some("*#"),
+            "==" => Some("==#"),
+            "/=" => Some("/=#"),
+            "<" => Some("<#"),
+            "<=" => Some("<=#"),
+            ">" => Some(">#"),
+            ">=" => Some(">=#"),
+            "++" => Some("++#"),
+            "^" => Some("^#"),
+            "**" => Some("**#"),
+            _ => None,
+        };
+        if let Some(primop_name_chirho) = primop_chirho {
+            return CoreExprChirho::PrimOpChirho {
+                name_chirho: primop_name_chirho.to_string(),
+                args_chirho: vec![left_chirho, right_chirho],
+            };
+        }
+        // Fallback: operator as variable reference
+        let op_id_chirho = self.resolve_var_chirho(op_name_chirho);
+        CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(op_id_chirho)),
+                arg_chirho: Box::new(left_chirho),
+            }),
+            arg_chirho: Box::new(right_chirho),
+        }
+    }
+
     /// Create a binder with a fresh ID.
     fn fresh_binder_chirho(
         &mut self,
@@ -2353,11 +2396,10 @@ impl DesugarCtxChirho {
                 arg_chirho,
                 ..
             } => {
-                // (op x) → \y -> op x y
-                let op_core_chirho = {
-                    let id_chirho = self.resolve_var_chirho(op_chirho.text_chirho());
-                    CoreExprChirho::VarChirho(id_chirho)
-                };
+                // (op e) → \y -> y `op` e → \y -> op y e
+                // For primop operators, emit PrimOp in the lambda body
+                // so they work without dict-pass bindings.
+                let op_name_chirho = op_chirho.text_chirho();
                 let arg_core_chirho = self.desugar_expr_chirho(arg_chirho);
                 let y_binder_chirho = self.fresh_binder_chirho(
                     "_sec",
@@ -2367,15 +2409,14 @@ impl DesugarCtxChirho {
                     SpanChirho::DUMMY_CHIRHO,
                 );
                 let y_id_chirho = y_binder_chirho.id_chirho;
+                let body_chirho = self.build_section_body_chirho(
+                    op_name_chirho,
+                    CoreExprChirho::VarChirho(y_id_chirho),
+                    arg_core_chirho,
+                );
                 CoreExprChirho::LamChirho {
                     binder_chirho: y_binder_chirho,
-                    body_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(op_core_chirho),
-                            arg_chirho: Box::new(arg_core_chirho),
-                        }),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(y_id_chirho)),
-                    }),
+                    body_chirho: Box::new(body_chirho),
                 }
             }
 
@@ -2384,11 +2425,8 @@ impl DesugarCtxChirho {
                 op_chirho,
                 ..
             } => {
-                // (x op) → \y -> op y x
-                let op_core_chirho = {
-                    let id_chirho = self.resolve_var_chirho(op_chirho.text_chirho());
-                    CoreExprChirho::VarChirho(id_chirho)
-                };
+                // (e op) → \y -> e `op` y → \y -> op e y
+                let op_name_chirho = op_chirho.text_chirho();
                 let arg_core_chirho = self.desugar_expr_chirho(arg_chirho);
                 let y_binder_chirho = self.fresh_binder_chirho(
                     "_sec",
@@ -2398,15 +2436,14 @@ impl DesugarCtxChirho {
                     SpanChirho::DUMMY_CHIRHO,
                 );
                 let y_id_chirho = y_binder_chirho.id_chirho;
+                let body_chirho = self.build_section_body_chirho(
+                    op_name_chirho,
+                    arg_core_chirho,
+                    CoreExprChirho::VarChirho(y_id_chirho),
+                );
                 CoreExprChirho::LamChirho {
                     binder_chirho: y_binder_chirho,
-                    body_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(op_core_chirho),
-                            arg_chirho: Box::new(CoreExprChirho::VarChirho(y_id_chirho)),
-                        }),
-                        arg_chirho: Box::new(arg_core_chirho),
-                    }),
+                    body_chirho: Box::new(body_chirho),
                 }
             }
 

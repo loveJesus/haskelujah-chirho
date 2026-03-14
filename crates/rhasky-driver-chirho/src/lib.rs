@@ -10545,4 +10545,128 @@ main = classify 42
         }
     }
 
+    // ── Lambda with constructor pattern ──────────────────────────────
+
+    #[test]
+    fn eval_lambda_con_pattern_chirho() {
+        // (\(Just x) -> x + 1) (Just 41) → 42
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = (\\(Just x) -> x + 1) (Just 41)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("lambda con pattern: {}", e_chirho),
+        }
+    }
+
+    // ── Uncurry with operator section ────────────────────────────────
+
+    #[test]
+    fn eval_uncurry_section_chirho() {
+        // uncurry (+) (3, 4) → 7
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = uncurry (+) (3, 4)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(7)),
+            Err(e_chirho) => panic!("uncurry (+): {}", e_chirho),
+        }
+    }
+
+    // ── Map with operator section ────────────────────────────────────
+
+    #[test]
+    fn eval_map_section_subtract_chirho() {
+        // map (subtract 1) [10, 20, 30] → [9, 19, 29], sum → 57
+        // (subtract is \a b -> b - a in Prelude)
+        // For now use a lambda instead since subtract isn't defined
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nsubtract a b = b - a\nmain = sum (map (subtract 1) [10, 20, 30])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(57)),
+            Err(e_chirho) => panic!("map subtract: {}", e_chirho),
+        }
+    }
+
+    // ── Where with multiple helper functions ─────────────────────────
+
+    #[test]
+    fn eval_where_multi_helpers_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+compute x = doubled + tripled
+  where doubled = x * 2
+        tripled = x * 3
+main = compute 5
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(25)),
+            Err(e_chirho) => panic!("where multi helpers: {}", e_chirho),
+        }
+    }
+
+    // ── Nested data types ───────────────────────────────────────────
+
+    #[test]
+    fn eval_nested_maybe_case_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+safe_head xs = case xs of
+  [] -> Nothing
+  (x:_) -> Just x
+main = case safe_head [42, 1, 2] of
+  Nothing -> 0
+  Just x -> x
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("nested maybe case: {}", e_chirho),
+        }
+    }
+
+    // ── Type synonym in user code ───────────────────────────────────
+
+    #[test]
+    fn eval_type_synonym_list_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+type IntList = [Int]
+sumList :: IntList -> Int
+sumList xs = sum xs
+main = sumList [1, 2, 3, 4, 5]
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15)),
+            Err(e_chirho) => panic!("type synonym list: {}", e_chirho),
+        }
+    }
+
+    // ── Complex list processing ─────────────────────────────────────
+
+    #[test]
+    fn eval_complex_list_pipeline_chirho() {
+        // sum . map (^2) . filter odd $ [1..10] → 1+9+25+49+81 = 165
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (map (^2) (filter odd [1..10]))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(165)),
+            Err(e_chirho) => panic!("complex list pipeline: {}", e_chirho),
+        }
+    }
+
 }
