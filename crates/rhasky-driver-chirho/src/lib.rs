@@ -9457,67 +9457,65 @@ main = case safeDivide 20 2 of
     // ── IORef tests ──
 
     #[test]
-    #[ignore] // IORef let-binding requires IO monad threading fix
     fn eval_ioref_new_read_chirho() {
-        // newIORef 42 >>= readIORef → 42
-        use super::eval_source_chirho;
+        // newIORef 42, readIORef, show → "42\n"
+        use super::eval_source_with_machine_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        let src_chirho = "module Test where\nmain = let ref = newIORef 42 in readIORef ref\n";
-        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        let src_chirho = "module Test where\nmain = do\n  r <- newIORef 42\n  v <- readIORef r\n  putStrLn (show v)\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
         match result_chirho {
-            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "42\n");
+            }
             Err(e_chirho) => panic!("IORef new+read should work: {}", e_chirho),
         }
     }
 
     #[test]
-    #[ignore] // IORef let-binding requires IO monad threading fix
     fn eval_ioref_write_read_chirho() {
-        // newIORef 10, writeIORef ref 99, readIORef ref → 99
-        // Use direct nesting so writeIORef is forced before readIORef
-        use super::eval_source_chirho;
+        // newIORef 10, writeIORef r 99, readIORef r → "99\n"
+        use super::eval_source_with_machine_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        let src_chirho = "module Test where\nmain = let r = newIORef 10 in seq (writeIORef r 99) (readIORef r)\n";
-        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        let src_chirho = "module Test where\nmain = do\n  r <- newIORef 10\n  writeIORef r 99\n  v <- readIORef r\n  putStrLn (show v)\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
         match result_chirho {
-            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99)),
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "99\n");
+            }
             Err(e_chirho) => panic!("IORef write+read should work: {}", e_chirho),
         }
     }
 
     #[test]
-    #[ignore] // IORef let-binding requires IO monad threading fix
     fn eval_ioref_show_read_chirho() {
         // newIORef 7, readIORef, show, putStrLn → "7\n"
-        use super::eval_source_chirho;
+        use super::eval_source_with_machine_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        let src_chirho = "module Test where\nmain = putStrLn (show (readIORef (newIORef 7)))\n";
-        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        let src_chirho = "module Test where\nmain = do\n  r <- newIORef 7\n  v <- readIORef r\n  putStrLn (show v)\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
         match result_chirho {
-            Ok(val_chirho) => {
-                let output_chirho = match &val_chirho {
-                    rhasky_runtime_chirho::ValueChirho::IntChirho(_) => {
-                        // Success means the pipeline ran
-                        true
-                    },
-                    _ => true,
-                };
-                assert!(output_chirho, "IORef show+read should produce output");
-            },
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "7\n");
+            }
             Err(e_chirho) => panic!("IORef show+read should work: {}", e_chirho),
         }
     }
 
     #[test]
-    #[ignore] // IORef let-binding requires IO monad threading fix
     fn eval_ioref_multiple_refs_chirho() {
-        // Two IORefs: newIORef 10, newIORef 20, read both and add
-        use super::eval_source_chirho;
+        // Two IORefs: newIORef 10, newIORef 20, read both, add, show → "30\n"
+        use super::eval_source_with_machine_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        let src_chirho = "module Test where\nmain = let r1 = newIORef 10 in let r2 = newIORef 20 in readIORef r1 + readIORef r2\n";
-        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        let src_chirho = "module Test where\nmain = do\n  r1 <- newIORef 10\n  r2 <- newIORef 20\n  v1 <- readIORef r1\n  v2 <- readIORef r2\n  putStrLn (show (v1 + v2))\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
         match result_chirho {
-            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(30)),
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "30\n");
+            }
             Err(e_chirho) => panic!("IORef multiple refs should work: {}", e_chirho),
         }
     }
@@ -9549,15 +9547,17 @@ main = case safeDivide 20 2 of
     }
 
     #[test]
-    #[ignore] // IORef let-binding requires IO monad threading fix
     fn eval_ioref_modify_chirho() {
-        // modifyIORef r (+1) should increment: newIORef 41, modifyIORef r (+1), readIORef r → 42
-        use super::eval_source_chirho;
+        // modifyIORef r add1 should increment: newIORef 41, modifyIORef, readIORef → "42\n"
+        use super::eval_source_with_machine_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        let src_chirho = "module Test where\nadd1 x = x + 1\nmain = let r = newIORef 41 in seq (modifyIORef r add1) (readIORef r)\n";
-        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        let src_chirho = "module Test where\nadd1 x = x + 1\nmain = do\n  r <- newIORef 41\n  modifyIORef r add1\n  v <- readIORef r\n  putStrLn (show v)\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
         match result_chirho {
-            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "42\n");
+            }
             Err(e_chirho) => panic!("IORef modify should work: {}", e_chirho),
         }
     }
@@ -12830,13 +12830,12 @@ main = putStrLn (show (Just (Just 42)))
     // ── Deriving Ord end-to-end ─────────────────────────────────────────
 
     #[test]
-    #[ignore] // deriving Ord compare result needs HeapPtr unboxing for Ordering type dispatch
     fn eval_deriving_ord_compare_chirho() {
         // data Color = Red | Green | Blue deriving (Eq, Ord)
-        // compare Red Green → LT → if == LT then 1 else 0
+        // compare Red Green → LT via case dispatch
         use super::eval_source_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        let src_chirho = "module Test where\ndata Color = Red | Green | Blue deriving (Eq, Ord)\nmain = if compare Red Green == LT then 1 else 0\n";
+        let src_chirho = "module Test where\ndata Color = Red | Green | Blue deriving (Eq, Ord)\nmain = case compare Red Green of { LT -> 1; EQ -> 0; GT -> 0 }\n";
         let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
     }
@@ -12979,6 +12978,150 @@ main = case runStateT addOne 10 of
             ),
             Err(e_chirho) => panic!("eval_state_t_basic_chirho failed: {}", e_chirho),
         }
+    }
+
+    // ── Polymorphic elem/notElem/nub/isPrefixOf for Char ─────────────────
+
+    #[test]
+    fn eval_elem_char_chirho() {
+        // elem 'a' "banana" → True → 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = if elem 'a' \"banana\" then 1 else 0\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
+    }
+
+    #[test]
+    fn eval_notelem_char_chirho() {
+        // notElem 'z' "hello" → True → 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = if notElem 'z' \"hello\" then 1 else 0\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
+    }
+
+    #[test]
+    fn eval_nub_char_string_chirho() {
+        // length (nub "abcabc") → 3
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (nub \"abcabc\")\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3));
+    }
+
+    #[test]
+    fn eval_is_prefix_of_char_chirho() {
+        // isPrefixOf "hel" "hello" → True → 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = if isPrefixOf \"hel\" \"hello\" then 1 else 0\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
+    }
+
+    // ── Utility Prelude functions: repeat, cycle, fix, group, etc. ────────
+
+    #[test]
+    fn eval_repeat_take_chirho() {
+        // take 5 (repeat 7) → [7,7,7,7,7] → sum → 35
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (take 5 (repeat 7))\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(35));
+    }
+
+    #[test]
+    fn eval_cycle_take_chirho() {
+        // take 7 (cycle [1,2,3]) → [1,2,3,1,2,3,1] → sum → 13
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (take 7 (cycle [1,2,3]))\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(13));
+    }
+
+    #[test]
+    fn eval_fix_factorial_chirho() {
+        // fix (\f n -> if n == 0 then 1 else n * f (n - 1)) applied to 5 → 120
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nfact = fix (\\f -> \\n -> if n == 0 then 1 else n * f (n - 1))\nmain = fact 5\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(120));
+    }
+
+    #[test]
+    fn eval_group_chirho() {
+        // group [1,1,2,2,2,3] → [[1,1],[2,2,2],[3]] → length → 3
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (group [1,1,2,2,2,3])\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3));
+    }
+
+    #[test]
+    fn eval_zipwith3_chirho() {
+        // zipWith3 (\a b c -> a + b + c) [1,2] [10,20] [100,200] → [111,222] → head → 111
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = head (zipWith3 (\\a -> \\b -> \\c -> a + b + c) [1,2] [10,20] [100,200])\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(111));
+    }
+
+    #[test]
+    fn eval_first_tuple_chirho() {
+        // first (+10) (5, 99) → (15, 99) → fst → 15
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nadd10 x = x + 10\nmain = fst (first add10 (5, 99))\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15));
+    }
+
+    #[test]
+    fn eval_second_tuple_chirho() {
+        // second (*2) (10, 7) → (10, 14) → snd → 14
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ndbl x = x * 2\nmain = snd (second dbl (10, 7))\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(14));
+    }
+
+    #[test]
+    fn eval_both_tuple_chirho() {
+        // both (+1) (10, 20) → (11, 21) → fst + snd → 32
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ninc x = x + 1\nmain = case both inc (10, 20) of (a, b) -> a + b\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(32));
+    }
+
+    #[test]
+    fn eval_repeat_head_chirho() {
+        // head (repeat 42) → 42
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = head (repeat 42)\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn eval_group_sum_head_chirho() {
+        // head (group [5,5,5,3]) → [5,5,5] → sum → 15
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (head (group [5,5,5,3]))\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15));
     }
 
 }

@@ -1180,6 +1180,30 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
+        // instance Eq Ordering
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Eq".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Ordering".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // instance Show Ordering
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Show".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Ordering".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // instance Ord Ordering
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Ord".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Ordering".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
         // Ground instance: Eq String (i.e. Eq [Char])
         // This is a special case of the conditional Eq [a] instance
         // for the common String = [Char] type, avoiding the need for
