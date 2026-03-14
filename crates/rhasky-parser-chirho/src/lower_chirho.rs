@@ -4244,8 +4244,60 @@ fn resolve_infix_precedence_chirho(
 // Escape sequence processing
 // ---------------------------------------------------------------------------
 
+/// Collect decimal digits from an iterator and convert to a char.
+fn collect_decimal_escape_chirho(first_digit_chirho: char, chars_chirho: &mut std::str::Chars<'_>) -> char {
+    let mut num_chirho = String::new();
+    num_chirho.push(first_digit_chirho);
+    // Peek at subsequent digits — Haskell allows up to 7 decimal digits
+    // but we consume greedily as long as digits continue
+    while let Some(&next_chirho) = chars_chirho.as_str().as_bytes().first() {
+        if next_chirho.is_ascii_digit() {
+            num_chirho.push(next_chirho as char);
+            chars_chirho.next();
+        } else {
+            break;
+        }
+    }
+    num_chirho.parse::<u32>().ok()
+        .and_then(char::from_u32)
+        .unwrap_or('\u{FFFD}')
+}
+
+/// Collect octal digits from an iterator and convert to a char.
+fn collect_octal_escape_chirho(chars_chirho: &mut std::str::Chars<'_>) -> char {
+    let mut num_chirho = String::new();
+    while let Some(&next_chirho) = chars_chirho.as_str().as_bytes().first() {
+        if (b'0'..=b'7').contains(&next_chirho) {
+            num_chirho.push(next_chirho as char);
+            chars_chirho.next();
+        } else {
+            break;
+        }
+    }
+    u32::from_str_radix(&num_chirho, 8).ok()
+        .and_then(char::from_u32)
+        .unwrap_or('\u{FFFD}')
+}
+
+/// Collect hexadecimal digits from an iterator and convert to a char.
+fn collect_hex_escape_chirho(chars_chirho: &mut std::str::Chars<'_>) -> char {
+    let mut num_chirho = String::new();
+    while let Some(&next_chirho) = chars_chirho.as_str().as_bytes().first() {
+        if (next_chirho as char).is_ascii_hexdigit() {
+            num_chirho.push(next_chirho as char);
+            chars_chirho.next();
+        } else {
+            break;
+        }
+    }
+    u32::from_str_radix(&num_chirho, 16).ok()
+        .and_then(char::from_u32)
+        .unwrap_or('\u{FFFD}')
+}
+
 /// Process Haskell escape sequences in a string literal.
-/// Handles \n, \t, \r, \\, \", \', \0, \a, \b, \f, \v, and string gaps.
+/// Handles \n, \t, \r, \\, \", \', \0, \a, \b, \f, \v,
+/// decimal (\65), octal (\o101), hex (\x41), and string gaps.
 fn unescape_string_chirho(s_chirho: &str) -> String {
     let mut result_chirho = String::with_capacity(s_chirho.len());
     let mut chars_chirho = s_chirho.chars();
@@ -4263,6 +4315,11 @@ fn unescape_string_chirho(s_chirho: &str) -> String {
                 Some('b') => result_chirho.push('\x08'),
                 Some('f') => result_chirho.push('\x0C'),
                 Some('v') => result_chirho.push('\x0B'),
+                Some('o') => result_chirho.push(collect_octal_escape_chirho(&mut chars_chirho)),
+                Some('x') => result_chirho.push(collect_hex_escape_chirho(&mut chars_chirho)),
+                Some(d_chirho) if d_chirho.is_ascii_digit() && d_chirho != '0' => {
+                    result_chirho.push(collect_decimal_escape_chirho(d_chirho, &mut chars_chirho));
+                }
                 Some(ws_chirho) if ws_chirho.is_ascii_whitespace() => {
                     // String gap: \<whitespace>\  — skip all whitespace until next backslash
                     for gap_c_chirho in chars_chirho.by_ref() {
@@ -4283,9 +4340,12 @@ fn unescape_string_chirho(s_chirho: &str) -> String {
 }
 
 /// Process Haskell escape sequences in a character literal.
+/// Handles \n, \t, \r, \\, \', \", \0, \a, \b, \f, \v,
+/// decimal (\65), octal (\o101), hex (\x41).
 fn unescape_char_chirho(s_chirho: &str) -> char {
     if s_chirho.starts_with('\\') {
-        match s_chirho.chars().nth(1) {
+        let rest_chirho = &s_chirho[1..];
+        match rest_chirho.chars().next() {
             Some('n') => '\n',
             Some('t') => '\t',
             Some('r') => '\r',
@@ -4297,6 +4357,23 @@ fn unescape_char_chirho(s_chirho: &str) -> char {
             Some('b') => '\x08',
             Some('f') => '\x0C',
             Some('v') => '\x0B',
+            Some('o') => {
+                let digits_chirho = &rest_chirho[1..];
+                u32::from_str_radix(digits_chirho, 8).ok()
+                    .and_then(char::from_u32)
+                    .unwrap_or('\u{FFFD}')
+            }
+            Some('x') => {
+                let digits_chirho = &rest_chirho[1..];
+                u32::from_str_radix(digits_chirho, 16).ok()
+                    .and_then(char::from_u32)
+                    .unwrap_or('\u{FFFD}')
+            }
+            Some(d_chirho) if d_chirho.is_ascii_digit() && d_chirho != '0' => {
+                rest_chirho.parse::<u32>().ok()
+                    .and_then(char::from_u32)
+                    .unwrap_or('\u{FFFD}')
+            }
             _ => s_chirho.chars().nth(1).unwrap_or('\0'),
         }
     } else {

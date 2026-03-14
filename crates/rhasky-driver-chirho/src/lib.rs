@@ -10669,4 +10669,183 @@ main = sumList [1, 2, 3, 4, 5]
         }
     }
 
+    // ── Numeric escape sequences ────────────────────────────────────
+
+    #[test]
+    fn eval_numeric_escape_decimal_chirho() {
+        // \65 = 'A', \66 = 'B', \67 = 'C'
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = putStrLn \"\\65\\66\\67\"\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok((_v_chirho, m_chirho)) => assert_eq!(m_chirho.io_output_chirho, "ABC\n"),
+            Err(e_chirho) => panic!("numeric escape decimal: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_numeric_escape_hex_chirho() {
+        // \x48 = 'H', \x69 = 'i'
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = putStrLn \"\\x48\\x69\"\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok((_v_chirho, m_chirho)) => assert_eq!(m_chirho.io_output_chirho, "Hi\n"),
+            Err(e_chirho) => panic!("numeric escape hex: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_numeric_escape_octal_chirho() {
+        // \o110 = 'H' (72 in octal), \o151 = 'i' (105 in octal)
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = putStrLn \"\\o110\\o151\"\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok((_v_chirho, m_chirho)) => assert_eq!(m_chirho.io_output_chirho, "Hi\n"),
+            Err(e_chirho) => panic!("numeric escape octal: {}", e_chirho),
+        }
+    }
+
+    // ── Data.Map extended operations ────────────────────────────────
+
+    #[test]
+    fn eval_map_insert_with_chirho() {
+        // mapInsertWith (+) 1 100 (mapInsert 1 10 mapEmpty) → value at key 1 is 10+100=110
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m1 = mapInsert 1 10 (mapInsert 2 20 mapEmpty)
+m2 = mapInsertWith (+) 1 100 m1
+main = mapFindWithDefault 0 1 m2
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(110)),
+            Err(e_chirho) => panic!("mapInsertWith: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_find_with_default_chirho() {
+        // mapFindWithDefault 99 5 mapEmpty → 99 (key not found, returns default)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = mapFindWithDefault 99 5 mapEmpty
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99)),
+            Err(e_chirho) => panic!("mapFindWithDefault: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_find_with_default_found_chirho() {
+        // mapFindWithDefault 99 1 (mapSingleton 1 42) → 42 (key found)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = mapFindWithDefault 99 1 (mapSingleton 1 42)
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("mapFindWithDefault found: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_adjust_chirho() {
+        // mapAdjust (*10) 1 (mapSingleton 1 5) → value at key 1 is 5*10=50
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m = mapAdjust (*10) 1 (mapSingleton 1 5)
+main = mapFindWithDefault 0 1 m
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(50)),
+            Err(e_chirho) => panic!("mapAdjust: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_union_chirho() {
+        // mapUnion (mapSingleton 1 10) (mapSingleton 2 20) → size 2
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m = mapUnion (mapSingleton 1 10) (mapSingleton 2 20)
+main = mapSize m
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("mapUnion: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_difference_chirho() {
+        // mapDifference (fromList [(1,10),(2,20),(3,30)]) (mapSingleton 2 99) → size 2
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m1 = mapInsert 1 10 (mapInsert 2 20 (mapInsert 3 30 mapEmpty))
+m2 = mapSingleton 2 99
+main = mapSize (mapDifference m1 m2)
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("mapDifference: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_filter_chirho() {
+        // mapFilter (> 15) (fromList [(1,10),(2,20),(3,30)]) → size 2 (values 20 and 30)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m = mapInsert 1 10 (mapInsert 2 20 (mapInsert 3 30 mapEmpty))
+main = mapSize (mapFilter (> 15) m)
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("mapFilter: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_union_with_chirho() {
+        // mapUnionWith (+) (mapSingleton 1 10) (mapSingleton 1 20) → value at 1 is 30
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m = mapUnionWith (+) (mapSingleton 1 10) (mapSingleton 1 20)
+main = mapFindWithDefault 0 1 m
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(30)),
+            Err(e_chirho) => panic!("mapUnionWith: {}", e_chirho),
+        }
+    }
+
 }
