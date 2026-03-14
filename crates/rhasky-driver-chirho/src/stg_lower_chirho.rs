@@ -1564,6 +1564,74 @@ pub fn lower_and_run_with_input_chirho(
     Ok((unboxed_chirho, machine_chirho))
 }
 
+/// Lower a Core module and run with a custom step limit.
+/// Used for algorithmic tests that require more than the default 100,000 steps.
+pub fn lower_and_run_with_step_limit_chirho(
+    module_chirho: &CoreModuleChirho,
+    entry_name_chirho: Option<&str>,
+    newtype_cons_chirho: HashSet<String>,
+    step_limit_chirho: u64,
+) -> Result<(ValueChirho, MachineChirho), String> {
+    let program_chirho = lower_module_to_stg_chirho(module_chirho, newtype_cons_chirho);
+    let target_name_chirho = entry_name_chirho.unwrap_or("main");
+
+    let entry_binding_chirho = module_chirho
+        .bindings_chirho
+        .iter()
+        .find(|b_chirho| b_chirho.binder_chirho.name_chirho == target_name_chirho);
+
+    let entry_id_chirho = match entry_binding_chirho {
+        Some(b_chirho) => b_chirho.binder_chirho.id_chirho,
+        None => {
+            return Err(format!(
+                "no binding named '{}' in module '{}'",
+                target_name_chirho, module_chirho.name_chirho
+            ))
+        }
+    };
+
+    let entry_addr_chirho = program_chirho
+        .top_level_env_chirho
+        .get(&entry_id_chirho)
+        .copied()
+        .ok_or_else(|| format!("binding '{}' not found in STG env", target_name_chirho))?;
+
+    let mut machine_chirho = MachineChirho::new_chirho(program_chirho.code_table_chirho);
+    machine_chirho.heap_chirho = program_chirho.initial_heap_chirho;
+    machine_chirho.con_tags_chirho = program_chirho.con_tags_chirho;
+    machine_chirho.step_limit_chirho = step_limit_chirho;
+
+    let entry_code_chirho = machine_chirho.code_table_chirho.len() as u32;
+    machine_chirho
+        .code_table_chirho
+        .push(CodeChirho::EnterChirho(entry_addr_chirho));
+
+    let result_chirho = machine_chirho
+        .run_chirho(entry_code_chirho)
+        .map_err(|e_chirho| format!("runtime error: {}", e_chirho))?;
+
+    let unboxed_chirho = match &result_chirho {
+        ValueChirho::HeapPtrChirho(addr_chirho) => {
+            let final_addr_chirho = machine_chirho.heap_chirho.follow_ind_chirho(*addr_chirho);
+            let closure_chirho = machine_chirho.heap_chirho.read_chirho(final_addr_chirho);
+            if closure_chirho.payload_chirho.len() == 1 {
+                match &closure_chirho.payload_chirho[0] {
+                    ValueChirho::IntChirho(n_chirho) => ValueChirho::IntChirho(*n_chirho),
+                    ValueChirho::FloatChirho(n_chirho) => ValueChirho::FloatChirho(*n_chirho),
+                    ValueChirho::CharChirho(c_chirho) => ValueChirho::CharChirho(*c_chirho),
+                    ValueChirho::BoolChirho(b_chirho) => ValueChirho::BoolChirho(*b_chirho),
+                    _ => result_chirho,
+                }
+            } else {
+                result_chirho
+            }
+        }
+        _ => result_chirho,
+    };
+
+    Ok((unboxed_chirho, machine_chirho))
+}
+
 /// Map a primop name from Core to a `PrimOpKindChirho`.
 fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
     match name_chirho {

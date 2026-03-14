@@ -800,6 +800,30 @@ pub fn eval_source_with_input_chirho(
     )
 }
 
+/// Like `eval_source_with_machine_chirho` but with a custom step limit.
+/// Used for algorithmic tests that require more than the default 100,000 steps.
+pub fn eval_source_with_step_limit_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+    entry_name_chirho: Option<&str>,
+    step_limit_chirho: u64,
+) -> Result<(rhasky_runtime_chirho::ValueChirho, rhasky_runtime_chirho::eval_chirho::MachineChirho), String> {
+    let compile_result_chirho = compile_source_chirho(
+        source_chirho,
+        source_map_chirho,
+        file_name_chirho,
+    )
+    .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
+
+    stg_lower_chirho::lower_and_run_with_step_limit_chirho(
+        &compile_result_chirho.core_chirho,
+        entry_name_chirho,
+        compile_result_chirho.newtype_cons_chirho,
+        step_limit_chirho,
+    )
+}
+
 /// Compile multiple Haskell source files with incremental recompilation avoidance.
 ///
 /// Uses an [`IncrementalSessionChirho`] to track source fingerprints and
@@ -14513,6 +14537,156 @@ main = putStrLn (show (read "10" :: Int))
             eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
                 .unwrap_or_else(|e_chirho| panic!("type ann read show failed: {}", e_chirho));
         assert_eq!(m_chirho.io_output_chirho, "10\n");
+    }
+
+    // ── Algorithmic tests: stress-testing compiler capabilities ───────
+
+    #[test]
+    fn eval_ackermann_chirho() {
+        // Ackermann function: ack 3 4 = 125
+        // Tests deeply recursive multi-equation pattern matching.
+        // Uses a large step limit (10M) because ack(3,4) requires ~315k recursive calls.
+        use super::eval_source_with_step_limit_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+ack 0 n = n + 1
+ack m 0 = ack (m - 1) 1
+ack m n = ack (m - 1) (ack m (n - 1))
+main = putStrLn (show (ack 3 4))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_step_limit_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None, 10_000_000)
+                .unwrap_or_else(|e_chirho| panic!("ackermann failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "125\n");
+    }
+
+    #[test]
+    fn eval_hanoi_count_chirho() {
+        // Tower of Hanoi move count: hanoi 10 = 2^10 - 1 = 1023
+        // Tests simple tail-recursive arithmetic
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+hanoi 0 = 0
+hanoi n = 2 * hanoi (n - 1) + 1
+main = putStrLn (show (hanoi 10))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("hanoi count failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "1023\n");
+    }
+
+    #[test]
+    fn eval_matrix_mul_chirho() {
+        // 2x2 matrix multiplication via lists of lists.
+        // [[1,2],[3,4]] * [[5,6],[7,8]] top-left element = 1*5 + 2*7 = 19.
+        // Uses explicit helper functions to avoid lazy-let blackhole issues.
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+dot xs ys = foldr (+) 0 (zipWith (*) xs ys)
+col j m = map (\row -> head (drop j row)) m
+matMul a b = map (\row -> map (\j -> dot row (col j b)) [0,1]) a
+main = let m = matMul [[1,2],[3,4]] [[5,6],[7,8]]
+       in putStrLn (show (head (head m)))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("matrix mul failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "19\n");
+    }
+
+    #[test]
+    fn eval_caesar_cipher_chirho() {
+        // Caesar cipher: encrypt then decrypt returns original string
+        // Tests ord/chr, map, lambda with closure capture
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+encrypt shift msg = map (\c -> chr (ord c + shift)) msg
+decrypt shift msg = map (\c -> chr (ord c - shift)) msg
+main = putStrLn (decrypt 3 (encrypt 3 "HELLO"))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("caesar cipher failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "HELLO\n");
+    }
+
+    #[test]
+    fn eval_bin_to_dec_chirho() {
+        // Binary to decimal: [1,0,1,1] = 1*8 + 0*4 + 1*2 + 1*1 = 11.
+        // Uses an accumulator-based approach (shift-left) to avoid using
+        // `^` with a dynamic exponent derived from `length`.
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+go bits acc = case bits of
+  [] -> acc
+  (b:bs) -> let newAcc = acc * 2 + b in go bs newAcc
+main = putStrLn (show (go [1,0,1,1] 0))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("binToDec failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "11\n");
+    }
+
+    #[test]
+    fn eval_run_length_encoding_chirho() {
+        // Run-length encoding: rle [1,1,1,2,2,3,1,1] has 4 groups.
+        // Tests span with section (== x), let tuple destructuring, cons in result.
+        // Uses explicit case expression to avoid multi-equation list-pattern issues.
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+rle input = case input of
+  [] -> []
+  (x:xs) -> let (same, rest) = span (== x) xs
+             in (length same + 1, x) : rle rest
+main = length (rle [1,1,1,2,2,3,1,1])
+"#;
+        let val_chirho =
+            eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("run-length encoding failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(4));
+    }
+
+    #[test]
+    fn eval_powerset_chirho() {
+        // Power set of [1,2,3] has 2^3 = 8 elements
+        // Tests recursive list manipulation with inline lambda (x:e)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+powerset xss = case xss of
+  [] -> [[]]
+  (x:xs) -> let ps = powerset xs in ps ++ map (\e -> x : e) ps
+main = length (powerset [1,2,3])
+"#;
+        let val_chirho =
+            eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("powerset failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(8));
+    }
+
+    #[test]
+    fn eval_pascal_triangle_chirho() {
+        // Pascal's triangle row 10: sum = 2^10 = 1024.
+        // Tests zipWith with list concatenation and prepending.
+        // Uses helper function to pass prev explicitly, avoiding shared-thunk issues.
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+nextRow prev = zipWith (+) (0 : prev) (prev ++ [0])
+pascal n = if n == 0 then [1] else nextRow (pascal (n - 1))
+main = sum (pascal 10)
+"#;
+        let val_chirho =
+            eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("pascal triangle failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1024));
     }
 
 }

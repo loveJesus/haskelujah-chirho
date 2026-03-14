@@ -144,6 +144,13 @@ impl DesugarCtxChirho {
                 args_chirho: vec![left_chirho, right_chirho],
             };
         }
+        // (:) cons constructor: left : right → ConApp(":", [left, right])
+        if op_name_chirho == ":" {
+            return CoreExprChirho::ConAppChirho {
+                con_name_chirho: ":".to_string(),
+                args_chirho: vec![left_chirho, right_chirho],
+            };
+        }
         // Fallback: operator as variable reference
         let op_id_chirho = self.resolve_var_chirho(op_name_chirho);
         CoreExprChirho::AppChirho {
