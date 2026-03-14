@@ -3122,6 +3122,67 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
+    // newIORef :: a -> IORef a  (simplified: IORef a ≈ Int, IO ≈ identity)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3200));
+        env_chirho.bind_chirho(
+            "newIORef".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3200)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(a_chirho, TyChirho::int_chirho()),
+            },
+        );
+    }
+
+    // readIORef :: IORef a -> a  (simplified: IORef a ≈ Int)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3201));
+        env_chirho.bind_chirho(
+            "readIORef".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3201)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), a_chirho),
+            },
+        );
+    }
+
+    // writeIORef :: IORef a -> a -> IO ()  (simplified)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3202));
+        env_chirho.bind_chirho(
+            "writeIORef".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3202)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![TyChirho::int_chirho(), a_chirho],
+                    TyChirho::unit_chirho(),
+                ),
+            },
+        );
+    }
+
+    // modifyIORef :: IORef a -> (a -> a) -> IO ()  (simplified)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3203));
+        env_chirho.bind_chirho(
+            "modifyIORef".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3203)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::int_chirho(),
+                        TyChirho::fun_chirho(a_chirho.clone(), a_chirho),
+                    ],
+                    TyChirho::unit_chirho(),
+                ),
+            },
+        );
+    }
+
     // when :: Bool -> IO () -> IO ()  (simplified: IO () ≈ ())
     env_chirho.bind_chirho(
         "when".to_string(),

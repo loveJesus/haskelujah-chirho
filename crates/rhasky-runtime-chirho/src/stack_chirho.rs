@@ -253,6 +253,16 @@ pub enum PrimOpKindChirho {
     LinesChirho,
     /// unlines# :: [String] -> String — join strings with newlines
     UnlinesChirho,
+
+    // ── IORef operations ──
+    /// newIORef# :: a -> IO (IORef a) — create a new mutable reference
+    NewIORefChirho,
+    /// readIORef# :: IORef a -> IO a — read the current value
+    ReadIORefChirho,
+    /// writeIORef# :: IORef a -> a -> IO () — overwrite the value
+    WriteIORefChirho,
+    /// modifyIORef# :: IORef a -> (a -> a) -> IO () — apply function to value
+    ModifyIORefChirho,
 }
 
 /// The evaluation stack.

@@ -622,7 +622,11 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::InteractChirho
         | PrimOpKindChirho::PrintChirho
         | PrimOpKindChirho::LinesChirho
-        | PrimOpKindChirho::UnlinesChirho => Ok(ValueChirho::IntChirho(0)),
+        | PrimOpKindChirho::UnlinesChirho
+        | PrimOpKindChirho::NewIORefChirho
+        | PrimOpKindChirho::ReadIORefChirho
+        | PrimOpKindChirho::WriteIORefChirho
+        | PrimOpKindChirho::ModifyIORefChirho => Ok(ValueChirho::IntChirho(0)),
     }
 }
 

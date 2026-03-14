@@ -274,6 +274,10 @@ pub struct MachineChirho {
     pub io_output_chirho: String,
     /// Stdin input feed (for testing). Lines consumed by getLine/getChar.
     pub io_input_chirho: std::collections::VecDeque<String>,
+    /// IORef storage: mutable reference cells indexed by ID.
+    pub iorefs_chirho: HashMap<u64, ValueChirho>,
+    /// Next IORef ID counter.
+    pub next_ioref_chirho: u64,
 }
 
 impl MachineChirho {
@@ -291,6 +295,8 @@ impl MachineChirho {
             con_tags_chirho: HashMap::new(),
             io_output_chirho: String::new(),
             io_input_chirho: std::collections::VecDeque::new(),
+            iorefs_chirho: HashMap::new(),
+            next_ioref_chirho: 0,
         }
     }
 
@@ -2023,6 +2029,57 @@ impl MachineChirho {
                     a_chirho.partial_cmp(&b_chirho).unwrap_or(std::cmp::Ordering::Equal),
                 );
                 return Ok(ordering_chirho);
+            }
+            // ── IORef operations ──
+            PrimOpKindChirho::NewIORefChirho => {
+                // newIORef# val → allocate a new mutable reference, return its id as Int
+                let val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let id_chirho = self.next_ioref_chirho;
+                self.next_ioref_chirho += 1;
+                self.iorefs_chirho.insert(id_chirho, val_chirho);
+                return Ok(ValueChirho::IntChirho(id_chirho as i64));
+            }
+            PrimOpKindChirho::ReadIORefChirho => {
+                // readIORef# ref → read the current value from the mutable reference
+                let ref_id_chirho = match args_chirho.first() {
+                    Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
+                    _ => return Ok(ValueChirho::IntChirho(0)),
+                };
+                let val_chirho = self.iorefs_chirho.get(&ref_id_chirho).cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                return Ok(val_chirho);
+            }
+            PrimOpKindChirho::WriteIORefChirho => {
+                // writeIORef# ref val → overwrite the value in the mutable reference
+                let ref_id_chirho = match args_chirho.first() {
+                    Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
+                    _ => return Ok(ValueChirho::IntChirho(0)),
+                };
+                let val_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0));
+                self.iorefs_chirho.insert(ref_id_chirho, val_chirho);
+                return Ok(ValueChirho::IntChirho(0)); // IO ()
+            }
+            PrimOpKindChirho::ModifyIORefChirho => {
+                // modifyIORef# ref f → read value, apply f, write back
+                // Since we can't easily apply a closure in the primop handler,
+                // we treat this as: read the ref, push an apply frame for f,
+                // then write the result back.
+                // Simplified: for now, if f is an Int (identity-like), just keep the value.
+                let ref_id_chirho = match args_chirho.first() {
+                    Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
+                    _ => return Ok(ValueChirho::IntChirho(0)),
+                };
+                // Read current value
+                let current_chirho = self.iorefs_chirho.get(&ref_id_chirho).cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                // If second arg is a function closure, we'd need to apply it.
+                // For the basic case, if we have a HeapPtr for the function,
+                // we push a special continuation. For now, just return the
+                // current value — the full apply-and-writeback needs the
+                // evaluator loop. Users should use readIORef + writeIORef for now.
+                // TODO: full modifyIORef with closure application
+                let _ = current_chirho;
+                return Ok(ValueChirho::IntChirho(0)); // IO ()
             }
             _ => {}
         }

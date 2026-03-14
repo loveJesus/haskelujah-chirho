@@ -7118,6 +7118,130 @@ impl DictPassCtxChirho {
                 is_rec_chirho: false,
             });
         }
+
+        // ── IORef operations ──
+
+        // newIORef :: a -> IO (IORef a)
+        // Simplified: newIORef val = newIORef# val (returns Int id)
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("newIORef");
+            let v_chirho = self.fresh_binder_chirho("v", any_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: v_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "newIORef#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(v_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "newIORef".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(any_ty_chirho.clone(), TyChirho::int_chirho()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // readIORef :: IORef a -> IO a
+        // Simplified: readIORef ref = readIORef# ref
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("readIORef");
+            let r_chirho = self.fresh_binder_chirho("r", TyChirho::int_chirho());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: r_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "readIORef#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(r_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "readIORef".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), any_ty_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // writeIORef :: IORef a -> a -> IO ()
+        // Simplified: writeIORef ref val = writeIORef# ref val
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("writeIORef");
+            let r_chirho = self.fresh_binder_chirho("r", TyChirho::int_chirho());
+            let v_chirho = self.fresh_binder_chirho("v", any_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: r_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: v_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "writeIORef#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(r_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(v_chirho.id_chirho),
+                        ],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "writeIORef".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::int_chirho(),
+                        TyChirho::fun_chirho(any_ty_chirho.clone(), unit_ty_chirho.clone()),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // modifyIORef :: IORef a -> (a -> a) -> IO ()
+        // Simplified: modifyIORef ref f = modifyIORef# ref f
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("modifyIORef");
+            let r_chirho = self.fresh_binder_chirho("r", TyChirho::int_chirho());
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(any_ty_chirho.clone(), any_ty_chirho.clone()),
+            );
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: r_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: f_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "modifyIORef#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(r_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(f_chirho.id_chirho),
+                        ],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "modifyIORef".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::int_chirho(),
+                        TyChirho::fun_chirho(
+                            TyChirho::fun_chirho(any_ty_chirho.clone(), any_ty_chirho.clone()),
+                            unit_ty_chirho.clone(),
+                        ),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
     }
 
     /// Generate instance dictionary bindings for ground instances.
