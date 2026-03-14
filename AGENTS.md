@@ -218,9 +218,9 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver error/undefined/seq tests**: 3 tests (error "kaboom" halts, undefined halts, seq 1 42 → 42)
 - **Driver Data.Map tests**: 10 tests (singleton insert+lookup, lookup-missing, size=1, member, nested insert+lookup, nested lookup-other-key, size=2, insert overwrite, three-key sum)
 - **Driver Data.Map extended tests**: 9 tests (mapDelete, mapDelete missing, mapKeys, mapElems, mapNull, mapMap, mapFoldlWithKey, mapFromList, mapToList)
-- **Driver Data.Set tests**: 6 tests (setSingleton+setMember, setMember not-found, setSize 3 inserts, setInsert duplicate, setToList sum, setFromList dedup)
+- **Driver Data.Set tests**: 13 tests (setSingleton+setMember, setMember not-found, setSize 3 inserts, setInsert duplicate, setToList sum, setFromList dedup, setDelete, setUnion, setIntersection, setDifference, setFilter, setMap, setFold)
 - **Driver free-var cache tests**: 2 tests (nested bool case recursive, user-defined BST insert)
-- **Total**: 910 tests passing across all crates (1 ignored)
+- **Total**: 917 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -315,4 +315,5 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 89. ~~Show True/False through typeclass machinery~~ — DONE (two fixes: (a) uncommented Show Bool entry in generate_builtin_prim_bindings_chirho so $prim_Show_show_Bool binding is generated via showBool# primop, (b) added HeapPtr→Bool resolution in eval_prim_chirho for nullary constructors True/False so primops receive concrete BoolChirho values instead of raw heap addresses; 2 new e2e tests: `putStrLn (show True)` → "True\n", `putStrLn (show False)` → "False\n"; 897 tests total)
 90. ~~Data.Map extended operations~~ — DONE (mapDelete with BST-aware key removal, mapToList in-order traversal, mapKeys sorted key extraction, mapElems value list, mapNull emptiness check, mapMap higher-order value transformation, mapFoldlWithKey left fold with key access; DataConChirho True/False case dispatch for ==# and <# primop results; type signatures in seed_builtins; 9 new e2e tests; 904 tests total)
 91. ~~Data.Set BST Prelude~~ — DONE (setEmpty/setSingleton/setInsert/setMember/setSize/setToList/setFromList as recursive Core IR functions; SetEmpty/SetNode constructors in exhaustiveness checker; BST insert with ==#/<# dispatch using DataConChirho True/False; BST member search; recursive size; in-order traversal to sorted list via append; fold-insert fromList with dedup; type signatures in seed_builtins; 6 new e2e tests; 910 tests total)
-92. Next priorities: setDelete/setUnion/setIntersection/setDifference/setMap/setFilter, String-as-[Char] interop (list ops on strings), where-clause mutual recursion fix, improved interact with function application, more numeric class instances, type-level improvements
+92. ~~Data.Set extended operations~~ — DONE (setDelete via subtree merge through setToList+setFromList, setUnion via fold-insert, setIntersection/setDifference via setMember filter with DataConChirho True/False case dispatch, setFilter with predicate function, setMap for element transformation, setFold for in-order fold; 7 new e2e tests; 917 tests total)
+93. Next priorities: String-as-[Char] interop (list ops on strings), where-clause mutual recursion fix, improved interact with function application, more numeric class instances, type-level improvements
