@@ -9535,14 +9535,57 @@ main = case safeDivide 20 2 of
         }
     }
 
-    // NOTE: nested mapInsert (inserting into a non-empty map) has a tag dispatch bug
-    // with the boolean comparison result. Single-level insert+lookup works.
-    // TODO: fix nested case dispatch for Map BST traversal
+    #[test]
+    fn eval_nested_bool_case_recursive_chirho() {
+        // Test: recursive function with boolean case dispatch inside data constructor case
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ninsert k v m = case m of\n  Nothing -> Just (k + v)\n  Just x -> if k == 0 then Just x else insert (k - 1) v (Just x)\nmain = case insert 2 10 Nothing of\n  Just r -> r\n  Nothing -> 0\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(12)),
+            Err(e_chirho) => panic!("Nested bool case recursive should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_user_bst_insert_chirho() {
+        // User-defined BST insert using if-then-else (no Prelude mapInsert)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+data Tree = Leaf | Node Int Int Tree Tree
+myInsert k v t = case t of
+  Leaf -> Node k v Leaf Leaf
+  Node k2 v2 l r -> if k < k2 then Node k2 v2 (myInsert k v l) r else if k == k2 then Node k v l r else Node k2 v2 l (myInsert k v r)
+myLookup k t = case t of
+  Leaf -> 0
+  Node k2 v2 l r -> if k == k2 then v2 else if k < k2 then myLookup k l else myLookup k r
+main = myLookup 5 (myInsert 3 99 (myInsert 5 42 Leaf))
+"#;
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("User BST insert should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_insert_two_keys_chirho() {
+        // Insert two keys, lookup both (using Prelude mapInsert)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 3 99 (mapInsert 5 42 mapEmpty)) 5\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("Map nested insert should work: {}", e_chirho),
+        }
+    }
 
     #[test]
     fn eval_map_member_chirho() {
         // mapMember 5 (mapInsert 5 42 mapEmpty) → True (1)
-        // mapMember 10 (mapInsert 5 42 mapEmpty) → False (0)
         use super::eval_source_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
         let src_chirho = "module Test where\nboolToInt b = if b then 1 else 0\nmain = boolToInt (mapMember 5 (mapInsert 5 42 mapEmpty))\n";
@@ -9550,6 +9593,58 @@ main = case safeDivide 20 2 of
         match result_chirho {
             Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
             Err(e_chirho) => panic!("Map member should be True: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_insert_lookup_other_key_chirho() {
+        // Insert two keys, lookup the other key (3→99)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 3 99 (mapInsert 5 42 mapEmpty)) 3\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99)),
+            Err(e_chirho) => panic!("Map lookup other key should return 99: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_size_two_chirho() {
+        // Insert two keys, check size is 2
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = mapSize (mapInsert 3 99 (mapInsert 5 42 mapEmpty))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("Map size should be 2: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_insert_overwrite_chirho() {
+        // Insert same key twice, latest value wins
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 5 99 (mapInsert 5 42 mapEmpty)) 5\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99)),
+            Err(e_chirho) => panic!("Map insert overwrite should return 99: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_three_keys_chirho() {
+        // Insert three keys, lookup all three
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 1 10 (mapInsert 3 30 (mapInsert 2 20 mapEmpty))) 1 + getVal (mapInsert 1 10 (mapInsert 3 30 (mapInsert 2 20 mapEmpty))) 2 + getVal (mapInsert 1 10 (mapInsert 3 30 (mapInsert 2 20 mapEmpty))) 3\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(60)),
+            Err(e_chirho) => panic!("Map three keys sum should be 60: {}", e_chirho),
         }
     }
 }

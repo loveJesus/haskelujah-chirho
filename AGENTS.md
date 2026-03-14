@@ -216,7 +216,9 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver Functor/Maybe tests**: 3 tests (user-defined fmap Just→Just, fmap Nothing→Nothing, safeDivide with Maybe case)
 - **Driver power operator tests**: 2 tests (2^10=1024, 3^0=1, 5^3=125, 2.0**3.0=8.0, 4.0**0.5=2.0)
 - **Driver error/undefined/seq tests**: 3 tests (error "kaboom" halts, undefined halts, seq 1 42 → 42)
-- **Total**: 880 tests passing across all crates (1 ignored)
+- **Driver Data.Map tests**: 10 tests (singleton insert+lookup, lookup-missing, size=1, member, nested insert+lookup, nested lookup-other-key, size=2, insert overwrite, three-key sum)
+- **Driver free-var cache tests**: 2 tests (nested bool case recursive, user-defined BST insert)
+- **Total**: 894 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -306,4 +308,6 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 84. ~~Function composition (.) operator fix~~ — DONE (CST→AST lowering `name_from_text_chirho` guard to only split on `.` when both qualifier and local parts are non-empty; 4 new e2e tests for `.` composition; 830+ tests total)
 85. ~~First-class IO functions~~ — DONE (Core Prelude lambda-wrapped primop bindings for putStrLn/putStr/print so they can be passed as function arguments; mapM_ with putStrLn argument works; 15+ new e2e tests; 876 tests total)
 86. ~~IORef mutable references~~ — DONE (NewIORefChirho/ReadIORefChirho/WriteIORefChirho/ModifyIORefChirho primops; HashMap-based iorefs_chirho storage in MachineChirho; STG lowerer mappings; Core Prelude lambda bindings; type signatures; 4 new e2e tests: new+read, write+read, show+read, multiple refs; 880 tests total)
-87. Next priorities: String-as-[Char] interop (list ops on strings), lambda case expressions, where-clause mutual recursion fix, Data.Map basics, improved interact with function application
+87. ~~Data.Map BST Prelude~~ — DONE (mapEmpty/mapSingleton/mapInsert/mapLookup/mapSize/mapMember/mapFromList as recursive Core IR functions; MapEmpty/MapNode constructors in exhaustiveness checker; type signatures in seed_builtins; 6 single-op + 4 nested e2e tests; 887 tests total)
+88. ~~Free-variable cache in desugarer~~ — DONE (root cause of Data.Map nested insert failure: each unscoped name reference in the desugarer created a NEW CoreId, so when a Prelude function like `mapInsert` was referenced twice in user code, only the first CoreId got a dict-pass binding while the second resolved to IntChirho(0) via lookup_chirho fallback; fix: added `free_var_cache_chirho` HashMap to DesugarCtxChirho that caches CoreIds for free variables so repeated references to the same unscoped name share a single CoreId; this also fixes potential issues with any other Prelude function referenced multiple times; 894 tests total)
+89. Next priorities: String-as-[Char] interop (list ops on strings), lambda case expressions, where-clause mutual recursion fix, improved interact with function application, Data.Map fromList e2e test, show True/show False through typeclass dict machinery

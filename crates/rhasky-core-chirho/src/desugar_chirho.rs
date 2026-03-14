@@ -43,6 +43,10 @@ pub struct DesugarCtxChirho {
     /// Scope: maps source name → CoreIdChirho for variables currently in scope.
     /// Newer entries shadow older ones (last-wins in the Vec of scopes).
     scope_chirho: Vec<HashMap<String, CoreIdChirho>>,
+    /// Cache for free variable references: ensures each unscoped name gets
+    /// the same CoreId across multiple references, so the dict pass can
+    /// create a single binding that all references share.
+    free_var_cache_chirho: HashMap<String, CoreIdChirho>,
 }
 
 impl DesugarCtxChirho {
@@ -51,6 +55,7 @@ impl DesugarCtxChirho {
             next_id_chirho: 0,
             names_chirho: HashMap::new(),
             scope_chirho: vec![HashMap::new()],
+            free_var_cache_chirho: HashMap::new(),
         }
     }
 
@@ -92,12 +97,18 @@ impl DesugarCtxChirho {
 
     /// Look up or create a CoreId for a variable reference.
     /// If the name is in scope (bound by a lambda, let, etc.), return its ID.
-    /// Otherwise, create a fresh ID (for top-level or unresolved references).
+    /// Otherwise, check the free-variable cache so repeated references to the
+    /// same unscoped name share a single CoreId.  If not cached, create a
+    /// fresh ID and cache it.
     fn resolve_var_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
         if let Some(id_chirho) = self.lookup_scope_chirho(name_chirho) {
             id_chirho
+        } else if let Some(&id_chirho) = self.free_var_cache_chirho.get(name_chirho) {
+            id_chirho
         } else {
-            self.fresh_id_chirho(name_chirho)
+            let id_chirho = self.fresh_id_chirho(name_chirho);
+            self.free_var_cache_chirho.insert(name_chirho.to_string(), id_chirho);
+            id_chirho
         }
     }
 
