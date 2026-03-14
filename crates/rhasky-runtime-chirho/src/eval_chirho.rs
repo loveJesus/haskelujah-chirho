@@ -2397,6 +2397,16 @@ impl MachineChirho {
                             result_chirho.push_str(s_chirho);
                             break;
                         }
+                        ValueChirho::HeapPtrChirho(head_addr_chirho) => {
+                            // Force the head thunk (e.g. from `map toUpper`)
+                            let head_resolved_chirho = self.force_addr_to_whnf_chirho(*head_addr_chirho)?;
+                            let head_closure_chirho = self.heap_chirho.read_chirho(head_resolved_chirho).clone();
+                            if let Some(ValueChirho::CharChirho(ch_chirho)) = head_closure_chirho.payload_chirho.first() {
+                                result_chirho.push(*ch_chirho);
+                            } else {
+                                break;
+                            }
+                        }
                         _ => break,
                     }
                     match &c_chirho.payload_chirho[1] {

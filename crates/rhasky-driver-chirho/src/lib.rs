@@ -9952,4 +9952,93 @@ main = myLookup 5 (myInsert 3 99 (myInsert 5 42 Leaf))
         }
     }
 
+    // -- String-as-[Char] interop tests --
+
+    #[test]
+    fn eval_head_string_chirho() {
+        // head "hello" → 'h'
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = ord (head \"hello\")\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(104)), // 'h' = 104
+            Err(e_chirho) => panic!("head string: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_length_string_chirho() {
+        // length "hello" → 5
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length \"hello\"\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5)),
+            Err(e_chirho) => panic!("length string: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_toupper_string_chirho() {
+        // map toUpper "hello" → "HELLO" via putStrLn
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = putStrLn (map toUpper \"hello\")\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = machine_chirho.io_output_chirho.clone();
+                assert_eq!(output_chirho, "HELLO\n");
+            }
+            Err(e_chirho) => panic!("map toUpper string: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_filter_string_chirho() {
+        // filter isDigit "abc123" → "123"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = putStrLn (filter isDigit \"abc123\")\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = machine_chirho.io_output_chirho.clone();
+                assert_eq!(output_chirho, "123\n");
+            }
+            Err(e_chirho) => panic!("filter isDigit string: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_reverse_string_chirho() {
+        // reverse "hello" then putStrLn
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = putStrLn (reverse \"hello\")\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = machine_chirho.io_output_chirho.clone();
+                assert_eq!(output_chirho, "olleh\n");
+            }
+            Err(e_chirho) => panic!("reverse string: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_null_string_chirho() {
+        // null "" → True, null "hi" → False
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = if null \"\" then 1 else 0\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("null empty string: {}", e_chirho),
+        }
+    }
+
 }
