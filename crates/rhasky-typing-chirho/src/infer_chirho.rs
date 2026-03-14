@@ -4412,6 +4412,58 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // find :: forall a. (a -> Bool) -> [a] -> Maybe a
+    {
+        let find_a_chirho = TyVarChirho(3710);
+        env_chirho.bind_chirho(
+            "find".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![find_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(find_a_chirho),
+                            TyChirho::bool_chirho(),
+                        ),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(find_a_chirho))),
+                    ],
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                        Box::new(TyChirho::VarChirho(find_a_chirho)),
+                    ),
+                ),
+            },
+        );
+    }
+
+    // groupBy :: forall a. (a -> a -> Bool) -> [a] -> [[a]]
+    {
+        let gb_a_chirho = TyVarChirho(3711);
+        env_chirho.bind_chirho(
+            "groupBy".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![gb_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_n_chirho(
+                            vec![
+                                TyChirho::VarChirho(gb_a_chirho),
+                                TyChirho::VarChirho(gb_a_chirho),
+                            ],
+                            TyChirho::bool_chirho(),
+                        ),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(gb_a_chirho))),
+                    ],
+                    TyChirho::ListChirho(Box::new(
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(gb_a_chirho))),
+                    )),
+                ),
+            },
+        );
+    }
+
     // -----------------------------------------------------------------------
     // Higher-order list Prelude functions
     // -----------------------------------------------------------------------

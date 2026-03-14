@@ -14273,4 +14273,188 @@ main = putStrLn (show (length primes))
         assert_eq!(m_chirho.io_output_chirho, "25\n");
     }
 
+    // ── Data.Map additional operations ────────────────────────────────────
+
+    #[test]
+    fn eval_map_foldr_with_key_chirho() {
+        // mapFoldrWithKey (\k v acc -> acc + v) 0 (fromList [(1,10),(2,20),(3,30)]) → 60
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m = mapFromList [(1,10),(2,20),(3,30)]
+main = mapFoldrWithKey (\\k v acc -> acc + v) 0 m
+";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("mapFoldrWithKey sum failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(60));
+    }
+
+    #[test]
+    fn eval_map_filter_values_chirho() {
+        // mapFilter (>15) (fromList [(1,10),(2,20),(3,30)]) — sum elems of result = 50
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m = mapFromList [(1,10),(2,20),(3,30)]
+main = sum (mapElems (mapFilter (> 15) m))
+";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("mapFilter sum elems failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(50));
+    }
+
+    #[test]
+    fn eval_map_map_triple_chirho() {
+        // mapMap (*3) (fromList [(1,10),(2,20)]) — sum values = 90
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m = mapFromList [(1,10),(2,20)]
+main = sum (mapElems (mapMap (\\x -> x * 3) m))
+";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("mapMap (*3) sum failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(90));
+    }
+
+    #[test]
+    fn eval_map_union_with_sum_chirho() {
+        // mapUnionWith (+) two maps with shared key — combined value is sum
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m1 = mapFromList [(1,10),(2,20)]
+m2 = mapFromList [(2,5),(3,30)]
+main = sum (mapElems (mapUnionWith (+) m1 m2))
+";
+        // key 1→10, key 2→20+5=25, key 3→30 : total = 65
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("mapUnionWith sum failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(65));
+    }
+
+    // ── Data.List: find ───────────────────────────────────────────────────
+
+    #[test]
+    fn eval_find_just_chirho() {
+        // find (>3) [1,2,3,4,5] → Just 4 → fromMaybe 0 = 4
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = fromMaybe 0 (find (> 3) [1,2,3,4,5])
+";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("find Just failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(4));
+    }
+
+    #[test]
+    fn eval_find_nothing_chirho() {
+        // find (>10) [1,2,3] → Nothing → fromMaybe 99 = 99
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = fromMaybe 99 (find (> 10) [1,2,3])
+";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("find Nothing failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99));
+    }
+
+    // ── Data.List: nubBy ─────────────────────────────────────────────────
+
+    #[test]
+    fn eval_nub_by_mod_chirho() {
+        // nubBy (\x y -> x `mod` 3 == y `mod` 3) [1,2,3,4,5,6] → [1,2,3], length = 3
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = length (nubBy (\\x y -> x `mod` 3 == y `mod` 3) [1,2,3,4,5,6])
+";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("nubBy mod length failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3));
+    }
+
+    #[test]
+    fn eval_nub_by_eq_head_chirho() {
+        // nubBy (==) [1,1,2,2,3] → [1,2,3], head = 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = head (nubBy (==) [1,1,2,2,3])
+";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("nubBy (==) head failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
+    }
+
+    // ── Data.List: sortBy ────────────────────────────────────────────────
+
+    #[test]
+    fn eval_sort_by_descending_sum_chirho() {
+        // sortBy (flip compare) [3,1,4,1,5] → [5,4,3,1,1], sum = 14
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = sum (sortBy (\\x y -> compare y x) [3,1,4,1,5])
+";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("sortBy descending sum failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(14));
+    }
+
+    #[test]
+    fn eval_sort_by_ascending_head_chirho() {
+        // sortBy compare [5,2,8,1] → [1,2,5,8], head = 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = head (sortBy compare [5,2,8,1])
+";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("sortBy ascending head failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
+    }
+
+    // ── Data.List: groupBy ───────────────────────────────────────────────
+
+    #[test]
+    fn eval_group_by_length_chirho() {
+        // groupBy (==) [1,1,2,2,2,3] → [[1,1],[2,2,2],[3]], length = 3
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = length (groupBy (==) [1,1,2,2,2,3])
+";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("groupBy (==) length failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3));
+    }
+
+    #[test]
+    fn eval_group_by_sum_of_heads_chirho() {
+        // groupBy (==) [1,1,2,3,3] → [[1,1],[2],[3,3]], map head → [1,2,3], sum = 6
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = sum (map head (groupBy (==) [1,1,2,3,3]))
+";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("groupBy sum of heads failed: {}", e_chirho));
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(6));
+    }
+
 }
