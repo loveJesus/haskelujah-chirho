@@ -10930,6 +10930,58 @@ main = if isPrefixOf [2,3] [1,2,3] then 1 else 0
         }
     }
 
+    // ── Data.Map String-keyed ─────────────────────────────────────
+
+    #[test]
+    fn eval_map_insert_str_chirho() {
+        // mapInsertStr then lookup: mapFindWithDefaultStr 0 "hello" (mapInsertStr "hello" 42 mapEmpty)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m = mapInsertStr \"hello\" 42 mapEmpty
+main = mapFindWithDefaultStr 0 \"hello\" m
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("mapInsertStr: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_lookup_str_not_found_chirho() {
+        // mapFindWithDefaultStr 99 "missing" mapEmpty → 99
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = mapFindWithDefaultStr 99 \"missing\" mapEmpty
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99)),
+            Err(e_chirho) => panic!("mapFindWithDefaultStr not found: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_str_multiple_chirho() {
+        // Insert multiple string keys and verify size
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+m = mapInsertStr \"a\" 1 (mapInsertStr \"b\" 2 (mapInsertStr \"c\" 3 mapEmpty))
+main = mapSize m
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("mapStr multiple: {}", e_chirho),
+        }
+    }
+
     #[test]
     fn eval_is_suffix_of_chirho() {
         // isSuffixOf [2,3] [1,2,3] → True → use if to convert to Int

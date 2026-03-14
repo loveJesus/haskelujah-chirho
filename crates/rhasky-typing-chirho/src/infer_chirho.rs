@@ -4469,6 +4469,63 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // mapInsertStr :: String -> v -> Map -> Map
+    {
+        let v_chirho = TyChirho::VarChirho(TyVarChirho(3240));
+        env_chirho.bind_chirho(
+            "mapInsertStr".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3240)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![TyChirho::string_chirho(), v_chirho, TyChirho::int_chirho()],
+                    TyChirho::int_chirho(),
+                ),
+            },
+        );
+    }
+
+    // mapLookupStr :: String -> Map -> Maybe v
+    {
+        let v_chirho = TyChirho::VarChirho(TyVarChirho(3241));
+        env_chirho.bind_chirho(
+            "mapLookupStr".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3241)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::string_chirho(),
+                    TyChirho::fun_chirho(TyChirho::int_chirho(), v_chirho),
+                ),
+            },
+        );
+    }
+
+    // mapMemberStr :: String -> Map -> Bool
+    env_chirho.bind_chirho(
+        "mapMemberStr".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::string_chirho(),
+            TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::bool_chirho()),
+        )),
+    );
+
+    // mapFindWithDefaultStr :: v -> String -> Map -> v
+    {
+        let v_chirho = TyChirho::VarChirho(TyVarChirho(3242));
+        env_chirho.bind_chirho(
+            "mapFindWithDefaultStr".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3242)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![v_chirho.clone(), TyChirho::string_chirho(), TyChirho::int_chirho()],
+                    v_chirho,
+                ),
+            },
+        );
+    }
+
     // nub :: [a] -> [a]
     {
         let nub_a_chirho = TyVarChirho(3400);
