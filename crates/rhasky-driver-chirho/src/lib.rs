@@ -10848,4 +10848,102 @@ main = mapFindWithDefault 0 1 m
         }
     }
 
+    // ── Additional list functions ───────────────────────────────────
+
+    #[test]
+    fn eval_nub_length_chirho() {
+        // nub [1,2,1,3,2,4] → [1,2,3,4] → length 4
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = length (nub [1,2,1,3,2,4])
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(4)),
+            Err(e_chirho) => panic!("nub length: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_nub_head_chirho() {
+        // head (nub [3,1,3,2]) → 3 (first unique is 3)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = head (nub [3,1,3,2])
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("nub head: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_intersperse_sum_chirho() {
+        // sum (intersperse 0 [1,2,3]) → 1+0+2+0+3 = 6
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = sum (intersperse 0 [1,2,3])
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(6)),
+            Err(e_chirho) => panic!("intersperse sum: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_is_prefix_of_true_chirho() {
+        // isPrefixOf [1,2] [1,2,3] → True → use if to convert to Int
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = if isPrefixOf [1,2] [1,2,3] then 1 else 0
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("isPrefixOf true: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_is_prefix_of_false_chirho() {
+        // isPrefixOf [2,3] [1,2,3] → False → use if to convert to Int
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = if isPrefixOf [2,3] [1,2,3] then 1 else 0
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0)),
+            Err(e_chirho) => panic!("isPrefixOf false: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_is_suffix_of_chirho() {
+        // isSuffixOf [2,3] [1,2,3] → True → use if to convert to Int
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = if isSuffixOf [2,3] [1,2,3] then 1 else 0
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("isSuffixOf: {}", e_chirho),
+        }
+    }
+
 }

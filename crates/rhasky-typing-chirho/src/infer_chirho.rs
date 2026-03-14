@@ -4469,6 +4469,131 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // nub :: [a] -> [a]
+    {
+        let nub_a_chirho = TyVarChirho(3400);
+        env_chirho.bind_chirho(
+            "nub".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![nub_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(nub_a_chirho))),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(nub_a_chirho))),
+                ),
+            },
+        );
+    }
+
+    // zip3 :: [a] -> [b] -> [c] -> [(a,b,c)]
+    {
+        let z3a_chirho = TyVarChirho(3401);
+        let z3b_chirho = TyVarChirho(3402);
+        let z3c_chirho = TyVarChirho(3403);
+        env_chirho.bind_chirho(
+            "zip3".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![z3a_chirho, z3b_chirho, z3c_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(z3a_chirho))),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(z3b_chirho))),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(z3c_chirho))),
+                    ],
+                    TyChirho::ListChirho(Box::new(TyChirho::TupleChirho(vec![
+                        TyChirho::VarChirho(z3a_chirho),
+                        TyChirho::VarChirho(z3b_chirho),
+                        TyChirho::VarChirho(z3c_chirho),
+                    ]))),
+                ),
+            },
+        );
+    }
+
+    // intersperse :: a -> [a] -> [a]
+    {
+        let isp_a_chirho = TyVarChirho(3404);
+        env_chirho.bind_chirho(
+            "intersperse".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![isp_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(isp_a_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(isp_a_chirho))),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(isp_a_chirho))),
+                    ),
+                ),
+            },
+        );
+    }
+
+    // isPrefixOf :: [a] -> [a] -> Bool
+    {
+        let ipf_a_chirho = TyVarChirho(3405);
+        env_chirho.bind_chirho(
+            "isPrefixOf".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![ipf_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(ipf_a_chirho))),
+                    TyChirho::fun_chirho(
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(ipf_a_chirho))),
+                        TyChirho::bool_chirho(),
+                    ),
+                ),
+            },
+        );
+    }
+
+    // isSuffixOf :: [a] -> [a] -> Bool
+    {
+        let isf_a_chirho = TyVarChirho(3406);
+        env_chirho.bind_chirho(
+            "isSuffixOf".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![isf_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(isf_a_chirho))),
+                    TyChirho::fun_chirho(
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(isf_a_chirho))),
+                        TyChirho::bool_chirho(),
+                    ),
+                ),
+            },
+        );
+    }
+
+    // unzip3 :: [(a,b,c)] -> ([a],[b],[c])
+    {
+        let uz3a_chirho = TyVarChirho(3407);
+        let uz3b_chirho = TyVarChirho(3408);
+        let uz3c_chirho = TyVarChirho(3409);
+        env_chirho.bind_chirho(
+            "unzip3".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![uz3a_chirho, uz3b_chirho, uz3c_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::TupleChirho(vec![
+                        TyChirho::VarChirho(uz3a_chirho),
+                        TyChirho::VarChirho(uz3b_chirho),
+                        TyChirho::VarChirho(uz3c_chirho),
+                    ]))),
+                    TyChirho::TupleChirho(vec![
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(uz3a_chirho))),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(uz3b_chirho))),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(uz3c_chirho))),
+                    ]),
+                ),
+            },
+        );
+    }
+
     // toEnum :: forall a. Enum a => Int -> a
     let enum_a_chirho = TyVarChirho(3260);
     env_chirho.bind_chirho(
