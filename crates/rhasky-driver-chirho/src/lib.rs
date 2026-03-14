@@ -4784,6 +4784,64 @@ main = putStrLn (show [1.5, 2.5])
         }
     }
 
+    #[test]
+    fn eval_show_list_bool_builtin_chirho() {
+        // putStrLn (show [True, False, True]) → "[True,False,True]\n"
+        use super::eval_source_with_machine_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = putStrLn (show [True, False, True])
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match result_chirho {
+            Ok((_, machine_chirho)) => {
+                assert_eq!(
+                    machine_chirho.io_output_chirho,
+                    "[True,False,True]\n",
+                    "show [True, False, True] should produce [True,False,True]"
+                );
+            }
+            Err(e_chirho) => {
+                panic!("Show [Bool] builtin test failed: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_show_list_double_builtin_chirho() {
+        // putStrLn (show [1.5, 2.5]) → "[1.5,2.5]\n"  (second test using builtin show)
+        use super::eval_source_with_machine_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = putStrLn (show [1.5, 2.5])
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match result_chirho {
+            Ok((_, machine_chirho)) => {
+                assert_eq!(
+                    machine_chirho.io_output_chirho,
+                    "[1.5,2.5]\n",
+                    "show [1.5, 2.5] should produce [1.5,2.5] (builtin show)"
+                );
+            }
+            Err(e_chirho) => {
+                panic!("Show [Double] builtin second test failed: {}", e_chirho);
+            }
+        }
+    }
+
     // ---------------------------------------------------------------
     // Backtick infix syntax tests
     // ---------------------------------------------------------------
