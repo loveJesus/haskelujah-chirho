@@ -5749,6 +5749,64 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // -----------------------------------------------------------------------
+    // Exception handling
+    // -----------------------------------------------------------------------
+
+    // catch :: forall a. IO a -> (String -> IO a) -> IO a
+    {
+        let catch_a_chirho = TyVarChirho(4130);
+        env_chirho.bind_chirho(
+            "catch".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![catch_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::io_chirho(TyChirho::VarChirho(catch_a_chirho)),
+                        TyChirho::fun_chirho(
+                            TyChirho::string_chirho(),
+                            TyChirho::io_chirho(TyChirho::VarChirho(catch_a_chirho)),
+                        ),
+                    ],
+                    TyChirho::io_chirho(TyChirho::VarChirho(catch_a_chirho)),
+                ),
+            },
+        );
+    }
+
+    // throw :: forall a. String -> a
+    {
+        let throw_a_chirho = TyVarChirho(4131);
+        env_chirho.bind_chirho(
+            "throw".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![throw_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::string_chirho(),
+                    TyChirho::VarChirho(throw_a_chirho),
+                ),
+            },
+        );
+    }
+
+    // try :: forall a. IO a -> IO a  (simplified: catches and returns default on error)
+    {
+        let try_a_chirho = TyVarChirho(4132);
+        env_chirho.bind_chirho(
+            "try".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![try_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::io_chirho(TyChirho::VarChirho(try_a_chirho)),
+                    TyChirho::io_chirho(TyChirho::VarChirho(try_a_chirho)),
+                ),
+            },
+        );
+    }
+
     // both :: forall a b. (a -> b) -> (a, a) -> (b, b)
     {
         let bo_a_chirho = TyVarChirho(4126);

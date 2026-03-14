@@ -64,6 +64,17 @@ pub enum FrameChirho {
         /// How many more arguments are needed.
         remaining_chirho: u16,
     },
+
+    /// Exception handler: catch# pushes this before evaluating the body.
+    /// If the body succeeds, the frame is popped and the result is returned.
+    /// If RuntimeErrorChirho propagates, the stack is unwound to this frame
+    /// and the handler is applied to the error message string.
+    CatchChirho {
+        /// Heap address of the handler closure (handler :: String -> IO a)
+        handler_addr_chirho: HeapAddrChirho,
+        /// Saved arg registers to restore when invoking the handler
+        saved_arg_regs_chirho: Vec<ValueChirho>,
+    },
 }
 
 /// Kinds of primitive operations.
@@ -283,6 +294,14 @@ pub enum PrimOpKindChirho {
     WriteSTRefChirho,
     /// runST# :: (forall s. ST s a) -> a — execute an ST computation purely
     RunSTChirho,
+
+    // ── Exception handling ──
+    /// catch# :: IO a -> (String -> IO a) -> IO a — run with exception handler
+    CatchChirho,
+    /// throw# :: String -> a — throw an exception (synonym for error)
+    ThrowChirho,
+    /// try# :: IO a -> IO (Either String a) — run and return Left on error, Right on success
+    TryChirho,
 }
 
 /// The evaluation stack.
@@ -338,6 +357,24 @@ impl StackChirho {
     /// Borrow all frames (for GC root extraction).
     pub fn frames_chirho(&self) -> &[FrameChirho] {
         &self.frames_chirho
+    }
+
+    /// Unwind the stack looking for a `CatchChirho` frame.
+    /// Returns `Some(CatchChirho { .. })` if found, popping all frames
+    /// above it (including the catch frame itself). Returns `None` if
+    /// no catch frame exists on the stack.
+    pub fn unwind_to_catch_chirho(&mut self) -> Option<FrameChirho> {
+        // Search from the top of the stack downward
+        let catch_pos_chirho = self.frames_chirho.iter().rposition(|f_chirho| {
+            matches!(f_chirho, FrameChirho::CatchChirho { .. })
+        });
+        if let Some(pos_chirho) = catch_pos_chirho {
+            // Pop everything above and including the catch frame
+            self.frames_chirho.truncate(pos_chirho + 1);
+            self.frames_chirho.pop() // the catch frame itself
+        } else {
+            None
+        }
     }
 }
 

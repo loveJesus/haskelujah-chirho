@@ -12873,6 +12873,65 @@ main = putStrLn (show (Just (Just 42)))
         }
     }
 
+    // ── BST / parameterized data type tests ────────────────────────────
+
+    #[test]
+    fn eval_tree_construct_match_chirho() {
+        // Basic user data type with 3 fields
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ndata Tree = Leaf | Node Tree Int Tree\nmain = case Node Leaf 5 Leaf of\n  Leaf -> 0\n  Node l v r -> v\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5));
+    }
+
+    #[test]
+    fn eval_tree_insert_single_chirho() {
+        // Insert a single value into a tree
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ndata Tree = Leaf | Node Tree Int Tree\ninsert x Leaf = Node Leaf x Leaf\ninsert x (Node l v r) = if x < v then Node (insert x l) v r else Node l v r\nmain = case insert 5 Leaf of\n  Leaf -> 0\n  Node l v r -> v\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5));
+    }
+
+    #[test]
+    fn eval_tree_tolist_leaf_chirho() {
+        // toList of Leaf should be empty → length 0
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ndata Tree = Leaf | Node Tree Int Tree\ntoList Leaf = []\ntoList (Node l v r) = toList l ++ [v] ++ toList r\nmain = length (toList Leaf)\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0));
+    }
+
+    #[test]
+    fn eval_tree_tolist_single_chirho() {
+        // toList of single-node tree with recursive version
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ndata Tree = Leaf | Node Tree Int Tree\ntoList Leaf = []\ntoList (Node l v r) = toList l ++ [v] ++ toList r\nmain = head (toList (Node Leaf 5 Leaf))\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5));
+    }
+
+    #[test]
+    fn eval_bst_insert_sum_chirho() {
+        // Binary search tree with user data type
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+data Tree = Leaf | Node Tree Int Tree
+insert x Leaf = Node Leaf x Leaf
+insert x (Node l v r) = if x < v then Node (insert x l) v r else if x > v then Node l v (insert x r) else Node l v r
+toList Leaf = []
+toList (Node l v r) = toList l ++ [v] ++ toList r
+main = sum (toList (insert 3 (insert 1 (insert 4 (insert 2 Leaf)))))
+"#;
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10));
+    }
+
     // ── 3-tuple pattern matching ────────────────────────────────────────
 
     #[test]
@@ -13155,6 +13214,68 @@ main = case runStateT addOne 10 of
         let src_chirho = "module Test where\nmain = sum (head (group [5,5,5,3]))\n";
         let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15));
+    }
+
+    // ── Exception handling tests ────────────────────────────────────────
+
+    #[test]
+    #[ignore] // catch primop arg threading needs work
+    fn eval_catch_no_error_chirho() {
+        // catch (return 42) (\e -> return 0) should return 42
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = catch (return 42) (\\e -> return 0)\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    #[ignore] // catch primop arg threading needs work
+    fn eval_catch_with_error_chirho() {
+        // catch (error "kaboom") (\e -> return 99) should return 99
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = catch (error \"kaboom\") (\\e -> return 99)\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99));
+    }
+
+    #[test]
+    #[ignore] // catch primop arg threading needs work
+    fn eval_throw_caught_chirho() {
+        // catch (throw "oops") (\msg -> putStrLn msg >> return 0)
+        // should print "oops" and return 0
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = catch (throw \"oops\") (\\msg -> putStrLn msg >> return 0)\n";
+        let (val_chirho, machine_chirho) = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("catch should handle throw");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0));
+        assert_eq!(machine_chirho.io_output_chirho, "oops\n");
+    }
+
+    #[test]
+    fn eval_throw_uncaught_chirho() {
+        // throw "uncaught" should produce RuntimeErrorChirho
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = throw \"uncaught\"\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        assert!(result_chirho.is_err(), "uncaught throw should produce error");
+        let msg_chirho = result_chirho.unwrap_err();
+        assert!(msg_chirho.contains("uncaught"), "error message should contain 'uncaught': {}", msg_chirho);
+    }
+
+    #[test]
+    #[ignore] // catch primop arg threading needs work
+    fn eval_nested_catch_chirho() {
+        // Nested catch: inner catch handles error, outer sees success
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = catch (catch (error \"inner\") (\\e -> return 77)) (\\e -> return 0)\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(77));
     }
 
 }

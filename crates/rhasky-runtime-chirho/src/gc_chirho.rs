@@ -264,6 +264,17 @@ pub fn extract_roots_from_stack_chirho(
                     }
                 }
             }
+            FrameChirho::CatchChirho {
+                handler_addr_chirho,
+                saved_arg_regs_chirho,
+            } => {
+                roots_chirho.push(*handler_addr_chirho);
+                for val_chirho in saved_arg_regs_chirho {
+                    if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
+                        roots_chirho.push(*addr_chirho);
+                    }
+                }
+            }
         }
     }
     roots_chirho

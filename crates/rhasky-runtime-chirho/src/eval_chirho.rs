@@ -368,12 +368,98 @@ impl MachineChirho {
         self.last_gc_stats_chirho = Some(stats_chirho);
     }
 
+    /// Attempt to handle a `RuntimeErrorChirho` by unwinding the stack to
+    /// a `CatchChirho` frame.  If a catch frame is found, sets up the
+    /// machine to invoke the handler and returns `Ok(pc)` for the handler
+    /// entry.  Otherwise re-returns the original error.
+    fn try_catch_runtime_error_chirho(
+        &mut self,
+        msg_chirho: String,
+    ) -> Result<u32, EvalErrorChirho> {
+        if let Some(FrameChirho::CatchChirho {
+            handler_addr_chirho,
+            saved_arg_regs_chirho,
+        }) = self.stack_chirho.unwind_to_catch_chirho()
+        {
+            // Restore saved arg registers
+            self.arg_regs_chirho = saved_arg_regs_chirho;
+            // Push an Apply frame to apply the handler to the error message
+            let msg_val_chirho = ValueChirho::StringChirho(msg_chirho);
+            self.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
+                args_chirho: vec![msg_val_chirho],
+            });
+            // Enter the handler closure
+            Ok(self.emit_enter_chirho(handler_addr_chirho))
+        } else {
+            Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho))
+        }
+    }
+
+    /// Check if an eval error is a RuntimeErrorChirho and attempt to catch
+    /// it with a CatchChirho frame.  For non-runtime errors (type errors,
+    /// blackholes, etc.) the error is always propagated.
+    fn maybe_catch_error_chirho(
+        &mut self,
+        err_chirho: EvalErrorChirho,
+    ) -> Result<u32, EvalErrorChirho> {
+        match err_chirho {
+            EvalErrorChirho::RuntimeErrorChirho(msg_chirho) => {
+                self.try_catch_runtime_error_chirho(msg_chirho)
+            }
+            other_chirho => Err(other_chirho),
+        }
+    }
+
     /// Run the machine starting from the given code table index.
     /// Returns the final value in WHNF.
+    ///
+    /// When a `RuntimeErrorChirho` occurs anywhere in evaluation, the
+    /// stack is searched for a `CatchChirho` frame.  If found, the
+    /// handler is invoked with the error message string instead of
+    /// propagating the error.
     pub fn run_chirho(
         &mut self,
         entry_chirho: u32,
     ) -> Result<ValueChirho, EvalErrorChirho> {
+        // Helper macro: dispatch on a Result<ReturnActionChirho, _>.
+        // On success, either return Done or set pc to Continue.
+        // On RuntimeErrorChirho, try to catch with a CatchChirho frame.
+        macro_rules! dispatch_action_chirho {
+            ($self:ident, $pc:ident, $result:expr) => {
+                match $result {
+                    Ok(ReturnActionChirho::DoneChirho(v_chirho)) => {
+                        return Ok(v_chirho);
+                    }
+                    Ok(ReturnActionChirho::ContinueChirho(next_chirho)) => {
+                        $pc = next_chirho;
+                    }
+                    Err(e_chirho) => match $self.maybe_catch_error_chirho(e_chirho) {
+                        Ok(next_chirho) => {
+                            $pc = next_chirho;
+                        }
+                        Err(e2_chirho) => return Err(e2_chirho),
+                    },
+                }
+            };
+        }
+
+        // Helper macro: dispatch on a Result<u32, _> (for dispatch_case_lit).
+        macro_rules! dispatch_u32_chirho {
+            ($self:ident, $pc:ident, $result:expr) => {
+                match $result {
+                    Ok(next_chirho) => {
+                        $pc = next_chirho;
+                    }
+                    Err(e_chirho) => match $self.maybe_catch_error_chirho(e_chirho) {
+                        Ok(next_chirho) => {
+                            $pc = next_chirho;
+                        }
+                        Err(e2_chirho) => return Err(e2_chirho),
+                    },
+                }
+            };
+        }
+
         let mut pc_chirho = entry_chirho;
 
         loop {
@@ -396,21 +482,13 @@ impl MachineChirho {
                     match closure_chirho.info_chirho.tag_chirho {
                         InfoTagChirho::ConChirho => {
                             // Constructor in WHNF — return it
-                            match self.return_con_chirho(addr_chirho)? {
-                                ReturnActionChirho::DoneChirho(v_chirho) => return Ok(v_chirho),
-                                ReturnActionChirho::ContinueChirho(next_chirho) => {
-                                    pc_chirho = next_chirho;
-                                }
-                            }
+                            let r_chirho = self.return_con_chirho(addr_chirho);
+                            dispatch_action_chirho!(self, pc_chirho, r_chirho);
                         }
                         InfoTagChirho::FunChirho => {
                             // Function — check for Apply frame
-                            match self.enter_fun_chirho(addr_chirho, &closure_chirho)? {
-                                ReturnActionChirho::DoneChirho(v_chirho) => return Ok(v_chirho),
-                                ReturnActionChirho::ContinueChirho(next_chirho) => {
-                                    pc_chirho = next_chirho;
-                                }
-                            }
+                            let r_chirho = self.enter_fun_chirho(addr_chirho, &closure_chirho);
+                            dispatch_action_chirho!(self, pc_chirho, r_chirho);
                         }
                         InfoTagChirho::ThunkChirho => {
                             // Thunk — blackhole, push update frame, enter body.
@@ -429,12 +507,8 @@ impl MachineChirho {
                         }
                         InfoTagChirho::PapChirho => {
                             // PAP — like function but with pre-applied args
-                            match self.enter_pap_chirho(addr_chirho, &closure_chirho)? {
-                                ReturnActionChirho::DoneChirho(v_chirho) => return Ok(v_chirho),
-                                ReturnActionChirho::ContinueChirho(next_chirho) => {
-                                    pc_chirho = next_chirho;
-                                }
-                            }
+                            let r_chirho = self.enter_pap_chirho(addr_chirho, &closure_chirho);
+                            dispatch_action_chirho!(self, pc_chirho, r_chirho);
                         }
                         InfoTagChirho::IndChirho => {
                             // Should have been followed already
@@ -516,14 +590,8 @@ impl MachineChirho {
                         }
                         other_chirho => {
                             // Already unboxed — return as lit to the Case frame
-                            match self.return_lit_chirho(other_chirho)? {
-                                ReturnActionChirho::DoneChirho(v_chirho) => {
-                                    return Ok(v_chirho)
-                                }
-                                ReturnActionChirho::ContinueChirho(next_chirho) => {
-                                    pc_chirho = next_chirho;
-                                }
-                            }
+                            let r_chirho = self.return_lit_chirho(other_chirho);
+                            dispatch_action_chirho!(self, pc_chirho, r_chirho);
                         }
                     }
                 }
@@ -538,12 +606,8 @@ impl MachineChirho {
                         ClosureChirho::con_chirho(tag_chirho, &name_chirho, fields_chirho);
                     let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
                     self.maybe_gc_chirho();
-                    match self.return_con_chirho(addr_chirho)? {
-                        ReturnActionChirho::DoneChirho(v_chirho) => return Ok(v_chirho),
-                        ReturnActionChirho::ContinueChirho(next_chirho) => {
-                            pc_chirho = next_chirho;
-                        }
-                    }
+                    let r_chirho = self.return_con_chirho(addr_chirho);
+                    dispatch_action_chirho!(self, pc_chirho, r_chirho);
                 }
 
                 // ── Constructor application with runtime fields ──
@@ -563,12 +627,8 @@ impl MachineChirho {
                     );
                     let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
                     self.maybe_gc_chirho();
-                    match self.return_con_chirho(addr_chirho)? {
-                        ReturnActionChirho::DoneChirho(v_chirho) => return Ok(v_chirho),
-                        ReturnActionChirho::ContinueChirho(next_chirho) => {
-                            pc_chirho = next_chirho;
-                        }
-                    }
+                    let r_chirho = self.return_con_chirho(addr_chirho);
+                    dispatch_action_chirho!(self, pc_chirho, r_chirho);
                 }
 
                 // ── Literal case dispatch ──────────────────────────
@@ -593,23 +653,20 @@ impl MachineChirho {
                         }
                         _ => {
                             // Already a value — match directly.
-                            pc_chirho = self.dispatch_case_lit_chirho(
+                            let r_chirho = self.dispatch_case_lit_chirho(
                                 &resolved_chirho,
                                 &alts_chirho,
                                 default_chirho,
-                            )?;
+                            );
+                            dispatch_u32_chirho!(self, pc_chirho, r_chirho);
                         }
                     }
                 }
 
                 // ── Literal return ──────────────────────────────────
                 CodeChirho::LitChirho(val_chirho) => {
-                    match self.return_lit_chirho(val_chirho)? {
-                        ReturnActionChirho::DoneChirho(v_chirho) => return Ok(v_chirho),
-                        ReturnActionChirho::ContinueChirho(next_chirho) => {
-                            pc_chirho = next_chirho;
-                        }
-                    }
+                    let r_chirho = self.return_lit_chirho(val_chirho);
+                    dispatch_action_chirho!(self, pc_chirho, r_chirho);
                 }
 
                 // ── Primitive operation ──────────────────────────────
@@ -620,16 +677,49 @@ impl MachineChirho {
                     // Resolve ArgSource → ValueChirho (fresh thunks each time).
                     let resolved_chirho = self.resolve_args_chirho(&args_chirho);
 
+                    // CatchChirho primop: push catch frame and evaluate body.
+                    // The catch primop returns the body value from eval_prim,
+                    // and then we need to continue evaluating it (it may be a
+                    // HeapPtr thunk or a literal). Handle the result via the
+                    // normal return path.
+                    if matches!(op_chirho, PrimOpKindChirho::CatchChirho) {
+                        let prim_result_chirho =
+                            self.eval_prim_chirho(op_chirho, &resolved_chirho);
+                        match prim_result_chirho {
+                            Ok(ValueChirho::HeapPtrChirho(addr_chirho)) => {
+                                pc_chirho = self.emit_enter_chirho(addr_chirho);
+                                continue;
+                            }
+                            Ok(val_chirho) => {
+                                let r_chirho = self.return_lit_chirho(val_chirho);
+                                dispatch_action_chirho!(self, pc_chirho, r_chirho);
+                                continue;
+                            }
+                            Err(e_chirho) => {
+                                match self.maybe_catch_error_chirho(e_chirho) {
+                                    Ok(next_chirho) => { pc_chirho = next_chirho; }
+                                    Err(e2_chirho) => return Err(e2_chirho),
+                                }
+                                continue;
+                            }
+                        }
+                    }
+
                     // InteractChirho needs HeapPtr function arg without forcing
                     if matches!(op_chirho, PrimOpKindChirho::InteractChirho) {
                         let result_chirho =
-                            self.eval_prim_chirho(op_chirho, &resolved_chirho)?;
-                        match self.return_lit_chirho(result_chirho)? {
-                            ReturnActionChirho::DoneChirho(v_chirho) => {
-                                return Ok(v_chirho)
+                            self.eval_prim_chirho(op_chirho, &resolved_chirho);
+                        match result_chirho {
+                            Ok(val_chirho) => {
+                                let r_chirho = self.return_lit_chirho(val_chirho);
+                                dispatch_action_chirho!(self, pc_chirho, r_chirho);
+                                continue;
                             }
-                            ReturnActionChirho::ContinueChirho(next_chirho) => {
-                                pc_chirho = next_chirho;
+                            Err(e_chirho) => {
+                                match self.maybe_catch_error_chirho(e_chirho) {
+                                    Ok(next_chirho) => { pc_chirho = next_chirho; }
+                                    Err(e2_chirho) => return Err(e2_chirho),
+                                }
                                 continue;
                             }
                         }
@@ -643,13 +733,17 @@ impl MachineChirho {
                     if !needs_forcing_chirho {
                         // Fast path: all args already unboxed.
                         let result_chirho =
-                            self.eval_prim_chirho(op_chirho, &resolved_chirho)?;
-                        match self.return_lit_chirho(result_chirho)? {
-                            ReturnActionChirho::DoneChirho(v_chirho) => {
-                                return Ok(v_chirho)
+                            self.eval_prim_chirho(op_chirho, &resolved_chirho);
+                        match result_chirho {
+                            Ok(val_chirho) => {
+                                let r_chirho = self.return_lit_chirho(val_chirho);
+                                dispatch_action_chirho!(self, pc_chirho, r_chirho);
                             }
-                            ReturnActionChirho::ContinueChirho(next_chirho) => {
-                                pc_chirho = next_chirho;
+                            Err(e_chirho) => {
+                                match self.maybe_catch_error_chirho(e_chirho) {
+                                    Ok(next_chirho) => { pc_chirho = next_chirho; }
+                                    Err(e2_chirho) => return Err(e2_chirho),
+                                }
                             }
                         }
                     } else {
@@ -673,16 +767,8 @@ impl MachineChirho {
                             other_chirho => {
                                 // Already unboxed — return as lit to the
                                 // PrimOp frame.
-                                match self.return_lit_chirho(other_chirho)? {
-                                    ReturnActionChirho::DoneChirho(v_chirho) => {
-                                        return Ok(v_chirho)
-                                    }
-                                    ReturnActionChirho::ContinueChirho(
-                                        next_chirho,
-                                    ) => {
-                                        pc_chirho = next_chirho;
-                                    }
-                                }
+                                let r_chirho = self.return_lit_chirho(other_chirho);
+                                dispatch_action_chirho!(self, pc_chirho, r_chirho);
                             }
                         }
                     }
@@ -720,12 +806,8 @@ impl MachineChirho {
                     self.maybe_gc_chirho();
                     // Return the closure as a HeapPtr
                     let val_chirho = ValueChirho::HeapPtrChirho(addr_chirho);
-                    match self.return_lit_chirho(val_chirho)? {
-                        ReturnActionChirho::DoneChirho(v_chirho) => return Ok(v_chirho),
-                        ReturnActionChirho::ContinueChirho(next_chirho) => {
-                            pc_chirho = next_chirho;
-                        }
-                    }
+                    let r_chirho = self.return_lit_chirho(val_chirho);
+                    dispatch_action_chirho!(self, pc_chirho, r_chirho);
                 }
 
                 // ── Allocate function with captures and store ──────
@@ -815,14 +897,8 @@ impl MachineChirho {
                             pc_chirho = self.emit_enter_chirho(addr_chirho);
                         }
                         _ => {
-                            match self.return_lit_chirho(val_chirho)? {
-                                ReturnActionChirho::DoneChirho(v_chirho) => {
-                                    return Ok(v_chirho)
-                                }
-                                ReturnActionChirho::ContinueChirho(next_chirho) => {
-                                    pc_chirho = next_chirho;
-                                }
-                            }
+                            let r_chirho = self.return_lit_chirho(val_chirho);
+                            dispatch_action_chirho!(self, pc_chirho, r_chirho);
                         }
                     }
                 }
@@ -966,6 +1042,12 @@ impl MachineChirho {
                         ),
                     });
                 }
+                Some(FrameChirho::CatchChirho { .. }) => {
+                    // Exception handler frame — body succeeded, so the
+                    // catch frame is simply discarded and the result
+                    // passes through.
+                    continue;
+                }
                 Some(FrameChirho::PrimOpChirho {
                     op_chirho,
                     mut args_so_far_chirho,
@@ -1107,6 +1189,12 @@ impl MachineChirho {
                         }
                     }
                 }
+                Some(FrameChirho::CatchChirho { .. }) => {
+                    // Exception handler frame — body succeeded, so the
+                    // catch frame is simply discarded and the result
+                    // passes through.
+                    continue;
+                }
                 Some(frame_chirho @ FrameChirho::CaseChirho { .. }) => {
                     // Box the literal into a constructor and dispatch
                     // via return_con_chirho (e.g. BoolChirho(true) → True,
@@ -1163,6 +1251,12 @@ impl MachineChirho {
                     // Update thunk to an indirection to the heap object.
                     self.heap_chirho
                         .update_to_ind_chirho(thunk_addr_chirho, addr_chirho);
+                    continue;
+                }
+                Some(FrameChirho::CatchChirho { .. }) => {
+                    // Exception handler frame — body succeeded, so the
+                    // catch frame is simply discarded and the result
+                    // passes through.
                     continue;
                 }
                 Some(frame_chirho @ FrameChirho::CaseChirho { .. }) => {
@@ -1456,6 +1550,80 @@ impl MachineChirho {
             PrimOpKindChirho::SeqChirho => {
                 // seq a b = b (a is already evaluated to WHNF by the time we reach here)
                 return Ok(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
+            }
+            PrimOpKindChirho::CatchChirho => {
+                // catch# body handler
+                // body is the IO action, handler is the exception handler.
+                // We push a CatchChirho frame and then evaluate the body.
+                // The body's result will pass through the CatchChirho frame
+                // transparently on success. On error, run_chirho unwinds
+                // to the CatchChirho frame and invokes the handler.
+                eprintln!("[DEBUG catch#] args={:?}", args_chirho);
+                let body_val_chirho = args_chirho.first().cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let handler_val_chirho = args_chirho.get(1).cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                // Allocate the handler on the heap if it's not already there
+                let handler_addr_chirho = match handler_val_chirho {
+                    ValueChirho::HeapPtrChirho(a_chirho) => a_chirho,
+                    _ => {
+                        // Wrap the handler value in a closure
+                        let closure_chirho = ClosureChirho::con_chirho(
+                            DataConTagChirho(0),
+                            "$handler",
+                            vec![handler_val_chirho],
+                        );
+                        self.heap_chirho.alloc_chirho(closure_chirho)
+                    }
+                };
+                self.stack_chirho.push_chirho(FrameChirho::CatchChirho {
+                    handler_addr_chirho,
+                    saved_arg_regs_chirho: self.arg_regs_chirho.clone(),
+                });
+                // Return the body value so the caller enters/evaluates it
+                return Ok(body_val_chirho);
+            }
+            PrimOpKindChirho::ThrowChirho => {
+                // throw# msg — exactly like error#
+                let msg_chirho = match args_chirho.first() {
+                    Some(ValueChirho::StringChirho(s_chirho)) => s_chirho.clone(),
+                    Some(ValueChirho::HeapPtrChirho(a_chirho)) => {
+                        self.resolve_string_arg_chirho(*a_chirho)?
+                    }
+                    _ => "throw".to_string(),
+                };
+                return Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho));
+            }
+            PrimOpKindChirho::TryChirho => {
+                // try# body — wraps body execution with a catch that returns
+                // Left msg on error, Right result on success.
+                // We implement this by pushing a CatchChirho frame with a
+                // handler that wraps the error in Left, and then on success
+                // the result will be wrapped in Right by the CatchChirho
+                // frame passthrough code in return_con_chirho/return_lit_chirho.
+                // For simplicity, we reuse the CatchChirho mechanism:
+                // - Build a handler closure that builds Left(msg) on error
+                // - On success, wrap the result in Right
+                // Since we don't have a way to build Either constructors
+                // generically here, we use a simplified approach: catch the
+                // error and wrap in Left, let success pass through normally.
+                // (Full Either support requires constructor allocation.)
+                let body_val_chirho = args_chirho.first().cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                // For now, try acts like catch with a handler that returns
+                // the error message string directly.
+                // This is a simplified version; full Either wrapping is future work.
+                let handler_closure_chirho = ClosureChirho::con_chirho(
+                    DataConTagChirho(0),
+                    "$try_handler",
+                    vec![],
+                );
+                let handler_addr_chirho = self.heap_chirho.alloc_chirho(handler_closure_chirho);
+                self.stack_chirho.push_chirho(FrameChirho::CatchChirho {
+                    handler_addr_chirho,
+                    saved_arg_regs_chirho: self.arg_regs_chirho.clone(),
+                });
+                return Ok(body_val_chirho);
             }
             PrimOpKindChirho::PutStrLnChirho => {
                 if let Some(ValueChirho::StringChirho(s_chirho)) = args_chirho.first() {
@@ -2086,8 +2254,76 @@ impl MachineChirho {
                 return Ok(ValueChirho::StringChirho(String::new()));
             }
             PrimOpKindChirho::AppendStrChirho => {
-                // String concatenation — resolve HeapPtr args (cons list of Char)
-                // back to String values so the binop handler can concatenate them.
+                // John 3:16 - For God so loved the world, that He gave His only begotten Son,
+                // that whosoever believeth in Him should not perish, but have everlasting life.
+                //
+                // ++ operator — handles both String concat and cons-list append.
+                let is_cons_list_chirho = |val_chirho: &ValueChirho, heap_chirho: &crate::heap_chirho::HeapChirho| -> bool {
+                    match val_chirho {
+                        ValueChirho::HeapPtrChirho(addr_chirho) => {
+                            let resolved_chirho = heap_chirho.follow_ind_chirho(*addr_chirho);
+                            let c_chirho = heap_chirho.read_chirho(resolved_chirho);
+                            let n_chirho = c_chirho.info_chirho.name_chirho.as_str();
+                            n_chirho == ":" || n_chirho == "[]"
+                        }
+                        _ => false,
+                    }
+                };
+                let a_is_list_chirho = is_cons_list_chirho(&args_chirho[0], &self.heap_chirho);
+                let b_is_list_chirho = is_cons_list_chirho(&args_chirho[1], &self.heap_chirho);
+
+                if a_is_list_chirho || b_is_list_chirho {
+                    // List append: xs ++ ys
+                    let ys_addr_chirho = match &args_chirho[1] {
+                        ValueChirho::HeapPtrChirho(a_chirho) => self.heap_chirho.follow_ind_chirho(*a_chirho),
+                        _ => {
+                            let nil_chirho = ClosureChirho::con_chirho(
+                                self.lookup_con_tag_chirho("[]", 0), "[]", vec![],
+                            );
+                            self.heap_chirho.alloc_chirho(nil_chirho)
+                        }
+                    };
+
+                    // Collect xs elements
+                    let mut xs_elems_chirho: Vec<ValueChirho> = Vec::new();
+                    if let ValueChirho::HeapPtrChirho(a_chirho) = &args_chirho[0] {
+                        let mut cur_chirho = self.heap_chirho.follow_ind_chirho(*a_chirho);
+                        for _ in 0..10000 {
+                            let forced_chirho = match self.force_addr_to_whnf_chirho(cur_chirho) {
+                                Ok(a_chirho) => a_chirho,
+                                Err(_) => cur_chirho,
+                            };
+                            let cl_chirho = self.heap_chirho.read_chirho(forced_chirho).clone();
+                            if cl_chirho.info_chirho.name_chirho == "[]" {
+                                break;
+                            } else if cl_chirho.info_chirho.name_chirho == ":" && cl_chirho.payload_chirho.len() >= 2 {
+                                xs_elems_chirho.push(cl_chirho.payload_chirho[0].clone());
+                                match &cl_chirho.payload_chirho[1] {
+                                    ValueChirho::HeapPtrChirho(tail_chirho) => {
+                                        cur_chirho = self.heap_chirho.follow_ind_chirho(*tail_chirho);
+                                    }
+                                    _ => break,
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+
+                    // Build result: prepend xs elements (reversed) onto ys
+                    let mut result_addr_chirho = ys_addr_chirho;
+                    for elem_chirho in xs_elems_chirho.into_iter().rev() {
+                        let cons_chirho = ClosureChirho::con_chirho(
+                            self.lookup_con_tag_chirho(":", 1),
+                            ":",
+                            vec![elem_chirho, ValueChirho::HeapPtrChirho(result_addr_chirho)],
+                        );
+                        result_addr_chirho = self.heap_chirho.alloc_chirho(cons_chirho);
+                    }
+                    return Ok(ValueChirho::HeapPtrChirho(result_addr_chirho));
+                }
+
+                // Fallback: string concatenation
                 let a_chirho = self.resolve_value_to_string_chirho(&args_chirho[0])?;
                 let b_chirho = self.resolve_value_to_string_chirho(&args_chirho[1])?;
                 return Ok(ValueChirho::StringChirho(format!("{}{}", a_chirho, b_chirho)));

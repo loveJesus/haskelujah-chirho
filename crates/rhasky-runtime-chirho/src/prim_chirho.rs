@@ -645,7 +645,10 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::NewSTRefChirho
         | PrimOpKindChirho::ReadSTRefChirho
         | PrimOpKindChirho::WriteSTRefChirho
-        | PrimOpKindChirho::RunSTChirho => Ok(ValueChirho::IntChirho(0)),
+        | PrimOpKindChirho::RunSTChirho
+        | PrimOpKindChirho::CatchChirho
+        | PrimOpKindChirho::ThrowChirho
+        | PrimOpKindChirho::TryChirho => Ok(ValueChirho::IntChirho(0)),
     }
 }
 
