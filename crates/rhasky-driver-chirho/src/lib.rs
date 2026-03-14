@@ -9861,4 +9861,95 @@ main = myLookup 5 (myInsert 3 99 (myInsert 5 42 Leaf))
         }
     }
 
+    #[test]
+    fn eval_set_delete_chirho() {
+        // Delete element then check size
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = setSize (setDelete 2 (setFromList [1,2,3]))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("setDelete: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_union_chirho() {
+        // Union of two sets
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = setSize (setUnion (setFromList [1,2,3]) (setFromList [3,4,5]))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5)),
+            Err(e_chirho) => panic!("setUnion: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_intersection_chirho() {
+        // Intersection of two sets
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = setSize (setIntersection (setFromList [1,2,3,4]) (setFromList [3,4,5,6]))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("setIntersection: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_difference_chirho() {
+        // Difference: elements in first but not second
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = setSize (setDifference (setFromList [1,2,3,4]) (setFromList [3,4,5]))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("setDifference: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_filter_chirho() {
+        // Filter elements > 3
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (setToList (setFilter (\\x -> x > 3) (setFromList [1,2,3,4,5])))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(9)),
+            Err(e_chirho) => panic!("setFilter: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_map_chirho() {
+        // Map (*2) over set
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (setToList (setMap (\\x -> x * 2) (setFromList [1,2,3])))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(12)),
+            Err(e_chirho) => panic!("setMap: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_fold_chirho() {
+        // Fold (+) over set
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = setFold (\\x acc -> x + acc) 0 (setFromList [1,2,3,4,5])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15)),
+            Err(e_chirho) => panic!("setFold: {}", e_chirho),
+        }
+    }
+
 }

@@ -3436,6 +3436,80 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
+    // setDelete :: Int -> Set Int -> Set Int
+    env_chirho.bind_chirho(
+        "setDelete".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // setUnion :: Set Int -> Set Int -> Set Int
+    env_chirho.bind_chirho(
+        "setUnion".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // setIntersection :: Set Int -> Set Int -> Set Int
+    env_chirho.bind_chirho(
+        "setIntersection".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // setDifference :: Set Int -> Set Int -> Set Int
+    env_chirho.bind_chirho(
+        "setDifference".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // setFilter :: (Int -> Bool) -> Set Int -> Set Int
+    env_chirho.bind_chirho(
+        "setFilter".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::bool_chirho()),
+            TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho()),
+        )),
+    );
+
+    // setMap :: (Int -> Int) -> Set Int -> Set Int
+    env_chirho.bind_chirho(
+        "setMap".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho()),
+            TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho()),
+        )),
+    );
+
+    // setFold :: (Int -> b -> b) -> b -> Set Int -> b
+    {
+        let b_chirho = TyChirho::VarChirho(TyVarChirho(3230));
+        env_chirho.bind_chirho(
+            "setFold".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3230)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::fun_chirho(b_chirho.clone(), b_chirho.clone())),
+                        b_chirho.clone(),
+                        TyChirho::int_chirho(),
+                    ],
+                    b_chirho,
+                ),
+            },
+        );
+    }
+
     // when :: Bool -> IO () -> IO ()  (simplified: IO () ≈ ())
     env_chirho.bind_chirho(
         "when".to_string(),
