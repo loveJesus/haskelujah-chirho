@@ -25,7 +25,7 @@ use rhasky_naming_chirho::iface_chirho::{build_iface_chirho, ModuleIfaceChirho};
 use rhasky_typing_chirho::infer_chirho::{infer_module_chirho, infer_module_with_imports_chirho};
 use rhasky_parser_chirho::cst_parser_chirho::ParserChirho;
 use rhasky_parser_chirho::lower_chirho::lower_module_chirho;
-use rhasky_parser_chirho::parse_source_file_chirho;
+use rhasky_parser_chirho::scan_module_header_chirho;
 use rhasky_runtime_chirho::{ExecutionModeChirho, RuntimePlanChirho};
 use rhasky_span_chirho::SourceMapChirho;
 use rhasky_syntax_chirho::SourceFileChirho;
@@ -65,18 +65,60 @@ pub fn check_source_file_chirho(
     source_file_chirho: SourceFileChirho,
     execution_mode_chirho: ExecutionModeChirho,
 ) -> Result<CheckSummaryChirho, DiagnosticBundleChirho> {
-    let parsed_module_chirho = parse_source_file_chirho(source_file_chirho.clone())?;
-    let module_name_chirho = parsed_module_chirho
-        .module_header_chirho
-        .module_name_chirho
-        .clone();
+    let source_path_chirho = source_file_chirho.path_chirho().to_path_buf();
+    let source_chirho = source_file_chirho.contents_chirho().to_string();
+    let file_id_chirho = source_file_chirho.file_id_chirho();
+
+    // Phase 1: CST parse (lex + layout + recursive-descent) — the real parser
+    let parser_chirho = ParserChirho::new_chirho(&source_chirho, file_id_chirho);
+    let green_chirho = parser_chirho.parse_chirho();
+
+    // Phase 2: CST → AST lowering
+    let mut module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+
+    // Phase 2.5: Deriving
+    let _deriving_warnings_chirho =
+        rhasky_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
+
+    // Phase 3: Name resolution
+    let builtin_ifaces_chirho = rhasky_naming_chirho::builtin_module_ifaces_chirho();
+    let resolve_result_chirho =
+        resolve_module_with_imports_chirho(&module_chirho, &builtin_ifaces_chirho);
+    if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(resolve_result_chirho.diagnostics_chirho);
+    }
+
+    // Phase 3.5: Kind inference
+    let kind_result_chirho =
+        rhasky_typing_chirho::infer_module_kinds_chirho(&module_chirho);
+    if kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(kind_result_chirho.diagnostics_chirho);
+    }
+
+    // Phase 4: Type inference
+    let infer_result_chirho = infer_module_chirho(&module_chirho);
+    if infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(infer_result_chirho.diagnostics_chirho);
+    }
+
+    // Phase 4.5: Exhaustiveness checking
+    let exhaust_result_chirho =
+        rhasky_typing_chirho::check_module_exhaustiveness_chirho(&module_chirho);
+    if exhaust_result_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(exhaust_result_chirho.diagnostics_chirho);
+    }
+
+    // Extract module name from the AST (produced by the real parser)
+    let module_name_chirho = module_chirho.name_chirho.text_chirho().to_string();
     let runtime_plan_chirho =
         RuntimePlanChirho::for_module_chirho(execution_mode_chirho, module_name_chirho.clone());
+
+    // Skip backend generation — use lightweight stubs for the summary.
     let llvm_preview_chirho = compile_to_llvm_ir_stub_chirho(&module_name_chirho);
     let wasm_stub_size_chirho = compile_to_wasm_stub_chirho(&module_name_chirho).len();
 
     Ok(CheckSummaryChirho {
-        source_path_chirho: source_file_chirho.path_chirho().to_path_buf(),
+        source_path_chirho,
         module_name_chirho,
         runtime_plan_chirho,
         backend_plan_chirho: BackendPlanChirho {

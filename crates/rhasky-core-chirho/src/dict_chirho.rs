@@ -94,6 +94,7 @@ pub struct DictPassCtxChirho {
     /// element/component dictionaries and returns the constructed class dict.
     /// For example, `Eq a => Eq [a]` yields `("Eq", "List")` →
     /// `($fEqList, ["Eq"])` where `$fEqList = \$dEqA -> $DictEq (list_eq_impl $dEqA)`.
+    #[allow(dead_code)]
     conditional_dicts_chirho: HashMap<(String, String), (CoreIdChirho, Vec<String>)>,
     /// Newtype info: maps type name to (constructor name, underlying type key).
     /// Used for GND: `"Age"` → `("MkAge", "Int")`.
@@ -3171,10 +3172,10 @@ impl DictPassCtxChirho {
         {
             let reverse_id_chirho = self.resolve_or_fresh_id_chirho("reverse");
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
-            let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
-            let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
-            let w_chirho = self.fresh_binder_chirho("$w", list_a_chirho.clone());
-            let acc_chirho = self.fresh_binder_chirho("acc", list_a_chirho.clone());
+            let _h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
+            let _t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
+            let _w_chirho = self.fresh_binder_chirho("$w", list_a_chirho.clone());
+            let _acc_chirho = self.fresh_binder_chirho("acc", list_a_chirho.clone());
 
             // reverse xs = go [] xs where go acc [] = acc; go acc (h:t) = go (h:acc) t
             let go_id_chirho = {
@@ -8232,7 +8233,7 @@ impl DictPassCtxChirho {
     fn generate_map_prelude_chirho(&mut self) {
         let any_k_chirho = TyChirho::VarChirho(TyVarChirho(9980));
         let any_v_chirho = TyChirho::VarChirho(TyVarChirho(9981));
-        let any_b_chirho = TyChirho::VarChirho(TyVarChirho(9982));
+        let _any_b_chirho = TyChirho::VarChirho(TyVarChirho(9982));
         let map_ty_chirho = TyChirho::int_chirho(); // placeholder for Map k v
 
         // ------------------------------------------------------------------
@@ -12865,7 +12866,7 @@ impl DictPassCtxChirho {
                 }),
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(b_chirho.id_chirho)),
             };
-            let insert_id_chirho = self.resolve_or_fresh_id_chirho("setInsert");
+            let _insert_id_chirho = self.resolve_or_fresh_id_chirho("setInsert");
             let union_id_chirho = self.resolve_or_fresh_id_chirho("setUnion");
 
             // If e in b: setMakeNode e rec_left rec_right (keep it)
@@ -13429,7 +13430,6 @@ impl DictPassCtxChirho {
                 "Maybe Int", "Maybe String", "Maybe Double",
                 "(Int,Int)", "(Int,String)", "(String,Int)", "(String,String)",
             ] {
-                let key_chirho = ("Show".to_string(), type_key_chirho.to_string());
                 if !eligible_chirho.iter().any(|(c_chirho, t_chirho, _)| c_chirho == "Show" && t_chirho == *type_key_chirho) {
                     eligible_chirho.push((
                         "Show".to_string(),
