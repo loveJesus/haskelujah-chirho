@@ -56,6 +56,14 @@ pub fn unify_chirho(
             Ok(SubstChirho::empty_chirho())
         }
 
+        // Numeric widening: Int unifies with Double (implicit fromInteger)
+        (TyChirho::ConChirho(a_chirho), TyChirho::ConChirho(b_chirho))
+            if (a_chirho == "Int" && b_chirho == "Double")
+                || (a_chirho == "Double" && b_chirho == "Int") =>
+        {
+            Ok(SubstChirho::empty_chirho())
+        }
+
         // Bind a unification variable
         (TyChirho::VarChirho(v_chirho), ty_chirho) => bind_var_chirho(*v_chirho, ty_chirho, span_chirho),
         (ty_chirho, TyChirho::VarChirho(v_chirho)) => bind_var_chirho(*v_chirho, ty_chirho, span_chirho),

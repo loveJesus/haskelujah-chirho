@@ -60,6 +60,9 @@ pub enum DeclChirho {
         name_chirho: NameChirho,
         type_vars_chirho: Vec<NameChirho>,
         methods_chirho: Vec<ClassMethodChirho>,
+        /// Functional dependencies: `| a -> b, c -> d`.
+        /// Each pair `(from_vars, to_vars)` means the from-vars determine the to-vars.
+        fundeps_chirho: Vec<(Vec<String>, Vec<String>)>,
         span_chirho: SpanChirho,
     },
     /// Instance declaration.
@@ -82,11 +85,13 @@ pub enum DeclChirho {
         types_chirho: Vec<TypeChirho>,
         span_chirho: SpanChirho,
     },
-    /// Foreign declaration.
+    /// Foreign declaration (`foreign import`/`foreign export`).
     ForeignDeclChirho {
+        direction_chirho: ForeignDirectionChirho,
         name_chirho: NameChirho,
         ty_chirho: TypeChirho,
         calling_conv_chirho: String,
+        safety_chirho: Option<String>,
         foreign_name_chirho: Option<String>,
         span_chirho: SpanChirho,
     },
@@ -132,6 +137,15 @@ pub enum FixityChirho {
     InfixChirho,
     InfixlChirho,
     InfixrChirho,
+}
+
+/// Foreign declaration direction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ForeignDirectionChirho {
+    /// `foreign import` — bring a C function into Haskell.
+    ImportChirho,
+    /// `foreign export` — expose a Haskell function to C.
+    ExportChirho,
 }
 
 impl DeclChirho {

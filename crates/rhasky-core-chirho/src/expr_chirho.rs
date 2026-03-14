@@ -8,6 +8,7 @@
 //! is restricted to flat case expressions, and all syntactic sugar has
 //! been removed by the desugaring pass.
 
+use std::collections::HashMap;
 use std::fmt;
 
 use rhasky_span_chirho::SpanChirho;
@@ -88,6 +89,22 @@ pub enum CoreExprChirho {
         expr_chirho: Box<CoreExprChirho>,
         ty_chirho: TyChirho,
     },
+
+    /// Primitive operation application. The `name_chirho` is the primop name
+    /// (e.g. "+#", "-#", "*#", "div#", "mod#", "==#", "/=#", "<#", "<=#",
+    /// ">#", ">=#", "negate#") and `args_chirho` are the operands.
+    PrimOpChirho {
+        name_chirho: String,
+        args_chirho: Vec<CoreExprChirho>,
+    },
+
+    /// Data constructor application. Unlike `AppChirho`, this explicitly
+    /// marks the head as a data constructor so the STG lowerer can emit
+    /// `ConApp` instructions directly.
+    ConAppChirho {
+        con_name_chirho: String,
+        args_chirho: Vec<CoreExprChirho>,
+    },
 }
 
 /// A literal in Core (simpler than AST literals — all desugared).
@@ -152,6 +169,8 @@ pub struct CoreBindingChirho {
 pub struct CoreModuleChirho {
     pub name_chirho: String,
     pub bindings_chirho: Vec<CoreBindingChirho>,
+    /// CoreId → name mapping for all identifiers created during desugaring.
+    pub names_chirho: HashMap<CoreIdChirho, String>,
 }
 
 #[cfg(test)]
@@ -250,6 +269,7 @@ mod tests_chirho {
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
                 is_rec_chirho: false,
             }],
+            names_chirho: HashMap::new(),
         };
         assert_eq!(module_chirho.name_chirho, "Main");
         assert_eq!(module_chirho.bindings_chirho.len(), 1);

@@ -28,14 +28,11 @@ SourceFileChirho
             LiteralExprChirho
               IntegerLiteralChirho "42"
             WhitespaceTriviaChirho " "
-        FunBindChirho
-          MatchChirho
+        VirtualRightBraceChirho ""
         InKeywordChirho "in"
         WhitespaceTriviaChirho " "
-        FunBindChirho
-          MatchChirho
-            VarIdChirho "innerValueChirho"
-            WhitespaceTriviaChirho "\n"
-        VirtualRightBraceChirho ""
+        NameExprChirho
+          VarIdChirho "innerValueChirho"
+        WhitespaceTriviaChirho "\n"
   VirtualRightBraceChirho ""
   VarIdChirho ""

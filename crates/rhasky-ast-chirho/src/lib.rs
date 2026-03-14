@@ -23,5 +23,6 @@ pub mod name_chirho;
 pub mod pat_chirho;
 pub mod ty_chirho;
 
+pub use decl_chirho::ForeignDirectionChirho;
 pub use module_chirho::ModuleChirho;
 pub use name_chirho::NameChirho;

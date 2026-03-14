@@ -50,6 +50,7 @@ pub enum RawTokenKindChirho {
     ThenChirho,
     TypeChirho,
     WhereChirho,
+    ForallChirho,
 
     // -- Identifiers and operators --
     /// A lowercase identifier (variable or function name).
@@ -98,6 +99,8 @@ pub enum RawTokenKindChirho {
     LineCommentChirho,
     BlockCommentChirho,
     DocCommentChirho,
+    /// `{-# ... #-}` pragma (LANGUAGE, OPTIONS, etc.)
+    PragmaChirho,
 
     // -- Layout tokens (inserted by layout rule pass) --
     VirtualLeftBraceChirho,
@@ -126,6 +129,7 @@ impl RawTokenKindChirho {
                 | Self::LineCommentChirho
                 | Self::BlockCommentChirho
                 | Self::DocCommentChirho
+                | Self::PragmaChirho
         )
     }
 
@@ -155,6 +159,7 @@ impl RawTokenKindChirho {
                 | Self::ThenChirho
                 | Self::TypeChirho
                 | Self::WhereChirho
+                | Self::ForallChirho
         )
     }
 }
@@ -487,16 +492,31 @@ impl<'src> LexerChirho<'src> {
     }
 
     fn lex_block_comment_chirho(&mut self, start_chirho: usize) -> RawTokenChirho {
+        // Check for pragma: {-#
+        let is_pragma_chirho = self.pos_chirho + 2 < self.bytes_chirho.len()
+            && self.bytes_chirho[self.pos_chirho + 2] == b'#';
         // Check for haddock: {-| or {-^
-        let is_doc_chirho = self.pos_chirho + 2 < self.bytes_chirho.len()
+        let is_doc_chirho = !is_pragma_chirho
+            && self.pos_chirho + 2 < self.bytes_chirho.len()
             && (self.bytes_chirho[self.pos_chirho + 2] == b'|'
                 || self.bytes_chirho[self.pos_chirho + 2] == b'^');
 
         self.pos_chirho += 2; // skip {-
+        if is_pragma_chirho {
+            self.pos_chirho += 1; // skip #
+        }
         let mut depth_chirho: u32 = 1;
 
         while self.pos_chirho < self.bytes_chirho.len() && depth_chirho > 0 {
-            if self.bytes_chirho[self.pos_chirho] == b'{'
+            if is_pragma_chirho
+                && self.bytes_chirho[self.pos_chirho] == b'#'
+                && self.peek_at_chirho(1) == Some(b'-')
+                && self.peek_at_chirho(2) == Some(b'}')
+            {
+                // Pragma close: #-}
+                self.pos_chirho += 3;
+                depth_chirho = 0;
+            } else if self.bytes_chirho[self.pos_chirho] == b'{'
                 && self.peek_at_chirho(1) == Some(b'-')
             {
                 depth_chirho += 1;
@@ -511,7 +531,9 @@ impl<'src> LexerChirho<'src> {
             }
         }
 
-        let kind_chirho = if is_doc_chirho {
+        let kind_chirho = if is_pragma_chirho {
+            RawTokenKindChirho::PragmaChirho
+        } else if is_doc_chirho {
             RawTokenKindChirho::DocCommentChirho
         } else {
             RawTokenKindChirho::BlockCommentChirho
@@ -832,6 +854,7 @@ fn keyword_kind_chirho(text_chirho: &str) -> Option<RawTokenKindChirho> {
         "then" => Some(RawTokenKindChirho::ThenChirho),
         "type" => Some(RawTokenKindChirho::TypeChirho),
         "where" => Some(RawTokenKindChirho::WhereChirho),
+        "forall" => Some(RawTokenKindChirho::ForallChirho),
         _ => None,
     }
 }

@@ -44,6 +44,8 @@ pub enum SyntaxKindChirho {
     DataDeclChirho,
     /// A single data constructor (`C a b`).
     ConDeclChirho,
+    /// A GADT constructor (`C :: Type -> ... -> T a`).
+    GadtConDeclChirho,
     /// Record fields in a constructor (`{ field :: Type }`).
     RecordFieldsChirho,
     /// A single record field declaration.
@@ -88,6 +90,8 @@ pub enum SyntaxKindChirho {
     InfixExprChirho,
     /// Lambda expression (`\x -> expr`).
     LambdaExprChirho,
+    /// Lambda-case expression (`\case { alts }`) — LambdaCase extension.
+    LambdaCaseExprChirho,
     /// Let expression (`let binds in expr`).
     LetExprChirho,
     /// If expression (`if c then t else f`).
@@ -217,6 +221,7 @@ impl SyntaxKindChirho {
             Self::AppExprChirho
                 | Self::InfixExprChirho
                 | Self::LambdaExprChirho
+                | Self::LambdaCaseExprChirho
                 | Self::LetExprChirho
                 | Self::IfExprChirho
                 | Self::CaseExprChirho

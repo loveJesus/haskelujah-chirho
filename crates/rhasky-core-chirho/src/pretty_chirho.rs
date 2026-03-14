@@ -130,6 +130,29 @@ fn pretty_expr_chirho(
             pretty_expr_chirho(out_chirho, inner_chirho, indent_chirho);
             write!(out_chirho, " @{ty_chirho})").unwrap();
         }
+
+        CoreExprChirho::PrimOpChirho {
+            name_chirho,
+            args_chirho,
+        } => {
+            write!(out_chirho, "({name_chirho}").unwrap();
+            for arg_chirho in args_chirho {
+                write!(out_chirho, " ").unwrap();
+                pretty_expr_chirho(out_chirho, arg_chirho, indent_chirho);
+            }
+            write!(out_chirho, ")").unwrap();
+        }
+
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } => {
+            write!(out_chirho, "{con_name_chirho}").unwrap();
+            for arg_chirho in args_chirho {
+                write!(out_chirho, " ").unwrap();
+                pretty_expr_chirho(out_chirho, arg_chirho, indent_chirho);
+            }
+        }
     }
 }
 
@@ -168,6 +191,7 @@ mod tests_chirho {
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
                 is_rec_chirho: false,
             }],
+            names_chirho: std::collections::HashMap::new(),
         };
 
         let output_chirho = pretty_module_chirho(&module_chirho);

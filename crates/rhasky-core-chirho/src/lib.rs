@@ -23,7 +23,10 @@ pub mod pretty_chirho;
 pub mod simplify_chirho;
 
 pub use desugar_chirho::{desugar_module_chirho, DesugarOutputChirho};
-pub use dict_chirho::{dict_pass_module_chirho, DictPassResultChirho};
+pub use dict_chirho::{
+    dict_pass_module_chirho, dict_pass_module_full_chirho, dict_pass_module_with_con_types_chirho,
+    DictPassResultChirho,
+};
 pub use expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
     CoreLitChirho, CoreModuleChirho,

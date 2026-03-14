@@ -17,6 +17,8 @@ members = [
   "crates/rhasky-test-harness-chirho",
   "crates/rhasky-typing-chirho",
   "crates/rhasky-core-chirho",
+  "crates/rhasky-package-chirho",
+  "crates/rhasky-incremental-chirho",
 ]
 
 [workspace.package]

@@ -1,0 +1,9 @@
+[package]
+name = "rhasky-incremental-chirho"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Incremental compilation and caching for the Rhasky compiler"
+
+[dependencies]

@@ -234,13 +234,20 @@ dependencies = [
  "rhasky-backend-wasm-chirho",
  "rhasky-core-chirho",
  "rhasky-diagnostics-chirho",
+ "rhasky-incremental-chirho",
  "rhasky-naming-chirho",
+ "rhasky-package-chirho",
  "rhasky-parser-chirho",
  "rhasky-runtime-chirho",
  "rhasky-span-chirho",
  "rhasky-syntax-chirho",
  "rhasky-typing-chirho",
+ "tempfile",
 ]
+
+[[package]]
+name = "rhasky-incremental-chirho"
+version = "0.1.0"
 
 [[package]]
 name = "rhasky-naming-chirho"
@@ -250,6 +257,10 @@ dependencies = [
  "rhasky-diagnostics-chirho",
  "rhasky-span-chirho",
 ]
+
+[[package]]
+name = "rhasky-package-chirho"
+version = "0.1.0"
 
 [[package]]
 name = "rhasky-parser-chirho"

@@ -16,7 +16,9 @@
 //! - **Error reporting**: Diagnose undefined names, ambiguous names, etc.
 
 pub mod env_chirho;
+pub mod iface_chirho;
 pub mod resolve_chirho;
 
 pub use env_chirho::NameEnvChirho;
-pub use resolve_chirho::resolve_module_chirho;
+pub use iface_chirho::{build_iface_chirho, ModuleIfaceChirho};
+pub use resolve_chirho::{resolve_module_chirho, resolve_module_with_imports_chirho};

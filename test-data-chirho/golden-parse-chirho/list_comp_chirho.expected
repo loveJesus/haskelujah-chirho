@@ -31,30 +31,22 @@ SourceFileChirho
         NameExprChirho
           VarIdChirho "xChirho"
         WhitespaceTriviaChirho " "
-  FunBindChirho
-    MatchChirho
-  ErrorNodeChirho
-    LeftArrowChirho "<-"
-  WhitespaceTriviaChirho " "
-  FunBindChirho
-    MatchChirho
-      ListPatChirho
-        LeftBracketChirho "["
-        LitPatChirho
-          IntegerLiteralChirho "1"
-        CommaChirho ","
+        LeftArrowChirho "<-"
         WhitespaceTriviaChirho " "
-        LitPatChirho
-          IntegerLiteralChirho "2"
-        CommaChirho ","
-        WhitespaceTriviaChirho " "
-        LitPatChirho
-          IntegerLiteralChirho "3"
+        ListExprChirho
+          LeftBracketChirho "["
+          LiteralExprChirho
+            IntegerLiteralChirho "1"
+          CommaChirho ","
+          WhitespaceTriviaChirho " "
+          LiteralExprChirho
+            IntegerLiteralChirho "2"
+          CommaChirho ","
+          WhitespaceTriviaChirho " "
+          LiteralExprChirho
+            IntegerLiteralChirho "3"
+          RightBracketChirho "]"
         RightBracketChirho "]"
-  FunBindChirho
-    MatchChirho
-  ErrorNodeChirho
-    RightBracketChirho "]"
-  WhitespaceTriviaChirho "\n"
+      WhitespaceTriviaChirho "\n"
   VirtualRightBraceChirho ""
   VarIdChirho ""

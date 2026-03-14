@@ -90,6 +90,8 @@ pub enum TokenKindChirho {
     InfixlKeywordChirho,
     /// The `infixr` reserved identifier.
     InfixrKeywordChirho,
+    /// The `forall` keyword (ExplicitForAll/RankNTypes/ScopedTypeVariables).
+    ForallKeywordChirho,
     /// The standalone `_` reserved identifier used as a wildcard.
     UnderscoreReservedIdChirho,
 
@@ -159,4 +161,6 @@ pub enum TokenKindChirho {
     BlockCommentTriviaChirho,
     /// A documentation comment preserved as trivia for lossless tooling.
     DocCommentTriviaChirho,
+    /// A `{-# ... #-}` pragma (LANGUAGE, OPTIONS, etc.)
+    PragmaChirho,
 }

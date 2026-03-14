@@ -19,6 +19,8 @@ pub struct ModuleChirho {
     pub imports_chirho: Vec<ImportDeclChirho>,
     /// Top-level declarations.
     pub decls_chirho: Vec<DeclChirho>,
+    /// LANGUAGE extensions enabled via `{-# LANGUAGE ... #-}` pragmas.
+    pub extensions_chirho: Vec<String>,
     /// Span covering the entire module.
     pub span_chirho: SpanChirho,
 }
@@ -100,6 +102,7 @@ mod tests_chirho {
             exports_chirho: None,
             imports_chirho: vec![],
             decls_chirho: vec![],
+            extensions_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         assert_eq!(module_chirho.name_chirho.text_chirho(), "Main");

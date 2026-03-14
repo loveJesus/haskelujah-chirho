@@ -29,8 +29,9 @@ SourceFileChirho
         LeftBraceChirho "{"
         WhitespaceTriviaChirho " "
         CaseAltChirho
-          ConIdChirho "True"
-          WhitespaceTriviaChirho " "
+          ConPatChirho
+            ConIdChirho "True"
+            WhitespaceTriviaChirho " "
           RightArrowChirho "->"
           WhitespaceTriviaChirho " "
           LiteralExprChirho
@@ -38,8 +39,9 @@ SourceFileChirho
         SemicolonChirho ";"
         WhitespaceTriviaChirho " "
         CaseAltChirho
-          ConIdChirho "False"
-          WhitespaceTriviaChirho " "
+          ConPatChirho
+            ConIdChirho "False"
+            WhitespaceTriviaChirho " "
           RightArrowChirho "->"
           WhitespaceTriviaChirho " "
           LiteralExprChirho

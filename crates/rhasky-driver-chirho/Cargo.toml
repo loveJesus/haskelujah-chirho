@@ -22,4 +22,8 @@ rhasky-runtime-chirho = { path = "../rhasky-runtime-chirho" }
 rhasky-span-chirho = { path = "../rhasky-span-chirho" }
 rhasky-syntax-chirho = { path = "../rhasky-syntax-chirho" }
 rhasky-typing-chirho = { path = "../rhasky-typing-chirho" }
+rhasky-incremental-chirho = { path = "../rhasky-incremental-chirho" }
+rhasky-package-chirho = { path = "../rhasky-package-chirho" }
 
+[dev-dependencies]
+tempfile = "3"

@@ -18,7 +18,8 @@
 use std::collections::HashSet;
 
 use crate::expr_chirho::{
-    AltConChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreModuleChirho,
+    AltConChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho,
+    CoreModuleChirho,
 };
 
 /// Configuration for the simplifier.
@@ -58,6 +59,7 @@ pub fn simplify_module_chirho(
     CoreModuleChirho {
         name_chirho: module_chirho.name_chirho.clone(),
         bindings_chirho,
+        names_chirho: module_chirho.names_chirho.clone(),
     }
 }
 
@@ -190,6 +192,70 @@ fn simplify_expr_chirho(expr_chirho: &CoreExprChirho) -> CoreExprChirho {
         } => CoreExprChirho::TyAppChirho {
             expr_chirho: Box::new(simplify_expr_chirho(inner_chirho)),
             ty_chirho: ty_chirho.clone(),
+        },
+
+        // Primitive operations: simplify args, then try constant folding
+        CoreExprChirho::PrimOpChirho {
+            name_chirho,
+            args_chirho,
+        } => {
+            let simplified_args_chirho: Vec<CoreExprChirho> = args_chirho
+                .iter()
+                .map(|a_chirho| simplify_expr_chirho(a_chirho))
+                .collect();
+
+            // Try constant folding for binary integer ops
+            if simplified_args_chirho.len() == 2 {
+                if let (
+                    CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(a_chirho)),
+                    CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(b_chirho)),
+                ) = (&simplified_args_chirho[0], &simplified_args_chirho[1])
+                {
+                    let folded_chirho = match name_chirho.as_str() {
+                        "+#" => Some(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                            a_chirho.wrapping_add(*b_chirho),
+                        ))),
+                        "-#" => Some(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                            a_chirho.wrapping_sub(*b_chirho),
+                        ))),
+                        "*#" => Some(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                            a_chirho.wrapping_mul(*b_chirho),
+                        ))),
+                        _ => None,
+                    };
+                    if let Some(result_chirho) = folded_chirho {
+                        return result_chirho;
+                    }
+                }
+            }
+
+            // Unary constant fold: negate
+            if simplified_args_chirho.len() == 1 {
+                if let CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(v_chirho)) =
+                    &simplified_args_chirho[0]
+                {
+                    if name_chirho == "negate#" {
+                        return CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(-v_chirho));
+                    }
+                }
+            }
+
+            CoreExprChirho::PrimOpChirho {
+                name_chirho: name_chirho.clone(),
+                args_chirho: simplified_args_chirho,
+            }
+        }
+
+        // Constructor applications: simplify args
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } => CoreExprChirho::ConAppChirho {
+            con_name_chirho: con_name_chirho.clone(),
+            args_chirho: args_chirho
+                .iter()
+                .map(|a_chirho| simplify_expr_chirho(a_chirho))
+                .collect(),
         },
 
         // Vars and Lits are already simple
@@ -358,11 +424,33 @@ fn subst_var_chirho(
             )),
             ty_chirho: ty_chirho.clone(),
         },
+
+        CoreExprChirho::PrimOpChirho {
+            name_chirho,
+            args_chirho,
+        } => CoreExprChirho::PrimOpChirho {
+            name_chirho: name_chirho.clone(),
+            args_chirho: args_chirho
+                .iter()
+                .map(|a_chirho| subst_var_chirho(a_chirho, var_id_chirho, replacement_chirho))
+                .collect(),
+        },
+
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } => CoreExprChirho::ConAppChirho {
+            con_name_chirho: con_name_chirho.clone(),
+            args_chirho: args_chirho
+                .iter()
+                .map(|a_chirho| subst_var_chirho(a_chirho, var_id_chirho, replacement_chirho))
+                .collect(),
+        },
     }
 }
 
 /// Collect all free variable IDs in an expression.
-fn free_vars_chirho(expr_chirho: &CoreExprChirho) -> HashSet<CoreIdChirho> {
+pub fn free_vars_chirho(expr_chirho: &CoreExprChirho) -> HashSet<CoreIdChirho> {
     let mut vars_chirho = HashSet::new();
     collect_free_vars_chirho(expr_chirho, &mut HashSet::new(), &mut vars_chirho);
     vars_chirho
@@ -445,6 +533,13 @@ fn collect_free_vars_chirho(
             ..
         } => {
             collect_free_vars_chirho(inner_chirho, bound_chirho, free_chirho);
+        }
+
+        CoreExprChirho::PrimOpChirho { args_chirho, .. }
+        | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+            for arg_chirho in args_chirho {
+                collect_free_vars_chirho(arg_chirho, bound_chirho, free_chirho);
+            }
         }
     }
 }
@@ -617,6 +712,7 @@ mod tests_chirho {
                 },
                 is_rec_chirho: false,
             }],
+            names_chirho: std::collections::HashMap::new(),
         };
 
         let config_chirho = SimplifyConfigChirho::default();
@@ -654,5 +750,67 @@ mod tests_chirho {
         );
         // Should be unchanged — the lambda shadows x
         assert_eq!(result_chirho, lam_chirho);
+    }
+
+    #[test]
+    fn constant_fold_primop_add_chirho() {
+        // PrimOp("+#", [3, 4]) → 7
+        let expr_chirho = CoreExprChirho::PrimOpChirho {
+            name_chirho: "+#".to_string(),
+            args_chirho: vec![
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(3)),
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(4)),
+            ],
+        };
+        let result_chirho = simplify_expr_chirho(&expr_chirho);
+        assert_eq!(
+            result_chirho,
+            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(7))
+        );
+    }
+
+    #[test]
+    fn constant_fold_primop_mul_chirho() {
+        // PrimOp("*#", [6, 7]) → 42
+        let expr_chirho = CoreExprChirho::PrimOpChirho {
+            name_chirho: "*#".to_string(),
+            args_chirho: vec![
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(6)),
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(7)),
+            ],
+        };
+        let result_chirho = simplify_expr_chirho(&expr_chirho);
+        assert_eq!(
+            result_chirho,
+            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42))
+        );
+    }
+
+    #[test]
+    fn constant_fold_primop_negate_chirho() {
+        // PrimOp("negate#", [42]) → -42
+        let expr_chirho = CoreExprChirho::PrimOpChirho {
+            name_chirho: "negate#".to_string(),
+            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42))],
+        };
+        let result_chirho = simplify_expr_chirho(&expr_chirho);
+        assert_eq!(
+            result_chirho,
+            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(-42))
+        );
+    }
+
+    #[test]
+    fn primop_non_literal_args_preserved_chirho() {
+        // PrimOp("+#", [Var(0), Lit(1)]) — not foldable, should be preserved
+        let expr_chirho = CoreExprChirho::PrimOpChirho {
+            name_chirho: "+#".to_string(),
+            args_chirho: vec![
+                CoreExprChirho::VarChirho(CoreIdChirho(0)),
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+            ],
+        };
+        let result_chirho = simplify_expr_chirho(&expr_chirho);
+        assert!(matches!(result_chirho, CoreExprChirho::PrimOpChirho { .. }));
     }
 }

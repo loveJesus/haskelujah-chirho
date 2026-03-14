@@ -1,4 +1,30 @@
-// For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
+// For God so loved the world that he gave his only begotten Son, that whoever
+// believes in him should not perish but have eternal life. — John 3:16
+
+pub mod value_chirho;
+pub mod heap_chirho;
+pub mod stack_chirho;
+pub mod prim_chirho;
+pub mod eval_chirho;
+pub mod ffi_chirho;
+pub mod gc_chirho;
+
+pub use value_chirho::{
+    ValueChirho, ClosureChirho, InfoTableChirho, InfoTagChirho,
+    CodePtrChirho, DataConTagChirho, HeapAddrChirho,
+};
+pub use heap_chirho::HeapChirho;
+pub use stack_chirho::{StackChirho, FrameChirho, PrimOpKindChirho};
+pub use prim_chirho::{apply_prim_binop_chirho, PrimErrorChirho};
+pub use eval_chirho::{ArgSourceChirho, MachineChirho, CodeChirho, EvalErrorChirho};
+pub use ffi_chirho::{
+    FfiCallConvChirho, FfiErrorChirho, FfiSafetyChirho, FfiTypeChirho,
+    FfiValueChirho, ForeignImportChirho, ForeignTableChirho,
+};
+pub use gc_chirho::{
+    GcConfigChirho, GcStateChirho, GcStatsChirho,
+    extract_roots_from_values_chirho, extract_roots_from_stack_chirho,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExecutionModeChirho {

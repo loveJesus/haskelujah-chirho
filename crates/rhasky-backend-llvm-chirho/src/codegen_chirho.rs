@@ -329,6 +329,71 @@ impl LlvmCodegenChirho {
                 // Type application is erased at runtime
                 self.compile_expr_chirho(inner_chirho)
             }
+
+            CoreExprChirho::PrimOpChirho {
+                name_chirho,
+                args_chirho,
+            } => {
+                if args_chirho.len() == 2 {
+                    let lhs_chirho = self.compile_expr_chirho(&args_chirho[0]);
+                    let rhs_chirho = self.compile_expr_chirho(&args_chirho[1]);
+                    let tmp_chirho = self.fresh_tmp_chirho();
+                    let op_chirho = match name_chirho.as_str() {
+                        "+#" => "add",
+                        "-#" => "sub",
+                        "*#" => "mul",
+                        "div#" => "sdiv",
+                        "mod#" => "srem",
+                        "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" => {
+                            let cmp_pred_chirho = match name_chirho.as_str() {
+                                "==#" => "eq",
+                                "/=#" => "ne",
+                                "<#" => "slt",
+                                "<=#" => "sle",
+                                ">#" => "sgt",
+                                ">=#" => "sge",
+                                _ => "eq",
+                            };
+                            let cmp_tmp_chirho = self.fresh_tmp_chirho();
+                            writeln!(
+                                self.output_chirho,
+                                "  {cmp_tmp_chirho} = icmp {cmp_pred_chirho} i64 {lhs_chirho}, {rhs_chirho}"
+                            )
+                            .unwrap();
+                            writeln!(
+                                self.output_chirho,
+                                "  {tmp_chirho} = zext i1 {cmp_tmp_chirho} to i64"
+                            )
+                            .unwrap();
+                            return tmp_chirho;
+                        }
+                        _ => "add",
+                    };
+                    writeln!(
+                        self.output_chirho,
+                        "  {tmp_chirho} = {op_chirho} i64 {lhs_chirho}, {rhs_chirho}"
+                    )
+                    .unwrap();
+                    tmp_chirho
+                } else if args_chirho.len() == 1 && name_chirho == "negate#" {
+                    let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+                    let tmp_chirho = self.fresh_tmp_chirho();
+                    writeln!(
+                        self.output_chirho,
+                        "  {tmp_chirho} = sub i64 0, {operand_chirho}"
+                    )
+                    .unwrap();
+                    tmp_chirho
+                } else {
+                    // Fallback: return 0
+                    "0".to_string()
+                }
+            }
+
+            CoreExprChirho::ConAppChirho { .. } => {
+                // Constructor applications not yet supported in LLVM backend
+                "0".to_string()
+            }
         }
     }
 
@@ -597,6 +662,7 @@ mod tests_chirho {
                 rhs_chirho: int_lit_chirho(42),
                 is_rec_chirho: false,
             }],
+            names_chirho: std::collections::HashMap::new(),
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
@@ -618,6 +684,7 @@ mod tests_chirho {
                 },
                 is_rec_chirho: false,
             }],
+            names_chirho: std::collections::HashMap::new(),
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
@@ -642,6 +709,7 @@ mod tests_chirho {
                 },
                 is_rec_chirho: false,
             }],
+            names_chirho: std::collections::HashMap::new(),
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
@@ -675,6 +743,7 @@ mod tests_chirho {
                 },
                 is_rec_chirho: false,
             }],
+            names_chirho: std::collections::HashMap::new(),
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);

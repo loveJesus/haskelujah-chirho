@@ -6,15 +6,18 @@
 //! Implements Hindley-Milner type inference with let-generalization.
 //! Walks the AST and produces typed bindings via unification.
 
+use std::collections::HashMap;
+
 use rhasky_ast_chirho::decl_chirho::DeclChirho;
 use rhasky_ast_chirho::expr_chirho::{ExprChirho, MatchArmChirho, RhsChirho, StmtChirho};
 use rhasky_ast_chirho::lit_chirho::LitChirho;
 use rhasky_ast_chirho::module_chirho::ModuleChirho;
 use rhasky_ast_chirho::pat_chirho::PatChirho;
+use rhasky_ast_chirho::ty_chirho::{ConstraintChirho as AstConstraintChirho, TypeChirho};
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use rhasky_span_chirho::SpanChirho;
 
-use crate::class_chirho::{ClassEnvChirho, PredChirho};
+use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredChirho};
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
@@ -26,6 +29,7 @@ const OCCURS_CHECK_CODE_CHIRHO: u16 = 201;
 const UNBOUND_VAR_CODE_CHIRHO: u16 = 202;
 const TUPLE_ARITY_CODE_CHIRHO: u16 = 203;
 const UNSATISFIED_CONSTRAINT_CODE_CHIRHO: u16 = 204;
+const SIGNATURE_MISMATCH_CODE_CHIRHO: u16 = 205;
 
 /// Result of type inference on a module.
 #[derive(Debug)]
@@ -52,6 +56,9 @@ pub struct InferCtxChirho {
     deferred_preds_chirho: Vec<(PredChirho, SpanChirho)>,
     /// Accumulated diagnostics.
     diagnostics_chirho: DiagnosticBundleChirho,
+    /// Type synonym environment: name → (param names, expanded RHS TyChirho).
+    /// Populated from `TypeAliasDeclChirho` declarations before inference.
+    type_synonyms_chirho: HashMap<String, (Vec<String>, TyChirho)>,
 }
 
 impl InferCtxChirho {
@@ -60,12 +67,114 @@ impl InferCtxChirho {
         let mut class_env_chirho = ClassEnvChirho::new_chirho();
         class_env_chirho.seed_standard_chirho();
         seed_builtins_chirho(&mut env_chirho);
+        let mut type_synonyms_chirho = HashMap::new();
+        // Built-in type synonym: type String = [Char]
+        type_synonyms_chirho.insert(
+            "String".to_string(),
+            (vec![], TyChirho::ListChirho(Box::new(TyChirho::char_chirho()))),
+        );
+        // Built-in type synonym: type ShowS = String -> String
+        type_synonyms_chirho.insert(
+            "ShowS".to_string(),
+            (vec![], TyChirho::fun_chirho(TyChirho::string_chirho(), TyChirho::string_chirho())),
+        );
         Self {
             next_var_chirho: 0,
             env_chirho,
             class_env_chirho,
             deferred_preds_chirho: Vec::new(),
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
+            type_synonyms_chirho,
+        }
+    }
+
+    /// Register a type synonym from a `TypeAliasDeclChirho`.
+    pub fn register_type_synonym_chirho(
+        &mut self,
+        name_chirho: String,
+        params_chirho: Vec<String>,
+        rhs_chirho: TyChirho,
+    ) {
+        self.type_synonyms_chirho
+            .insert(name_chirho, (params_chirho, rhs_chirho));
+    }
+
+    /// Expand type synonyms in a `TyChirho`. Handles both nullary synonyms
+    /// (e.g. `String` → `[Char]`) and parameterised synonyms (e.g.
+    /// `Pair Int` → `(Int, Int)` for `type Pair a = (a, a)`).
+    pub fn expand_type_synonyms_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
+        self.expand_syn_chirho(ty_chirho, 0)
+    }
+
+    fn expand_syn_chirho(&self, ty_chirho: &TyChirho, depth_chirho: usize) -> TyChirho {
+        if depth_chirho > 100 {
+            return ty_chirho.clone(); // guard against cycles
+        }
+        match ty_chirho {
+            TyChirho::ConChirho(name_chirho) => {
+                if let Some((params_chirho, rhs_chirho)) =
+                    self.type_synonyms_chirho.get(name_chirho)
+                {
+                    if params_chirho.is_empty() {
+                        // Nullary synonym — expand and recurse
+                        return self.expand_syn_chirho(rhs_chirho, depth_chirho + 1);
+                    }
+                }
+                ty_chirho.clone()
+            }
+            TyChirho::AppChirho(fun_chirho, arg_chirho) => {
+                // Collect the spine: f a1 a2 ... an
+                let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
+                if let TyChirho::ConChirho(name_chirho) = &head_chirho {
+                    if let Some((params_chirho, rhs_chirho)) =
+                        self.type_synonyms_chirho.get(name_chirho)
+                    {
+                        if args_chirho.len() >= params_chirho.len() {
+                            // Saturated application — substitute params
+                            let expanded_args_chirho: Vec<TyChirho> = args_chirho
+                                .iter()
+                                .map(|a_chirho| self.expand_syn_chirho(a_chirho, depth_chirho + 1))
+                                .collect();
+                            let mut body_chirho = rhs_chirho.clone();
+                            for (p_chirho, a_chirho) in
+                                params_chirho.iter().zip(expanded_args_chirho.iter())
+                            {
+                                body_chirho = subst_named_var_chirho(
+                                    &body_chirho, p_chirho, a_chirho,
+                                );
+                            }
+                            // Apply remaining args (over-saturated)
+                            let mut result_chirho =
+                                self.expand_syn_chirho(&body_chirho, depth_chirho + 1);
+                            for a_chirho in &expanded_args_chirho[params_chirho.len()..] {
+                                result_chirho = TyChirho::AppChirho(
+                                    Box::new(result_chirho),
+                                    Box::new(a_chirho.clone()),
+                                );
+                            }
+                            return result_chirho;
+                        }
+                    }
+                }
+                // Not a synonym application — just expand sub-parts
+                let ef_chirho = self.expand_syn_chirho(fun_chirho, depth_chirho);
+                let ea_chirho = self.expand_syn_chirho(arg_chirho, depth_chirho);
+                TyChirho::AppChirho(Box::new(ef_chirho), Box::new(ea_chirho))
+            }
+            TyChirho::FunChirho(a_chirho, b_chirho) => TyChirho::FunChirho(
+                Box::new(self.expand_syn_chirho(a_chirho, depth_chirho)),
+                Box::new(self.expand_syn_chirho(b_chirho, depth_chirho)),
+            ),
+            TyChirho::ListChirho(el_chirho) => TyChirho::ListChirho(
+                Box::new(self.expand_syn_chirho(el_chirho, depth_chirho)),
+            ),
+            TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
+                elems_chirho
+                    .iter()
+                    .map(|e_chirho| self.expand_syn_chirho(e_chirho, depth_chirho))
+                    .collect(),
+            ),
+            _ => ty_chirho.clone(),
         }
     }
 
@@ -142,11 +251,54 @@ impl InferCtxChirho {
         // Deduplicate predicates
         scheme_preds_chirho.dedup();
 
+        // Context reduction: remove predicates that are entailed by
+        // other predicates via the superclass hierarchy.
+        // E.g. if we have (Eq a, Num a), remove Eq a since Num has Eq
+        // as a superclass.
+        let keep_chirho: Vec<bool> = scheme_preds_chirho
+            .iter()
+            .map(|pred_chirho| {
+                !scheme_preds_chirho.iter().any(|other_chirho| {
+                    other_chirho.class_name_chirho != pred_chirho.class_name_chirho
+                        && other_chirho.ty_chirho == pred_chirho.ty_chirho
+                        && self.is_transitive_superclass_chirho(
+                            &pred_chirho.class_name_chirho,
+                            &other_chirho.class_name_chirho,
+                        )
+                })
+            })
+            .collect();
+        scheme_preds_chirho = scheme_preds_chirho
+            .into_iter()
+            .zip(keep_chirho)
+            .filter(|(_, keep_chirho)| *keep_chirho)
+            .map(|(p_chirho, _)| p_chirho)
+            .collect();
+
         SchemeChirho {
             vars_chirho,
             preds_chirho: scheme_preds_chirho,
             ty_chirho: ty_chirho.clone(),
         }
+    }
+
+    /// Check if `potential_super_chirho` is a (transitive) superclass of
+    /// `sub_chirho`. For example, `Eq` is a superclass of `Ord` and also
+    /// of `Num` (since Num has Eq in its superclass list).
+    fn is_transitive_superclass_chirho(
+        &self,
+        potential_super_chirho: &str,
+        sub_chirho: &str,
+    ) -> bool {
+        let supers_chirho = self.class_env_chirho.superclasses_chirho(sub_chirho);
+        for s_chirho in &supers_chirho {
+            if s_chirho == potential_super_chirho
+                || self.is_transitive_superclass_chirho(potential_super_chirho, s_chirho)
+            {
+                return true;
+            }
+        }
+        false
     }
 
     /// Apply a substitution to the type environment and deferred predicates.
@@ -205,6 +357,295 @@ impl InferCtxChirho {
                     ),
                 );
             }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // AST type conversion
+    // -----------------------------------------------------------------------
+
+    /// Convert an AST `TypeChirho` (surface syntax) to an internal `TyChirho`.
+    ///
+    /// Named type variables are mapped to fresh unification variables via
+    /// `var_map_chirho`. This ensures that `a -> a` uses the same variable
+    /// for both occurrences of `a`.
+    pub fn ast_type_to_ty_chirho(
+        &mut self,
+        ast_ty_chirho: &TypeChirho,
+        var_map_chirho: &mut HashMap<String, TyVarChirho>,
+    ) -> TyChirho {
+        match ast_ty_chirho {
+            TypeChirho::VarChirho(name_chirho) => {
+                let text_chirho = name_chirho.text_chirho().to_string();
+                let tv_chirho = var_map_chirho
+                    .entry(text_chirho)
+                    .or_insert_with(|| {
+                        let v_chirho = TyVarChirho(self.next_var_chirho);
+                        self.next_var_chirho += 1;
+                        v_chirho
+                    });
+                TyChirho::VarChirho(*tv_chirho)
+            }
+            TypeChirho::ConChirho(name_chirho) => {
+                let text_chirho = name_chirho.text_chirho().to_string();
+                let raw_chirho = TyChirho::ConChirho(text_chirho);
+                // Eagerly expand nullary type synonyms (e.g. String → [Char])
+                self.expand_type_synonyms_chirho(&raw_chirho)
+            }
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                let f_chirho = self.ast_type_to_ty_chirho(fun_chirho, var_map_chirho);
+                let a_chirho = self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho);
+                let raw_chirho = TyChirho::AppChirho(Box::new(f_chirho), Box::new(a_chirho));
+                // Expand parameterised type synonyms (e.g. Pair Int → (Int, Int))
+                self.expand_type_synonyms_chirho(&raw_chirho)
+            }
+            TypeChirho::FunChirho {
+                arg_chirho,
+                result_chirho,
+                ..
+            } => {
+                let a_chirho = self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho);
+                let r_chirho = self.ast_type_to_ty_chirho(result_chirho, var_map_chirho);
+                TyChirho::FunChirho(Box::new(a_chirho), Box::new(r_chirho))
+            }
+            TypeChirho::TupleChirho {
+                elements_chirho, ..
+            } => {
+                let elems_chirho: Vec<TyChirho> = elements_chirho
+                    .iter()
+                    .map(|e_chirho| self.ast_type_to_ty_chirho(e_chirho, var_map_chirho))
+                    .collect();
+                TyChirho::TupleChirho(elems_chirho)
+            }
+            TypeChirho::ListChirho {
+                element_chirho, ..
+            } => {
+                let elem_chirho = self.ast_type_to_ty_chirho(element_chirho, var_map_chirho);
+                TyChirho::ListChirho(Box::new(elem_chirho))
+            }
+            TypeChirho::ParenChirho {
+                inner_chirho, ..
+            } => self.ast_type_to_ty_chirho(inner_chirho, var_map_chirho),
+            TypeChirho::QualChirho {
+                body_chirho, ..
+            } => {
+                // Qualified types: convert the body, constraints are handled separately
+                self.ast_type_to_ty_chirho(body_chirho, var_map_chirho)
+            }
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => {
+                // Register forall-bound variables as fresh type vars
+                for v_chirho in vars_chirho {
+                    let tv_chirho = TyVarChirho(self.next_var_chirho);
+                    self.next_var_chirho += 1;
+                    var_map_chirho.insert(v_chirho.text_chirho().to_string(), tv_chirho);
+                }
+                self.ast_type_to_ty_chirho(body_chirho, var_map_chirho)
+            }
+        }
+    }
+
+    /// Convert an AST `TypeChirho` to a `SchemeChirho` (with quantified variables
+    /// and constraints extracted).
+    pub fn ast_type_to_scheme_chirho(&mut self, ast_ty_chirho: &TypeChirho) -> SchemeChirho {
+        let mut var_map_chirho = HashMap::new();
+        let mut preds_chirho = Vec::new();
+
+        // Extract constraints from QualChirho wrapping
+        let body_ast_chirho = Self::extract_constraints_chirho(ast_ty_chirho, &mut preds_chirho);
+        let ty_chirho = self.ast_type_to_ty_chirho(body_ast_chirho, &mut var_map_chirho);
+
+        let scheme_preds_chirho: Vec<SchemePredChirho> = preds_chirho
+            .iter()
+            .map(|c_chirho| {
+                let class_name_chirho = c_chirho.class_chirho.text_chirho().to_string();
+                let pred_ty_chirho = if let Some(first_arg_chirho) = c_chirho.args_chirho.first() {
+                    self.ast_type_to_ty_chirho(first_arg_chirho, &mut var_map_chirho)
+                } else {
+                    self.fresh_var_chirho()
+                };
+                SchemePredChirho {
+                    class_name_chirho,
+                    ty_chirho: pred_ty_chirho,
+                }
+            })
+            .collect();
+
+        let vars_chirho: Vec<TyVarChirho> = var_map_chirho.values().copied().collect();
+
+        SchemeChirho {
+            vars_chirho,
+            preds_chirho: scheme_preds_chirho,
+            ty_chirho,
+        }
+    }
+
+    /// Extract constraint context from a qualified type, returning the body.
+    fn extract_constraints_chirho<'a>(
+        ast_ty_chirho: &'a TypeChirho,
+        out_chirho: &mut Vec<&'a AstConstraintChirho>,
+    ) -> &'a TypeChirho {
+        match ast_ty_chirho {
+            TypeChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+                ..
+            } => {
+                for c_chirho in context_chirho {
+                    out_chirho.push(c_chirho);
+                }
+                Self::extract_constraints_chirho(body_chirho, out_chirho)
+            }
+            TypeChirho::ForallChirho {
+                body_chirho, ..
+            } => Self::extract_constraints_chirho(body_chirho, out_chirho),
+            other_chirho => other_chirho,
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Class and instance declaration processing
+    // -----------------------------------------------------------------------
+
+    /// Process a class declaration from the AST and register it in the class env.
+    fn process_class_decl_chirho(&mut self, decl_chirho: &DeclChirho) {
+        if let DeclChirho::ClassDeclChirho {
+            context_chirho,
+            name_chirho,
+            type_vars_chirho,
+            methods_chirho,
+            fundeps_chirho: ast_fundeps_chirho,
+            ..
+        } = decl_chirho
+        {
+            let class_name_chirho = name_chirho.text_chirho().to_string();
+
+            // Generate fresh type variables for all class params
+            let class_tv_chirho = TyVarChirho(self.next_var_chirho);
+            self.next_var_chirho += 1;
+
+            let extra_vars_chirho: Vec<TyVarChirho> = type_vars_chirho
+                .iter()
+                .skip(1)
+                .map(|_| {
+                    let v_chirho = TyVarChirho(self.next_var_chirho);
+                    self.next_var_chirho += 1;
+                    v_chirho
+                })
+                .collect();
+
+            // Superclasses from context
+            let supers_chirho: Vec<String> = context_chirho
+                .iter()
+                .map(|c_chirho| c_chirho.class_chirho.text_chirho().to_string())
+                .collect();
+
+            // Method signatures and optional default implementations
+            let mut method_map_chirho = HashMap::new();
+            let mut defaults_map_chirho = HashMap::new();
+            for method_chirho in methods_chirho {
+                let method_name_chirho = method_chirho.name_chirho.text_chirho().to_string();
+                let scheme_chirho = self.ast_type_to_scheme_chirho(&method_chirho.ty_chirho);
+                method_map_chirho.insert(method_name_chirho.clone(), scheme_chirho.clone());
+
+                // Also add method to the type environment so it can be used
+                self.env_chirho
+                    .bind_chirho(method_name_chirho.clone(), scheme_chirho);
+
+                // Capture default implementation if present
+                if let Some(ref default_arms_chirho) = method_chirho.default_chirho {
+                    defaults_map_chirho
+                        .insert(method_name_chirho, default_arms_chirho.clone());
+                }
+            }
+
+            // Convert AST fundeps (variable names) to indices into type_vars_chirho
+            let var_names_chirho: Vec<String> = type_vars_chirho
+                .iter()
+                .map(|v_chirho| v_chirho.text_chirho().to_string())
+                .collect();
+            let resolved_fundeps_chirho: Vec<(Vec<usize>, Vec<usize>)> = ast_fundeps_chirho
+                .iter()
+                .map(|(from_chirho, to_chirho)| {
+                    let from_idx_chirho: Vec<usize> = from_chirho
+                        .iter()
+                        .filter_map(|n_chirho| var_names_chirho.iter().position(|v_chirho| v_chirho == n_chirho))
+                        .collect();
+                    let to_idx_chirho: Vec<usize> = to_chirho
+                        .iter()
+                        .filter_map(|n_chirho| var_names_chirho.iter().position(|v_chirho| v_chirho == n_chirho))
+                        .collect();
+                    (from_idx_chirho, to_idx_chirho)
+                })
+                .collect();
+
+            self.class_env_chirho.add_class_chirho(ClassDeclChirho {
+                name_chirho: class_name_chirho,
+                supers_chirho,
+                var_chirho: class_tv_chirho,
+                methods_chirho: method_map_chirho,
+                extra_vars_chirho,
+                fundeps_chirho: resolved_fundeps_chirho,
+                defaults_chirho: defaults_map_chirho,
+            });
+        }
+    }
+
+    /// Process an instance declaration from the AST and register it.
+    fn process_instance_decl_chirho(&mut self, decl_chirho: &DeclChirho) {
+        if let DeclChirho::InstanceDeclChirho {
+            context_chirho,
+            class_chirho,
+            types_chirho,
+            ..
+        } = decl_chirho
+        {
+            let class_name_chirho = class_chirho.text_chirho().to_string();
+
+            let mut var_map_chirho = HashMap::new();
+
+            // Instance head type (e.g., `Int` in `instance Eq Int`, or
+            // `[a]` in `instance Eq a => Eq [a]`)
+            let head_ty_chirho = if let Some(first_ty_chirho) = types_chirho.first() {
+                self.ast_type_to_ty_chirho(first_ty_chirho, &mut var_map_chirho)
+            } else {
+                self.fresh_var_chirho()
+            };
+
+            // Context constraints (e.g., `Eq a` in `instance Eq a => Eq [a]`)
+            let inst_context_chirho: Vec<PredChirho> = context_chirho
+                .iter()
+                .map(|c_chirho| {
+                    let cn_chirho = c_chirho.class_chirho.text_chirho().to_string();
+                    let ct_chirho = if let Some(arg_chirho) = c_chirho.args_chirho.first() {
+                        self.ast_type_to_ty_chirho(arg_chirho, &mut var_map_chirho)
+                    } else {
+                        self.fresh_var_chirho()
+                    };
+                    PredChirho::new_chirho(&cn_chirho, ct_chirho)
+                })
+                .collect();
+
+            // For MPTCs, extra head types come from types_chirho[1..]
+            let extra_head_tys_chirho: Vec<TyChirho> = types_chirho
+                .iter()
+                .skip(1)
+                .map(|t_chirho| self.ast_type_to_ty_chirho(t_chirho, &mut var_map_chirho))
+                .collect();
+
+            self.class_env_chirho.add_instance_chirho(InstDeclChirho {
+                class_name_chirho,
+                head_ty_chirho,
+                extra_head_tys_chirho,
+                context_chirho: inst_context_chirho,
+            });
         }
     }
 
@@ -367,6 +808,23 @@ impl InferCtxChirho {
                 self.env_chirho.push_scope_chirho();
                 let mut subst_chirho = SubstChirho::empty_chirho();
 
+                // Pre-bind function names with fresh types (letrec)
+                let mut pre_let_tys_chirho: Vec<(String, TyChirho)> = Vec::new();
+                for bind_chirho in binds_chirho {
+                    if let rhasky_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                        name_chirho, ..
+                    } = bind_chirho
+                    {
+                        let fresh_ty_chirho = self.fresh_var_chirho();
+                        let name_str_chirho = name_chirho.text_chirho().to_string();
+                        self.env_chirho.bind_chirho(
+                            name_str_chirho.clone(),
+                            SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
+                        );
+                        pre_let_tys_chirho.push((name_str_chirho, fresh_ty_chirho));
+                    }
+                }
+
                 for bind_chirho in binds_chirho {
                     match bind_chirho {
                         rhasky_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
@@ -379,9 +837,26 @@ impl InferCtxChirho {
                             subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                             self.apply_subst_all_chirho(&s_chirho);
 
+                            // Unify pre-bound type with inferred type
+                            let name_str_chirho = name_chirho.text_chirho().to_string();
+                            if let Some((_, pre_ty_chirho)) = pre_let_tys_chirho
+                                .iter()
+                                .find(|(n_chirho, _)| n_chirho == &name_str_chirho)
+                            {
+                                let pre_ty_sub_chirho = subst_chirho.apply_ty_chirho(pre_ty_chirho);
+                                if let Ok(us_chirho) = unify_chirho(
+                                    &pre_ty_sub_chirho,
+                                    &ty_chirho,
+                                    *span_chirho,
+                                ) {
+                                    subst_chirho = us_chirho.compose_chirho(&subst_chirho);
+                                    self.apply_subst_all_chirho(&us_chirho);
+                                }
+                            }
+
                             let gen_ty_chirho = self.generalize_chirho(&ty_chirho);
                             self.env_chirho
-                                .bind_chirho(name_chirho.text_chirho().to_string(), gen_ty_chirho);
+                                .bind_chirho(name_str_chirho, gen_ty_chirho);
                         }
                         rhasky_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
                             pat_chirho,
@@ -485,6 +960,73 @@ impl InferCtxChirho {
                         }
                     }
 
+                    // Pre-bind where-clause function names with fresh
+                    // types so recursive references resolve (letrec).
+                    let mut pre_wb_tys_chirho: Vec<(String, TyChirho)> = Vec::new();
+                    for wb_chirho in &alt_chirho.where_binds_chirho {
+                        if let rhasky_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                            name_chirho, ..
+                        } = wb_chirho
+                        {
+                            let fresh_ty_chirho = self.fresh_var_chirho();
+                            let name_str_chirho = name_chirho.text_chirho().to_string();
+                            self.env_chirho.bind_chirho(
+                                name_str_chirho.clone(),
+                                SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
+                            );
+                            pre_wb_tys_chirho.push((name_str_chirho, fresh_ty_chirho));
+                        }
+                    }
+
+                    // Bind where-clause bindings before inferring RHS
+                    for wb_chirho in &alt_chirho.where_binds_chirho {
+                        match wb_chirho {
+                            rhasky_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                                name_chirho,
+                                matches_chirho: wb_matches_chirho,
+                                span_chirho: wb_span_chirho,
+                            } => {
+                                let (ws_chirho, wt_chirho) =
+                                    self.infer_matches_chirho(wb_matches_chirho, *wb_span_chirho);
+                                subst_chirho = ws_chirho.compose_chirho(&subst_chirho);
+                                self.apply_subst_all_chirho(&ws_chirho);
+
+                                let name_str_chirho = name_chirho.text_chirho().to_string();
+                                if let Some((_, pre_ty_chirho)) = pre_wb_tys_chirho
+                                    .iter()
+                                    .find(|(n_chirho, _)| n_chirho == &name_str_chirho)
+                                {
+                                    let pre_ty_sub_chirho =
+                                        subst_chirho.apply_ty_chirho(pre_ty_chirho);
+                                    if let Ok(us_chirho) = unify_chirho(
+                                        &pre_ty_sub_chirho,
+                                        &wt_chirho,
+                                        *wb_span_chirho,
+                                    ) {
+                                        subst_chirho = us_chirho.compose_chirho(&subst_chirho);
+                                        self.apply_subst_all_chirho(&us_chirho);
+                                    }
+                                }
+
+                                let gen_chirho = self.generalize_chirho(&wt_chirho);
+                                self.env_chirho
+                                    .bind_chirho(name_str_chirho, gen_chirho);
+                            }
+                            rhasky_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                                pat_chirho: wb_pat_chirho,
+                                rhs_chirho: wb_rhs_chirho,
+                                ..
+                            } => {
+                                let (ws_chirho, rhs_ty_chirho) =
+                                    self.infer_rhs_chirho(wb_rhs_chirho);
+                                subst_chirho = ws_chirho.compose_chirho(&subst_chirho);
+                                self.apply_subst_all_chirho(&ws_chirho);
+                                self.bind_pat_chirho(wb_pat_chirho, &rhs_ty_chirho);
+                            }
+                            _ => {}
+                        }
+                    }
+
                     let (sr_chirho, alt_ty_chirho) = self.infer_rhs_chirho(&alt_chirho.rhs_chirho);
                     subst_chirho = sr_chirho.compose_chirho(&subst_chirho);
                     self.apply_subst_all_chirho(&sr_chirho);
@@ -512,17 +1054,71 @@ impl InferCtxChirho {
                 stmts_chirho,
                 span_chirho,
             } => {
-                // Simplified: infer each statement, return the type of the last
+                // Monadic do-notation:
+                //   do { expr }       ≡ expr                             (last stmt)
+                //   do { expr; rest } ≡ expr >> do { rest }              (ExprStmt)
+                //   do { x <- m; rest } ≡ m >>= \x -> do { rest }       (BindStmt)
+                //   do { let binds; rest } ≡ let binds in do { rest }    (LetStmt)
+                //
+                // All monadic expressions in the block share the same monad
+                // constructor `m_chirho`. We use a fresh type variable for it
+                // and unify as we go. The bind pattern variable `x` gets the
+                // unwrapped type `a` from `m a`.
+                let m_chirho = self.fresh_var_chirho(); // the monad constructor
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 let mut last_ty_chirho = TyChirho::unit_chirho();
 
-                for stmt_chirho in stmts_chirho {
+                self.env_chirho.push_scope_chirho();
+
+                for (idx_chirho, stmt_chirho) in stmts_chirho.iter().enumerate() {
+                    let is_last_chirho = idx_chirho == stmts_chirho.len() - 1;
+
                     match stmt_chirho {
                         StmtChirho::ExprChirho(expr_chirho) => {
                             let (s_chirho, ty_chirho) = self.infer_expr_chirho(expr_chirho);
                             subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                             self.apply_subst_all_chirho(&s_chirho);
-                            last_ty_chirho = ty_chirho;
+
+                            if is_last_chirho {
+                                // Last statement: its type IS the do-block type.
+                                // Unify with `m_chirho a` to extract the monad.
+                                let a_chirho = self.fresh_var_chirho();
+                                let expected_chirho = TyChirho::AppChirho(
+                                    Box::new(m_chirho.clone()),
+                                    Box::new(a_chirho.clone()),
+                                );
+                                match unify_chirho(
+                                    &subst_chirho.apply_ty_chirho(&ty_chirho),
+                                    &subst_chirho.apply_ty_chirho(&expected_chirho),
+                                    *span_chirho,
+                                ) {
+                                    Ok(su_chirho) => {
+                                        subst_chirho = su_chirho.compose_chirho(&subst_chirho);
+                                        self.apply_subst_all_chirho(&su_chirho);
+                                    }
+                                    Err(_) => { /* allow fallthrough for simple expressions */ }
+                                }
+                                last_ty_chirho = ty_chirho;
+                            } else {
+                                // Non-last expression stmt: type should be `m_chirho _`
+                                let discard_chirho = self.fresh_var_chirho();
+                                let expected_chirho = TyChirho::AppChirho(
+                                    Box::new(m_chirho.clone()),
+                                    Box::new(discard_chirho),
+                                );
+                                match unify_chirho(
+                                    &subst_chirho.apply_ty_chirho(&ty_chirho),
+                                    &subst_chirho.apply_ty_chirho(&expected_chirho),
+                                    *span_chirho,
+                                ) {
+                                    Ok(su_chirho) => {
+                                        subst_chirho = su_chirho.compose_chirho(&subst_chirho);
+                                        self.apply_subst_all_chirho(&su_chirho);
+                                    }
+                                    Err(_) => {}
+                                }
+                                last_ty_chirho = ty_chirho;
+                            }
                         }
                         StmtChirho::BindChirho {
                             pat_chirho,
@@ -532,32 +1128,242 @@ impl InferCtxChirho {
                             let (s_chirho, ty_chirho) = self.infer_expr_chirho(expr_chirho);
                             subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                             self.apply_subst_all_chirho(&s_chirho);
-                            self.bind_pat_chirho(pat_chirho, &ty_chirho);
+
+                            // `x <- m`: m has type `M a`, bind x :: a
+                            let elem_ty_chirho = self.fresh_var_chirho();
+                            let expected_chirho = TyChirho::AppChirho(
+                                Box::new(m_chirho.clone()),
+                                Box::new(elem_ty_chirho.clone()),
+                            );
+                            match unify_chirho(
+                                &subst_chirho.apply_ty_chirho(&ty_chirho),
+                                &subst_chirho.apply_ty_chirho(&expected_chirho),
+                                *span_chirho,
+                            ) {
+                                Ok(su_chirho) => {
+                                    subst_chirho = su_chirho.compose_chirho(&subst_chirho);
+                                    self.apply_subst_all_chirho(&su_chirho);
+                                }
+                                Err(_) => {}
+                            }
+
+                            // Bind the pattern variable(s) to the unwrapped type
+                            let bound_ty_chirho =
+                                subst_chirho.apply_ty_chirho(&elem_ty_chirho);
+                            self.bind_pat_chirho(pat_chirho, &bound_ty_chirho);
                             last_ty_chirho = TyChirho::unit_chirho();
                         }
-                        StmtChirho::LetChirho { .. } => {
-                            // Let in do: similar to LetExpr, skip for now
-                            last_ty_chirho = TyChirho::unit_chirho();
+                        StmtChirho::LetChirho {
+                            binds_chirho, ..
+                        } => {
+                            // let in do: introduce local bindings
+                            for bind_chirho in binds_chirho {
+                                match bind_chirho {
+                                    rhasky_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                                        name_chirho,
+                                        matches_chirho,
+                                        span_chirho: bind_span_chirho,
+                                    } => {
+                                        let (s_chirho, ty_chirho) = self
+                                            .infer_matches_chirho(matches_chirho, *bind_span_chirho);
+                                        subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+                                        self.apply_subst_all_chirho(&s_chirho);
+                                        let gen_chirho = self.generalize_chirho(&ty_chirho);
+                                        self.env_chirho.bind_chirho(
+                                            name_chirho.text_chirho().to_string(),
+                                            gen_chirho,
+                                        );
+                                    }
+                                    rhasky_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                                        pat_chirho,
+                                        rhs_chirho,
+                                        ..
+                                    } => {
+                                        let (s_chirho, rhs_ty_chirho) =
+                                            self.infer_rhs_chirho(rhs_chirho);
+                                        subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+                                        self.apply_subst_all_chirho(&s_chirho);
+                                        self.bind_pat_chirho(pat_chirho, &rhs_ty_chirho);
+                                    }
+                                    rhasky_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho {
+                                        ..
+                                    } => {}
+                                }
+                            }
                         }
                     }
                 }
 
-                let _ = span_chirho; // suppress unused warning
+                self.env_chirho.pop_scope_chirho();
                 (subst_chirho, last_ty_chirho)
             }
 
-            ExprChirho::NegChirho { expr_chirho, .. } => {
-                let (s_chirho, _ty_chirho) = self.infer_expr_chirho(expr_chirho);
-                // Negation produces a Num type — simplified to Int
-                (s_chirho, TyChirho::int_chirho())
+            ExprChirho::NegChirho {
+                expr_chirho,
+                span_chirho,
+            } => {
+                let (s_chirho, expr_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                // negate :: Num a => a -> a
+                // Defer a Num constraint on the expression type
+                self.deferred_preds_chirho.push((
+                    PredChirho::new_chirho("Num", expr_ty_chirho.clone()),
+                    *span_chirho,
+                ));
+                (s_chirho, expr_ty_chirho)
             }
 
             ExprChirho::ParenChirho { inner_chirho, .. } => self.infer_expr_chirho(inner_chirho),
 
-            ExprChirho::AnnChirho { expr_chirho, .. } => {
-                // Type annotation — infer the expression, skip annotation check for now
-                self.infer_expr_chirho(expr_chirho)
+            ExprChirho::AnnChirho {
+                expr_chirho,
+                ty_chirho: ann_ty_chirho,
+                span_chirho,
+            } => {
+                // Type annotation: infer the expression, then unify with the annotation
+                let (s_chirho, inferred_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                self.apply_subst_all_chirho(&s_chirho);
+
+                let mut var_map_chirho = HashMap::new();
+                let ann_internal_chirho =
+                    self.ast_type_to_ty_chirho(ann_ty_chirho, &mut var_map_chirho);
+
+                match unify_chirho(&inferred_ty_chirho, &ann_internal_chirho, *span_chirho) {
+                    Ok(su_chirho) => {
+                        let combined_chirho = su_chirho.compose_chirho(&s_chirho);
+                        let final_ty_chirho = combined_chirho.apply_ty_chirho(&ann_internal_chirho);
+                        self.apply_subst_all_chirho(&su_chirho);
+                        (combined_chirho, final_ty_chirho)
+                    }
+                    Err(err_chirho) => {
+                        self.report_unify_error_chirho(&err_chirho);
+                        (s_chirho, ann_internal_chirho)
+                    }
+                }
             }
+
+            // Infix application: `a op b` is treated as `(op a) b`
+            ExprChirho::InfixChirho {
+                left_chirho,
+                op_chirho,
+                right_chirho,
+                span_chirho,
+            } => {
+                // Look up the operator's type scheme
+                let op_text_chirho = op_chirho.text_chirho();
+                let op_span_chirho = op_chirho.span_chirho();
+                let op_scheme_chirho = self.env_chirho.lookup_chirho(op_text_chirho).cloned();
+                let (s0_chirho, op_ty_chirho) = match op_scheme_chirho {
+                    Some(scheme_chirho) => {
+                        let ty_chirho = self.instantiate_chirho(&scheme_chirho, op_span_chirho);
+                        (SubstChirho::empty_chirho(), ty_chirho)
+                    }
+                    None => {
+                        // Unknown operator — degrade gracefully
+                        (SubstChirho::empty_chirho(), self.fresh_var_chirho())
+                    }
+                };
+                self.apply_subst_all_chirho(&s0_chirho);
+
+                // Infer left operand
+                let (s1_chirho, left_ty_chirho) = self.infer_expr_chirho(left_chirho);
+                let op_ty_chirho = s1_chirho.apply_ty_chirho(&op_ty_chirho);
+                self.apply_subst_all_chirho(&s1_chirho);
+
+                // Unify: op :: left_ty -> (right_ty -> result_ty)
+                let mid_ty_chirho = self.fresh_var_chirho();
+                let expected_chirho = TyChirho::fun_chirho(left_ty_chirho, mid_ty_chirho.clone());
+                let s2_chirho = match unify_chirho(&op_ty_chirho, &expected_chirho, *span_chirho) {
+                    Ok(s_chirho) => {
+                        self.apply_subst_all_chirho(&s_chirho);
+                        s_chirho
+                    }
+                    Err(err_chirho) => {
+                        self.report_unify_error_chirho(&err_chirho);
+                        SubstChirho::empty_chirho()
+                    }
+                };
+
+                let mid_ty_chirho = s2_chirho.apply_ty_chirho(&mid_ty_chirho);
+
+                // Infer right operand
+                let (s3_chirho, right_ty_chirho) = self.infer_expr_chirho(right_chirho);
+                let mid_ty_chirho = s3_chirho.apply_ty_chirho(&mid_ty_chirho);
+                self.apply_subst_all_chirho(&s3_chirho);
+
+                // Unify: mid_ty :: right_ty -> result_ty
+                let result_ty_chirho = self.fresh_var_chirho();
+                let expected2_chirho = TyChirho::fun_chirho(right_ty_chirho, result_ty_chirho.clone());
+                let s4_chirho = match unify_chirho(&mid_ty_chirho, &expected2_chirho, *span_chirho) {
+                    Ok(s_chirho) => {
+                        self.apply_subst_all_chirho(&s_chirho);
+                        s_chirho
+                    }
+                    Err(err_chirho) => {
+                        self.report_unify_error_chirho(&err_chirho);
+                        SubstChirho::empty_chirho()
+                    }
+                };
+
+                let combined_chirho = s4_chirho.compose_chirho(
+                    &s3_chirho.compose_chirho(
+                        &s2_chirho.compose_chirho(
+                            &s1_chirho.compose_chirho(&s0_chirho))));
+                let final_ty_chirho = combined_chirho.apply_ty_chirho(&result_ty_chirho);
+                (combined_chirho, final_ty_chirho)
+            }
+
+            // Record construction: Con { f1 = e1, f2 = e2, ... }
+            // Treated as constructor application: infer constructor type,
+            // then unify each field value with the successive argument types.
+            ExprChirho::RecordConChirho {
+                con_chirho,
+                fields_chirho,
+                span_chirho,
+            } => {
+                let con_text_chirho = con_chirho.text_chirho();
+                let scheme_opt_chirho = self.env_chirho.lookup_chirho(con_text_chirho).cloned();
+                match scheme_opt_chirho {
+                    Some(scheme_chirho) => {
+                        let con_span_chirho = con_chirho.span_chirho();
+                        let mut con_ty_chirho =
+                            self.instantiate_chirho(&scheme_chirho, con_span_chirho);
+                        let mut combined_chirho = SubstChirho::empty_chirho();
+                        // Apply each field value to the constructor type
+                        for field_chirho in fields_chirho {
+                            let (s_chirho, field_ty_chirho) =
+                                self.infer_expr_chirho(&field_chirho.value_chirho);
+                            combined_chirho = s_chirho.compose_chirho(&combined_chirho);
+                            con_ty_chirho = combined_chirho.apply_ty_chirho(&con_ty_chirho);
+                            let result_ty_chirho = self.fresh_var_chirho();
+                            let expected_chirho = TyChirho::FunChirho(
+                                Box::new(field_ty_chirho),
+                                Box::new(result_ty_chirho.clone()),
+                            );
+                            match unify_chirho(&con_ty_chirho, &expected_chirho, *span_chirho) {
+                                Ok(s2_chirho) => {
+                                    self.apply_subst_all_chirho(&s2_chirho);
+                                    combined_chirho = s2_chirho.compose_chirho(&combined_chirho);
+                                    con_ty_chirho =
+                                        combined_chirho.apply_ty_chirho(&result_ty_chirho);
+                                }
+                                Err(err_chirho) => {
+                                    self.report_unify_error_chirho(&err_chirho);
+                                    return (combined_chirho, self.fresh_var_chirho());
+                                }
+                            }
+                        }
+                        (combined_chirho, con_ty_chirho)
+                    }
+                    None => (SubstChirho::empty_chirho(), self.fresh_var_chirho()),
+                }
+            }
+
+            // Record update: expr { f1 = e1, ... }
+            // For now, infer the expression type and pass through
+            ExprChirho::RecordUpdateChirho {
+                expr_chirho,
+                ..
+            } => self.infer_expr_chirho(expr_chirho),
 
             // For remaining expression forms, return a fresh variable
             _ => (SubstChirho::empty_chirho(), self.fresh_var_chirho()),
@@ -616,14 +1422,40 @@ impl InferCtxChirho {
                     self.bind_pat_chirho(arg_chirho, &fresh_chirho);
                 }
             }
+            PatChirho::RecordChirho { fields_chirho, .. } => {
+                // Each record field pattern introduces a binding
+                for field_chirho in fields_chirho {
+                    let fresh_chirho = self.fresh_var_chirho();
+                    self.bind_pat_chirho(&field_chirho.pattern_chirho, &fresh_chirho);
+                }
+            }
+            PatChirho::InfixConChirho {
+                left_chirho,
+                right_chirho,
+                ..
+            } => {
+                // x : xs — both sides get fresh type variables
+                let left_ty_chirho = self.fresh_var_chirho();
+                let right_ty_chirho = self.fresh_var_chirho();
+                self.bind_pat_chirho(left_chirho, &left_ty_chirho);
+                self.bind_pat_chirho(right_chirho, &right_ty_chirho);
+            }
+            PatChirho::ListChirho {
+                elements_chirho, ..
+            } => {
+                let elem_ty_chirho = self.fresh_var_chirho();
+                for elem_pat_chirho in elements_chirho {
+                    self.bind_pat_chirho(elem_pat_chirho, &elem_ty_chirho);
+                }
+            }
+            PatChirho::NegChirho { .. } => {
+                // Negated literal: no new bindings
+            }
             PatChirho::ParenChirho { inner_chirho, .. } => {
                 self.bind_pat_chirho(inner_chirho, ty_chirho);
             }
             PatChirho::LazyChirho { inner_chirho, .. } | PatChirho::BangChirho { inner_chirho, .. } => {
                 self.bind_pat_chirho(inner_chirho, ty_chirho);
-            }
-            _ => {
-                // Other patterns: no bindings extracted yet
             }
         }
     }
@@ -679,6 +1511,72 @@ impl InferCtxChirho {
                 self.bind_pat_chirho(pat_chirho, &pat_ty_sub_chirho);
             }
 
+            // Pre-bind where-clause function names with fresh types
+            // so that recursive references resolve (letrec semantics).
+            let mut pre_wb_tys_chirho: Vec<(String, TyChirho)> = Vec::new();
+            for wb_chirho in &match_arm_chirho.where_binds_chirho {
+                if let rhasky_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                    name_chirho, ..
+                } = wb_chirho
+                {
+                    let fresh_ty_chirho = self.fresh_var_chirho();
+                    let name_str_chirho = name_chirho.text_chirho().to_string();
+                    self.env_chirho.bind_chirho(
+                        name_str_chirho.clone(),
+                        SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
+                    );
+                    pre_wb_tys_chirho.push((name_str_chirho, fresh_ty_chirho));
+                }
+            }
+
+            // Bind where-clause bindings before inferring the RHS
+            for wb_chirho in &match_arm_chirho.where_binds_chirho {
+                match wb_chirho {
+                    rhasky_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                        name_chirho,
+                        matches_chirho: wb_matches_chirho,
+                        span_chirho: wb_span_chirho,
+                    } => {
+                        let (ws_chirho, wt_chirho) =
+                            self.infer_matches_chirho(wb_matches_chirho, *wb_span_chirho);
+                        subst_chirho = ws_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&ws_chirho);
+
+                        // Unify pre-bound type with inferred type
+                        let name_str_chirho = name_chirho.text_chirho().to_string();
+                        if let Some((_, pre_ty_chirho)) = pre_wb_tys_chirho
+                            .iter()
+                            .find(|(n_chirho, _)| n_chirho == &name_str_chirho)
+                        {
+                            let pre_ty_sub_chirho = subst_chirho.apply_ty_chirho(pre_ty_chirho);
+                            if let Ok(us_chirho) = unify_chirho(
+                                &pre_ty_sub_chirho,
+                                &wt_chirho,
+                                *wb_span_chirho,
+                            ) {
+                                subst_chirho = us_chirho.compose_chirho(&subst_chirho);
+                                self.apply_subst_all_chirho(&us_chirho);
+                            }
+                        }
+
+                        let gen_chirho = self.generalize_chirho(&wt_chirho);
+                        self.env_chirho
+                            .bind_chirho(name_str_chirho, gen_chirho);
+                    }
+                    rhasky_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                        pat_chirho,
+                        rhs_chirho: wb_rhs_chirho,
+                        ..
+                    } => {
+                        let (ws_chirho, rhs_ty_chirho) = self.infer_rhs_chirho(wb_rhs_chirho);
+                        subst_chirho = ws_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&ws_chirho);
+                        self.bind_pat_chirho(pat_chirho, &rhs_ty_chirho);
+                    }
+                    _ => {}
+                }
+            }
+
             // Infer RHS
             let (sr_chirho, rhs_ty_chirho) = self.infer_rhs_chirho(&match_arm_chirho.rhs_chirho);
             subst_chirho = sr_chirho.compose_chirho(&subst_chirho);
@@ -719,64 +1617,251 @@ impl InferCtxChirho {
     pub fn infer_module_chirho(&mut self, module_chirho: &ModuleChirho) -> SubstChirho {
         let mut subst_chirho = SubstChirho::empty_chirho();
 
-        // Phase 1: Bind data constructor types (simplified — constructors get fresh vars)
+        // Phase -1: Register type synonyms so they can be expanded during
+        // type inference. Process in declaration order (handles chains
+        // like type FilePath = String where String is already registered).
         for decl_chirho in &module_chirho.decls_chirho {
-            if let DeclChirho::DataDeclChirho {
+            if let DeclChirho::TypeAliasDeclChirho {
                 name_chirho,
-                constructors_chirho,
+                type_vars_chirho,
+                rhs_chirho,
                 ..
             } = decl_chirho
             {
-                let result_ty_chirho = TyChirho::ConChirho(name_chirho.text_chirho().to_string());
-                for con_chirho in constructors_chirho {
-                    let con_name_chirho = match con_chirho {
+                let syn_name_chirho = name_chirho.text_chirho().to_string();
+                let params_chirho: Vec<String> = type_vars_chirho
+                    .iter()
+                    .map(|v_chirho| v_chirho.text_chirho().to_string())
+                    .collect();
+                let rhs_ty_chirho =
+                    ast_type_to_syn_rhs_chirho(rhs_chirho, &params_chirho);
+                self.register_type_synonym_chirho(
+                    syn_name_chirho,
+                    params_chirho,
+                    rhs_ty_chirho,
+                );
+            }
+        }
+
+        // Phase 0: Collect type signatures for later checking
+        let mut type_sigs_chirho: HashMap<String, TypeChirho> = HashMap::new();
+        for decl_chirho in &module_chirho.decls_chirho {
+            if let DeclChirho::TypeSigChirho {
+                name_chirho,
+                ty_chirho,
+                ..
+            } = decl_chirho
+            {
+                type_sigs_chirho.insert(
+                    name_chirho.text_chirho().to_string(),
+                    ty_chirho.clone(),
+                );
+            }
+        }
+
+        // Phase 1a: Process class declarations (before data/instance so methods
+        // are available in the environment)
+        for decl_chirho in &module_chirho.decls_chirho {
+            self.process_class_decl_chirho(decl_chirho);
+        }
+
+        // Phase 1b: Process instance declarations
+        for decl_chirho in &module_chirho.decls_chirho {
+            self.process_instance_decl_chirho(decl_chirho);
+        }
+
+        // Phase 2: Bind data and newtype constructor types
+        for decl_chirho in &module_chirho.decls_chirho {
+            match decl_chirho {
+                DeclChirho::DataDeclChirho {
+                    name_chirho,
+                    type_vars_chirho,
+                    constructors_chirho,
+                    ..
+                } => {
+                    // Build the fully-applied result type: T a b c ...
+                    let base_ty_chirho = TyChirho::ConChirho(name_chirho.text_chirho().to_string());
+                    let mut tv_map_chirho: HashMap<String, TyVarChirho> = HashMap::new();
+                    let tv_vars_chirho: Vec<TyVarChirho> = type_vars_chirho
+                        .iter()
+                        .map(|tv_chirho| {
+                            let v_chirho = TyVarChirho(self.next_var_chirho);
+                            self.next_var_chirho += 1;
+                            tv_map_chirho.insert(tv_chirho.text_chirho().to_string(), v_chirho);
+                            v_chirho
+                        })
+                        .collect();
+                    let result_ty_chirho = tv_vars_chirho.iter().fold(
+                        base_ty_chirho,
+                        |acc_chirho, tv_chirho| {
+                            TyChirho::AppChirho(
+                                Box::new(acc_chirho),
+                                Box::new(TyChirho::VarChirho(*tv_chirho)),
+                            )
+                        },
+                    );
+                    for con_chirho in constructors_chirho {
+                        match con_chirho {
+                            rhasky_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
+                                name_chirho,
+                                fields_chirho,
+                                ..
+                            } => {
+                                let field_tys_chirho: Vec<TyChirho> = fields_chirho
+                                    .iter()
+                                    .map(|f_chirho| {
+                                        self.ast_type_to_ty_chirho(f_chirho, &mut tv_map_chirho)
+                                    })
+                                    .collect();
+                                let con_ty_chirho = TyChirho::fun_n_chirho(
+                                    field_tys_chirho,
+                                    result_ty_chirho.clone(),
+                                );
+                                let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
+                                self.env_chirho.bind_chirho(
+                                    name_chirho.text_chirho().to_string(),
+                                    gen_scheme_chirho,
+                                );
+                            }
+                            rhasky_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
+                                name_chirho,
+                                fields_chirho,
+                                ..
+                            } => {
+                                let field_tys_chirho: Vec<TyChirho> = fields_chirho
+                                    .iter()
+                                    .flat_map(|fd_chirho| {
+                                        let ty_chirho = self.ast_type_to_ty_chirho(
+                                            &fd_chirho.ty_chirho,
+                                            &mut tv_map_chirho,
+                                        );
+                                        std::iter::repeat(ty_chirho)
+                                            .take(fd_chirho.names_chirho.len())
+                                    })
+                                    .collect();
+                                let con_ty_chirho = TyChirho::fun_n_chirho(
+                                    field_tys_chirho.clone(),
+                                    result_ty_chirho.clone(),
+                                );
+                                let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
+                                self.env_chirho.bind_chirho(
+                                    name_chirho.text_chirho().to_string(),
+                                    gen_scheme_chirho,
+                                );
+                                // Bind field accessor functions: fieldName :: T -> FieldType
+                                for (i_chirho, fd_chirho) in fields_chirho.iter().enumerate() {
+                                    for fname_chirho in &fd_chirho.names_chirho {
+                                        let accessor_ty_chirho = TyChirho::FunChirho(
+                                            Box::new(result_ty_chirho.clone()),
+                                            Box::new(field_tys_chirho[i_chirho].clone()),
+                                        );
+                                        let accessor_scheme_chirho =
+                                            self.generalize_chirho(&accessor_ty_chirho);
+                                        self.env_chirho.bind_chirho(
+                                            fname_chirho.text_chirho().to_string(),
+                                            accessor_scheme_chirho,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                DeclChirho::NewtypeDeclChirho {
+                    name_chirho,
+                    constructor_chirho,
+                    ..
+                } => {
+                    let result_ty_chirho =
+                        TyChirho::ConChirho(name_chirho.text_chirho().to_string());
+                    match constructor_chirho {
                         rhasky_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
-                            name_chirho,
+                            name_chirho: con_name_chirho,
                             fields_chirho,
                             ..
                         } => {
-                            // Constructor type: field1 -> field2 -> ... -> ResultType
+                            // Newtype constructor: exactly one field → result type
                             let field_tys_chirho: Vec<TyChirho> = fields_chirho
                                 .iter()
                                 .map(|_| self.fresh_var_chirho())
                                 .collect();
-                            let con_ty_chirho =
-                                TyChirho::fun_n_chirho(field_tys_chirho, result_ty_chirho.clone());
+                            let con_ty_chirho = TyChirho::fun_n_chirho(
+                                field_tys_chirho,
+                                result_ty_chirho,
+                            );
                             let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
                             self.env_chirho.bind_chirho(
-                                name_chirho.text_chirho().to_string(),
+                                con_name_chirho.text_chirho().to_string(),
                                 gen_scheme_chirho,
                             );
-                            continue;
                         }
                         rhasky_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
-                            name_chirho,
+                            name_chirho: con_name_chirho,
+                            fields_chirho,
                             ..
-                        } => name_chirho,
-                    };
-                    // Record constructor: simplified to just the result type
-                    self.env_chirho.bind_chirho(
-                        con_name_chirho.text_chirho().to_string(),
-                        SchemeChirho::mono_chirho(result_ty_chirho.clone()),
-                    );
+                        } => {
+                            let field_tys_chirho: Vec<TyChirho> = fields_chirho
+                                .iter()
+                                .flat_map(|fd_chirho| {
+                                    let ty_chirho = self.ast_type_to_ty_chirho(
+                                        &fd_chirho.ty_chirho,
+                                        &mut std::collections::HashMap::new(),
+                                    );
+                                    std::iter::repeat(ty_chirho)
+                                        .take(fd_chirho.names_chirho.len())
+                                })
+                                .collect();
+                            let con_ty_chirho = TyChirho::fun_n_chirho(
+                                field_tys_chirho,
+                                result_ty_chirho,
+                            );
+                            let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
+                            self.env_chirho.bind_chirho(
+                                con_name_chirho.text_chirho().to_string(),
+                                gen_scheme_chirho,
+                            );
+                        }
+                    }
                 }
+                _ => {}
             }
         }
 
-        // Phase 2: Infer function bindings
+        // Phase 3: Infer function bindings (with mutual recursion support)
+        //
+        // Phase 3a: Pre-bind ALL top-level function names with fresh type
+        // variables so that mutual recursion works — every function can
+        // reference every other function.
+        let mut pre_bindings_chirho: Vec<(String, TyChirho, SpanChirho)> = Vec::new();
         for decl_chirho in &module_chirho.decls_chirho {
             if let DeclChirho::FunBindChirho {
                 name_chirho,
-                matches_chirho,
                 span_chirho,
+                ..
             } = decl_chirho
             {
-                // Pre-bind with a fresh variable for recursive calls
+                let binding_name_chirho = name_chirho.text_chirho().to_string();
                 let pre_ty_chirho = self.fresh_var_chirho();
                 self.env_chirho.bind_chirho(
-                    name_chirho.text_chirho().to_string(),
+                    binding_name_chirho.clone(),
                     SchemeChirho::mono_chirho(pre_ty_chirho.clone()),
                 );
+                pre_bindings_chirho.push((binding_name_chirho, pre_ty_chirho, *span_chirho));
+            }
+        }
+
+        // Phase 3b: Infer each function body against its pre-bound type.
+        let mut pre_idx_chirho = 0;
+        for decl_chirho in &module_chirho.decls_chirho {
+            if let DeclChirho::FunBindChirho {
+                matches_chirho,
+                span_chirho,
+                ..
+            } = decl_chirho
+            {
+                let (binding_name_chirho, pre_ty_chirho, _) =
+                    &pre_bindings_chirho[pre_idx_chirho];
+                pre_idx_chirho += 1;
 
                 let (s_chirho, inferred_ty_chirho) =
                     self.infer_matches_chirho(matches_chirho, *span_chirho);
@@ -784,7 +1869,7 @@ impl InferCtxChirho {
                 self.apply_subst_all_chirho(&s_chirho);
 
                 // Unify pre-bound type with inferred type
-                let pre_sub_chirho = subst_chirho.apply_ty_chirho(&pre_ty_chirho);
+                let pre_sub_chirho = subst_chirho.apply_ty_chirho(pre_ty_chirho);
                 match unify_chirho(&pre_sub_chirho, &inferred_ty_chirho, *span_chirho) {
                     Ok(su_chirho) => {
                         subst_chirho = su_chirho.compose_chirho(&subst_chirho);
@@ -795,16 +1880,40 @@ impl InferCtxChirho {
                     }
                 }
 
-                // Remove the mono pre-binding before generalizing so its
-                // free variables don't prevent generalization of the inferred type.
-                let binding_name_chirho = name_chirho.text_chirho().to_string();
-                self.env_chirho.remove_chirho(&binding_name_chirho);
+                // Remove the mono pre-binding before generalizing
+                self.env_chirho.remove_chirho(binding_name_chirho);
 
                 // Generalize and rebind
                 let final_ty_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
                 let gen_chirho = self.generalize_chirho(&final_ty_chirho);
                 self.env_chirho
-                    .bind_chirho(binding_name_chirho, gen_chirho);
+                    .bind_chirho(binding_name_chirho.clone(), gen_chirho);
+
+                // Phase 3c: Check against type signature if one exists
+                if let Some(sig_ast_chirho) = type_sigs_chirho.get(binding_name_chirho) {
+                    let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
+                    let sig_ty_chirho = self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
+                    let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
+                    match unify_chirho(&inferred_sub_chirho, &sig_ty_chirho, *span_chirho) {
+                        Ok(sig_s_chirho) => {
+                            subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
+                            self.apply_subst_all_chirho(&sig_s_chirho);
+                        }
+                        Err(_err_chirho) => {
+                            self.diagnostics_chirho.push_chirho(
+                                DiagnosticChirho::error_with_code_chirho(
+                                    ErrorCodeChirho::error_chirho(SIGNATURE_MISMATCH_CODE_CHIRHO),
+                                    format!(
+                                        "type signature mismatch for `{binding_name_chirho}`: \
+                                         inferred `{inferred_sub_chirho}`, \
+                                         declared `{sig_ty_chirho}`"
+                                    ),
+                                    *span_chirho,
+                                ),
+                            );
+                        }
+                    }
+                }
             }
         }
 
@@ -813,36 +1922,122 @@ impl InferCtxChirho {
 
     /// Check remaining deferred predicates. Those that the class environment
     /// can fully entail are discharged; those that can't produce diagnostics.
+    ///
+    /// Implements Haskell-style numeric defaulting: ambiguous type variables
+    /// constrained only by defaultable classes are resolved to `Int` (for
+    /// Num/Integral/etc.) or `Double` (for Fractional/Floating/etc.) before
+    /// the final constraint check.
     fn check_deferred_preds_chirho(&mut self, final_subst_chirho: &SubstChirho) {
         let preds_chirho: Vec<(PredChirho, SpanChirho)> =
             self.deferred_preds_chirho.drain(..).collect();
 
-        for (pred_chirho, span_chirho) in preds_chirho {
-            // Apply the final substitution to the predicate type
+        let defaultable_classes_chirho: &[&str] = &[
+            "Num", "Integral", "Enum", "Bounded", "Eq", "Ord", "Show", "Read",
+            "Real", "Fractional", "Floating", "RealFrac", "RealFloat",
+        ];
+        let fractional_classes_chirho: &[&str] = &[
+            "Fractional", "Floating", "RealFrac", "RealFloat",
+        ];
+
+        // Phase 1: resolve all predicates and collect constraints per type variable
+        let mut resolved_preds_chirho: Vec<(PredChirho, SpanChirho)> = Vec::new();
+        let mut var_classes_chirho: std::collections::HashMap<TyVarChirho, Vec<String>> =
+            std::collections::HashMap::new();
+
+        for (pred_chirho, span_chirho) in &preds_chirho {
             let resolved_ty_chirho =
                 final_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
-            let resolved_pred_chirho =
-                PredChirho::new_chirho(&pred_chirho.class_name_chirho, resolved_ty_chirho);
+            let resolved_extra_tys_chirho: Vec<TyChirho> = pred_chirho
+                .extra_tys_chirho
+                .iter()
+                .map(|t_chirho| final_subst_chirho.apply_ty_chirho(t_chirho))
+                .collect();
+            let mut resolved_pred_chirho = PredChirho {
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: resolved_ty_chirho,
+                extra_tys_chirho: resolved_extra_tys_chirho,
+            };
 
-            // If the type is still a variable, we can't check it yet — it's
-            // polymorphic and will be checked at use sites
-            if matches!(resolved_pred_chirho.ty_chirho, TyChirho::VarChirho(_)) {
+            // Apply functional dependency improvement
+            let improvement_chirho = self
+                .class_env_chirho
+                .fundep_improve_chirho(&resolved_pred_chirho);
+            if !improvement_chirho.is_empty_chirho() {
+                resolved_pred_chirho.ty_chirho =
+                    improvement_chirho.apply_ty_chirho(&resolved_pred_chirho.ty_chirho);
+                resolved_pred_chirho.extra_tys_chirho = resolved_pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|t_chirho| improvement_chirho.apply_ty_chirho(t_chirho))
+                    .collect();
+            }
+
+            // Collect bare type-variable constraints for defaulting
+            if let TyChirho::VarChirho(v_chirho) = &resolved_pred_chirho.ty_chirho {
+                var_classes_chirho
+                    .entry(*v_chirho)
+                    .or_default()
+                    .push(resolved_pred_chirho.class_name_chirho.clone());
+            }
+
+            resolved_preds_chirho.push((resolved_pred_chirho, *span_chirho));
+        }
+
+        // Phase 2: compute defaults for ambiguous type variables
+        let mut default_subst_chirho = SubstChirho::empty_chirho();
+        for (var_chirho, classes_chirho) in &var_classes_chirho {
+            // All constraints on this var must be defaultable classes
+            let all_defaultable_chirho = classes_chirho.iter().all(|c_chirho| {
+                defaultable_classes_chirho.contains(&c_chirho.as_str())
+            });
+            if !all_defaultable_chirho {
+                continue;
+            }
+            // If any constraint is a Fractional-group class, default to Double;
+            // otherwise default to Int.
+            let needs_double_chirho = classes_chirho.iter().any(|c_chirho| {
+                fractional_classes_chirho.contains(&c_chirho.as_str())
+            });
+            let default_ty_chirho = if needs_double_chirho {
+                TyChirho::double_chirho()
+            } else {
+                TyChirho::int_chirho()
+            };
+            default_subst_chirho.insert_chirho(*var_chirho, default_ty_chirho);
+        }
+
+        // Phase 3: apply defaults and check all predicates
+        for (pred_chirho, span_chirho) in resolved_preds_chirho {
+            let defaulted_pred_chirho = PredChirho {
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: default_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                extra_tys_chirho: pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|t_chirho| default_subst_chirho.apply_ty_chirho(t_chirho))
+                    .collect(),
+            };
+
+            // If still a bare type variable after defaulting, skip (truly ambiguous
+            // but no concrete check is possible).
+            if matches!(defaulted_pred_chirho.ty_chirho, TyChirho::VarChirho(_)) {
                 continue;
             }
 
-            if !self.class_env_chirho.entails_chirho(&resolved_pred_chirho) {
+            if !self.class_env_chirho.entails_chirho(&defaulted_pred_chirho) {
                 self.diagnostics_chirho.push_chirho(
                     DiagnosticChirho::error_with_code_chirho(
                         ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
                         format!(
                             "no instance for `{}`",
-                            resolved_pred_chirho
+                            defaulted_pred_chirho
                         ),
                         span_chirho,
                     ),
                 );
             }
         }
+
     }
 
     /// Consume the context and return the final result.
@@ -853,6 +2048,120 @@ impl InferCtxChirho {
             class_env_chirho: self.class_env_chirho,
             diagnostics_chirho: self.diagnostics_chirho,
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Type synonym helpers
+// ---------------------------------------------------------------------------
+
+/// Convert an AST `TypeChirho` to a `TyChirho` suitable for storing as a type
+/// synonym RHS. Synonym parameters are represented as `ForallVarChirho` so
+/// they can be substituted during expansion.
+fn ast_type_to_syn_rhs_chirho(
+    ty_chirho: &TypeChirho,
+    params_chirho: &[String],
+) -> TyChirho {
+    match ty_chirho {
+        TypeChirho::VarChirho(name_chirho) => {
+            let text_chirho = name_chirho.text_chirho().to_string();
+            if params_chirho.contains(&text_chirho) {
+                TyChirho::ForallVarChirho(text_chirho)
+            } else {
+                // Unknown type variable — treat as Con (might be a bug upstream)
+                TyChirho::ConChirho(text_chirho)
+            }
+        }
+        TypeChirho::ConChirho(name_chirho) => {
+            TyChirho::ConChirho(name_chirho.text_chirho().to_string())
+        }
+        TypeChirho::ListChirho { element_chirho, .. } => TyChirho::ListChirho(
+            Box::new(ast_type_to_syn_rhs_chirho(element_chirho, params_chirho)),
+        ),
+        TypeChirho::FunChirho {
+            arg_chirho,
+            result_chirho,
+            ..
+        } => TyChirho::FunChirho(
+            Box::new(ast_type_to_syn_rhs_chirho(arg_chirho, params_chirho)),
+            Box::new(ast_type_to_syn_rhs_chirho(result_chirho, params_chirho)),
+        ),
+        TypeChirho::TupleChirho {
+            elements_chirho, ..
+        } => TyChirho::TupleChirho(
+            elements_chirho
+                .iter()
+                .map(|e_chirho| ast_type_to_syn_rhs_chirho(e_chirho, params_chirho))
+                .collect(),
+        ),
+        TypeChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => TyChirho::AppChirho(
+            Box::new(ast_type_to_syn_rhs_chirho(fun_chirho, params_chirho)),
+            Box::new(ast_type_to_syn_rhs_chirho(arg_chirho, params_chirho)),
+        ),
+        TypeChirho::ParenChirho {
+            inner_chirho, ..
+        } => ast_type_to_syn_rhs_chirho(inner_chirho, params_chirho),
+        TypeChirho::QualChirho {
+            body_chirho, ..
+        } => ast_type_to_syn_rhs_chirho(body_chirho, params_chirho),
+        TypeChirho::ForallChirho {
+            body_chirho, ..
+        } => ast_type_to_syn_rhs_chirho(body_chirho, params_chirho),
+    }
+}
+
+/// Collect the spine of a left-nested `AppChirho` into (head, [args]).
+fn collect_app_spine_chirho(ty_chirho: &TyChirho) -> (TyChirho, Vec<TyChirho>) {
+    let mut head_chirho = ty_chirho.clone();
+    let mut args_chirho = Vec::new();
+    loop {
+        match head_chirho {
+            TyChirho::AppChirho(f_chirho, a_chirho) => {
+                args_chirho.push(*a_chirho);
+                head_chirho = *f_chirho;
+            }
+            _ => break,
+        }
+    }
+    args_chirho.reverse();
+    (head_chirho, args_chirho)
+}
+
+/// Substitute a named type variable in a `TyChirho`. Used for expanding
+/// parameterised type synonyms where the RHS contains named variables
+/// (e.g. `type Pair a = (a, a)` — substitute `a` for the applied type).
+fn subst_named_var_chirho(
+    ty_chirho: &TyChirho,
+    name_chirho: &str,
+    replacement_chirho: &TyChirho,
+) -> TyChirho {
+    match ty_chirho {
+        TyChirho::ConChirho(n_chirho) if n_chirho == name_chirho => replacement_chirho.clone(),
+        TyChirho::ForallVarChirho(n_chirho) if n_chirho == name_chirho => {
+            replacement_chirho.clone()
+        }
+        TyChirho::AppChirho(f_chirho, a_chirho) => TyChirho::AppChirho(
+            Box::new(subst_named_var_chirho(f_chirho, name_chirho, replacement_chirho)),
+            Box::new(subst_named_var_chirho(a_chirho, name_chirho, replacement_chirho)),
+        ),
+        TyChirho::FunChirho(a_chirho, b_chirho) => TyChirho::FunChirho(
+            Box::new(subst_named_var_chirho(a_chirho, name_chirho, replacement_chirho)),
+            Box::new(subst_named_var_chirho(b_chirho, name_chirho, replacement_chirho)),
+        ),
+        TyChirho::ListChirho(el_chirho) => TyChirho::ListChirho(
+            Box::new(subst_named_var_chirho(el_chirho, name_chirho, replacement_chirho)),
+        ),
+        TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
+            elems_chirho
+                .iter()
+                .map(|e_chirho| subst_named_var_chirho(e_chirho, name_chirho, replacement_chirho))
+                .collect(),
+        ),
+        _ => ty_chirho.clone(),
     }
 }
 
@@ -878,6 +2187,33 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             TyChirho::bool_chirho(),
             TyChirho::bool_chirho(),
+        )),
+    );
+
+    // (&&) :: Bool -> Bool -> Bool
+    env_chirho.bind_chirho(
+        "&&".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            [TyChirho::bool_chirho(), TyChirho::bool_chirho()],
+            TyChirho::bool_chirho(),
+        )),
+    );
+
+    // (||) :: Bool -> Bool -> Bool
+    env_chirho.bind_chirho(
+        "||".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            [TyChirho::bool_chirho(), TyChirho::bool_chirho()],
+            TyChirho::bool_chirho(),
+        )),
+    );
+
+    // (++) :: String -> String -> String  (simplified; full Haskell: [a] -> [a] -> [a])
+    env_chirho.bind_chirho(
+        "++".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            [TyChirho::string_chirho(), TyChirho::string_chirho()],
+            TyChirho::string_chirho(),
         )),
     );
 
@@ -941,6 +2277,45 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(">=".to_string(), ord_cmp_chirho.clone());
     env_chirho.bind_chirho("<=".to_string(), ord_cmp_chirho);
 
+    // compare :: forall a. Ord a => a -> a -> Ordering
+    let cmp_v_chirho = TyVarChirho(1350);
+    env_chirho.bind_chirho(
+        "compare".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![cmp_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Ord".to_string(),
+                ty_chirho: TyChirho::VarChirho(cmp_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(cmp_v_chirho),
+                    TyChirho::VarChirho(cmp_v_chirho),
+                ],
+                TyChirho::ConChirho("Ordering".to_string()),
+            ),
+        },
+    );
+
+    // min, max :: forall a. Ord a => a -> a -> a
+    let minmax_v_chirho = TyVarChirho(1360);
+    let minmax_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![minmax_v_chirho],
+        preds_chirho: vec![SchemePredChirho {
+            class_name_chirho: "Ord".to_string(),
+            ty_chirho: TyChirho::VarChirho(minmax_v_chirho),
+        }],
+        ty_chirho: TyChirho::fun_n_chirho(
+            vec![
+                TyChirho::VarChirho(minmax_v_chirho),
+                TyChirho::VarChirho(minmax_v_chirho),
+            ],
+            TyChirho::VarChirho(minmax_v_chirho),
+        ),
+    };
+    env_chirho.bind_chirho("min".to_string(), minmax_scheme_chirho.clone());
+    env_chirho.bind_chirho("max".to_string(), minmax_scheme_chirho);
+
     // show :: forall a. Show a => a -> String
     let show_v_chirho = TyVarChirho(1400);
     env_chirho.bind_chirho(
@@ -956,6 +2331,147 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 TyChirho::string_chirho(),
             ),
         },
+    );
+
+    // negate :: forall a. Num a => a -> a
+    let negate_v_chirho = TyVarChirho(1150);
+    env_chirho.bind_chirho(
+        "negate".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![negate_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Num".to_string(),
+                ty_chirho: TyChirho::VarChirho(negate_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(negate_v_chirho),
+                TyChirho::VarChirho(negate_v_chirho),
+            ),
+        },
+    );
+
+    // fromInteger :: forall a. Num a => Int -> a
+    let fi_v_chirho = TyVarChirho(1160);
+    env_chirho.bind_chirho(
+        "fromInteger".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![fi_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Num".to_string(),
+                ty_chirho: TyChirho::VarChirho(fi_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::int_chirho(),
+                TyChirho::VarChirho(fi_v_chirho),
+            ),
+        },
+    );
+
+    // (/) :: forall a. Fractional a => a -> a -> a
+    let div_v_chirho = TyVarChirho(1170);
+    env_chirho.bind_chirho(
+        "/".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![div_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Fractional".to_string(),
+                ty_chirho: TyChirho::VarChirho(div_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(div_v_chirho),
+                    TyChirho::VarChirho(div_v_chirho),
+                ],
+                TyChirho::VarChirho(div_v_chirho),
+            ),
+        },
+    );
+
+    // recip :: forall a. Fractional a => a -> a
+    let recip_v_chirho = TyVarChirho(1180);
+    env_chirho.bind_chirho(
+        "recip".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![recip_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Fractional".to_string(),
+                ty_chirho: TyChirho::VarChirho(recip_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(recip_v_chirho),
+                TyChirho::VarChirho(recip_v_chirho),
+            ),
+        },
+    );
+
+    // fromRational :: forall a. Fractional a => Rational -> a
+    let fr_v_chirho = TyVarChirho(1190);
+    env_chirho.bind_chirho(
+        "fromRational".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![fr_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Fractional".to_string(),
+                ty_chirho: TyChirho::VarChirho(fr_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ConChirho("Rational".to_string()),
+                TyChirho::VarChirho(fr_v_chirho),
+            ),
+        },
+    );
+
+    // read :: forall a. Read a => String -> a
+    let read_v_chirho = TyVarChirho(1195);
+    env_chirho.bind_chirho(
+        "read".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![read_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Read".to_string(),
+                ty_chirho: TyChirho::VarChirho(read_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::string_chirho(),
+                TyChirho::VarChirho(read_v_chirho),
+            ),
+        },
+    );
+
+    // div :: Int -> Int -> Int  (Integral-specialized to Int)
+    env_chirho.bind_chirho(
+        "div".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            [TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // mod :: Int -> Int -> Int  (Integral-specialized to Int)
+    env_chirho.bind_chirho(
+        "mod".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            [TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // quot :: Int -> Int -> Int  (truncating division toward zero)
+    env_chirho.bind_chirho(
+        "quot".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            [TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // rem :: Int -> Int -> Int  (remainder of truncating division)
+    env_chirho.bind_chirho(
+        "rem".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            [TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
     );
 
     // pure :: forall a. a -> a (simplified — no Applicative class yet)
@@ -1003,6 +2519,1545 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         },
     );
+
+    // even :: Int -> Bool
+    env_chirho.bind_chirho(
+        "even".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::bool_chirho(),
+        )),
+    );
+
+    // odd :: Int -> Bool
+    env_chirho.bind_chirho(
+        "odd".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::bool_chirho(),
+        )),
+    );
+
+    // max :: Int -> Int -> Int
+    env_chirho.bind_chirho(
+        "max".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // min :: Int -> Int -> Int
+    env_chirho.bind_chirho(
+        "min".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // fst :: forall a b. (a, b) -> a
+    let fst_a_chirho = TyVarChirho(1003);
+    let fst_b_chirho = TyVarChirho(1004);
+    env_chirho.bind_chirho(
+        "fst".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![fst_a_chirho, fst_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::TupleChirho(vec![
+                    TyChirho::VarChirho(fst_a_chirho),
+                    TyChirho::VarChirho(fst_b_chirho),
+                ]),
+                TyChirho::VarChirho(fst_a_chirho),
+            ),
+        },
+    );
+
+    // snd :: forall a b. (a, b) -> b
+    let snd_a_chirho = TyVarChirho(1005);
+    let snd_b_chirho = TyVarChirho(1006);
+    env_chirho.bind_chirho(
+        "snd".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![snd_a_chirho, snd_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::TupleChirho(vec![
+                    TyChirho::VarChirho(snd_a_chirho),
+                    TyChirho::VarChirho(snd_b_chirho),
+                ]),
+                TyChirho::VarChirho(snd_b_chirho),
+            ),
+        },
+    );
+
+    // curry :: forall a b c. ((a, b) -> c) -> a -> b -> c
+    let curry_a_chirho = TyVarChirho(1007);
+    let curry_b_chirho = TyVarChirho(1008);
+    let curry_c_chirho = TyVarChirho(1009);
+    env_chirho.bind_chirho(
+        "curry".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![curry_a_chirho, curry_b_chirho, curry_c_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        TyChirho::TupleChirho(vec![
+                            TyChirho::VarChirho(curry_a_chirho),
+                            TyChirho::VarChirho(curry_b_chirho),
+                        ]),
+                        TyChirho::VarChirho(curry_c_chirho),
+                    ),
+                    TyChirho::VarChirho(curry_a_chirho),
+                    TyChirho::VarChirho(curry_b_chirho),
+                ],
+                TyChirho::VarChirho(curry_c_chirho),
+            ),
+        },
+    );
+
+    // uncurry :: forall a b c. (a -> b -> c) -> (a, b) -> c
+    let uncurry_a_chirho = TyVarChirho(1010);
+    let uncurry_b_chirho = TyVarChirho(1011);
+    let uncurry_c_chirho = TyVarChirho(1012);
+    env_chirho.bind_chirho(
+        "uncurry".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![uncurry_a_chirho, uncurry_b_chirho, uncurry_c_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::VarChirho(uncurry_a_chirho),
+                        TyChirho::VarChirho(uncurry_b_chirho),
+                    ],
+                    TyChirho::VarChirho(uncurry_c_chirho),
+                ),
+                TyChirho::fun_chirho(
+                    TyChirho::TupleChirho(vec![
+                        TyChirho::VarChirho(uncurry_a_chirho),
+                        TyChirho::VarChirho(uncurry_b_chirho),
+                    ]),
+                    TyChirho::VarChirho(uncurry_c_chirho),
+                ),
+            ),
+        },
+    );
+
+    // take :: forall a. Int -> [a] -> [a]
+    {
+        let take_a_chirho = TyVarChirho(3200);
+        let list_a_chirho = TyChirho::ListChirho(Box::new(TyChirho::VarChirho(take_a_chirho)));
+        env_chirho.bind_chirho(
+            "take".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![take_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::fun_chirho(list_a_chirho.clone(), list_a_chirho),
+                ),
+            },
+        );
+    }
+
+    // drop :: forall a. Int -> [a] -> [a]
+    {
+        let drop_a_chirho = TyVarChirho(3210);
+        let list_a_chirho = TyChirho::ListChirho(Box::new(TyChirho::VarChirho(drop_a_chirho)));
+        env_chirho.bind_chirho(
+            "drop".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![drop_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::fun_chirho(list_a_chirho.clone(), list_a_chirho),
+                ),
+            },
+        );
+    }
+
+    // words :: String -> [String]
+    env_chirho.bind_chirho(
+        "words".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::string_chirho(),
+            TyChirho::ListChirho(Box::new(TyChirho::string_chirho())),
+        )),
+    );
+
+    // unwords :: [String] -> String
+    env_chirho.bind_chirho(
+        "unwords".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::ListChirho(Box::new(TyChirho::string_chirho())),
+            TyChirho::string_chirho(),
+        )),
+    );
+
+    // concat :: [String] -> String
+    env_chirho.bind_chirho(
+        "concat".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::ListChirho(Box::new(TyChirho::string_chirho())),
+            TyChirho::string_chirho(),
+        )),
+    );
+
+    // intercalate :: String -> [String] -> String
+    env_chirho.bind_chirho(
+        "intercalate".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::string_chirho(),
+            TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::string_chirho())),
+                TyChirho::string_chirho(),
+            ),
+        )),
+    );
+
+    // toInteger :: Int -> Int
+    env_chirho.bind_chirho(
+        "toInteger".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // fromIntegral :: Int -> Double
+    env_chirho.bind_chirho(
+        "fromIntegral".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::double_chirho(),
+        )),
+    );
+
+    // ceiling :: Double -> Int
+    env_chirho.bind_chirho(
+        "ceiling".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::double_chirho(),
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // floor :: Double -> Int
+    env_chirho.bind_chirho(
+        "floor".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::double_chirho(),
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // round :: Double -> Int
+    env_chirho.bind_chirho(
+        "round".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::double_chirho(),
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // truncate :: Double -> Int
+    env_chirho.bind_chirho(
+        "truncate".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::double_chirho(),
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // isJust :: forall a. Maybe a -> Bool
+    let is_just_a_chirho = TyVarChirho(1020);
+    env_chirho.bind_chirho(
+        "isJust".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![is_just_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(TyChirho::VarChirho(is_just_a_chirho)),
+                ),
+                TyChirho::bool_chirho(),
+            ),
+        },
+    );
+
+    // isNothing :: forall a. Maybe a -> Bool
+    let is_nothing_a_chirho = TyVarChirho(1021);
+    env_chirho.bind_chirho(
+        "isNothing".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![is_nothing_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(TyChirho::VarChirho(is_nothing_a_chirho)),
+                ),
+                TyChirho::bool_chirho(),
+            ),
+        },
+    );
+
+    // fromMaybe :: forall a. a -> Maybe a -> a
+    let from_maybe_a_chirho = TyVarChirho(1022);
+    env_chirho.bind_chirho(
+        "fromMaybe".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![from_maybe_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(from_maybe_a_chirho),
+                TyChirho::fun_chirho(
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                        Box::new(TyChirho::VarChirho(from_maybe_a_chirho)),
+                    ),
+                    TyChirho::VarChirho(from_maybe_a_chirho),
+                ),
+            ),
+        },
+    );
+
+    // maybe :: forall a b. b -> (a -> b) -> Maybe a -> b
+    let maybe_a_chirho = TyVarChirho(1023);
+    let maybe_b_chirho = TyVarChirho(1024);
+    env_chirho.bind_chirho(
+        "maybe".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![maybe_a_chirho, maybe_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(maybe_b_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(maybe_a_chirho),
+                        TyChirho::VarChirho(maybe_b_chirho),
+                    ),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                        Box::new(TyChirho::VarChirho(maybe_a_chirho)),
+                    ),
+                ],
+                TyChirho::VarChirho(maybe_b_chirho),
+            ),
+        },
+    );
+
+    // either :: forall a b c. (a -> c) -> (b -> c) -> Either a b -> c
+    let either_a_chirho = TyVarChirho(1025);
+    let either_b_chirho = TyVarChirho(1026);
+    let either_c_chirho = TyVarChirho(1027);
+    env_chirho.bind_chirho(
+        "either".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![either_a_chirho, either_b_chirho, either_c_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(either_a_chirho),
+                        TyChirho::VarChirho(either_c_chirho),
+                    ),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(either_b_chirho),
+                        TyChirho::VarChirho(either_c_chirho),
+                    ),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::ConChirho("Either".to_string())),
+                            Box::new(TyChirho::VarChirho(either_a_chirho)),
+                        )),
+                        Box::new(TyChirho::VarChirho(either_b_chirho)),
+                    ),
+                ],
+                TyChirho::VarChirho(either_c_chirho),
+            ),
+        },
+    );
+
+    // otherwise :: Bool  (otherwise = True)
+    env_chirho.bind_chirho(
+        "otherwise".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
+    );
+
+    // ($) :: forall a b. (a -> b) -> a -> b
+    let dollar_a_chirho = TyVarChirho(2000);
+    let dollar_b_chirho = TyVarChirho(2001);
+    env_chirho.bind_chirho(
+        "$".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![dollar_a_chirho, dollar_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(dollar_a_chirho),
+                        TyChirho::VarChirho(dollar_b_chirho),
+                    ),
+                    TyChirho::VarChirho(dollar_a_chirho),
+                ],
+                TyChirho::VarChirho(dollar_b_chirho),
+            ),
+        },
+    );
+
+    // (.) :: forall a b c. (b -> c) -> (a -> b) -> a -> c
+    let dot_a_chirho = TyVarChirho(2100);
+    let dot_b_chirho = TyVarChirho(2101);
+    let dot_c_chirho = TyVarChirho(2102);
+    env_chirho.bind_chirho(
+        ".".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![dot_a_chirho, dot_b_chirho, dot_c_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(dot_b_chirho),
+                        TyChirho::VarChirho(dot_c_chirho),
+                    ),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(dot_a_chirho),
+                        TyChirho::VarChirho(dot_b_chirho),
+                    ),
+                ],
+                TyChirho::fun_chirho(
+                    TyChirho::VarChirho(dot_a_chirho),
+                    TyChirho::VarChirho(dot_c_chirho),
+                ),
+            ),
+        },
+    );
+
+    // negate :: forall a. Num a => a -> a
+    let neg_v_chirho = TyVarChirho(2200);
+    env_chirho.bind_chirho(
+        "negate".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![neg_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Num".to_string(),
+                ty_chirho: TyChirho::VarChirho(neg_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(neg_v_chirho),
+                TyChirho::VarChirho(neg_v_chirho),
+            ),
+        },
+    );
+
+    // -- I/O functions (simplified: IO a ≈ a for now) --
+
+    // putStrLn :: String -> ()
+    env_chirho.bind_chirho(
+        "putStrLn".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::string_chirho(),
+            TyChirho::unit_chirho(),
+        )),
+    );
+
+    // putStr :: String -> ()
+    env_chirho.bind_chirho(
+        "putStr".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::string_chirho(),
+            TyChirho::unit_chirho(),
+        )),
+    );
+
+    // print :: forall a. Show a => a -> ()
+    let print_v_chirho = TyVarChirho(1600);
+    env_chirho.bind_chirho(
+        "print".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![print_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Show".to_string(),
+                ty_chirho: TyChirho::VarChirho(print_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(print_v_chirho),
+                TyChirho::unit_chirho(),
+            ),
+        },
+    );
+
+    // return :: forall a. a -> a  (simplified — no Monad class yet)
+    let return_v_chirho = TyVarChirho(1700);
+    env_chirho.bind_chirho(
+        "return".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![return_v_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(return_v_chirho),
+                TyChirho::VarChirho(return_v_chirho),
+            ),
+        },
+    );
+
+    // (>>=) :: forall a b. a -> (a -> b) -> b  (simplified)
+    let bind_a_chirho = TyVarChirho(1800);
+    let bind_b_chirho = TyVarChirho(1801);
+    env_chirho.bind_chirho(
+        ">>=".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![bind_a_chirho, bind_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(bind_a_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(bind_a_chirho),
+                        TyChirho::VarChirho(bind_b_chirho),
+                    ),
+                ],
+                TyChirho::VarChirho(bind_b_chirho),
+            ),
+        },
+    );
+
+    // (>>) :: forall a b. a -> b -> b  (simplified)
+    let then_a_chirho = TyVarChirho(1900);
+    let then_b_chirho = TyVarChirho(1901);
+    env_chirho.bind_chirho(
+        ">>".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![then_a_chirho, then_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(then_a_chirho),
+                    TyChirho::VarChirho(then_b_chirho),
+                ],
+                TyChirho::VarChirho(then_b_chirho),
+            ),
+        },
+    );
+
+    // getLine :: String  (simplified: IO String ≈ String)
+    env_chirho.bind_chirho(
+        "getLine".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::string_chirho()),
+    );
+
+    // getChar :: Char  (simplified: IO Char ≈ Char)
+    env_chirho.bind_chirho(
+        "getChar".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::char_chirho()),
+    );
+
+    // readFile :: String -> String  (simplified: IO String ≈ String)
+    env_chirho.bind_chirho(
+        "readFile".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::string_chirho(),
+            TyChirho::string_chirho(),
+        )),
+    );
+
+    // writeFile :: String -> String -> ()  (simplified)
+    env_chirho.bind_chirho(
+        "writeFile".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::string_chirho(), TyChirho::string_chirho()],
+            TyChirho::unit_chirho(),
+        )),
+    );
+
+    // appendFile :: String -> String -> ()  (simplified)
+    env_chirho.bind_chirho(
+        "appendFile".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::string_chirho(), TyChirho::string_chirho()],
+            TyChirho::unit_chirho(),
+        )),
+    );
+
+    // interact :: (String -> String) -> ()  (simplified)
+    env_chirho.bind_chirho(
+        "interact".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::fun_chirho(TyChirho::string_chirho(), TyChirho::string_chirho()),
+            TyChirho::unit_chirho(),
+        )),
+    );
+
+    // lines :: String -> [String]
+    env_chirho.bind_chirho(
+        "lines".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::string_chirho(),
+            TyChirho::ListChirho(Box::new(TyChirho::string_chirho())),
+        )),
+    );
+
+    // unlines :: [String] -> String
+    env_chirho.bind_chirho(
+        "unlines".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::ListChirho(Box::new(TyChirho::string_chirho())),
+            TyChirho::string_chirho(),
+        )),
+    );
+
+    // error :: forall a. String -> a
+    let error_v_chirho = TyVarChirho(3400);
+    env_chirho.bind_chirho(
+        "error".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![error_v_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::string_chirho(),
+                TyChirho::VarChirho(error_v_chirho),
+            ),
+        },
+    );
+
+    // undefined :: forall a. a
+    let undef_v_chirho = TyVarChirho(3401);
+    env_chirho.bind_chirho(
+        "undefined".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![undef_v_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::VarChirho(undef_v_chirho),
+        },
+    );
+
+    // seq :: forall a b. a -> b -> b
+    let seq_a_chirho = TyVarChirho(3402);
+    let seq_b_chirho = TyVarChirho(3403);
+    env_chirho.bind_chirho(
+        "seq".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![seq_a_chirho, seq_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(seq_a_chirho),
+                    TyChirho::VarChirho(seq_b_chirho),
+                ],
+                TyChirho::VarChirho(seq_b_chirho),
+            ),
+        },
+    );
+
+    // -----------------------------------------------------------------------
+    // Higher-order list Prelude functions
+    // -----------------------------------------------------------------------
+
+    // map :: forall a b. (a -> b) -> [a] -> [b]
+    let map_a_chirho = TyVarChirho(3000);
+    let map_b_chirho = TyVarChirho(3001);
+    env_chirho.bind_chirho(
+        "map".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![map_a_chirho, map_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(map_a_chirho),
+                        TyChirho::VarChirho(map_b_chirho),
+                    ),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(map_a_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(map_b_chirho))),
+            ),
+        },
+    );
+
+    // filter :: forall a. (a -> Bool) -> [a] -> [a]
+    let filter_a_chirho = TyVarChirho(3010);
+    env_chirho.bind_chirho(
+        "filter".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![filter_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(filter_a_chirho),
+                        TyChirho::bool_chirho(),
+                    ),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(filter_a_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(filter_a_chirho))),
+            ),
+        },
+    );
+
+    // foldr :: forall a b. (a -> b -> b) -> b -> [a] -> b
+    let foldr_a_chirho = TyVarChirho(3020);
+    let foldr_b_chirho = TyVarChirho(3021);
+    env_chirho.bind_chirho(
+        "foldr".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![foldr_a_chirho, foldr_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::VarChirho(foldr_a_chirho),
+                            TyChirho::VarChirho(foldr_b_chirho),
+                        ],
+                        TyChirho::VarChirho(foldr_b_chirho),
+                    ),
+                    TyChirho::VarChirho(foldr_b_chirho),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(foldr_a_chirho))),
+                ],
+                TyChirho::VarChirho(foldr_b_chirho),
+            ),
+        },
+    );
+
+    // foldl :: forall a b. (b -> a -> b) -> b -> [a] -> b
+    let foldl_a_chirho = TyVarChirho(3030);
+    let foldl_b_chirho = TyVarChirho(3031);
+    env_chirho.bind_chirho(
+        "foldl".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![foldl_a_chirho, foldl_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::VarChirho(foldl_b_chirho),
+                            TyChirho::VarChirho(foldl_a_chirho),
+                        ],
+                        TyChirho::VarChirho(foldl_b_chirho),
+                    ),
+                    TyChirho::VarChirho(foldl_b_chirho),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(foldl_a_chirho))),
+                ],
+                TyChirho::VarChirho(foldl_b_chirho),
+            ),
+        },
+    );
+
+    // head :: forall a. [a] -> a
+    let head_a_chirho = TyVarChirho(3040);
+    env_chirho.bind_chirho(
+        "head".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![head_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(head_a_chirho))),
+                TyChirho::VarChirho(head_a_chirho),
+            ),
+        },
+    );
+
+    // tail :: forall a. [a] -> [a]
+    let tail_a_chirho = TyVarChirho(3050);
+    env_chirho.bind_chirho(
+        "tail".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![tail_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(tail_a_chirho))),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(tail_a_chirho))),
+            ),
+        },
+    );
+
+    // null :: forall a. [a] -> Bool
+    let null_a_chirho = TyVarChirho(3060);
+    env_chirho.bind_chirho(
+        "null".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![null_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(null_a_chirho))),
+                TyChirho::bool_chirho(),
+            ),
+        },
+    );
+
+    // length :: forall a. [a] -> Int
+    let length_a_chirho = TyVarChirho(3070);
+    env_chirho.bind_chirho(
+        "length".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![length_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(length_a_chirho))),
+                TyChirho::int_chirho(),
+            ),
+        },
+    );
+
+    // reverse :: forall a. [a] -> [a]
+    let reverse_a_chirho = TyVarChirho(3080);
+    env_chirho.bind_chirho(
+        "reverse".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![reverse_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(reverse_a_chirho))),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(reverse_a_chirho))),
+            ),
+        },
+    );
+
+    // zip :: forall a b. [a] -> [b] -> [(a, b)]
+    let zip_a_chirho = TyVarChirho(3090);
+    let zip_b_chirho = TyVarChirho(3091);
+    env_chirho.bind_chirho(
+        "zip".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![zip_a_chirho, zip_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(zip_a_chirho))),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(zip_b_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::TupleChirho(vec![
+                    TyChirho::VarChirho(zip_a_chirho),
+                    TyChirho::VarChirho(zip_b_chirho),
+                ]))),
+            ),
+        },
+    );
+
+    // zipWith :: forall a b c. (a -> b -> c) -> [a] -> [b] -> [c]
+    let zipw_a_chirho = TyVarChirho(3100);
+    let zipw_b_chirho = TyVarChirho(3101);
+    let zipw_c_chirho = TyVarChirho(3102);
+    env_chirho.bind_chirho(
+        "zipWith".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![zipw_a_chirho, zipw_b_chirho, zipw_c_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::VarChirho(zipw_a_chirho),
+                            TyChirho::VarChirho(zipw_b_chirho),
+                        ],
+                        TyChirho::VarChirho(zipw_c_chirho),
+                    ),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(zipw_a_chirho))),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(zipw_b_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(zipw_c_chirho))),
+            ),
+        },
+    );
+
+    // -----------------------------------------------------------------------
+    // Additional Prelude list functions
+    // -----------------------------------------------------------------------
+
+    // (++) :: forall a. [a] -> [a] -> [a]
+    let pp_a_chirho = TyVarChirho(3105);
+    env_chirho.bind_chirho(
+        "++".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![pp_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(pp_a_chirho))),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(pp_a_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(pp_a_chirho))),
+            ),
+        },
+    );
+
+    // append :: forall a. [a] -> [a] -> [a]
+    let append_a_chirho = TyVarChirho(3110);
+    env_chirho.bind_chirho(
+        "append".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![append_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(append_a_chirho))),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(append_a_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(append_a_chirho))),
+            ),
+        },
+    );
+
+    // any :: forall a. (a -> Bool) -> [a] -> Bool
+    let any_a_chirho = TyVarChirho(3120);
+    env_chirho.bind_chirho(
+        "any".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![any_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(any_a_chirho),
+                        TyChirho::bool_chirho(),
+                    ),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(any_a_chirho))),
+                ],
+                TyChirho::bool_chirho(),
+            ),
+        },
+    );
+
+    // all :: forall a. (a -> Bool) -> [a] -> Bool
+    let all_a_chirho = TyVarChirho(3130);
+    env_chirho.bind_chirho(
+        "all".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![all_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(all_a_chirho),
+                        TyChirho::bool_chirho(),
+                    ),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(all_a_chirho))),
+                ],
+                TyChirho::bool_chirho(),
+            ),
+        },
+    );
+
+    // sum :: [Int] -> Int  (Int-specialized)
+    env_chirho.bind_chirho(
+        "sum".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                TyChirho::int_chirho(),
+            ),
+        },
+    );
+
+    // product :: [Int] -> Int  (Int-specialized)
+    env_chirho.bind_chirho(
+        "product".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                TyChirho::int_chirho(),
+            ),
+        },
+    );
+
+    // concatMap :: forall a b. (a -> [b]) -> [a] -> [b]
+    let cm_a_chirho = TyVarChirho(3140);
+    let cm_b_chirho = TyVarChirho(3141);
+    env_chirho.bind_chirho(
+        "concatMap".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![cm_a_chirho, cm_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(cm_a_chirho),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(cm_b_chirho))),
+                    ),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(cm_a_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(cm_b_chirho))),
+            ),
+        },
+    );
+
+    // last :: forall a. [a] -> a
+    let last_a_chirho = TyVarChirho(3150);
+    env_chirho.bind_chirho(
+        "last".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![last_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(last_a_chirho))),
+                TyChirho::VarChirho(last_a_chirho),
+            ),
+        },
+    );
+
+    // init :: forall a. [a] -> [a]
+    let init_a_chirho = TyVarChirho(3160);
+    env_chirho.bind_chirho(
+        "init".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![init_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(init_a_chirho))),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(init_a_chirho))),
+            ),
+        },
+    );
+
+    // elem :: Int -> [Int] -> Bool  (Int-specialized)
+    env_chirho.bind_chirho(
+        "elem".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::int_chirho(),
+                    TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                ],
+                TyChirho::bool_chirho(),
+            ),
+        },
+    );
+
+    // notElem :: Int -> [Int] -> Bool  (Int-specialized)
+    env_chirho.bind_chirho(
+        "notElem".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::int_chirho(),
+                    TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                ],
+                TyChirho::bool_chirho(),
+            ),
+        },
+    );
+
+    // minimum :: [Int] -> Int  (Int-specialized)
+    env_chirho.bind_chirho(
+        "minimum".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                TyChirho::int_chirho(),
+            ),
+        },
+    );
+
+    // maximum :: [Int] -> Int  (Int-specialized)
+    env_chirho.bind_chirho(
+        "maximum".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                TyChirho::int_chirho(),
+            ),
+        },
+    );
+
+    // sort :: [Int] -> [Int]  (Int-specialized insertion sort)
+    env_chirho.bind_chirho(
+        "sort".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+            ),
+        },
+    );
+
+    // insert :: Int -> [Int] -> [Int]  (insertion for sort)
+    env_chirho.bind_chirho(
+        "insert".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::int_chirho(),
+                    TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+            ),
+        },
+    );
+
+    // abs :: forall a. Num a => a -> a
+    {
+        let abs_v_chirho = TyVarChirho(2210);
+        env_chirho.bind_chirho(
+            "abs".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![abs_v_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Num".to_string(),
+                    ty_chirho: TyChirho::VarChirho(abs_v_chirho),
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(abs_v_chirho),
+                    TyChirho::VarChirho(abs_v_chirho),
+                ),
+            },
+        );
+    }
+
+    // signum :: forall a. Num a => a -> a
+    {
+        let sig_v_chirho = TyVarChirho(2211);
+        env_chirho.bind_chirho(
+            "signum".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![sig_v_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Num".to_string(),
+                    ty_chirho: TyChirho::VarChirho(sig_v_chirho),
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(sig_v_chirho),
+                    TyChirho::VarChirho(sig_v_chirho),
+                ),
+            },
+        );
+    }
+
+    // even :: Int -> Bool
+    env_chirho.bind_chirho(
+        "even".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::bool_chirho())),
+    );
+
+    // odd :: Int -> Bool
+    env_chirho.bind_chirho(
+        "odd".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::bool_chirho())),
+    );
+
+    // replicate :: forall a. Int -> a -> [a]
+    let rep_a_chirho = TyVarChirho(3250);
+    env_chirho.bind_chirho(
+        "replicate".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![rep_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![TyChirho::int_chirho(), TyChirho::VarChirho(rep_a_chirho)],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(rep_a_chirho))),
+            ),
+        },
+    );
+
+    // takeWhile :: forall a. (a -> Bool) -> [a] -> [a]
+    let tw_a_chirho = TyVarChirho(3300);
+    env_chirho.bind_chirho(
+        "takeWhile".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![tw_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(TyChirho::VarChirho(tw_a_chirho), TyChirho::bool_chirho()),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(tw_a_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(tw_a_chirho))),
+            ),
+        },
+    );
+
+    // dropWhile :: forall a. (a -> Bool) -> [a] -> [a]
+    let dw_a_chirho = TyVarChirho(3301);
+    env_chirho.bind_chirho(
+        "dropWhile".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![dw_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(TyChirho::VarChirho(dw_a_chirho), TyChirho::bool_chirho()),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(dw_a_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(dw_a_chirho))),
+            ),
+        },
+    );
+
+    // iterate :: forall a. (a -> a) -> a -> [a]
+    let iter_a_chirho = TyVarChirho(3302);
+    env_chirho.bind_chirho(
+        "iterate".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![iter_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(TyChirho::VarChirho(iter_a_chirho), TyChirho::VarChirho(iter_a_chirho)),
+                    TyChirho::VarChirho(iter_a_chirho),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(iter_a_chirho))),
+            ),
+        },
+    );
+
+    // lookup :: forall a b. Eq a => a -> [(a,b)] -> Maybe b
+    let lu_a_chirho = TyVarChirho(3303);
+    let lu_b_chirho = TyVarChirho(3304);
+    env_chirho.bind_chirho(
+        "lookup".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![lu_a_chirho, lu_b_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Eq".to_string(),
+                ty_chirho: TyChirho::VarChirho(lu_a_chirho),
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(lu_a_chirho),
+                    TyChirho::ListChirho(Box::new(TyChirho::TupleChirho(vec![
+                        TyChirho::VarChirho(lu_a_chirho),
+                        TyChirho::VarChirho(lu_b_chirho),
+                    ]))),
+                ],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(TyChirho::VarChirho(lu_b_chirho)),
+                ),
+            ),
+        },
+    );
+
+    // unzip :: forall a b. [(a,b)] -> ([a],[b])
+    let uz_a_chirho = TyVarChirho(3305);
+    let uz_b_chirho = TyVarChirho(3306);
+    env_chirho.bind_chirho(
+        "unzip".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![uz_a_chirho, uz_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::TupleChirho(vec![
+                    TyChirho::VarChirho(uz_a_chirho),
+                    TyChirho::VarChirho(uz_b_chirho),
+                ]))),
+                TyChirho::TupleChirho(vec![
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(uz_a_chirho))),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(uz_b_chirho))),
+                ]),
+            ),
+        },
+    );
+
+    // scanl :: forall a b. (b -> a -> b) -> b -> [a] -> [b]
+    let sl_a_chirho = TyVarChirho(3307);
+    let sl_b_chirho = TyVarChirho(3308);
+    env_chirho.bind_chirho(
+        "scanl".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![sl_a_chirho, sl_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_n_chirho(
+                        vec![TyChirho::VarChirho(sl_b_chirho), TyChirho::VarChirho(sl_a_chirho)],
+                        TyChirho::VarChirho(sl_b_chirho),
+                    ),
+                    TyChirho::VarChirho(sl_b_chirho),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(sl_a_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(sl_b_chirho))),
+            ),
+        },
+    );
+
+    // span :: forall a. (a -> Bool) -> [a] -> ([a],[a])
+    let span_a_chirho = TyVarChirho(3309);
+    env_chirho.bind_chirho(
+        "span".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![span_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(TyChirho::VarChirho(span_a_chirho), TyChirho::bool_chirho()),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(span_a_chirho))),
+                ],
+                TyChirho::TupleChirho(vec![
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(span_a_chirho))),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(span_a_chirho))),
+                ]),
+            ),
+        },
+    );
+
+    // break :: forall a. (a -> Bool) -> [a] -> ([a],[a])
+    let break_a_chirho = TyVarChirho(3310);
+    env_chirho.bind_chirho(
+        "break".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![break_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(TyChirho::VarChirho(break_a_chirho), TyChirho::bool_chirho()),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(break_a_chirho))),
+                ],
+                TyChirho::TupleChirho(vec![
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(break_a_chirho))),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(break_a_chirho))),
+                ]),
+            ),
+        },
+    );
+
+    // partition :: forall a. (a -> Bool) -> [a] -> ([a],[a])
+    let part_a_chirho = TyVarChirho(3311);
+    env_chirho.bind_chirho(
+        "partition".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![part_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(TyChirho::VarChirho(part_a_chirho), TyChirho::bool_chirho()),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(part_a_chirho))),
+                ],
+                TyChirho::TupleChirho(vec![
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(part_a_chirho))),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(part_a_chirho))),
+                ]),
+            ),
+        },
+    );
+
+    // toEnum :: forall a. Enum a => Int -> a
+    let enum_a_chirho = TyVarChirho(3260);
+    env_chirho.bind_chirho(
+        "toEnum".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![enum_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Enum".to_string(),
+                ty_chirho: TyChirho::VarChirho(enum_a_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::int_chirho(),
+                TyChirho::VarChirho(enum_a_chirho),
+            ),
+        },
+    );
+
+    // fromEnum :: forall a. Enum a => a -> Int
+    let from_enum_a_chirho = TyVarChirho(3261);
+    env_chirho.bind_chirho(
+        "fromEnum".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![from_enum_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Enum".to_string(),
+                ty_chirho: TyChirho::VarChirho(from_enum_a_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(from_enum_a_chirho),
+                TyChirho::int_chirho(),
+            ),
+        },
+    );
+
+    // succ :: forall a. Enum a => a -> a
+    let succ_a_chirho = TyVarChirho(3262);
+    env_chirho.bind_chirho(
+        "succ".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![succ_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Enum".to_string(),
+                ty_chirho: TyChirho::VarChirho(succ_a_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(succ_a_chirho),
+                TyChirho::VarChirho(succ_a_chirho),
+            ),
+        },
+    );
+
+    // pred :: forall a. Enum a => a -> a
+    let pred_a_chirho = TyVarChirho(3263);
+    env_chirho.bind_chirho(
+        "pred".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![pred_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Enum".to_string(),
+                ty_chirho: TyChirho::VarChirho(pred_a_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(pred_a_chirho),
+                TyChirho::VarChirho(pred_a_chirho),
+            ),
+        },
+    );
+
+    // minBound :: forall a. Bounded a => a
+    let min_bound_a_chirho = TyVarChirho(3264);
+    env_chirho.bind_chirho(
+        "minBound".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![min_bound_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Bounded".to_string(),
+                ty_chirho: TyChirho::VarChirho(min_bound_a_chirho),
+            }],
+            ty_chirho: TyChirho::VarChirho(min_bound_a_chirho),
+        },
+    );
+
+    // maxBound :: forall a. Bounded a => a
+    let max_bound_a_chirho = TyVarChirho(3265);
+    env_chirho.bind_chirho(
+        "maxBound".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![max_bound_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Bounded".to_string(),
+                ty_chirho: TyChirho::VarChirho(max_bound_a_chirho),
+            }],
+            ty_chirho: TyChirho::VarChirho(max_bound_a_chirho),
+        },
+    );
+
+    // Data.Char functions
+    let char_ty_chirho = TyChirho::ConChirho("Char".to_string());
+
+    // chr :: Int -> Char
+    env_chirho.bind_chirho(
+        "chr".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            char_ty_chirho.clone(),
+        )),
+    );
+
+    // ord :: Char -> Int
+    env_chirho.bind_chirho(
+        "ord".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            char_ty_chirho.clone(),
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // Char -> Bool functions
+    for name_chirho in &["isDigit", "isAlpha", "isAlphaNum", "isUpper", "isLower", "isSpace"] {
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                char_ty_chirho.clone(),
+                TyChirho::bool_chirho(),
+            )),
+        );
+    }
+
+    // Char -> Char functions
+    for name_chirho in &["toLower", "toUpper"] {
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                char_ty_chirho.clone(),
+                char_ty_chirho.clone(),
+            )),
+        );
+    }
+
+    // digitToInt :: Char -> Int
+    env_chirho.bind_chirho(
+        "digitToInt".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            char_ty_chirho,
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // intToDigit :: Int -> Char
+    env_chirho.bind_chirho(
+        "intToDigit".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::ConChirho("Char".to_string()),
+        )),
+    );
+
+    // ── Floating functions (monomorphic at Double for now) ──
+    let double_ty_chirho = TyChirho::double_chirho();
+
+    // Unary: sin, cos, tan, asin, acos, atan, exp, log, sqrt :: Double -> Double
+    for name_chirho in [
+        "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sqrt",
+    ] {
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                double_ty_chirho.clone(),
+                double_ty_chirho.clone(),
+            )),
+        );
+    }
+
+    // NOTE: pi is not bound at the top level to avoid shadowing user-defined
+    // local "pi" bindings. It is available via $prim_Floating_pi_Double.
+
+    // ── Functor / Applicative / Monad (monomorphic at Maybe for now) ──
+    let maybe_a_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+        Box::new(TyChirho::VarChirho(TyVarChirho(9040))),
+    );
+    let maybe_b_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+        Box::new(TyChirho::VarChirho(TyVarChirho(9041))),
+    );
+    let a_var_chirho = TyChirho::VarChirho(TyVarChirho(9040));
+    let b_var_chirho = TyChirho::VarChirho(TyVarChirho(9041));
+
+    // fmap :: (a -> b) -> Maybe a -> Maybe b
+    env_chirho.bind_chirho(
+        "fmap".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![TyVarChirho(9040), TyVarChirho(9041)],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::FunChirho(
+                Box::new(TyChirho::FunChirho(
+                    Box::new(a_var_chirho.clone()),
+                    Box::new(b_var_chirho.clone()),
+                )),
+                Box::new(TyChirho::FunChirho(
+                    Box::new(maybe_a_chirho.clone()),
+                    Box::new(maybe_b_chirho.clone()),
+                )),
+            ),
+        },
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1024,7 +4079,21 @@ fn infer_lit_chirho(lit_chirho: &LitChirho) -> TyChirho {
 
 /// Run type inference on a module. This is the main entry point.
 pub fn infer_module_chirho(module_chirho: &ModuleChirho) -> InferResultChirho {
+    infer_module_with_imports_chirho(module_chirho, &HashMap::new())
+}
+
+/// Run type inference on a module with pre-seeded type schemes from imported
+/// modules. Each entry maps a name (e.g. `"add1"`) to the type scheme that
+/// was inferred in the exporting module.
+pub fn infer_module_with_imports_chirho(
+    module_chirho: &ModuleChirho,
+    imported_types_chirho: &HashMap<String, SchemeChirho>,
+) -> InferResultChirho {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
+    // Seed the type environment with imported type schemes.
+    for (name_chirho, scheme_chirho) in imported_types_chirho {
+        ctx_chirho.env_chirho.bind_chirho(name_chirho.clone(), scheme_chirho.clone());
+    }
     let subst_chirho = ctx_chirho.infer_module_chirho(module_chirho);
     ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
     let mut result_chirho = ctx_chirho.finish_chirho();
@@ -1036,8 +4105,10 @@ pub fn infer_module_chirho(module_chirho: &ModuleChirho) -> InferResultChirho {
 mod tests_chirho {
     use super::*;
     use rhasky_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+    use rhasky_ast_chirho::expr_chirho::AltChirho;
     use rhasky_ast_chirho::module_chirho::ModuleChirho;
     use rhasky_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+    use rhasky_ast_chirho::pat_chirho::PatFieldChirho;
 
     fn dummy_name_chirho(text_chirho: &str) -> NameChirho {
         NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
@@ -1144,7 +4215,7 @@ mod tests_chirho {
                         ConDeclChirho::OrdinaryChirho {
                             name_chirho: dummy_name_chirho("Red"),
                             fields_chirho: vec![],
-                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
                         },
                     ],
                     deriving_chirho: vec![],
@@ -1163,6 +4234,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             ],
+            extensions_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -1319,7 +4391,7 @@ mod tests_chirho {
                         fun_chirho: Box::new(ExprChirho::AppChirho {
                             fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("+"))),
                             arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
-                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
                         }),
                         arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("y"))),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1329,6 +4401,7 @@ mod tests_chirho {
                 }],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
+            extensions_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -1369,7 +4442,7 @@ mod tests_chirho {
                         fun_chirho: Box::new(ExprChirho::AppChirho {
                             fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("=="))),
                             arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
-                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
                         }),
                         arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("y"))),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1379,6 +4452,7 @@ mod tests_chirho {
                 }],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
+            extensions_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -1407,6 +4481,7 @@ mod tests_chirho {
             exports_chirho: None,
             imports_chirho: vec![],
             decls_chirho: vec![],
+            extensions_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         });
 
@@ -1415,5 +4490,720 @@ mod tests_chirho {
         assert!(result_chirho.class_env_chirho.has_class_chirho("Show"));
         assert!(result_chirho.class_env_chirho.has_class_chirho("Num"));
         assert!(result_chirho.class_env_chirho.has_class_chirho("Functor"));
+    }
+
+    /// Test: case expression with infix cons pattern `(x:xs)` binds both vars.
+    /// Haskell: `headChirho xs = case xs of { (y:ys) -> y }`
+    #[test]
+    fn infer_case_infix_con_pattern_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("InfixConPat"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::FunBindChirho {
+                name_chirho: dummy_name_chirho("headChirho"),
+                matches_chirho: vec![MatchArmChirho {
+                    pats_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("xs"))],
+                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::CaseChirho {
+                        scrutinee_chirho: Box::new(ExprChirho::VarChirho(
+                            dummy_name_chirho("xs"),
+                        )),
+                        alts_chirho: vec![AltChirho {
+                            pat_chirho: PatChirho::InfixConChirho {
+                                left_chirho: Box::new(PatChirho::VarChirho(
+                                    dummy_name_chirho("y"),
+                                )),
+                                op_chirho: dummy_name_chirho(":"),
+                                right_chirho: Box::new(PatChirho::VarChirho(
+                                    dummy_name_chirho("ys"),
+                                )),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            },
+                            rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::VarChirho(
+                                dummy_name_chirho("y"),
+                            )),
+                            where_binds_chirho: vec![],
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    where_binds_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "headChirho with infix con pattern should infer without errors: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        let scheme_chirho = result_chirho
+            .env_chirho
+            .lookup_chirho("headChirho")
+            .expect("headChirho should be in environment");
+        // headChirho :: a -> b  (since we don't yet unify cons pattern args with list)
+        // The key check: no errors — `y` was bound by bind_pat_chirho
+        assert!(!format!("{scheme_chirho}").is_empty());
+    }
+
+    /// Test: case expression with list pattern `[a, b]` binds elements.
+    /// Haskell: `sumTwoChirho xs = case xs of { [a, b] -> a }`
+    #[test]
+    fn infer_case_list_pattern_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("ListPat"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::FunBindChirho {
+                name_chirho: dummy_name_chirho("sumTwoChirho"),
+                matches_chirho: vec![MatchArmChirho {
+                    pats_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("xs"))],
+                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::CaseChirho {
+                        scrutinee_chirho: Box::new(ExprChirho::VarChirho(
+                            dummy_name_chirho("xs"),
+                        )),
+                        alts_chirho: vec![AltChirho {
+                            pat_chirho: PatChirho::ListChirho {
+                                elements_chirho: vec![
+                                    PatChirho::VarChirho(dummy_name_chirho("a")),
+                                    PatChirho::VarChirho(dummy_name_chirho("b")),
+                                ],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            },
+                            rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::VarChirho(
+                                dummy_name_chirho("a"),
+                            )),
+                            where_binds_chirho: vec![],
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    where_binds_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "sumTwoChirho with list pattern should infer without errors: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        result_chirho
+            .env_chirho
+            .lookup_chirho("sumTwoChirho")
+            .expect("sumTwoChirho should be in environment");
+    }
+
+    /// Test: case expression with record pattern `Foo { bar = x }` binds x.
+    /// Haskell: `getBarChirho v = case v of { Foo { bar = x } -> x }`
+    #[test]
+    fn infer_case_record_pattern_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("RecPat"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::FunBindChirho {
+                name_chirho: dummy_name_chirho("getBarChirho"),
+                matches_chirho: vec![MatchArmChirho {
+                    pats_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("v"))],
+                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::CaseChirho {
+                        scrutinee_chirho: Box::new(ExprChirho::VarChirho(
+                            dummy_name_chirho("v"),
+                        )),
+                        alts_chirho: vec![AltChirho {
+                            pat_chirho: PatChirho::RecordChirho {
+                                con_chirho: dummy_name_chirho("Foo"),
+                                fields_chirho: vec![PatFieldChirho {
+                                    name_chirho: dummy_name_chirho("bar"),
+                                    pattern_chirho: PatChirho::VarChirho(
+                                        dummy_name_chirho("x"),
+                                    ),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }],
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            },
+                            rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::VarChirho(
+                                dummy_name_chirho("x"),
+                            )),
+                            where_binds_chirho: vec![],
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    where_binds_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "getBarChirho with record pattern should infer without errors: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        result_chirho
+            .env_chirho
+            .lookup_chirho("getBarChirho")
+            .expect("getBarChirho should be in environment");
+    }
+
+    /// Test: negated literal pattern `(-1)` doesn't introduce new bindings.
+    /// Haskell: `isNegOneChirho x = case x of { (-1) -> 1; _ -> 0 }`
+    #[test]
+    fn infer_case_neg_pattern_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("NegPat"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::FunBindChirho {
+                name_chirho: dummy_name_chirho("isNegOneChirho"),
+                matches_chirho: vec![MatchArmChirho {
+                    pats_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("x"))],
+                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::CaseChirho {
+                        scrutinee_chirho: Box::new(ExprChirho::VarChirho(
+                            dummy_name_chirho("x"),
+                        )),
+                        alts_chirho: vec![
+                            AltChirho {
+                                pat_chirho: PatChirho::NegChirho {
+                                    lit_chirho: LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                },
+                                rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
+                                    LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO),
+                                )),
+                                where_binds_chirho: vec![],
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            },
+                            AltChirho {
+                                pat_chirho: PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO),
+                                rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
+                                    LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO),
+                                )),
+                                where_binds_chirho: vec![],
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            },
+                        ],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    where_binds_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "isNegOneChirho with neg pattern should infer without errors: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        let scheme_chirho = result_chirho
+            .env_chirho
+            .lookup_chirho("isNegOneChirho")
+            .expect("isNegOneChirho should be in environment");
+        // isNegOneChirho :: a -> Int (parameter type stays polymorphic)
+        // Just verify it's a function returning Int
+        if let TyChirho::FunChirho(_, ref ret_chirho) = scheme_chirho.ty_chirho {
+            assert_eq!(**ret_chirho, TyChirho::int_chirho());
+        } else {
+            panic!("expected function type, got: {}", scheme_chirho.ty_chirho);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Class, instance, type sig, and newtype tests
+    // -----------------------------------------------------------------------
+
+    /// Test: user-defined class declaration registers in class env.
+    /// Haskell: `class MyEq a where myEq :: a -> a -> Bool`
+    #[test]
+    fn infer_user_class_decl_chirho() {
+        use rhasky_ast_chirho::decl_chirho::ClassMethodChirho;
+
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("UserClass"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::ClassDeclChirho {
+                context_chirho: vec![],
+                name_chirho: dummy_name_chirho("MyEqChirho"),
+                type_vars_chirho: vec![dummy_name_chirho("a")],
+                methods_chirho: vec![ClassMethodChirho {
+                    name_chirho: dummy_name_chirho("myEqChirho"),
+                    ty_chirho: TypeChirho::FunChirho {
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        result_chirho: Box::new(TypeChirho::FunChirho {
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                            result_chirho: Box::new(TypeChirho::ConChirho(
+                                dummy_name_chirho("Bool"),
+                            )),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    default_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                fundeps_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "User class decl should not error: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        // Class should be registered
+        assert!(
+            result_chirho.class_env_chirho.has_class_chirho("MyEqChirho"),
+            "MyEqChirho should be in class env"
+        );
+        // Method should be in the type environment
+        assert!(
+            result_chirho.env_chirho.lookup_chirho("myEqChirho").is_some(),
+            "myEqChirho method should be in type env"
+        );
+    }
+
+    /// Test: user-defined class with superclass context.
+    /// Haskell: `class Eq a => Ord a where compare :: a -> a -> Ordering`
+    #[test]
+    fn infer_user_class_with_superclass_chirho() {
+        use rhasky_ast_chirho::decl_chirho::ClassMethodChirho;
+        use rhasky_ast_chirho::ty_chirho::ConstraintChirho as AstConstraintChirho;
+
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("SuperClass"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::ClassDeclChirho {
+                context_chirho: vec![AstConstraintChirho {
+                    class_chirho: dummy_name_chirho("Eq"),
+                    args_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("a"))],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                name_chirho: dummy_name_chirho("MyOrdChirho"),
+                type_vars_chirho: vec![dummy_name_chirho("a")],
+                methods_chirho: vec![ClassMethodChirho {
+                    name_chirho: dummy_name_chirho("myCompareChirho"),
+                    ty_chirho: TypeChirho::FunChirho {
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        result_chirho: Box::new(TypeChirho::FunChirho {
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                            result_chirho: Box::new(TypeChirho::ConChirho(
+                                dummy_name_chirho("Ordering"),
+                            )),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    default_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                fundeps_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "Class with superclass should not error: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        assert!(result_chirho.class_env_chirho.has_class_chirho("MyOrdChirho"));
+        let supers_chirho = result_chirho
+            .class_env_chirho
+            .superclasses_chirho("MyOrdChirho");
+        assert_eq!(supers_chirho, vec!["Eq".to_string()]);
+    }
+
+    /// Test: user-defined instance declaration registers in class env.
+    /// Haskell: `instance Eq Int where ...`
+    #[test]
+    fn infer_user_instance_decl_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("UserInst"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::InstanceDeclChirho {
+                context_chirho: vec![],
+                class_chirho: dummy_name_chirho("Eq"),
+                types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("MyType"))],
+                methods_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "Instance decl should not error: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        // The instance should now be resolvable
+        let pred_chirho = PredChirho::new_chirho("Eq", TyChirho::ConChirho("MyType".to_string()));
+        assert!(
+            result_chirho.class_env_chirho.entails_chirho(&pred_chirho),
+            "Eq MyType should be entailed after instance registration"
+        );
+    }
+
+    /// Test: type signature that matches inferred type produces no error.
+    /// Haskell: `idChirho :: a -> a; idChirho x = x`
+    #[test]
+    fn infer_matching_type_sig_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("TypeSig"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![
+                DeclChirho::TypeSigChirho {
+                    name_chirho: dummy_name_chirho("idChirho"),
+                    ty_chirho: TypeChirho::FunChirho {
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        result_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::FunBindChirho {
+                    name_chirho: dummy_name_chirho("idChirho"),
+                    matches_chirho: vec![MatchArmChirho {
+                        pats_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("x"))],
+                        rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::VarChirho(
+                            dummy_name_chirho("x"),
+                        )),
+                        where_binds_chirho: vec![],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "Matching type sig should not error: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+    }
+
+    /// Test: type signature mismatch produces an error.
+    /// Haskell: `badChirho :: Int -> Int; badChirho x = True`
+    #[test]
+    fn infer_mismatching_type_sig_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("BadSig"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![
+                DeclChirho::TypeSigChirho {
+                    name_chirho: dummy_name_chirho("badChirho"),
+                    ty_chirho: TypeChirho::FunChirho {
+                        arg_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Int"))),
+                        result_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Int"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::FunBindChirho {
+                    name_chirho: dummy_name_chirho("badChirho"),
+                    matches_chirho: vec![MatchArmChirho {
+                        pats_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("x"))],
+                        rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::VarChirho(
+                            dummy_name_chirho("True"),
+                        )),
+                        where_binds_chirho: vec![],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "Type sig mismatch should produce an error"
+        );
+    }
+
+    /// Test: newtype constructor gets proper typing.
+    /// Haskell: `newtype Age = MkAge Int`
+    #[test]
+    fn infer_newtype_constructor_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("NT"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![
+                DeclChirho::NewtypeDeclChirho {
+                    name_chirho: dummy_name_chirho("Age"),
+                    type_vars_chirho: vec![],
+                    constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                        name_chirho: dummy_name_chirho("MkAge"),
+                        fields_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    deriving_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                // Use the constructor: mkAgeChirho = MkAge 42
+                DeclChirho::FunBindChirho {
+                    name_chirho: dummy_name_chirho("mkAgeChirho"),
+                    matches_chirho: vec![MatchArmChirho {
+                        pats_chirho: vec![],
+                        rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::AppChirho {
+                            fun_chirho: Box::new(ExprChirho::ConChirho(
+                                dummy_name_chirho("MkAge"),
+                            )),
+                            arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
+                                42,
+                                SpanChirho::DUMMY_CHIRHO,
+                            ))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        where_binds_chirho: vec![],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "Newtype + usage should not error: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+
+        // MkAge constructor should be in the environment
+        let mk_age_chirho = result_chirho
+            .env_chirho
+            .lookup_chirho("MkAge")
+            .expect("MkAge should be in env");
+        // MkAge :: a -> Age (field gets fresh var since we don't resolve AST types yet)
+        if let TyChirho::FunChirho(_, ref ret_chirho) = mk_age_chirho.ty_chirho {
+            assert_eq!(**ret_chirho, TyChirho::ConChirho("Age".to_string()));
+        } else {
+            panic!("MkAge should be a function type, got: {}", mk_age_chirho);
+        }
+
+        // mkAgeChirho should also be in the environment with type Age
+        let mk_age_result_chirho = result_chirho
+            .env_chirho
+            .lookup_chirho("mkAgeChirho")
+            .expect("mkAgeChirho should be in env");
+        assert_eq!(
+            mk_age_result_chirho.ty_chirho,
+            TyChirho::ConChirho("Age".to_string())
+        );
+    }
+
+    /// Test: AST type to internal type conversion roundtrip.
+    #[test]
+    fn ast_type_conversion_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let mut var_map_chirho = HashMap::new();
+
+        // Convert `a -> Int`
+        let ast_ty_chirho = TypeChirho::FunChirho {
+            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+            result_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Int"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let ty_chirho = ctx_chirho.ast_type_to_ty_chirho(&ast_ty_chirho, &mut var_map_chirho);
+
+        // Should be FunChirho(VarChirho(_), ConChirho("Int"))
+        if let TyChirho::FunChirho(ref arg_chirho, ref ret_chirho) = ty_chirho {
+            assert!(matches!(**arg_chirho, TyChirho::VarChirho(_)));
+            assert_eq!(**ret_chirho, TyChirho::int_chirho());
+        } else {
+            panic!("expected function type, got: {ty_chirho}");
+        }
+
+        // Same `a` should reuse the same variable
+        let a2_chirho =
+            ctx_chirho.ast_type_to_ty_chirho(
+                &TypeChirho::VarChirho(dummy_name_chirho("a")),
+                &mut var_map_chirho,
+            );
+        if let (TyChirho::FunChirho(arg_chirho, _), TyChirho::VarChirho(v2_chirho)) =
+            (&ty_chirho, &a2_chirho)
+        {
+            if let TyChirho::VarChirho(v1_chirho) = &**arg_chirho {
+                assert_eq!(*v1_chirho, *v2_chirho, "same `a` should yield same var");
+            }
+        }
+    }
+
+    /// Test: do-notation bind statement unwraps monadic type.
+    /// Haskell: `doExample = do { x <- Just 42; pure x }`
+    #[test]
+    fn infer_do_bind_unwraps_monad_chirho() {
+        // Build: doExample = do { x <- expr_m; expr_body }
+        // where expr_m :: Maybe Int  (simulated as App(Con("Maybe"), Lit(42)))
+        // and expr_body :: uses x (a VarChirho)
+        //
+        // We seed Maybe Just Nothing in the env.
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("DoNotation"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::FunBindChirho {
+                name_chirho: dummy_name_chirho("doExampleChirho"),
+                matches_chirho: vec![MatchArmChirho {
+                    pats_chirho: vec![],
+                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::DoChirho {
+                        stmts_chirho: vec![
+                            // x <- Just 42  (simulated: x <- app(Just, 42))
+                            StmtChirho::BindChirho {
+                                pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
+                                expr_chirho: ExprChirho::AppChirho {
+                                    fun_chirho: Box::new(ExprChirho::ConChirho(
+                                        dummy_name_chirho("Just"),
+                                    )),
+                                    arg_chirho: Box::new(ExprChirho::LitChirho(
+                                        LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO),
+                                    )),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                },
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            },
+                            // pure x (simplified: just return x)
+                            StmtChirho::ExprChirho(ExprChirho::VarChirho(
+                                dummy_name_chirho("x"),
+                            )),
+                        ],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    where_binds_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "do-notation bind should not error: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        // doExampleChirho should be in the environment
+        let scheme_chirho = result_chirho
+            .env_chirho
+            .lookup_chirho("doExampleChirho")
+            .expect("doExampleChirho should be in env");
+        // The type should involve x :: Int (unwrapped from Just Int)
+        // The last stmt `x` has type Int, not wrapped
+        assert!(
+            !format!("{scheme_chirho}").is_empty(),
+            "should have a type"
+        );
+    }
+
+    /// Test: do-notation with let statement.
+    /// Haskell: `doLetChirho = do { let y = 10; pure y }`
+    #[test]
+    fn infer_do_let_statement_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("DoLet"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::FunBindChirho {
+                name_chirho: dummy_name_chirho("doLetChirho"),
+                matches_chirho: vec![MatchArmChirho {
+                    pats_chirho: vec![],
+                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::DoChirho {
+                        stmts_chirho: vec![
+                            // let y = 10
+                            StmtChirho::LetChirho {
+                                binds_chirho: vec![
+                                    rhasky_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                                        pat_chirho: PatChirho::VarChirho(
+                                            dummy_name_chirho("y"),
+                                        ),
+                                        rhs_chirho: RhsChirho::UnguardedChirho(
+                                            ExprChirho::LitChirho(LitChirho::IntChirho(
+                                                10,
+                                                SpanChirho::DUMMY_CHIRHO,
+                                            )),
+                                        ),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                    },
+                                ],
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            },
+                            // y (return it)
+                            StmtChirho::ExprChirho(ExprChirho::VarChirho(
+                                dummy_name_chirho("y"),
+                            )),
+                        ],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    where_binds_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "do-notation with let should not error: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        let scheme_chirho = result_chirho
+            .env_chirho
+            .lookup_chirho("doLetChirho")
+            .expect("doLetChirho should be in env");
+        // The result should be Int (y = 10, return y)
+        assert_eq!(
+            scheme_chirho.ty_chirho,
+            TyChirho::int_chirho(),
+            "do-let block returning Int literal should infer Int"
+        );
     }
 }

@@ -323,6 +323,47 @@ fn emit_expr_chirho(
         } => {
             emit_expr_chirho(buf_chirho, body_chirho, params_chirho);
         }
+
+        CoreExprChirho::PrimOpChirho {
+            name_chirho,
+            args_chirho,
+        } => {
+            if args_chirho.len() == 2 {
+                emit_expr_chirho(buf_chirho, &args_chirho[0], params_chirho);
+                emit_expr_chirho(buf_chirho, &args_chirho[1], params_chirho);
+                let opcode_chirho = match name_chirho.as_str() {
+                    "+#" => 0x7C_u8, // i64.add
+                    "-#" => 0x7D,     // i64.sub
+                    "*#" => 0x7E,     // i64.mul
+                    "div#" => 0x7F,   // i64.div_s
+                    "mod#" => 0x81,   // i64.rem_s
+                    "==#" => 0x51,    // i64.eq
+                    "/=#" => 0x52,    // i64.ne
+                    "<#" => 0x53,     // i64.lt_s
+                    "<=#" => 0x57,    // i64.le_s
+                    ">#" => 0x55,     // i64.gt_s
+                    ">=#" => 0x59,    // i64.ge_s
+                    _ => 0x7C,        // fallback: i64.add
+                };
+                buf_chirho.push(opcode_chirho);
+            } else if args_chirho.len() == 1 && name_chirho == "negate#" {
+                // 0 - x
+                buf_chirho.push(0x42); // i64.const
+                encode_i64_chirho(buf_chirho, 0);
+                emit_expr_chirho(buf_chirho, &args_chirho[0], params_chirho);
+                buf_chirho.push(0x7D); // i64.sub
+            } else {
+                // Fallback: push 0
+                buf_chirho.push(0x42);
+                encode_i64_chirho(buf_chirho, 0);
+            }
+        }
+
+        CoreExprChirho::ConAppChirho { .. } => {
+            // Constructor applications not yet supported in WASM backend
+            buf_chirho.push(0x42); // i64.const
+            encode_i64_chirho(buf_chirho, 0);
+        }
     }
 }
 
@@ -371,6 +412,7 @@ mod tests_chirho {
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
                 is_rec_chirho: false,
             }],
+            names_chirho: std::collections::HashMap::new(),
         };
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -389,6 +431,7 @@ mod tests_chirho {
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
                 is_rec_chirho: false,
             }],
+            names_chirho: std::collections::HashMap::new(),
         };
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -410,6 +453,7 @@ mod tests_chirho {
                 },
                 is_rec_chirho: false,
             }],
+            names_chirho: std::collections::HashMap::new(),
         };
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);

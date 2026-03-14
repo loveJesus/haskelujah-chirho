@@ -78,6 +78,22 @@ impl SubstChirho {
         result_chirho
     }
 
+    /// Merge another substitution into this one. Returns `true` if
+    /// consistent (no conflicting bindings), `false` otherwise.
+    /// On success, `self` contains the union of both substitutions.
+    pub fn merge_chirho(&mut self, other_chirho: &SubstChirho) -> bool {
+        for (var_chirho, ty_chirho) in &other_chirho.map_chirho {
+            if let Some(existing_chirho) = self.map_chirho.get(var_chirho) {
+                if existing_chirho != ty_chirho {
+                    return false;
+                }
+            } else {
+                self.map_chirho.insert(*var_chirho, ty_chirho.clone());
+            }
+        }
+        true
+    }
+
     /// Apply this substitution to a type.
     pub fn apply_ty_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
         match ty_chirho {
@@ -219,5 +235,40 @@ mod tests_chirho {
                 TyChirho::bool_chirho(),
             )
         );
+    }
+
+    #[test]
+    fn merge_consistent_chirho() {
+        let mut s1_chirho =
+            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
+        let s2_chirho =
+            SubstChirho::singleton_chirho(TyVarChirho(1), TyChirho::bool_chirho());
+        assert!(s1_chirho.merge_chirho(&s2_chirho));
+        assert_eq!(
+            s1_chirho.apply_ty_chirho(&TyChirho::VarChirho(TyVarChirho(0))),
+            TyChirho::int_chirho()
+        );
+        assert_eq!(
+            s1_chirho.apply_ty_chirho(&TyChirho::VarChirho(TyVarChirho(1))),
+            TyChirho::bool_chirho()
+        );
+    }
+
+    #[test]
+    fn merge_same_binding_ok_chirho() {
+        let mut s1_chirho =
+            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
+        let s2_chirho =
+            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
+        assert!(s1_chirho.merge_chirho(&s2_chirho));
+    }
+
+    #[test]
+    fn merge_conflicting_fails_chirho() {
+        let mut s1_chirho =
+            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
+        let s2_chirho =
+            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::bool_chirho());
+        assert!(!s1_chirho.merge_chirho(&s2_chirho));
     }
 }

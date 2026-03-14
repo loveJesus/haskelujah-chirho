@@ -62,18 +62,22 @@ impl ScopeChirho {
         self.bindings_chirho
             .get(name_chirho)?
             .iter()
-            .find(|info_chirho| info_chirho.namespace_chirho == namespace_chirho)
+            .rfind(|info_chirho| info_chirho.namespace_chirho == namespace_chirho)
     }
 }
 
 /// A stack of scopes forming the name environment.
 ///
 /// Lookup walks from the innermost scope outward, implementing
-/// Haskell's lexical scoping rules.
+/// Haskell's lexical scoping rules. Also supports qualified name
+/// lookup via module-qualified mappings (e.g. `Data.List.sort`).
 #[derive(Debug, Clone)]
 pub struct NameEnvChirho {
     scopes_chirho: Vec<ScopeChirho>,
     next_def_id_chirho: u32,
+    /// Qualified name lookup: "Module.name" → DefInfoChirho.
+    /// Populated by import resolution for qualified imports.
+    qualified_chirho: HashMap<String, Vec<DefInfoChirho>>,
 }
 
 impl NameEnvChirho {
@@ -81,6 +85,7 @@ impl NameEnvChirho {
         Self {
             scopes_chirho: vec![ScopeChirho::new_chirho()], // top-level scope
             next_def_id_chirho: 0,
+            qualified_chirho: HashMap::new(),
         }
     }
 
@@ -172,6 +177,44 @@ impl NameEnvChirho {
     /// Look up a type-level name.
     pub fn lookup_type_chirho(&self, name_chirho: &str) -> Option<&DefInfoChirho> {
         self.lookup_chirho(name_chirho, NamespaceChirho::TypeChirho)
+    }
+
+    /// Bind a qualified name (e.g. `"Data.List.sort"`) for qualified
+    /// import lookup.
+    pub fn bind_qualified_chirho(
+        &mut self,
+        qualified_name_chirho: String,
+        namespace_chirho: NamespaceChirho,
+        span_chirho: SpanChirho,
+    ) -> DefIdChirho {
+        let def_id_chirho = self.fresh_def_id_chirho();
+        let info_chirho = DefInfoChirho {
+            def_id_chirho,
+            namespace_chirho,
+            span_chirho,
+            imported_chirho: true,
+        };
+        self.qualified_chirho
+            .entry(qualified_name_chirho)
+            .or_default()
+            .push(info_chirho);
+        def_id_chirho
+    }
+
+    /// Look up a qualified name (e.g. `"Data.List"` + `"sort"`) in the
+    /// qualified namespace.
+    pub fn lookup_qualified_chirho(
+        &self,
+        qualifier_chirho: &str,
+        name_chirho: &str,
+        namespace_chirho: NamespaceChirho,
+    ) -> Option<&DefInfoChirho> {
+        let key_chirho = format!("{qualifier_chirho}.{name_chirho}");
+        self.qualified_chirho.get(&key_chirho).and_then(|infos_chirho| {
+            infos_chirho
+                .iter()
+                .find(|i_chirho| i_chirho.namespace_chirho == namespace_chirho)
+        })
     }
 
     /// How many definitions have been allocated.
