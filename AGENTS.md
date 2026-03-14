@@ -220,7 +220,8 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver Data.Map extended tests**: 9 tests (mapDelete, mapDelete missing, mapKeys, mapElems, mapNull, mapMap, mapFoldlWithKey, mapFromList, mapToList)
 - **Driver Data.Set tests**: 13 tests (setSingleton+setMember, setMember not-found, setSize 3 inserts, setInsert duplicate, setToList sum, setFromList dedup, setDelete, setUnion, setIntersection, setDifference, setFilter, setMap, setFold)
 - **Driver free-var cache tests**: 2 tests (nested bool case recursive, user-defined BST insert)
-- **Total**: 917 tests passing across all crates (1 ignored)
+- **Driver String-as-[Char] interop tests**: 6 tests (head "hello", length "hello", map toUpper "hello", filter isDigit "abc123", reverse "hello", null "")
+- **Total**: 923 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -316,4 +317,5 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 90. ~~Data.Map extended operations~~ — DONE (mapDelete with BST-aware key removal, mapToList in-order traversal, mapKeys sorted key extraction, mapElems value list, mapNull emptiness check, mapMap higher-order value transformation, mapFoldlWithKey left fold with key access; DataConChirho True/False case dispatch for ==# and <# primop results; type signatures in seed_builtins; 9 new e2e tests; 904 tests total)
 91. ~~Data.Set BST Prelude~~ — DONE (setEmpty/setSingleton/setInsert/setMember/setSize/setToList/setFromList as recursive Core IR functions; SetEmpty/SetNode constructors in exhaustiveness checker; BST insert with ==#/<# dispatch using DataConChirho True/False; BST member search; recursive size; in-order traversal to sorted list via append; fold-insert fromList with dedup; type signatures in seed_builtins; 6 new e2e tests; 910 tests total)
 92. ~~Data.Set extended operations~~ — DONE (setDelete via subtree merge through setToList+setFromList, setUnion via fold-insert, setIntersection/setDifference via setMember filter with DataConChirho True/False case dispatch, setFilter with predicate function, setMap for element transformation, setFold for in-order fold; 7 new e2e tests; 917 tests total)
-93. Next priorities: String-as-[Char] interop (list ops on strings), where-clause mutual recursion fix, improved interact with function application, more numeric class instances, type-level improvements
+93. ~~String-as-[Char] interop~~ — DONE (fixed resolve_string_arg_chirho to force HeapPtrChirho head values in cons cells so putStrLn correctly outputs transformed char lists from map/filter; all standard list operations work on strings via box_literal_chirho decomposition; 6 new e2e tests: head/length/map toUpper/filter isDigit/reverse/null on strings; 923 tests total)
+94. Next priorities: where-clause mutual recursion fix, improved interact with function application, more numeric class instances, type-level improvements, Data.Map with polymorphic keys
