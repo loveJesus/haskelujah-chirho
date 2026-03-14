@@ -3276,6 +3276,68 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // mapDelete :: Int -> Map -> Map
+    env_chirho.bind_chirho(
+        "mapDelete".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // mapToList :: Map -> [(Int, v)]
+    {
+        let v_chirho = TyChirho::VarChirho(TyVarChirho(3220));
+        env_chirho.bind_chirho(
+            "mapToList".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3220)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::ListChirho(Box::new(TyChirho::TupleChirho(vec![
+                        TyChirho::int_chirho(),
+                        v_chirho,
+                    ]))),
+                ),
+            },
+        );
+    }
+
+    // mapKeys :: Map -> [Int]
+    env_chirho.bind_chirho(
+        "mapKeys".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+        )),
+    );
+
+    // mapElems :: Map -> [v]
+    {
+        let v_chirho = TyChirho::VarChirho(TyVarChirho(3222));
+        env_chirho.bind_chirho(
+            "mapElems".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3222)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::ListChirho(Box::new(v_chirho)),
+                ),
+            },
+        );
+    }
+
+    // mapNull :: Map -> Bool
+    env_chirho.bind_chirho(
+        "mapNull".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::bool_chirho(),
+        )),
+    );
+
     // when :: Bool -> IO () -> IO ()  (simplified: IO () ≈ ())
     env_chirho.bind_chirho(
         "when".to_string(),

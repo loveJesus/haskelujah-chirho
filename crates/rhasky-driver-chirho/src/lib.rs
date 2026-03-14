@@ -9690,4 +9690,71 @@ main = myLookup 5 (myInsert 3 99 (myInsert 5 42 Leaf))
             Err(e_chirho) => panic!("show False through typeclass should print: {}", e_chirho),
         }
     }
+
+    #[test]
+    fn eval_map_delete_chirho() {
+        // mapDelete removes a key from the map
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapDelete 5 (mapInsert 5 42 (mapInsert 3 99 mapEmpty))) 3\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99)),
+            Err(e_chirho) => panic!("mapDelete should keep other keys: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_delete_missing_chirho() {
+        // mapDelete on a key not in the map is a no-op
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = mapSize (mapDelete 999 (mapInsert 1 10 mapEmpty))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("mapDelete of missing key should be no-op: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_keys_chirho() {
+        // mapKeys extracts sorted keys from the map
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (mapKeys (mapFromList [(3,30),(1,10),(2,20)]))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(6)),
+            Err(e_chirho) => panic!("mapKeys sum should be 6: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_elems_chirho() {
+        // mapElems extracts values from the map
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (mapElems (mapFromList [(1,10),(2,20),(3,30)]))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(60)),
+            Err(e_chirho) => panic!("mapElems sum should be 60: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_null_chirho() {
+        // mapNull checks if map is empty
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nboolToInt b = if b then 1 else 0\nmain = boolToInt (mapNull mapEmpty) + boolToInt (mapNull (mapInsert 1 10 mapEmpty))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            // mapNull mapEmpty → True (1), mapNull (mapInsert...) → False (0), total 1
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("mapNull should work: {}", e_chirho),
+        }
+    }
+
 }
