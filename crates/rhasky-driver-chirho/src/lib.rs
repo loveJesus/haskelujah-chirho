@@ -9757,4 +9757,30 @@ main = myLookup 5 (myInsert 3 99 (myInsert 5 42 Leaf))
         }
     }
 
+    #[test]
+    fn eval_map_map_chirho() {
+        // mapMap (*2) doubles all values
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapMap (\\x -> x * 2) (mapFromList [(1,10),(2,20)])) 2\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(40)),
+            Err(e_chirho) => panic!("mapMap should double values: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_foldl_with_key_chirho() {
+        // mapFoldlWithKey sums all values
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = mapFoldlWithKey (\\acc k v -> acc + v) 0 (mapFromList [(1,10),(2,20),(3,30)])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(60)),
+            Err(e_chirho) => panic!("mapFoldlWithKey sum should be 60: {}", e_chirho),
+        }
+    }
+
 }
