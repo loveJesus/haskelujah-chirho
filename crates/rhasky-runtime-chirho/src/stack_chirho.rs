@@ -304,6 +304,56 @@ pub enum PrimOpKindChirho {
     ThrowChirho,
     /// try# :: IO a -> IO (Either String a) — run and return Left on error, Right on success
     TryChirho,
+
+    // ── Data.Map runtime primops ──
+    /// mapEmpty# :: Map k v — create an empty map
+    MapEmptyChirho,
+    /// mapSingleton# :: k -> v -> Map k v — create a single-element map
+    MapSingletonChirho,
+    /// mapInsert# :: k -> v -> Map k v -> Map k v — insert or overwrite key
+    MapInsertChirho,
+    /// mapLookup# :: k -> Map k v -> Maybe v — lookup by key (returns heap Maybe)
+    MapLookupChirho,
+    /// mapDelete# :: k -> Map k v -> Map k v — remove key from map
+    MapDeleteChirho,
+    /// mapMember# :: k -> Map k v -> Bool — test if key is in map
+    MapMemberChirho,
+    /// mapSize# :: Map k v -> Int — number of key-value pairs
+    MapSizeChirho,
+    /// mapFromList# :: [(k, v)] -> Map k v — build map from association list
+    MapFromListChirho,
+    /// mapToList# :: Map k v -> [(k, v)] — convert map to sorted association list
+    MapToListChirho,
+    /// mapKeys# :: Map k v -> [k] — extract sorted keys as a list
+    MapKeysChirho,
+    /// mapElems# :: Map k v -> [v] — extract values (in key order) as a list
+    MapElemsChirho,
+    /// mapNull# :: Map k v -> Bool — test if map is empty
+    MapNullChirho,
+    /// mapMap# :: (v -> w) -> Map k v -> Map k w — apply function to all values
+    MapMapChirho,
+    /// mapFoldlWithKey# :: (b -> k -> v -> b) -> b -> Map k v -> b — strict left fold
+    MapFoldlWithKeyChirho,
+    /// mapFoldrWithKey# :: (k -> v -> b -> b) -> b -> Map k v -> b — right fold
+    MapFoldrWithKeyChirho,
+    /// mapUnion# :: Map k v -> Map k v -> Map k v — left-biased union
+    MapUnionChirho,
+    /// mapDifference# :: Map k v -> Map k w -> Map k v — keys in left not in right
+    MapDifferenceChirho,
+    /// mapIntersection# :: Map k v -> Map k w -> Map k v — keys in both maps
+    MapIntersectionChirho,
+    /// mapInsertWith# :: (v -> v -> v) -> k -> v -> Map k v -> Map k v — insert with combiner
+    MapInsertWithChirho,
+    /// mapFindWithDefault# :: v -> k -> Map k v -> v — lookup with default value
+    MapFindWithDefaultChirho,
+    /// mapAdjust# :: (v -> v) -> k -> Map k v -> Map k v — update value at key
+    MapAdjustChirho,
+    /// mapUnionWith# :: (v -> v -> v) -> Map k v -> Map k v -> Map k v — union with combiner
+    MapUnionWithChirho,
+    /// mapFilter# :: (v -> Bool) -> Map k v -> Map k v — keep entries matching predicate
+    MapFilterChirho,
+    /// mapFilterWithKey# :: (k -> v -> Bool) -> Map k v -> Map k v — keep entries matching key-value predicate
+    MapFilterWithKeyChirho,
 }
 
 /// The evaluation stack.

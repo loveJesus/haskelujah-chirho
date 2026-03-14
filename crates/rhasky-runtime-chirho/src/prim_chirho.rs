@@ -649,7 +649,32 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::RunSTChirho
         | PrimOpKindChirho::CatchChirho
         | PrimOpKindChirho::ThrowChirho
-        | PrimOpKindChirho::TryChirho => Ok(ValueChirho::IntChirho(0)),
+        | PrimOpKindChirho::TryChirho
+        // Map primops — handled in eval_prim_chirho before reaching here
+        | PrimOpKindChirho::MapEmptyChirho
+        | PrimOpKindChirho::MapSingletonChirho
+        | PrimOpKindChirho::MapInsertChirho
+        | PrimOpKindChirho::MapLookupChirho
+        | PrimOpKindChirho::MapDeleteChirho
+        | PrimOpKindChirho::MapMemberChirho
+        | PrimOpKindChirho::MapSizeChirho
+        | PrimOpKindChirho::MapFromListChirho
+        | PrimOpKindChirho::MapToListChirho
+        | PrimOpKindChirho::MapKeysChirho
+        | PrimOpKindChirho::MapElemsChirho
+        | PrimOpKindChirho::MapNullChirho
+        | PrimOpKindChirho::MapMapChirho
+        | PrimOpKindChirho::MapFoldlWithKeyChirho
+        | PrimOpKindChirho::MapFoldrWithKeyChirho
+        | PrimOpKindChirho::MapUnionChirho
+        | PrimOpKindChirho::MapDifferenceChirho
+        | PrimOpKindChirho::MapIntersectionChirho
+        | PrimOpKindChirho::MapInsertWithChirho
+        | PrimOpKindChirho::MapFindWithDefaultChirho
+        | PrimOpKindChirho::MapAdjustChirho
+        | PrimOpKindChirho::MapUnionWithChirho
+        | PrimOpKindChirho::MapFilterChirho
+        | PrimOpKindChirho::MapFilterWithKeyChirho => Ok(ValueChirho::IntChirho(0)),
     }
 }
 

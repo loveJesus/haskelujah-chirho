@@ -9585,6 +9585,32 @@ main = case safeDivide 20 2 of
     // ── Data.Map tests ──
 
     #[test]
+    fn eval_map_basic_chirho() {
+        // Basic Data.Map: empty + insert + lookup → I/O output "42\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = let m = mapInsert 1 42 mapEmpty\n       in case mapLookup 1 m of\n            Just v -> putStrLn (show v)\n            Nothing -> putStrLn \"gone\"\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "42\n"),
+            Err(e_chirho) => panic!("eval_map_basic_chirho failed: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_fromlist_chirho() {
+        // mapFromList [(1,10),(2,20),(3,30)] — size should be 3 (returned as Int)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = mapSize (mapFromList [(1,10),(2,20),(3,30)])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("eval_map_fromlist_chirho failed: {}", e_chirho),
+        }
+    }
+
+    #[test]
     fn eval_map_insert_lookup_chirho() {
         // Insert key 5 with value 42, lookup key 5 should find Just 42
         // Use case on mapLookup result to extract Int

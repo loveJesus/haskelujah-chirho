@@ -158,6 +158,10 @@ pub enum ValueChirho {
     BoolChirho(bool),
     /// An unboxed string (Addr# / String).
     StringChirho(String),
+    /// A runtime Map value: sorted association list of (key, value) pairs.
+    /// Keys are kept in ascending order by `compare_values_chirho`.
+    /// Used by the mapEmpty#/mapInsert#/mapLookup#/etc. primops.
+    MapChirho(Vec<(ValueChirho, ValueChirho)>),
 }
 
 impl fmt::Display for ValueChirho {
@@ -169,6 +173,16 @@ impl fmt::Display for ValueChirho {
             Self::CharChirho(v_chirho) => write!(f_chirho, "'{}#'", v_chirho),
             Self::BoolChirho(v_chirho) => write!(f_chirho, "{}#", v_chirho),
             Self::StringChirho(v_chirho) => write!(f_chirho, "\"{}\"#", v_chirho),
+            Self::MapChirho(pairs_chirho) => {
+                write!(f_chirho, "Map{{")?;
+                for (idx_chirho, (k_chirho, v_chirho)) in pairs_chirho.iter().enumerate() {
+                    if idx_chirho > 0 {
+                        write!(f_chirho, ",")?;
+                    }
+                    write!(f_chirho, "{}->{}", k_chirho, v_chirho)?;
+                }
+                write!(f_chirho, "}}")
+            }
         }
     }
 }
