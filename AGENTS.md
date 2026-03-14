@@ -263,7 +263,18 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver user-defined BST tests**: 11 tests (empty size, singleton, insert/lookup, insert/size, overwrite, member found/missing, elems sum, keys sorted, fromList direct inserts, 5 inserts)
 - **Driver complex data type tests**: 5 tests (Expr tree eval, user linked list fold, rose tree depth, map over BST, stack push/peek)
 - **Driver pattern matching tests**: 4 tests (tuple arg pattern, neg literal pattern, string case multi, tuple from list with usertype)
-- **Total**: 1256 tests passing across all crates (3 ignored: 2 Cranelift, 1 doctest)
+- **Driver Show compound types tests**: 4 tests (show [[1,2],[3]], show (42,True), show [True,False,True], show [1.5,2.5])
+- **Driver IO control flow tests**: 3 tests (mapM_ putStrLn, when True, unless True)
+- **Driver Data.Map runtime tests**: 6 tests (insert+lookup, fromList+size, member, foldr sum, filter, union)
+- **Driver exception handling tests**: 4 tests (catch basic, try success, try failure, throwIO caught)
+- **Driver STRef tests**: 2 tests (basic new/write/read, modifySTRef)
+- **Driver Data.Set runtime tests**: 4 tests (basic ops, member, toList sum, union size)
+- **Driver algorithmic stress tests**: 8 tests (Ackermann, Hanoi, matrix mult, Caesar cipher, binToDec, RLE, powerset, Pascal triangle)
+- **Driver deriving Show tests**: 2 tests (fields show, multi-constructor show)
+- **Driver tails/inits tests**: 2 tests (tails length, inits length)
+- **Driver type annotation tests**: 2 tests (42 :: Int, read "10" :: Int)
+- **Driver find/groupBy tests**: 12 tests (Map foldr/filter/map/unionWith, find Just/Nothing, nubBy, sortBy, groupBy)
+- **Total**: 1268 tests passing across all crates (3 ignored: 2 Cranelift, 1 doctest)
 
 ### Next Priorities
 
@@ -393,4 +404,6 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 124. ~~STRef modifySTRef~~ — DONE (ModifySTRefChirho primop with nested eval loop; 1237 tests total)
 125. ~~Complex program patterns~~ — DONE (Collatz 27→111 steps, Church numerals, Sieve of Eratosthenes 25 primes ≤100, expression tree eval, reverse accumulator, higher-order twice; 1244 tests total)
 126. ~~find/groupBy Prelude + Map higher-order ops~~ — DONE (find :: (a→Bool)→[a]→Maybe a, groupBy :: (a→a→Bool)→[a]→[[a]] using span; 12 new Map/List e2e tests; 1256 tests total)
-127. Next priorities: Data.List.tails/inits, Prelude auto-import for multi-module, type annotations in expressions, Data.Map.foldl'/foldr', lazy evaluation for infinite lists, type class instance for Show on arbitrary user ADTs
+127. ~~tails/inits tests + type annotation :: + read+show fix~~ — DONE (4 new e2e tests; infer_type_key_chirho PrimOp return type precedence fix; ShowStrChirho fallback; 1260 tests total)
+128. ~~Algorithmic stress tests~~ — DONE (Ackermann(3,4)=125, Hanoi(10)=1023, 2x2 matrix mult, Caesar cipher, binToDec, RLE, powerset, Pascal triangle row sum; eval_source_with_step_limit_chirho API; (:) cons section fix; 1268 tests total)
+129. Next priorities: lazy evaluation for infinite lists, multi-equation pattern matching fix (tag 0 no-match), Prelude auto-import for multi-module, Data.Map.foldl', type class instance for Show on arbitrary user ADTs, qualified module syntax Data.Map.insert
