@@ -619,6 +619,21 @@ impl MachineChirho {
                     // Resolve ArgSource → ValueChirho (fresh thunks each time).
                     let resolved_chirho = self.resolve_args_chirho(&args_chirho);
 
+                    // InteractChirho needs HeapPtr function arg without forcing
+                    if matches!(op_chirho, PrimOpKindChirho::InteractChirho) {
+                        let result_chirho =
+                            self.eval_prim_chirho(op_chirho, &resolved_chirho)?;
+                        match self.return_lit_chirho(result_chirho)? {
+                            ReturnActionChirho::DoneChirho(v_chirho) => {
+                                return Ok(v_chirho)
+                            }
+                            ReturnActionChirho::ContinueChirho(next_chirho) => {
+                                pc_chirho = next_chirho;
+                                continue;
+                            }
+                        }
+                    }
+
                     // Check if any arg needs forcing (is a HeapPtr thunk).
                     let needs_forcing_chirho = resolved_chirho
                         .iter()
@@ -1764,12 +1779,65 @@ impl MachineChirho {
             }
             PrimOpKindChirho::InteractChirho => {
                 // interact f = getContents >>= putStr . f
-                // In our sandboxed runtime: read all io_input, apply f, write result
-                // For now: collect all stdin lines, pass as single string, write output
+                // Read all io_input, apply f (first arg) to the input string, write result
                 let all_input_chirho: String = self.io_input_chirho.drain(..).collect::<Vec<_>>().join("\n");
-                // If the first arg is a closure (function), we'd need to apply it.
-                // For the sandboxed test runtime, just write the input to output.
-                self.io_output_chirho.push_str(&all_input_chirho);
+                if let Some(func_val_chirho) = args_chirho.first().cloned() {
+                    // Build a cons-list of Chars from the input string so
+                    // list functions (reverse, map, etc.) can operate on it
+                    let nil_tag_chirho = self.lookup_con_tag_chirho("[]", 0);
+                    let cons_tag_chirho = self.lookup_con_tag_chirho(":", 1);
+                    let nil_closure_chirho = ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
+                    let mut input_addr_chirho = self.heap_chirho.alloc_chirho(nil_closure_chirho);
+                    for ch_chirho in all_input_chirho.chars().rev() {
+                        let cons_closure_chirho = ClosureChirho::con_chirho(
+                            cons_tag_chirho, ":",
+                            vec![ValueChirho::CharChirho(ch_chirho), ValueChirho::HeapPtrChirho(input_addr_chirho)],
+                        );
+                        input_addr_chirho = self.heap_chirho.alloc_chirho(cons_closure_chirho);
+                    }
+
+                    // Get function address
+                    let func_addr_chirho = match &func_val_chirho {
+                        ValueChirho::HeapPtrChirho(addr_chirho) => *addr_chirho,
+                        _ => {
+                            // Fallback: just output input directly
+                            self.io_output_chirho.push_str(&all_input_chirho);
+                            return Ok(ValueChirho::IntChirho(0));
+                        }
+                    };
+
+                    // Save machine state for nested eval
+                    let saved_stack_chirho = std::mem::replace(
+                        &mut self.stack_chirho,
+                        StackChirho::new_chirho(),
+                    );
+                    let saved_regs_chirho = std::mem::take(&mut self.arg_regs_chirho);
+
+                    // Push Apply frame with the input string arg, then enter function
+                    self.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
+                        args_chirho: vec![ValueChirho::HeapPtrChirho(input_addr_chirho)],
+                    });
+                    let entry_chirho = self.code_table_chirho.len() as u32;
+                    self.code_table_chirho.push(CodeChirho::EnterChirho(func_addr_chirho));
+                    let result_val_chirho = self.run_chirho(entry_chirho)?;
+
+                    // Restore machine state
+                    self.stack_chirho = saved_stack_chirho;
+                    self.arg_regs_chirho = saved_regs_chirho;
+
+                    // Resolve result to string and write to output
+                    let output_str_chirho = match &result_val_chirho {
+                        ValueChirho::StringChirho(s_chirho) => s_chirho.clone(),
+                        ValueChirho::HeapPtrChirho(_) => {
+                            self.resolve_value_to_string_chirho(&result_val_chirho)?
+                        }
+                        _ => format!("{:?}", result_val_chirho),
+                    };
+                    self.io_output_chirho.push_str(&output_str_chirho);
+                } else {
+                    // No function arg: just echo input
+                    self.io_output_chirho.push_str(&all_input_chirho);
+                }
                 return Ok(ValueChirho::IntChirho(0));
             }
             PrimOpKindChirho::PrintChirho => {
@@ -2028,6 +2096,12 @@ impl MachineChirho {
                 let ordering_chirho = self.make_ordering_chirho(
                     a_chirho.partial_cmp(&b_chirho).unwrap_or(std::cmp::Ordering::Equal),
                 );
+                return Ok(ordering_chirho);
+            }
+            PrimOpKindChirho::CompareStrChirho => {
+                let a_chirho = self.resolve_value_to_string_chirho(&args_chirho[0])?;
+                let b_chirho = self.resolve_value_to_string_chirho(&args_chirho[1])?;
+                let ordering_chirho = self.make_ordering_chirho(a_chirho.cmp(&b_chirho));
                 return Ok(ordering_chirho);
             }
             // ── IORef operations ──

@@ -10141,4 +10141,60 @@ main = case compare "xyz" "abc" of
         }
     }
 
+    // ── interact with function application tests ─────────────────────
+
+    #[test]
+    fn eval_interact_identity_chirho() {
+        // interact id should echo input to output
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = interact id\n";
+        let result_chirho = eval_source_with_input_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+            &["hello"],
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(machine_chirho.io_output_chirho, "hello");
+            }
+            Err(e_chirho) => panic!("interact id: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_interact_map_toupper_chirho() {
+        // interact (map toUpper) should uppercase all chars
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = interact (map toUpper)\n";
+        let result_chirho = eval_source_with_input_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+            &["hello"],
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(machine_chirho.io_output_chirho, "HELLO");
+            }
+            Err(e_chirho) => panic!("interact map toUpper: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_interact_with_reverse_chirho() {
+        // interact reverse should reverse the input
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = interact reverse\n";
+        let result_chirho = eval_source_with_input_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+            &["abcde"],
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(machine_chirho.io_output_chirho, "edcba");
+            }
+            Err(e_chirho) => panic!("interact reverse: {}", e_chirho),
+        }
+    }
+
 }
