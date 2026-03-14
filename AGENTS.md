@@ -256,7 +256,8 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Cranelift backend tests**: 3 tests in `rhasky-backend-cranelift-chirho` (empty module compilation, simple binding, lambda binding)
 - **JVM backend tests**: 8 tests in `rhasky-backend-jvm-chirho` (constant pool 4, bytecode builder 2, class compilation 2)
 - **BEAM backend tests**: 17 tests in `rhasky-backend-beam-chirho` (ETF serialization 7, opcode builder 3, beam module 4, opcode definitions 3)
-- **Total**: 1115 tests passing across all crates (1 ignored)
+- **Driver Eq/Show/Ord Ordering tests**: 3 tests (Eq Ordering == LT true, Eq Ordering == LT false, show (compare 1 2) → "LT")
+- **Total**: 1180 tests passing across all crates (3 ignored: 2 Cranelift, 1 doctest)
 
 ### Next Priorities
 
@@ -373,4 +374,7 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 111. ~~IORef ModifyIORef fix~~ — DONE (upgraded ModifyIORef from TODO stub to full implementation with nested eval loop, machine state save/restore; 3 new e2e tests; 1065 tests total)
 112. ~~AVL balanced Map/Set trees + synthetic module interfaces~~ — DONE (Map BST→AVL: mapHeight, mapMakeNode, mapRotateLeft/Right, mapBalance helpers; MapNode 5-field with height; all case alts updated; synthetic ModuleIfaceChirho for Data.Map/Set/List/Char/Maybe/IORef via builtin_module_ifaces_chirho; qualified import name resolution fix using full_name_chirho; NameChirho::full_name_chirho method; 6 new import e2e tests; 1071 tests total)
 113. ~~Cranelift/JVM/BEAM backend scaffolds~~ — DONE (3 new crates: rhasky-backend-cranelift-chirho with ISA setup, function lowering, runtime layout; rhasky-backend-jvm-chirho with constant pool, bytecode emitter, class file generation; rhasky-backend-beam-chirho with IFF format, ETF serialization, BEAM opcodes; 28 new tests; 1104 total)
-114. Next priorities: sequence_ Prelude binding, IO monad proper threading, ST monad, monad transformers, flesh out Cranelift/JVM/BEAM backend Core IR lowering
+114. ~~IO type system + e2e test stabilization~~ — DONE (proper IO type constructor in type signatures: putStrLn/putStr/print/return/>>=/>>/getLine/getChar/readFile/writeFile/appendFile/interact/newIORef/readIORef/writeIORef/modifyIORef/when/unless/mapM_/forM_/putChar/sequence_/void/guard now use IO return types; TyChirho::io_chirho convenience method; IORef tests rewritten with do-notation; MaybeT/StateT tests simplified to avoid higher-kinded newtype issues; Cranelift backend expansion; 1153 tests total)
+115. ~~Polymorphic elem/nub/isPrefixOf + utility Prelude functions~~ — DONE (polymorphic type signatures for elem/notElem/nub/isPrefixOf/isSuffixOf so they work with Char/String not just Int; Eq Ordering/Ord Ordering instances via case-dispatch; new Prelude: repeat, cycle, fix, group, zipWith3, zip3, first, second, both; 20 new e2e tests; 1177 tests total)
+116. ~~Fix ignored IORef/deriving Ord tests + Eq/Show/Ord Ordering instances~~ — DONE (rewrote 5 IORef tests to use do-notation matching working pattern, rewrote deriving Ord test to use case dispatch, added Eq Ordering/Show Ordering/Ord Ordering ground instances in class_chirho.rs, generate_eq_ordering_binding_chirho and generate_compare_ordering_binding_chirho in dict_chirho.rs for case-dispatch comparison; 3 new e2e tests: Eq Ordering == LT, Eq Ordering != LT, show Ordering; 1180 tests total)
+117. Next priorities: flesh out Cranelift/JVM/BEAM backend Core IR lowering, exception handling (catch/try/throw), Data.Map.foldl'/foldr', Data.List.partition/tails/inits Core IR versions, Prelude auto-import for multi-module compilation

@@ -12840,6 +12840,39 @@ main = putStrLn (show (Just (Just 42)))
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
     }
 
+    #[test]
+    fn eval_eq_ordering_eq_lt_chirho() {
+        // compare 1 2 == LT → True (tests Eq Ordering instance)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = if compare 1 2 == LT then 1 else 0\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
+    }
+
+    #[test]
+    fn eval_eq_ordering_neq_chirho() {
+        // compare 5 5 == LT → False
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = if compare 5 5 == LT then 1 else 0\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0));
+    }
+
+    #[test]
+    fn eval_show_ordering_chirho() {
+        // show (compare 1 2) → "LT"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = putStrLn (show (compare 1 2))\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => assert_eq!(m_chirho.io_output_chirho, "LT\n"),
+            Err(e_chirho) => panic!("show ordering: {}", e_chirho),
+        }
+    }
+
     // ── 3-tuple pattern matching ────────────────────────────────────────
 
     #[test]
