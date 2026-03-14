@@ -244,7 +244,9 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver flip/either tests**: 3 tests (flip const, either Left, either Right)
 - **Driver feature combination tests**: 20 tests (type synonym, nested where, guard multi eq, let-in-do complex, map square, multiple IO, nested fn app, maybe chain, iterate take, scanl, concatMap, show negative, char ops, list comp even squares, where pattern, succ/pred, show list, zipWith add, complex pipeline, multi-line do IO)
 - **Driver fromJust/swap/mapDelete tests**: 5 tests (fromJust, swap fst, swap snd, mapDelete preserves, mapDelete both subtrees)
-- **Total**: 1039 tests passing across all crates (1 ignored)
+- **Driver Semigroup/Monoid tests**: 4 tests (list <> length, string <> putStrLn, mempty <> list length, mconcat nested lists length)
+- **Driver higher-order *By list tests**: 7 tests (sortBy head, sortBy sum, insertBy length, nubBy length, maximumBy, minimumBy, on)
+- **Total**: 1057 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -352,4 +354,7 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 102. ~~Data.Maybe extras + Data.IORef Core IR wrappers~~ — DONE (catMaybes, mapMaybe, listToMaybe, maybeToList as recursive Core IR functions; newIORef/readIORef/writeIORef/modifyIORef Core IR wrappers delegating to primops; type signatures for all; when/unless/flip/either e2e tests; 1014 tests total)
 103. ~~Feature combination e2e tests~~ — DONE (20 tests covering type synonyms, guards, let-in-do, iterate, scanl, concatMap, char ops, list comprehension with guards, pipelines, show negative/list, zipWith; 1034 tests total)
 104. ~~fromJust/swap + mapDelete fix~~ — DONE (fromJust via case on Just/Nothing with error# for Nothing; swap via case on $tuple2 with reversed fields; mapDelete fixed to merge both subtrees via mapFoldlWithKey+mapInsert instead of dropping right subtree; 1039 tests total)
-105. Next priorities: Data.Map with polymorphic keys, Data.Map/Set balanced (AVL/red-black), type synonyms in instance heads, type class defaulting improvements, where-clause type annotations, type-level improvements, IO monad proper threading, ST monad, negative literal patterns
+105. ~~Multi-equation literal pattern matching~~ — DONE (VarChirho→scrutinee binding in Default alts, all-Default column optimization to skip redundant case generation, CaseLitChirho saved_arg_regs for thunk evaluation, 7 new e2e tests; 1046 tests total)
+106. ~~Semigroup/Monoid type classes~~ — DONE (Semigroup class with <> method, Monoid class with mempty/mconcat methods, superclass Semigroup; ground instances for [Int], [Char], [Double], [Bool], (); [Char] uses ++# primop, other list types use Prelude append; type signatures with SchemePredChirho; 4 new e2e tests; 1050 tests total)
+107. ~~Higher-order *By list functions (sortBy, insertBy, nubBy, maximumBy, minimumBy, on)~~ — DONE (Core IR implementations in generate_higher_order_list_prelude_chirho using recursive case dispatch, foldl, filter, not; Ordering constructor matching for insertBy/sortBy/maximumBy/minimumBy; on as 4-arg lambda; type signatures in seed_builtins with TyVarChirho 3700–3707; 7 end-to-end tests)
+108. Next priorities: Data.Map with polymorphic keys, Data.Map/Set balanced (AVL/red-black), type synonyms in instance heads, type class defaulting improvements, where-clause type annotations, type-level improvements, IO monad proper threading, ST monad, negative literal patterns

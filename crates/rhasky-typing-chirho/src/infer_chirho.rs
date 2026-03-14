@@ -3941,6 +3941,154 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     );
 
     // -----------------------------------------------------------------------
+    // Higher-order *By list Prelude functions
+    // -----------------------------------------------------------------------
+
+    // sortBy :: forall a. (a -> a -> Ordering) -> [a] -> [a]
+    {
+        let sb_a_chirho = TyVarChirho(3700);
+        let ordering_chirho = TyChirho::ConChirho("Ordering".to_string());
+        env_chirho.bind_chirho(
+            "sortBy".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![sb_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_n_chirho(
+                            vec![TyChirho::VarChirho(sb_a_chirho), TyChirho::VarChirho(sb_a_chirho)],
+                            ordering_chirho.clone(),
+                        ),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(sb_a_chirho))),
+                    ],
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(sb_a_chirho))),
+                ),
+            },
+        );
+    }
+
+    // insertBy :: forall a. (a -> a -> Ordering) -> a -> [a] -> [a]
+    {
+        let ib_a_chirho = TyVarChirho(3701);
+        let ordering_chirho = TyChirho::ConChirho("Ordering".to_string());
+        env_chirho.bind_chirho(
+            "insertBy".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![ib_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_n_chirho(
+                            vec![TyChirho::VarChirho(ib_a_chirho), TyChirho::VarChirho(ib_a_chirho)],
+                            ordering_chirho,
+                        ),
+                        TyChirho::VarChirho(ib_a_chirho),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(ib_a_chirho))),
+                    ],
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(ib_a_chirho))),
+                ),
+            },
+        );
+    }
+
+    // nubBy :: forall a. (a -> a -> Bool) -> [a] -> [a]
+    {
+        let nb_a_chirho = TyVarChirho(3702);
+        env_chirho.bind_chirho(
+            "nubBy".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![nb_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_n_chirho(
+                            vec![TyChirho::VarChirho(nb_a_chirho), TyChirho::VarChirho(nb_a_chirho)],
+                            TyChirho::bool_chirho(),
+                        ),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(nb_a_chirho))),
+                    ],
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(nb_a_chirho))),
+                ),
+            },
+        );
+    }
+
+    // maximumBy :: forall a. (a -> a -> Ordering) -> [a] -> a
+    {
+        let mx_a_chirho = TyVarChirho(3703);
+        let ordering_chirho = TyChirho::ConChirho("Ordering".to_string());
+        env_chirho.bind_chirho(
+            "maximumBy".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![mx_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_n_chirho(
+                            vec![TyChirho::VarChirho(mx_a_chirho), TyChirho::VarChirho(mx_a_chirho)],
+                            ordering_chirho,
+                        ),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(mx_a_chirho))),
+                    ],
+                    TyChirho::VarChirho(mx_a_chirho),
+                ),
+            },
+        );
+    }
+
+    // minimumBy :: forall a. (a -> a -> Ordering) -> [a] -> a
+    {
+        let mn_a_chirho = TyVarChirho(3704);
+        let ordering_chirho = TyChirho::ConChirho("Ordering".to_string());
+        env_chirho.bind_chirho(
+            "minimumBy".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![mn_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_n_chirho(
+                            vec![TyChirho::VarChirho(mn_a_chirho), TyChirho::VarChirho(mn_a_chirho)],
+                            ordering_chirho,
+                        ),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(mn_a_chirho))),
+                    ],
+                    TyChirho::VarChirho(mn_a_chirho),
+                ),
+            },
+        );
+    }
+
+    // on :: forall a b c. (b -> b -> c) -> (a -> b) -> a -> a -> c
+    {
+        let on_a_chirho = TyVarChirho(3705);
+        let on_b_chirho = TyVarChirho(3706);
+        let on_c_chirho = TyVarChirho(3707);
+        env_chirho.bind_chirho(
+            "on".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![on_a_chirho, on_b_chirho, on_c_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_n_chirho(
+                            vec![TyChirho::VarChirho(on_b_chirho), TyChirho::VarChirho(on_b_chirho)],
+                            TyChirho::VarChirho(on_c_chirho),
+                        ),
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(on_a_chirho),
+                            TyChirho::VarChirho(on_b_chirho),
+                        ),
+                        TyChirho::VarChirho(on_a_chirho),
+                        TyChirho::VarChirho(on_a_chirho),
+                    ],
+                    TyChirho::VarChirho(on_c_chirho),
+                ),
+            },
+        );
+    }
+
+    // -----------------------------------------------------------------------
     // Higher-order list Prelude functions
     // -----------------------------------------------------------------------
 

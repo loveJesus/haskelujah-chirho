@@ -12017,4 +12017,100 @@ main = if all odd [1,3,5,7] then 1 else 0
         }
     }
 
+    // ── Higher-order *By list function tests ──
+
+    #[test]
+    fn eval_sortby_chirho() {
+        // sortBy compare [3,1,4,1,5] → [1,1,3,4,5], head → 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = head (sortBy compare [3,1,4,1,5])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("sortBy head: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_sortby_sum_chirho() {
+        // sortBy compare [5,2,8,1,3] → [1,2,3,5,8], sum → 19
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (sortBy compare [5,2,8,1,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(19)),
+            Err(e_chirho) => panic!("sortBy sum: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_insertby_chirho() {
+        // insertBy compare 3 [1,2,4,5] → [1,2,3,4,5], head → 1, length → 5
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (insertBy compare 3 [1,2,4,5])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5)),
+            Err(e_chirho) => panic!("insertBy length: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_nubby_chirho() {
+        // nubBy (\x y -> x == y) [1,2,1,3,2,4] → [1,2,3,4], length → 4
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (nubBy (\\x -> \\y -> x == y) [1,2,1,3,2,4])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(4)),
+            Err(e_chirho) => panic!("nubBy length: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_maximumby_chirho() {
+        // maximumBy compare [3,1,5,2,4] → 5
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = maximumBy compare [3,1,5,2,4]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5)),
+            Err(e_chirho) => panic!("maximumBy: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_minimumby_chirho() {
+        // minimumBy compare [3,1,5,2,4] → 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = minimumBy compare [3,1,5,2,4]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("minimumBy: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_on_chirho() {
+        // on (+) (\x -> x * x) 3 4 = (3*3) + (4*4) = 9 + 16 = 25
+        // We use a simpler test: on (+) length ... needs string lists which is complex
+        // Simpler: on f g x y = f (g x) (g y) where f = (+), g = negate
+        // on (+) negate 3 4 = negate 3 + negate 4 = (-3) + (-4) = -7
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = on (+) negate 3 4\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(-7)),
+            Err(e_chirho) => panic!("on: {}", e_chirho),
+        }
+    }
+
 }
