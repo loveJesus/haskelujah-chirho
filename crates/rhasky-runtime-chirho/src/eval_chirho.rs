@@ -2756,6 +2756,64 @@ impl MachineChirho {
                 self.iorefs_chirho.insert(ref_id_chirho, val_chirho);
                 return Ok(ValueChirho::IntChirho(0)); // ST s ()
             }
+            PrimOpKindChirho::ModifySTRefChirho => {
+                // modifySTRef# ref f → read current value, apply f, write back; ST s ()
+                let ref_id_chirho = match args_chirho.first() {
+                    Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
+                    _ => return Ok(ValueChirho::IntChirho(0)),
+                };
+                // Read current value from the ST ref store
+                let current_chirho = self.iorefs_chirho.get(&ref_id_chirho).cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                // Apply the function (second arg) to the current value
+                let func_val_chirho = args_chirho.get(1).cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let new_val_chirho = match func_val_chirho {
+                    ValueChirho::HeapPtrChirho(func_addr_chirho) => {
+                        // Box literal arg onto heap so it can be passed as a HeapPtr
+                        let arg_val_chirho = match &current_chirho {
+                            ValueChirho::IntChirho(_)
+                            | ValueChirho::FloatChirho(_)
+                            | ValueChirho::CharChirho(_)
+                            | ValueChirho::BoolChirho(_)
+                            | ValueChirho::StringChirho(_) => {
+                                let boxed_chirho = self.box_literal_chirho(&current_chirho);
+                                let boxed_addr_chirho = self.heap_chirho.alloc_chirho(boxed_chirho);
+                                ValueChirho::HeapPtrChirho(boxed_addr_chirho)
+                            }
+                            other_chirho => other_chirho.clone(),
+                        };
+                        // Save machine state for nested evaluation
+                        let saved_stack_chirho = std::mem::replace(
+                            &mut self.stack_chirho,
+                            StackChirho::new_chirho(),
+                        );
+                        let saved_regs_chirho = std::mem::take(&mut self.arg_regs_chirho);
+                        // Push Apply frame with argument, then enter the function closure
+                        self.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
+                            args_chirho: vec![arg_val_chirho],
+                        });
+                        let entry_chirho = self.code_table_chirho.len() as u32;
+                        self.code_table_chirho.push(CodeChirho::EnterChirho(func_addr_chirho));
+                        let result_val_chirho = self.run_chirho(entry_chirho)?;
+                        // Restore machine state
+                        self.stack_chirho = saved_stack_chirho;
+                        self.arg_regs_chirho = saved_regs_chirho;
+                        // Resolve HeapPtr result to an unboxed primitive if possible
+                        match &result_val_chirho {
+                            ValueChirho::HeapPtrChirho(addr_chirho) => {
+                                self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(*addr_chirho))
+                            }
+                            other_chirho => other_chirho.clone(),
+                        }
+                    }
+                    // If f is not a heap closure, keep the value unchanged
+                    _ => current_chirho,
+                };
+                // Write the new value back into the ST ref store
+                self.iorefs_chirho.insert(ref_id_chirho, new_val_chirho);
+                return Ok(ValueChirho::IntChirho(0)); // ST s ()
+            }
             PrimOpKindChirho::RunSTChirho => {
                 // runST# computation → execute the ST computation and return result
                 // Since our ST monad is just identity-like (same as IO without I/O),

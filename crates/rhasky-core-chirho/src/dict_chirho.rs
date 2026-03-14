@@ -11488,6 +11488,43 @@ impl DictPassCtxChirho {
             });
         }
 
+        // ── modifySTRef :: STRef s a -> (a -> a) -> ST s () ──
+        // Simplified: STRef s a ≈ Int, applies f to stored value and writes back
+        {
+            let fn_id_chirho = self.resolve_or_fresh_id_chirho("modifySTRef");
+            let r_chirho = self.fresh_binder_chirho("r", TyChirho::int_chirho());
+            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()));
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: r_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: f_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "modifySTRef#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(r_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(f_chirho.id_chirho),
+                        ],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: fn_id_chirho,
+                    name_chirho: "modifySTRef".to_string(),
+                    ty_chirho: TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::int_chirho(),
+                            TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                        ],
+                        TyChirho::unit_chirho(),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
         // ── runST :: (forall s. ST s a) -> a ──
         // Simplified: runST f = f (just evaluate the ST computation)
         {

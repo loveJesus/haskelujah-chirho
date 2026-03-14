@@ -119,8 +119,8 @@ impl LowerCtxChirho {
             | "getLine" | "getChar" | "getContents"
             | "readFile" | "writeFile" | "appendFile"
             | "return" | "pure" | ">>=" | ">>"
-            | "newIORef" | "readIORef" | "writeIORef"
-            | "newSTRef" | "readSTRef" | "writeSTRef" | "runST"
+            | "newIORef" | "readIORef" | "writeIORef" | "modifyIORef"
+            | "newSTRef" | "readSTRef" | "writeSTRef" | "modifySTRef" | "runST"
             | "error" | "undefined" | "seq"
             | "catch" | "throw" | "throwIO" | "try" | "bracket" | "finally" => Some(name_chirho.as_str()),
             _ => None,
@@ -1679,6 +1679,7 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "newSTRef" | "newSTRef#" => PrimOpKindChirho::NewSTRefChirho,
         "readSTRef" | "readSTRef#" => PrimOpKindChirho::ReadSTRefChirho,
         "writeSTRef" | "writeSTRef#" => PrimOpKindChirho::WriteSTRefChirho,
+        "modifySTRef" | "modifySTRef#" => PrimOpKindChirho::ModifySTRefChirho,
         "runST" | "runST#" => PrimOpKindChirho::RunSTChirho,
         // Exception handling primops
         "catch" | "catch#" => PrimOpKindChirho::CatchChirho,

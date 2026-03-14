@@ -3454,6 +3454,25 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // modifySTRef :: STRef s a -> (a -> a) -> ST s ()  (simplified: STRef s a ≈ Int)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3284));
+        env_chirho.bind_chirho(
+            "modifySTRef".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3284)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::int_chirho(),
+                        TyChirho::fun_chirho(a_chirho.clone(), a_chirho),
+                    ],
+                    TyChirho::unit_chirho(),
+                ),
+            },
+        );
+    }
+
     // runST :: (forall s. ST s a) -> a  (simplified: runST f = f)
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3283));

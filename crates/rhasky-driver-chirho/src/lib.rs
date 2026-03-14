@@ -12795,6 +12795,35 @@ main = putStrLn (show (Just (Just 42)))
         }
     }
 
+    #[test]
+    fn eval_stref_basic_chirho() {
+        // runST (do { ref <- newSTRef 0; writeSTRef ref 42; readSTRef ref }) → 42
+        // Expressed without do-notation via let+seq for evaluation ordering:
+        // runST (let ref = newSTRef 0 in seq (writeSTRef ref 42) (readSTRef ref))
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = runST (let ref = newSTRef 0 in seq (writeSTRef ref 42) (readSTRef ref))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("eval_stref_basic_chirho failed: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_stref_modify_chirho() {
+        // runST (do { ref <- newSTRef 10; modifySTRef ref (+5); readSTRef ref }) → 15
+        // Expressed via let+seq for evaluation ordering
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\naddFive x = x + 5\nmain = runST (let ref = newSTRef 10 in seq (modifySTRef ref addFive) (readSTRef ref))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15)),
+            Err(e_chirho) => panic!("eval_stref_modify_chirho failed: {}", e_chirho),
+        }
+    }
+
     // ── Data.List: nub / sortBy / isPrefixOf / replicate end-to-end ─────
 
     #[test]
