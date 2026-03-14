@@ -9636,6 +9636,19 @@ main = myLookup 5 (myInsert 3 99 (myInsert 5 42 Leaf))
     }
 
     #[test]
+    fn eval_map_from_list_chirho() {
+        // mapFromList [(1,10),(2,20),(3,30)] then lookup key 2 → 20
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapFromList [(1,10),(2,20),(3,30)]) 2\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(20)),
+            Err(e_chirho) => panic!("mapFromList lookup should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
     fn eval_map_three_keys_chirho() {
         // Insert three keys, lookup all three
         use super::eval_source_chirho;
