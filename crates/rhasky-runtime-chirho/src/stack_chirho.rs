@@ -115,6 +115,8 @@ pub enum PrimOpKindChirho {
     SeqChirho,
     /// Convert an Int to its String representation: showInt# :: Int -> String
     ShowIntChirho,
+    /// Convert a Bool to its String representation: showBool# :: Bool -> String
+    ShowBoolChirho,
     /// Boolean negation: not# :: Bool -> Bool
     NotBoolChirho,
     /// String concatenation: ++# :: String -> String -> String

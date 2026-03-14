@@ -220,6 +220,23 @@ pub fn apply_prim_binop_chirho(
             }),
         },
 
+        // Unary show: convert Bool to String ("True" or "False")
+        PrimOpKindChirho::ShowBoolChirho => match left_chirho {
+            ValueChirho::IntChirho(v_chirho) => {
+                let s_chirho = if *v_chirho != 0 { "True" } else { "False" };
+                Ok(ValueChirho::StringChirho(s_chirho.to_string()))
+            }
+            ValueChirho::BoolChirho(v_chirho) => {
+                let s_chirho = if *v_chirho { "True" } else { "False" };
+                Ok(ValueChirho::StringChirho(s_chirho.to_string()))
+            }
+            _ => Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho,
+                expected_chirho: "Bool",
+                got_chirho: format!("{left_chirho}"),
+            }),
+        },
+
         // Float equality
         PrimOpKindChirho::EqFloatChirho => float_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             Ok(ValueChirho::BoolChirho(a_chirho == b_chirho))

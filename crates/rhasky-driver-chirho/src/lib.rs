@@ -8773,4 +8773,99 @@ main = case safeDivide 20 2 of
             Err(e_chirho) => panic!("putChar should output chars: {}", e_chirho),
         }
     }
+
+    #[test]
+    fn eval_seq_strict_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // seq forces strict evaluation of first arg, returns second
+        let result_chirho = eval_source_chirho(
+            "module Test where\nmain = seq 1 42\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+            }
+            Err(e_chirho) => panic!("seq should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_where_multiple_binds_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_chirho(
+            "module Test where\nf x = a + b\n  where\n    a = x * 2\n    b = x + 1\nmain = f 10\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(31));
+            }
+            Err(e_chirho) => panic!("multiple where bindings should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_show_bool_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // Use if-then-else to avoid constructor application issue with show True
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nshowBool x = if x then \"True\" else \"False\"\nmain = putStrLn (showBool True)\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "True\n"),
+            Err(e_chirho) => panic!("show True should print: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_show_negative_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = putStrLn (show (0 - 5))\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "-5\n"),
+            Err(e_chirho) => panic!("show negative should print: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_forall_identity_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_chirho(
+            "module Test where\nidChirho :: forall a. a -> a\nidChirho x = x\nmain = idChirho 99\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99));
+            }
+            Err(e_chirho) => panic!("forall identity should work: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_list_comp_with_guard_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // [x*2 | x <- [1..5], even x] should give [4, 8]
+        let result_chirho = eval_source_chirho(
+            "module Test where\nmain = sum [x * 2 | x <- [1,2,3,4,5], even x]\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(12));
+            }
+            Err(e_chirho) => panic!("list comp with guard should work: {}", e_chirho),
+        }
+    }
 }

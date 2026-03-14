@@ -291,6 +291,13 @@ impl DictPassCtxChirho {
                     if let Some(type_name_chirho) = self.con_types_chirho.get(name_chirho) {
                         return Some(type_name_chirho.clone());
                     }
+                    // Built-in constructors
+                    match name_chirho.as_str() {
+                        "True" | "False" => return Some("Bool".to_string()),
+                        "Nothing" => return Some("Maybe Int".to_string()),
+                        "LT" | "EQ" | "GT" => return Some("Ordering".to_string()),
+                        _ => {}
+                    }
                 }
                 None
             }
@@ -631,7 +638,8 @@ impl DictPassCtxChirho {
             // Show
             ("Show", "show", "Int", 2),
             ("Show", "show", "Char", 0),
-            ("Show", "show", "Bool", 0),
+            // Show Bool is handled specially below (case True/False -> string)
+            // ("Show", "show", "Bool", 0),
             // Num
             ("Num", "+", "Int", 1),
             ("Num", "*", "Int", 1),
@@ -729,6 +737,12 @@ impl DictPassCtxChirho {
                 continue;
             }
 
+            // Special case: Show Bool → case on True/False returning string
+            if class_chirho == "Show" && method_chirho == "show" && type_key_chirho == "Bool" {
+                self.generate_show_bool_binding_chirho(&prim_name_chirho);
+                continue;
+            }
+
             let int_ty_chirho = TyChirho::int_chirho();
 
             let rhs_chirho = match kind_chirho {
@@ -802,6 +816,30 @@ impl DictPassCtxChirho {
     ///     [] -> "[]"
     ///     (:) x rest -> ++# "[" (++# (showInt# x) ($showListTail_Int rest))
     /// ```
+
+    /// Generate `$prim_Show_show_Bool = \x -> showBool# x`
+    fn generate_show_bool_binding_chirho(&mut self, prim_name_chirho: &str) {
+        let bool_ty_chirho = TyChirho::bool_chirho();
+        let str_ty_chirho = TyChirho::string_chirho();
+
+        let x_chirho = self.fresh_binder_chirho("x", bool_ty_chirho);
+
+        let rhs_chirho = CoreExprChirho::LamChirho {
+            binder_chirho: x_chirho.clone(),
+            body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                name_chirho: "showBool#".to_string(),
+                args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
+            }),
+        };
+
+        let binder_chirho = self.fresh_binder_chirho(prim_name_chirho, str_ty_chirho);
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho,
+            rhs_chirho,
+            is_rec_chirho: false,
+        });
+    }
+
     fn generate_show_list_int_binding_chirho(&mut self, prim_name_chirho: &str) {
         let str_ty_chirho = TyChirho::string_chirho();
         let int_ty_chirho = TyChirho::int_chirho();
