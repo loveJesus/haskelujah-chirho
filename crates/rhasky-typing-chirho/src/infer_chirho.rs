@@ -3886,6 +3886,61 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     );
 
     // -----------------------------------------------------------------------
+    // Semigroup / Monoid
+    // -----------------------------------------------------------------------
+
+    // (<>) :: forall a. Semigroup a => a -> a -> a
+    let sg_v_chirho = TyVarChirho(3600);
+    env_chirho.bind_chirho(
+        "<>".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![sg_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Semigroup".to_string(),
+                ty_chirho: TyChirho::VarChirho(sg_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                [
+                    TyChirho::VarChirho(sg_v_chirho),
+                    TyChirho::VarChirho(sg_v_chirho),
+                ],
+                TyChirho::VarChirho(sg_v_chirho),
+            ),
+        },
+    );
+
+    // mempty :: forall a. Monoid a => a
+    let mon_v_chirho = TyVarChirho(3601);
+    env_chirho.bind_chirho(
+        "mempty".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![mon_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Monoid".to_string(),
+                ty_chirho: TyChirho::VarChirho(mon_v_chirho),
+            }],
+            ty_chirho: TyChirho::VarChirho(mon_v_chirho),
+        },
+    );
+
+    // mconcat :: forall a. Monoid a => [a] -> a
+    let mc_v_chirho = TyVarChirho(3602);
+    env_chirho.bind_chirho(
+        "mconcat".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![mc_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Monoid".to_string(),
+                ty_chirho: TyChirho::VarChirho(mc_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(mc_v_chirho))),
+                TyChirho::VarChirho(mc_v_chirho),
+            ),
+        },
+    );
+
+    // -----------------------------------------------------------------------
     // Higher-order list Prelude functions
     // -----------------------------------------------------------------------
 

@@ -1306,6 +1306,109 @@ impl ClassEnvChirho {
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });
+
+        // ── Semigroup / Monoid ──
+
+        // Semigroup (no superclass)
+        let sg_var_chirho = TyVarChirho(9050);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Semigroup".to_string(),
+            supers_chirho: vec![],
+            var_chirho: sg_var_chirho,
+            methods_chirho: HashMap::from([(
+                "<>".to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![sg_var_chirho],
+                    preds_chirho: vec![],
+                    ty_chirho: TyChirho::fun_n_chirho(
+                        [
+                            TyChirho::VarChirho(sg_var_chirho),
+                            TyChirho::VarChirho(sg_var_chirho),
+                        ],
+                        TyChirho::VarChirho(sg_var_chirho),
+                    ),
+                },
+            )]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // Monoid (superclass: Semigroup)
+        let mon_var_chirho = TyVarChirho(9051);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Monoid".to_string(),
+            supers_chirho: vec!["Semigroup".to_string()],
+            var_chirho: mon_var_chirho,
+            methods_chirho: HashMap::from([
+                (
+                    "mempty".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![mon_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::VarChirho(mon_var_chirho),
+                    },
+                ),
+                (
+                    "mconcat".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![mon_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::ListChirho(Box::new(TyChirho::VarChirho(mon_var_chirho))),
+                            TyChirho::VarChirho(mon_var_chirho),
+                        ),
+                    },
+                ),
+            ]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // Semigroup ground instances for concrete list types
+        for elem_chirho in &[
+            TyChirho::ConChirho("Int".to_string()),
+            TyChirho::ConChirho("Char".to_string()),
+            TyChirho::ConChirho("Double".to_string()),
+            TyChirho::ConChirho("Bool".to_string()),
+        ] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "Semigroup".to_string(),
+                head_ty_chirho: TyChirho::ListChirho(Box::new(elem_chirho.clone())),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
+        // instance Semigroup ()
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Semigroup".to_string(),
+            head_ty_chirho: TyChirho::TupleChirho(vec![]),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // Monoid ground instances for concrete list types
+        for elem_chirho in &[
+            TyChirho::ConChirho("Int".to_string()),
+            TyChirho::ConChirho("Char".to_string()),
+            TyChirho::ConChirho("Double".to_string()),
+            TyChirho::ConChirho("Bool".to_string()),
+        ] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "Monoid".to_string(),
+                head_ty_chirho: TyChirho::ListChirho(Box::new(elem_chirho.clone())),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
+        // instance Monoid ()
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Monoid".to_string(),
+            head_ty_chirho: TyChirho::TupleChirho(vec![]),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
     }
 }
 
@@ -1408,6 +1511,8 @@ mod tests_chirho {
         assert!(env_chirho.has_class_chirho("Functor"));
         assert!(env_chirho.has_class_chirho("Applicative"));
         assert!(env_chirho.has_class_chirho("Monad"));
+        assert!(env_chirho.has_class_chirho("Semigroup"));
+        assert!(env_chirho.has_class_chirho("Monoid"));
 
         assert_eq!(
             env_chirho.superclasses_chirho("Ord"),
@@ -1416,6 +1521,10 @@ mod tests_chirho {
         assert_eq!(
             env_chirho.superclasses_chirho("Num"),
             vec!["Eq".to_string(), "Show".to_string()]
+        );
+        assert_eq!(
+            env_chirho.superclasses_chirho("Monoid"),
+            vec!["Semigroup".to_string()]
         );
     }
 

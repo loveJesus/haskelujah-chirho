@@ -11960,4 +11960,61 @@ main = if all odd [1,3,5,7] then 1 else 0
         }
     }
 
+    // ── Semigroup / Monoid tests ──
+
+    #[test]
+    fn eval_semigroup_append_lists_chirho() {
+        // [1,2] <> [3,4] should produce a list of length 4
+        // We evaluate: length ([1,2] <> [3,4])
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length ([1,2] <> [3,4])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(4)),
+            Err(e_chirho) => panic!("semigroup append lists: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_semigroup_append_strings_chirho() {
+        // "hello" <> " " <> "world" via putStrLn
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = putStrLn (\"hello\" <> \" \" <> \"world\")\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(machine_chirho.io_output_chirho, "hello world\n");
+            }
+            Err(e_chirho) => panic!("semigroup append strings: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_monoid_mempty_list_chirho() {
+        // mempty <> [1,2,3] should give [1,2,3] → length 3
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (mempty <> [1,2,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("monoid mempty list: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_monoid_mconcat_chirho() {
+        // mconcat [[1,2],[3],[4,5]] should give [1,2,3,4,5] → length 5
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (mconcat [[1,2],[3],[4,5]])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5)),
+            Err(e_chirho) => panic!("monoid mconcat: {}", e_chirho),
+        }
+    }
+
 }
