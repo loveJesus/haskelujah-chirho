@@ -18,6 +18,7 @@ const MAGIC_CHIRHO: u32 = 0xCAFEBABE;
 /// JVM access flags.
 const ACC_PUBLIC_CHIRHO: u16 = 0x0001;
 const ACC_SUPER_CHIRHO: u16 = 0x0020;
+#[allow(dead_code)]
 const ACC_STATIC_CHIRHO: u16 = 0x0008;
 
 /// Compile a Core module to JVM class files.

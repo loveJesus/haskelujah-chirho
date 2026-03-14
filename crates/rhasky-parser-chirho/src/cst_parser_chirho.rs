@@ -206,18 +206,26 @@ impl<'src> ParserChirho<'src> {
             let before_chirho = self.pos_chirho;
             self.builder_chirho
                 .start_node_chirho(SyntaxKindChirho::ExportSpecChirho);
-            // Eat tokens until comma or close paren
-            while !self.at_chirho(RawTokenKindChirho::CommaChirho)
-                && !self.at_chirho(RawTokenKindChirho::RightParenChirho)
-                && !self.at_eof_chirho()
-            {
+            // Eat tokens until comma or close paren at nesting depth 0.
+            // Track paren nesting so `Color(Red, Green)` is one ExportSpec.
+            let mut paren_depth_chirho: u32 = 0;
+            loop {
                 self.eat_trivia_chirho();
-                if !self.at_chirho(RawTokenKindChirho::CommaChirho)
-                    && !self.at_chirho(RawTokenKindChirho::RightParenChirho)
-                    && !self.at_eof_chirho()
-                {
-                    self.bump_chirho();
+                if self.at_eof_chirho() {
+                    break;
                 }
+                if paren_depth_chirho == 0
+                    && (self.at_chirho(RawTokenKindChirho::CommaChirho)
+                        || self.at_chirho(RawTokenKindChirho::RightParenChirho))
+                {
+                    break;
+                }
+                if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+                    paren_depth_chirho += 1;
+                } else if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                }
+                self.bump_chirho();
             }
             self.builder_chirho.finish_node_chirho();
 

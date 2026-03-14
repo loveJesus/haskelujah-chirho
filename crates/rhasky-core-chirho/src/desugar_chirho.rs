@@ -3069,7 +3069,7 @@ impl DesugarCtxChirho {
                 }
             }
             StmtChirho::LetChirho {
-                binds_chirho, span_chirho,
+                binds_chirho, span_chirho: _,
             } => {
                 // let binds in [e | rest] with continuation k
                 self.push_scope_chirho();
@@ -3131,6 +3131,7 @@ impl DesugarCtxChirho {
     ///     (:) $h $t -> (:) $h ($append $t)
     /// in $append xs
     /// ```
+    #[allow(dead_code)]
     fn build_list_append_chirho(
         &mut self,
         xs_chirho: CoreExprChirho,

@@ -20,12 +20,11 @@ use rhasky_core_chirho::{
     CoreModuleChirho, SimplifyConfigChirho,
 };
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
-use rhasky_naming_chirho::resolve_chirho::{resolve_module_chirho, resolve_module_with_imports_chirho};
+use rhasky_naming_chirho::resolve_chirho::resolve_module_with_imports_chirho;
 use rhasky_naming_chirho::iface_chirho::{build_iface_chirho, ModuleIfaceChirho};
 use rhasky_typing_chirho::infer_chirho::{infer_module_chirho, infer_module_with_imports_chirho};
 use rhasky_parser_chirho::cst_parser_chirho::ParserChirho;
 use rhasky_parser_chirho::lower_chirho::lower_module_chirho;
-use rhasky_parser_chirho::scan_module_header_chirho;
 use rhasky_runtime_chirho::{ExecutionModeChirho, RuntimePlanChirho};
 use rhasky_span_chirho::SourceMapChirho;
 use rhasky_syntax_chirho::SourceFileChirho;
@@ -36,12 +35,14 @@ pub struct BackendPlanChirho {
     pub wasm_stub_size_chirho: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct CheckSummaryChirho {
     pub source_path_chirho: PathBuf,
     pub module_name_chirho: String,
     pub runtime_plan_chirho: RuntimePlanChirho,
     pub backend_plan_chirho: BackendPlanChirho,
+    /// Non-fatal warnings collected from the pipeline (deriving, exhaustiveness).
+    pub warnings_chirho: Vec<String>,
 }
 
 pub fn check_source_path_chirho(
@@ -77,7 +78,7 @@ pub fn check_source_file_chirho(
     let mut module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
 
     // Phase 2.5: Deriving
-    let _deriving_warnings_chirho =
+    let deriving_warnings_chirho =
         rhasky_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
 
     // Phase 3: Name resolution
@@ -108,6 +109,19 @@ pub fn check_source_file_chirho(
         return Err(exhaust_result_chirho.diagnostics_chirho);
     }
 
+    // Collect non-fatal warnings from exhaustiveness (e.g. redundant patterns).
+    let exhaust_warnings_chirho: Vec<String> = exhaust_result_chirho
+        .diagnostics_chirho
+        .diagnostics_chirho()
+        .iter()
+        .filter(|d_chirho| !d_chirho.is_error_chirho())
+        .map(|d_chirho| d_chirho.to_string())
+        .collect();
+
+    // Merge all warnings.
+    let mut warnings_chirho = deriving_warnings_chirho;
+    warnings_chirho.extend(exhaust_warnings_chirho);
+
     // Extract module name from the AST (produced by the real parser)
     let module_name_chirho = module_chirho.name_chirho.text_chirho().to_string();
     let runtime_plan_chirho =
@@ -125,6 +139,7 @@ pub fn check_source_file_chirho(
             llvm_preview_chirho,
             wasm_stub_size_chirho,
         },
+        warnings_chirho,
     })
 }
 
@@ -436,7 +451,7 @@ pub fn compile_modules_chirho(
                 imported_types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
             }
         }
-        for (name_chirho, ty_info_chirho) in &iface_chirho.exports_chirho.types_chirho {
+        for (_name_chirho, ty_info_chirho) in &iface_chirho.exports_chirho.types_chirho {
             // Export the type constructors' data constructor schemes
             for con_name_chirho in &ty_info_chirho.constructors_chirho {
                 if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(con_name_chirho) {
@@ -468,7 +483,7 @@ pub fn eval_modules_chirho(
     entry_name_chirho: Option<&str>,
 ) -> Result<rhasky_runtime_chirho::ValueChirho, String> {
     use rhasky_core_chirho::expr_chirho::{
-        AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho,
+        CoreExprChirho,
         CoreIdChirho, CoreModuleChirho as CoreModChirho,
     };
 
@@ -1033,7 +1048,7 @@ pub fn compile_cabal_project_chirho(
     cabal_path_chirho: impl AsRef<Path>,
     index_chirho: &rhasky_package_chirho::PackageIndexChirho,
 ) -> Result<CabalCompileResultChirho, String> {
-    use rhasky_package_chirho::{parse_cabal_chirho, resolve_deps_chirho, BuildPlanChirho};
+    use rhasky_package_chirho::{parse_cabal_chirho, resolve_deps_chirho};
     use std::collections::BTreeSet;
 
     // Read and parse the .cabal file.

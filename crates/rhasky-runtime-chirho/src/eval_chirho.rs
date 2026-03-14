@@ -376,7 +376,7 @@ impl MachineChirho {
     ) -> Result<ValueChirho, EvalErrorChirho> {
         let mut pc_chirho = entry_chirho;
 
-        'eval: loop {
+        loop {
             // Step limit check
             if self.step_limit_chirho > 0 && self.steps_chirho >= self.step_limit_chirho {
                 return Err(EvalErrorChirho::StepLimitChirho {
@@ -2508,7 +2508,6 @@ impl MachineChirho {
                     }
                 }
             }
-            _ => "?".to_string(),
         }
     }
 

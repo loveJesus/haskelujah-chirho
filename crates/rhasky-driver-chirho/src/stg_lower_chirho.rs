@@ -713,7 +713,7 @@ impl LowerCtxChirho {
 
                         if !captures_chirho.is_empty() {
                             // Thunk with captures: use StoreAllocThunkChirho
-                            let n_captures_chirho = captures_chirho.len();
+                            let _n_captures_chirho = captures_chirho.len();
 
                             // Assign a temp arg-register slot for this binding
                             let max_reg_chirho = self

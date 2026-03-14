@@ -1,11 +1,12 @@
 {
+  "_comment_john_3_16_chirho": "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. (John 3:16)",
   "meta_chirho": {
     "project_chirho": "Rhasky Chirho",
     "tagline_chirho": "A production-grade Haskell compiler implemented in Rust",
-    "prd_version_chirho": "1.0.0",
+    "prd_version_chirho": "1.1.0",
     "compiler_version_chirho": "0.1.0-pre",
-    "date_chirho": "2026-03-12",
-    "current_milestone_chirho": "M0",
+    "date_chirho": "2026-03-14",
+    "current_milestone_chirho": "M1",
     "status_chirho": "in-progress"
   },
 
@@ -110,9 +111,9 @@
     {
       "id_chirho": "AD-006",
       "title_chirho": "Backend strategy",
-      "decision_chirho": "Backend-agnostic pipeline; LLVM IR first, WebAssembly first-class",
+      "decision_chirho": "Backend-agnostic pipeline; LLVM IR first, WebAssembly first-class; Cranelift, JVM, BEAM as additional targets",
       "status_chirho": "decided",
-      "rationale_chirho": "LLVM provides mature optimization and codegen. Wasm enables browser REPL, sandboxed execution, portability"
+      "rationale_chirho": "LLVM provides mature optimization and codegen. Wasm enables browser REPL, sandboxed execution, portability. Cranelift enables fast debug builds. JVM and BEAM enable polyglot interop."
     },
     {
       "id_chirho": "AD-007",
@@ -248,108 +249,108 @@
     },
     {
       "name_chirho": "rhasky-syntax-chirho",
-      "purpose_chirho": "Token kinds, trivia, red-green syntax node kinds, CST node wrappers",
+      "purpose_chirho": "Token kinds, trivia, red-green syntax node kinds, CST node wrappers, lexer, layout rule",
       "depends_on_chirho": ["rhasky-span-chirho"],
       "milestone_chirho": "M0-M1",
-      "status_chirho": "in-progress"
+      "status_chirho": "complete"
     },
     {
       "name_chirho": "rhasky-parser-chirho",
-      "purpose_chirho": "Lexer with layout rule, recursive-descent parser, error recovery, CST construction",
+      "purpose_chirho": "Recursive-descent CST parser with error recovery and green tree builder",
       "depends_on_chirho": ["rhasky-syntax-chirho", "rhasky-diagnostics-chirho", "rhasky-span-chirho"],
+      "milestone_chirho": "M1",
+      "status_chirho": "complete"
+    },
+    {
+      "name_chirho": "rhasky-ast-chirho",
+      "purpose_chirho": "Abstract syntax tree types and CST-to-AST lowering; typed wrappers over the CST green tree",
+      "depends_on_chirho": ["rhasky-syntax-chirho", "rhasky-span-chirho"],
+      "milestone_chirho": "M1",
+      "status_chirho": "complete"
+    },
+    {
+      "name_chirho": "rhasky-naming-chirho",
+      "purpose_chirho": "Name resolution, scope analysis, module interfaces (ModuleIfaceChirho), import/export resolution, qualified name support, multi-module import handling",
+      "depends_on_chirho": ["rhasky-ast-chirho", "rhasky-span-chirho", "rhasky-diagnostics-chirho"],
+      "milestone_chirho": "M1",
+      "status_chirho": "complete"
+    },
+    {
+      "name_chirho": "rhasky-typing-chirho",
+      "purpose_chirho": "HM type inference (Algorithm W), unification, substitution, type schemes, typeclass infrastructure (ClassEnvChirho, instance resolution, context reduction), kind inference, pattern exhaustiveness checking, typeclass deriving (Eq, Ord, Show)",
+      "depends_on_chirho": ["rhasky-ast-chirho", "rhasky-naming-chirho", "rhasky-span-chirho", "rhasky-diagnostics-chirho"],
+      "milestone_chirho": "M1",
+      "status_chirho": "complete"
+    },
+    {
+      "name_chirho": "rhasky-core-chirho",
+      "purpose_chirho": "System FC-style Core IR, AST-to-Core desugaring, dictionary-passing transform, Core-to-Core simplifier (beta reduction, dead code elimination, constant folding), pretty-printer",
+      "depends_on_chirho": ["rhasky-ast-chirho", "rhasky-typing-chirho", "rhasky-span-chirho"],
+      "milestone_chirho": "M1",
+      "status_chirho": "complete"
+    },
+    {
+      "name_chirho": "rhasky-runtime-chirho",
+      "purpose_chirho": "STG runtime: value types, heap, evaluation stack, primitive ops, STG machine (MachineChirho), mark-sweep GC (GcStateChirho), FFI (ForeignTableChirho), IO capture",
+      "depends_on_chirho": [],
+      "milestone_chirho": "M0-M1",
+      "status_chirho": "complete"
+    },
+    {
+      "name_chirho": "rhasky-backend-llvm-chirho",
+      "purpose_chirho": "Core IR to textual LLVM IR codegen; PrimOp-to-native-instruction lowering",
+      "depends_on_chirho": ["rhasky-core-chirho", "rhasky-runtime-chirho"],
       "milestone_chirho": "M1",
       "status_chirho": "in-progress"
     },
     {
-      "name_chirho": "rhasky-ast-chirho",
-      "purpose_chirho": "Typed AST wrappers providing convenient access over CST structures",
-      "depends_on_chirho": ["rhasky-syntax-chirho", "rhasky-span-chirho"],
+      "name_chirho": "rhasky-backend-wasm-chirho",
+      "purpose_chirho": "Core IR to binary WebAssembly codegen; PrimOp-to-wasm-opcode lowering",
+      "depends_on_chirho": ["rhasky-core-chirho", "rhasky-runtime-chirho"],
       "milestone_chirho": "M1",
-      "status_chirho": "not-started"
+      "status_chirho": "in-progress"
     },
     {
-      "name_chirho": "rhasky-hir-chirho",
-      "purpose_chirho": "Resolved module-level representation after name resolution",
-      "depends_on_chirho": ["rhasky-ast-chirho", "rhasky-span-chirho", "rhasky-diagnostics-chirho"],
-      "milestone_chirho": "M2",
-      "status_chirho": "not-started"
-    },
-    {
-      "name_chirho": "rhasky-namer-chirho",
-      "purpose_chirho": "Name resolution, import/export handling, module graph, package visibility",
-      "depends_on_chirho": ["rhasky-hir-chirho", "rhasky-ast-chirho", "rhasky-diagnostics-chirho", "rhasky-package-db-chirho"],
-      "milestone_chirho": "M2",
-      "status_chirho": "not-started"
-    },
-    {
-      "name_chirho": "rhasky-types-chirho",
-      "purpose_chirho": "Kinds, types, substitutions, predicates, type class data, evidence types",
-      "depends_on_chirho": ["rhasky-hir-chirho", "rhasky-span-chirho", "rhasky-diagnostics-chirho"],
-      "milestone_chirho": "M2",
-      "status_chirho": "not-started"
-    },
-    {
-      "name_chirho": "rhasky-typecheck-chirho",
-      "purpose_chirho": "Type inference, checking, instance resolution, evidence elaboration, kind checking",
-      "depends_on_chirho": ["rhasky-types-chirho", "rhasky-hir-chirho", "rhasky-namer-chirho", "rhasky-diagnostics-chirho"],
-      "milestone_chirho": "M2",
-      "status_chirho": "not-started"
-    },
-    {
-      "name_chirho": "rhasky-core-chirho",
-      "purpose_chirho": "Small typed core IR for optimization passes",
-      "depends_on_chirho": ["rhasky-types-chirho", "rhasky-span-chirho"],
-      "milestone_chirho": "M3",
-      "status_chirho": "not-started"
-    },
-    {
-      "name_chirho": "rhasky-simplify-chirho",
-      "purpose_chirho": "Core-to-core optimization: inlining, case-of-case, let-floating, specialization, rewrite rules",
-      "depends_on_chirho": ["rhasky-core-chirho"],
-      "milestone_chirho": "M3",
-      "status_chirho": "not-started"
-    },
-    {
-      "name_chirho": "rhasky-stg-chirho",
-      "purpose_chirho": "Runtime-oriented IR for laziness, closure conversion, thunk representation",
-      "depends_on_chirho": ["rhasky-core-chirho", "rhasky-types-chirho"],
-      "milestone_chirho": "M3",
-      "status_chirho": "not-started"
-    },
-    {
-      "name_chirho": "rhasky-runtime-chirho",
-      "purpose_chirho": "Shared runtime: evaluation, memory management, exceptions, module init",
-      "depends_on_chirho": [],
-      "milestone_chirho": "M0-M3",
-      "status_chirho": "scaffold"
-    },
-    {
-      "name_chirho": "rhasky-backend-llvm-chirho",
-      "purpose_chirho": "LLVM IR lowering and native code generation from STG",
-      "depends_on_chirho": ["rhasky-stg-chirho", "rhasky-runtime-chirho"],
+      "name_chirho": "rhasky-backend-cranelift-chirho",
+      "purpose_chirho": "Core IR to Cranelift IR codegen; fast debug/JIT builds without LLVM dependency; uses cranelift-codegen, cranelift-frontend, cranelift-module, cranelift-object",
+      "depends_on_chirho": ["rhasky-core-chirho", "rhasky-span-chirho", "rhasky-typing-chirho"],
       "milestone_chirho": "M4",
       "status_chirho": "scaffold"
     },
     {
-      "name_chirho": "rhasky-backend-wasm-chirho",
-      "purpose_chirho": "WebAssembly lowering and runtime integration from STG",
-      "depends_on_chirho": ["rhasky-stg-chirho", "rhasky-runtime-chirho"],
+      "name_chirho": "rhasky-backend-jvm-chirho",
+      "purpose_chirho": "Core IR to JVM bytecode codegen; enables JVM interop, Android targets, and Scala/Kotlin/Clojure ecosystem access",
+      "depends_on_chirho": ["rhasky-core-chirho", "rhasky-span-chirho", "rhasky-typing-chirho"],
       "milestone_chirho": "M6",
       "status_chirho": "scaffold"
     },
     {
-      "name_chirho": "rhasky-package-db-chirho",
-      "purpose_chirho": "Cabal parsing, package database, Hackage index, dependency solving",
+      "name_chirho": "rhasky-backend-beam-chirho",
+      "purpose_chirho": "Core IR to BEAM bytecode codegen; enables Erlang/Elixir ecosystem interop and OTP concurrency primitives",
+      "depends_on_chirho": ["rhasky-core-chirho", "rhasky-span-chirho", "rhasky-typing-chirho"],
+      "milestone_chirho": "M6",
+      "status_chirho": "scaffold"
+    },
+    {
+      "name_chirho": "rhasky-incremental-chirho",
+      "purpose_chirho": "Incremental compilation: fingerprinting, dependency graph, artifact caching, recompilation avoidance",
+      "depends_on_chirho": ["rhasky-diagnostics-chirho", "rhasky-span-chirho"],
+      "milestone_chirho": "M1",
+      "status_chirho": "complete"
+    },
+    {
+      "name_chirho": "rhasky-package-chirho",
+      "purpose_chirho": "Cabal file parsing, version constraints, Hackage URL construction, dependency resolver",
       "depends_on_chirho": ["rhasky-diagnostics-chirho"],
       "milestone_chirho": "M1-M5",
-      "status_chirho": "not-started"
+      "status_chirho": "complete"
     },
     {
       "name_chirho": "rhasky-driver-chirho",
-      "purpose_chirho": "Build orchestration, incremental cache, build planning, mode dispatch",
+      "purpose_chirho": "Pipeline orchestration (CompileResultChirho), multi-module compilation, STG lowering, eval_source_chirho, mode dispatch",
       "depends_on_chirho": ["all"],
       "milestone_chirho": "M0+",
-      "status_chirho": "scaffold"
+      "status_chirho": "complete"
     },
     {
       "name_chirho": "rhasky-cli-chirho",
@@ -359,15 +360,8 @@
       "status_chirho": "scaffold"
     },
     {
-      "name_chirho": "rhasky-repl-chirho",
-      "purpose_chirho": "Interactive loop, session state, incremental evaluation",
-      "depends_on_chirho": ["rhasky-driver-chirho", "rhasky-runtime-chirho"],
-      "milestone_chirho": "M7",
-      "status_chirho": "not-started"
-    },
-    {
       "name_chirho": "rhasky-test-harness-chirho",
-      "purpose_chirho": "Golden tests, compatibility suites, property-test utilities",
+      "purpose_chirho": "Golden test utilities (assert/bless), compatibility suites, property-test utilities",
       "depends_on_chirho": ["rhasky-driver-chirho"],
       "milestone_chirho": "M0",
       "status_chirho": "complete"
@@ -390,21 +384,28 @@
     },
     {
       "id_chirho": "M1",
-      "name_chirho": "Lexer, Parser, and Module Loading",
+      "name_chirho": "Lexer, Parser, Module Loading, and Working Compiler Pipeline",
       "status_chirho": "in-progress",
       "acceptance_criteria_chirho": [
         "Lex all Haskell 2010 tokens including string gaps, numeric literals, qualified operators",
         "Layout rule via virtual brace/semicolon insertion at lexer level",
         "Parse non-trivial modules into red-green lossless CST with error recovery",
-        "Typed AST wrappers over CST for downstream consumption",
+        "Typed AST types with CST-to-AST lowering for downstream consumption",
         "Parse basic Cabal package descriptions",
         "Resolve module imports across package-local file graph",
-        "Test corpus of valid and invalid Haskell with golden tests"
+        "HM type inference with typeclass support and kind inference",
+        "Pattern exhaustiveness checking",
+        "Core IR desugaring, dictionary-passing, and Core-to-Core simplifier",
+        "STG evaluation via runtime MachineChirho with GC and FFI",
+        "LLVM IR and WebAssembly binary codegen from Core IR",
+        "Incremental compilation with fingerprinting and artifact caching",
+        "809+ tests passing across all crates",
+        "Test corpus of valid Haskell with golden tests"
       ]
     },
     {
       "id_chirho": "M2",
-      "name_chirho": "Name Resolution, Kinds, and Typechecking",
+      "name_chirho": "Name Resolution, Kinds, and Typechecking (Advanced)",
       "status_chirho": "not-started",
       "acceptance_criteria_chirho": [
         "Resolve names across multi-module packages with import/export semantics",
@@ -419,10 +420,10 @@
     },
     {
       "id_chirho": "M3",
-      "name_chirho": "Core IR, Desugaring, and Script Execution",
+      "name_chirho": "Core IR, Desugaring, and Script Execution (Advanced)",
       "status_chirho": "not-started",
       "acceptance_criteria_chirho": [
-        "Desugar do-notation, list comprehensions, guards, pattern match compilation, where clauses",
+        "Complete desugar coverage: do-notation, list comprehensions, guards, pattern match compilation, where clauses",
         "Lower typed programs into STG-like runtime IR",
         "Execute simple programs in script mode via tree-walking interpreter",
         "Serialize and load interface files for separate compilation",
@@ -432,7 +433,7 @@
     },
     {
       "id_chirho": "M4",
-      "name_chirho": "LLVM Backend",
+      "name_chirho": "LLVM Backend (Production)",
       "status_chirho": "not-started",
       "acceptance_criteria_chirho": [
         "Emit correct LLVM IR for a meaningful program subset",
@@ -456,15 +457,17 @@
     },
     {
       "id_chirho": "M6",
-      "name_chirho": "WebAssembly Backend",
+      "name_chirho": "WebAssembly, JVM, and BEAM Backends",
       "status_chirho": "not-started",
       "acceptance_criteria_chirho": [
-        "Emit Wasm artifacts from shared STG lowered form",
+        "Emit Wasm artifacts from shared Core lowered form",
         "Wasm-compatible closure/thunk representation",
         "Linear-memory GC or Wasm GC integration",
         "WASI FFI bridge",
         "Run scripted workloads in Wasm environment",
-        "Validate package loading for browser-hosted tooling"
+        "Validate package loading for browser-hosted tooling",
+        "JVM bytecode backend producing runnable .class files",
+        "BEAM bytecode backend for Erlang/Elixir interop"
       ]
     },
     {
@@ -497,12 +500,12 @@
 
   "runtime_design_chirho": {
     "evaluation_model_chirho": {
-      "strategy_chirho": "eval/apply with lazy thunks",
+      "strategy_chirho": "eval/apply with lazy thunks via STG machine (MachineChirho)",
       "thunk_chirho": "Header word (tag + GC info) + payload. Tag bit distinguishes thunks from values. Blackholing for deadlock detection.",
-      "status_chirho": "directional"
+      "status_chirho": "implemented"
     },
     "memory_management_chirho": {
-      "native_chirho": "Copying generational GC. Two-space nursery, aging promotion. Start simple, add generations incrementally.",
+      "native_chirho": "Mark-sweep GC implemented (GcStateChirho); copying generational GC planned. Two-space nursery, aging promotion. Start simple, add generations incrementally.",
       "wasm_chirho": "Linear-memory GC. Same algorithm, different memory layout. More portable than Wasm GC proposal.",
       "abstraction_chirho": "GC ops behind a trait so backends diverge without changing STG lowering"
     },
@@ -593,6 +596,12 @@
       "title_chirho": "Scope creep from extensions",
       "severity_chirho": "medium",
       "mitigation_chirho": "Strict tier plan. Extensions move tiers only with demonstrated ecosystem need"
+    },
+    {
+      "id_chirho": "R-009",
+      "title_chirho": "Backend proliferation maintenance cost",
+      "severity_chirho": "medium",
+      "mitigation_chirho": "Keep LLVM and Wasm as primary supported targets. Cranelift, JVM, and BEAM are best-effort; gate on a single shared Core IR lowering layer so each backend only implements the final lowering step"
     }
   ],
 
@@ -652,6 +661,16 @@
       "id_chirho": "OQ-005",
       "question_chirho": "Should Rhasky consume GHC-compiled packages?",
       "thinking_chirho": "No. GHC .hi format is unstable and deeply coupled to GHC internals. Only Rhasky-compiled packages for the foreseeable future."
+    },
+    {
+      "id_chirho": "OQ-006",
+      "question_chirho": "Should Cranelift replace LLVM as the primary native backend?",
+      "thinking_chirho": "Cranelift is faster to compile against and has no LLVM dependency, making it attractive for CI and distribution. However LLVM has more mature optimization passes. Current plan: LLVM for release builds, Cranelift as a fast debug/dev backend. Revisit at M4 with benchmark data."
+    },
+    {
+      "id_chirho": "OQ-007",
+      "question_chirho": "What is the right target Haskell language version for compatibility?",
+      "thinking_chirho": "GHC 9.6 / Haskell 2010 plus common extensions as the baseline. GHC 9.8+ features tracked but not blocking M1-M3."
     }
   ]
 }

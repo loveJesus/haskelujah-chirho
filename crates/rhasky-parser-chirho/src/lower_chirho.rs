@@ -18,7 +18,7 @@ use rhasky_ast_chirho::expr_chirho::{
 use rhasky_ast_chirho::ty_chirho::ConstraintChirho;
 use rhasky_ast_chirho::lit_chirho::LitChirho;
 use rhasky_ast_chirho::module_chirho::{
-    ExportMembersChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho, ModuleChirho,
+    ExportMembersChirho, ExportSpecChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho, ModuleChirho,
 };
 use rhasky_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use rhasky_ast_chirho::pat_chirho::{PatChirho, PatFieldChirho};
@@ -96,6 +96,7 @@ impl LowerCtxChirho {
     }
 
     /// Get the first token text matching a given kind from a node's children.
+    #[allow(dead_code)]
     fn first_token_text_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -161,6 +162,7 @@ impl LowerCtxChirho {
             "Main",
             SpanChirho::DUMMY_CHIRHO,
         ));
+        let mut exports_chirho: Option<Vec<ExportSpecChirho>> = None;
         let mut imports_chirho = Vec::new();
         let mut decls_chirho = Vec::new();
 
@@ -169,8 +171,10 @@ impl LowerCtxChirho {
                 GreenElementChirho::NodeChirho(n_chirho) => {
                     match n_chirho.kind_chirho() {
                         SyntaxKindChirho::ModuleHeaderChirho => {
-                            module_name_chirho =
+                            let (name_val_chirho, exp_val_chirho) =
                                 self.lower_module_header_chirho(n_chirho, child_chirho.start_chirho);
+                            module_name_chirho = name_val_chirho;
+                            exports_chirho = exp_val_chirho;
                         }
                         SyntaxKindChirho::ImportDeclChirho => {
                             imports_chirho.push(self.lower_import_decl_chirho(
@@ -202,7 +206,7 @@ impl LowerCtxChirho {
 
         ModuleChirho {
             name_chirho: module_name_chirho,
-            exports_chirho: None, // TODO: lower export list
+            exports_chirho,
             imports_chirho,
             decls_chirho,
             extensions_chirho,
@@ -218,27 +222,198 @@ impl LowerCtxChirho {
         &self,
         node_chirho: &GreenNodeChirho,
         base_chirho: usize,
-    ) -> NameChirho {
+    ) -> (NameChirho, Option<Vec<ExportSpecChirho>>) {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-        // Find the module name token (ConId or QualifiedConId after 'module' keyword)
+        let mut name_chirho: Option<NameChirho> = None;
+        let mut exports_chirho: Option<Vec<ExportSpecChirho>> = None;
+
         for child_chirho in &children_chirho {
-            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
-                match tok_chirho.kind_chirho() {
-                    TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
-                        let span_chirho =
-                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        return self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho);
+            match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(tok_chirho) => {
+                    match tok_chirho.kind_chirho() {
+                        TokenKindChirho::ConIdChirho
+                        | TokenKindChirho::QualifiedConIdChirho
+                            if name_chirho.is_none() =>
+                        {
+                            let span_chirho =
+                                self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                            name_chirho = Some(
+                                self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho),
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+                GreenElementChirho::NodeChirho(n_chirho)
+                    if n_chirho.kind_chirho() == SyntaxKindChirho::ExportListChirho =>
+                {
+                    exports_chirho = Some(
+                        self.lower_export_list_chirho(n_chirho, child_chirho.start_chirho),
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        let result_name_chirho = name_chirho.unwrap_or_else(|| {
+            NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                "Main",
+                SpanChirho::DUMMY_CHIRHO,
+            ))
+        });
+        (result_name_chirho, exports_chirho)
+    }
+
+    /// Lower an export list CST node (`(foo, Bar(..), module M)`) into a vector of
+    /// `ExportSpecChirho`.  Returns an empty vec for `module M ()`.
+    fn lower_export_list_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> Vec<ExportSpecChirho> {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let mut exports_chirho: Vec<ExportSpecChirho> = Vec::new();
+
+        for child_chirho in &children_chirho {
+            if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
+                if n_chirho.kind_chirho() == SyntaxKindChirho::ExportSpecChirho {
+                    if let Some(spec_chirho) =
+                        self.lower_export_spec_item_chirho(n_chirho, child_chirho.start_chirho)
+                    {
+                        exports_chirho.push(spec_chirho);
+                    }
+                }
+            }
+        }
+
+        exports_chirho
+    }
+
+    /// Lower a single export spec CST node into an `ExportSpecChirho`.
+    ///
+    /// Handles:
+    /// - `foo`       — variable export (`VarChirho`)
+    /// - `Foo`       — type/class, name only (`TyConChirho { NoneChirho }`)
+    /// - `Foo(..)`   — type/class with all members (`TyConChirho { AllChirho }`)
+    /// - `Foo(A, B)` — type/class with specific members (`TyConChirho { SomeChirho }`)
+    /// - `module M`  — module re-export (`ModuleChirho`)
+    fn lower_export_spec_item_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> Option<ExportSpecChirho> {
+        let mut first_name_chirho: Option<(String, SpanChirho, bool)> = None; // (text, span, is_con)
+        let mut is_module_reexport_chirho = false;
+        let mut has_parens_chirho = false;
+        let mut has_dotdot_chirho = false;
+        let mut members_chirho: Vec<NameChirho> = Vec::new();
+        let mut in_parens_chirho = false;
+
+        let mut offset_chirho = base_chirho;
+        for elem_chirho in node_chirho.children_chirho() {
+            let elem_start_chirho = offset_chirho;
+            let elem_end_chirho = offset_chirho + elem_chirho.text_len_chirho();
+            if !is_trivia_element_chirho(elem_chirho) {
+                match elem_chirho {
+                    GreenElementChirho::TokenChirho(tok_chirho) => {
+                        match tok_chirho.kind_chirho() {
+                            TokenKindChirho::ModuleKeywordChirho => {
+                                is_module_reexport_chirho = true;
+                            }
+                            TokenKindChirho::ConIdChirho
+                            | TokenKindChirho::QualifiedConIdChirho => {
+                                let span_chirho =
+                                    self.span_chirho(elem_start_chirho, elem_end_chirho);
+                                if first_name_chirho.is_none() && !in_parens_chirho {
+                                    first_name_chirho = Some((
+                                        tok_chirho.text_chirho().to_string(),
+                                        span_chirho,
+                                        !is_module_reexport_chirho,
+                                    ));
+                                } else if in_parens_chirho {
+                                    members_chirho.push(self.name_from_text_chirho(
+                                        tok_chirho.text_chirho(),
+                                        span_chirho,
+                                    ));
+                                }
+                            }
+                            TokenKindChirho::VarIdChirho => {
+                                let span_chirho =
+                                    self.span_chirho(elem_start_chirho, elem_end_chirho);
+                                if first_name_chirho.is_none() && !in_parens_chirho {
+                                    first_name_chirho = Some((
+                                        tok_chirho.text_chirho().to_string(),
+                                        span_chirho,
+                                        false,
+                                    ));
+                                } else if in_parens_chirho {
+                                    members_chirho.push(self.name_from_text_chirho(
+                                        tok_chirho.text_chirho(),
+                                        span_chirho,
+                                    ));
+                                }
+                            }
+                            TokenKindChirho::VarSymChirho | TokenKindChirho::ConSymChirho => {
+                                let span_chirho =
+                                    self.span_chirho(elem_start_chirho, elem_end_chirho);
+                                if first_name_chirho.is_none() && !in_parens_chirho {
+                                    first_name_chirho = Some((
+                                        tok_chirho.text_chirho().to_string(),
+                                        span_chirho,
+                                        false,
+                                    ));
+                                } else if in_parens_chirho {
+                                    members_chirho.push(self.name_from_text_chirho(
+                                        tok_chirho.text_chirho(),
+                                        span_chirho,
+                                    ));
+                                }
+                            }
+                            TokenKindChirho::LeftParenChirho => {
+                                has_parens_chirho = true;
+                                in_parens_chirho = true;
+                            }
+                            TokenKindChirho::RightParenChirho => {
+                                in_parens_chirho = false;
+                            }
+                            TokenKindChirho::DotDotChirho => {
+                                has_dotdot_chirho = true;
+                            }
+                            _ => {}
+                        }
                     }
                     _ => {}
                 }
             }
+            offset_chirho = elem_end_chirho;
         }
-        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-            "Main",
-            SpanChirho::DUMMY_CHIRHO,
-        ))
-    }
 
+        let (text_chirho, span_chirho, is_con_chirho) = first_name_chirho?;
+        let name_chirho = self.name_from_text_chirho(&text_chirho, span_chirho);
+
+        if is_module_reexport_chirho {
+            Some(ExportSpecChirho::ModuleChirho(name_chirho))
+        } else if is_con_chirho && has_parens_chirho {
+            let members_spec_chirho = if has_dotdot_chirho {
+                ExportMembersChirho::AllChirho
+            } else if members_chirho.is_empty() {
+                ExportMembersChirho::NoneChirho
+            } else {
+                ExportMembersChirho::SomeChirho(members_chirho)
+            };
+            Some(ExportSpecChirho::TyConChirho {
+                name_chirho,
+                members_chirho: members_spec_chirho,
+            })
+        } else if is_con_chirho {
+            Some(ExportSpecChirho::TyConChirho {
+                name_chirho,
+                members_chirho: ExportMembersChirho::NoneChirho,
+            })
+        } else {
+            Some(ExportSpecChirho::VarChirho(name_chirho))
+        }
+    }
     // -----------------------------------------------------------------------
     // Import declarations
     // -----------------------------------------------------------------------
@@ -2624,7 +2799,7 @@ impl LowerCtxChirho {
                 let mut trailing_op_chirho: Option<String> = None;
                 let mut expr_nodes_chirho: Vec<&ChildChirho<'_>> = Vec::new();
 
-                for (idx_chirho, child_chirho) in children_chirho.iter().enumerate() {
+                for (_idx_chirho, child_chirho) in children_chirho.iter().enumerate() {
                     match &child_chirho.element_chirho {
                         GreenElementChirho::NodeChirho(_) => {
                             expr_nodes_chirho.push(child_chirho);
@@ -4796,5 +4971,124 @@ mod tests_chirho {
             }
             _ => unreachable!(),
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Export list lowering tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn lower_export_list_var_chirho() {
+        // module M (foo) where — exports a single variable
+        let module_chirho = parse_and_lower_chirho("module M (foo) where
+foo = 1
+");
+        let exports_chirho = module_chirho
+            .exports_chirho
+            .as_ref()
+            .expect("expected an export list");
+        assert_eq!(exports_chirho.len(), 1, "expected 1 export");
+        match &exports_chirho[0] {
+            ExportSpecChirho::VarChirho(name_chirho) => {
+                assert_eq!(name_chirho.text_chirho(), "foo");
+            }
+            other_chirho => panic!("expected VarChirho, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_export_list_tycon_all_chirho() {
+        // module M (Color(..)) where — exports a type with all members
+        let module_chirho = parse_and_lower_chirho(
+            "module M (Color(..)) where
+data Color = Red | Green | Blue
+",
+        );
+        let exports_chirho = module_chirho
+            .exports_chirho
+            .as_ref()
+            .expect("expected an export list");
+        assert_eq!(exports_chirho.len(), 1, "expected 1 export");
+        match &exports_chirho[0] {
+            ExportSpecChirho::TyConChirho {
+                name_chirho,
+                members_chirho,
+            } => {
+                assert_eq!(name_chirho.text_chirho(), "Color");
+                assert_eq!(*members_chirho, ExportMembersChirho::AllChirho);
+            }
+            other_chirho => panic!("expected TyConChirho, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_export_list_tycon_specific_chirho() {
+        // module M (Color(Red, Green)) where — exports a type with specific members
+        let module_chirho = parse_and_lower_chirho(
+            "module M (Color(Red, Green)) where
+data Color = Red | Green | Blue
+",
+        );
+        let exports_chirho = module_chirho
+            .exports_chirho
+            .as_ref()
+            .expect("expected an export list");
+        assert_eq!(exports_chirho.len(), 1, "expected 1 export");
+        match &exports_chirho[0] {
+            ExportSpecChirho::TyConChirho {
+                name_chirho,
+                members_chirho: ExportMembersChirho::SomeChirho(names_chirho),
+            } => {
+                assert_eq!(name_chirho.text_chirho(), "Color");
+                assert_eq!(names_chirho.len(), 2);
+                assert_eq!(names_chirho[0].text_chirho(), "Red");
+                assert_eq!(names_chirho[1].text_chirho(), "Green");
+            }
+            other_chirho => panic!("expected TyConChirho with SomeChirho, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_export_list_mixed_chirho() {
+        // module M (foo, Bar(..)) where — exports a var and a type
+        let module_chirho = parse_and_lower_chirho(
+            "module M (foo, Bar(..)) where
+foo = 1
+data Bar = Bar
+",
+        );
+        let exports_chirho = module_chirho
+            .exports_chirho
+            .as_ref()
+            .expect("expected an export list");
+        assert_eq!(exports_chirho.len(), 2, "expected 2 exports");
+        match &exports_chirho[0] {
+            ExportSpecChirho::VarChirho(name_chirho) => {
+                assert_eq!(name_chirho.text_chirho(), "foo");
+            }
+            other_chirho => panic!("expected VarChirho, got {:?}", other_chirho),
+        }
+        match &exports_chirho[1] {
+            ExportSpecChirho::TyConChirho {
+                name_chirho,
+                members_chirho,
+            } => {
+                assert_eq!(name_chirho.text_chirho(), "Bar");
+                assert_eq!(*members_chirho, ExportMembersChirho::AllChirho);
+            }
+            other_chirho => panic!("expected TyConChirho, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_no_export_list_chirho() {
+        // module M where — no export list means None
+        let module_chirho = parse_and_lower_chirho("module M where
+foo = 1
+");
+        assert!(
+            module_chirho.exports_chirho.is_none(),
+            "expected None export list when no parens"
+        );
     }
 }

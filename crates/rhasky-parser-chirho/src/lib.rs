@@ -23,7 +23,12 @@ pub struct ParsedModuleChirho {
     pub source_file_chirho: SourceFileChirho,
 }
 
-pub fn parse_source_file_chirho(
+/// Scan a Haskell source file for its `module … where` header line.
+///
+/// This is a lightweight string-based scanner, NOT a full parser.  It only
+/// extracts the module name (defaulting to `"Main"` when no header is present).
+/// For real parsing, use the CST parser in [`cst_parser_chirho`].
+pub fn scan_module_header_chirho(
     source_file_chirho: SourceFileChirho,
 ) -> Result<ParsedModuleChirho, DiagnosticBundleChirho> {
     let file_id_chirho = source_file_chirho.file_id_chirho();
@@ -131,7 +136,7 @@ fn parse_module_header_line_chirho(
 
 #[cfg(test)]
 mod tests_chirho {
-    use super::{DEFAULT_MODULE_NAME_CHIRHO, parse_source_file_chirho};
+    use super::{DEFAULT_MODULE_NAME_CHIRHO, scan_module_header_chirho};
     use rhasky_span_chirho::SourceMapChirho;
     use rhasky_syntax_chirho::SourceFileChirho;
 
@@ -144,7 +149,7 @@ mod tests_chirho {
             "module SampleChirho where\nvalueChirho = 1\n",
         );
 
-        let parsed_module_chirho = parse_source_file_chirho(source_file_chirho)
+        let parsed_module_chirho = scan_module_header_chirho(source_file_chirho)
             .expect("parser should accept a valid module header");
 
         assert_eq!(
@@ -162,7 +167,7 @@ mod tests_chirho {
             "mainChirho = putStrLn \"hi\"\n",
         );
 
-        let parsed_module_chirho = parse_source_file_chirho(source_file_chirho)
+        let parsed_module_chirho = scan_module_header_chirho(source_file_chirho)
             .expect("parser should accept scripts without a module header");
 
         assert_eq!(
