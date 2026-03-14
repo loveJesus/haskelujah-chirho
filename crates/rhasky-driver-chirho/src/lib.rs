@@ -9453,4 +9453,17 @@ main = case safeDivide 20 2 of
             Err(e_chirho) => panic!("IORef multiple refs should work: {}", e_chirho),
         }
     }
+
+    #[test]
+    fn eval_ioref_modify_chirho() {
+        // modifyIORef r (+1) should increment: newIORef 41, modifyIORef r (+1), readIORef r → 42
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nadd1 x = x + 1\nmain = let r = newIORef 41 in seq (modifyIORef r add1) (readIORef r)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("IORef modify should work: {}", e_chirho),
+        }
+    }
 }

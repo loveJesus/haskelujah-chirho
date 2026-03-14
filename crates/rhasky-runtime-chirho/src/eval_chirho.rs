@@ -2047,6 +2047,16 @@ impl MachineChirho {
                 };
                 let val_chirho = self.iorefs_chirho.get(&ref_id_chirho).cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
+                // If the stored value is a HeapPtr (thunk), force it to WHNF
+                if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
+                    match self.force_addr_to_whnf_chirho(addr_chirho) {
+                        Ok(forced_chirho) => {
+                            let resolved_chirho = self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(forced_chirho));
+                            return Ok(resolved_chirho);
+                        }
+                        Err(_) => return Ok(ValueChirho::HeapPtrChirho(addr_chirho)),
+                    }
+                }
                 return Ok(val_chirho);
             }
             PrimOpKindChirho::WriteIORefChirho => {
@@ -2055,7 +2065,16 @@ impl MachineChirho {
                     Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
-                let val_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let mut val_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0));
+                // Force thunks to WHNF before storing
+                if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
+                    match self.force_addr_to_whnf_chirho(addr_chirho) {
+                        Ok(forced_chirho) => {
+                            val_chirho = self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(forced_chirho));
+                        }
+                        Err(_) => {}
+                    }
+                }
                 self.iorefs_chirho.insert(ref_id_chirho, val_chirho);
                 return Ok(ValueChirho::IntChirho(0)); // IO ()
             }

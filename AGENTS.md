@@ -216,7 +216,7 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver Functor/Maybe tests**: 3 tests (user-defined fmap Just→Just, fmap Nothing→Nothing, safeDivide with Maybe case)
 - **Driver power operator tests**: 2 tests (2^10=1024, 3^0=1, 5^3=125, 2.0**3.0=8.0, 4.0**0.5=2.0)
 - **Driver error/undefined/seq tests**: 3 tests (error "kaboom" halts, undefined halts, seq 1 42 → 42)
-- **Total**: 820 tests passing across all crates (1 ignored)
+- **Total**: 880 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -303,4 +303,7 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 81. ~~Show for Maybe/tuples~~ — DONE ($tuple2 constructor alias in infer_type_key_chirho and show_value_as_string_chirho; show_value_as_string_chirho takes &mut self for thunk forcing with clone for borrow safety; keep_heap_ptr_chirho flag for compound Show primops; unused dict lambda stripping for main; 3 new e2e tests: show Nothing, show (Just 42), show (1,2); 809 tests total)
 82. ~~IO ops + string builtins + escape sequences~~ — DONE (print/interact primops; lines/unlines builtins via lines#/unlines# primops; escape sequence processing in string and char literals via unescape_string_chirho/unescape_char_chirho in lower_chirho.rs; collect_string_list_chirho now forces thunks in list spine and heads; unused dict lambda stripping for main entry point; 8 new e2e tests; 817 tests total)
 83. ~~Pattern matching fixes (negative literals, string patterns, as-patterns)~~ — DONE (NegPatChirho case added to lower_pat_chirho for negative literal patterns like `(-1)`; phantom case alts filtered by requiring arrow tokens in CaseAltChirho lowering; AsPatChirho lowering fixed to extract name from VarPatChirho child node and use saw_at_chirho flag; parse_fun_bind_chirho changed from parse_apat_chirho to parse_lpat_chirho for argument patterns so as-patterns and neg patterns are recognized; wrap_as_bindings_chirho added to desugarer to emit `let xs = scrutinee in rhs` for as-pattern bindings in both case expressions and function equations; 3 new e2e tests; 820 tests total)
-84. Next priorities: lambda case expressions, more type class features (default methods, superclass constraints), record syntax
+84. ~~Function composition (.) operator fix~~ — DONE (CST→AST lowering `name_from_text_chirho` guard to only split on `.` when both qualifier and local parts are non-empty; 4 new e2e tests for `.` composition; 830+ tests total)
+85. ~~First-class IO functions~~ — DONE (Core Prelude lambda-wrapped primop bindings for putStrLn/putStr/print so they can be passed as function arguments; mapM_ with putStrLn argument works; 15+ new e2e tests; 876 tests total)
+86. ~~IORef mutable references~~ — DONE (NewIORefChirho/ReadIORefChirho/WriteIORefChirho/ModifyIORefChirho primops; HashMap-based iorefs_chirho storage in MachineChirho; STG lowerer mappings; Core Prelude lambda bindings; type signatures; 4 new e2e tests: new+read, write+read, show+read, multiple refs; 880 tests total)
+87. Next priorities: String-as-[Char] interop (list ops on strings), lambda case expressions, where-clause mutual recursion fix, Data.Map basics, improved interact with function application

@@ -7204,25 +7204,40 @@ impl DictPassCtxChirho {
         }
 
         // modifyIORef :: IORef a -> (a -> a) -> IO ()
-        // Simplified: modifyIORef ref f = modifyIORef# ref f
+        // Desugared: modifyIORef ref f = writeIORef ref (f (readIORef ref))
+        // This avoids needing function application in the primop handler.
         {
             let id_chirho = self.resolve_or_fresh_id_chirho("modifyIORef");
+            let read_id_chirho = self.resolve_or_fresh_id_chirho("readIORef");
+            let write_id_chirho = self.resolve_or_fresh_id_chirho("writeIORef");
             let r_chirho = self.fresh_binder_chirho("r", TyChirho::int_chirho());
             let f_chirho = self.fresh_binder_chirho(
                 "f",
                 TyChirho::fun_chirho(any_ty_chirho.clone(), any_ty_chirho.clone()),
             );
+            // readIORef r
+            let read_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(read_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
+            };
+            // f (readIORef r)
+            let apply_f_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
+                arg_chirho: Box::new(read_call_chirho),
+            };
+            // writeIORef r (f (readIORef r))
+            let write_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(write_id_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
+                }),
+                arg_chirho: Box::new(apply_f_chirho),
+            };
             let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: r_chirho.clone(),
+                binder_chirho: r_chirho,
                 body_chirho: Box::new(CoreExprChirho::LamChirho {
-                    binder_chirho: f_chirho.clone(),
-                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                        name_chirho: "modifyIORef#".to_string(),
-                        args_chirho: vec![
-                            CoreExprChirho::VarChirho(r_chirho.id_chirho),
-                            CoreExprChirho::VarChirho(f_chirho.id_chirho),
-                        ],
-                    }),
+                    binder_chirho: f_chirho,
+                    body_chirho: Box::new(write_call_chirho),
                 }),
             };
             self.generated_bindings_chirho.push(CoreBindingChirho {

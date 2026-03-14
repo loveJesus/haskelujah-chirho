@@ -118,7 +118,7 @@ impl LowerCtxChirho {
             "putStrLn" | "putStr" | "putChar" | "print" | "interact"
             | "getLine" | "getChar"
             | "readFile" | "writeFile" | "appendFile"
-            | "newIORef" | "readIORef" | "writeIORef" | "modifyIORef"
+            | "newIORef" | "readIORef" | "writeIORef"
             | "error" | "undefined" | "seq" => Some(name_chirho.as_str()),
             _ => None,
         }
