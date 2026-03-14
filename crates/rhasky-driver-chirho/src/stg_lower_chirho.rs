@@ -115,7 +115,7 @@ impl LowerCtxChirho {
     fn is_io_primop_chirho(&self, id_chirho: CoreIdChirho) -> Option<&str> {
         let name_chirho = self.id_names_chirho.get(&id_chirho)?;
         match name_chirho.as_str() {
-            "putStrLn" | "putStr" | "print" | "interact"
+            "putStrLn" | "putStr" | "putChar" | "print" | "interact"
             | "getLine" | "getChar"
             | "readFile" | "writeFile" | "appendFile"
             | "error" | "undefined" | "seq" => Some(name_chirho.as_str()),
@@ -1586,6 +1586,7 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "negate#" => PrimOpKindChirho::NegIntChirho,
         "putStrLn" => PrimOpKindChirho::PutStrLnChirho,
         "putStr" => PrimOpKindChirho::PutStrChirho,
+        "putChar" | "putChar#" => PrimOpKindChirho::PutCharChirho,
         "return" | "pure" => PrimOpKindChirho::ReturnIOChirho,
         ">>=" => PrimOpKindChirho::BindIOChirho,
         ">>" => PrimOpKindChirho::ThenIOChirho,

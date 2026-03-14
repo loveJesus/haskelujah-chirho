@@ -1437,6 +1437,20 @@ impl MachineChirho {
                 }
                 return Ok(ValueChirho::IntChirho(0));
             }
+            PrimOpKindChirho::PutCharChirho => {
+                match args_chirho.first() {
+                    Some(ValueChirho::CharChirho(c_chirho)) => {
+                        self.io_output_chirho.push(*c_chirho);
+                    }
+                    Some(ValueChirho::IntChirho(n_chirho)) => {
+                        if let Some(c_chirho) = char::from_u32(*n_chirho as u32) {
+                            self.io_output_chirho.push(c_chirho);
+                        }
+                    }
+                    _ => {}
+                }
+                return Ok(ValueChirho::IntChirho(0));
+            }
             PrimOpKindChirho::ReturnIOChirho => {
                 // return x = x (in our simplified IO model)
                 return Ok(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));

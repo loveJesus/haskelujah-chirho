@@ -89,6 +89,8 @@ pub enum PrimOpKindChirho {
     OrdCharChirho,
     PutStrLnChirho,
     PutStrChirho,
+    /// Print a single character: putChar :: Char -> IO ()
+    PutCharChirho,
     /// Monadic bind (>>=) for IO: execute first action, pass result to continuation
     BindIOChirho,
     /// Monadic return for IO: wrap a value in IO

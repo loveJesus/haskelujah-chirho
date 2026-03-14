@@ -569,6 +569,7 @@ pub fn apply_prim_binop_chirho(
         // I/O primops — handled in eval_prim_chirho before reaching here
         PrimOpKindChirho::PutStrLnChirho
         | PrimOpKindChirho::PutStrChirho
+        | PrimOpKindChirho::PutCharChirho
         | PrimOpKindChirho::BindIOChirho
         | PrimOpKindChirho::ReturnIOChirho
         | PrimOpKindChirho::ThenIOChirho

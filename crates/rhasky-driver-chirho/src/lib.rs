@@ -8703,4 +8703,74 @@ main = case safeDivide 20 2 of
             Err(e_chirho) => panic!("data with synonym field should work: {}", e_chirho),
         }
     }
+
+    #[test]
+    fn eval_when_true_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = when True (putStrLn \"yes\")\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "yes\n"),
+            Err(e_chirho) => panic!("when True should print: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_when_false_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = when False (putStrLn \"no\")\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, ""),
+            Err(e_chirho) => panic!("when False should not print: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_unless_false_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = unless False (putStrLn \"run\")\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "run\n"),
+            Err(e_chirho) => panic!("unless False should print: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_mapm_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = mapM_ (\\x -> putStrLn (show x)) [1, 2, 3]\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "1\n2\n3\n"),
+            Err(e_chirho) => panic!("mapM_ should print each element: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_putchar_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_with_machine_chirho(
+            "module Test where\nmain = do { putChar 'H'; putChar 'i' }\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => assert_eq!(machine_chirho.io_output_chirho, "Hi"),
+            Err(e_chirho) => panic!("putChar should output chars: {}", e_chirho),
+        }
+    }
 }
