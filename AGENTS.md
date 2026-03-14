@@ -248,7 +248,9 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver higher-order *By list tests**: 7 tests (sortBy head, sortBy sum, insertBy length, nubBy length, maximumBy, minimumBy, on)
 - **Driver type synonym tests**: 2 tests (builtin String synonym, user-defined type synonym)
 - **Driver where/let type annotation tests**: 3 tests (where single annotation, let annotation, where multiple annotated helpers)
-- **Total**: 1062 tests passing across all crates (1 ignored)
+- **Driver IORef tests**: 3 tests (newIORef/readIORef, writeIORef, modifyIORef)
+- **Driver synthetic module import tests**: 6 tests (import Data.Map insert/lookup, Data.Map size, Data.List sort, Data.Char ord, Data.Maybe fromMaybe, Data.Set member)
+- **Total**: 1071 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -362,4 +364,6 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 108. ~~Data.Map/Set polymorphic keys with Ordering dispatch~~ — DONE (refactored all Map BST functions mapInsert/mapLookup/mapDelete/mapMember/mapInsertWith/mapFindWithDefault/mapAdjust and Set BST functions setInsert/setMember/setDelete from nested <#/==# Bool dispatch to single compare# Ordering LT/EQ/GT dispatch; updated type signatures to Ord k => polymorphic keys with SchemePredChirho TyVarChirho 3800-3807 for maps, TyVarChirho 9985 for sets; 1057 tests)
 109. ~~Where-clause and let-expression type annotations~~ — DONE (CST→AST lowering of TypeSigDeclChirho in where clauses, let expressions, and do-notation let stmts into LocalBindChirho::TypeSigChirho; type inference collects local sigs and unifies with inferred types at all three binding sites; 3 new e2e tests; 1060 tests total)
 110. ~~Type synonyms in instance heads and predicate resolution~~ — DONE (expand type synonyms in instance head types when registering instances and in deferred predicates before entailment checking; 2 new e2e tests: String type synonym greet function, user-defined type synonym Age = Int; 1062 tests total)
-111. Next priorities: Data.Map/Set balanced (AVL/red-black), type class defaulting improvements, type-level improvements, IO monad proper threading, ST monad, IORef, monad transformers
+111. ~~IORef ModifyIORef fix~~ — DONE (upgraded ModifyIORef from TODO stub to full implementation with nested eval loop, machine state save/restore; 3 new e2e tests; 1065 tests total)
+112. ~~AVL balanced Map/Set trees + synthetic module interfaces~~ — DONE (Map BST→AVL: mapHeight, mapMakeNode, mapRotateLeft/Right, mapBalance helpers; MapNode 5-field with height; all case alts updated; synthetic ModuleIfaceChirho for Data.Map/Set/List/Char/Maybe/IORef via builtin_module_ifaces_chirho; qualified import name resolution fix using full_name_chirho; NameChirho::full_name_chirho method; 6 new import e2e tests; 1071 tests total)
+113. Next priorities: type class defaulting improvements, type-level improvements, IO monad proper threading, ST monad, monad transformers, Data.Map qualified access patterns
