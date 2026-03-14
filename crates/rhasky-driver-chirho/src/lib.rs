@@ -11513,4 +11513,281 @@ main = if all odd [1,3,5,7] then 1 else 0
         }
     }
 
+    // ── More feature tests ──
+
+    #[test]
+    fn eval_type_synonym_usage_chirho() {
+        // type MyList = [Int]; f :: MyList -> Int; f xs = sum xs; main = f [1,2,3]
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\ntype MyList = [Int]\nf :: MyList -> Int\nf xs = sum xs\nmain = f [1,2,3]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(6)),
+            Err(e_chirho) => panic!("type synonym usage: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_nested_where_simple_chirho() {
+        // f x = a + b where { a = x * 2; b = x + 3 }
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nf x = a + b\n  where\n    a = x * 2\n    b = x + 3\nmain = f 10\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(33)),
+            Err(e_chirho) => panic!("nested where simple: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_guard_multiple_equations_chirho() {
+        // classify n | n < 0 = -1 | n == 0 = 0 | otherwise = 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nclassify n\n  | n < 0 = negate 1\n  | n == 0 = 0\n  | otherwise = 1\nmain = classify (negate 5) + classify 0 + classify 10\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0)),
+            Err(e_chirho) => panic!("guard multiple equations: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_let_in_do_complex_chirho() {
+        // do { let x = 10; let y = x + 5; putStrLn (show (x + y)) } → "25\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = do\n  let x = 10\n  let y = x + 5\n  putStrLn (show (x + y))\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "25\n");
+            }
+            Err(e_chirho) => panic!("let in do complex: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_square_sum_chirho() {
+        // map (\x -> x * x) [1,2,3,4] → [1,4,9,16] → sum = 30
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (map (\\x -> x * x) [1,2,3,4])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(30)),
+            Err(e_chirho) => panic!("map with lambda: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_multiple_io_operations_chirho() {
+        // do { putStr "a"; putStr "b"; putStrLn "c" } → "abc\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = do\n  putStr \"a\"\n  putStr \"b\"\n  putStrLn \"c\"\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "abc\n");
+            }
+            Err(e_chirho) => panic!("multiple io: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_nested_function_application_chirho() {
+        // f x y = x + y; g a = f a (a * 2); main = g 5 → 15
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nf x y = x + y\ng a = f a (a * 2)\nmain = g 5\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15)),
+            Err(e_chirho) => panic!("nested function app: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_data_maybe_chain_chirho() {
+        // safeDivide with guard instead of literal pattern match
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nsafeDivide x y\n  | y == 0 = Nothing\n  | otherwise = Just (x `div` y)\nmain = fromMaybe 0 (safeDivide 10 3) + fromMaybe 0 (safeDivide 10 0)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("data maybe chain: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_iterate_take_chirho() {
+        // take 5 (iterate (*2) 1) → [1,2,4,8,16] → sum = 31
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (take 5 (iterate (*2) 1))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(31)),
+            Err(e_chirho) => panic!("iterate take: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_scanl_length_chirho() {
+        // scanl (+) 0 [1,2,3] → [0,1,3,6] → length = 4
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (scanl (+) 0 [1,2,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(4)),
+            Err(e_chirho) => panic!("scanl length: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_concatmap_sum_chirho() {
+        // concatMap (\x -> [x, x*10]) [1,2,3] → [1,10,2,20,3,30] → sum = 66
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (concatMap (\\x -> [x, x*10]) [1,2,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(66)),
+            Err(e_chirho) => panic!("concatMap sum: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_show_negative_int_chirho() {
+        // putStrLn (show (negate 42)) → "-42\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = putStrLn (show (negate 42))\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "-42\n");
+            }
+            Err(e_chirho) => panic!("show negative: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_char_operations_chirho() {
+        // ord 'A' + ord 'a' = 65 + 97 = 162
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = ord 'A' + ord 'a'\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(162)),
+            Err(e_chirho) => panic!("char operations: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_list_comp_even_squares_chirho() {
+        // [x * x | x <- [1..10], x `mod` 2 == 0] → [4,16,36,64,100] → sum = 220
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum [x * x | x <- [1..10], x `mod` 2 == 0]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(220)),
+            Err(e_chirho) => panic!("list comp with guard: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_where_with_pattern_chirho() {
+        // f (x, y) = a + b where { a = x * 2; b = y + 1 }; main = f (3, 4)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nf p = a + b\n  where\n    a = fst p * 2\n    b = snd p + 1\nmain = f (3, 4)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(11)),
+            Err(e_chirho) => panic!("where with pattern: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_enum_succ_pred_chirho() {
+        // succ 41 + pred 43 = 42 + 42 = 84
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = succ 41 + pred 43\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(84)),
+            Err(e_chirho) => panic!("enum succ pred: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_show_list_show_chirho() {
+        // putStrLn (show [10,20,30]) → "[10,20,30]\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = putStrLn (show [10,20,30])\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "[10,20,30]\n");
+            }
+            Err(e_chirho) => panic!("show list show: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_zipwith_add_chirho() {
+        // sum (zipWith (+) [1,2,3] [10,20,30]) = 11+22+33 = 66
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (zipWith (+) [1,2,3] [10,20,30])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(66)),
+            Err(e_chirho) => panic!("zipWith add: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_complex_pipeline_chirho() {
+        // sum . filter (> 5) . map (*2) $ [1,2,3,4,5] → filter [2,4,6,8,10] > 5 → [6,8,10] → sum = 24
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (filter (> 5) (map (*2) [1,2,3,4,5]))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(24)),
+            Err(e_chirho) => panic!("complex pipeline: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_multi_line_do_io_chirho() {
+        // do { putStrLn (show 1); putStrLn (show 2); putStrLn (show 3) } → "1\n2\n3\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = do\n  putStrLn (show 1)\n  putStrLn (show 2)\n  putStrLn (show 3)\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "1\n2\n3\n");
+            }
+            Err(e_chirho) => panic!("multi line do io: {}", e_chirho),
+        }
+    }
+
 }
