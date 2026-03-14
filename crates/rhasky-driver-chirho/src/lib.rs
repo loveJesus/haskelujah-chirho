@@ -10041,4 +10041,48 @@ main = myLookup 5 (myInsert 3 99 (myInsert 5 42 Leaf))
         }
     }
 
+    // -- Where-clause mutual recursion test --
+
+    #[test]
+    fn eval_where_mutual_recursion_chirho() {
+        // isEven/isOdd mutual recursion in where clause
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = isEven 10\n  where\n    isEven n = if n == 0 then 1 else isOdd (n - 1)\n    isOdd n = if n == 0 then 0 else isEven (n - 1)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("where mutual recursion: {}", e_chirho),
+        }
+    }
+
+    // -- Additional list-on-string tests --
+
+    #[test]
+    fn eval_zip_strings_chirho() {
+        // zip "abc" [1,2,3] → length should be 3
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (zip \"abc\" [1,2,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("zip strings: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_concat_map_string_chirho() {
+        // concatMap (replicate 2) on a string using ++ for char replication
+        // Actually simpler: length (concat ["ab","cd","ef"]) → 6
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (concatMap (\\x -> [x,x]) \"abc\")\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(6)),
+            Err(e_chirho) => panic!("concatMap string: {}", e_chirho),
+        }
+    }
+
 }
