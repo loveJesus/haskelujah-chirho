@@ -2165,25 +2165,62 @@ impl MachineChirho {
                 return Ok(ValueChirho::IntChirho(0)); // IO ()
             }
             PrimOpKindChirho::ModifyIORefChirho => {
-                // modifyIORef# ref f → read value, apply f, write back
-                // Since we can't easily apply a closure in the primop handler,
-                // we treat this as: read the ref, push an apply frame for f,
-                // then write the result back.
-                // Simplified: for now, if f is an Int (identity-like), just keep the value.
+                // modifyIORef# ref f → read current value, apply f, write back
                 let ref_id_chirho = match args_chirho.first() {
                     Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
-                // Read current value
+                // Read current value from the ref store
                 let current_chirho = self.iorefs_chirho.get(&ref_id_chirho).cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
-                // If second arg is a function closure, we'd need to apply it.
-                // For the basic case, if we have a HeapPtr for the function,
-                // we push a special continuation. For now, just return the
-                // current value — the full apply-and-writeback needs the
-                // evaluator loop. Users should use readIORef + writeIORef for now.
-                // TODO: full modifyIORef with closure application
-                let _ = current_chirho;
+                // Apply the function (second arg) to the current value
+                let func_val_chirho = args_chirho.get(1).cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let new_val_chirho = match func_val_chirho {
+                    ValueChirho::HeapPtrChirho(func_addr_chirho) => {
+                        // Allocate current_chirho on heap as argument if needed
+                        let arg_val_chirho = match &current_chirho {
+                            ValueChirho::IntChirho(_)
+                            | ValueChirho::FloatChirho(_)
+                            | ValueChirho::CharChirho(_)
+                            | ValueChirho::BoolChirho(_)
+                            | ValueChirho::StringChirho(_) => {
+                                // Box into a constructor so it can be passed as a HeapPtr arg
+                                let boxed_chirho = self.box_literal_chirho(&current_chirho);
+                                let boxed_addr_chirho = self.heap_chirho.alloc_chirho(boxed_chirho);
+                                ValueChirho::HeapPtrChirho(boxed_addr_chirho)
+                            }
+                            other_chirho => other_chirho.clone(),
+                        };
+                        // Save machine state for nested eval
+                        let saved_stack_chirho = std::mem::replace(
+                            &mut self.stack_chirho,
+                            StackChirho::new_chirho(),
+                        );
+                        let saved_regs_chirho = std::mem::take(&mut self.arg_regs_chirho);
+                        // Push Apply frame with argument, enter function
+                        self.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
+                            args_chirho: vec![arg_val_chirho],
+                        });
+                        let entry_chirho = self.code_table_chirho.len() as u32;
+                        self.code_table_chirho.push(CodeChirho::EnterChirho(func_addr_chirho));
+                        let result_val_chirho = self.run_chirho(entry_chirho)?;
+                        // Restore machine state
+                        self.stack_chirho = saved_stack_chirho;
+                        self.arg_regs_chirho = saved_regs_chirho;
+                        // Resolve HeapPtr result to unboxed value if possible
+                        match &result_val_chirho {
+                            ValueChirho::HeapPtrChirho(addr_chirho) => {
+                                self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(*addr_chirho))
+                            }
+                            other_chirho => other_chirho.clone(),
+                        }
+                    }
+                    // If f is not a heap closure (identity-like), keep the value unchanged
+                    _ => current_chirho,
+                };
+                // Write the new value back to the ref store
+                self.iorefs_chirho.insert(ref_id_chirho, new_val_chirho);
                 return Ok(ValueChirho::IntChirho(0)); // IO ()
             }
             _ => {}

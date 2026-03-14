@@ -11420,6 +11420,54 @@ main = if all odd [1,3,5,7] then 1 else 0
         }
     }
 
+    #[test]
+    fn eval_ioref_do_modify_lambda_chirho() {
+        // modifyIORef r (\x -> x * 2), newIORef 21, readIORef → 42
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = do\n  r <- newIORef 21\n  modifyIORef r (\\x -> x + x)\n  v <- readIORef r\n  putStrLn (show v)\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "42\n");
+            }
+            Err(e_chirho) => panic!("ioref do modify lambda: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_ioref_two_refs_independent_chirho() {
+        // Two separate IORefs hold independent values
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = do\n  r1 <- newIORef 10\n  r2 <- newIORef 20\n  writeIORef r1 99\n  v1 <- readIORef r1\n  v2 <- readIORef r2\n  putStrLn (show (v1 + v2))\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "119\n");
+            }
+            Err(e_chirho) => panic!("ioref two refs independent: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_ioref_counter_increment_chirho() {
+        // IORef counter: start at 0, increment 3 times via modifyIORef, read → 3
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nincr x = x + 1\nmain = do\n  c <- newIORef 0\n  modifyIORef c incr\n  modifyIORef c incr\n  modifyIORef c incr\n  v <- readIORef c\n  putStrLn (show v)\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_val_chirho, m_chirho)) => {
+                let out_chirho = &m_chirho.io_output_chirho;
+                assert_eq!(out_chirho, "3\n");
+            }
+            Err(e_chirho) => panic!("ioref counter increment: {}", e_chirho),
+        }
+    }
+
     // ── when/unless ──
 
     #[test]

@@ -246,7 +246,9 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver fromJust/swap/mapDelete tests**: 5 tests (fromJust, swap fst, swap snd, mapDelete preserves, mapDelete both subtrees)
 - **Driver Semigroup/Monoid tests**: 4 tests (list <> length, string <> putStrLn, mempty <> list length, mconcat nested lists length)
 - **Driver higher-order *By list tests**: 7 tests (sortBy head, sortBy sum, insertBy length, nubBy length, maximumBy, minimumBy, on)
-- **Total**: 1057 tests passing across all crates (1 ignored)
+- **Driver type synonym tests**: 2 tests (builtin String synonym, user-defined type synonym)
+- **Driver where/let type annotation tests**: 3 tests (where single annotation, let annotation, where multiple annotated helpers)
+- **Total**: 1062 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -357,4 +359,7 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 105. ~~Multi-equation literal pattern matching~~ — DONE (VarChirho→scrutinee binding in Default alts, all-Default column optimization to skip redundant case generation, CaseLitChirho saved_arg_regs for thunk evaluation, 7 new e2e tests; 1046 tests total)
 106. ~~Semigroup/Monoid type classes~~ — DONE (Semigroup class with <> method, Monoid class with mempty/mconcat methods, superclass Semigroup; ground instances for [Int], [Char], [Double], [Bool], (); [Char] uses ++# primop, other list types use Prelude append; type signatures with SchemePredChirho; 4 new e2e tests; 1050 tests total)
 107. ~~Higher-order *By list functions (sortBy, insertBy, nubBy, maximumBy, minimumBy, on)~~ — DONE (Core IR implementations in generate_higher_order_list_prelude_chirho using recursive case dispatch, foldl, filter, not; Ordering constructor matching for insertBy/sortBy/maximumBy/minimumBy; on as 4-arg lambda; type signatures in seed_builtins with TyVarChirho 3700–3707; 7 end-to-end tests)
-108. Next priorities: Data.Map with polymorphic keys, Data.Map/Set balanced (AVL/red-black), type synonyms in instance heads, type class defaulting improvements, where-clause type annotations, type-level improvements, IO monad proper threading, ST monad, negative literal patterns
+108. ~~Data.Map/Set polymorphic keys with Ordering dispatch~~ — DONE (refactored all Map BST functions mapInsert/mapLookup/mapDelete/mapMember/mapInsertWith/mapFindWithDefault/mapAdjust and Set BST functions setInsert/setMember/setDelete from nested <#/==# Bool dispatch to single compare# Ordering LT/EQ/GT dispatch; updated type signatures to Ord k => polymorphic keys with SchemePredChirho TyVarChirho 3800-3807 for maps, TyVarChirho 9985 for sets; 1057 tests)
+109. ~~Where-clause and let-expression type annotations~~ — DONE (CST→AST lowering of TypeSigDeclChirho in where clauses, let expressions, and do-notation let stmts into LocalBindChirho::TypeSigChirho; type inference collects local sigs and unifies with inferred types at all three binding sites; 3 new e2e tests; 1060 tests total)
+110. ~~Type synonyms in instance heads and predicate resolution~~ — DONE (expand type synonyms in instance head types when registering instances and in deferred predicates before entailment checking; 2 new e2e tests: String type synonym greet function, user-defined type synonym Age = Int; 1062 tests total)
+111. Next priorities: Data.Map/Set balanced (AVL/red-black), type class defaulting improvements, type-level improvements, IO monad proper threading, ST monad, IORef, monad transformers
