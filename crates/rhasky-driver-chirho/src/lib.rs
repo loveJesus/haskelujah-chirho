@@ -9783,4 +9783,82 @@ main = myLookup 5 (myInsert 3 99 (myInsert 5 42 Leaf))
         }
     }
 
+    #[test]
+    fn eval_set_singleton_member_chirho() {
+        // setSingleton + setMember — use if-then-else to convert Bool to Int
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = if setMember 5 (setSingleton 5) then 1 else 0\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("setMember singleton: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_member_not_found_chirho() {
+        // setMember for element not in set — use if-then-else
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = if setMember 99 (setSingleton 5) then 1 else 0\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0)),
+            Err(e_chirho) => panic!("setMember not found: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_size_chirho() {
+        // setSize of a set built from inserts
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = setSize (setInsert 3 (setInsert 1 (setInsert 2 setEmpty)))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("setSize should be 3: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_insert_duplicate_chirho() {
+        // inserting duplicate should not increase size
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = setSize (setInsert 1 (setInsert 1 (setInsert 1 setEmpty)))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("setSize with duplicates should be 1: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_to_list_chirho() {
+        // setToList should return sorted list, sum it to verify
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (setToList (setInsert 3 (setInsert 1 (setInsert 2 setEmpty))))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(6)),
+            Err(e_chirho) => panic!("sum (setToList {{1,2,3}}) should be 6: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_from_list_chirho() {
+        // setFromList then setSize
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = setSize (setFromList [5,3,5,1,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("setSize (setFromList [5,3,5,1,3]) should be 3: {}", e_chirho),
+        }
+    }
+
 }

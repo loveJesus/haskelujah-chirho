@@ -158,6 +158,21 @@ impl TypeConEnvChirho {
             ],
         );
 
+        // Seed Set constructors (BST representation)
+        env_chirho.register_type_chirho(
+            "Set".to_string(),
+            vec![
+                ConInfoChirho {
+                    name_chirho: "SetEmpty".to_string(),
+                    arity_chirho: 0,
+                },
+                ConInfoChirho {
+                    name_chirho: "SetNode".to_string(),
+                    arity_chirho: 3, // element, left, right
+                },
+            ],
+        );
+
         for decl_chirho in &module_chirho.decls_chirho {
             match decl_chirho {
                 DeclChirho::DataDeclChirho {

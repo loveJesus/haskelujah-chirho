@@ -3382,6 +3382,60 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // setEmpty :: Set Int  (represented as Int placeholder)
+    env_chirho.bind_chirho(
+        "setEmpty".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::int_chirho()),
+    );
+
+    // setSingleton :: Int -> Set Int
+    env_chirho.bind_chirho(
+        "setSingleton".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho())),
+    );
+
+    // setInsert :: Int -> Set Int -> Set Int
+    env_chirho.bind_chirho(
+        "setInsert".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // setMember :: Int -> Set Int -> Bool
+    env_chirho.bind_chirho(
+        "setMember".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::bool_chirho(),
+        )),
+    );
+
+    // setSize :: Set Int -> Int
+    env_chirho.bind_chirho(
+        "setSize".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho())),
+    );
+
+    // setToList :: Set Int -> [Int]
+    env_chirho.bind_chirho(
+        "setToList".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+        )),
+    );
+
+    // setFromList :: [Int] -> Set Int
+    env_chirho.bind_chirho(
+        "setFromList".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+            TyChirho::int_chirho(),
+        )),
+    );
+
     // when :: Bool -> IO () -> IO ()  (simplified: IO () ≈ ())
     env_chirho.bind_chirho(
         "when".to_string(),
