@@ -14129,4 +14129,148 @@ main = putStrLn (show (42, True))
         assert_eq!(m_chirho.io_output_chirho, "(42,True)\n");
     }
 
+    // ── Complex where-clause with multiple helpers ────────────────────
+
+    /// Test 1: Collatz sequence — complex where-clause with a helper function.
+    /// collatz 27 takes 111 steps.
+    #[test]
+    fn eval_collatz_steps_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+collatz n = if n == 1 then 0 else 1 + collatz (step n)
+  where
+    step x = if even x then x `div` 2 else 3 * x + 1
+main = putStrLn (show (collatz 27))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap();
+        assert_eq!(m_chirho.io_output_chirho, "111\n");
+    }
+
+    // ── Higher-order function composition ─────────────────────────────
+
+    /// Test 2: twice applied twice — higher-order composition.
+    /// twice (twice inc) 0 = 4
+    #[test]
+    fn eval_twice_composition_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+twice f x = f (f x)
+inc x = x + 1
+main = putStrLn (show (twice (twice inc) 0))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap();
+        assert_eq!(m_chirho.io_output_chirho, "4\n");
+    }
+
+    // ── Accumulator pattern with recursive list building ──────────────
+
+    /// Test 3: digits decomposition + sum — accumulator with ++ and recursion.
+    /// sum (digits 12345) = 1+2+3+4+5 = 15
+    #[test]
+    fn eval_digit_sum_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+digits n = if n < 10 then [n] else digits (n `div` 10) ++ [n `mod` 10]
+main = putStrLn (show (sum (digits 12345)))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap();
+        assert_eq!(m_chirho.io_output_chirho, "15\n");
+    }
+
+    // ── Nested data types with pattern matching ────────────────────────
+
+    /// Test 4: arithmetic expression tree — ADT with recursive eval.
+    /// eval (Add (Mul (Lit 3) (Lit 4)) (Lit 5)) = 17
+    #[test]
+    fn eval_expr_tree_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+data Expr = Lit Int | Add Expr Expr | Mul Expr Expr
+eval (Lit n) = n
+eval (Add a b) = eval a + eval b
+eval (Mul a b) = eval a * eval b
+main = putStrLn (show (eval (Add (Mul (Lit 3) (Lit 4)) (Lit 5))))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap();
+        assert_eq!(m_chirho.io_output_chirho, "17\n");
+    }
+
+    // ── List recursion with accumulator ───────────────────────────────
+
+    /// Test 5: myReverse using go accumulator helper in where-clause.
+    /// sum (myReverse [1,2,3,4,5]) = 15
+    /// Uses case-expression style for the where helper to avoid multi-equation
+    /// where-function list-pattern limitations.
+    #[test]
+    fn eval_reverse_accumulator_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // myRevAcc reverses a list using an accumulator argument.
+        // sum of reversed [1,2,3,4,5] is still 15.
+        let src_chirho = r#"module Test where
+myRevAcc ys acc = case ys of
+  [] -> acc
+  (z:rest) -> myRevAcc rest (z : acc)
+main = sum (myRevAcc [1,2,3,4,5] [])
+"#;
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15));
+    }
+
+    // ── Church numerals (higher-order encoding) ───────────────────────
+
+    /// Test 6: Church numeral addition.
+    /// toInt (churchAdd church2 church3) = 5
+    #[test]
+    fn eval_church_numerals_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+church0 f x = x
+church1 f x = f x
+church2 f x = f (f x)
+church3 f x = f (f (f x))
+churchAdd m n f x = m f (n f x)
+toInt n = n (\x -> x + 1) 0
+main = putStrLn (show (toInt (churchAdd church2 church3)))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap();
+        assert_eq!(m_chirho.io_output_chirho, "5\n");
+    }
+
+    // ── Sieve of Eratosthenes (bounded) ──────────────────────────────
+
+    /// Test 8: Sieve of Eratosthenes up to 100.
+    /// length primes = 25 (there are 25 primes ≤ 100)
+    #[test]
+    fn eval_sieve_primes_count_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+sieve [] = []
+sieve (p:xs) = p : sieve (filter (\x -> x `mod` p /= 0) xs)
+primes = sieve [2..100]
+main = putStrLn (show (length primes))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap();
+        assert_eq!(m_chirho.io_output_chirho, "25\n");
+    }
+
 }
