@@ -11163,4 +11163,147 @@ main = putStrLn (show True ++ \" \" ++ show False)
         }
     }
 
+    // ── Push to 1000 tests ─────────────────────────────────────────
+
+    #[test]
+    fn eval_foldr_cons_chirho() {
+        // foldr (:) [] [1,2,3] → [1,2,3] → length = 3 (identity via foldr)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (foldr (\\x xs -> x : xs) [] [1,2,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3)),
+            Err(e_chirho) => panic!("foldr cons: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_foldl_subtract_chirho() {
+        // foldl (-) 100 [10,20,30] → ((100-10)-20)-30 = 40
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = foldl (-) 100 [10,20,30]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(40)),
+            Err(e_chirho) => panic!("foldl subtract: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_zip_sum_chirho() {
+        // sum (map (\(a,b) -> a+b) (zip [1,2,3] [10,20,30])) → 11+22+33 = 66
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = sum (map (\\(a,b) -> a + b) (zip [1,2,3] [10,20,30]))
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(66)),
+            Err(e_chirho) => panic!("zip sum: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_singleton_lookup_chirho() {
+        // mapSingleton 42 99: lookup existing key
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = mapFindWithDefault 0 42 (mapSingleton 42 99)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99)),
+            Err(e_chirho) => panic!("map singleton lookup: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_set_from_list_dedup_chirho() {
+        // setFromList [3,1,4,1,5,9,2,6] → deduplicated set → setSize = 7
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = setSize (setFromList [3,1,4,1,5,9,2,6])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(7)),
+            Err(e_chirho) => panic!("set from list dedup: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_enum_from_then_chirho() {
+        // [2,4..10] → [2,4,6,8,10] → sum = 30
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum [2,4..10]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(30)),
+            Err(e_chirho) => panic!("enum from then: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_where_recursive_fib_chirho() {
+        // Fibonacci via where clause
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = result
+  where result = fib 8
+        fib n = if n <= 1 then n else fib (n - 1) + fib (n - 2)
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(21)),
+            Err(e_chirho) => panic!("where recursive fib: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_product_list_chirho() {
+        // product [1..5] → 120
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = product [1..5]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(120)),
+            Err(e_chirho) => panic!("product list: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_any_all_chirho() {
+        // any even [1,3,5,7] → False → 0, all odd [1,3,5,7] → True → 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = if all odd [1,3,5,7] then 1 else 0
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("any all: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_takewhile_sum_chirho() {
+        // takeWhile (< 5) [1..10] → [1,2,3,4] → sum = 10
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (takeWhile (< 5) [1..10])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10)),
+            Err(e_chirho) => panic!("takewhile sum: {}", e_chirho),
+        }
+    }
+
 }
