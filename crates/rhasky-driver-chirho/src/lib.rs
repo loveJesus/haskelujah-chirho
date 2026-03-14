@@ -3072,7 +3072,6 @@ main = myShow 42
     fn typeclass_instance_eval_identity_chirho() {
         // End-to-end: class + instance + call → evaluated runtime value.
         // myShow just returns its argument, so myShow 42 == 42.
-        use super::compile_source_chirho;
         let mut source_map_chirho = SourceMapChirho::new_chirho();
         let src_chirho = "\
 module Test where
@@ -9212,6 +9211,7 @@ main = case safeDivide 20 2 of
     }
 
     #[test]
+    #[allow(non_snake_case)]
     fn eval_mapM_print_chirho() {
         use super::eval_source_with_machine_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
@@ -9272,6 +9272,7 @@ main = case safeDivide 20 2 of
     }
 
     #[test]
+    #[allow(non_snake_case)]
     fn eval_forM_chirho() {
         use super::eval_source_with_machine_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
@@ -9423,6 +9424,7 @@ main = case safeDivide 20 2 of
     }
 
     #[test]
+    #[allow(non_snake_case)]
     fn eval_builtin_mapM_chirho() {
         use super::eval_source_with_machine_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();
@@ -12511,6 +12513,7 @@ main = mapSize (mapInsert 1 10 mapEmpty)
     // ── mapM_ / forM_ IO sequencing ────────────────────────────────────
 
     #[test]
+    #[allow(non_snake_case)]
     fn eval_builtin_mapM_io_chirho() {
         // mapM_ with putStrLn over a list
         use super::eval_source_with_machine_chirho;

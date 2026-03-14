@@ -256,7 +256,7 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Cranelift backend tests**: 3 tests in `rhasky-backend-cranelift-chirho` (empty module compilation, simple binding, lambda binding)
 - **JVM backend tests**: 8 tests in `rhasky-backend-jvm-chirho` (constant pool 4, bytecode builder 2, class compilation 2)
 - **BEAM backend tests**: 17 tests in `rhasky-backend-beam-chirho` (ETF serialization 7, opcode builder 3, beam module 4, opcode definitions 3)
-- **Total**: 1104 tests passing across all crates (1 ignored)
+- **Total**: 1115 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
