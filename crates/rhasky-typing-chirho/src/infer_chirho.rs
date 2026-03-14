@@ -5797,9 +5797,17 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // try :: forall a. IO a -> IO a  (simplified: catches and returns default on error)
+    // try :: forall a. IO a -> IO (Either String a)
     {
         let try_a_chirho = TyVarChirho(4132);
+        // Either String a = App (App (Con "Either") String) (Var a)
+        let either_string_a_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Either".to_string())),
+                Box::new(TyChirho::string_chirho()),
+            )),
+            Box::new(TyChirho::VarChirho(try_a_chirho)),
+        );
         env_chirho.bind_chirho(
             "try".to_string(),
             SchemeChirho {
@@ -5807,7 +5815,71 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::io_chirho(TyChirho::VarChirho(try_a_chirho)),
-                    TyChirho::io_chirho(TyChirho::VarChirho(try_a_chirho)),
+                    TyChirho::io_chirho(either_string_a_chirho),
+                ),
+            },
+        );
+    }
+
+    // throwIO :: forall a. String -> IO a
+    {
+        let throwio_a_chirho = TyVarChirho(4160);
+        env_chirho.bind_chirho(
+            "throwIO".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![throwio_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::string_chirho(),
+                    TyChirho::io_chirho(TyChirho::VarChirho(throwio_a_chirho)),
+                ),
+            },
+        );
+    }
+
+    // bracket :: forall a b c. IO a -> (a -> IO b) -> (a -> IO c) -> IO c
+    {
+        let br_a_chirho = TyVarChirho(4161);
+        let br_b_chirho = TyVarChirho(4162);
+        let br_c_chirho = TyVarChirho(4163);
+        env_chirho.bind_chirho(
+            "bracket".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![br_a_chirho, br_b_chirho, br_c_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::io_chirho(TyChirho::VarChirho(br_a_chirho)),
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(br_a_chirho),
+                            TyChirho::io_chirho(TyChirho::VarChirho(br_b_chirho)),
+                        ),
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(br_a_chirho),
+                            TyChirho::io_chirho(TyChirho::VarChirho(br_c_chirho)),
+                        ),
+                    ],
+                    TyChirho::io_chirho(TyChirho::VarChirho(br_c_chirho)),
+                ),
+            },
+        );
+    }
+
+    // finally :: forall a b. IO a -> IO b -> IO a
+    {
+        let fin_a_chirho = TyVarChirho(4164);
+        let fin_b_chirho = TyVarChirho(4165);
+        env_chirho.bind_chirho(
+            "finally".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![fin_a_chirho, fin_b_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::io_chirho(TyChirho::VarChirho(fin_a_chirho)),
+                        TyChirho::io_chirho(TyChirho::VarChirho(fin_b_chirho)),
+                    ],
+                    TyChirho::io_chirho(TyChirho::VarChirho(fin_a_chirho)),
                 ),
             },
         );

@@ -122,7 +122,7 @@ impl LowerCtxChirho {
             | "newIORef" | "readIORef" | "writeIORef"
             | "newSTRef" | "readSTRef" | "writeSTRef" | "runST"
             | "error" | "undefined" | "seq"
-            | "catch" | "throw" | "try" => Some(name_chirho.as_str()),
+            | "catch" | "throw" | "throwIO" | "try" | "bracket" | "finally" => Some(name_chirho.as_str()),
             _ => None,
         }
     }
@@ -1682,8 +1682,10 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "runST" | "runST#" => PrimOpKindChirho::RunSTChirho,
         // Exception handling primops
         "catch" | "catch#" => PrimOpKindChirho::CatchChirho,
-        "throw" | "throw#" => PrimOpKindChirho::ThrowChirho,
+        "throw" | "throw#" | "throwIO" | "throwIO#" => PrimOpKindChirho::ThrowChirho,
         "try" | "try#" => PrimOpKindChirho::TryChirho,
+        "bracket" | "bracket#" => PrimOpKindChirho::BracketChirho,
+        "finally" | "finally#" => PrimOpKindChirho::FinallyChirho,
         // Data.Map primops
         "mapEmpty#" | "mapEmpty" => PrimOpKindChirho::MapEmptyChirho,
         "mapSingleton#" | "mapSingleton" => PrimOpKindChirho::MapSingletonChirho,

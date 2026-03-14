@@ -75,6 +75,17 @@ pub enum FrameChirho {
         /// Saved arg registers to restore when invoking the handler
         saved_arg_regs_chirho: Vec<ValueChirho>,
     },
+
+    /// try# frame: try# pushes this before evaluating the body IO action.
+    /// On success the result value is wrapped in a `Right` constructor on the
+    /// heap and returned.  On RuntimeErrorChirho the stack is unwound to this
+    /// frame and the error message string is wrapped in `Left`.
+    /// The resulting heap address (pointing to `Left msg` or `Right val`) is
+    /// returned as the IO (Either String a) value.
+    TryFrameChirho {
+        /// Saved arg registers to restore on the error path.
+        saved_arg_regs_chirho: Vec<ValueChirho>,
+    },
 }
 
 /// Kinds of primitive operations.
@@ -304,6 +315,12 @@ pub enum PrimOpKindChirho {
     ThrowChirho,
     /// try# :: IO a -> IO (Either String a) — run and return Left on error, Right on success
     TryChirho,
+    /// bracket# :: IO a -> (a -> IO b) -> (a -> IO c) -> IO c
+    /// Acquire resource, run body, release resource even on exception.
+    BracketChirho,
+    /// finally# :: IO a -> IO b -> IO a
+    /// Run action and cleanup, ensuring cleanup runs even on exception.
+    FinallyChirho,
 
     // ── Data.Map runtime primops ──
     /// mapEmpty# :: Map k v — create an empty map
@@ -411,19 +428,21 @@ impl StackChirho {
         &self.frames_chirho
     }
 
-    /// Unwind the stack looking for a `CatchChirho` frame.
-    /// Returns `Some(CatchChirho { .. })` if found, popping all frames
-    /// above it (including the catch frame itself). Returns `None` if
-    /// no catch frame exists on the stack.
+    /// Unwind the stack looking for a `CatchChirho` or `TryFrameChirho` frame.
+    /// Returns the frame if found, popping all frames above it (including the
+    /// handler frame itself).  Returns `None` if no such frame exists.
     pub fn unwind_to_catch_chirho(&mut self) -> Option<FrameChirho> {
-        // Search from the top of the stack downward
+        // Search from the top of the stack downward for either handler kind.
         let catch_pos_chirho = self.frames_chirho.iter().rposition(|f_chirho| {
-            matches!(f_chirho, FrameChirho::CatchChirho { .. })
+            matches!(
+                f_chirho,
+                FrameChirho::CatchChirho { .. } | FrameChirho::TryFrameChirho { .. }
+            )
         });
         if let Some(pos_chirho) = catch_pos_chirho {
-            // Pop everything above and including the catch frame
+            // Pop everything above and including the handler frame
             self.frames_chirho.truncate(pos_chirho + 1);
-            self.frames_chirho.pop() // the catch frame itself
+            self.frames_chirho.pop() // the handler frame itself
         } else {
             None
         }

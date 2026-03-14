@@ -368,30 +368,76 @@ impl MachineChirho {
         self.last_gc_stats_chirho = Some(stats_chirho);
     }
 
+    /// Build a `Left msg` Either constructor on the heap and return it as a
+    /// `ValueChirho::HeapPtrChirho`.  Used by the `TryFrameChirho` error path.
+    fn make_either_left_chirho(&mut self, msg_chirho: String) -> ValueChirho {
+        let tag_chirho = self.lookup_con_tag_chirho("Left", 0);
+        let inner_chirho = ValueChirho::StringChirho(msg_chirho);
+        let closure_chirho = ClosureChirho::con_chirho(tag_chirho, "Left", vec![inner_chirho]);
+        let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
+        ValueChirho::HeapPtrChirho(addr_chirho)
+    }
+
+    /// Build a `Right val` Either constructor on the heap and return it as a
+    /// `ValueChirho::HeapPtrChirho`.  Used by the `TryFrameChirho` success path.
+    fn make_either_right_chirho(&mut self, val_chirho: ValueChirho) -> ValueChirho {
+        let tag_chirho = self.lookup_con_tag_chirho("Right", 1);
+        let closure_chirho = ClosureChirho::con_chirho(tag_chirho, "Right", vec![val_chirho]);
+        let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
+        ValueChirho::HeapPtrChirho(addr_chirho)
+    }
+
+    /// Emit a `CodeChirho::LitChirho` entry into the code table and return its index.
+    /// Used at runtime to produce a synthetic "return this value" instruction
+    /// when the `TryFrameChirho` must inject a `Left`/`Right` value into the
+    /// continuation stack.
+    fn emit_lit_code_chirho(&mut self, val_chirho: ValueChirho) -> u32 {
+        let idx_chirho = self.code_table_chirho.len() as u32;
+        self.code_table_chirho.push(CodeChirho::LitChirho(val_chirho));
+        idx_chirho
+    }
+
     /// Attempt to handle a `RuntimeErrorChirho` by unwinding the stack to
-    /// a `CatchChirho` frame.  If a catch frame is found, sets up the
-    /// machine to invoke the handler and returns `Ok(pc)` for the handler
-    /// entry.  Otherwise re-returns the original error.
+    /// a `CatchChirho` or `TryFrameChirho` frame.
+    ///
+    /// - `CatchChirho`: sets up the machine to invoke the handler closure and
+    ///   returns `Ok(pc)` for the handler entry.
+    /// - `TryFrameChirho`: wraps the error message in `Left` and emits a
+    ///   synthetic `LitChirho` code entry for the `Left` heap pointer so that
+    ///   the main evaluation loop continues normally with the `Either` value.
+    /// - Otherwise re-returns the original error.
     fn try_catch_runtime_error_chirho(
         &mut self,
         msg_chirho: String,
     ) -> Result<u32, EvalErrorChirho> {
-        if let Some(FrameChirho::CatchChirho {
-            handler_addr_chirho,
-            saved_arg_regs_chirho,
-        }) = self.stack_chirho.unwind_to_catch_chirho()
-        {
-            // Restore saved arg registers
-            self.arg_regs_chirho = saved_arg_regs_chirho;
-            // Push an Apply frame to apply the handler to the error message
-            let msg_val_chirho = ValueChirho::StringChirho(msg_chirho);
-            self.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
-                args_chirho: vec![msg_val_chirho],
-            });
-            // Enter the handler closure
-            Ok(self.emit_enter_chirho(handler_addr_chirho))
-        } else {
-            Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho))
+        match self.stack_chirho.unwind_to_catch_chirho() {
+            Some(FrameChirho::CatchChirho {
+                handler_addr_chirho,
+                saved_arg_regs_chirho,
+            }) => {
+                // Restore saved arg registers
+                self.arg_regs_chirho = saved_arg_regs_chirho;
+                // Push an Apply frame to apply the handler to the error message
+                let msg_val_chirho = ValueChirho::StringChirho(msg_chirho);
+                self.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
+                    args_chirho: vec![msg_val_chirho],
+                });
+                // Enter the handler closure
+                Ok(self.emit_enter_chirho(handler_addr_chirho))
+            }
+            Some(FrameChirho::TryFrameChirho {
+                saved_arg_regs_chirho,
+            }) => {
+                // try# error path: wrap error message in Left and inject it
+                // back into the evaluation loop as a synthetic literal code.
+                self.arg_regs_chirho = saved_arg_regs_chirho;
+                let left_val_chirho = self.make_either_left_chirho(msg_chirho);
+                // Emit a synthetic LitChirho code entry so the main loop
+                // picks up the Left value and delivers it to any outer
+                // continuation frames (e.g. a subsequent >>= handler).
+                Ok(self.emit_lit_code_chirho(left_val_chirho))
+            }
+            _ => Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho)),
         }
     }
 
@@ -683,7 +729,7 @@ impl MachineChirho {
                     // and then we need to continue evaluating it (it may be a
                     // HeapPtr thunk or a literal). Handle the result via the
                     // normal return path.
-                    if matches!(op_chirho, PrimOpKindChirho::CatchChirho) {
+                    if matches!(op_chirho, PrimOpKindChirho::CatchChirho | PrimOpKindChirho::TryChirho) {
                         let prim_result_chirho =
                             self.eval_prim_chirho(op_chirho, &resolved_chirho);
                         match prim_result_chirho {
@@ -1049,6 +1095,17 @@ impl MachineChirho {
                     // passes through.
                     continue;
                 }
+                Some(FrameChirho::TryFrameChirho { .. }) => {
+                    // try# frame — body succeeded.  Wrap the constructor
+                    // heap pointer in a `Right` constructor so the caller
+                    // receives `IO (Either String a)`.
+                    let right_val_chirho =
+                        self.make_either_right_chirho(ValueChirho::HeapPtrChirho(addr_chirho));
+                    // Emit a synthetic LitChirho entry and continue from there so
+                    // any outer continuation frames are satisfied.
+                    let idx_chirho = self.emit_lit_code_chirho(right_val_chirho);
+                    return Ok(ReturnActionChirho::ContinueChirho(idx_chirho));
+                }
                 Some(FrameChirho::PrimOpChirho {
                     op_chirho,
                     mut args_so_far_chirho,
@@ -1196,6 +1253,14 @@ impl MachineChirho {
                     // passes through.
                     continue;
                 }
+                Some(FrameChirho::TryFrameChirho { .. }) => {
+                    // try# frame — body succeeded with a literal value.
+                    // Wrap in Right so the caller receives Either String a.
+                    let right_val_chirho =
+                        self.make_either_right_chirho(val_chirho.clone());
+                    let idx_chirho = self.emit_lit_code_chirho(right_val_chirho);
+                    return Ok(ReturnActionChirho::ContinueChirho(idx_chirho));
+                }
                 Some(frame_chirho @ FrameChirho::CaseChirho { .. }) => {
                     // Box the literal into a constructor and dispatch
                     // via return_con_chirho (e.g. BoolChirho(true) → True,
@@ -1259,6 +1324,14 @@ impl MachineChirho {
                     // catch frame is simply discarded and the result
                     // passes through.
                     continue;
+                }
+                Some(FrameChirho::TryFrameChirho { .. }) => {
+                    // try# frame — body succeeded with a heap pointer.
+                    // Wrap in Right so the caller receives Either String a.
+                    let right_val_chirho =
+                        self.make_either_right_chirho(ValueChirho::HeapPtrChirho(addr_chirho));
+                    let idx_chirho = self.emit_lit_code_chirho(right_val_chirho);
+                    return Ok(ReturnActionChirho::ContinueChirho(idx_chirho));
                 }
                 Some(frame_chirho @ FrameChirho::CaseChirho { .. }) => {
                     // Dispatch via the constructor return path.
@@ -1596,35 +1669,182 @@ impl MachineChirho {
                 return Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho));
             }
             PrimOpKindChirho::TryChirho => {
-                // try# body — wraps body execution with a catch that returns
-                // Left msg on error, Right result on success.
-                // We implement this by pushing a CatchChirho frame with a
-                // handler that wraps the error in Left, and then on success
-                // the result will be wrapped in Right by the CatchChirho
-                // frame passthrough code in return_con_chirho/return_lit_chirho.
-                // For simplicity, we reuse the CatchChirho mechanism:
-                // - Build a handler closure that builds Left(msg) on error
-                // - On success, wrap the result in Right
-                // Since we don't have a way to build Either constructors
-                // generically here, we use a simplified approach: catch the
-                // error and wrap in Left, let success pass through normally.
-                // (Full Either support requires constructor allocation.)
+                // try# body — wraps body execution in a TryFrameChirho.
+                // On success, return_con/return_lit/return_heap_ptr will
+                // wrap the result in `Right`.  On RuntimeErrorChirho,
+                // try_catch_runtime_error_chirho wraps the message in `Left`.
+                // Both paths produce IO (Either String a).
                 let body_val_chirho = args_chirho.first().cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
-                // For now, try acts like catch with a handler that returns
-                // the error message string directly.
-                // This is a simplified version; full Either wrapping is future work.
-                let handler_closure_chirho = ClosureChirho::con_chirho(
-                    DataConTagChirho(0),
-                    "$try_handler",
-                    vec![],
-                );
-                let handler_addr_chirho = self.heap_chirho.alloc_chirho(handler_closure_chirho);
-                self.stack_chirho.push_chirho(FrameChirho::CatchChirho {
-                    handler_addr_chirho,
+                self.stack_chirho.push_chirho(FrameChirho::TryFrameChirho {
                     saved_arg_regs_chirho: self.arg_regs_chirho.clone(),
                 });
                 return Ok(body_val_chirho);
+            }
+            PrimOpKindChirho::BracketChirho => {
+                // bracket# acquire release body
+                // :: IO a -> (a -> IO b) -> (a -> IO c) -> IO c
+                //
+                // Semantics:
+                //   1. Run acquire to get resource r.
+                //   2. Run (body r), catching any exception.
+                //   3. Run (release r) regardless.
+                //   4. Re-throw on exception, otherwise return body result.
+                //
+                // We run sub-computations by saving/restoring stack+regs and
+                // calling run_chirho inline (same technique as force_addr_to_whnf_chirho).
+                let acquire_val_chirho = args_chirho.first().cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let release_val_chirho = args_chirho.get(1).cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let body_val_chirho = args_chirho.get(2).cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+
+                // Helper: run an IO value (HeapPtr or literal) in a sub-context.
+                // Returns Ok(value) or Err(RuntimeErrorChirho message).
+                let run_io_val_chirho = |machine_chirho: &mut MachineChirho,
+                                         io_val_chirho: ValueChirho|
+                 -> Result<ValueChirho, String> {
+                    match io_val_chirho {
+                        ValueChirho::HeapPtrChirho(addr_chirho) => {
+                            let saved_stack_chirho = std::mem::replace(
+                                &mut machine_chirho.stack_chirho,
+                                StackChirho::new_chirho(),
+                            );
+                            let saved_regs_chirho =
+                                std::mem::take(&mut machine_chirho.arg_regs_chirho);
+                            let entry_chirho = machine_chirho.code_table_chirho.len() as u32;
+                            machine_chirho
+                                .code_table_chirho
+                                .push(CodeChirho::EnterChirho(addr_chirho));
+                            let result_chirho = machine_chirho.run_chirho(entry_chirho);
+                            machine_chirho.stack_chirho = saved_stack_chirho;
+                            machine_chirho.arg_regs_chirho = saved_regs_chirho;
+                            match result_chirho {
+                                Ok(v_chirho) => Ok(v_chirho),
+                                Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho)) => {
+                                    Err(msg_chirho)
+                                }
+                                Err(e_chirho) => {
+                                    Err(format!("{}", e_chirho))
+                                }
+                            }
+                        }
+                        v_chirho => Ok(v_chirho),
+                    }
+                };
+
+                // Helper: apply a function value to an argument.
+                let apply_to_arg_chirho = |machine_chirho: &mut MachineChirho,
+                                            func_val_chirho: ValueChirho,
+                                            arg_val_chirho: ValueChirho|
+                 -> Result<ValueChirho, String> {
+                    match func_val_chirho {
+                        ValueChirho::HeapPtrChirho(func_addr_chirho) => {
+                            let saved_stack_chirho = std::mem::replace(
+                                &mut machine_chirho.stack_chirho,
+                                StackChirho::new_chirho(),
+                            );
+                            let saved_regs_chirho =
+                                std::mem::take(&mut machine_chirho.arg_regs_chirho);
+                            machine_chirho.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
+                                args_chirho: vec![arg_val_chirho],
+                            });
+                            let entry_chirho = machine_chirho.emit_enter_chirho(func_addr_chirho);
+                            let result_chirho = machine_chirho.run_chirho(entry_chirho);
+                            machine_chirho.stack_chirho = saved_stack_chirho;
+                            machine_chirho.arg_regs_chirho = saved_regs_chirho;
+                            match result_chirho {
+                                Ok(v_chirho) => Ok(v_chirho),
+                                Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho)) => {
+                                    Err(msg_chirho)
+                                }
+                                Err(e_chirho) => Err(format!("{}", e_chirho)),
+                            }
+                        }
+                        v_chirho => Ok(v_chirho),
+                    }
+                };
+
+                // Step 1: run acquire
+                let resource_chirho =
+                    run_io_val_chirho(self, acquire_val_chirho)
+                        .map_err(|msg_chirho| EvalErrorChirho::RuntimeErrorChirho(msg_chirho))?;
+
+                // Step 2: run (body resource), catching exceptions
+                let body_result_chirho: Result<ValueChirho, String> =
+                    apply_to_arg_chirho(self, body_val_chirho, resource_chirho.clone());
+
+                // Step 3: run (release resource) regardless
+                let _ = apply_to_arg_chirho(self, release_val_chirho, resource_chirho);
+
+                // Step 4: return body result or re-throw
+                match body_result_chirho {
+                    Ok(val_chirho) => return Ok(val_chirho),
+                    Err(msg_chirho) => {
+                        return Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho))
+                    }
+                }
+            }
+            PrimOpKindChirho::FinallyChirho => {
+                // finally# action cleanup :: IO a -> IO b -> IO a
+                //
+                // Run action (catching exceptions), always run cleanup,
+                // then re-throw or return action result.
+                let action_val_chirho = args_chirho.first().cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let cleanup_val_chirho = args_chirho.get(1).cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+
+                // Run action in a sub-context, catching RuntimeError.
+                let action_result_chirho: Result<ValueChirho, String> =
+                    match action_val_chirho {
+                        ValueChirho::HeapPtrChirho(addr_chirho) => {
+                            let saved_stack_chirho = std::mem::replace(
+                                &mut self.stack_chirho,
+                                StackChirho::new_chirho(),
+                            );
+                            let saved_regs_chirho =
+                                std::mem::take(&mut self.arg_regs_chirho);
+                            let entry_chirho = self.code_table_chirho.len() as u32;
+                            self.code_table_chirho
+                                .push(CodeChirho::EnterChirho(addr_chirho));
+                            let result_chirho = self.run_chirho(entry_chirho);
+                            self.stack_chirho = saved_stack_chirho;
+                            self.arg_regs_chirho = saved_regs_chirho;
+                            match result_chirho {
+                                Ok(v_chirho) => Ok(v_chirho),
+                                Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho)) => {
+                                    Err(msg_chirho)
+                                }
+                                Err(e_chirho) => Err(format!("{}", e_chirho)),
+                            }
+                        }
+                        v_chirho => Ok(v_chirho),
+                    };
+
+                // Always run cleanup
+                if let ValueChirho::HeapPtrChirho(cleanup_addr_chirho) = cleanup_val_chirho {
+                    let saved_stack_chirho = std::mem::replace(
+                        &mut self.stack_chirho,
+                        StackChirho::new_chirho(),
+                    );
+                    let saved_regs_chirho = std::mem::take(&mut self.arg_regs_chirho);
+                    let entry_chirho = self.code_table_chirho.len() as u32;
+                    self.code_table_chirho
+                        .push(CodeChirho::EnterChirho(cleanup_addr_chirho));
+                    let _ = self.run_chirho(entry_chirho);
+                    self.stack_chirho = saved_stack_chirho;
+                    self.arg_regs_chirho = saved_regs_chirho;
+                }
+
+                // Return action result or re-throw
+                match action_result_chirho {
+                    Ok(val_chirho) => return Ok(val_chirho),
+                    Err(msg_chirho) => {
+                        return Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho))
+                    }
+                }
             }
             PrimOpKindChirho::PutStrLnChirho => {
                 if let Some(ValueChirho::StringChirho(s_chirho)) = args_chirho.first() {

@@ -13320,6 +13320,73 @@ main = case runStateT addOne 10 of
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(77));
     }
 
+    // ── try / throwIO / bracket / finally end-to-end tests ────────────
+
+    #[test]
+    fn eval_catch_basic_chirho() {
+        // catch (error "boom") (\_ -> putStrLn "caught") → output "caught\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = catch (error \"boom\") (\\_ -> putStrLn \"caught\")\n";
+        let (val_chirho, machine_chirho) = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("catch should handle error");
+        let _ = val_chirho;
+        assert_eq!(machine_chirho.io_output_chirho, "caught\n");
+    }
+
+    #[test]
+    fn eval_try_success_chirho() {
+        // try (return 42) binds r, then case r of Right v → putStrLn (show v) → "42\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // Use do-notation so the bind is handled correctly via LetChirho desugaring.
+        let src_chirho = r#"module Test where
+main = do
+  r <- try (return 42)
+  case r of
+    Right v -> putStrLn (show v)
+    Left _ -> putStrLn "error"
+"#;
+        let (val_chirho, machine_chirho) = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("try success should not raise");
+        let _ = val_chirho;
+        assert_eq!(machine_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn eval_try_failure_chirho() {
+        // try (error "fail") binds r, then case r of Left _ → putStrLn "error" → "error\n"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = do
+  r <- try (error "fail")
+  case r of
+    Left _ -> putStrLn "error"
+    Right _ -> putStrLn "ok"
+"#;
+        let (val_chirho, machine_chirho) = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("try failure should be caught");
+        let _ = val_chirho;
+        assert_eq!(machine_chirho.io_output_chirho, "error\n");
+    }
+
+    #[test]
+    fn eval_throwio_caught_chirho() {
+        // throwIO is an alias for throw — catch (throwIO "oops") (\_ -> putStrLn "caught")
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = catch (throwIO \"oops\") (\\_ -> putStrLn \"caught\")\n";
+        let (val_chirho, machine_chirho) = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("catch should handle throwIO");
+        let _ = val_chirho;
+        assert_eq!(machine_chirho.io_output_chirho, "caught\n");
+    }
+
     // ── Data.Map (user-defined BST) end-to-end tests ──────────────────
 
     #[test]

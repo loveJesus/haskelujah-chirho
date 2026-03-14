@@ -675,6 +675,11 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::MapUnionWithChirho
         | PrimOpKindChirho::MapFilterChirho
         | PrimOpKindChirho::MapFilterWithKeyChirho => Ok(ValueChirho::IntChirho(0)),
+        // Exception-handling primops that are dispatched directly in eval_prim_chirho
+        // on MachineChirho (they need access to the heap and stack) — the
+        // standalone prim_chirho dispatch should never be reached for these.
+        PrimOpKindChirho::BracketChirho
+        | PrimOpKindChirho::FinallyChirho => Ok(ValueChirho::IntChirho(0)),
     }
 }
 
