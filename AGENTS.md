@@ -228,7 +228,11 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver list comp advanced tests**: 2 tests (transform+filter, cartesian product)
 - **Driver higher-order compose test**: 1 test (length . filter even)
 - **Driver operator section tests**: 3 tests (left section (2*), right section (*3), addition section (+10))
-- **Total**: 947 tests passing across all crates (1 ignored)
+- **Driver lambda pattern tests**: 2 tests (lambda tuple pattern `\(x,y)->x+y`, lambda constructor pattern `\(Just x)->x+1`)
+- **Driver section/pipeline tests**: 5 tests (uncurry section `uncurry (+) (3,4)`, map section subtract, where multi helpers, nested maybe case safe_head, complex list pipeline `sum (map (^2) (filter odd [1..10]))`)
+- **Driver misc tests**: 4 tests (case nested tuple, type annotation `(42::Int)`, let multi bind, map Just length)
+- **Driver type alias tests**: 1 test (type synonym `type IntList = [Int]`)
+- **Total**: 961 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -327,4 +331,5 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 93. ~~String-as-[Char] interop~~ — DONE (fixed resolve_string_arg_chirho to force HeapPtrChirho head values in cons cells so putStrLn correctly outputs transformed char lists from map/filter; all standard list operations work on strings via box_literal_chirho decomposition; 6 new e2e tests: head/length/map toUpper/filter isDigit/reverse/null on strings; 923 tests total)
 94. ~~String ordering primops + Ord [Char]~~ — DONE (CompareStrChirho/LtStrChirho primops; Ord/Eq/Show [Char] instances in class_chirho; STG lowerer mappings ltStr#/compareStr#; compareStr# in primop_for_chirho and builtins; CompareStrChirho in eval_chirho via resolve_value_to_string_chirho + make_ordering_chirho; CompareStrChirho added to catch-all in prim_chirho; 3 new e2e tests: compare string LT/EQ/GT; 929 tests total)
 95. ~~Operator sections (left/right)~~ — DONE (CST parser detects left sections `(op e)` and right sections `(e op)` in parse_paren_expr_chirho; excludes `-` from left-section detection since `(-e)` is negation; lowerer inspects InfixExprChirho children for trailing operators without RHS to detect right sections consumed by infix parsing; LeftSectionExprChirho/RightSectionExprChirho CST kinds added; desugarer already handles both via lambda wrapping; 3 new e2e tests: `(2*)`, `(*3)`, `(+10)` mapped over lists; fixes 5 pre-existing test failures from incomplete section parser; 947 tests total)
-96. Next priorities: more numeric class instances, Data.Map with polymorphic keys, type-level improvements, Data.Map/Set balanced (AVL/red-black), where-clause in case alternatives, type class defaulting improvements, type synonyms in instance heads
+96. ~~Lambda pattern matching in lambdas~~ — DONE (non-variable patterns in lambda args (tuples, constructors) desugar to case-wrapped bodies; pat_to_binders_chirho called BEFORE body desugaring so IDs match; build_section_body_chirho helper emits PrimOpChirho directly for known operators in sections; section argument order fixed to match Haskell spec; 14 new e2e tests; 961 tests total)
+97. Next priorities: more numeric class instances, Data.Map with polymorphic keys, type-level improvements, Data.Map/Set balanced (AVL/red-black), type class defaulting improvements, type synonyms in instance heads
