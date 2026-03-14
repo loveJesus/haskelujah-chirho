@@ -11790,4 +11790,73 @@ main = if all odd [1,3,5,7] then 1 else 0
         }
     }
 
+    // ── fromJust / swap / mapDelete fix ──
+
+    #[test]
+    fn eval_from_just_chirho() {
+        // fromJust (Just 42) = 42
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = fromJust (Just 42)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("fromJust: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_swap_tuple_chirho() {
+        // fst (swap (1, 2)) = 2
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = fst (swap (1, 2))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("swap tuple: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_swap_snd_chirho() {
+        // snd (swap (10, 20)) = 10
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = snd (swap (10, 20))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10)),
+            Err(e_chirho) => panic!("swap snd: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_delete_preserves_chirho() {
+        // mapInsert 1 10 (mapInsert 2 20 (mapInsert 3 30 mapEmpty))
+        // after mapDelete 2, mapSize should be 2 and both 1 and 3 remain
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nm = mapInsert 1 10 (mapInsert 2 20 (mapInsert 3 30 mapEmpty))\nmain = mapSize (mapDelete 2 m)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2)),
+            Err(e_chirho) => panic!("map delete preserves: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_map_delete_both_subtrees_chirho() {
+        // insert 2, 1, 3 (root=2, left=1, right=3), delete 2
+        // both 1 and 3 should remain, verify via lookup
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nm = mapInsert 2 20 (mapInsert 1 10 (mapInsert 3 30 mapEmpty))\nm2 = mapDelete 2 m\nmain = fromMaybe 0 (mapLookup 1 m2) + fromMaybe 0 (mapLookup 3 m2)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(40)),
+            Err(e_chirho) => panic!("map delete both subtrees: {}", e_chirho),
+        }
+    }
+
 }

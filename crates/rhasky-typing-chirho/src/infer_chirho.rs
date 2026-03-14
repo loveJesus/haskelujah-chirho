@@ -2955,6 +2955,44 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // fromJust :: forall a. Maybe a -> a
+    let fj_a_chirho = TyVarChirho(1035);
+    env_chirho.bind_chirho(
+        "fromJust".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![fj_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(TyChirho::VarChirho(fj_a_chirho)),
+                ),
+                TyChirho::VarChirho(fj_a_chirho),
+            ),
+        },
+    );
+
+    // swap :: forall a b. (a, b) -> (b, a)
+    let sw_a_chirho = TyVarChirho(1036);
+    let sw_b_chirho = TyVarChirho(1037);
+    env_chirho.bind_chirho(
+        "swap".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![sw_a_chirho, sw_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::TupleChirho(vec![
+                    TyChirho::VarChirho(sw_a_chirho),
+                    TyChirho::VarChirho(sw_b_chirho),
+                ]),
+                TyChirho::TupleChirho(vec![
+                    TyChirho::VarChirho(sw_b_chirho),
+                    TyChirho::VarChirho(sw_a_chirho),
+                ]),
+            ),
+        },
+    );
+
     // either :: forall a b c. (a -> c) -> (b -> c) -> Either a b -> c
     let either_a_chirho = TyVarChirho(1025);
     let either_b_chirho = TyVarChirho(1026);
