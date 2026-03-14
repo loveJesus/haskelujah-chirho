@@ -656,10 +656,16 @@ fn int_binop_chirho(
     right_chirho: &ValueChirho,
     f_chirho: impl FnOnce(i64, i64) -> Result<ValueChirho, PrimErrorChirho>,
 ) -> Result<ValueChirho, PrimErrorChirho> {
-    match (left_chirho, right_chirho) {
-        (ValueChirho::IntChirho(a_chirho), ValueChirho::IntChirho(b_chirho)) => {
-            f_chirho(*a_chirho, *b_chirho)
+    let to_i64_chirho = |v_chirho: &ValueChirho| -> Option<i64> {
+        match v_chirho {
+            ValueChirho::IntChirho(n_chirho) => Some(*n_chirho),
+            ValueChirho::CharChirho(c_chirho) => Some(*c_chirho as i64),
+            ValueChirho::BoolChirho(b_chirho) => Some(if *b_chirho { 1 } else { 0 }),
+            _ => None,
         }
+    };
+    match (to_i64_chirho(left_chirho), to_i64_chirho(right_chirho)) {
+        (Some(a_chirho), Some(b_chirho)) => f_chirho(a_chirho, b_chirho),
         _ => Err(PrimErrorChirho::TypeMismatchChirho {
             op_chirho,
             expected_chirho: "Int#",

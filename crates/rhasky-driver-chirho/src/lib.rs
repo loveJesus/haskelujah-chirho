@@ -12684,7 +12684,6 @@ main = putStrLn (show (Just (Just 42)))
     }
 
     #[test]
-    #[ignore] // isPrefixOf uses ==# which routes chars through EqIntChirho — needs char-aware eq
     fn eval_is_prefix_of_chirho() {
         // isPrefixOf "he" "hello" → True → 1
         use super::eval_source_chirho;
@@ -12892,6 +12891,38 @@ main = putStrLn (show (Just (Just 42)))
         let src_chirho = "module Test where\nmain = if any even [1,3,4] then 1 else 0\n";
         let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
+    }
+
+    // ── Char equality through int primops ─────────────────────────────────
+
+    #[test]
+    fn eval_is_suffix_of_e2e_chirho() {
+        // isSuffixOf "lo" "hello" → True → 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = if isSuffixOf \"lo\" \"hello\" then 1 else 0\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
+    }
+
+    #[test]
+    fn eval_elem_int_list_chirho() {
+        // elem 3 [1,2,3,4] → True → 1
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = if elem 3 [1,2,3,4] then 1 else 0\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
+    }
+
+    #[test]
+    fn eval_nub_string_chirho() {
+        // length (nub "banana") → 3 (b, a, n)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = length (nub \"banana\")\n";
+        let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3));
     }
 
     // ── Monad transformer infrastructure ──────────────────────────────────
