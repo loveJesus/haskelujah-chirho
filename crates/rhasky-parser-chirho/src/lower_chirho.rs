@@ -850,6 +850,26 @@ impl LowerCtxChirho {
                             });
                         }
                     }
+                } else if n_chirho.kind_chirho() == SyntaxKindChirho::TypeSigDeclChirho {
+                    let child_span_chirho =
+                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                    let decl_chirho = self.lower_type_sig_chirho(
+                        n_chirho,
+                        child_chirho.start_chirho,
+                        child_span_chirho,
+                    );
+                    if let DeclChirho::TypeSigChirho {
+                        name_chirho,
+                        ty_chirho,
+                        span_chirho,
+                    } = decl_chirho
+                    {
+                        binds_chirho.push(LocalBindChirho::TypeSigChirho {
+                            name_chirho,
+                            ty_chirho,
+                            span_chirho,
+                        });
+                    }
                 }
             }
         }
@@ -890,6 +910,26 @@ impl LowerCtxChirho {
                                 span_chirho,
                             });
                         }
+                    }
+                } else if n_chirho.kind_chirho() == SyntaxKindChirho::TypeSigDeclChirho {
+                    let child_span_chirho =
+                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                    let decl_chirho = self.lower_type_sig_chirho(
+                        n_chirho,
+                        child_chirho.start_chirho,
+                        child_span_chirho,
+                    );
+                    if let DeclChirho::TypeSigChirho {
+                        name_chirho,
+                        ty_chirho,
+                        span_chirho,
+                    } = decl_chirho
+                    {
+                        binds_chirho.push(LocalBindChirho::TypeSigChirho {
+                            name_chirho,
+                            ty_chirho,
+                            span_chirho,
+                        });
                     }
                 }
             }
@@ -2517,6 +2557,28 @@ impl LowerCtxChirho {
                                     child_span_chirho,
                                 );
                                 binds_chirho.push(pb_chirho);
+                            } else if n_chirho.kind_chirho() == SyntaxKindChirho::TypeSigDeclChirho {
+                                let child_span_chirho = self.span_chirho(
+                                    child_chirho.start_chirho,
+                                    child_chirho.end_chirho,
+                                );
+                                let decl_chirho = self.lower_type_sig_chirho(
+                                    n_chirho,
+                                    child_chirho.start_chirho,
+                                    child_span_chirho,
+                                );
+                                if let DeclChirho::TypeSigChirho {
+                                    name_chirho,
+                                    ty_chirho,
+                                    span_chirho,
+                                } = decl_chirho
+                                {
+                                    binds_chirho.push(LocalBindChirho::TypeSigChirho {
+                                        name_chirho,
+                                        ty_chirho,
+                                        span_chirho,
+                                    });
+                                }
                             }
                         }
                         GreenElementChirho::NodeChirho(n_chirho) if past_in_chirho => {

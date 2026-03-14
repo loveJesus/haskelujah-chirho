@@ -12113,4 +12113,67 @@ main = if all odd [1,3,5,7] then 1 else 0
         }
     }
 
+    // ── Where-clause / let type annotations ────────────────────────────
+
+    #[test]
+    fn eval_where_type_annotation_chirho() {
+        // where-clause with type annotation
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+f x = helper x
+  where
+    helper :: Int -> Int
+    helper y = y + 1
+main = f 41
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("where type annotation: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_let_type_annotation_chirho() {
+        // let expression with type annotation
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = let double :: Int -> Int
+           double x = x + x
+       in double 21
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42)),
+            Err(e_chirho) => panic!("let type annotation: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_where_multiple_annotated_chirho() {
+        // where-clause with multiple annotated helper functions
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+f x = add3 (double x)
+  where
+    double :: Int -> Int
+    double y = y + y
+    add3 :: Int -> Int
+    add3 z = z + 3
+main = f 10
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            // double 10 = 20, add3 20 = 23
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(23)),
+            Err(e_chirho) => panic!("where multiple annotated: {}", e_chirho),
+        }
+    }
+
 }

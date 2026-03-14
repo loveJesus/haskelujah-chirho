@@ -808,6 +808,20 @@ impl InferCtxChirho {
                 self.env_chirho.push_scope_chirho();
                 let mut subst_chirho = SubstChirho::empty_chirho();
 
+                // Collect local type signatures
+                let mut local_sigs_chirho: HashMap<String, rhasky_ast_chirho::ty_chirho::TypeChirho> = HashMap::new();
+                for bind_chirho in binds_chirho {
+                    if let rhasky_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho {
+                        name_chirho, ty_chirho, ..
+                    } = bind_chirho
+                    {
+                        local_sigs_chirho.insert(
+                            name_chirho.text_chirho().to_string(),
+                            ty_chirho.clone(),
+                        );
+                    }
+                }
+
                 // Pre-bind function names with fresh types (letrec)
                 let mut pre_let_tys_chirho: Vec<(String, TyChirho)> = Vec::new();
                 for bind_chirho in binds_chirho {
@@ -854,6 +868,22 @@ impl InferCtxChirho {
                                 }
                             }
 
+                            // Check against local type signature if present
+                            if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
+                                let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
+                                let sig_ty_chirho = self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
+                                let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
+                                match unify_chirho(&inferred_sub_chirho, &sig_ty_chirho, *span_chirho) {
+                                    Ok(sig_s_chirho) => {
+                                        subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
+                                        self.apply_subst_all_chirho(&sig_s_chirho);
+                                    }
+                                    Err(err_chirho) => {
+                                        self.report_unify_error_chirho(&err_chirho);
+                                    }
+                                }
+                            }
+
                             let gen_ty_chirho = self.generalize_chirho(&ty_chirho);
                             self.env_chirho
                                 .bind_chirho(name_str_chirho, gen_ty_chirho);
@@ -869,7 +899,7 @@ impl InferCtxChirho {
                             self.bind_pat_chirho(pat_chirho, &rhs_ty_chirho);
                         }
                         rhasky_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho { .. } => {
-                            // Type signatures are collected but not enforced yet
+                            // Handled by local_sigs_chirho collection above
                         }
                     }
                 }
@@ -960,6 +990,20 @@ impl InferCtxChirho {
                         }
                     }
 
+                    // Collect where-clause type signatures
+                    let mut wb_sigs_chirho: HashMap<String, rhasky_ast_chirho::ty_chirho::TypeChirho> = HashMap::new();
+                    for wb_chirho in &alt_chirho.where_binds_chirho {
+                        if let rhasky_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho {
+                            name_chirho, ty_chirho, ..
+                        } = wb_chirho
+                        {
+                            wb_sigs_chirho.insert(
+                                name_chirho.text_chirho().to_string(),
+                                ty_chirho.clone(),
+                            );
+                        }
+                    }
+
                     // Pre-bind where-clause function names with fresh
                     // types so recursive references resolve (letrec).
                     let mut pre_wb_tys_chirho: Vec<(String, TyChirho)> = Vec::new();
@@ -1005,6 +1049,22 @@ impl InferCtxChirho {
                                     ) {
                                         subst_chirho = us_chirho.compose_chirho(&subst_chirho);
                                         self.apply_subst_all_chirho(&us_chirho);
+                                    }
+                                }
+
+                                // Check against where-clause type signature if present
+                                if let Some(sig_ast_chirho) = wb_sigs_chirho.get(&name_str_chirho) {
+                                    let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
+                                    let sig_ty_chirho = self.instantiate_chirho(&sig_scheme_chirho, *wb_span_chirho);
+                                    let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&wt_chirho);
+                                    match unify_chirho(&inferred_sub_chirho, &sig_ty_chirho, *wb_span_chirho) {
+                                        Ok(sig_s_chirho) => {
+                                            subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
+                                            self.apply_subst_all_chirho(&sig_s_chirho);
+                                        }
+                                        Err(err_chirho) => {
+                                            self.report_unify_error_chirho(&err_chirho);
+                                        }
                                     }
                                 }
 
@@ -1511,6 +1571,20 @@ impl InferCtxChirho {
                 self.bind_pat_chirho(pat_chirho, &pat_ty_sub_chirho);
             }
 
+            // Collect where-clause type signatures
+            let mut wb_sigs_chirho: HashMap<String, rhasky_ast_chirho::ty_chirho::TypeChirho> = HashMap::new();
+            for wb_chirho in &match_arm_chirho.where_binds_chirho {
+                if let rhasky_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho {
+                    name_chirho, ty_chirho, ..
+                } = wb_chirho
+                {
+                    wb_sigs_chirho.insert(
+                        name_chirho.text_chirho().to_string(),
+                        ty_chirho.clone(),
+                    );
+                }
+            }
+
             // Pre-bind where-clause function names with fresh types
             // so that recursive references resolve (letrec semantics).
             let mut pre_wb_tys_chirho: Vec<(String, TyChirho)> = Vec::new();
@@ -1556,6 +1630,22 @@ impl InferCtxChirho {
                             ) {
                                 subst_chirho = us_chirho.compose_chirho(&subst_chirho);
                                 self.apply_subst_all_chirho(&us_chirho);
+                            }
+                        }
+
+                        // Check against where-clause type signature if present
+                        if let Some(sig_ast_chirho) = wb_sigs_chirho.get(&name_str_chirho) {
+                            let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
+                            let sig_ty_chirho = self.instantiate_chirho(&sig_scheme_chirho, *wb_span_chirho);
+                            let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&wt_chirho);
+                            match unify_chirho(&inferred_sub_chirho, &sig_ty_chirho, *wb_span_chirho) {
+                                Ok(sig_s_chirho) => {
+                                    subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
+                                    self.apply_subst_all_chirho(&sig_s_chirho);
+                                }
+                                Err(err_chirho) => {
+                                    self.report_unify_error_chirho(&err_chirho);
+                                }
                             }
                         }
 
