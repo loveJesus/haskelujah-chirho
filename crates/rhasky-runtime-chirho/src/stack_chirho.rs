@@ -273,6 +273,16 @@ pub enum PrimOpKindChirho {
     WriteIORefChirho,
     /// modifyIORef# :: IORef a -> (a -> a) -> IO () — apply function to value
     ModifyIORefChirho,
+
+    // ── ST monad operations ──
+    /// newSTRef# :: a -> ST s (STRef s a) — create a new mutable reference in ST
+    NewSTRefChirho,
+    /// readSTRef# :: STRef s a -> ST s a — read a mutable reference in ST
+    ReadSTRefChirho,
+    /// writeSTRef# :: STRef s a -> a -> ST s () — write to a mutable reference in ST
+    WriteSTRefChirho,
+    /// runST# :: (forall s. ST s a) -> a — execute an ST computation purely
+    RunSTChirho,
 }
 
 /// The evaluation stack.

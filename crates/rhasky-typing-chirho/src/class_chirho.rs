@@ -1409,6 +1409,50 @@ impl ClassEnvChirho {
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });
+
+        // ── MonadTrans ──
+        // class MonadTrans t where
+        //   lift :: Monad m => m a -> t m a
+        //
+        // We represent the type as a simplified opaque:
+        //   lift :: forall t m a. Monad m => m a -> t m a
+        // Since our type system uses TyVarChirho, we encode this by giving
+        // `lift` a type scheme with three type variables and a Monad pred.
+        let mt_t_chirho = TyVarChirho(9060); // the transformer type constructor
+        let mt_m_chirho = TyVarChirho(9061); // the inner monad
+        let mt_a_chirho = TyVarChirho(9062); // the value type
+        // m a
+        let mt_ma_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(mt_m_chirho)),
+            Box::new(TyChirho::VarChirho(mt_a_chirho)),
+        );
+        // t m a
+        let mt_tma_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::VarChirho(mt_t_chirho)),
+                Box::new(TyChirho::VarChirho(mt_m_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(mt_a_chirho)),
+        );
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "MonadTrans".to_string(),
+            supers_chirho: vec![],
+            var_chirho: mt_t_chirho,
+            methods_chirho: HashMap::from([(
+                "lift".to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![mt_t_chirho, mt_m_chirho, mt_a_chirho],
+                    preds_chirho: vec![],
+                    ty_chirho: TyChirho::FunChirho(
+                        Box::new(mt_ma_chirho.clone()),
+                        Box::new(mt_tma_chirho.clone()),
+                    ),
+                },
+            )]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
     }
 }
 

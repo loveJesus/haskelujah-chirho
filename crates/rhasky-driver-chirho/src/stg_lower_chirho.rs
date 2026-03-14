@@ -119,6 +119,7 @@ impl LowerCtxChirho {
             | "getLine" | "getChar"
             | "readFile" | "writeFile" | "appendFile"
             | "newIORef" | "readIORef" | "writeIORef"
+            | "newSTRef" | "readSTRef" | "writeSTRef" | "runST"
             | "error" | "undefined" | "seq" => Some(name_chirho.as_str()),
             _ => None,
         }
@@ -1667,6 +1668,11 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "readIORef" | "readIORef#" => PrimOpKindChirho::ReadIORefChirho,
         "writeIORef" | "writeIORef#" => PrimOpKindChirho::WriteIORefChirho,
         "modifyIORef" | "modifyIORef#" => PrimOpKindChirho::ModifyIORefChirho,
+        // ST monad primops
+        "newSTRef" | "newSTRef#" => PrimOpKindChirho::NewSTRefChirho,
+        "readSTRef" | "readSTRef#" => PrimOpKindChirho::ReadSTRefChirho,
+        "writeSTRef" | "writeSTRef#" => PrimOpKindChirho::WriteSTRefChirho,
+        "runST" | "runST#" => PrimOpKindChirho::RunSTChirho,
         _ => PrimOpKindChirho::AddIntChirho, // fallback
     }
 }

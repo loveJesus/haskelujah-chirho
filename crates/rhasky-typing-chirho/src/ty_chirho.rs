@@ -79,6 +79,14 @@ impl TyChirho {
         Self::TupleChirho(vec![])
     }
 
+    /// Convenience: `IO a` type.
+    pub fn io_chirho(inner_chirho: TyChirho) -> Self {
+        Self::AppChirho(
+            Box::new(Self::ConChirho("IO".to_string())),
+            Box::new(inner_chirho),
+        )
+    }
+
     /// Build a function type `a -> b`.
     pub fn fun_chirho(arg_chirho: TyChirho, result_chirho: TyChirho) -> Self {
         Self::FunChirho(Box::new(arg_chirho), Box::new(result_chirho))

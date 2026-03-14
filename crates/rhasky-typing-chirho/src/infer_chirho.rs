@@ -3200,27 +3200,27 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // -- I/O functions (simplified: IO a ≈ a for now) --
+    // -- I/O functions (IO a is a proper type constructor) --
 
-    // putStrLn :: String -> ()
+    // putStrLn :: String -> IO ()
     env_chirho.bind_chirho(
         "putStrLn".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             TyChirho::string_chirho(),
-            TyChirho::unit_chirho(),
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
 
-    // putStr :: String -> ()
+    // putStr :: String -> IO ()
     env_chirho.bind_chirho(
         "putStr".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             TyChirho::string_chirho(),
-            TyChirho::unit_chirho(),
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
 
-    // print :: forall a. Show a => a -> ()
+    // print :: forall a. Show a => a -> IO ()
     let print_v_chirho = TyVarChirho(1600);
     env_chirho.bind_chirho(
         "print".to_string(),
@@ -3232,12 +3232,12 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(print_v_chirho),
-                TyChirho::unit_chirho(),
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
             ),
         },
     );
 
-    // return :: forall a. a -> a  (simplified — no Monad class yet)
+    // return :: forall a. a -> IO a
     let return_v_chirho = TyVarChirho(1700);
     env_chirho.bind_chirho(
         "return".to_string(),
@@ -3246,12 +3246,12 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(return_v_chirho),
-                TyChirho::VarChirho(return_v_chirho),
+                TyChirho::io_chirho(TyChirho::VarChirho(return_v_chirho)),
             ),
         },
     );
 
-    // (>>=) :: forall a b. a -> (a -> b) -> b  (simplified)
+    // (>>=) :: forall a b. IO a -> (a -> IO b) -> IO b
     let bind_a_chirho = TyVarChirho(1800);
     let bind_b_chirho = TyVarChirho(1801);
     env_chirho.bind_chirho(
@@ -3261,18 +3261,18 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
-                    TyChirho::VarChirho(bind_a_chirho),
+                    TyChirho::io_chirho(TyChirho::VarChirho(bind_a_chirho)),
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(bind_a_chirho),
-                        TyChirho::VarChirho(bind_b_chirho),
+                        TyChirho::io_chirho(TyChirho::VarChirho(bind_b_chirho)),
                     ),
                 ],
-                TyChirho::VarChirho(bind_b_chirho),
+                TyChirho::io_chirho(TyChirho::VarChirho(bind_b_chirho)),
             ),
         },
     );
 
-    // (>>) :: forall a b. a -> b -> b  (simplified)
+    // (>>) :: forall a b. IO a -> IO b -> IO b
     let then_a_chirho = TyVarChirho(1900);
     let then_b_chirho = TyVarChirho(1901);
     env_chirho.bind_chirho(
@@ -3282,63 +3282,63 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
-                    TyChirho::VarChirho(then_a_chirho),
-                    TyChirho::VarChirho(then_b_chirho),
+                    TyChirho::io_chirho(TyChirho::VarChirho(then_a_chirho)),
+                    TyChirho::io_chirho(TyChirho::VarChirho(then_b_chirho)),
                 ],
-                TyChirho::VarChirho(then_b_chirho),
+                TyChirho::io_chirho(TyChirho::VarChirho(then_b_chirho)),
             ),
         },
     );
 
-    // getLine :: String  (simplified: IO String ≈ String)
+    // getLine :: IO String
     env_chirho.bind_chirho(
         "getLine".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::string_chirho()),
+        SchemeChirho::mono_chirho(TyChirho::io_chirho(TyChirho::string_chirho())),
     );
 
-    // getChar :: Char  (simplified: IO Char ≈ Char)
+    // getChar :: IO Char
     env_chirho.bind_chirho(
         "getChar".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::char_chirho()),
+        SchemeChirho::mono_chirho(TyChirho::io_chirho(TyChirho::char_chirho())),
     );
 
-    // readFile :: String -> String  (simplified: IO String ≈ String)
+    // readFile :: String -> IO String
     env_chirho.bind_chirho(
         "readFile".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             TyChirho::string_chirho(),
-            TyChirho::string_chirho(),
+            TyChirho::io_chirho(TyChirho::string_chirho()),
         )),
     );
 
-    // writeFile :: String -> String -> ()  (simplified)
+    // writeFile :: String -> String -> IO ()
     env_chirho.bind_chirho(
         "writeFile".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
             vec![TyChirho::string_chirho(), TyChirho::string_chirho()],
-            TyChirho::unit_chirho(),
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
 
-    // appendFile :: String -> String -> ()  (simplified)
+    // appendFile :: String -> String -> IO ()
     env_chirho.bind_chirho(
         "appendFile".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
             vec![TyChirho::string_chirho(), TyChirho::string_chirho()],
-            TyChirho::unit_chirho(),
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
 
-    // interact :: (String -> String) -> ()  (simplified)
+    // interact :: (String -> String) -> IO ()
     env_chirho.bind_chirho(
         "interact".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             TyChirho::fun_chirho(TyChirho::string_chirho(), TyChirho::string_chirho()),
-            TyChirho::unit_chirho(),
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
 
-    // newIORef :: a -> IORef a  (simplified: IORef a ≈ Int, IO ≈ identity)
+    // newIORef :: a -> IO (IORef a)  (IORef a ≈ Int at runtime)
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3200));
         env_chirho.bind_chirho(
@@ -3346,12 +3346,15 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![TyVarChirho(3200)],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(a_chirho, TyChirho::int_chirho()),
+                ty_chirho: TyChirho::fun_chirho(
+                    a_chirho,
+                    TyChirho::io_chirho(TyChirho::int_chirho()),
+                ),
             },
         );
     }
 
-    // readIORef :: IORef a -> a  (simplified: IORef a ≈ Int)
+    // readIORef :: IORef a -> IO a  (IORef a ≈ Int at runtime)
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3201));
         env_chirho.bind_chirho(
@@ -3359,12 +3362,15 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![TyVarChirho(3201)],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), a_chirho),
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::io_chirho(a_chirho),
+                ),
             },
         );
     }
 
-    // writeIORef :: IORef a -> a -> IO ()  (simplified)
+    // writeIORef :: IORef a -> a -> IO ()
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3202));
         env_chirho.bind_chirho(
@@ -3374,13 +3380,13 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![TyChirho::int_chirho(), a_chirho],
-                    TyChirho::unit_chirho(),
+                    TyChirho::io_chirho(TyChirho::unit_chirho()),
                 ),
             },
         );
     }
 
-    // modifyIORef :: IORef a -> (a -> a) -> IO ()  (simplified)
+    // modifyIORef :: IORef a -> (a -> a) -> IO ()
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3203));
         env_chirho.bind_chirho(
@@ -3393,8 +3399,64 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                         TyChirho::int_chirho(),
                         TyChirho::fun_chirho(a_chirho.clone(), a_chirho),
                     ],
+                    TyChirho::io_chirho(TyChirho::unit_chirho()),
+                ),
+            },
+        );
+    }
+
+    // ── Control.Monad.ST operations ──
+    // newSTRef :: a -> ST s (STRef s a)  (simplified: STRef s a ≈ Int, ST s ≈ identity)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3280));
+        env_chirho.bind_chirho(
+            "newSTRef".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3280)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(a_chirho, TyChirho::int_chirho()),
+            },
+        );
+    }
+
+    // readSTRef :: STRef s a -> ST s a  (simplified: STRef s a ≈ Int)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3281));
+        env_chirho.bind_chirho(
+            "readSTRef".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3281)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), a_chirho),
+            },
+        );
+    }
+
+    // writeSTRef :: STRef s a -> a -> ST s ()  (simplified)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3282));
+        env_chirho.bind_chirho(
+            "writeSTRef".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3282)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![TyChirho::int_chirho(), a_chirho],
                     TyChirho::unit_chirho(),
                 ),
+            },
+        );
+    }
+
+    // runST :: (forall s. ST s a) -> a  (simplified: runST f = f)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3283));
+        env_chirho.bind_chirho(
+            "runST".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3283)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho),
             },
         );
     }
@@ -3614,6 +3676,55 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             "mapFoldlWithKey".to_string(),
             SchemeChirho {
                 vars_chirho: vec![TyVarChirho(3226), TyVarChirho(3227)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_n_chirho(
+                            vec![b_chirho.clone(), TyChirho::int_chirho(), v_chirho],
+                            b_chirho.clone(),
+                        ),
+                        b_chirho.clone(),
+                        TyChirho::int_chirho(),
+                    ],
+                    b_chirho,
+                ),
+            },
+        );
+    }
+
+    // mapFoldrWithKey :: (k -> v -> b -> b) -> b -> Map k v -> b
+    {
+        let b_chirho = TyChirho::VarChirho(TyVarChirho(3840));
+        let v_chirho = TyChirho::VarChirho(TyVarChirho(3841));
+        env_chirho.bind_chirho(
+            "mapFoldrWithKey".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3840), TyVarChirho(3841)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_n_chirho(
+                            vec![TyChirho::int_chirho(), v_chirho, b_chirho.clone()],
+                            b_chirho.clone(),
+                        ),
+                        b_chirho.clone(),
+                        TyChirho::int_chirho(),
+                    ],
+                    b_chirho,
+                ),
+            },
+        );
+    }
+
+    // mapFoldlWithKey' :: (b -> k -> v -> b) -> b -> Map k v -> b
+    // Strict variant — same signature as mapFoldlWithKey in our strict runtime.
+    {
+        let b_chirho = TyChirho::VarChirho(TyVarChirho(3845));
+        let v_chirho = TyChirho::VarChirho(TyVarChirho(3846));
+        env_chirho.bind_chirho(
+            "mapFoldlWithKey'".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3845), TyVarChirho(3846)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -3904,12 +4015,12 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // when :: Bool -> IO () -> IO ()  (simplified: IO () ≈ ())
+    // when :: Bool -> IO () -> IO ()
     env_chirho.bind_chirho(
         "when".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
-            vec![TyChirho::bool_chirho(), TyChirho::unit_chirho()],
-            TyChirho::unit_chirho(),
+            vec![TyChirho::bool_chirho(), TyChirho::io_chirho(TyChirho::unit_chirho())],
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
 
@@ -3917,8 +4028,8 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "unless".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
-            vec![TyChirho::bool_chirho(), TyChirho::unit_chirho()],
-            TyChirho::unit_chirho(),
+            vec![TyChirho::bool_chirho(), TyChirho::io_chirho(TyChirho::unit_chirho())],
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
 
@@ -3933,11 +4044,11 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 vec![
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(mapm_a_chirho),
-                        TyChirho::unit_chirho(),
+                        TyChirho::io_chirho(TyChirho::unit_chirho()),
                     ),
                     TyChirho::ListChirho(Box::new(TyChirho::VarChirho(mapm_a_chirho))),
                 ],
-                TyChirho::unit_chirho(),
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
             ),
         },
     );
@@ -3954,10 +4065,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     TyChirho::ListChirho(Box::new(TyChirho::VarChirho(form_a_chirho))),
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(form_a_chirho),
-                        TyChirho::unit_chirho(),
+                        TyChirho::io_chirho(TyChirho::unit_chirho()),
                     ),
                 ],
-                TyChirho::unit_chirho(),
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
             ),
         },
     );
@@ -3967,7 +4078,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         "putChar".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             TyChirho::char_chirho(),
-            TyChirho::unit_chirho(),
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
 
@@ -3975,8 +4086,8 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "sequence_".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::ListChirho(Box::new(TyChirho::unit_chirho())),
-            TyChirho::unit_chirho(),
+            TyChirho::ListChirho(Box::new(TyChirho::io_chirho(TyChirho::unit_chirho()))),
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
 
@@ -3988,8 +4099,8 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             vars_chirho: vec![void_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
-                TyChirho::VarChirho(void_a_chirho),
-                TyChirho::unit_chirho(),
+                TyChirho::io_chirho(TyChirho::VarChirho(void_a_chirho)),
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
             ),
         },
     );
@@ -3999,7 +4110,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         "guard".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             TyChirho::bool_chirho(),
-            TyChirho::unit_chirho(),
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
 
@@ -4008,7 +4119,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         "interact".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             TyChirho::fun_chirho(TyChirho::string_chirho(), TyChirho::string_chirho()),
-            TyChirho::unit_chirho(),
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
 
@@ -5361,6 +5472,122 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         },
     );
+
+    // ── Monad transformer infrastructure ──
+    //
+    // MaybeT is a newtype: newtype MaybeT m a = MaybeT { runMaybeT :: m (Maybe a) }
+    // StateT is a newtype: newtype StateT s m a = StateT { runStateT :: s -> m (a, s) }
+    //
+    // We seed simplified type signatures for the constructor and accessor
+    // functions so the type checker can resolve references in user programs.
+    // These simplified versions treat the inner monad as the identity and are
+    // sufficient for basic end-to-end evaluation tests.
+
+    // MaybeT :: Maybe a -> MaybeT a  (simplified; no inner-monad parameter)
+    // runMaybeT :: MaybeT a -> Maybe a  (simplified)
+    {
+        let mt_a_chirho = TyVarChirho(3500);
+        let maybe_a_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Maybe".to_string())),
+            Box::new(TyChirho::VarChirho(mt_a_chirho)),
+        );
+        let mayet_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("MaybeT".to_string())),
+            Box::new(TyChirho::VarChirho(mt_a_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "MaybeT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![mt_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    maybe_a_ty_chirho.clone(),
+                    mayet_ty_chirho.clone(),
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "runMaybeT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![mt_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    mayet_ty_chirho,
+                    maybe_a_ty_chirho,
+                ),
+            },
+        );
+    }
+
+    // StateT :: (s -> (a, s)) -> StateT s a  (simplified; no inner-monad parameter)
+    // runStateT :: StateT s a -> s -> (a, s)  (simplified)
+    {
+        let st_s_chirho = TyVarChirho(3501);
+        let st_a_chirho = TyVarChirho(3502);
+        let st_fn_ty_chirho = TyChirho::fun_chirho(
+            TyChirho::VarChirho(st_s_chirho),
+            TyChirho::TupleChirho(vec![
+                TyChirho::VarChirho(st_a_chirho),
+                TyChirho::VarChirho(st_s_chirho),
+            ]),
+        );
+        let statet_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("StateT".to_string())),
+                Box::new(TyChirho::VarChirho(st_s_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(st_a_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "StateT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![st_s_chirho, st_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    st_fn_ty_chirho.clone(),
+                    statet_ty_chirho.clone(),
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "runStateT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![st_s_chirho, st_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    statet_ty_chirho,
+                    st_fn_ty_chirho,
+                ),
+            },
+        );
+    }
+
+    // lift :: forall t m a. m a -> t m a
+    // Simplified: polymorphic binding for MonadTrans-like usage
+    {
+        let lt_m_chirho = TyVarChirho(3503);
+        let lt_t_chirho = TyVarChirho(3504);
+        let lt_a_chirho = TyVarChirho(3505);
+        let lt_ma_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(lt_m_chirho)),
+            Box::new(TyChirho::VarChirho(lt_a_chirho)),
+        );
+        let lt_tma_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::VarChirho(lt_t_chirho)),
+                Box::new(TyChirho::VarChirho(lt_m_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(lt_a_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "lift".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![lt_m_chirho, lt_t_chirho, lt_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(lt_ma_chirho, lt_tma_chirho),
+            },
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
