@@ -12540,4 +12540,19 @@ main = guard True >> putStrLn \"passed\"
         assert_eq!(output_chirho, "passed\n");
     }
 
+    // ── Show Either / Ordering ──────────────────────────────────────────
+
+    #[test]
+    fn eval_show_nested_just_chirho() {
+        // show (Just (Just 42)) should give "Just (Just 42)"
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = putStrLn (show (Just (Just 42)))
+";
+        let (_, machine_chirho) = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+        assert_eq!(machine_chirho.io_output_chirho, "Just (Just 42)\n");
+    }
+
 }

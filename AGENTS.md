@@ -148,7 +148,7 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 10. **Garbage Collection** — `rhasky-runtime-chirho::gc_chirho` mark-sweep GC for the STG heap; `GcConfigChirho` (configurable alloc threshold + min heap size); `GcStateChirho` tracks mark bits, allocation counter, cycle counter, and free list; `collect_chirho` performs BFS marking from roots then sweep with tombstone replacement; root extraction from stack frames and argument registers; integrated into `MachineChirho` evaluator — GC triggers automatically after allocation threshold is reached
 11. **FFI** — `rhasky-runtime-chirho::ffi_chirho` foreign function interface; `FfiTypeChirho` (Int, Double, Char, String, Ptr, Void, Bool, StablePtr, FunPtr); `FfiValueChirho` with bidirectional marshalling to/from `ValueChirho`; `FfiCallConvChirho` (CCall, StdCall, CApi, Prim, JavaScript); `FfiSafetyChirho` (Safe, Unsafe, Interruptible); `ForeignTableChirho` registry with callback-based dispatch; built-in foreign functions (putChar#, putStr#, exitWith#, sin#, cos#, sqrt#); AST `ForeignDeclChirho` extended with `ForeignDirectionChirho` (Import/Export) and `safety_chirho` field
 
-### Workspace Crates (16 crates)
+### Workspace Crates (19 crates)
 
 | Crate | Purpose |
 |---|---|
@@ -162,6 +162,9 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 | `rhasky-core-chirho` | Core IR (System FC-style), AST→Core desugaring (with name map), dictionary-passing transform, Core→Core simplifier, pretty-printer |
 | `rhasky-backend-llvm-chirho` | Core → textual LLVM IR codegen |
 | `rhasky-backend-wasm-chirho` | Core → binary WebAssembly codegen |
+| `rhasky-backend-cranelift-chirho` | Core → Cranelift IR → native object files (x86_64, aarch64, s390x, riscv64) |
+| `rhasky-backend-jvm-chirho` | Core → JVM .class bytecode files (constant pool, bytecode emitter) |
+| `rhasky-backend-beam-chirho` | Core → BEAM .beam bytecode files (IFF format, ETF, opcodes) |
 | `rhasky-driver-chirho` | Pipeline orchestration, CompileResultChirho (AST + Core + LLVM IR + Wasm bytes) |
 | `rhasky-runtime-chirho` | STG runtime: value types, heap, evaluation stack, primitive ops, evaluation loop (MachineChirho), mark-sweep GC (GcStateChirho), FFI (ForeignTableChirho) |
 | `rhasky-incremental-chirho` | Incremental compilation: fingerprinting, dependency graph, artifact caching, recompilation avoidance |
@@ -250,7 +253,10 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 - **Driver where/let type annotation tests**: 3 tests (where single annotation, let annotation, where multiple annotated helpers)
 - **Driver IORef tests**: 3 tests (newIORef/readIORef, writeIORef, modifyIORef)
 - **Driver synthetic module import tests**: 6 tests (import Data.Map insert/lookup, Data.Map size, Data.List sort, Data.Char ord, Data.Maybe fromMaybe, Data.Set member)
-- **Total**: 1071 tests passing across all crates (1 ignored)
+- **Cranelift backend tests**: 3 tests in `rhasky-backend-cranelift-chirho` (empty module compilation, simple binding, lambda binding)
+- **JVM backend tests**: 8 tests in `rhasky-backend-jvm-chirho` (constant pool 4, bytecode builder 2, class compilation 2)
+- **BEAM backend tests**: 17 tests in `rhasky-backend-beam-chirho` (ETF serialization 7, opcode builder 3, beam module 4, opcode definitions 3)
+- **Total**: 1104 tests passing across all crates (1 ignored)
 
 ### Next Priorities
 
@@ -366,4 +372,5 @@ The compiler has a working 10-phase pipeline wired end-to-end in `rhasky-driver-
 110. ~~Type synonyms in instance heads and predicate resolution~~ — DONE (expand type synonyms in instance head types when registering instances and in deferred predicates before entailment checking; 2 new e2e tests: String type synonym greet function, user-defined type synonym Age = Int; 1062 tests total)
 111. ~~IORef ModifyIORef fix~~ — DONE (upgraded ModifyIORef from TODO stub to full implementation with nested eval loop, machine state save/restore; 3 new e2e tests; 1065 tests total)
 112. ~~AVL balanced Map/Set trees + synthetic module interfaces~~ — DONE (Map BST→AVL: mapHeight, mapMakeNode, mapRotateLeft/Right, mapBalance helpers; MapNode 5-field with height; all case alts updated; synthetic ModuleIfaceChirho for Data.Map/Set/List/Char/Maybe/IORef via builtin_module_ifaces_chirho; qualified import name resolution fix using full_name_chirho; NameChirho::full_name_chirho method; 6 new import e2e tests; 1071 tests total)
-113. Next priorities: type class defaulting improvements, type-level improvements, IO monad proper threading, ST monad, monad transformers, Data.Map qualified access patterns
+113. ~~Cranelift/JVM/BEAM backend scaffolds~~ — DONE (3 new crates: rhasky-backend-cranelift-chirho with ISA setup, function lowering, runtime layout; rhasky-backend-jvm-chirho with constant pool, bytecode emitter, class file generation; rhasky-backend-beam-chirho with IFF format, ETF serialization, BEAM opcodes; 28 new tests; 1104 total)
+114. Next priorities: sequence_ Prelude binding, IO monad proper threading, ST monad, monad transformers, flesh out Cranelift/JVM/BEAM backend Core IR lowering

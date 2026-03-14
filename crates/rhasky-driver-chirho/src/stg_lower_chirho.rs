@@ -1656,6 +1656,8 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "seq" => PrimOpKindChirho::SeqChirho,
         "showMaybe#" => PrimOpKindChirho::ShowMaybeChirho,
         "showTuple2#" => PrimOpKindChirho::ShowTuple2Chirho,
+        "showEither#" => PrimOpKindChirho::ShowEitherChirho,
+        "showOrdering#" => PrimOpKindChirho::ShowOrderingChirho,
         "interact" => PrimOpKindChirho::InteractChirho,
         "print" => PrimOpKindChirho::PrintChirho,
         "lines#" => PrimOpKindChirho::LinesChirho,

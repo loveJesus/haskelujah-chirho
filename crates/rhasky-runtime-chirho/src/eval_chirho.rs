@@ -982,6 +982,8 @@ impl MachineChirho {
                         op_chirho,
                         PrimOpKindChirho::ShowMaybeChirho
                         | PrimOpKindChirho::ShowTuple2Chirho
+                        | PrimOpKindChirho::ShowEitherChirho
+                        | PrimOpKindChirho::ShowOrderingChirho
                         | PrimOpKindChirho::ShowListChirho
                     );
                     let closure_chirho =
@@ -1789,6 +1791,24 @@ impl MachineChirho {
                 }
                 return Ok(ValueChirho::StringChirho("(,)".to_string()));
             }
+            PrimOpKindChirho::ShowEitherChirho => {
+                // showEither# val → "Left <inner>" | "Right <inner>"
+                if let Some(val_chirho) = args_chirho.first() {
+                    return Ok(ValueChirho::StringChirho(
+                        self.show_value_as_string_chirho(val_chirho),
+                    ));
+                }
+                return Ok(ValueChirho::StringChirho("?".to_string()));
+            }
+            PrimOpKindChirho::ShowOrderingChirho => {
+                // showOrdering# val → "LT" | "EQ" | "GT"
+                if let Some(val_chirho) = args_chirho.first() {
+                    return Ok(ValueChirho::StringChirho(
+                        self.show_value_as_string_chirho(val_chirho),
+                    ));
+                }
+                return Ok(ValueChirho::StringChirho("?".to_string()));
+            }
             PrimOpKindChirho::InteractChirho => {
                 // interact f = getContents >>= putStr . f
                 // Read all io_input, apply f (first arg) to the input string, write result
@@ -2399,11 +2419,44 @@ impl MachineChirho {
                     "Nothing" => "Nothing".to_string(),
                     "Just" => {
                         if let Some(inner_chirho) = closure_chirho.payload_chirho.first() {
-                            format!("Just {}", self.show_value_as_string_chirho(inner_chirho))
+                            let inner_str_chirho = self.show_value_as_string_chirho(inner_chirho);
+                            // Wrap in parens if inner contains spaces (compound value)
+                            if inner_str_chirho.contains(' ') {
+                                format!("Just ({})", inner_str_chirho)
+                            } else {
+                                format!("Just {}", inner_str_chirho)
+                            }
                         } else {
                             "Just ?".to_string()
                         }
                     }
+                    "Left" => {
+                        if let Some(inner_chirho) = closure_chirho.payload_chirho.first() {
+                            let inner_str_chirho = self.show_value_as_string_chirho(inner_chirho);
+                            if inner_str_chirho.contains(' ') {
+                                format!("Left ({})", inner_str_chirho)
+                            } else {
+                                format!("Left {}", inner_str_chirho)
+                            }
+                        } else {
+                            "Left ?".to_string()
+                        }
+                    }
+                    "Right" => {
+                        if let Some(inner_chirho) = closure_chirho.payload_chirho.first() {
+                            let inner_str_chirho = self.show_value_as_string_chirho(inner_chirho);
+                            if inner_str_chirho.contains(' ') {
+                                format!("Right ({})", inner_str_chirho)
+                            } else {
+                                format!("Right {}", inner_str_chirho)
+                            }
+                        } else {
+                            "Right ?".to_string()
+                        }
+                    }
+                    "LT" => "LT".to_string(),
+                    "EQ" => "EQ".to_string(),
+                    "GT" => "GT".to_string(),
                     "(,)" | "$tuple2" => {
                         if closure_chirho.payload_chirho.len() >= 2 {
                             let a_chirho = self.show_value_as_string_chirho(&closure_chirho.payload_chirho[0]);
@@ -2440,7 +2493,15 @@ impl MachineChirho {
                             name_chirho.clone()
                         } else {
                             let fields_chirho: Vec<String> = closure_chirho.payload_chirho.iter()
-                                .map(|f_chirho| self.show_value_as_string_chirho(f_chirho))
+                                .map(|f_chirho| {
+                                    let s_chirho = self.show_value_as_string_chirho(f_chirho);
+                                    // Wrap compound values in parens
+                                    if s_chirho.contains(' ') && !s_chirho.starts_with('(') && !s_chirho.starts_with('[') && !s_chirho.starts_with('"') {
+                                        format!("({})", s_chirho)
+                                    } else {
+                                        s_chirho
+                                    }
+                                })
                                 .collect();
                             format!("{} {}", name_chirho, fields_chirho.join(" "))
                         }

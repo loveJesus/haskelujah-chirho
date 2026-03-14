@@ -237,7 +237,24 @@ impl DictPassCtxChirho {
                     // Built-in constructors
                     match con_name_chirho.as_str() {
                         "True" | "False" => Some("Bool".to_string()),
+                        "LT" | "EQ" | "GT" => Some("Ordering".to_string()),
                         "Nothing" => Some("Maybe Int".to_string()),
+                        "Left" => {
+                            if let Some(inner_chirho) = args_chirho.first() {
+                                let inner_key_chirho = self.infer_type_key_chirho(inner_chirho);
+                                let inner_str_chirho = inner_key_chirho.as_deref().unwrap_or("Int");
+                                return Some(format!("Either {} Int", inner_str_chirho));
+                            }
+                            Some("Either Int Int".to_string())
+                        }
+                        "Right" => {
+                            if let Some(inner_chirho) = args_chirho.first() {
+                                let inner_key_chirho = self.infer_type_key_chirho(inner_chirho);
+                                let inner_str_chirho = inner_key_chirho.as_deref().unwrap_or("Int");
+                                return Some(format!("Either Int {}", inner_str_chirho));
+                            }
+                            Some("Either Int Int".to_string())
+                        }
                         "Just" => {
                             if let Some(inner_chirho) = args_chirho.first() {
                                 let inner_key_chirho = self.infer_type_key_chirho(inner_chirho);
@@ -317,8 +334,12 @@ impl DictPassCtxChirho {
                     }
                     "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#"
                     | "eqFloat#" | "readBool#" => Some("Bool".to_string()),
+                    "compare#" | "compareChar#" | "compareFloat#" | "compareStr#" => {
+                        Some("Ordering".to_string())
+                    }
                     "showInt#" | "showFloat#" | "showStr#" | "showList#"
-                    | "showMaybe#" | "showTuple2#"
+                    | "showMaybe#" | "showTuple2#" | "showEither#" | "showOrdering#"
+                    | "showBool#"
                     | "++#" => Some("[Char]".to_string()),
                     _ => None,
                 }
@@ -342,6 +363,16 @@ impl DictPassCtxChirho {
                                 let inner_key_chirho = if inner_chirho == "[Char]" { "String" } else { &inner_chirho };
                                 return Some(format!("Maybe {}", inner_key_chirho));
                             }
+                            "Left" => {
+                                let inner_chirho = self.infer_type_key_chirho(arg_chirho)
+                                    .unwrap_or_else(|| "Int".to_string());
+                                return Some(format!("Either {} Int", inner_chirho));
+                            }
+                            "Right" => {
+                                let inner_chirho = self.infer_type_key_chirho(arg_chirho)
+                                    .unwrap_or_else(|| "Int".to_string());
+                                return Some(format!("Either Int {}", inner_chirho));
+                            }
                             _ => {}
                         }
                         // Check if the name is a known constructor and return its type
@@ -351,6 +382,8 @@ impl DictPassCtxChirho {
                     }
                 }
                 // Detect App(App(Var((,)), a), b) → tuple type
+                // Detect App(App(Var(compare), a), b) → Ordering
+                // Detect App(App(Var(Left/Right), a), b) → Either type
                 if let CoreExprChirho::AppChirho {
                     fun_chirho: inner_fun_chirho,
                     arg_chirho: first_arg_chirho,
@@ -366,6 +399,10 @@ impl DictPassCtxChirho {
                                 let a_key_chirho = if a_chirho == "[Char]" { "String" } else { &a_chirho };
                                 let b_key_chirho = if b_chirho == "[Char]" { "String" } else { &b_chirho };
                                 return Some(format!("({},{})", a_key_chirho, b_key_chirho));
+                            }
+                            // compare :: a -> a -> Ordering
+                            if name_chirho == "compare" || name_chirho.starts_with("$prim_Ord_compare") {
+                                return Some("Ordering".to_string());
                             }
                         }
                     }
@@ -677,6 +714,13 @@ impl DictPassCtxChirho {
             ("Show", "show", "(Int,String)", 2),
             ("Show", "show", "(String,Int)", 2),
             ("Show", "show", "(String,String)", 2),
+            // Either
+            ("Show", "show", "Either Int Int", 2),
+            ("Show", "show", "Either String Int", 2),
+            ("Show", "show", "Either Int String", 2),
+            ("Show", "show", "Either String String", 2),
+            // Ordering
+            ("Show", "show", "Ordering", 2),
         ];
 
         let primop_for_chirho =
@@ -710,6 +754,11 @@ impl DictPassCtxChirho {
                     ("Show", "show", "(Int,String)") => "showTuple2#",
                     ("Show", "show", "(String,Int)") => "showTuple2#",
                     ("Show", "show", "(String,String)") => "showTuple2#",
+                    ("Show", "show", "Either Int Int") => "showEither#",
+                    ("Show", "show", "Either String Int") => "showEither#",
+                    ("Show", "show", "Either Int String") => "showEither#",
+                    ("Show", "show", "Either String String") => "showEither#",
+                    ("Show", "show", "Ordering") => "showOrdering#",
                     ("Show", "show", _) => "showInt#",
                     ("Read", "read", "Int") => "readInt#",
                     ("Read", "read", "Double") => "readFloat#",
@@ -743,6 +792,18 @@ impl DictPassCtxChirho {
             if class_chirho == "Show" && method_chirho == "show" && type_key_chirho == "Bool" {
                 self.generate_show_bool_binding_chirho(&prim_name_chirho);
                 continue;
+            }
+
+            // Special case: Show Ordering → case on LT/EQ/GT returning string
+            if class_chirho == "Show" && method_chirho == "show" && type_key_chirho == "Ordering" {
+                self.generate_show_ordering_binding_chirho(&prim_name_chirho);
+                continue;
+            }
+
+            // Special case: Show Either → use showEither# primop
+            if class_chirho == "Show" && method_chirho == "show" && type_key_chirho.starts_with("Either") {
+                // For now all Either variants use the generic showEither# primop
+                // which delegates to show_value_as_string_chirho in the runtime.
             }
 
             let int_ty_chirho = TyChirho::int_chirho();
@@ -832,6 +893,56 @@ impl DictPassCtxChirho {
                 name_chirho: "showBool#".to_string(),
                 args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
             }),
+        };
+
+        let binder_chirho = self.fresh_binder_chirho(prim_name_chirho, str_ty_chirho);
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho,
+            rhs_chirho,
+            is_rec_chirho: false,
+        });
+    }
+
+    /// Generate `$prim_Show_show_Ordering = \x -> case x of LT -> "LT"; EQ -> "EQ"; GT -> "GT"`
+    fn generate_show_ordering_binding_chirho(&mut self, prim_name_chirho: &str) {
+        let str_ty_chirho = TyChirho::string_chirho();
+        let ord_ty_chirho = TyChirho::int_chirho(); // placeholder
+
+        let x_chirho = self.fresh_binder_chirho("x", ord_ty_chirho.clone());
+        let scr_chirho = self.fresh_binder_chirho("_sord", ord_ty_chirho);
+
+        let body_chirho = CoreExprChirho::CaseChirho {
+            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+            bind_chirho: scr_chirho,
+            result_ty_chirho: str_ty_chirho.clone(),
+            alts_chirho: vec![
+                CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("LT".to_string()),
+                    binders_chirho: vec![],
+                    rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                        "LT".to_string(),
+                    )),
+                },
+                CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
+                    binders_chirho: vec![],
+                    rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                        "EQ".to_string(),
+                    )),
+                },
+                CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("GT".to_string()),
+                    binders_chirho: vec![],
+                    rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                        "GT".to_string(),
+                    )),
+                },
+            ],
+        };
+
+        let rhs_chirho = CoreExprChirho::LamChirho {
+            binder_chirho: x_chirho,
+            body_chirho: Box::new(body_chirho),
         };
 
         let binder_chirho = self.fresh_binder_chirho(prim_name_chirho, str_ty_chirho);

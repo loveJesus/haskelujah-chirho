@@ -247,6 +247,10 @@ pub enum PrimOpKindChirho {
     ShowMaybeChirho,
     /// showTuple2# :: (a, b) -> String — show a 2-tuple
     ShowTuple2Chirho,
+    /// showEither# :: Either a b -> String — show an Either value
+    ShowEitherChirho,
+    /// showOrdering# :: Ordering -> String — show an Ordering value
+    ShowOrderingChirho,
 
     // ── Additional IO operations ──
     /// interact :: (String -> String) -> IO () — apply function to stdin, write result to stdout
