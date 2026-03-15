@@ -1679,6 +1679,23 @@ main = L.head (L.sort [3, 1, 2])
 
 
     #[test]
+    fn eval_import_qualified_data_list_no_alias_chirho() {
+        // import qualified Data.List (no alias) → Data.List.head
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import qualified Data.List
+main = Data.List.head (Data.List.sort [3, 1, 2])
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1)),
+            Err(e_chirho) => panic!("import qualified Data.List no alias: {}", e_chirho),
+        }
+    }
+
+    #[test]
     fn eval_import_hiding_chirho() {
         // import Data.Map hiding (mapDelete)
         use crate::eval_source_chirho;

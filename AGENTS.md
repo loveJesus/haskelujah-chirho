@@ -208,7 +208,7 @@ _These items address structural issues identified in the Codex engineering revie
 #### B. Multi-Module System & Imports
 
 14. ~~**Automatic Prelude import**~~ — DONE (inject_prelude_import_chirho in driver adds implicit `import Prelude` after AST lowering; suppressed by `{-# LANGUAGE NoImplicitPrelude #-}`; explicit `import Prelude` prevents double import; Prelude ModuleIfaceChirho with 80+ exported values/types added to builtin_module_ifaces_chirho; 3 e2e tests; 1320 tests total)
-15. **Qualified module syntax** — `Data.Map.insert`, `Data.Set.member` as qualified function calls in user source
+15. ~~**Qualified module syntax**~~ — DONE (already supported end-to-end: `name_from_text_chirho` splits dotted names on last dot; `NameEnvChirho` has `bind_qualified_chirho`/`lookup_qualified_chirho`; import processing uses full module name as qualifier when no `as` alias; `import qualified Data.Map` → `Data.Map.mapInsert`, `import qualified Data.List` → `Data.List.head`/`Data.List.sort`, aliased `import qualified Data.Map as Map` → `Map.mapInsert`; 4 e2e tests: qualified with alias Data.Map/Data.List, qualified without alias Data.Map/Data.List; 1348 tests total)
 16. **Module re-exports** — `module Data.Map (module Data.Map.Internal)` re-export syntax
 17. **Orphan instance detection** — warn on orphan instances; support `{-# OPTIONS_GHC -fno-warn-orphans #-}`
 18. **Hierarchical module compilation** — compile multi-file Haskell projects with proper dependency ordering; `.hi` interface file generation and consumption

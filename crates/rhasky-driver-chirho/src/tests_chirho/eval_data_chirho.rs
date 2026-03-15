@@ -498,6 +498,25 @@ main = case Map.mapLookup 42 (Map.mapInsert 42 100 Map.mapEmpty) of
 
 
     #[test]
+    fn eval_import_qualified_data_map_no_alias_chirho() {
+        // import qualified Data.Map (no alias) → use Data.Map.mapInsert
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+import qualified Data.Map
+main = case Data.Map.mapLookup 42 (Data.Map.mapInsert 42 100 Data.Map.mapEmpty) of
+         Just v  -> v
+         Nothing -> 0
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(100)),
+            Err(e_chirho) => panic!("import qualified Data.Map (no alias): {}", e_chirho),
+        }
+    }
+
+    #[test]
     fn eval_import_data_set_chirho() {
         // import Data.Set functions
         use crate::eval_source_chirho;
