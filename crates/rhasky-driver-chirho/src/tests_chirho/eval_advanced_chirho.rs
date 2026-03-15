@@ -1288,3 +1288,69 @@ main = factorial 10
         assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
     }
 
+    // ── Orphan instance detection tests ─────────────────────────────────
+
+    #[test]
+    fn orphan_instance_warning_produced_chirho() {
+        // An instance where neither the class nor the type is defined locally
+        // should produce a W0402 orphan instance warning.
+        use crate::frontend_warnings_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Orphan where
+instance Show Int where
+  show x = "int"
+main = 42
+"#;
+        let warnings_chirho =
+            frontend_warnings_chirho(src_chirho, &mut sm_chirho, "OrphanChirho.hs")
+                .expect("frontend should succeed");
+        assert!(
+            warnings_chirho.iter().any(|w_chirho| w_chirho.contains("orphan instance")),
+            "expected orphan instance warning, got: {:?}",
+            warnings_chirho
+        );
+    }
+
+    #[test]
+    fn orphan_instance_not_for_local_data_chirho() {
+        // An instance for a locally-defined data type should NOT be orphan.
+        use crate::frontend_warnings_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Local where
+data Color = Red | Green | Blue
+instance Show Color where
+  show x = "color"
+main = 42
+"#;
+        let warnings_chirho =
+            frontend_warnings_chirho(src_chirho, &mut sm_chirho, "LocalChirho.hs")
+                .expect("frontend should succeed");
+        assert!(
+            !warnings_chirho.iter().any(|w_chirho| w_chirho.contains("orphan instance")),
+            "local data type instance should not be orphan, got: {:?}",
+            warnings_chirho
+        );
+    }
+
+    #[test]
+    fn orphan_instance_not_for_local_class_chirho() {
+        // An instance for a locally-defined class should NOT be orphan.
+        use crate::frontend_warnings_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module LocalClass where
+class Describable a where
+  describe :: a -> Int
+instance Describable Int where
+  describe x = x
+main = 42
+"#;
+        let warnings_chirho =
+            frontend_warnings_chirho(src_chirho, &mut sm_chirho, "LocalClassChirho.hs")
+                .expect("frontend should succeed");
+        assert!(
+            !warnings_chirho.iter().any(|w_chirho| w_chirho.contains("orphan instance")),
+            "local class instance should not be orphan, got: {:?}",
+            warnings_chirho
+        );
+    }
+

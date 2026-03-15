@@ -491,6 +491,159 @@ fn bind_name_chirho(
 }
 
 // ---------------------------------------------------------------------------
+// Orphan instance detection
+// ---------------------------------------------------------------------------
+
+/// Warning code for orphan instances (W0402).
+const ORPHAN_INSTANCE_CODE_CHIRHO: u16 = 402;
+
+/// Collect all type constructor and class names defined locally in this module.
+fn local_defined_names_chirho(module_chirho: &ModuleChirho) -> std::collections::HashSet<String> {
+    use rhasky_ast_chirho::decl_chirho::DeclChirho;
+    let mut names_chirho = std::collections::HashSet::new();
+    for decl_chirho in &module_chirho.decls_chirho {
+        match decl_chirho {
+            DeclChirho::DataDeclChirho { name_chirho, .. }
+            | DeclChirho::NewtypeDeclChirho { name_chirho, .. }
+            | DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
+            | DeclChirho::ClassDeclChirho { name_chirho, .. } => {
+                names_chirho.insert(name_chirho.text_chirho().to_string());
+            }
+            _ => {}
+        }
+    }
+    names_chirho
+}
+
+/// Extract all type constructor names mentioned in a type (recursively).
+fn type_con_names_chirho(ty_chirho: &rhasky_ast_chirho::ty_chirho::TypeChirho) -> Vec<String> {
+    use rhasky_ast_chirho::ty_chirho::TypeChirho;
+    let mut result_chirho = Vec::new();
+    match ty_chirho {
+        TypeChirho::ConChirho(name_chirho) => {
+            result_chirho.push(name_chirho.text_chirho().to_string());
+        }
+        TypeChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => {
+            result_chirho.extend(type_con_names_chirho(fun_chirho));
+            result_chirho.extend(type_con_names_chirho(arg_chirho));
+        }
+        TypeChirho::FunChirho {
+            arg_chirho,
+            result_chirho: res_chirho,
+            ..
+        } => {
+            result_chirho.extend(type_con_names_chirho(arg_chirho));
+            result_chirho.extend(type_con_names_chirho(res_chirho));
+        }
+        TypeChirho::TupleChirho {
+            elements_chirho, ..
+        } => {
+            for elem_chirho in elements_chirho {
+                result_chirho.extend(type_con_names_chirho(elem_chirho));
+            }
+        }
+        TypeChirho::ListChirho {
+            element_chirho, ..
+        } => {
+            result_chirho.extend(type_con_names_chirho(element_chirho));
+        }
+        TypeChirho::ParenChirho {
+            inner_chirho, ..
+        } => {
+            result_chirho.extend(type_con_names_chirho(inner_chirho));
+        }
+        TypeChirho::ForallChirho {
+            body_chirho, ..
+        } => {
+            result_chirho.extend(type_con_names_chirho(body_chirho));
+        }
+        TypeChirho::QualChirho {
+            body_chirho, ..
+        } => {
+            result_chirho.extend(type_con_names_chirho(body_chirho));
+        }
+        // Type variables — no type constructors
+        TypeChirho::VarChirho(_) => {}
+    }
+    result_chirho
+}
+
+/// Check for orphan instances in a module.
+///
+/// An instance `instance C T` is an *orphan* if neither the class `C` nor
+/// any type constructor mentioned in the instance head `T` is defined in
+/// the current module. Orphan instances can cause incoherence and are
+/// flagged with warning W0402.
+pub fn check_orphan_instances_chirho(
+    module_chirho: &ModuleChirho,
+) -> DiagnosticBundleChirho {
+    let local_names_chirho = local_defined_names_chirho(module_chirho);
+    let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
+
+    for decl_chirho in &module_chirho.decls_chirho {
+        if let rhasky_ast_chirho::decl_chirho::DeclChirho::InstanceDeclChirho {
+            class_chirho,
+            types_chirho,
+            span_chirho,
+            ..
+        } = decl_chirho
+        {
+            let class_name_chirho = class_chirho.text_chirho().to_string();
+
+            // Collect all type constructors from the instance head types.
+            let mut head_cons_chirho: Vec<String> = Vec::new();
+            for ty_chirho in types_chirho {
+                head_cons_chirho.extend(type_con_names_chirho(ty_chirho));
+            }
+
+            // The instance is NOT orphan if:
+            // 1. The class is defined locally, OR
+            // 2. Any type constructor in the head is defined locally
+            let is_local_chirho = local_names_chirho.contains(&class_name_chirho)
+                || head_cons_chirho
+                    .iter()
+                    .any(|con_chirho| local_names_chirho.contains(con_chirho));
+
+            if !is_local_chirho {
+                let type_strs_chirho: Vec<_> = types_chirho
+                    .iter()
+                    .map(|t_chirho| format!("{:?}", t_chirho))
+                    .collect();
+                let head_chirho = if type_strs_chirho.is_empty() {
+                    class_name_chirho.clone()
+                } else {
+                    format!("{} ...", class_name_chirho)
+                };
+
+                diagnostics_chirho.push_chirho(
+                    DiagnosticChirho::warning_chirho(
+                        format!(
+                            "orphan instance: `instance {head_chirho}` — \
+                             neither the class `{class_name_chirho}` nor any type \
+                             in the instance head is defined in this module"
+                        ),
+                        *span_chirho,
+                    )
+                    .with_code_chirho(ErrorCodeChirho::warning_chirho(
+                        ORPHAN_INSTANCE_CODE_CHIRHO,
+                    ))
+                    .with_note_chirho(
+                        "move the instance to the module that defines the class \
+                         or the type, or use {-# OPTIONS_GHC -fno-warn-orphans #-}",
+                    ),
+                );
+            }
+        }
+    }
+
+    diagnostics_chirho
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -1012,5 +1165,175 @@ mod tests_chirho {
             result_chirho.env_chirho.lookup_value_chirho("getAge").is_some(),
             "getAge field accessor for newtype record should be in scope"
         );
+    }
+
+    // ---------------------------------------------------------------
+    // Orphan instance detection tests
+    // ---------------------------------------------------------------
+
+    /// Test: instance with locally-defined class is NOT orphan.
+    #[test]
+    fn orphan_local_class_not_orphan_chirho() {
+        use rhasky_ast_chirho::ty_chirho::TypeChirho;
+
+        let module_chirho = mk_module_chirho(
+            vec![
+                DeclChirho::ClassDeclChirho {
+                    context_chirho: vec![],
+                    name_chirho: dummy_name_chirho("MyClass"),
+                    type_vars_chirho: vec![dummy_name_chirho("a")],
+                    methods_chirho: vec![],
+                    fundeps_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::InstanceDeclChirho {
+                    context_chirho: vec![],
+                    class_chirho: dummy_name_chirho("MyClass"),
+                    types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
+                    methods_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            vec![],
+        );
+
+        let warnings_chirho = check_orphan_instances_chirho(&module_chirho);
+        assert!(
+            warnings_chirho.is_empty_chirho(),
+            "instance for locally-defined class should not be orphan"
+        );
+    }
+
+    /// Test: instance with locally-defined type is NOT orphan.
+    #[test]
+    fn orphan_local_type_not_orphan_chirho() {
+        use rhasky_ast_chirho::ty_chirho::TypeChirho;
+
+        let module_chirho = mk_module_chirho(
+            vec![
+                DeclChirho::DataDeclChirho {
+                    name_chirho: dummy_name_chirho("Color"),
+                    type_vars_chirho: vec![],
+                    constructors_chirho: vec![],
+                    deriving_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::InstanceDeclChirho {
+                    context_chirho: vec![],
+                    class_chirho: dummy_name_chirho("Show"),
+                    types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Color"))],
+                    methods_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            vec![],
+        );
+
+        let warnings_chirho = check_orphan_instances_chirho(&module_chirho);
+        assert!(
+            warnings_chirho.is_empty_chirho(),
+            "instance for locally-defined type should not be orphan"
+        );
+    }
+
+    /// Test: instance where neither class nor type is local IS orphan.
+    #[test]
+    fn orphan_foreign_class_and_type_chirho() {
+        use rhasky_ast_chirho::ty_chirho::TypeChirho;
+
+        let module_chirho = mk_module_chirho(
+            vec![DeclChirho::InstanceDeclChirho {
+                context_chirho: vec![],
+                class_chirho: dummy_name_chirho("Show"),
+                types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
+                methods_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            vec![],
+        );
+
+        let warnings_chirho = check_orphan_instances_chirho(&module_chirho);
+        assert_eq!(
+            warnings_chirho.len_chirho(),
+            1,
+            "instance Show Int without local class/type should be orphan"
+        );
+        assert_eq!(warnings_chirho.warning_count_chirho(), 1);
+        let msg_chirho = warnings_chirho.diagnostics_chirho()[0]
+            .message_chirho
+            .clone();
+        assert!(
+            msg_chirho.contains("orphan instance"),
+            "message should mention 'orphan instance'"
+        );
+    }
+
+    /// Test: instance with local newtype in App head is NOT orphan.
+    #[test]
+    fn orphan_local_newtype_in_app_not_orphan_chirho() {
+        use rhasky_ast_chirho::ty_chirho::TypeChirho;
+
+        let module_chirho = mk_module_chirho(
+            vec![
+                DeclChirho::NewtypeDeclChirho {
+                    name_chirho: dummy_name_chirho("Wrapper"),
+                    type_vars_chirho: vec![dummy_name_chirho("a")],
+                    constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                        name_chirho: dummy_name_chirho("MkWrapper"),
+                        fields_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("a"))],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    deriving_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::InstanceDeclChirho {
+                    context_chirho: vec![],
+                    class_chirho: dummy_name_chirho("Show"),
+                    types_chirho: vec![TypeChirho::AppChirho {
+                        fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Wrapper"))),
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    methods_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            vec![],
+        );
+
+        let warnings_chirho = check_orphan_instances_chirho(&module_chirho);
+        assert!(
+            warnings_chirho.is_empty_chirho(),
+            "instance Show (Wrapper a) with local Wrapper should not be orphan"
+        );
+    }
+
+    /// Test: multiple orphan instances produce multiple warnings.
+    #[test]
+    fn orphan_multiple_warnings_chirho() {
+        use rhasky_ast_chirho::ty_chirho::TypeChirho;
+
+        let module_chirho = mk_module_chirho(
+            vec![
+                DeclChirho::InstanceDeclChirho {
+                    context_chirho: vec![],
+                    class_chirho: dummy_name_chirho("Show"),
+                    types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
+                    methods_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::InstanceDeclChirho {
+                    context_chirho: vec![],
+                    class_chirho: dummy_name_chirho("Eq"),
+                    types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Bool"))],
+                    methods_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            vec![],
+        );
+
+        let warnings_chirho = check_orphan_instances_chirho(&module_chirho);
+        assert_eq!(warnings_chirho.len_chirho(), 2);
     }
 }

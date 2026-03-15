@@ -110,6 +110,10 @@ pub fn run_frontend_chirho(
         return Err(resolve_result_chirho.diagnostics_chirho);
     }
 
+    // Phase 3.1: Orphan instance detection
+    let orphan_warnings_chirho =
+        rhasky_naming_chirho::check_orphan_instances_chirho(&module_chirho);
+
     // Phase 3.5: Kind inference
     let kind_result_chirho =
         rhasky_typing_chirho::infer_module_kinds_chirho(&module_chirho);
@@ -144,9 +148,17 @@ pub fn run_frontend_chirho(
         .map(|d_chirho| d_chirho.to_string())
         .collect();
 
-    // Merge deriving and exhaustiveness warnings.
+    // Collect orphan instance warnings as strings.
+    let orphan_warning_strs_chirho: Vec<String> = orphan_warnings_chirho
+        .diagnostics_chirho()
+        .iter()
+        .map(|d_chirho| d_chirho.to_string())
+        .collect();
+
+    // Merge deriving, exhaustiveness, and orphan warnings.
     let mut warnings_chirho = deriving_warnings_chirho;
     warnings_chirho.extend(exhaust_warnings_chirho);
+    warnings_chirho.extend(orphan_warning_strs_chirho);
 
     Ok(FrontendResultChirho {
         module_chirho,
@@ -359,6 +371,30 @@ fn build_newtype_info_chirho(
         }
     }
     map_chirho
+}
+
+/// Run only the frontend pipeline and return non-fatal warnings.
+/// Useful for testing diagnostic output (orphan instances, exhaustiveness, etc.)
+pub fn frontend_warnings_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+) -> Result<Vec<String>, DiagnosticBundleChirho> {
+    let source_file_chirho =
+        SourceFileChirho::from_source_map_chirho(source_map_chirho, file_name_chirho, source_chirho);
+    let file_id_chirho = source_file_chirho.file_id_chirho();
+
+    let builtin_ifaces_chirho = rhasky_naming_chirho::builtin_module_ifaces_chirho();
+    let empty_imported_types_chirho = std::collections::HashMap::new();
+
+    let frontend_result_chirho = run_frontend_chirho(
+        source_chirho,
+        file_id_chirho,
+        &builtin_ifaces_chirho,
+        &empty_imported_types_chirho,
+    )?;
+
+    Ok(frontend_result_chirho.warnings_chirho)
 }
 
 /// Run the full compiler pipeline: lex → layout → CST parse → AST lower →
