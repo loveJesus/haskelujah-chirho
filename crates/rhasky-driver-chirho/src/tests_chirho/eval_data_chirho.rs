@@ -1457,3 +1457,85 @@ main = unbox (MkBox 42)
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
     }
 
+    // ── KindSignatures (§E.41) ──────────────────────────────────────────
+
+    #[test]
+    fn kind_sig_data_star_chirho() {
+        // data Proxy (a :: *) = MkProxy
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Proxy (a :: *) = MkProxy
+main = case MkProxy of
+  MkProxy -> 42
+";
+        let val_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("kind sig data star should work");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn kind_sig_data_with_field_chirho() {
+        // data Wrapper (a :: *) = MkWrapper a — kind-annotated var used in constructor
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Wrapper (a :: *) = MkWrapper a
+unwrap (MkWrapper x) = x
+main = unwrap (MkWrapper 99)
+";
+        let val_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("kind sig data with field should work");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99));
+    }
+
+    #[test]
+    fn kind_sig_newtype_chirho() {
+        // newtype Id (a :: *) = MkId a
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+newtype Id (a :: *) = MkId a
+getId (MkId x) = x
+main = getId (MkId 77)
+";
+        let val_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("kind sig newtype should work");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(77));
+    }
+
+    #[test]
+    fn kind_sig_mixed_annotated_unannotated_chirho() {
+        // data Pair (a :: *) b = MkPair a b — mix of annotated and plain
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Pair (a :: *) b = MkPair a b
+fst2 (MkPair x y) = x
+main = fst2 (MkPair 55 100)
+";
+        let val_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("kind sig mixed should work");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(55));
+    }
+
+    #[test]
+    fn kind_sig_arrow_kind_chirho() {
+        // data HKD (f :: * -> *) = MkHKD — higher-kinded type variable
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data HKD (f :: * -> *) = MkHKD
+main = case MkHKD of
+  MkHKD -> 123
+";
+        let val_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("kind sig arrow kind should work");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(123));
+    }
+

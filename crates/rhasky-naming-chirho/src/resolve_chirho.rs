@@ -779,7 +779,7 @@ mod tests_chirho {
             vec![DeclChirho::ClassDeclChirho {
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("Describable"),
-                type_vars_chirho: vec![dummy_name_chirho("a")],
+                type_vars_chirho: vec![dummy_name_chirho("a").into()],
                 methods_chirho: vec![
                     rhasky_ast_chirho::decl_chirho::ClassMethodChirho {
                         name_chirho: dummy_name_chirho("describe"),
@@ -1182,7 +1182,7 @@ mod tests_chirho {
                 DeclChirho::ClassDeclChirho {
                     context_chirho: vec![],
                     name_chirho: dummy_name_chirho("MyClass"),
-                    type_vars_chirho: vec![dummy_name_chirho("a")],
+                    type_vars_chirho: vec![dummy_name_chirho("a").into()],
                     methods_chirho: vec![],
                     fundeps_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1278,7 +1278,7 @@ mod tests_chirho {
             vec![
                 DeclChirho::NewtypeDeclChirho {
                     name_chirho: dummy_name_chirho("Wrapper"),
-                    type_vars_chirho: vec![dummy_name_chirho("a")],
+                    type_vars_chirho: vec![dummy_name_chirho("a").into()],
                     constructor_chirho: ConDeclChirho::OrdinaryChirho {
                         name_chirho: dummy_name_chirho("MkWrapper"),
                         fields_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("a"))],

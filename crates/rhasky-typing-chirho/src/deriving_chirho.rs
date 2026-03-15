@@ -40,7 +40,7 @@
 //! The generated instances are inserted into the module's declaration list
 //! before type inference runs, so they go through the normal pipeline.
 
-use rhasky_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+use rhasky_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, TyVarChirho};
 use rhasky_ast_chirho::expr_chirho::{
     AltChirho, ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho,
 };
@@ -405,7 +405,7 @@ fn con_pat_chirho(
 /// Build the instance head type: `T a b c` from type name and type vars.
 fn instance_type_chirho(
     type_name_chirho: &NameChirho,
-    type_vars_chirho: &[NameChirho],
+    type_vars_chirho: &[TyVarChirho],
 ) -> TypeChirho {
     if type_vars_chirho.is_empty() {
         TypeChirho::ConChirho(type_name_chirho.clone())
@@ -414,7 +414,7 @@ fn instance_type_chirho(
         for tv_chirho in type_vars_chirho {
             result_chirho = TypeChirho::AppChirho {
                 fun_chirho: Box::new(result_chirho),
-                arg_chirho: Box::new(TypeChirho::VarChirho(tv_chirho.clone())),
+                arg_chirho: Box::new(TypeChirho::VarChirho(tv_chirho.name_chirho.clone())),
                 span_chirho: gen_span_chirho(),
             };
         }
@@ -429,7 +429,7 @@ fn instance_type_chirho(
 /// Generate `instance Eq T where (==) = ...`
 fn derive_eq_chirho(
     type_name_chirho: &NameChirho,
-    type_vars_chirho: &[NameChirho],
+    type_vars_chirho: &[TyVarChirho],
     constructors_chirho: &[ConDeclChirho],
     _span_chirho: SpanChirho,
 ) -> DeclChirho {
@@ -495,7 +495,7 @@ fn derive_eq_chirho(
         .iter()
         .map(|tv_chirho| rhasky_ast_chirho::ty_chirho::ConstraintChirho {
             class_chirho: var_name_chirho("Eq"),
-            args_chirho: vec![TypeChirho::VarChirho(tv_chirho.clone())],
+            args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
             span_chirho: gen_span_chirho(),
         })
         .collect();
@@ -516,7 +516,7 @@ fn derive_eq_chirho(
 /// Generate `instance Ord T where compare = ...`
 fn derive_ord_chirho(
     type_name_chirho: &NameChirho,
-    type_vars_chirho: &[NameChirho],
+    type_vars_chirho: &[TyVarChirho],
     constructors_chirho: &[ConDeclChirho],
     _span_chirho: SpanChirho,
 ) -> DeclChirho {
@@ -638,7 +638,7 @@ fn derive_ord_chirho(
         .iter()
         .map(|tv_chirho| rhasky_ast_chirho::ty_chirho::ConstraintChirho {
             class_chirho: var_name_chirho("Ord"),
-            args_chirho: vec![TypeChirho::VarChirho(tv_chirho.clone())],
+            args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
             span_chirho: gen_span_chirho(),
         })
         .collect();
@@ -659,7 +659,7 @@ fn derive_ord_chirho(
 /// Generate `instance Show T where show = ...`
 fn derive_show_chirho(
     type_name_chirho: &NameChirho,
-    type_vars_chirho: &[NameChirho],
+    type_vars_chirho: &[TyVarChirho],
     constructors_chirho: &[ConDeclChirho],
     _span_chirho: SpanChirho,
 ) -> DeclChirho {
@@ -713,7 +713,7 @@ fn derive_show_chirho(
         .iter()
         .map(|tv_chirho| rhasky_ast_chirho::ty_chirho::ConstraintChirho {
             class_chirho: var_name_chirho("Show"),
-            args_chirho: vec![TypeChirho::VarChirho(tv_chirho.clone())],
+            args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
             span_chirho: gen_span_chirho(),
         })
         .collect();
@@ -743,7 +743,7 @@ fn all_nullary_chirho(constructors_chirho: &[ConDeclChirho]) -> bool {
 /// Only valid for enumeration types (all constructors nullary, no type params).
 fn derive_enum_chirho(
     type_name_chirho: &NameChirho,
-    type_vars_chirho: &[NameChirho],
+    type_vars_chirho: &[TyVarChirho],
     constructors_chirho: &[ConDeclChirho],
     _span_chirho: SpanChirho,
 ) -> Result<DeclChirho, String> {
@@ -840,7 +840,7 @@ fn derive_enum_chirho(
 /// Only valid for enumeration types (all constructors nullary, no type params).
 fn derive_bounded_chirho(
     type_name_chirho: &NameChirho,
-    type_vars_chirho: &[NameChirho],
+    type_vars_chirho: &[TyVarChirho],
     constructors_chirho: &[ConDeclChirho],
     _span_chirho: SpanChirho,
 ) -> Result<DeclChirho, String> {
@@ -915,7 +915,7 @@ fn derive_bounded_chirho(
 /// - For product: chains `readsPrec 11` calls for each field
 fn derive_read_chirho(
     type_name_chirho: &NameChirho,
-    type_vars_chirho: &[NameChirho],
+    type_vars_chirho: &[TyVarChirho],
     constructors_chirho: &[ConDeclChirho],
     _span_chirho: SpanChirho,
 ) -> DeclChirho {
@@ -1024,7 +1024,7 @@ fn derive_read_chirho(
         .iter()
         .map(|tv_chirho| rhasky_ast_chirho::ty_chirho::ConstraintChirho {
             class_chirho: var_name_chirho("Read"),
-            args_chirho: vec![TypeChirho::VarChirho(tv_chirho.clone())],
+            args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
             span_chirho: gen_span_chirho(),
         })
         .collect();
@@ -1060,7 +1060,7 @@ fn derive_read_chirho(
 /// underlying type already has an instance.
 fn derive_newtype_gnd_chirho(
     type_name_chirho: &NameChirho,
-    type_vars_chirho: &[NameChirho],
+    type_vars_chirho: &[TyVarChirho],
     constructor_chirho: &ConDeclChirho,
     class_name_chirho: &NameChirho,
     _span_chirho: SpanChirho,
@@ -1147,7 +1147,7 @@ fn type_mentions_var_chirho(ty_chirho: &TypeChirho, var_chirho: &str) -> bool {
 /// apply `f` to it. Fields that don't mention it are passed through unchanged.
 fn derive_functor_chirho(
     type_name_chirho: &NameChirho,
-    type_vars_chirho: &[NameChirho],
+    type_vars_chirho: &[TyVarChirho],
     constructors_chirho: &[ConDeclChirho],
     _span_chirho: SpanChirho,
 ) -> Result<DeclChirho, String> {
@@ -1212,7 +1212,7 @@ fn derive_functor_chirho(
         .filter(|_| false) // No Functor constraints on other vars needed
         .map(|tv_chirho| rhasky_ast_chirho::ty_chirho::ConstraintChirho {
             class_chirho: var_name_chirho("Functor"),
-            args_chirho: vec![TypeChirho::VarChirho(tv_chirho.clone())],
+            args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
             span_chirho: gen_span_chirho(),
         })
         .collect();
@@ -1225,7 +1225,7 @@ fn derive_functor_chirho(
         for tv_chirho in &type_vars_chirho[..type_vars_chirho.len() - 1] {
             ty_chirho = TypeChirho::AppChirho {
                 fun_chirho: Box::new(ty_chirho),
-                arg_chirho: Box::new(TypeChirho::VarChirho(tv_chirho.clone())),
+                arg_chirho: Box::new(TypeChirho::VarChirho(tv_chirho.name_chirho.clone())),
                 span_chirho: gen_span_chirho(),
             };
         }
@@ -1247,7 +1247,7 @@ fn derive_functor_chirho(
 /// with `(<>)` (mappend). Fields that don't mention it are skipped.
 fn derive_foldable_chirho(
     type_name_chirho: &NameChirho,
-    type_vars_chirho: &[NameChirho],
+    type_vars_chirho: &[TyVarChirho],
     constructors_chirho: &[ConDeclChirho],
     _span_chirho: SpanChirho,
 ) -> Result<DeclChirho, String> {
@@ -1318,7 +1318,7 @@ fn derive_foldable_chirho(
         for tv_chirho in &type_vars_chirho[..type_vars_chirho.len() - 1] {
             ty_chirho = TypeChirho::AppChirho {
                 fun_chirho: Box::new(ty_chirho),
-                arg_chirho: Box::new(TypeChirho::VarChirho(tv_chirho.clone())),
+                arg_chirho: Box::new(TypeChirho::VarChirho(tv_chirho.name_chirho.clone())),
                 span_chirho: gen_span_chirho(),
             };
         }
@@ -1340,7 +1340,7 @@ fn derive_foldable_chirho(
 /// `traverse f x` (nested). Otherwise use `pure x`. Combine with `<$>` and `<*>`.
 fn derive_traversable_chirho(
     type_name_chirho: &NameChirho,
-    type_vars_chirho: &[NameChirho],
+    type_vars_chirho: &[TyVarChirho],
     constructors_chirho: &[ConDeclChirho],
     _span_chirho: SpanChirho,
 ) -> Result<DeclChirho, String> {
@@ -1430,7 +1430,7 @@ fn derive_traversable_chirho(
         for tv_chirho in &type_vars_chirho[..type_vars_chirho.len() - 1] {
             ty_chirho = TypeChirho::AppChirho {
                 fun_chirho: Box::new(ty_chirho),
-                arg_chirho: Box::new(TypeChirho::VarChirho(tv_chirho.clone())),
+                arg_chirho: Box::new(TypeChirho::VarChirho(tv_chirho.name_chirho.clone())),
                 span_chirho: gen_span_chirho(),
             };
         }
@@ -1726,7 +1726,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::DataDeclChirho {
                 name_chirho: var_name_chirho("Pair"),
-                type_vars_chirho: vec![var_name_chirho("a"), var_name_chirho("b")],
+                type_vars_chirho: vec![var_name_chirho("a").into(), var_name_chirho("b").into()],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                     name_chirho: var_name_chirho("MkPair"),
                     fields_chirho: vec![
@@ -1952,7 +1952,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::DataDeclChirho {
                 name_chirho: var_name_chirho("T"),
-                type_vars_chirho: vec![var_name_chirho("a")],
+                type_vars_chirho: vec![var_name_chirho("a").into()],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                     name_chirho: var_name_chirho("MkT"),
                     fields_chirho: vec![],
@@ -2041,7 +2041,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::DataDeclChirho {
                 name_chirho: var_name_chirho("Box"),
-                type_vars_chirho: vec![var_name_chirho("a")],
+                type_vars_chirho: vec![var_name_chirho("a").into()],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                     name_chirho: var_name_chirho("MkBox"),
                     fields_chirho: vec![TypeChirho::VarChirho(var_name_chirho("a"))],
@@ -2234,7 +2234,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::NewtypeDeclChirho {
                 name_chirho: var_name_chirho("App"),
-                type_vars_chirho: vec![var_name_chirho("f"), var_name_chirho("a")],
+                type_vars_chirho: vec![var_name_chirho("f").into(), var_name_chirho("a").into()],
                 constructor_chirho: ConDeclChirho::OrdinaryChirho {
                     name_chirho: var_name_chirho("MkApp"),
                     fields_chirho: vec![TypeChirho::AppChirho {
@@ -2278,7 +2278,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::DataDeclChirho {
                 name_chirho: var_name_chirho("Box"),
-                type_vars_chirho: vec![var_name_chirho("a")],
+                type_vars_chirho: vec![var_name_chirho("a").into()],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                     name_chirho: var_name_chirho("MkBox"),
                     fields_chirho: vec![TypeChirho::VarChirho(var_name_chirho("a"))],
@@ -2341,7 +2341,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::DataDeclChirho {
                 name_chirho: var_name_chirho("Pair"),
-                type_vars_chirho: vec![var_name_chirho("a")],
+                type_vars_chirho: vec![var_name_chirho("a").into()],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                     name_chirho: var_name_chirho("MkPair"),
                     fields_chirho: vec![
@@ -2380,7 +2380,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::DataDeclChirho {
                 name_chirho: var_name_chirho("Maybe2"),
-                type_vars_chirho: vec![var_name_chirho("a")],
+                type_vars_chirho: vec![var_name_chirho("a").into()],
                 constructors_chirho: vec![
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: var_name_chirho("Nothing2"),

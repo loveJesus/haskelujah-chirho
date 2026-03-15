@@ -7220,7 +7220,7 @@ mod tests_chirho {
             decls_chirho: vec![DeclChirho::ClassDeclChirho {
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("MyEqChirho"),
-                type_vars_chirho: vec![dummy_name_chirho("a")],
+                type_vars_chirho: vec![dummy_name_chirho("a").into()],
                 methods_chirho: vec![ClassMethodChirho {
                     name_chirho: dummy_name_chirho("myEqChirho"),
                     ty_chirho: TypeChirho::FunChirho {
@@ -7281,7 +7281,7 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
                 }],
                 name_chirho: dummy_name_chirho("MyOrdChirho"),
-                type_vars_chirho: vec![dummy_name_chirho("a")],
+                type_vars_chirho: vec![dummy_name_chirho("a").into()],
                 methods_chirho: vec![ClassMethodChirho {
                     name_chirho: dummy_name_chirho("myCompareChirho"),
                     ty_chirho: TypeChirho::FunChirho {

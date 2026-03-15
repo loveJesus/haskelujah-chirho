@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1427 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1437 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -243,7 +243,7 @@ _These items address structural issues identified in the Codex engineering revie
 38. **ConstraintKinds** — constraints as first-class kinds
 39. ~~**FlexibleInstances/FlexibleContexts** — relax Haskell 98 instance/context restrictions~~ — DONE (no Haskell 98 restrictions enforced; all instance heads and contexts already flexible)
 40. **DataKinds** — promote data constructors to type-level
-41. **KindSignatures** — explicit kind annotations on type variables
+41. ~~**KindSignatures**~~ — DONE (AST `TyVarChirho` struct with `name_chirho: NameChirho` + `kind_annotation_chirho: Option<AstKindChirho>`; `AstKindChirho` enum with `StarChirho` and `ArrowChirho`; `TyVarChirho` implements `Deref<Target=NameChirho>` and `From<NameChirho>` for minimal disruption; `type_vars_chirho` changed from `Vec<NameChirho>` to `Vec<TyVarChirho>` in DataDeclChirho, NewtypeDeclChirho, TypeAliasDeclChirho, ClassDeclChirho, ForallChirho; parser lowerer recognizes `(varId :: kind)` pattern in flat token stream with `try_parse_kind_annotated_tyvar_chirho`; kind parser handles `*`, `Type`, `* -> *`, nested `(* -> *) -> *`; kind inference uses annotations as constraints instead of fresh variables via `ast_kind_to_kind_chirho` converter; 5 parser unit tests + 5 driver e2e tests; 1437 tests total)
 42. **DefaultSignatures** — default method implementations using superclass constraints
 43. **Template Haskell (basic)** — quasi-quotation, reify, splicing for compile-time metaprogramming
 44. **Foreign exports** — `foreign export ccall` for Haskell functions callable from C/JS

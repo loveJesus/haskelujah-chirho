@@ -5,6 +5,7 @@
 
 use rhasky_span_chirho::SpanChirho;
 
+use crate::decl_chirho::TyVarChirho;
 use crate::name_chirho::NameChirho;
 
 /// A Haskell type expression.
@@ -49,7 +50,7 @@ pub enum TypeChirho {
     },
     /// Forall quantifier (`forall a b. Type`).
     ForallChirho {
-        vars_chirho: Vec<NameChirho>,
+        vars_chirho: Vec<TyVarChirho>,
         body_chirho: Box<TypeChirho>,
         span_chirho: SpanChirho,
     },

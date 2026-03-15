@@ -19,7 +19,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use rhasky_ast_chirho::decl_chirho::DeclChirho;
+use rhasky_ast_chirho::decl_chirho::{AstKindChirho, DeclChirho, TyVarChirho};
 use rhasky_ast_chirho::module_chirho::ModuleChirho;
 use rhasky_ast_chirho::ty_chirho::TypeChirho;
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
@@ -556,13 +556,18 @@ impl KindInferCtxChirho {
     fn infer_data_decl_kind_chirho(
         &mut self,
         name_chirho: &str,
-        type_vars_chirho: &[rhasky_ast_chirho::name_chirho::NameChirho],
+        type_vars_chirho: &[TyVarChirho],
         span_chirho: SpanChirho,
     ) {
-        // Each type parameter gets a fresh kind variable.
+        // Each type parameter gets a kind: use the annotation if present,
+        // otherwise create a fresh kind variable for inference.
         let mut param_kinds_chirho = Vec::new();
         for tv_chirho in type_vars_chirho {
-            let k_chirho = self.fresh_kind_chirho();
+            let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
+                ast_kind_to_kind_chirho(ann_chirho)
+            } else {
+                self.fresh_kind_chirho()
+            };
             self.env_chirho
                 .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
             param_kinds_chirho.push(k_chirho);
@@ -584,13 +589,18 @@ impl KindInferCtxChirho {
     fn infer_class_kind_chirho(
         &mut self,
         name_chirho: &str,
-        type_vars_chirho: &[rhasky_ast_chirho::name_chirho::NameChirho],
+        type_vars_chirho: &[TyVarChirho],
         span_chirho: SpanChirho,
     ) {
-        // Each class type parameter gets a fresh kind variable.
+        // Each class type parameter gets a kind: use the annotation if present,
+        // otherwise create a fresh kind variable for inference.
         let mut param_kinds_chirho = Vec::new();
         for tv_chirho in type_vars_chirho {
-            let k_chirho = self.fresh_kind_chirho();
+            let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
+                ast_kind_to_kind_chirho(ann_chirho)
+            } else {
+                self.fresh_kind_chirho()
+            };
             self.env_chirho
                 .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
             param_kinds_chirho.push(k_chirho);
@@ -611,14 +621,19 @@ impl KindInferCtxChirho {
     fn infer_type_alias_kind_chirho(
         &mut self,
         name_chirho: &str,
-        type_vars_chirho: &[rhasky_ast_chirho::name_chirho::NameChirho],
+        type_vars_chirho: &[TyVarChirho],
         rhs_ty_chirho: &TypeChirho,
         span_chirho: SpanChirho,
     ) {
-        // Each type parameter gets a fresh kind variable.
+        // Each type parameter gets a kind: use the annotation if present,
+        // otherwise create a fresh kind variable for inference.
         let mut param_kinds_chirho = Vec::new();
         for tv_chirho in type_vars_chirho {
-            let k_chirho = self.fresh_kind_chirho();
+            let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
+                ast_kind_to_kind_chirho(ann_chirho)
+            } else {
+                self.fresh_kind_chirho()
+            };
             self.env_chirho
                 .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
             param_kinds_chirho.push(k_chirho);
@@ -646,6 +661,17 @@ impl KindInferCtxChirho {
         for kind_chirho in self.env_chirho.kinds_chirho.values_mut() {
             *kind_chirho = default_kind_vars_chirho(kind_chirho);
         }
+    }
+}
+
+/// Convert an AST-level kind annotation to the internal [`KindChirho`] representation.
+fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
+    match ast_chirho {
+        AstKindChirho::StarChirho => KindChirho::StarChirho,
+        AstKindChirho::ArrowChirho(a_chirho, b_chirho) => KindChirho::arrow_chirho(
+            ast_kind_to_kind_chirho(a_chirho),
+            ast_kind_to_kind_chirho(b_chirho),
+        ),
     }
 }
 
@@ -1081,7 +1107,7 @@ mod tests_chirho {
     fn data_one_param_has_kind_star_to_star_chirho() {
         let module_chirho = mk_module_chirho(vec![DeclChirho::DataDeclChirho {
             name_chirho: mk_name_chirho("Box"),
-            type_vars_chirho: vec![mk_name_chirho("a")],
+            type_vars_chirho: vec![mk_name_chirho("a").into()],
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("MkBox"),
                 fields_chirho: vec![TypeChirho::VarChirho(
@@ -1109,7 +1135,7 @@ mod tests_chirho {
         // data Pair a b = MkPair a b
         let module_chirho = mk_module_chirho(vec![DeclChirho::DataDeclChirho {
             name_chirho: mk_name_chirho("Pair"),
-            type_vars_chirho: vec![mk_name_chirho("a"), mk_name_chirho("b")],
+            type_vars_chirho: vec![mk_name_chirho("a").into(), mk_name_chirho("b").into()],
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("MkPair"),
                 fields_chirho: vec![
@@ -1139,7 +1165,7 @@ mod tests_chirho {
         // f :: * -> *, a :: *, App :: (* -> *) -> * -> *
         let module_chirho = mk_module_chirho(vec![DeclChirho::DataDeclChirho {
             name_chirho: mk_name_chirho("App"),
-            type_vars_chirho: vec![mk_name_chirho("f"), mk_name_chirho("a")],
+            type_vars_chirho: vec![mk_name_chirho("f").into(), mk_name_chirho("a").into()],
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("MkApp"),
                 fields_chirho: vec![TypeChirho::AppChirho {
@@ -1172,7 +1198,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
             context_chirho: vec![],
             name_chirho: mk_name_chirho("Eq"),
-            type_vars_chirho: vec![mk_name_chirho("a")],
+            type_vars_chirho: vec![mk_name_chirho("a").into()],
             methods_chirho: vec![ClassMethodChirho {
                 name_chirho: mk_name_chirho("eq"),
                 ty_chirho: mk_fun_chirho(
@@ -1207,7 +1233,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
             context_chirho: vec![],
             name_chirho: mk_name_chirho("Functor"),
-            type_vars_chirho: vec![mk_name_chirho("f")],
+            type_vars_chirho: vec![mk_name_chirho("f").into()],
             methods_chirho: vec![ClassMethodChirho {
                 name_chirho: mk_name_chirho("fmap"),
                 ty_chirho: mk_fun_chirho(
@@ -1276,7 +1302,7 @@ mod tests_chirho {
         // newtype Wrapper a = Wrap a
         let module_chirho = mk_module_chirho(vec![DeclChirho::NewtypeDeclChirho {
             name_chirho: mk_name_chirho("Wrapper"),
-            type_vars_chirho: vec![mk_name_chirho("a")],
+            type_vars_chirho: vec![mk_name_chirho("a").into()],
             constructor_chirho: ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("Wrap"),
                 fields_chirho: vec![TypeChirho::VarChirho(

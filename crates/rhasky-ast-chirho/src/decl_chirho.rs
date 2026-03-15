@@ -3,12 +3,67 @@
 
 //! # Top-level declarations
 
+use std::ops::Deref;
+
 use rhasky_span_chirho::SpanChirho;
 
 use crate::expr_chirho::{LocalBindChirho, MatchArmChirho, RhsChirho};
 use crate::name_chirho::NameChirho;
 use crate::pat_chirho::PatChirho;
 use crate::ty_chirho::{ConstraintChirho, TypeChirho};
+
+/// AST-level kind annotation (written in source code with KindSignatures).
+///
+/// Represents kind expressions like `*`, `* -> *`, `(* -> *) -> *`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AstKindChirho {
+    /// `*` or `Type` — the kind of types.
+    StarChirho,
+    /// `k1 -> k2` — arrow kind (type constructor kind).
+    ArrowChirho(Box<AstKindChirho>, Box<AstKindChirho>),
+}
+
+/// A type variable, optionally annotated with a kind signature.
+///
+/// Without KindSignatures: `data Foo a = ...` → `TyVarChirho { name: a, kind: None }`
+/// With KindSignatures: `data Foo (a :: *) = ...` → `TyVarChirho { name: a, kind: Some(Star) }`
+#[derive(Debug, Clone, PartialEq)]
+pub struct TyVarChirho {
+    pub name_chirho: NameChirho,
+    pub kind_annotation_chirho: Option<AstKindChirho>,
+}
+
+impl TyVarChirho {
+    /// Create an unannotated type variable (no kind signature).
+    pub fn plain_chirho(name_chirho: NameChirho) -> Self {
+        Self {
+            name_chirho,
+            kind_annotation_chirho: None,
+        }
+    }
+
+    /// Create a type variable with a kind annotation.
+    pub fn annotated_chirho(name_chirho: NameChirho, kind_chirho: AstKindChirho) -> Self {
+        Self {
+            name_chirho,
+            kind_annotation_chirho: Some(kind_chirho),
+        }
+    }
+}
+
+impl From<NameChirho> for TyVarChirho {
+    fn from(name_chirho: NameChirho) -> Self {
+        Self::plain_chirho(name_chirho)
+    }
+}
+
+impl Deref for TyVarChirho {
+    type Target = NameChirho;
+
+    fn deref(&self) -> &NameChirho {
+        &self.name_chirho
+    }
+}
 
 /// A top-level declaration in a Haskell module.
 #[derive(Debug, Clone, PartialEq)]
@@ -34,7 +89,7 @@ pub enum DeclChirho {
     /// Data type declaration (`data T a = C1 | C2`).
     DataDeclChirho {
         name_chirho: NameChirho,
-        type_vars_chirho: Vec<NameChirho>,
+        type_vars_chirho: Vec<TyVarChirho>,
         constructors_chirho: Vec<ConDeclChirho>,
         deriving_chirho: Vec<NameChirho>,
         span_chirho: SpanChirho,
@@ -42,7 +97,7 @@ pub enum DeclChirho {
     /// Newtype declaration (`newtype T a = Con Type`).
     NewtypeDeclChirho {
         name_chirho: NameChirho,
-        type_vars_chirho: Vec<NameChirho>,
+        type_vars_chirho: Vec<TyVarChirho>,
         constructor_chirho: ConDeclChirho,
         deriving_chirho: Vec<NameChirho>,
         span_chirho: SpanChirho,
@@ -50,7 +105,7 @@ pub enum DeclChirho {
     /// Type alias (`type Name = Type`).
     TypeAliasDeclChirho {
         name_chirho: NameChirho,
-        type_vars_chirho: Vec<NameChirho>,
+        type_vars_chirho: Vec<TyVarChirho>,
         rhs_chirho: TypeChirho,
         span_chirho: SpanChirho,
     },
@@ -58,7 +113,7 @@ pub enum DeclChirho {
     ClassDeclChirho {
         context_chirho: Vec<ConstraintChirho>,
         name_chirho: NameChirho,
-        type_vars_chirho: Vec<NameChirho>,
+        type_vars_chirho: Vec<TyVarChirho>,
         methods_chirho: Vec<ClassMethodChirho>,
         /// Functional dependencies: `| a -> b, c -> d`.
         /// Each pair `(from_vars, to_vars)` means the from-vars determine the to-vars.
