@@ -361,6 +361,55 @@ impl DictPassCtxChirho {
                         if name_chirho == "fromInteger" {
                             return Some("Int".to_string());
                         }
+                        // Well-known Prelude function return types:
+                        // These functions have fixed return types regardless
+                        // of their argument types, so we can infer the result
+                        // type for dict selection without full type inference.
+                        match name_chirho.as_str() {
+                            // :: [a] -> Int
+                            "length" | "sum" | "product" => {
+                                return Some("Int".to_string());
+                            }
+                            // :: [a] -> [a]  (element type from arg)
+                            "take" | "drop" | "reverse" | "sort"
+                            | "init" | "tail" | "nub" | "cycle" => {
+                                if let Some(arg_ty_chirho) =
+                                    self.infer_type_key_chirho(arg_chirho)
+                                {
+                                    return Some(arg_ty_chirho);
+                                }
+                                return None;
+                            }
+                            // :: [a] -> a  (element type from list arg)
+                            "head" | "last" | "minimum" | "maximum" => {
+                                if let Some(arg_ty_chirho) =
+                                    self.infer_type_key_chirho(arg_chirho)
+                                {
+                                    // Strip outer list: [Int] → Int
+                                    if arg_ty_chirho.starts_with('[')
+                                        && arg_ty_chirho.ends_with(']')
+                                    {
+                                        return Some(
+                                            arg_ty_chirho[1..arg_ty_chirho.len() - 1]
+                                                .to_string(),
+                                        );
+                                    }
+                                    return Some(arg_ty_chirho);
+                                }
+                                return None;
+                            }
+                            // :: a -> Bool
+                            "null" | "even" | "odd" | "elem" | "notElem" => {
+                                return Some("Bool".to_string());
+                            }
+                            // :: a -> Int
+                            "fromEnum" | "ord" => {
+                                return Some("Int".to_string());
+                            }
+                            // :: Int -> a (for toEnum/chr, we don't know the
+                            // result type without context, so skip)
+                            _ => {}
+                        }
                         // Constructor applications: App(Just, x) → Maybe <x-type>
                         match name_chirho.as_str() {
                             "Just" => {
@@ -409,6 +458,29 @@ impl DictPassCtxChirho {
                             // compare :: a -> a -> Ordering
                             if name_chirho == "compare" || name_chirho.starts_with("$prim_Ord_compare") {
                                 return Some("Ordering".to_string());
+                            }
+                            // Two-arg Prelude functions:
+                            // take/drop :: Int -> [a] -> [a]
+                            // zip :: [a] -> [b] -> [(a,b)]
+                            // map :: (a -> b) -> [a] -> [b]
+                            // filter :: (a -> Bool) -> [a] -> [a]
+                            match name_chirho.as_str() {
+                                "take" | "drop" | "filter" | "takeWhile"
+                                | "dropWhile" => {
+                                    // Result type = list arg type
+                                    if let Some(ty_chirho) =
+                                        self.infer_type_key_chirho(arg_chirho)
+                                    {
+                                        return Some(ty_chirho);
+                                    }
+                                }
+                                "zip" | "zipWith" | "map" | "concatMap" => {
+                                    // Complex return types; skip for now
+                                }
+                                "elem" | "notElem" | "any" | "all" => {
+                                    return Some("Bool".to_string());
+                                }
+                                _ => {}
                             }
                         }
                     }

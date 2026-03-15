@@ -1612,3 +1612,409 @@ main = 0
         assert!(!result_chirho.core_chirho.bindings_chirho.is_empty());
     }
 
+    // ── Shared let-bound variable bug reproduction ───────────────────────
+
+    #[test]
+    fn eval_shared_let_putstrln_show_chirho() {
+        // Two putStrLn (show ...) calls on same let-bound list
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  let x = [1, 2, 3]
+  putStrLn (show (length x))
+  putStrLn (show (take 2 x))
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBug.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "3\n[1,2]\n",
+                    "shared let-bound var should work with multiple putStrLn(show(f x))");
+            }
+            Err(e_chirho) => {
+                panic!("shared let-bound putStrLn show bug: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_shared_let_print_twice_chirho() {
+        // Same but with print instead of putStrLn (show ...)
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  let x = [1, 2, 3]
+  print (length x)
+  print (take 2 x)
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBug2.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert!(output_chirho.contains("3"), "should contain length result");
+            }
+            Err(e_chirho) => {
+                panic!("shared let print twice bug: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_two_putstrln_show_no_shared_chirho() {
+        // Two putStrLn (show ...) WITHOUT a shared variable
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn (show (length [1, 2, 3]))
+  putStrLn (show (take 2 [4, 5, 6]))
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBug3.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "3\n[4,5]\n");
+            }
+            Err(e_chirho) => {
+                panic!("no shared putStrLn show bug: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_two_putstrln_show_let_bound_results_chirho() {
+        // Bind show results to let variables before putStrLn
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  let x = [1, 2, 3]
+  let a = show (length x)
+  let b = show (take 2 x)
+  putStrLn a
+  putStrLn b
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBug4.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "3\n[1,2]\n");
+            }
+            Err(e_chirho) => {
+                panic!("let-bound results putStrLn bug: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_two_putstrln_show_simple_chirho() {
+        // Simplest case: putStrLn (show 1) then putStrLn (show 2)
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn (show 1)
+  putStrLn (show 2)
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBug5.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "1\n2\n");
+            }
+            Err(e_chirho) => {
+                panic!("simple two putStrLn show bug: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_two_putstrln_show_arith_chirho() {
+        // putStrLn (show (1+2)) then putStrLn (show (3+4))
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn (show (1 + 2))
+  putStrLn (show (3 + 4))
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBug6.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "3\n7\n");
+            }
+            Err(e_chirho) => {
+                panic!("arith two putStrLn show bug: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_putstrln_show_length_then_literal_chirho() {
+        // putStrLn (show (length [1,2,3])) then putStrLn (show 42)
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn (show (length [1, 2, 3]))
+  putStrLn (show 42)
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBug8.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "3\n42\n");
+            }
+            Err(e_chirho) => {
+                panic!("length then literal bug: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_putstrln_show_length_twice_chirho() {
+        // Two length calls on different lists
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn (show (length [1, 2, 3]))
+  putStrLn (show (length [4, 5]))
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBug9.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "3\n2\n");
+            }
+            Err(e_chirho) => {
+                panic!("two lengths bug: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_putstrln_show_int_then_list_chirho() {
+        // putStrLn (show 3) then putStrLn (show [4,5,6])
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn (show 3)
+  putStrLn (show [4, 5, 6])
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBugA.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "3\n[4,5,6]\n");
+            }
+            Err(e_chirho) => {
+                panic!("int then list bug: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_putstrln_show_two_lists_chirho() {
+        // putStrLn (show [1,2,3]) then putStrLn (show [4,5,6])
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn (show [1, 2, 3])
+  putStrLn (show [4, 5, 6])
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBugB.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "[1,2,3]\n[4,5,6]\n");
+            }
+            Err(e_chirho) => {
+                panic!("two lists bug: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_hello_then_show_take_chirho() {
+        // putStrLn "hello" then putStrLn (show (take 2 [1,2,3]))
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn \"hello\"
+  putStrLn (show (take 2 [1, 2, 3]))
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBugF.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "hello\n[1,2]\n");
+            }
+            Err(e_chirho) => {
+                panic!("hello then show take: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_show_take_then_hello_chirho() {
+        // putStrLn (show (take 2 [1,2,3])) then putStrLn "hello"
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn (show (take 2 [1, 2, 3]))
+  putStrLn \"hello\"
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBugG.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "[1,2]\nhello\n");
+            }
+            Err(e_chirho) => {
+                panic!("show take then hello: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_show_take_twice_assert_chirho() {
+        // Two take calls — proper assertion
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn (show (take 2 [1, 2, 3]))
+  putStrLn (show (take 1 [4, 5]))
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBugH.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "[1,2]\n[4]\n");
+            }
+            Err(e_chirho) => {
+                panic!("two takes: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_show_length_then_list_literal_chirho() {
+        // show (length ...) then show [4,5,6] — mixed Int and [Int] Show dicts
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn (show (length [1, 2, 3]))
+  putStrLn (show [4, 5, 6])
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBugJ.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "3\n[4,5,6]\n");
+            }
+            Err(e_chirho) => {
+                panic!("length then list literal: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_show_literal_then_show_take_chirho() {
+        // show literal (Int) then show (take ...) — switching types
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = do
+  putStrLn (show 3)
+  putStrLn (show (take 2 [4, 5, 6]))
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBugI.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "3\n[4,5]\n");
+            }
+            Err(e_chirho) => {
+                panic!("literal then show take: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_single_putstrln_show_length_chirho() {
+        // Single putStrLn (show (length [1,2,3]))
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+main = putStrLn (show (length [1, 2, 3]))
+";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ShareBug7.hs", None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                let output_chirho = &machine_chirho.io_output_chirho;
+                assert_eq!(output_chirho, "3\n");
+            }
+            Err(e_chirho) => {
+                panic!("single putStrLn show length bug: {}", e_chirho);
+            }
+        }
+    }
+
