@@ -642,3 +642,75 @@ main = putStrLn (show [2 * 1, 2 * 2, 2 * 3])
         assert_eq!(machine_chirho.io_output_chirho, "[2,4,6]\n");
     }
 
+    // ── STM (Software Transactional Memory) e2e tests ──
+
+    #[test]
+    fn eval_stm_new_read_tvar_chirho() {
+        // newTVar 42 >>= readTVar → 42
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = do
+  tv <- newTVarIO 42
+  v <- readTVarIO tv
+  putStrLn (show v)
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("STM newTVar/readTVar: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn eval_stm_write_read_tvar_chirho() {
+        // newTVar 0 >>= writeTVar 99 >>= readTVar → 99
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = do
+  tv <- newTVarIO 0
+  writeTVar tv 99
+  v <- readTVarIO tv
+  putStrLn (show v)
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("STM writeTVar: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "99\n");
+    }
+
+    #[test]
+    fn eval_stm_atomically_chirho() {
+        // atomically (newTVar 10 >>= readTVar) → 10
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = do
+  v <- atomically (do { tv <- newTVar 10; readTVar tv })
+  putStrLn (show v)
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("STM atomically: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "10\n");
+    }
+
+    #[test]
+    fn eval_stm_multiple_tvars_chirho() {
+        // Create two TVars, write to both, read and sum
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = do
+  tv1 <- newTVarIO 30
+  tv2 <- newTVarIO 12
+  v1 <- readTVarIO tv1
+  v2 <- readTVarIO tv2
+  putStrLn (show (v1 + v2))
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("STM multiple TVars: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "42\n");
+    }
+

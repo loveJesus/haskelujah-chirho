@@ -121,6 +121,8 @@ impl LowerCtxChirho {
             | "return" | "pure" | ">>=" | ">>"
             | "newIORef" | "readIORef" | "writeIORef" | "modifyIORef"
             | "newSTRef" | "readSTRef" | "writeSTRef" | "modifySTRef" | "runST"
+            | "newTVar" | "readTVar" | "writeTVar" | "atomically" | "retry" | "orElse"
+            | "newTVarIO"
             | "error" | "undefined" | "seq" | "deepseq" | "evaluate" | "force"
             | "catch" | "throw" | "throwIO" | "try" | "bracket" | "finally" => Some(name_chirho.as_str()),
             _ => None,
@@ -1752,6 +1754,13 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "writeSTRef" | "writeSTRef#" => PrimOpKindChirho::WriteSTRefChirho,
         "modifySTRef" | "modifySTRef#" => PrimOpKindChirho::ModifySTRefChirho,
         "runST" | "runST#" => PrimOpKindChirho::RunSTChirho,
+        // STM primops
+        "newTVar" | "newTVar#" | "newTVarIO" | "newTVarIO#" => PrimOpKindChirho::NewTVarChirho,
+        "readTVar" | "readTVar#" | "readTVarIO" | "readTVarIO#" => PrimOpKindChirho::ReadTVarChirho,
+        "writeTVar" | "writeTVar#" => PrimOpKindChirho::WriteTVarChirho,
+        "atomically" | "atomically#" => PrimOpKindChirho::AtomicallyChirho,
+        "retry" | "retry#" => PrimOpKindChirho::RetryChirho,
+        "orElse" | "orElse#" => PrimOpKindChirho::OrElseChirho,
         // Exception handling primops
         "catch" | "catch#" => PrimOpKindChirho::CatchChirho,
         "throw" | "throw#" | "throwIO" | "throwIO#" => PrimOpKindChirho::ThrowChirho,

@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1561 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1565 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -203,7 +203,7 @@ _These items address structural issues identified in the Codex engineering revie
 10. ~~**Lazy I/O**~~ — DONE (`getContents` reads all stdin as String via `GetContentsChirho` PrimOp; `interact` applies `String -> String` function to stdin and writes result to stdout via `InteractChirho` PrimOp; both use `stdin_feed_chirho` for testability; `interact` handles function argument without forcing via special HeapPtr path; 4+ tests: interact pattern, interact id, interact map toUpper, interact reverse; remaining: `hGetContents` for file handles)
 11. ~~**Bang patterns**~~ — DONE (CST parser `parse_fun_bind_chirho` recognizes `!` in function argument patterns via `can_start_apat_chirho` extension; AST `BangChirho` pattern variant; desugarer wraps bang-patterned params in `case x of { _ -> body }` for WHNF forcing using `fresh_binder_chirho`-allocated wildcards; runtime `return_con_chirho` default alt restores saved arg_regs without field prepending to prevent index corruption in nested bang cases; `$!` strict apply operator desugars to `case x of _ -> f x`; 4 new e2e tests: single bang, two bangs, mixed bang/lazy, `f $! 41`; remaining: strict data fields `data Foo = Bar !Int`, `{-# UNPACK #-}` pragma; 1352 tests total)
 12. ~~**Weak head normal form semantics**~~ — DONE (`seq a b` forces `a` returns `b`, `f $! x` desugars to `case x of _ -> f x`; `deepseq` as `seq`-based Core IR binding `\x y -> seq# x y`; `force` as `\x -> seq# x x`; `evaluate` as identity (STG already forces to WHNF); `NFData` type class with `rnf :: a -> ()` method; ground instances for Int/Char/Bool/Double; `$prim_NFData_rnf_*` bindings using `seq#`; `EvaluateChirho`/`ForceChirho` PrimOpKindChirho variants; deepseq/force/evaluate now exported from Prelude with additional e2e tests; 10 e2e tests total; 1503 tests)
-13. **STM (Software Transactional Memory)** — TVar, atomically, retry, orElse; conflict detection and rollback
+13. ~~**STM (Software Transactional Memory)**~~ — DONE (single-threaded STM semantics: `newTVar`/`newTVarIO` allocate TVars as unique IDs in `tvars_chirho` HashMap on MachineChirho, `readTVar`/`readTVarIO` read with thunk forcing, `writeTVar` writes with WHNF forcing, `atomically` is pass-through (single-threaded = always succeeds), `retry` signals RuntimeError (no concurrent writers), `orElse` returns first action; 6 PrimOps in stack_chirho.rs, eval_chirho.rs, prim_chirho.rs; Core bindings in prelude_chirho.rs; type sigs in infer_chirho.rs; `Control.Concurrent.STM` module interface with 8 exports; Prelude re-exports; 4 e2e tests: newTVar+readTVar, writeTVar+readTVar, atomically, multiple TVars; 1565 tests total)
 
 #### B. Multi-Module System & Imports
 

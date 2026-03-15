@@ -278,6 +278,10 @@ pub struct MachineChirho {
     pub iorefs_chirho: HashMap<u64, ValueChirho>,
     /// Next IORef ID counter.
     pub next_ioref_chirho: u64,
+    /// TVar storage: transactional variables indexed by ID.
+    pub tvars_chirho: HashMap<u64, ValueChirho>,
+    /// Next TVar ID counter.
+    pub next_tvar_chirho: u64,
 }
 
 impl MachineChirho {
@@ -297,6 +301,8 @@ impl MachineChirho {
             io_input_chirho: std::collections::VecDeque::new(),
             iorefs_chirho: HashMap::new(),
             next_ioref_chirho: 0,
+            tvars_chirho: HashMap::new(),
+            next_tvar_chirho: 0,
         }
     }
 
@@ -2840,6 +2846,72 @@ impl MachineChirho {
                 // Since our ST monad is just identity-like (same as IO without I/O),
                 // we simply evaluate the argument which should be the result of the
                 // ST computation.
+                let val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                return Ok(val_chirho);
+            }
+
+            // ── STM (Software Transactional Memory) operations ──
+            PrimOpKindChirho::NewTVarChirho => {
+                // newTVar# val → allocate a new TVar, return its id as Int
+                let val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let id_chirho = self.next_tvar_chirho;
+                self.next_tvar_chirho += 1;
+                self.tvars_chirho.insert(id_chirho, val_chirho);
+                return Ok(ValueChirho::IntChirho(id_chirho as i64));
+            }
+            PrimOpKindChirho::ReadTVarChirho => {
+                // readTVar# tvar → read the current value of a TVar
+                let tvar_id_chirho = match args_chirho.first() {
+                    Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
+                    _ => return Ok(ValueChirho::IntChirho(0)),
+                };
+                let val_chirho = self.tvars_chirho.get(&tvar_id_chirho).cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                // Force thunks to WHNF if needed
+                if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
+                    match self.force_addr_to_whnf_chirho(addr_chirho) {
+                        Ok(forced_chirho) => {
+                            let resolved_chirho = self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(forced_chirho));
+                            return Ok(resolved_chirho);
+                        }
+                        Err(_) => return Ok(ValueChirho::HeapPtrChirho(addr_chirho)),
+                    }
+                }
+                return Ok(val_chirho);
+            }
+            PrimOpKindChirho::WriteTVarChirho => {
+                // writeTVar# tvar val → write a new value to a TVar
+                let tvar_id_chirho = match args_chirho.first() {
+                    Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
+                    _ => return Ok(ValueChirho::IntChirho(0)),
+                };
+                let mut val_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0));
+                // Force thunks to WHNF before storing
+                if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
+                    match self.force_addr_to_whnf_chirho(addr_chirho) {
+                        Ok(forced_chirho) => {
+                            val_chirho = self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(forced_chirho));
+                        }
+                        Err(_) => {}
+                    }
+                }
+                self.tvars_chirho.insert(tvar_id_chirho, val_chirho);
+                return Ok(ValueChirho::IntChirho(0)); // STM ()
+            }
+            PrimOpKindChirho::AtomicallyChirho => {
+                // atomically# action → execute STM action (in single-threaded evaluator,
+                // transactions always succeed since there's no concurrent modification)
+                let val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                return Ok(val_chirho);
+            }
+            PrimOpKindChirho::RetryChirho => {
+                // retry# → in single-threaded evaluator, retry blocks forever since
+                // there's no concurrent writer to change TVars. Signal error.
+                return Err(EvalErrorChirho::RuntimeErrorChirho("STM retry: no concurrent transaction to resolve retry".to_string()));
+            }
+            PrimOpKindChirho::OrElseChirho => {
+                // orElse# action1 action2 → try action1, if it retries, try action2
+                // In single-threaded mode, just return the first action's result
                 let val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
                 return Ok(val_chirho);
             }

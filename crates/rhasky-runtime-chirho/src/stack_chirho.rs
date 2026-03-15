@@ -411,6 +411,20 @@ pub enum PrimOpKindChirho {
     SetFilterChirho,
     /// setFoldr# :: (a -> b -> b) -> b -> Set a -> b — right fold over set
     SetFoldrChirho,
+
+    // ── STM (Software Transactional Memory) operations ──
+    /// newTVar# :: a -> STM (TVar a) — create a new TVar with initial value
+    NewTVarChirho,
+    /// readTVar# :: TVar a -> STM a — read the current value of a TVar
+    ReadTVarChirho,
+    /// writeTVar# :: TVar a -> a -> STM () — write a new value to a TVar
+    WriteTVarChirho,
+    /// atomically# :: STM a -> IO a — execute an STM transaction
+    AtomicallyChirho,
+    /// retry# :: STM a — abort and retry transaction when a TVar changes
+    RetryChirho,
+    /// orElse# :: STM a -> STM a -> STM a — try first, if it retries try second
+    OrElseChirho,
 }
 
 /// The evaluation stack.

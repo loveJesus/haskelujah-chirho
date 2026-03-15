@@ -3671,6 +3671,135 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // ── STM (Software Transactional Memory) operations ──
+    // newTVar :: a -> IO (TVar a)  (TVar a ≈ Int at runtime)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3290));
+        env_chirho.bind_chirho(
+            "newTVar".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3290)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    a_chirho,
+                    TyChirho::io_chirho(TyChirho::int_chirho()),
+                ),
+            },
+        );
+    }
+
+    // newTVarIO :: a -> IO (TVar a)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3291));
+        env_chirho.bind_chirho(
+            "newTVarIO".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3291)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    a_chirho,
+                    TyChirho::io_chirho(TyChirho::int_chirho()),
+                ),
+            },
+        );
+    }
+
+    // readTVar :: TVar a -> IO a
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3292));
+        env_chirho.bind_chirho(
+            "readTVar".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3292)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::io_chirho(a_chirho),
+                ),
+            },
+        );
+    }
+
+    // readTVarIO :: TVar a -> IO a
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3293));
+        env_chirho.bind_chirho(
+            "readTVarIO".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3293)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::io_chirho(a_chirho),
+                ),
+            },
+        );
+    }
+
+    // writeTVar :: TVar a -> a -> IO ()
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3294));
+        env_chirho.bind_chirho(
+            "writeTVar".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3294)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![TyChirho::int_chirho(), a_chirho],
+                    TyChirho::io_chirho(TyChirho::unit_chirho()),
+                ),
+            },
+        );
+    }
+
+    // atomically :: STM a -> IO a  (single-threaded: identity)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3295));
+        env_chirho.bind_chirho(
+            "atomically".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3295)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::io_chirho(a_chirho.clone()),
+                    TyChirho::io_chirho(a_chirho),
+                ),
+            },
+        );
+    }
+
+    // retry :: STM a  (returns IO a in our single-threaded model)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3296));
+        env_chirho.bind_chirho(
+            "retry".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3296)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::io_chirho(a_chirho),
+            },
+        );
+    }
+
+    // orElse :: STM a -> STM a -> STM a  (simplified: IO a -> IO a -> IO a)
+    {
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(3297));
+        env_chirho.bind_chirho(
+            "orElse".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3297)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::io_chirho(a_chirho.clone()),
+                        TyChirho::io_chirho(a_chirho.clone()),
+                    ],
+                    TyChirho::io_chirho(a_chirho),
+                ),
+            },
+        );
+    }
+
     // ── Data.Map operations ──
     // mapEmpty :: Map k v  (simplified as Int)
     env_chirho.bind_chirho(

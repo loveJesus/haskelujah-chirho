@@ -239,6 +239,23 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Control.Concurrent.STM
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "newTVar", "readTVar", "writeTVar",
+            "newTVarIO", "readTVarIO",
+            "atomically", "retry", "orElse",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Concurrent.STM".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Prelude — the implicit import every Haskell module gets
     {
         let mut exports_chirho = IfaceExportsChirho::default();
@@ -310,6 +327,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "returnWriterT", "bindWriterT", "execWriterT", "execWriter",
             // NFData / deepseq
             "deepseq", "force", "evaluate",
+            // STM
+            "newTVar", "readTVar", "writeTVar", "newTVarIO", "readTVarIO",
+            "atomically", "retry", "orElse",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);

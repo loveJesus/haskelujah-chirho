@@ -701,6 +701,14 @@ pub fn apply_prim_binop_chirho(
         // standalone prim_chirho dispatch should never be reached for these.
         PrimOpKindChirho::BracketChirho
         | PrimOpKindChirho::FinallyChirho => Ok(ValueChirho::IntChirho(0)),
+        // STM primops — dispatched directly in MachineChirho::eval_prim_chirho
+        // which has access to the TVar map; standalone dispatch unreachable.
+        PrimOpKindChirho::NewTVarChirho
+        | PrimOpKindChirho::ReadTVarChirho
+        | PrimOpKindChirho::WriteTVarChirho
+        | PrimOpKindChirho::AtomicallyChirho
+        | PrimOpKindChirho::RetryChirho
+        | PrimOpKindChirho::OrElseChirho => Ok(ValueChirho::IntChirho(0)),
     }
 }
 

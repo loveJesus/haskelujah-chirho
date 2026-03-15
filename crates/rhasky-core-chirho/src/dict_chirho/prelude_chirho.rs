@@ -11527,6 +11527,216 @@ impl DictPassCtxChirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
+
+        // ── STM (Software Transactional Memory) operations ──
+
+        // newTVar :: a -> STM (TVar a)
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("newTVar");
+            let v_chirho = self.fresh_binder_chirho("v", a_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: v_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "newTVar#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(v_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "newTVar".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), TyChirho::int_chirho()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // newTVarIO :: a -> IO (TVar a)  (convenience for creating TVars in IO)
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("newTVarIO");
+            let v_chirho = self.fresh_binder_chirho("v", a_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: v_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "newTVar#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(v_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "newTVarIO".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), TyChirho::int_chirho()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // readTVar :: TVar a -> STM a
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("readTVar");
+            let r_chirho = self.fresh_binder_chirho("r", TyChirho::int_chirho());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: r_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "readTVar#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(r_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "readTVar".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), a_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // readTVarIO :: TVar a -> IO a  (convenience for reading TVars in IO)
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("readTVarIO");
+            let r_chirho = self.fresh_binder_chirho("r", TyChirho::int_chirho());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: r_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "readTVar#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(r_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "readTVarIO".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), a_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // writeTVar :: TVar a -> a -> STM ()
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("writeTVar");
+            let r_chirho = self.fresh_binder_chirho("r", TyChirho::int_chirho());
+            let v_chirho = self.fresh_binder_chirho("v", a_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: r_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: v_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "writeTVar#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(r_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(v_chirho.id_chirho),
+                        ],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "writeTVar".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::int_chirho(),
+                        TyChirho::fun_chirho(a_chirho.clone(), TyChirho::int_chirho()),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // atomically :: STM a -> IO a
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("atomically");
+            let f_chirho = self.fresh_binder_chirho("f", a_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: f_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "atomically#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(f_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "atomically".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // retry :: STM a
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("retry");
+            let rhs_chirho = CoreExprChirho::PrimOpChirho {
+                name_chirho: "retry#".to_string(),
+                args_chirho: vec![],
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "retry".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // orElse :: STM a -> STM a -> STM a
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("orElse");
+            let a1_chirho = self.fresh_binder_chirho("a1", a_chirho.clone());
+            let a2_chirho = self.fresh_binder_chirho("a2", a_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: a1_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: a2_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "orElse#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(a1_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(a2_chirho.id_chirho),
+                        ],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "orElse".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        a_chirho.clone(),
+                        TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
     }
 
     /// Generate higher-order list functions: sortBy, nubBy, maximumBy,
