@@ -298,6 +298,30 @@ impl LowerCtxChirho {
         // Extract SPECIALIZE pragmas
         let specialize_pragmas_chirho = self.extract_specialize_pragmas_chirho(root_chirho);
 
+        // Extract foreign exports from ForeignDeclChirho entries
+        let foreign_exports_chirho: Vec<(String, String, String)> = decls_chirho
+            .iter()
+            .filter_map(|d_chirho| {
+                if let DeclChirho::ForeignDeclChirho {
+                    direction_chirho: ForeignDirectionChirho::ExportChirho,
+                    name_chirho,
+                    calling_conv_chirho,
+                    foreign_name_chirho,
+                    ..
+                } = d_chirho
+                {
+                    let haskell_name_chirho = name_chirho.text_chirho().to_string();
+                    let c_name_chirho = foreign_name_chirho
+                        .as_deref()
+                        .unwrap_or(name_chirho.text_chirho())
+                        .to_string();
+                    Some((haskell_name_chirho, c_name_chirho, calling_conv_chirho.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         ModuleChirho {
             name_chirho: module_name_chirho,
             exports_chirho,
@@ -306,6 +330,7 @@ impl LowerCtxChirho {
             extensions_chirho,
             inline_pragmas_chirho,
             specialize_pragmas_chirho,
+            foreign_exports_chirho,
             span_chirho: self.span_chirho(start_chirho, end_chirho),
         }
     }

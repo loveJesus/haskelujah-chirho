@@ -303,6 +303,7 @@ pub fn simplify_module_chirho(
         bindings_chirho,
         names_chirho: module_chirho.names_chirho.clone(),
         specialize_pragmas_chirho: module_chirho.specialize_pragmas_chirho.clone(),
+        foreign_exports_chirho: module_chirho.foreign_exports_chirho.clone(),
     }
 }
 
@@ -987,6 +988,7 @@ pub fn elide_dicts_and_filter_chirho(module_chirho: &CoreModuleChirho) -> CoreMo
         bindings_chirho: filtered_chirho,
         names_chirho: module_chirho.names_chirho.clone(),
         specialize_pragmas_chirho: module_chirho.specialize_pragmas_chirho.clone(),
+        foreign_exports_chirho: module_chirho.foreign_exports_chirho.clone(),
     }
 }
 
@@ -2287,6 +2289,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
 
         let config_chirho = SimplifyConfigChirho::default();
@@ -2437,6 +2440,7 @@ mod tests_chirho {
             ],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = SimplifyConfigChirho::default();
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
@@ -2469,6 +2473,7 @@ mod tests_chirho {
             ],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = SimplifyConfigChirho::default();
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
@@ -2501,6 +2506,7 @@ mod tests_chirho {
             ],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = SimplifyConfigChirho::default();
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
@@ -2536,6 +2542,7 @@ mod tests_chirho {
             ],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = SimplifyConfigChirho::default();
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
@@ -2571,6 +2578,7 @@ mod tests_chirho {
             ],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = SimplifyConfigChirho::default();
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
@@ -2603,6 +2611,7 @@ mod tests_chirho {
             ],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = SimplifyConfigChirho::default();
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
@@ -2648,6 +2657,7 @@ mod tests_chirho {
             ],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = SimplifyConfigChirho::default();
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
@@ -2928,6 +2938,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: spec_map_chirho,
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = SimplifyConfigChirho::default();
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
@@ -2959,6 +2970,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: spec_map_chirho,
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = SimplifyConfigChirho::default();
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
@@ -2984,6 +2996,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: spec_map_chirho,
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = SimplifyConfigChirho::default();
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
@@ -3017,6 +3030,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: spec_map_chirho,
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = SimplifyConfigChirho::default();
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);

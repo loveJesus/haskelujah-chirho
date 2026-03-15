@@ -827,6 +827,17 @@ impl DesugarCtxChirho {
                 bindings_chirho,
                 names_chirho: self.names_chirho.clone(),
                 specialize_pragmas_chirho: module_chirho.specialize_pragmas_chirho.clone(),
+                foreign_exports_chirho: module_chirho
+                    .foreign_exports_chirho
+                    .iter()
+                    .map(|(h_chirho, c_chirho, cc_chirho)| {
+                        crate::expr_chirho::ForeignExportChirho {
+                            haskell_name_chirho: h_chirho.clone(),
+                            foreign_name_chirho: c_chirho.clone(),
+                            calling_conv_chirho: cc_chirho.clone(),
+                        }
+                    })
+                    .collect(),
             },
             names_chirho: self.names_chirho.clone(),
         }
@@ -2409,6 +2420,36 @@ impl DesugarCtxChirho {
                     };
                 }
 
+                // ($!!) is deep strict application: f $!! x = deepseq x (f x)
+                // Desugars to: case x of { _ -> f x }  (same as $! at Core level,
+                // since full NF evaluation requires NFData dict which the dict pass handles)
+                if op_name_chirho == "$!!" {
+                    let wild_chirho = self.fresh_binder_chirho(
+                        "_wild",
+                        TyChirho::VarChirho(
+                            rhasky_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
+                        ),
+                        SpanChirho::DUMMY_CHIRHO,
+                    );
+                    return CoreExprChirho::CaseChirho {
+                        scrutinee_chirho: Box::new(right_core_chirho.clone()),
+                        bind_chirho: wild_chirho,
+                        result_ty_chirho: TyChirho::VarChirho(
+                            rhasky_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho + 1),
+                        ),
+                        alts_chirho: vec![
+                            crate::expr_chirho::CoreAltChirho {
+                                con_chirho: AltConChirho::DefaultChirho,
+                                binders_chirho: vec![],
+                                rhs_chirho: CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(left_core_chirho),
+                                    arg_chirho: Box::new(right_core_chirho),
+                                },
+                            },
+                        ],
+                    };
+                }
+
                 // (.) is function composition: (f . g) x = f (g x)
                 // At the expression level, f . g desugars to \x -> f (g x)
                 if op_name_chirho == "." {
@@ -3766,6 +3807,7 @@ mod tests_chirho {
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -3881,6 +3923,7 @@ mod tests_chirho {
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -4093,6 +4136,7 @@ mod tests_chirho {
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -4564,6 +4608,7 @@ mod tests_chirho {
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);
@@ -4675,6 +4720,7 @@ mod tests_chirho {
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);
@@ -4780,6 +4826,7 @@ mod tests_chirho {
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);

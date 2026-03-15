@@ -800,6 +800,7 @@ pub fn eval_modules_chirho(
         bindings_chirho: merged_bindings_chirho,
         names_chirho: merged_names_chirho,
         specialize_pragmas_chirho: std::collections::HashMap::new(),
+        foreign_exports_chirho: vec![],
     };
 
     let (value_chirho, _machine_chirho) = stg_lower_chirho::lower_and_run_chirho(

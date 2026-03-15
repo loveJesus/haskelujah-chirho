@@ -944,3 +944,76 @@ main = fib 10"#;
         );
     }
 
+    // ── §44 Foreign exports ──────────────────────────────────────────────
+
+    #[test]
+    fn foreign_export_parsed_and_reaches_core_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = concat!(
+            "module Test where\n",
+            "foreign export ccall addOne :: Int -> Int\n",
+            "addOne x = x + 1\n",
+            "main = addOne 41\n",
+        );
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ForeignExport.hs")
+            .expect("should compile with foreign export");
+        // The Core module should have the foreign export recorded
+        assert!(
+            !result_chirho.core_chirho.foreign_exports_chirho.is_empty(),
+            "foreign exports should be propagated to Core module"
+        );
+        let export_chirho = &result_chirho.core_chirho.foreign_exports_chirho[0];
+        assert_eq!(export_chirho.haskell_name_chirho, "addOne");
+        assert_eq!(export_chirho.foreign_name_chirho, "addOne");
+        assert_eq!(export_chirho.calling_conv_chirho, "ccall");
+    }
+
+    #[test]
+    fn foreign_export_with_custom_c_name_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = concat!(
+            "module Test where\n",
+            "foreign export ccall \"hs_add_one\" addOne :: Int -> Int\n",
+            "addOne x = x + 1\n",
+            "main = addOne 41\n",
+        );
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ForeignExportName.hs")
+            .expect("should compile with custom C name");
+        let export_chirho = &result_chirho.core_chirho.foreign_exports_chirho[0];
+        assert_eq!(export_chirho.haskell_name_chirho, "addOne");
+        assert_eq!(export_chirho.foreign_name_chirho, "hs_add_one");
+    }
+
+    #[test]
+    fn foreign_export_llvm_emits_wrapper_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = concat!(
+            "module Test where\n",
+            "foreign export ccall \"hs_val\" getVal :: Int\n",
+            "getVal = 42\n",
+            "main = getVal\n",
+        );
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ForeignExportLLVM.hs")
+            .expect("should compile");
+        assert!(
+            result_chirho.llvm_ir_chirho.contains("@hs_val"),
+            "LLVM IR should contain the foreign export wrapper: {}",
+            result_chirho.llvm_ir_chirho
+        );
+    }
+
+    #[test]
+    fn foreign_export_eval_still_works_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = concat!(
+            "module Test where\n",
+            "foreign export ccall addOne :: Int -> Int\n",
+            "addOne x = x + 1\n",
+            "main = addOne 41\n",
+        );
+        let (val_chirho, _machine_chirho) = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "ForeignExportEval.hs", None,
+        ).expect("foreign export should not break evaluation");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+

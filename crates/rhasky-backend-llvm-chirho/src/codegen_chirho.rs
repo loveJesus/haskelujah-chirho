@@ -120,6 +120,34 @@ impl LlvmCodegenChirho {
             self.output_chirho.push('\n');
         }
 
+        // Emit foreign export stubs: wrapper functions with C linkage
+        // that call into the corresponding Haskell binding.
+        for export_chirho in &module_chirho.foreign_exports_chirho {
+            let haskell_fn_chirho = mangle_name_chirho(&export_chirho.haskell_name_chirho);
+            let c_name_chirho = &export_chirho.foreign_name_chirho;
+            writeln!(self.output_chirho).unwrap();
+            writeln!(
+                self.output_chirho,
+                "; foreign export {} \"{}\" = {}",
+                export_chirho.calling_conv_chirho,
+                c_name_chirho,
+                export_chirho.haskell_name_chirho
+            )
+            .unwrap();
+            writeln!(
+                self.output_chirho,
+                "define i64 @{c_name_chirho}() {{"
+            )
+            .unwrap();
+            writeln!(
+                self.output_chirho,
+                "  %result = call i64 @{haskell_fn_chirho}()"
+            )
+            .unwrap();
+            writeln!(self.output_chirho, "  ret i64 %result").unwrap();
+            writeln!(self.output_chirho, "}}").unwrap();
+        }
+
         self.output_chirho.clone()
     }
 
@@ -819,6 +847,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
@@ -843,6 +872,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
@@ -870,6 +900,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
@@ -906,6 +937,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
@@ -940,6 +972,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
 
         let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
@@ -964,6 +997,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
 
         let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
@@ -990,6 +1024,7 @@ mod tests_chirho {
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
 
         let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);

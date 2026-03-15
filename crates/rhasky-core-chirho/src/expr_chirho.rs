@@ -180,6 +180,20 @@ pub struct CoreBindingChirho {
 }
 
 /// A Core module — the result of desugaring a source module.
+/// A foreign export declaration in Core IR.
+///
+/// Records a Haskell binding that should be made callable from C/JS
+/// via a wrapper with a specific calling convention and external name.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ForeignExportChirho {
+    /// The Haskell name of the binding being exported.
+    pub haskell_name_chirho: String,
+    /// The C/external name for the export stub.
+    pub foreign_name_chirho: String,
+    /// Calling convention (e.g. "ccall", "javascript").
+    pub calling_conv_chirho: String,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct CoreModuleChirho {
     pub name_chirho: String,
@@ -188,6 +202,8 @@ pub struct CoreModuleChirho {
     pub names_chirho: HashMap<CoreIdChirho, String>,
     /// SPECIALIZE pragmas: binding name → list of specialization type strings.
     pub specialize_pragmas_chirho: HashMap<String, Vec<String>>,
+    /// Foreign exports: Haskell functions to expose via C/JS calling convention.
+    pub foreign_exports_chirho: Vec<ForeignExportChirho>,
 }
 
 #[cfg(test)]
@@ -289,6 +305,7 @@ mod tests_chirho {
             }],
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
         assert_eq!(module_chirho.name_chirho, "Main");
         assert_eq!(module_chirho.bindings_chirho.len(), 1);

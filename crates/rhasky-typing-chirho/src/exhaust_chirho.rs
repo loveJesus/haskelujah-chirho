@@ -811,6 +811,7 @@ mod tests_chirho {
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }
     }

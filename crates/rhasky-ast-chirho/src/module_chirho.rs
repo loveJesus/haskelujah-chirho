@@ -37,6 +37,8 @@ pub struct ModuleChirho {
     /// SPECIALIZE pragmas: maps binding name → list of specialization type strings.
     /// Each string is the raw type text from `{-# SPECIALIZE f :: Type #-}`.
     pub specialize_pragmas_chirho: std::collections::HashMap<String, Vec<String>>,
+    /// Foreign export declarations extracted from `foreign export ccall ...` decls.
+    pub foreign_exports_chirho: Vec<(String, String, String)>,
     /// Span covering the entire module.
     pub span_chirho: SpanChirho,
 }
@@ -121,6 +123,7 @@ mod tests_chirho {
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         assert_eq!(module_chirho.name_chirho.text_chirho(), "Main");

@@ -6052,3 +6052,29 @@ main = sum (pascal 10)
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
     }
 
+    // ── $!! (deep strict application) tests ──────────────────────────────
+
+    #[test]
+    fn eval_double_bang_dollar_basic_chirho() {
+        // f $!! x = deepseq x (f x) → (+1) $!! 41 should evaluate to 42
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let (val_chirho, _machine_chirho) = eval_source_with_machine_chirho(
+            "module Test where\nmain = (+1) $!! 41\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("$!! should evaluate");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn eval_double_bang_dollar_with_expression_chirho() {
+        // f $!! (2 + 3) should deeply evaluate 2+3 then apply f
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let (val_chirho, _machine_chirho) = eval_source_with_machine_chirho(
+            "module Test where\nf x = x * 2\nmain = f $!! (2 + 3)\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("$!! with expression should evaluate");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10));
+    }
+

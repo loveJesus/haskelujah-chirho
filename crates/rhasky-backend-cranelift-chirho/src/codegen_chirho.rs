@@ -311,6 +311,7 @@ mod tests_chirho {
             }],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         }
     }
 
@@ -336,6 +337,7 @@ mod tests_chirho {
             bindings_chirho: vec![],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         let config_chirho = TargetConfigChirho::default();
         let result_chirho = compile_core_to_object_chirho(&module_chirho, &config_chirho);
@@ -369,6 +371,7 @@ mod tests_chirho {
             }],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -486,6 +489,7 @@ mod tests_chirho {
             }],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -516,6 +520,7 @@ mod tests_chirho {
             }],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -546,6 +551,7 @@ mod tests_chirho {
             }],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -649,6 +655,7 @@ mod tests_chirho {
             }],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -691,6 +698,7 @@ mod tests_chirho {
             }],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -732,6 +740,7 @@ mod tests_chirho {
             }],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -793,6 +802,7 @@ mod tests_chirho {
             }],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -900,6 +910,7 @@ mod tests_chirho {
             bindings_chirho: vec![f_binding_chirho, main_binding_chirho],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -941,6 +952,7 @@ mod tests_chirho {
             bindings_chirho: vec![inc_binding_chirho, main_binding_chirho],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -974,6 +986,7 @@ mod tests_chirho {
             bindings_chirho: vec![main_binding_chirho, dead_binding_chirho],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
 
         let config_chirho = TargetConfigChirho::default();
@@ -1040,6 +1053,7 @@ mod tests_chirho {
             bindings_chirho: vec![f_binding_chirho, main_binding_chirho],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -1101,6 +1115,7 @@ mod tests_chirho {
             bindings_chirho: vec![fact_binding_chirho],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
         };
         compile_ok_chirho(&module_chirho);
     }

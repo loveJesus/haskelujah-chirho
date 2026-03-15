@@ -905,6 +905,7 @@ mod tests_chirho {
             }],
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
         assert_eq!(find_max_id_chirho(&module_chirho), 42);
     }
@@ -1102,6 +1103,7 @@ mod tests_chirho {
             }],
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
         };
 
         let result_chirho = dict_pass_module_chirho(

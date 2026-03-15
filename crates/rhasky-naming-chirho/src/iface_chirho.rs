@@ -327,7 +327,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "WriterT", "runWriterT", "runWriter", "tell",
             "returnWriterT", "bindWriterT", "execWriterT", "execWriter",
             // NFData / deepseq
-            "deepseq", "force", "evaluate",
+            "deepseq", "force", "evaluate", "$!!",
             // STM
             "newTVar", "readTVar", "writeTVar", "newTVarIO", "readTVarIO",
             "atomically", "retry", "orElse",
@@ -683,6 +683,7 @@ mod tests_chirho {
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }
     }
@@ -953,6 +954,7 @@ mod tests_chirho {
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -1009,6 +1011,7 @@ mod tests_chirho {
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 

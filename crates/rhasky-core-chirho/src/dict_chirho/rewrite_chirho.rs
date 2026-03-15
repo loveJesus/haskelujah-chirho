@@ -741,6 +741,7 @@ impl DictPassCtxChirho {
             bindings_chirho: all_bindings_chirho,
             names_chirho: self.names_chirho.clone(),
             specialize_pragmas_chirho: module_chirho.specialize_pragmas_chirho.clone(),
+            foreign_exports_chirho: module_chirho.foreign_exports_chirho.clone(),
         }
     }
 

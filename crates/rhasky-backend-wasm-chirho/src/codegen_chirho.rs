@@ -132,12 +132,23 @@ impl WasmEmitterChirho {
         self.emit_section_chirho(SECTION_FUNCTION_CHIRHO, &func_section_chirho);
 
         // === Export Section ===
+        // Export all functions by their Haskell name, plus foreign exports by their C name
+        let foreign_export_count_chirho = module_chirho.foreign_exports_chirho.len();
+        let total_exports_chirho = func_count_chirho + foreign_export_count_chirho;
         let mut export_section_chirho = Vec::new();
-        encode_u32_chirho(&mut export_section_chirho, func_count_chirho as u32);
+        encode_u32_chirho(&mut export_section_chirho, total_exports_chirho as u32);
         for (i_chirho, info_chirho) in func_infos_chirho.iter().enumerate() {
             encode_string_chirho(&mut export_section_chirho, &info_chirho.name_chirho);
             export_section_chirho.push(0x00); // func export
             encode_u32_chirho(&mut export_section_chirho, i_chirho as u32);
+        }
+        // Foreign export stubs: export the same function under the C/foreign name
+        for export_chirho in &module_chirho.foreign_exports_chirho {
+            if let Some(func_idx_chirho) = func_idx_map_chirho.get(&export_chirho.haskell_name_chirho) {
+                encode_string_chirho(&mut export_section_chirho, &export_chirho.foreign_name_chirho);
+                export_section_chirho.push(0x00); // func export
+                encode_u32_chirho(&mut export_section_chirho, *func_idx_chirho);
+            }
         }
 
         self.emit_section_chirho(SECTION_EXPORT_CHIRHO, &export_section_chirho);
@@ -715,6 +726,7 @@ mod tests_chirho {
             bindings_chirho,
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
         }
     }
 
