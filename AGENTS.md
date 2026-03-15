@@ -175,7 +175,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1728 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1744 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -274,4 +274,4 @@ _These items address structural issues identified in the Codex engineering revie
 59. ~~**Benchmark suite**~~ — DONE (nofib-style benchmark infrastructure in `rhasky-test-harness-chirho::bench_chirho`: `BenchDefChirho` definitions, `BenchResultChirho` with per-phase timing (frontend/core/eval), `BenchSuiteResultChirho` with summary table and correct-count; `nofib_benchmarks_chirho()` returns 10 curated benchmarks across 2 categories: imaginary (nfib, tak, fib, ack, factorial) and spectral (sumList, gcd, collatz, power, isPrime); `run_benchmark_chirho` and `run_nofib_suite_chirho` runners with compile-and-eval callback; 8 harness unit tests + 11 driver integration tests (1 per benchmark + suite-level correctness); all 10 benchmarks produce correct results; 1706 tests total)
 60. ~~**Haskell Report conformance tracker**~~ — DONE (ConformanceTrackerChirho in rhasky-test-harness-chirho with StatusChirho enum, ReportSectionChirho struct, 39 sections mapped from Report chapters 2–8; count_by_status_chirho, pass_rate_chirho, summary_table_chirho methods; haskell_2010_conformance_chirho() factory; 7 harness unit tests + 10 driver integration tests with spot-check compilation of DONE sections; 1723 tests total)
 61. ~~**Backend round-trip smoke tests**~~ — DONE (8 test programs × 3 backends: STG baseline verification, LLVM IR structural checks, Wasm magic/version validation, Cranelift ELF/Mach-O/COFF header checks; cross-backend consistency test verifies all backends produce non-empty output; test cases: constant, arithmetic, conditional, let_binding, case_expr, recursive, nested_let, multi_arg; `ROUNDTRIP_CASES_CHIRHO` array-driven design; 1728 tests total)
-62. **Differential testing against GHC** — syntax and typechecker edge case comparison
+62. ~~**Differential testing against GHC**~~ — DONE (25 differential test cases across 4 categories: syntax (7: operator sections, backtick, nested comments, where, negation, multiline string), types (6: monomorphism restriction, polymorphic let, annotations, show dispatch, newtype, type error rejection), semantics (6: lazy if, seq, case default, guards, list comprehension, where scoping), edge (6: shadowing, tuples, as-patterns, wildcards, empty sum, composition); `DiffTestCaseChirho` with pre-recorded GHC 9.8 reference answers; `CompileOutcomeChirho` enum; `run_diff_suite_chirho` runner; 25/25 (100%) Rhasky-GHC agreement; 10 harness unit tests + 6 driver integration tests; 1744 tests total)

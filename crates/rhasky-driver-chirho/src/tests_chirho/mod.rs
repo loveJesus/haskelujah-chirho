@@ -18,5 +18,6 @@ pub mod project_chirho;
 pub mod proptest_chirho;
 pub mod bench_chirho;
 pub mod install_chirho;
+pub mod diff_chirho;
 pub mod report_chirho;
 pub mod roundtrip_chirho;
