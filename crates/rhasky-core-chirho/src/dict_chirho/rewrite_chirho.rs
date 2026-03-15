@@ -469,6 +469,7 @@ impl DictPassCtxChirho {
                     | "Bounded" | "Integral" | "Real" | "RealFrac"
                     | "Floating" | "RealFloat" => Some("Int"),
                     "IsString" => Some("[Char]"),
+                    "IsList" => Some("[t9037]"),
                     _ => None,
                 };
                 default_type_chirho.and_then(|dt_chirho| {
@@ -664,6 +665,34 @@ impl DictPassCtxChirho {
         // Generate ground specializations of conditional instances
         // (e.g. Eq [Double] from Eq a => Eq [a] + Eq Double)
         self.generate_conditional_ground_dicts_chirho(class_env_chirho);
+
+        // Seed local_shadow_ids with top-level user bindings whose name
+        // collides with a class method (e.g. user defines `toList` which
+        // shadows the IsList class method).  Without this, the dict pass
+        // would incorrectly rewrite user calls to `toList` as if they were
+        // the IsList method.
+        for binding_chirho in &module_chirho.bindings_chirho {
+            let name_chirho = &binding_chirho.binder_chirho.name_chirho;
+            if self.method_selectors_chirho.contains_key(name_chirho) {
+                // Only shadow if the binding is NOT itself a class method
+                // (i.e. it has no matching class predicate in its type scheme)
+                let is_class_method_chirho = type_env_chirho
+                    .lookup_chirho(name_chirho)
+                    .map(|s_chirho| {
+                        s_chirho.preds_chirho.iter().any(|p_chirho| {
+                            let (class_chirho, _) =
+                                &self.method_selectors_chirho[name_chirho];
+                            &p_chirho.class_name_chirho == class_chirho
+                        })
+                    })
+                    .unwrap_or(false);
+                if !is_class_method_chirho {
+                    self.local_shadow_ids_chirho
+                        .borrow_mut()
+                        .insert(binding_chirho.binder_chirho.id_chirho);
+                }
+            }
+        }
 
         // Transform each binding
         let mut bindings_chirho = Vec::new();

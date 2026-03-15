@@ -141,6 +141,8 @@ pub enum PrimOpKindChirho {
     EvaluateChirho,
     /// Force to NF and return: force :: NFData a => a -> a
     ForceChirho,
+    /// Identity function: id# :: a -> a (returns first arg unchanged)
+    IdChirho,
     /// Convert an Int to its String representation: showInt# :: Int -> String
     ShowIntChirho,
     /// Convert a Bool to its String representation: showBool# :: Bool -> String

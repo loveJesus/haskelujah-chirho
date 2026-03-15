@@ -633,6 +633,7 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::SeqChirho
         | PrimOpKindChirho::EvaluateChirho
         | PrimOpKindChirho::ForceChirho
+        | PrimOpKindChirho::IdChirho
         | PrimOpKindChirho::ShowMaybeChirho
         | PrimOpKindChirho::ShowTuple2Chirho
         | PrimOpKindChirho::ShowEitherChirho

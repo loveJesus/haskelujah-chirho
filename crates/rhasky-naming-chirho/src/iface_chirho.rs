@@ -285,7 +285,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             // Monad/Functor
             "fmap", "return", "mapM_", "sequence_", "when", "unless",
             // Conversion
-            "fromString",
+            "fromString", "fromList", "toList",
             // Comparison
             "compare",
             // String ops

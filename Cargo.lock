@@ -439,6 +439,7 @@ dependencies = [
  "rhasky-core-chirho",
  "rhasky-driver-chirho",
  "rhasky-naming-chirho",
+ "rhasky-package-chirho",
  "rhasky-runtime-chirho",
  "rhasky-span-chirho",
  "rhasky-syntax-chirho",

@@ -1727,6 +1727,7 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "pi#" => PrimOpKindChirho::PiFloatChirho,
         "^#" => PrimOpKindChirho::PowIntChirho,
         "**#" => PrimOpKindChirho::PowFloatChirho,
+        "id#" => PrimOpKindChirho::IdChirho,
         "error" => PrimOpKindChirho::ErrorChirho,
         "undefined" => PrimOpKindChirho::UndefinedChirho,
         "seq" | "deepseq" => PrimOpKindChirho::SeqChirho,

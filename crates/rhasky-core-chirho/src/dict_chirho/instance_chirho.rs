@@ -97,6 +97,9 @@ impl DictPassCtxChirho {
             ("Ord", "compare", "Ordering", 1),
             // IsString (OverloadedStrings)
             ("IsString", "fromString", "[Char]", 0),
+            // IsList (OverloadedLists) — identity for [a] (type key matches TyVarChirho(9037))
+            ("IsList", "fromList", "[t9037]", 0),
+            ("IsList", "toList", "[t9037]", 0),
         ];
 
         let primop_for_chirho =
@@ -152,6 +155,9 @@ impl DictPassCtxChirho {
                     ("Read", "read", "Int") => "readInt#",
                     ("Read", "read", "Double") => "readFloat#",
                     ("Read", "read", "Bool") => "readBool#",
+                    // IsList — identity for [a]
+                    ("IsList", "fromList", _) => "id#",
+                    ("IsList", "toList", _) => "id#",
                     _ => "+#", // fallback
                 }
             };

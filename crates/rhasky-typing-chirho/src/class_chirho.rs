@@ -1539,6 +1539,56 @@ impl ClassEnvChirho {
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });
+
+        // IsList (for OverloadedLists extension)
+        // Simplified: fromList :: [a] -> l, toList :: l -> [a]
+        let is_list_var_chirho = TyVarChirho(9035);
+        let is_list_item_var_chirho = TyVarChirho(9036);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "IsList".to_string(),
+            supers_chirho: vec![],
+            var_chirho: is_list_var_chirho,
+            methods_chirho: HashMap::from([
+                (
+                    "fromList".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![is_list_var_chirho, is_list_item_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::FunChirho(
+                            Box::new(TyChirho::ListChirho(Box::new(
+                                TyChirho::VarChirho(is_list_item_var_chirho),
+                            ))),
+                            Box::new(TyChirho::VarChirho(is_list_var_chirho)),
+                        ),
+                    },
+                ),
+                (
+                    "toList".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![is_list_var_chirho, is_list_item_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::FunChirho(
+                            Box::new(TyChirho::VarChirho(is_list_var_chirho)),
+                            Box::new(TyChirho::ListChirho(Box::new(
+                                TyChirho::VarChirho(is_list_item_var_chirho),
+                            ))),
+                        ),
+                    },
+                ),
+            ]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // instance IsList [a] (identity — fromList = id, toList = id)
+        let a_var_chirho = TyVarChirho(9037);
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "IsList".to_string(),
+            head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_var_chirho))),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
     }
 }
 

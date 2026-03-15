@@ -1213,5 +1213,35 @@ main = putStrLn (show (read "10" :: Int))
         assert_eq!(m_chirho.io_output_chirho, "10\n");
     }
 
+    // ── OverloadedLists tests ────────────────────────────────────────
+
+    #[test]
+    fn overloaded_lists_fromlist_identity_chirho() {
+        // fromList [10,20,30] should be identity on lists → head = 10
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = print (head (fromList [10,20,30]))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("overloaded lists fromList failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "10\n");
+    }
+
+    #[test]
+    fn overloaded_lists_fromlist_length_chirho() {
+        // fromList [10,20,30] should be identity → length = 3
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = print (length (fromList [10,20,30]))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("overloaded lists fromList length failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "3\n");
+    }
+
     // ── Algorithmic tests: stress-testing compiler capabilities ───────
 

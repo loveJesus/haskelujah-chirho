@@ -1643,6 +1643,10 @@ impl MachineChirho {
                 // this is equivalent to identity.
                 return Ok(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
             }
+            PrimOpKindChirho::IdChirho => {
+                // id# a = a (identity function — returns first arg unchanged)
+                return Ok(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+            }
             PrimOpKindChirho::CatchChirho => {
                 // catch# body handler
                 // body is the IO action, handler is the exception handler.

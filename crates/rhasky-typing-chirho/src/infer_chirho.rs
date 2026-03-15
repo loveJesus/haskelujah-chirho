@@ -2558,6 +2558,40 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // fromList :: forall a l. IsList l => [a] -> l
+    let fl_v_chirho = TyVarChirho(1198);
+    let fl_a_chirho = TyVarChirho(1199);
+    env_chirho.bind_chirho(
+        "fromList".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![fl_v_chirho, fl_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "IsList".to_string(),
+                ty_chirho: TyChirho::VarChirho(fl_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(fl_a_chirho))),
+                TyChirho::VarChirho(fl_v_chirho),
+            ),
+        },
+    );
+
+    // toList :: forall a l. IsList l => l -> [a]
+    env_chirho.bind_chirho(
+        "toList".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![fl_v_chirho, fl_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "IsList".to_string(),
+                ty_chirho: TyChirho::VarChirho(fl_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(fl_v_chirho),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(fl_a_chirho))),
+            ),
+        },
+    );
+
     // div :: Int -> Int -> Int  (Integral-specialized to Int)
     env_chirho.bind_chirho(
         "div".to_string(),
