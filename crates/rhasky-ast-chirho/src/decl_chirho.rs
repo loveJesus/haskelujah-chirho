@@ -183,6 +183,10 @@ pub struct ClassMethodChirho {
     pub name_chirho: NameChirho,
     pub ty_chirho: TypeChirho,
     pub default_chirho: Option<Vec<MatchArmChirho>>,
+    /// Default signature from `{-# LANGUAGE DefaultSignatures #-}`:
+    /// `default methodName :: MoreConstrained => Type`.
+    /// Stores the raw type text for the more-constrained default method type.
+    pub default_sig_chirho: Option<String>,
     pub span_chirho: SpanChirho,
 }
 

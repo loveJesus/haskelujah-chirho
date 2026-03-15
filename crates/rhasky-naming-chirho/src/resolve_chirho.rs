@@ -788,6 +788,7 @@ mod tests_chirho {
                             dummy_name_chirho("a"),
                         ),
                         default_chirho: None,
+                        default_sig_chirho: None,
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                 ],

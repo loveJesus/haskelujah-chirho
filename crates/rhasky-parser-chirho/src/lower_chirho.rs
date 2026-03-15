@@ -1730,6 +1730,40 @@ impl LowerCtxChirho {
             }
         }
 
+        // Extract DefaultSignatures: `default methodName :: ConstrainedType`
+        // from DefaultDeclChirho nodes in the where clause. These have a VarId
+        // followed by `::` after the `default` keyword.
+        let mut default_sigs_chirho: HashMap<String, String> = HashMap::new();
+        for child_chirho in &children_chirho {
+            if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
+                if n_chirho.kind_chirho() == SyntaxKindChirho::DefaultDeclChirho {
+                    if let Some((name_text_chirho, sig_ty_chirho)) =
+                        self.try_extract_default_sig_chirho(n_chirho, child_chirho.start_chirho)
+                    {
+                        default_sigs_chirho.insert(name_text_chirho, sig_ty_chirho);
+                    }
+                }
+                // Also check inside WhereClauseChirho children
+                if saw_where_chirho
+                    || n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho
+                {
+                    let where_children_chirho =
+                        self.semantic_children_chirho(n_chirho, child_chirho.start_chirho);
+                    for wc_chirho in &where_children_chirho {
+                        if let GreenElementChirho::NodeChirho(wn_chirho) = wc_chirho.element_chirho {
+                            if wn_chirho.kind_chirho() == SyntaxKindChirho::DefaultDeclChirho {
+                                if let Some((name_text_chirho, sig_ty_chirho)) =
+                                    self.try_extract_default_sig_chirho(wn_chirho, wc_chirho.start_chirho)
+                                {
+                                    default_sigs_chirho.insert(name_text_chirho, sig_ty_chirho);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let methods_chirho: Vec<ClassMethodChirho> = where_decls_chirho
             .into_iter()
             .filter_map(|d_chirho| match d_chirho {
@@ -1741,10 +1775,14 @@ impl LowerCtxChirho {
                     let default_chirho = default_impls_chirho
                         .get(sig_name_chirho.text_chirho())
                         .cloned();
+                    let default_sig_chirho = default_sigs_chirho
+                        .get(sig_name_chirho.text_chirho())
+                        .cloned();
                     Some(ClassMethodChirho {
                         name_chirho: sig_name_chirho,
                         ty_chirho: sig_ty_chirho,
                         default_chirho,
+                        default_sig_chirho,
                         span_chirho: sig_span_chirho,
                     })
                 }
@@ -2024,6 +2062,57 @@ impl LowerCtxChirho {
                 }
             }
         }
+    }
+
+    /// Try to extract a DefaultSignatures-style default method signature from
+    /// a DefaultDeclChirho CST node: `default methodName :: ConstrainedType`.
+    /// Returns Some((method_name, raw_type_text)) if the node matches this
+    /// pattern, None if it's a regular default declaration like `default (Int, Double)`.
+    fn try_extract_default_sig_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> Option<(String, String)> {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        // Pattern: default VarId :: Type
+        let mut saw_default_chirho = false;
+        let mut method_name_chirho: Option<String> = None;
+        let mut saw_double_colon_chirho = false;
+        let mut type_text_parts_chirho: Vec<String> = Vec::new();
+
+        for child_chirho in &children_chirho {
+            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
+                let kind_chirho = tok_chirho.kind_chirho();
+                if kind_chirho == TokenKindChirho::DefaultKeywordChirho {
+                    saw_default_chirho = true;
+                    continue;
+                }
+                if saw_default_chirho && method_name_chirho.is_none() {
+                    if kind_chirho == TokenKindChirho::VarIdChirho {
+                        method_name_chirho = Some(tok_chirho.text_chirho().to_string());
+                        continue;
+                    } else if kind_chirho == TokenKindChirho::LeftParenChirho {
+                        // This is `default (Int, Double)` — not a default sig
+                        return None;
+                    }
+                }
+                if method_name_chirho.is_some() && kind_chirho == TokenKindChirho::DoubleColonChirho {
+                    saw_double_colon_chirho = true;
+                    continue;
+                }
+                if saw_double_colon_chirho {
+                    type_text_parts_chirho.push(tok_chirho.text_chirho().to_string());
+                }
+            }
+        }
+
+        if let Some(name_chirho) = method_name_chirho {
+            if saw_double_colon_chirho && !type_text_parts_chirho.is_empty() {
+                let type_text_chirho = type_text_parts_chirho.join(" ");
+                return Some((name_chirho, type_text_chirho));
+            }
+        }
+        None
     }
 
     /// Lower a default declaration: `default (Int, Double)`.
@@ -5586,5 +5675,47 @@ foo = 1
         let src_chirho = "module M where\nf x = x\n";
         let module_chirho = parse_and_lower_chirho(src_chirho);
         assert!(module_chirho.specialize_pragmas_chirho.is_empty());
+    }
+
+    #[test]
+    fn lower_default_signature_chirho() {
+        let src_chirho = "\
+module M where
+class Describable a where
+  describe :: a -> Int
+  default describe :: a -> Int
+  describe x = 42
+";
+        let module_chirho = parse_and_lower_chirho(src_chirho);
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::ClassDeclChirho { methods_chirho, .. } => {
+                assert_eq!(methods_chirho.len(), 1);
+                let method_chirho = &methods_chirho[0];
+                assert_eq!(method_chirho.name_chirho.text_chirho(), "describe");
+                assert!(method_chirho.default_chirho.is_some(), "default implementation should be present");
+                assert!(method_chirho.default_sig_chirho.is_some(), "default signature should be present");
+                let sig_text_chirho = method_chirho.default_sig_chirho.as_ref().unwrap();
+                assert!(sig_text_chirho.contains("Int"), "default sig should contain 'Int': {}", sig_text_chirho);
+            }
+            other_chirho => panic!("expected ClassDecl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_class_no_default_signature_chirho() {
+        let src_chirho = "\
+module M where
+class Describable a where
+  describe :: a -> Int
+  describe x = 42
+";
+        let module_chirho = parse_and_lower_chirho(src_chirho);
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::ClassDeclChirho { methods_chirho, .. } => {
+                assert_eq!(methods_chirho.len(), 1);
+                assert!(methods_chirho[0].default_sig_chirho.is_none(), "no default sig without 'default' keyword");
+            }
+            other_chirho => panic!("expected ClassDecl, got {:?}", other_chirho),
+        }
     }
 }

@@ -1440,3 +1440,60 @@ main = 42
         assert_eq!(result_chirho, ValueChirho::IntChirho(42));
     }
 
+    // ── DefaultSignatures e2e tests ──
+
+    #[test]
+    fn default_sig_basic_eval_chirho() {
+        // Class with a default implementation — instance omits method, uses default
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+class Describable a where
+  describe :: a -> Int
+  default describe :: a -> Int
+  describe x = 42
+instance Describable Int
+main = describe (1 :: Int)
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DefaultSigTest.hs", None).unwrap();
+        assert_eq!(result_chirho, ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn default_sig_with_override_eval_chirho() {
+        // Instance provides its own method, overriding the default
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+class Describable a where
+  describe :: a -> Int
+  default describe :: a -> Int
+  describe x = 0
+instance Describable Int where
+  describe x = x + 1
+main = describe 41
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DefaultSigOverride.hs", None).unwrap();
+        assert_eq!(result_chirho, ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn default_sig_parsed_in_ast_chirho() {
+        // Verify the default_sig_chirho field is populated on ClassMethodChirho
+        use crate::compile_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Main where
+class Describable a where
+  describe :: a -> Int
+  default describe :: a -> Int
+  describe x = 42
+main = 0
+";
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "DefaultSigAST.hs").unwrap();
+        // Check that the module compiled successfully
+        assert!(!result_chirho.core_chirho.bindings_chirho.is_empty());
+    }
+

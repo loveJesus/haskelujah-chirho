@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1455 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1460 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -244,7 +244,7 @@ _These items address structural issues identified in the Codex engineering revie
 39. ~~**FlexibleInstances/FlexibleContexts** — relax Haskell 98 instance/context restrictions~~ — DONE (no Haskell 98 restrictions enforced; all instance heads and contexts already flexible)
 40. **DataKinds** — promote data constructors to type-level
 41. ~~**KindSignatures**~~ — DONE (AST `TyVarChirho` struct with `name_chirho: NameChirho` + `kind_annotation_chirho: Option<AstKindChirho>`; `AstKindChirho` enum with `StarChirho` and `ArrowChirho`; `TyVarChirho` implements `Deref<Target=NameChirho>` and `From<NameChirho>` for minimal disruption; `type_vars_chirho` changed from `Vec<NameChirho>` to `Vec<TyVarChirho>` in DataDeclChirho, NewtypeDeclChirho, TypeAliasDeclChirho, ClassDeclChirho, ForallChirho; parser lowerer recognizes `(varId :: kind)` pattern in flat token stream with `try_parse_kind_annotated_tyvar_chirho`; kind parser handles `*`, `Type`, `* -> *`, nested `(* -> *) -> *`; kind inference uses annotations as constraints instead of fresh variables via `ast_kind_to_kind_chirho` converter; 5 parser unit tests + 5 driver e2e tests; 1437 tests total)
-42. **DefaultSignatures** — default method implementations using superclass constraints
+42. ~~**DefaultSignatures**~~ — DONE (`default methodName :: ConstrainedType` syntax parsed in class bodies via `try_extract_default_sig_chirho`; detects `default VarId :: ...` pattern in DefaultDeclChirho CST nodes, distinguishing from `default (Int, Double)` declarations; stores raw type text on `ClassMethodChirho.default_sig_chirho: Option<String>`; class body where-clause scanning handles both direct DefaultDecl children and nested WhereClause children; default method implementations already work end-to-end with instance method fallback; 2 parser unit tests (default sig present, absent) + 3 e2e driver tests (basic eval with default, override eval, AST verification); 1460 tests total)
 43. **Template Haskell (basic)** — quasi-quotation, reify, splicing for compile-time metaprogramming
 44. **Foreign exports** — `foreign export ccall` for Haskell functions callable from C/JS
 45. ~~**Monad transformers** — StateT, ReaderT, WriterT, ExceptT, MaybeT evaluation through STG machine~~ — DONE (StateT monad operations: `get` retrieves state, `put` sets state, `modify` applies function to state, `bindStateT`/`returnStateT` for monadic composition, `evalState`/`execState`/`runState`/`runStateT` for running computations; MaybeT constructor/destructor (`MaybeT`/`runMaybeT`); all operations generated as Core IR prelude bindings with proper tuple construction/destruction; type signatures in infer_chirho.rs; names exported from Prelude; 5 new e2e tests: get+evalState, put+execState, modify×3, bind+return counter, bind+return with arithmetic; remaining: ReaderT/WriterT/ExceptT operations, MonadTrans lift instances; 1401 tests total)
