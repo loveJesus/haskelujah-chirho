@@ -1123,13 +1123,67 @@ fn extract_imports_chirho(source_chirho: &str) -> Vec<String> {
     imports_chirho
 }
 
+/// Parse a `.hs-boot` file to extract a minimal module interface.
+///
+/// Boot files provide enough type and value declarations to break circular
+/// import cycles. This function runs the front-end pipeline on the boot file
+/// to produce a `ModuleIfaceChirho` and extracted type schemes.
+fn parse_boot_iface_chirho(
+    module_name_chirho: &str,
+    boot_source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    boot_path_chirho: &str,
+    existing_ifaces_chirho: &[ModuleIfaceChirho],
+    existing_types_chirho: &std::collections::HashMap<String, rhasky_typing_chirho::ty_chirho::SchemeChirho>,
+) -> Result<(ModuleIfaceChirho, std::collections::HashMap<String, rhasky_typing_chirho::ty_chirho::SchemeChirho>), String> {
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        source_map_chirho,
+        boot_path_chirho,
+        boot_source_chirho,
+    );
+    let file_id_chirho = source_file_chirho.file_id_chirho();
+
+    let frontend_result_chirho = run_frontend_chirho(
+        boot_source_chirho,
+        file_id_chirho,
+        existing_ifaces_chirho,
+        existing_types_chirho,
+    )
+    .map_err(|e_chirho| format!("Boot file {} error: {}", module_name_chirho, e_chirho))?;
+
+    let FrontendResultChirho {
+        module_chirho,
+        infer_result_chirho,
+        ..
+    } = frontend_result_chirho;
+
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, existing_ifaces_chirho);
+
+    // Extract type schemes from the boot file
+    let mut types_chirho = std::collections::HashMap::new();
+    for (name_chirho, _) in &iface_chirho.exports_chirho.values_chirho {
+        if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(name_chirho) {
+            types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
+        }
+    }
+    for (_name_chirho, ty_info_chirho) in &iface_chirho.exports_chirho.types_chirho {
+        for con_name_chirho in &ty_info_chirho.constructors_chirho {
+            if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(con_name_chirho) {
+                types_chirho.insert(con_name_chirho.clone(), scheme_chirho.clone());
+            }
+        }
+    }
+
+    Ok((iface_chirho, types_chirho))
+}
+
 /// Compile a Haskell project from a directory, automatically discovering `.hs`
 /// files, computing dependency order from import declarations, and compiling
-/// modules in topological order.
+/// modules in topological order. Circular module imports are handled via
+/// `.hs-boot` files.
 ///
 /// Returns an error if:
 /// - No `.hs` files are found in the directory
-/// - Circular module imports are detected
 /// - Any module fails to compile
 pub fn compile_project_dir_chirho(
     project_dir_chirho: &Path,
@@ -1174,12 +1228,13 @@ pub fn compile_project_dir_chirho(
         }
     }
 
-    // Step 4: Topological sort
-    let order_chirho = dep_graph_chirho.topo_sort_chirho().ok_or_else(|| {
-        "Circular module imports detected. Cannot determine compilation order.".to_string()
-    })?;
+    // Step 4: Topological sort via SCCs (handles circular imports)
+    let sccs_chirho = dep_graph_chirho.topo_sort_sccs_chirho();
 
-    // Step 5: Compile in dependency order
+    // Flatten SCC order for the result, handling cycles via .hs-boot files.
+    let mut order_chirho: Vec<String> = Vec::new();
+
+    // Step 5: Compile in dependency order, respecting SCCs
     let mut results_chirho: Vec<CompileResultChirho> = Vec::new();
     let mut ifaces_chirho: Vec<ModuleIfaceChirho> =
         rhasky_naming_chirho::builtin_module_ifaces_chirho();
@@ -1189,52 +1244,109 @@ pub fn compile_project_dir_chirho(
         rhasky_typing_chirho::ty_chirho::SchemeChirho,
     > = std::collections::HashMap::new();
 
-    for module_name_chirho in &order_chirho {
-        let (_, file_name_chirho, source_chirho) = module_sources_chirho
-            .iter()
-            .find(|(n_chirho, _, _)| n_chirho == module_name_chirho)
-            .ok_or_else(|| format!("Module {} not found in sources", module_name_chirho))?;
+    for scc_chirho in &sccs_chirho {
+        if scc_chirho.len() > 1 {
+            // Circular import group — look for .hs-boot files to break the cycle.
+            // Phase 1: For each SCC member, either compile its .hs-boot file
+            // or create a minimal empty interface so that `import M` resolves.
+            for module_name_chirho in scc_chirho {
+                let (_, file_name_chirho, _source_chirho) = module_sources_chirho
+                    .iter()
+                    .find(|(n_chirho, _, _)| n_chirho == module_name_chirho)
+                    .ok_or_else(|| format!("Module {} not found in sources", module_name_chirho))?;
 
-        let source_file_chirho = SourceFileChirho::from_source_map_chirho(
-            source_map_chirho,
-            file_name_chirho,
-            source_chirho,
-        );
-        let file_id_chirho = source_file_chirho.file_id_chirho();
-
-        let frontend_result_chirho =
-            run_frontend_chirho(source_chirho, file_id_chirho, &ifaces_chirho, &imported_types_chirho)
-                .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
-
-        let FrontendResultChirho {
-            module_chirho,
-            infer_result_chirho,
-            warnings_chirho,
-        } = frontend_result_chirho;
-
-        all_warnings_chirho.extend(warnings_chirho);
-
-        // Build interface for downstream modules
-        let iface_chirho =
-            build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
-
-        // Accumulate exported type schemes
-        for (name_chirho, val_chirho) in &iface_chirho.exports_chirho.values_chirho {
-            if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(name_chirho) {
-                imported_types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
+                // Look for a .hs-boot file alongside the .hs file
+                let boot_path_chirho = format!("{}-boot", file_name_chirho);
+                if let Ok(boot_source_chirho) = std::fs::read_to_string(&boot_path_chirho) {
+                    // Parse the boot file to extract a minimal interface
+                    let boot_iface_chirho = parse_boot_iface_chirho(
+                        module_name_chirho,
+                        &boot_source_chirho,
+                        source_map_chirho,
+                        &boot_path_chirho,
+                        &ifaces_chirho,
+                        &imported_types_chirho,
+                    );
+                    match boot_iface_chirho {
+                        Ok((iface_chirho, types_chirho)) => {
+                            ifaces_chirho.push(iface_chirho);
+                            imported_types_chirho.extend(types_chirho);
+                        }
+                        Err(e_chirho) => {
+                            all_warnings_chirho.push(format!(
+                                "Warning: failed to parse {}: {}",
+                                boot_path_chirho, e_chirho
+                            ));
+                            // Fall back to empty interface
+                            ifaces_chirho.push(ModuleIfaceChirho {
+                                name_chirho: module_name_chirho.clone(),
+                                exports_chirho: Default::default(),
+                            });
+                        }
+                    }
+                } else {
+                    // No boot file — create an empty interface so `import M`
+                    // at least resolves (names won't be in scope without a boot
+                    // file, matching GHC's behavior).
+                    ifaces_chirho.push(ModuleIfaceChirho {
+                        name_chirho: module_name_chirho.clone(),
+                        exports_chirho: Default::default(),
+                    });
+                }
             }
-            // Also try the iface value name directly
-            let _ = val_chirho;
+
+            // Phase 2: Compile all modules in the SCC using boot interfaces.
+            // The order within an SCC doesn't matter (boot files break the cycle).
         }
 
-        ifaces_chirho.push(iface_chirho);
+        // Compile each module in the SCC (or the single module if no cycle)
+        for module_name_chirho in scc_chirho {
+            let (_, file_name_chirho, source_chirho) = module_sources_chirho
+                .iter()
+                .find(|(n_chirho, _, _)| n_chirho == module_name_chirho)
+                .ok_or_else(|| format!("Module {} not found in sources", module_name_chirho))?;
 
-        // Backend compilation
-        let compile_result_chirho =
-            compile_backend_chirho(module_chirho, infer_result_chirho)
-                .map_err(|e_chirho| format!("Backend error for {}: {}", module_name_chirho, e_chirho))?;
+            let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+                source_map_chirho,
+                file_name_chirho,
+                source_chirho,
+            );
+            let file_id_chirho = source_file_chirho.file_id_chirho();
 
-        results_chirho.push(compile_result_chirho);
+            let frontend_result_chirho =
+                run_frontend_chirho(source_chirho, file_id_chirho, &ifaces_chirho, &imported_types_chirho)
+                    .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
+
+            let FrontendResultChirho {
+                module_chirho,
+                infer_result_chirho,
+                warnings_chirho,
+            } = frontend_result_chirho;
+
+            all_warnings_chirho.extend(warnings_chirho);
+
+            // Build interface for downstream modules
+            let iface_chirho =
+                build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+
+            // Accumulate exported type schemes
+            for (name_chirho, val_chirho) in &iface_chirho.exports_chirho.values_chirho {
+                if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(name_chirho) {
+                    imported_types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
+                }
+                let _ = val_chirho;
+            }
+
+            ifaces_chirho.push(iface_chirho);
+
+            // Backend compilation
+            let compile_result_chirho =
+                compile_backend_chirho(module_chirho, infer_result_chirho)
+                    .map_err(|e_chirho| format!("Backend error for {}: {}", module_name_chirho, e_chirho))?;
+
+            results_chirho.push(compile_result_chirho);
+            order_chirho.push(module_name_chirho.clone());
+        }
     }
 
     Ok(ProjectCompileResultChirho {

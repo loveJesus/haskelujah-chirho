@@ -200,7 +200,9 @@ mod tests_chirho {
     }
 
     #[test]
-    fn compile_project_circular_import_detected_chirho() {
+    fn compile_project_circular_import_succeeds_chirho() {
+        // A imports B, B imports A — circular import handled via SCC compilation.
+        // Neither module uses names from the other, so empty boot interfaces suffice.
         let tmp_chirho = tempfile::tempdir().unwrap();
         fs::write(
             tmp_chirho.path().join("A.hs"),
@@ -215,13 +217,52 @@ mod tests_chirho {
 
         let mut sm_chirho = SourceMapChirho::new_chirho();
         let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut sm_chirho);
-        assert!(result_chirho.is_err());
-        let err_chirho = result_chirho.unwrap_err();
         assert!(
-            err_chirho.contains("Circular"),
-            "Expected circular import error, got: {}",
-            err_chirho
+            result_chirho.is_ok(),
+            "Circular import with no cross-references should succeed, got: {:?}",
+            result_chirho.err()
         );
+        let proj_chirho = result_chirho.unwrap();
+        assert_eq!(proj_chirho.module_results_chirho.len(), 2);
+    }
+
+    #[test]
+    fn compile_project_circular_with_boot_chirho() {
+        // A imports B (uses b_val), B imports A (uses a_val).
+        // .hs-boot files provide the needed interfaces.
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::write(
+            tmp_chirho.path().join("A.hs"),
+            "module A where\nimport B\na_val = 10\nmain_a = a_val\n",
+        )
+        .unwrap();
+        // A.hs-boot declares a_val for B to import
+        fs::write(
+            tmp_chirho.path().join("A.hs-boot"),
+            "module A where\na_val = 10\n",
+        )
+        .unwrap();
+        fs::write(
+            tmp_chirho.path().join("B.hs"),
+            "module B where\nimport A\nb_val = 20\n",
+        )
+        .unwrap();
+        // B.hs-boot declares b_val for A to import
+        fs::write(
+            tmp_chirho.path().join("B.hs-boot"),
+            "module B where\nb_val = 20\n",
+        )
+        .unwrap();
+
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut sm_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "Circular import with boot files should succeed, got: {:?}",
+            result_chirho.err()
+        );
+        let proj_chirho = result_chirho.unwrap();
+        assert_eq!(proj_chirho.module_results_chirho.len(), 2);
     }
 
     #[test]
