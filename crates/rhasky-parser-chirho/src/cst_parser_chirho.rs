@@ -103,6 +103,7 @@ fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho, text_chirho: &str) -> T
         RawTokenKindChirho::AtChirho => TokenKindChirho::AtSignChirho,
         RawTokenKindChirho::TildeChirho => TokenKindChirho::TildeChirho,
         RawTokenKindChirho::UnderscoreChirho => TokenKindChirho::UnderscoreReservedIdChirho,
+        RawTokenKindChirho::TickChirho => TokenKindChirho::TickChirho,
 
         // Trivia
         RawTokenKindChirho::WhitespaceChirho => TokenKindChirho::WhitespaceTriviaChirho,
@@ -1392,6 +1393,10 @@ impl<'src> ParserChirho<'src> {
             Some(RawTokenKindChirho::LeftBracketChirho) => {
                 self.parse_list_type_chirho();
             }
+            // DataKinds: 'Constructor or '[Type, ...] promoted types
+            Some(RawTokenKindChirho::TickChirho) => {
+                self.parse_promoted_type_chirho();
+            }
             _ => {
                 // Unexpected — wrap in error node
                 self.builder_chirho
@@ -1479,6 +1484,81 @@ impl<'src> ParserChirho<'src> {
         }
 
         self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a DataKinds promoted type: `'Constructor` or `'[Type, ...]`.
+    fn parse_promoted_type_chirho(&mut self) {
+        match self.peek_after_tick_chirho() {
+            Some(RawTokenKindChirho::ConIdChirho) | Some(RawTokenKindChirho::QualifiedIdChirho) => {
+                // Promoted constructor: 'True, 'Just, 'Nothing
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::PromotedConTypeChirho);
+                self.bump_chirho(); // tick
+                self.bump_chirho(); // ConId
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::LeftBracketChirho) => {
+                // Promoted list type: '[], '[Int, Bool]
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::PromotedListTypeChirho);
+                self.bump_chirho(); // tick
+                self.bump_chirho(); // [
+                self.eat_trivia_chirho();
+
+                if !self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+                    self.parse_type_chirho();
+                    self.eat_trivia_chirho();
+                    while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                        self.bump_chirho(); // ,
+                        self.eat_trivia_chirho();
+                        self.parse_type_chirho();
+                        self.eat_trivia_chirho();
+                    }
+                }
+
+                if self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+                    self.bump_chirho(); // ]
+                }
+                self.builder_chirho.finish_node_chirho();
+            }
+            Some(RawTokenKindChirho::LeftParenChirho) => {
+                // Promoted tuple or unit: '(), '(,), '(,,)
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::PromotedConTypeChirho);
+                self.bump_chirho(); // tick
+                self.bump_chirho(); // (
+                self.eat_trivia_chirho();
+                // Eat commas for promoted tuple constructors
+                while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                }
+                if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                    self.bump_chirho();
+                }
+                self.builder_chirho.finish_node_chirho();
+            }
+            _ => {
+                // Fallback: just consume the tick as an error
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+        }
+    }
+
+    /// Peek at the token kind after the current tick, skipping trivia.
+    fn peek_after_tick_chirho(&self) -> Option<RawTokenKindChirho> {
+        let mut i_chirho = self.pos_chirho + 1;
+        while i_chirho < self.tokens_chirho.len() {
+            let kind_chirho = self.tokens_chirho[i_chirho].kind_chirho;
+            if !kind_chirho.is_trivia_chirho() {
+                return Some(kind_chirho);
+            }
+            i_chirho += 1;
+        }
+        None
     }
 
     // -----------------------------------------------------------------------
@@ -2637,6 +2717,7 @@ impl<'src> ParserChirho<'src> {
                 | Some(RawTokenKindChirho::QualifiedIdChirho)
                 | Some(RawTokenKindChirho::LeftParenChirho)
                 | Some(RawTokenKindChirho::LeftBracketChirho)
+                | Some(RawTokenKindChirho::TickChirho)
         )
     }
 

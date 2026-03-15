@@ -574,6 +574,16 @@ fn type_con_names_chirho(ty_chirho: &rhasky_ast_chirho::ty_chirho::TypeChirho) -
         }
         // Type variables — no type constructors
         TypeChirho::VarChirho(_) => {}
+        // DataKinds promoted constructor — the constructor name is a type-level entity
+        TypeChirho::PromotedConChirho { name_chirho, .. } => {
+            result_chirho.push(name_chirho.text_chirho().to_string());
+        }
+        // DataKinds promoted list — recurse into elements
+        TypeChirho::PromotedListChirho { elements_chirho, .. } => {
+            for elem_chirho in elements_chirho {
+                result_chirho.extend(type_con_names_chirho(elem_chirho));
+            }
+        }
     }
     result_chirho
 }

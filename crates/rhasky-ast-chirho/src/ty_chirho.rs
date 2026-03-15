@@ -54,6 +54,16 @@ pub enum TypeChirho {
         body_chirho: Box<TypeChirho>,
         span_chirho: SpanChirho,
     },
+    /// DataKinds promoted constructor (`'True`, `'Just`, `'Nothing`).
+    PromotedConChirho {
+        name_chirho: NameChirho,
+        span_chirho: SpanChirho,
+    },
+    /// DataKinds promoted list type (`'[Int, Bool]`, `'[]`).
+    PromotedListChirho {
+        elements_chirho: Vec<TypeChirho>,
+        span_chirho: SpanChirho,
+    },
 }
 
 /// A class constraint in a type context (e.g. `Eq a`, `Show (Maybe a)`).
@@ -75,7 +85,9 @@ impl TypeChirho {
             | Self::ListChirho { span_chirho, .. }
             | Self::ParenChirho { span_chirho, .. }
             | Self::QualChirho { span_chirho, .. }
-            | Self::ForallChirho { span_chirho, .. } => *span_chirho,
+            | Self::ForallChirho { span_chirho, .. }
+            | Self::PromotedConChirho { span_chirho, .. }
+            | Self::PromotedListChirho { span_chirho, .. } => *span_chirho,
         }
     }
 }

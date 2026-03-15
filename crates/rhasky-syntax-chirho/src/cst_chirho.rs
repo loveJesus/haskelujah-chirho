@@ -196,6 +196,10 @@ pub enum SyntaxKindChirho {
     ForallTypeChirho,
     /// Kind annotation (`Type :: Kind`).
     KindAnnotTypeChirho,
+    /// DataKinds promoted constructor type (`'True`, `'Just`).
+    PromotedConTypeChirho,
+    /// DataKinds promoted list type (`'[Int, Bool]`).
+    PromotedListTypeChirho,
 
     // -- Layout / trivia wrappers --
     /// A layout block (the body between virtual `{` and `}`).
@@ -291,6 +295,8 @@ impl SyntaxKindChirho {
                 | Self::ContextChirho
                 | Self::ForallTypeChirho
                 | Self::KindAnnotTypeChirho
+                | Self::PromotedConTypeChirho
+                | Self::PromotedListTypeChirho
         )
     }
 }

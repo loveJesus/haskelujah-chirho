@@ -1664,5 +1664,93 @@ main = print (getVal (fmap (\x -> x * 2) (MkTagged 0 21)))
         assert_eq!(m_chirho.io_output_chirho, "42\n");
     }
 
+    // ── DataKinds (§E.40) ──────────────────────────────────────────────
+
+    #[test]
+    fn datakinds_promoted_con_parses_chirho() {
+        // DataKinds: promoted constructor 'True in a type signature parses and evaluates
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+{-# LANGUAGE DataKinds #-}
+data Proxy a = MkProxy
+showProxy :: Proxy 'True -> Int
+showProxy MkProxy = 42
+main = print (showProxy MkProxy)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DataKinds promoted con failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn datakinds_promoted_nothing_parses_chirho() {
+        // DataKinds: promoted constructor 'Nothing in a type signature
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+{-# LANGUAGE DataKinds #-}
+data Proxy a = MkProxy
+test :: Proxy 'Nothing -> Int
+test MkProxy = 99
+main = print (test MkProxy)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DataKinds promoted Nothing failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "99\n");
+    }
+
+    #[test]
+    fn datakinds_promoted_list_parses_chirho() {
+        // DataKinds: promoted list type '[Int, Bool] in a type alias
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+{-# LANGUAGE DataKinds #-}
+data Proxy a = MkProxy
+test :: Proxy '[Int, Bool] -> Int
+test MkProxy = 77
+main = print (test MkProxy)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DataKinds promoted list failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "77\n");
+    }
+
+    #[test]
+    fn datakinds_promoted_nil_parses_chirho() {
+        // DataKinds: promoted empty list '[] in a type signature
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+{-# LANGUAGE DataKinds #-}
+data Proxy a = MkProxy
+test :: Proxy '[] -> Int
+test MkProxy = 55
+main = print (test MkProxy)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DataKinds promoted nil failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "55\n");
+    }
+
+    #[test]
+    fn datakinds_char_literal_preserved_chirho() {
+        // Ensure char literals like 'A' still work with DataKinds changes
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = putChar 'A'
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("Char literal failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "A");
+    }
+
     // ── Algorithmic tests: stress-testing compiler capabilities ───────
 

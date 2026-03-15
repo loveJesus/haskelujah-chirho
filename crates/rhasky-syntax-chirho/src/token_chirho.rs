@@ -145,6 +145,8 @@ pub enum TokenKindChirho {
     TildeChirho,
     /// The `=>` reserved operator.
     DoubleArrowChirho,
+    /// The `'` tick for DataKinds promoted constructors/types.
+    TickChirho,
 
     /// A virtual `{` inserted by the layout rule.
     VirtualLeftBraceChirho,

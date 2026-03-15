@@ -107,6 +107,9 @@ pub enum RawTokenKindChirho {
     VirtualRightBraceChirho,
     VirtualSemicolonChirho,
 
+    /// A `'` tick used for DataKinds promoted constructors (`'True`, `'Just`, `'[]`).
+    TickChirho,
+
     // -- Special --
     EofChirho,
     ErrorChirho,
@@ -584,6 +587,27 @@ impl<'src> LexerChirho<'src> {
     }
 
     fn lex_char_chirho(&mut self, start_chirho: usize) -> RawTokenChirho {
+        // DataKinds: if `'` is followed by an uppercase letter (promoted
+        // constructor like 'True, 'Just) or `[` (promoted list like '[Int]),
+        // emit a Tick token and let the parser handle it.
+        // BUT: `'A'` is a char literal, not a promoted constructor — check that
+        // the uppercase letter is not followed immediately by a closing `'`.
+        if let Some(next_chirho) = self.peek_at_chirho(1) {
+            if next_chirho == b'[' || next_chirho == b'(' {
+                self.pos_chirho += 1; // consume just the tick
+                return self.make_token_chirho(RawTokenKindChirho::TickChirho, start_chirho);
+            }
+            if next_chirho.is_ascii_uppercase() {
+                // Check if this is a single-char literal like 'A' (char at offset+2 is `'`)
+                // vs a promoted constructor like 'True (no closing `'` after the ident)
+                let is_char_lit_chirho = self.peek_at_chirho(2) == Some(b'\'');
+                if !is_char_lit_chirho {
+                    self.pos_chirho += 1; // consume just the tick
+                    return self.make_token_chirho(RawTokenKindChirho::TickChirho, start_chirho);
+                }
+            }
+        }
+
         self.pos_chirho += 1; // skip opening '
 
         if self.pos_chirho >= self.bytes_chirho.len() {
@@ -1077,6 +1101,62 @@ mod tests_chirho {
                 RawTokenKindChirho::ConIdChirho,
                 RawTokenKindChirho::LeftParenChirho,
                 RawTokenKindChirho::RightParenChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    // ── DataKinds lexer tests ──────────────────────────────────────
+    #[test]
+    fn lex_promoted_constructor_chirho() {
+        // 'True should be Tick + ConId, not a char literal
+        let kinds_chirho = non_trivia_kinds_chirho("'True");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::TickChirho,
+                RawTokenKindChirho::ConIdChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_char_vs_promoted_chirho() {
+        // 'A' is a char literal (uppercase but followed by closing ')
+        let kinds_chirho = non_trivia_kinds_chirho("'A'");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::CharLitChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_promoted_list_chirho() {
+        // '[Int, Bool] should start with Tick + [
+        let kinds_chirho = non_trivia_kinds_chirho("'[");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::TickChirho,
+                RawTokenKindChirho::LeftBracketChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_promoted_nothing_chirho() {
+        // 'Nothing is a promoted constructor
+        let kinds_chirho = non_trivia_kinds_chirho("'Nothing");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::TickChirho,
+                RawTokenKindChirho::ConIdChirho,
                 RawTokenKindChirho::EofChirho,
             ]
         );

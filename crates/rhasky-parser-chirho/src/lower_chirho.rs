@@ -2753,6 +2753,47 @@ impl LowerCtxChirho {
                     span_chirho,
                 }
             }
+            SyntaxKindChirho::PromotedConTypeChirho => {
+                // DataKinds promoted constructor: 'True, 'Just, etc.
+                // Children: Tick token, ConId token
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let con_child_chirho = children_chirho.iter().find(|c_chirho| {
+                    matches!(c_chirho.element_chirho, GreenElementChirho::TokenChirho(t_chirho)
+                        if t_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                           || t_chirho.kind_chirho() == TokenKindChirho::QualifiedConIdChirho)
+                });
+                if let Some(child_chirho) = con_child_chirho {
+                    if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
+                        let s_chirho = self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                        let name_chirho = self.name_from_token_chirho(tok_chirho, s_chirho);
+                        TypeChirho::PromotedConChirho { name_chirho, span_chirho }
+                    } else {
+                        self.placeholder_type_chirho()
+                    }
+                } else {
+                    // Promoted tuple: '() — extract text from all tokens
+                    TypeChirho::PromotedConChirho {
+                        name_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho("()", span_chirho)),
+                        span_chirho,
+                    }
+                }
+            }
+            SyntaxKindChirho::PromotedListTypeChirho => {
+                // DataKinds promoted list: '[], '[Int, Bool], etc.
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let type_nodes_chirho: Vec<_> = children_chirho
+                    .iter()
+                    .filter(|c_chirho| {
+                        matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(n_chirho)
+                            if is_type_kind_chirho(n_chirho.kind_chirho()))
+                    })
+                    .collect();
+                let elements_chirho: Vec<_> = type_nodes_chirho
+                    .iter()
+                    .map(|tc_chirho| self.lower_type_from_child_chirho(tc_chirho))
+                    .collect();
+                TypeChirho::PromotedListChirho { elements_chirho, span_chirho }
+            }
             _ => {
                 // Fallback: try to extract a name
                 let name_chirho = self.extract_name_from_node_chirho(node_chirho, base_chirho);
@@ -4953,6 +4994,8 @@ fn is_type_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::ForallTypeChirho
             | SyntaxKindChirho::KindAnnotTypeChirho
             | SyntaxKindChirho::ContextChirho
+            | SyntaxKindChirho::PromotedConTypeChirho
+            | SyntaxKindChirho::PromotedListTypeChirho
     )
 }
 

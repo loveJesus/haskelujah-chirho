@@ -549,6 +549,24 @@ impl KindInferCtxChirho {
                 );
                 KindChirho::StarChirho
             }
+            // DataKinds: promoted constructors have kind * (they're type-level constants).
+            TypeChirho::PromotedConChirho { .. } => KindChirho::StarChirho,
+            // DataKinds: promoted list '[a, b] has kind [*] which we represent as *.
+            TypeChirho::PromotedListChirho {
+                elements_chirho,
+                span_chirho,
+            } => {
+                for elem_chirho in elements_chirho {
+                    let k_chirho = self.infer_type_kind_chirho(elem_chirho);
+                    self.unify_chirho(
+                        &k_chirho,
+                        &KindChirho::StarChirho,
+                        "promoted list element",
+                        *span_chirho,
+                    );
+                }
+                KindChirho::StarChirho
+            }
         }
     }
 

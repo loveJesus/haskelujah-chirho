@@ -509,6 +509,26 @@ impl InferCtxChirho {
                 }
                 self.ast_type_to_ty_chirho(body_chirho, var_map_chirho)
             }
+            // DataKinds: promoted constructor is a type-level constant
+            TypeChirho::PromotedConChirho { name_chirho, .. } => {
+                TyChirho::ConChirho(name_chirho.text_chirho().to_string())
+            }
+            // DataKinds: promoted list is represented as nested type application
+            TypeChirho::PromotedListChirho { elements_chirho, .. } => {
+                // '[] → Con("'[]"), '[a, b] → App(App(Con("':"), a), App(App(Con("':"), b), Con("'[]")))
+                let nil_chirho = TyChirho::ConChirho("'[]".to_string());
+                elements_chirho.iter().rev().fold(nil_chirho, |acc_chirho, elem_chirho| {
+                    let elem_ty_chirho = self.ast_type_to_ty_chirho(elem_chirho, var_map_chirho);
+                    let cons_chirho = TyChirho::ConChirho("':".to_string());
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(cons_chirho),
+                            Box::new(elem_ty_chirho),
+                        )),
+                        Box::new(acc_chirho),
+                    )
+                })
+            }
         }
     }
 
@@ -2327,6 +2347,23 @@ fn ast_type_to_syn_rhs_chirho(
         TypeChirho::ForallChirho {
             body_chirho, ..
         } => ast_type_to_syn_rhs_chirho(body_chirho, params_chirho),
+        TypeChirho::PromotedConChirho { name_chirho, .. } => {
+            TyChirho::ConChirho(format!("'{}", name_chirho.text_chirho()))
+        }
+        TypeChirho::PromotedListChirho { elements_chirho, .. } => {
+            let nil_chirho = TyChirho::ConChirho("'[]".to_string());
+            elements_chirho.iter().rev().fold(nil_chirho, |acc_chirho, elem_chirho| {
+                let elem_ty_chirho = ast_type_to_syn_rhs_chirho(elem_chirho, params_chirho);
+                let cons_chirho = TyChirho::ConChirho("':".to_string());
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(cons_chirho),
+                        Box::new(elem_ty_chirho),
+                    )),
+                    Box::new(acc_chirho),
+                )
+            })
+        }
     }
 }
 
