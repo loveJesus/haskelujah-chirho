@@ -14835,4 +14835,150 @@ main = mapM_ putStrLn ["a","b","c"]
         assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(30));
     }
 
+    // ---------------------------------------------------------------
+    // Complex program tests: feature combinations
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn eval_fibonacci_lazy_chirho() {
+        // Fibonacci via zipWith on infinite lists (requires lazy eval):
+        // fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
+        // Simplified: compute fib with take on recursive infinite list
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+fib n = if n <= 1 then n else fib (n - 1) + fib (n - 2)
+main = sum (map fib (take 7 [0..]))
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("fibonacci lazy: {}", e_chirho));
+        // fib 0..6 = 0,1,1,2,3,5,8; sum = 20
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(20));
+    }
+
+    #[test]
+    fn eval_collatz_chirho() {
+        // Collatz sequence length for 6: 6→3→10→5→16→8→4→2→1 = 9 steps
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+collatz n = if n == 1 then 1
+            else if even n then 1 + collatz (n `div` 2)
+            else 1 + collatz (3 * n + 1)
+main = collatz 6
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("collatz: {}", e_chirho));
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(9));
+    }
+
+    #[test]
+    fn eval_sieve_primes_chirho() {
+        // Count primes up to 30 using trial division
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+isPrime n = if n < 2 then False
+            else if n == 2 then True
+            else if even n then False
+            else go 3
+  where go d = if d * d > n then True
+               else if n `mod` d == 0 then False
+               else go (d + 2)
+main = length (filter isPrime [1..30])
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("sieve primes: {}", e_chirho));
+        // Primes up to 30: 2,3,5,7,11,13,17,19,23,29 = 10
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10));
+    }
+
+    #[test]
+    fn eval_io_show_computed_list_chirho() {
+        // show a computed list of Ints
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = putStrLn (show [2 * 1, 2 * 2, 2 * 3])
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_input_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None, &[])
+                .unwrap_or_else(|e_chirho| panic!("show computed list: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "[2,4,6]\n");
+    }
+
+    #[test]
+    fn eval_higher_order_filter_map_chirho() {
+        // (filter even . map (*3)) [1..10] → filter even [3,6,9,...,30]
+        // = [6,12,18,24,30], sum = 90
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+myFilter xs = filter even (map (*3) xs)
+main = sum (myFilter [1..10])
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("higher order composition: {}", e_chirho));
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(90));
+    }
+
+    #[test]
+    fn eval_nested_where_let_chirho() {
+        // Complex nested where + let
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = result
+  where result = let x = 10
+                     y = double x
+                 in x + y + offset
+        double n = n * 2
+        offset = 5
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("nested where let: {}", e_chirho));
+        // x=10, y=20, offset=5, result=35
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(35));
+    }
+
+    #[test]
+    fn eval_data_constructor_math_chirho() {
+        // User-defined data type with arithmetic on fields
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Point = MkPoint Int Int
+getX (MkPoint x y) = x
+getY (MkPoint x y) = y
+dist p1 p2 = abs (getX p1 - getX p2) + abs (getY p1 - getY p2)
+main = dist (MkPoint 3 4) (MkPoint 6 8)
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("data constructor math: {}", e_chirho));
+        // |3-6| + |4-8| = 3 + 4 = 7
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(7));
+    }
+
+    #[test]
+    fn eval_accumulator_pattern_chirho() {
+        // Strict accumulator pattern with foldl
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+factorial n = foldl (*) 1 [1..n]
+main = factorial 10
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("accumulator pattern: {}", e_chirho));
+        // 10! = 3628800
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3628800));
+    }
+
 }
