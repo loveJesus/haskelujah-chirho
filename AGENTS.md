@@ -223,13 +223,13 @@ _These items address structural issues identified in the Codex engineering revie
 
 #### D. CLI & Developer Experience
 
-24. **`rhasky compile`** — compile `.hs` file(s) to object code via selected backend (LLVM default, `--backend=wasm/cranelift/jvm/beam`)
-25. **`rhasky run`** — compile and execute a Haskell source file in one step (via STG interpreter by default, or native via `--native`)
+24. ~~**`rhasky compile`**~~ — DONE (CLI command reads `.hs` file, runs full pipeline, reports module name, core bindings count, LLVM IR and WASM output sizes)
+25. ~~**`rhasky run`**~~ — DONE (CLI command reads `.hs` file, evaluates via STG interpreter, prints IO output to stdout; works with infinite lists, IO, typeclasses, all Phase 1+2 features)
 26. **`rhasky repl`** — interactive REPL with expression evaluation, `:type`, `:info`, `:load`, `:reload` commands
-27. **`rhasky check`** — type-check without code generation (fast feedback loop); must use the real pipeline (see item 1)
+27. ~~**`rhasky check`**~~ — DONE (CLI command reads `.hs` file, runs frontend pipeline through type-checking, reports module/mode/diagnostics without full code generation; already wired as `check`/`plan`/`script` subcommands)
 28. **`rhasky build`** — build a Cabal project (parse `.cabal`, resolve dependencies, compile modules in dependency order)
 29. **Error messages** — structured diagnostics with source spans, suggestions, and color output; follow Rust/Elm error message style
-30. **`--dump-core`/`--dump-stg`/`--dump-llvm`** — debug flags to print intermediate representations
+30. ~~**`--dump-core`/`--dump-stg`/`--dump-llvm`**~~ — DONE (CLI flags print Core IR via pretty_module_chirho, STG code table entries via Debug, and LLVM IR text to stderr; work with both `run` and `compile` subcommands; proper flag parsing separated from positional args; help text with usage examples)
 
 #### E. Language Features — Remaining GHC Haskell
 

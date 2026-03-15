@@ -17,24 +17,49 @@ fn main() -> ExitCode {
     main_chirho()
 }
 
+/// Parsed CLI flags.
+struct FlagsChirho {
+    dump_core_chirho: bool,
+    dump_stg_chirho: bool,
+    dump_llvm_chirho: bool,
+}
+
 fn main_chirho() -> ExitCode {
-    let mut arguments_chirho = env::args();
-    let program_name_chirho = arguments_chirho
-        .next()
-        .unwrap_or_else(|| "rhasky-cli-chirho".to_owned());
-    let command_chirho = arguments_chirho.next();
-    let path_chirho = arguments_chirho.next();
+    let raw_args_chirho: Vec<String> = env::args().collect();
+    let program_name_chirho = raw_args_chirho
+        .first()
+        .map(String::as_str)
+        .unwrap_or("rhasky-cli-chirho");
+
+    // Separate flags from positional args.
+    let mut flags_chirho = FlagsChirho {
+        dump_core_chirho: false,
+        dump_stg_chirho: false,
+        dump_llvm_chirho: false,
+    };
+    let mut positional_chirho: Vec<&str> = Vec::new();
+    for arg_chirho in raw_args_chirho.iter().skip(1) {
+        match arg_chirho.as_str() {
+            "--dump-core" => flags_chirho.dump_core_chirho = true,
+            "--dump-stg" => flags_chirho.dump_stg_chirho = true,
+            "--dump-llvm" => flags_chirho.dump_llvm_chirho = true,
+            _ => positional_chirho.push(arg_chirho),
+        }
+    }
+
+    let command_chirho = positional_chirho.first().copied();
+    let path_chirho = positional_chirho.get(1).copied().map(String::from);
 
     let Some(command_chirho) = command_chirho else {
-        print_usage_chirho(&program_name_chirho);
+        print_usage_chirho(program_name_chirho);
         return ExitCode::from(2);
     };
 
-    match command_chirho.as_str() {
+    match command_chirho {
         "check" | "plan" | "script" => {
             let Some(path_chirho) = path_chirho else {
                 eprintln!("missing path for `{command_chirho}`");
-                print_usage_chirho(&program_name_chirho);
+                print_usage_chirho(program_name_chirho);
                 return ExitCode::from(2);
             };
 
@@ -55,8 +80,8 @@ fn main_chirho() -> ExitCode {
                 }
             }
         }
-        "run" => run_command_chirho(&program_name_chirho, path_chirho),
-        "compile" => compile_command_chirho(&program_name_chirho, path_chirho),
+        "run" => run_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
+        "compile" => compile_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
         "repl" => {
             println!(
                 "repl mode is not implemented yet, but the runtime plan reserves {:?} for it",
@@ -66,7 +91,7 @@ fn main_chirho() -> ExitCode {
         }
         _ => {
             eprintln!("unknown command `{command_chirho}`");
-            print_usage_chirho(&program_name_chirho);
+            print_usage_chirho(program_name_chirho);
             ExitCode::from(2)
         }
     }
@@ -77,6 +102,7 @@ fn main_chirho() -> ExitCode {
 fn run_command_chirho(
     program_name_chirho: &str,
     path_arg_chirho: Option<String>,
+    flags_chirho: &FlagsChirho,
 ) -> ExitCode {
     let Some(path_chirho) = path_arg_chirho else {
         eprintln!("missing path for `run`");
@@ -97,6 +123,29 @@ fn run_command_chirho(
         .and_then(|os_str_chirho| os_str_chirho.to_str())
         .unwrap_or(&path_chirho);
 
+    // If any dump flags are set, compile first to get Core/LLVM IR.
+    if flags_chirho.dump_core_chirho || flags_chirho.dump_llvm_chirho {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        match compile_source_chirho(&source_text_chirho, &mut sm_chirho, file_name_chirho) {
+            Ok(result_chirho) => {
+                if flags_chirho.dump_core_chirho {
+                    eprintln!("=== Core IR ===");
+                    eprintln!(
+                        "{}",
+                        rhasky_core_chirho::pretty_module_chirho(&result_chirho.core_chirho)
+                    );
+                }
+                if flags_chirho.dump_llvm_chirho {
+                    eprintln!("=== LLVM IR ===");
+                    eprintln!("{}", result_chirho.llvm_ir_chirho);
+                }
+            }
+            Err(e_chirho) => {
+                eprintln!("compilation error (dump phase): {e_chirho}");
+            }
+        }
+    }
+
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
     match eval_source_with_machine_chirho(
@@ -106,6 +155,12 @@ fn run_command_chirho(
         None,
     ) {
         Ok((_value_chirho, machine_chirho)) => {
+            if flags_chirho.dump_stg_chirho {
+                eprintln!("=== STG Code Table ({} entries) ===", machine_chirho.code_table_chirho.len());
+                for (idx_chirho, code_chirho) in machine_chirho.code_table_chirho.iter().enumerate() {
+                    eprintln!("  [{idx_chirho}] {code_chirho:?}");
+                }
+            }
             if !machine_chirho.io_output_chirho.is_empty() {
                 print!("{}", machine_chirho.io_output_chirho);
             }
@@ -123,6 +178,7 @@ fn run_command_chirho(
 fn compile_command_chirho(
     program_name_chirho: &str,
     path_arg_chirho: Option<String>,
+    flags_chirho: &FlagsChirho,
 ) -> ExitCode {
     let Some(path_chirho) = path_arg_chirho else {
         eprintln!("missing path for `compile`");
@@ -158,6 +214,18 @@ fn compile_command_chirho(
             println!("  core bindings: {}", result_chirho.core_chirho.bindings_chirho.len());
             println!("  llvm ir bytes: {}", result_chirho.llvm_ir_chirho.len());
             println!("  wasm bytes:    {}", result_chirho.wasm_bytes_chirho.len());
+
+            if flags_chirho.dump_core_chirho {
+                println!("\n=== Core IR ===");
+                println!(
+                    "{}",
+                    rhasky_core_chirho::pretty_module_chirho(&result_chirho.core_chirho)
+                );
+            }
+            if flags_chirho.dump_llvm_chirho {
+                println!("\n=== LLVM IR ===");
+                println!("{}", result_chirho.llvm_ir_chirho);
+            }
             ExitCode::SUCCESS
         }
         Err(diagnostic_bundle_chirho) => {
@@ -169,5 +237,16 @@ fn compile_command_chirho(
 }
 
 fn print_usage_chirho(program_name_chirho: &str) {
-    eprintln!("usage: {program_name_chirho} <check|plan|script|run|compile|repl> [path]");
+    eprintln!("usage: {program_name_chirho} <check|run|compile|repl> <path>");
+    eprintln!();
+    eprintln!("commands:");
+    eprintln!("  check    type-check a .hs file without code generation");
+    eprintln!("  run      evaluate a .hs file via the STG interpreter");
+    eprintln!("  compile  compile a .hs file and report output sizes");
+    eprintln!("  repl     interactive session (not yet implemented)");
+    eprintln!();
+    eprintln!("flags:");
+    eprintln!("  --dump-core   print Core IR to stderr");
+    eprintln!("  --dump-stg    print STG code table to stderr (run only)");
+    eprintln!("  --dump-llvm   print LLVM IR to stderr");
 }
