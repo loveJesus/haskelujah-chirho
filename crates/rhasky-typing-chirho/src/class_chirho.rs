@@ -1671,6 +1671,48 @@ impl ClassEnvChirho {
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });
+
+        // Generic (for DeriveGeneric extension)
+        // class Generic a where
+        //   from :: a -> Rep a
+        //   to   :: Rep a -> a
+        // Simplified: we use a single type variable and polymorphic methods.
+        // The actual Rep type is encoded as Either/tuples at the value level
+        // by the deriving mechanism.
+        let generic_var_chirho = TyVarChirho(9090);
+        let generic_rep_chirho = TyVarChirho(9091);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Generic".to_string(),
+            supers_chirho: vec![],
+            var_chirho: generic_var_chirho,
+            methods_chirho: HashMap::from([
+                (
+                    "from".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![generic_var_chirho, generic_rep_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::FunChirho(
+                            Box::new(TyChirho::VarChirho(generic_var_chirho)),
+                            Box::new(TyChirho::VarChirho(generic_rep_chirho)),
+                        ),
+                    },
+                ),
+                (
+                    "to".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![generic_var_chirho, generic_rep_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::FunChirho(
+                            Box::new(TyChirho::VarChirho(generic_rep_chirho)),
+                            Box::new(TyChirho::VarChirho(generic_var_chirho)),
+                        ),
+                    },
+                ),
+            ]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
     }
 }
 

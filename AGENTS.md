@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1557 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1561 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -239,7 +239,7 @@ _These items address structural issues identified in the Codex engineering revie
 34. ~~**OverloadedStrings** — `IsString` type class; string literals desugar to `fromString`~~ — DONE
 35. ~~**OverloadedLists** — `IsList` type class; list literals desugar to `fromList`~~ — DONE (IsList class with `fromList`/`toList` methods; `IsList [a]` identity instance; `{-# LANGUAGE OverloadedLists #-}` desugars list literals through `fromList` in desugar_chirho.rs; `fromList`/`toList` Core IR bindings as identity functions in prelude; dict pass handles IsList with `id#` primop; 6 e2e tests total: identity sum, length, head, no-extension control; 1507 tests total)
 36. ~~**DeriveFunctor/DeriveFoldable/DeriveTraversable** — auto-derive Functor/Foldable/Traversable~~ — DONE (derive_functor_chirho generates `fmap` with field-level type analysis: direct var → `f x`, nested var → `fmap f x`, no var → passthrough; derive_foldable_chirho generates `foldMap` combining with `<>`; derive_traversable_chirho generates `traverse` with `<$>`/`<*>` applicative style; `type_is_var_chirho` for span-insensitive type comparison; Foldable/Traversable class declarations in class_chirho.rs; `fmap` now polymorphic `Functor f => (a -> b) -> f a -> f b`; foldMap/traverse type signatures in prelude; 5 unit tests + 2 e2e tests (simple Box fmap, multi-field Tagged fmap); 1412 tests total)
-37. **DeriveGeneric** — `Generic` type class and `GHC.Generics` representation types
+37. ~~**DeriveGeneric**~~ — DONE (`Generic` type class registered in class environment with `from :: a -> rep` and `to :: rep -> a` methods; `derive_generic_chirho` function generates sum-of-products representation: nullary constructors → `()`, single field → identity, multi-field → tuples, multiple constructors → right-nested `Either Left/Right`; both `from` and `to` methods generated with proper pattern matching; works for data types and newtypes; dispatched in `derive_instances_chirho` for both data and newtype; 4 new unit tests: enum/product/single-nullary/newtype; 1561 tests total)
 38. **ConstraintKinds** — constraints as first-class kinds
 39. ~~**FlexibleInstances/FlexibleContexts** — relax Haskell 98 instance/context restrictions~~ — DONE (no Haskell 98 restrictions enforced; all instance heads and contexts already flexible)
 40. **DataKinds** — promote data constructors to type-level
