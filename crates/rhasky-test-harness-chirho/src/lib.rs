@@ -7,6 +7,7 @@
 //! Provides golden test runners, test corpus discovery, and snapshot
 //! comparison utilities.
 
+pub mod bench_chirho;
 pub mod ghc_suite_chirho;
 
 use std::fs;
