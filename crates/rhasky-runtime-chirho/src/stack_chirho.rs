@@ -425,6 +425,7 @@ pub enum PrimOpKindChirho {
     RetryChirho,
     /// orElse# :: STM a -> STM a -> STM a — try first, if it retries try second
     OrElseChirho,
+
 }
 
 /// The evaluation stack.

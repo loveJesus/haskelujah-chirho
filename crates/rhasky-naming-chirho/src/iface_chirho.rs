@@ -313,7 +313,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             // Data structures
             "sort",
             // Monad transformers
-            "StateT", "runStateT", "runState", "evalState", "execState",
+            "StateT", "runStateT", "evalStateT", "execStateT",
+            "runState", "evalState", "execState",
             "get", "put", "modify", "bindStateT", "returnStateT",
             "MaybeT", "runMaybeT", "returnMaybeT", "bindMaybeT",
             // ReaderT
