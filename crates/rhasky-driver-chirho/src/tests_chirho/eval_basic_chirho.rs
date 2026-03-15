@@ -6078,3 +6078,43 @@ main = sum (pascal 10)
         assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10));
     }
 
+    #[test]
+    fn eval_hex_literal_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let val_chirho = eval_source_chirho(
+            "module Main where\nmain = 0xFF\n",
+            &mut sm_chirho, "Main.hs", None,
+        ).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(255));
+    }
+
+    #[test]
+    fn eval_octal_literal_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let val_chirho = eval_source_chirho(
+            "module Main where\nmain = 0o77\n",
+            &mut sm_chirho, "Main.hs", None,
+        ).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(63));
+    }
+
+    #[test]
+    fn eval_hex_plus_octal_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let val_chirho = eval_source_chirho(
+            "module Main where\nmain = 0xFF + 0o17\n",
+            &mut sm_chirho, "Main.hs", None,
+        ).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(270));
+    }
+
+    #[test]
+    fn eval_binary_literal_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let val_chirho = eval_source_chirho(
+            "module Main where\nmain = 0b1010\n",
+            &mut sm_chirho, "Main.hs", None,
+        ).unwrap();
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10));
+    }
+

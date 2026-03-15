@@ -30,8 +30,8 @@ fn eval_chirho(source_chirho: &str) -> Result<i64, String> {
 
 #[test]
 fn report_sec_2_5_numeric_literals_chirho() {
-    // §2.5 Numeric Literals — integer literals
-    let src_chirho = "module Report where\nmain = 255 + 15\n";
+    // §2.5 Numeric Literals — hex and octal
+    let src_chirho = "module Report where\nmain = 0xFF + 0o17\n";
     assert_eq!(eval_chirho(src_chirho).unwrap(), 270);
 }
 

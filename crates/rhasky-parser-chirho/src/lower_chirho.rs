@@ -51,6 +51,29 @@ struct LowerCtxChirho {
     offset_chirho: usize,
 }
 
+/// Parse an integer literal that may have a hex (0x/0X), octal (0o/0O),
+/// or binary (0b/0B) prefix.
+fn parse_integer_literal_chirho(text_chirho: &str) -> i64 {
+    if let Some(hex_chirho) = text_chirho
+        .strip_prefix("0x")
+        .or_else(|| text_chirho.strip_prefix("0X"))
+    {
+        i64::from_str_radix(hex_chirho, 16).unwrap_or(0)
+    } else if let Some(octal_chirho) = text_chirho
+        .strip_prefix("0o")
+        .or_else(|| text_chirho.strip_prefix("0O"))
+    {
+        i64::from_str_radix(octal_chirho, 8).unwrap_or(0)
+    } else if let Some(binary_chirho) = text_chirho
+        .strip_prefix("0b")
+        .or_else(|| text_chirho.strip_prefix("0B"))
+    {
+        i64::from_str_radix(binary_chirho, 2).unwrap_or(0)
+    } else {
+        text_chirho.parse::<i64>().unwrap_or(0)
+    }
+}
+
 impl LowerCtxChirho {
     fn new_chirho(file_id_chirho: FileIdChirho) -> Self {
         Self {
@@ -3896,10 +3919,8 @@ impl LowerCtxChirho {
                     if saw_equals_chirho && value_chirho.is_none() {
                         match tok_chirho.kind_chirho() {
                             TokenKindChirho::IntegerLiteralChirho => {
-                                let n_chirho = tok_chirho
-                                    .text_chirho()
-                                    .parse::<i64>()
-                                    .unwrap_or(0);
+                                let n_chirho =
+                                    parse_integer_literal_chirho(tok_chirho.text_chirho());
                                 value_chirho = Some(ExprChirho::LitChirho(
                                     LitChirho::IntChirho(n_chirho, span_chirho),
                                 ));
@@ -4091,7 +4112,7 @@ impl LowerCtxChirho {
                 match tok_chirho.kind_chirho() {
                     TokenKindChirho::IntegerLiteralChirho => {
                         let val_chirho =
-                            tok_chirho.text_chirho().parse::<i64>().unwrap_or(0);
+                            parse_integer_literal_chirho(tok_chirho.text_chirho());
                         return LitChirho::IntChirho(val_chirho, span_chirho);
                     }
                     TokenKindChirho::FloatLiteralChirho => {
