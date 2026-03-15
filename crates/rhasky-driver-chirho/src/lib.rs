@@ -1021,6 +1021,229 @@ pub fn compile_modules_incremental_chirho(
 }
 
 // ---------------------------------------------------------------------------
+// Hierarchical project compilation from directory
+// ---------------------------------------------------------------------------
+
+/// Result of compiling a directory-based Haskell project.
+#[derive(Debug)]
+pub struct ProjectCompileResultChirho {
+    /// Per-module compilation results, in dependency order.
+    pub module_results_chirho: Vec<CompileResultChirho>,
+    /// Module names in compilation order.
+    pub compilation_order_chirho: Vec<String>,
+    /// Non-fatal warnings across all modules.
+    pub warnings_chirho: Vec<String>,
+}
+
+/// Walk a directory tree and find all `.hs` files recursively.
+fn discover_hs_files_chirho(dir_chirho: &Path) -> Vec<PathBuf> {
+    let mut files_chirho = Vec::new();
+    if !dir_chirho.is_dir() {
+        return files_chirho;
+    }
+    let mut stack_chirho = vec![dir_chirho.to_path_buf()];
+    while let Some(current_chirho) = stack_chirho.pop() {
+        let entries_chirho = match std::fs::read_dir(&current_chirho) {
+            Ok(e_chirho) => e_chirho,
+            Err(_) => continue,
+        };
+        for entry_chirho in entries_chirho.flatten() {
+            let path_chirho = entry_chirho.path();
+            if path_chirho.is_dir() {
+                // Skip hidden directories and common non-source directories
+                let name_chirho = entry_chirho.file_name();
+                let name_str_chirho = name_chirho.to_string_lossy();
+                if !name_str_chirho.starts_with('.')
+                    && name_str_chirho != "dist-newstyle"
+                    && name_str_chirho != "node_modules"
+                    && name_str_chirho != ".stack-work"
+                {
+                    stack_chirho.push(path_chirho);
+                }
+            } else if path_chirho.extension().map_or(false, |ext_chirho| ext_chirho == "hs") {
+                files_chirho.push(path_chirho);
+            }
+        }
+    }
+    files_chirho.sort();
+    files_chirho
+}
+
+/// Extract module name from a Haskell source string by scanning for `module Name where`.
+/// Falls back to "Main" if no module header is found.
+fn extract_module_name_chirho(source_chirho: &str) -> String {
+    for line_chirho in source_chirho.lines() {
+        let trimmed_chirho = line_chirho.trim();
+        if trimmed_chirho.is_empty() || trimmed_chirho.starts_with("--") {
+            continue;
+        }
+        if trimmed_chirho.starts_with("{-") {
+            continue; // skip block comment starts (simplified)
+        }
+        if let Some(rest_chirho) = trimmed_chirho.strip_prefix("module ") {
+            let rest_chirho = rest_chirho.trim();
+            // Module name is everything before "(" or "where"
+            // Check "(" first since export lists appear before "where"
+            let name_chirho = rest_chirho
+                .split_once('(')
+                .or_else(|| rest_chirho.split_once(" where"))
+                .or_else(|| rest_chirho.split_once("where"))
+                .map_or(rest_chirho, |(n_chirho, _)| n_chirho);
+            return name_chirho.trim().to_string();
+        }
+        break; // First non-comment, non-module line means implicit Main
+    }
+    "Main".to_string()
+}
+
+/// Extract imported module names from a Haskell source string.
+fn extract_imports_chirho(source_chirho: &str) -> Vec<String> {
+    let mut imports_chirho = Vec::new();
+    for line_chirho in source_chirho.lines() {
+        let trimmed_chirho = line_chirho.trim();
+        if let Some(rest_chirho) = trimmed_chirho.strip_prefix("import ") {
+            let rest_chirho = rest_chirho.trim();
+            // Skip "qualified" keyword if present
+            let rest_chirho = rest_chirho
+                .strip_prefix("qualified ")
+                .unwrap_or(rest_chirho)
+                .trim();
+            // Module name is the first word (dotted identifier)
+            let module_name_chirho = rest_chirho
+                .split(|c_chirho: char| c_chirho.is_whitespace() || c_chirho == '(')
+                .next()
+                .unwrap_or("")
+                .to_string();
+            if !module_name_chirho.is_empty() {
+                imports_chirho.push(module_name_chirho);
+            }
+        }
+    }
+    imports_chirho
+}
+
+/// Compile a Haskell project from a directory, automatically discovering `.hs`
+/// files, computing dependency order from import declarations, and compiling
+/// modules in topological order.
+///
+/// Returns an error if:
+/// - No `.hs` files are found in the directory
+/// - Circular module imports are detected
+/// - Any module fails to compile
+pub fn compile_project_dir_chirho(
+    project_dir_chirho: &Path,
+    source_map_chirho: &mut SourceMapChirho,
+) -> Result<ProjectCompileResultChirho, String> {
+    // Step 1: Discover all .hs files
+    let hs_files_chirho = discover_hs_files_chirho(project_dir_chirho);
+    if hs_files_chirho.is_empty() {
+        return Err(format!(
+            "No .hs files found in {}",
+            project_dir_chirho.display()
+        ));
+    }
+
+    // Step 2: Read sources and extract module names + imports
+    let mut module_sources_chirho: Vec<(String, String, String)> = Vec::new(); // (module_name, file_path, source)
+    for path_chirho in &hs_files_chirho {
+        let source_chirho = std::fs::read_to_string(path_chirho).map_err(|e_chirho| {
+            format!("Failed to read {}: {}", path_chirho.display(), e_chirho)
+        })?;
+        let module_name_chirho = extract_module_name_chirho(&source_chirho);
+        let file_name_chirho = path_chirho.to_string_lossy().to_string();
+        module_sources_chirho.push((module_name_chirho, file_name_chirho, source_chirho));
+    }
+
+    // Step 3: Build dependency graph
+    let mut dep_graph_chirho = rhasky_incremental_chirho::DepGraphChirho::new_chirho();
+    let known_modules_chirho: std::collections::HashSet<String> = module_sources_chirho
+        .iter()
+        .map(|(name_chirho, _, _)| name_chirho.clone())
+        .collect();
+
+    for (module_name_chirho, _, source_chirho) in &module_sources_chirho {
+        let fp_chirho = rhasky_incremental_chirho::FingerprintChirho::from_str_chirho(source_chirho);
+        dep_graph_chirho.add_module_chirho(module_name_chirho, fp_chirho);
+        let imports_chirho = extract_imports_chirho(source_chirho);
+        for imported_chirho in &imports_chirho {
+            // Only add edges for local modules (skip external like Prelude, Data.Map, etc.)
+            if known_modules_chirho.contains(imported_chirho) {
+                dep_graph_chirho.add_dep_chirho(module_name_chirho, imported_chirho);
+            }
+        }
+    }
+
+    // Step 4: Topological sort
+    let order_chirho = dep_graph_chirho.topo_sort_chirho().ok_or_else(|| {
+        "Circular module imports detected. Cannot determine compilation order.".to_string()
+    })?;
+
+    // Step 5: Compile in dependency order
+    let mut results_chirho: Vec<CompileResultChirho> = Vec::new();
+    let mut ifaces_chirho: Vec<ModuleIfaceChirho> =
+        rhasky_naming_chirho::builtin_module_ifaces_chirho();
+    let mut all_warnings_chirho: Vec<String> = Vec::new();
+    let mut imported_types_chirho: std::collections::HashMap<
+        String,
+        rhasky_typing_chirho::ty_chirho::SchemeChirho,
+    > = std::collections::HashMap::new();
+
+    for module_name_chirho in &order_chirho {
+        let (_, file_name_chirho, source_chirho) = module_sources_chirho
+            .iter()
+            .find(|(n_chirho, _, _)| n_chirho == module_name_chirho)
+            .ok_or_else(|| format!("Module {} not found in sources", module_name_chirho))?;
+
+        let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+            source_map_chirho,
+            file_name_chirho,
+            source_chirho,
+        );
+        let file_id_chirho = source_file_chirho.file_id_chirho();
+
+        let frontend_result_chirho =
+            run_frontend_chirho(source_chirho, file_id_chirho, &ifaces_chirho, &imported_types_chirho)
+                .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
+
+        let FrontendResultChirho {
+            module_chirho,
+            infer_result_chirho,
+            warnings_chirho,
+        } = frontend_result_chirho;
+
+        all_warnings_chirho.extend(warnings_chirho);
+
+        // Build interface for downstream modules
+        let iface_chirho =
+            build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+
+        // Accumulate exported type schemes
+        for (name_chirho, val_chirho) in &iface_chirho.exports_chirho.values_chirho {
+            if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(name_chirho) {
+                imported_types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
+            }
+            // Also try the iface value name directly
+            let _ = val_chirho;
+        }
+
+        ifaces_chirho.push(iface_chirho);
+
+        // Backend compilation
+        let compile_result_chirho =
+            compile_backend_chirho(module_chirho, infer_result_chirho)
+                .map_err(|e_chirho| format!("Backend error for {}: {}", module_name_chirho, e_chirho))?;
+
+        results_chirho.push(compile_result_chirho);
+    }
+
+    Ok(ProjectCompileResultChirho {
+        module_results_chirho: results_chirho,
+        compilation_order_chirho: order_chirho,
+        warnings_chirho: all_warnings_chirho,
+    })
+}
+
+// ---------------------------------------------------------------------------
 // Cabal project compilation
 // ---------------------------------------------------------------------------
 

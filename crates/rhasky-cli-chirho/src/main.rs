@@ -138,6 +138,7 @@ fn main_chirho() -> ExitCode {
         }
         "run" => run_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
         "compile" => compile_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
+        "build" => build_command_chirho(program_name_chirho, path_chirho),
         "repl" => repl_chirho::repl_command_chirho(),
         _ => {
             eprintln!("unknown command `{command_chirho}`");
@@ -394,13 +395,54 @@ fn atty_is_terminal_chirho() -> bool {
     std::io::stderr().is_terminal()
 }
 
+/// `rhasky build [<dir>]` — compile a multi-module Haskell project from a directory.
+/// Discovers `.hs` files, resolves inter-module dependencies, and compiles
+/// in topological order.
+fn build_command_chirho(
+    _program_name_chirho: &str,
+    path_arg_chirho: Option<String>,
+) -> ExitCode {
+    let project_dir_chirho = path_arg_chirho
+        .as_deref()
+        .unwrap_or(".");
+    let project_path_chirho = std::path::Path::new(project_dir_chirho);
+
+    if !project_path_chirho.is_dir() {
+        eprintln!("error: `{}` is not a directory", project_dir_chirho);
+        return ExitCode::from(1);
+    }
+
+    eprintln!("Building project in {}...", project_path_chirho.display());
+
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    match rhasky_driver_chirho::compile_project_dir_chirho(project_path_chirho, &mut sm_chirho) {
+        Ok(result_chirho) => {
+            eprintln!(
+                "Compiled {} modules in order: {}",
+                result_chirho.compilation_order_chirho.len(),
+                result_chirho.compilation_order_chirho.join(" → "),
+            );
+            for warning_chirho in &result_chirho.warnings_chirho {
+                eprintln!("warning: {}", warning_chirho);
+            }
+            eprintln!("Build successful.");
+            ExitCode::SUCCESS
+        }
+        Err(error_chirho) => {
+            eprintln!("error: {}", error_chirho);
+            ExitCode::from(1)
+        }
+    }
+}
+
 fn print_usage_chirho(program_name_chirho: &str) {
-    eprintln!("usage: {program_name_chirho} <check|run|compile|repl> <path> [options]");
+    eprintln!("usage: {program_name_chirho} <check|run|compile|build|repl> <path> [options]");
     eprintln!();
     eprintln!("commands:");
     eprintln!("  check    type-check a .hs file without code generation");
     eprintln!("  run      evaluate a .hs file via the STG interpreter");
     eprintln!("  compile  compile a .hs file (with -o: produce native executable or .wasm)");
+    eprintln!("  build    compile a multi-module project from a directory");
     eprintln!("  repl     interactive REPL with expression evaluation");
     eprintln!();
     eprintln!("flags:");
