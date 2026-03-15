@@ -66,6 +66,50 @@ impl DictPassCtxChirho {
                     }
                 }),
             ),
+            // fromList :: [a] -> [a]  (IsList identity for standard lists)
+            (
+                "fromList",
+                {
+                    let a_chirho = TyChirho::VarChirho(
+                        rhasky_typing_chirho::ty_chirho::TyVarChirho(9990),
+                    );
+                    TyChirho::fun_chirho(a_chirho.clone(), a_chirho)
+                },
+                Box::new(|ctx_chirho: &mut Self| {
+                    let a_chirho = TyChirho::VarChirho(
+                        rhasky_typing_chirho::ty_chirho::TyVarChirho(9990),
+                    );
+                    let x_chirho = ctx_chirho.fresh_binder_chirho("x", a_chirho);
+                    CoreExprChirho::LamChirho {
+                        binder_chirho: x_chirho.clone(),
+                        body_chirho: Box::new(CoreExprChirho::VarChirho(
+                            x_chirho.id_chirho,
+                        )),
+                    }
+                }),
+            ),
+            // toList :: [a] -> [a]  (IsList identity for standard lists)
+            (
+                "toList",
+                {
+                    let a_chirho = TyChirho::VarChirho(
+                        rhasky_typing_chirho::ty_chirho::TyVarChirho(9990),
+                    );
+                    TyChirho::fun_chirho(a_chirho.clone(), a_chirho)
+                },
+                Box::new(|ctx_chirho: &mut Self| {
+                    let a_chirho = TyChirho::VarChirho(
+                        rhasky_typing_chirho::ty_chirho::TyVarChirho(9990),
+                    );
+                    let x_chirho = ctx_chirho.fresh_binder_chirho("x", a_chirho);
+                    CoreExprChirho::LamChirho {
+                        binder_chirho: x_chirho.clone(),
+                        body_chirho: Box::new(CoreExprChirho::VarChirho(
+                            x_chirho.id_chirho,
+                        )),
+                    }
+                }),
+            ),
             // const :: a -> b -> a
             (
                 "const",

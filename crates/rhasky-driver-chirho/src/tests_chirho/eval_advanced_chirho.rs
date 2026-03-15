@@ -1055,8 +1055,66 @@ main = factorial 10
         assert_eq!(result_chirho.1.io_output_chirho, "plain string\n");
     }
 
-    // ── N-ary tuple tests ───────────────────────────────────────────────
+    // ── OverloadedLists (§E.35) ──────────────────────────────────────────
 
+    #[test]
+    fn eval_overloaded_lists_identity_chirho() {
+        // With OverloadedLists, list literals go through fromList (identity for [a])
+        use crate::eval_source_chirho;
+        let mut sm_chirho = rhasky_span_chirho::SourceMapChirho::new_chirho();
+        let src_chirho = "{-# LANGUAGE OverloadedLists #-}\n\
+             module Test where\n\
+             main = sum [1, 2, 3]\n";
+        let result_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        )
+        .expect("overloaded lists identity should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(6));
+    }
+
+    #[test]
+    fn eval_overloaded_lists_length_chirho() {
+        // With OverloadedLists, list literal [10, 20, 30] through fromList gives same list
+        use crate::eval_source_chirho;
+        let mut sm_chirho = rhasky_span_chirho::SourceMapChirho::new_chirho();
+        let src_chirho = "{-# LANGUAGE OverloadedLists #-}\n\
+             module Test where\n\
+             main = length [10, 20, 30]\n";
+        let result_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        )
+        .expect("overloaded lists length should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3));
+    }
+
+    #[test]
+    fn eval_no_overloaded_lists_chirho() {
+        // Without OverloadedLists, list literals are plain cons chains (no fromList call)
+        use crate::eval_source_chirho;
+        let mut sm_chirho = rhasky_span_chirho::SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             main = sum [1, 2, 3, 4]\n";
+        let result_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        )
+        .expect("plain list should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10));
+    }
+
+    #[test]
+    fn eval_overloaded_lists_head_chirho() {
+        // With OverloadedLists: head [42, 0, 0] → 42
+        use crate::eval_source_chirho;
+        let mut sm_chirho = rhasky_span_chirho::SourceMapChirho::new_chirho();
+        let src_chirho = "{-# LANGUAGE OverloadedLists #-}\n\
+             module Test where\n\
+             main = head [42, 0, 0]\n";
+        let result_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        )
+        .expect("overloaded lists head should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
 
     // ── N-ary tuple tests ───────────────────────────────────────────────
 

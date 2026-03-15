@@ -2336,7 +2336,16 @@ impl DesugarCtxChirho {
                         args_chirho: vec![elem_core_chirho, result_chirho],
                     };
                 }
-                result_chirho
+                // OverloadedLists: list literals become `fromList [a, b, c]`
+                if self.extensions_chirho.contains(&"OverloadedLists".to_string()) {
+                    let from_list_id_chirho = self.resolve_var_chirho("fromList");
+                    CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(from_list_id_chirho)),
+                        arg_chirho: Box::new(result_chirho),
+                    }
+                } else {
+                    result_chirho
+                }
             }
 
             ExprChirho::NegChirho { expr_chirho: inner_chirho, .. } => {
