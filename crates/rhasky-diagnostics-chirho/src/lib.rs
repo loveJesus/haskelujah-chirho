@@ -8,7 +8,10 @@
 //! suggestions, and multiple severity levels.
 //!
 //! Diagnostics are the same data structure regardless of output target (CLI,
-//! LSP, JSON, REPL). Rendering is the consumer's responsibility.
+//! LSP, JSON, REPL). The [`render_chirho`] module provides a Rust/Elm-style
+//! text renderer with source code snippets and ANSI color support.
+
+pub mod render_chirho;
 
 use std::fmt::{self, Display, Formatter};
 

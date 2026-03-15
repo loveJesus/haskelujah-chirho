@@ -1287,6 +1287,25 @@ fn find_module_file_chirho(
     None
 }
 
+/// Render a diagnostic bundle as a human-readable error report with source
+/// code snippets, underline annotations, and optional ANSI colors.
+pub fn render_diagnostics_chirho(
+    diagnostics_chirho: &DiagnosticBundleChirho,
+    source_map_chirho: &SourceMapChirho,
+    color_chirho: bool,
+) -> String {
+    let config_chirho = if color_chirho {
+        rhasky_diagnostics_chirho::render_chirho::RenderConfigChirho::default()
+    } else {
+        rhasky_diagnostics_chirho::render_chirho::RenderConfigChirho::plain_chirho()
+    };
+    rhasky_diagnostics_chirho::render_chirho::render_bundle_chirho(
+        diagnostics_chirho,
+        source_map_chirho,
+        &config_chirho,
+    )
+}
+
 pub fn render_summary_chirho(check_summary_chirho: &CheckSummaryChirho) -> String {
     format!(
         "source: {}\nmodule: {}\nmode: {:?}\nincremental_session: {}\nllvm_preview: {}\nwasm_stub_size: {}",

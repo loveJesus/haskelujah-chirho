@@ -432,13 +432,17 @@ dependencies = [
 name = "rhasky-cli-chirho"
 version = "0.1.0"
 dependencies = [
+ "rhasky-ast-chirho",
  "rhasky-backend-cranelift-chirho",
  "rhasky-backend-llvm-chirho",
  "rhasky-backend-wasm-chirho",
  "rhasky-core-chirho",
  "rhasky-driver-chirho",
+ "rhasky-naming-chirho",
  "rhasky-runtime-chirho",
  "rhasky-span-chirho",
+ "rhasky-syntax-chirho",
+ "rhasky-typing-chirho",
 ]
 
 [[package]]

@@ -21,5 +21,6 @@ rhasky-naming-chirho = { path = "../rhasky-naming-chirho" }
 rhasky-driver-chirho = { path = "../rhasky-driver-chirho" }
 rhasky-runtime-chirho = { path = "../rhasky-runtime-chirho" }
 rhasky-span-chirho = { path = "../rhasky-span-chirho" }
+rhasky-syntax-chirho = { path = "../rhasky-syntax-chirho" }
 rhasky-typing-chirho = { path = "../rhasky-typing-chirho" }
 
