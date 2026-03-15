@@ -175,7 +175,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1670 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1681 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -270,7 +270,7 @@ _These items address structural issues identified in the Codex engineering revie
 #### H. Testing & Conformance
 
 57. ~~**GHC test suite integration**~~ — DONE (ghc_suite_chirho module in rhasky-test-harness-chirho: GhcTestCaseChirho/GhcTestResultChirho/GhcSuiteResultChirho types; three test kinds: Compile/CompileAndRun/CompileFail; curated test runner with `-- TEST:`/`-- EXPECT_OUTPUT:` metadata comments; full GHC testsuite `.T` file parser via `parse_dot_t_file_chirho` extracting test names and kinds; `discover_ghc_full_suite_chirho` recursive directory walker for `.T` + `.hs` file pairs; `load_expected_stdout_chirho` for `.stdout` reference files; `run_ghc_test_chirho`/`run_ghc_suite_chirho` with pass_rate_chirho tracking; 20 curated tests in ghc-tests-chirho/ covering types/patterns/let-where/ADTs/HOFs/typeclasses/guards/if-then-else/type-errors/lambdas/do-notation/case/infinite-lists/newtypes/list-comp/strings/fibonacci/deriving/sections/type-aliases; 20/20 pass rate; 19 unit tests + 1 integration test; 1642 tests total)
-58. ~~**Property-based testing**~~ — DONE (proptest crate integrated across 3 crates: parser (8 tests: arbitrary-input crash-freedom with catch_unwind, random identifiers, module headers, nested parens, do-blocks, type sigs, unbalanced delimiters, valid-input green-node production), core simplifier (3 tests: crash-freedom on random Core expressions, idempotence, literal preservation), driver evaluator (8 tests: integer literal identity, addition, multiplication, let-binding identity, if-true/if-false branching, lambda application, subtraction identity); property tests discovered real parser bug: GreenBuilder checkpoint stack depth mismatch on malformed input; 1479 tests total)
+58. ~~**Property-based testing**~~ — DONE (proptest crate: 19 property tests covering parser robustness (arbitrary-input crash-freedom with catch_unwind, Haskell-fragment fuzz), simplifier semantic preservation (arithmetic identity), runtime evaluator (int literal identity, addition, multiplication, let-binding identity, if-true/if-false branching, lambda application, subtraction identity, step-limit termination, nested-let depth, Num typeclass consistency, abs idempotence, negate involution, signum*abs law, eq reflexivity, lt ordering match); property tests discovered real parser bug: GreenBuilder checkpoint stack depth mismatch on malformed input; 1681 tests total)
 59. **Benchmark suite** — nofib-style benchmarks for runtime performance tracking
 60. **Haskell Report conformance tracker** — systematic coverage of Haskell 2010 Report sections
 61. ~~**Backend round-trip smoke tests**~~ — DONE (4 LLVM round-trip tests: compile Haskell→Core→LLVM IR, link with clang, execute native binary, compare exit code; `llvm_round_trip_chirho` helper function; tests: constant 42, arithmetic f 10 32→42, recursive fib 10→55, STG-vs-native comparison 3*14→42; LLVM `@main` now returns `%exitcode = trunc i64 %result to i32` for proper exit codes; graceful skip when clang unavailable; 1492 tests total)
