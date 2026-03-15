@@ -1752,5 +1752,65 @@ main = putChar 'A'
         assert_eq!(m_chirho.io_output_chirho, "A");
     }
 
+    // ── ConstraintKinds (§E.38) ────────────────────────────────────────
+
+    #[test]
+    fn constraintkinds_kind_annotation_chirho() {
+        // ConstraintKinds: `Constraint` recognized as a kind annotation
+        // in kind signatures like `(c :: Constraint)`
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE KindSignatures #-}
+data Dict (c :: Constraint) = MkDict
+test :: Dict (Show Int) -> Int
+test MkDict = 42
+main = print (test MkDict)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("ConstraintKinds kind annotation failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn constraintkinds_constraint_arrow_kind_chirho() {
+        // ConstraintKinds: arrow kind `* -> Constraint` in kind signature
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE KindSignatures #-}
+data Proxy (c :: * -> Constraint) = MkProxy
+test :: Proxy Show -> Int
+test MkProxy = 99
+main = print (test MkProxy)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("ConstraintKinds arrow kind failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "99\n");
+    }
+
+    #[test]
+    fn constraintkinds_constraint_type_alias_chirho() {
+        // ConstraintKinds: constraint type alias `type Printable a = (Show a, Eq a)`
+        // used as a constraint in a function signature
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+{-# LANGUAGE ConstraintKinds #-}
+type Printable a = Show a
+showIt :: Printable a => a -> Int
+showIt x = 42
+main = print (showIt True)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("ConstraintKinds constraint alias failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
     // ── Algorithmic tests: stress-testing compiler capabilities ───────
 

@@ -690,6 +690,7 @@ fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
             ast_kind_to_kind_chirho(a_chirho),
             ast_kind_to_kind_chirho(b_chirho),
         ),
+        AstKindChirho::ConstraintChirho => KindChirho::ConstraintChirho,
     }
 }
 
@@ -1362,5 +1363,24 @@ mod tests_chirho {
     #[test]
     fn constraint_kind_display_chirho() {
         assert_eq!(KindChirho::ConstraintChirho.to_string(), "Constraint");
+    }
+
+    #[test]
+    fn ast_kind_constraint_converts_chirho() {
+        let ast_chirho = AstKindChirho::ConstraintChirho;
+        assert_eq!(ast_kind_to_kind_chirho(&ast_chirho), KindChirho::ConstraintChirho);
+    }
+
+    #[test]
+    fn ast_kind_constraint_arrow_converts_chirho() {
+        let ast_chirho = AstKindChirho::ArrowChirho(
+            Box::new(AstKindChirho::StarChirho),
+            Box::new(AstKindChirho::ConstraintChirho),
+        );
+        let expected_chirho = KindChirho::arrow_chirho(
+            KindChirho::StarChirho,
+            KindChirho::ConstraintChirho,
+        );
+        assert_eq!(ast_kind_to_kind_chirho(&ast_chirho), expected_chirho);
     }
 }

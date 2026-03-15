@@ -21,6 +21,8 @@ pub enum AstKindChirho {
     StarChirho,
     /// `k1 -> k2` — arrow kind (type constructor kind).
     ArrowChirho(Box<AstKindChirho>, Box<AstKindChirho>),
+    /// `Constraint` — the kind of typeclass constraints (ConstraintKinds).
+    ConstraintChirho,
 }
 
 /// One equation in a closed type family:

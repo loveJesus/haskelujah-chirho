@@ -4708,6 +4708,12 @@ impl LowerCtxChirho {
                 {
                     Some((AstKindChirho::StarChirho, pos_chirho + 1))
                 }
+                // `Constraint` is a ConId token with text "Constraint" (ConstraintKinds)
+                else if t_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                    && t_chirho.text_chirho() == "Constraint"
+                {
+                    Some((AstKindChirho::ConstraintChirho, pos_chirho + 1))
+                }
                 // Parenthesized kind: `(kind)`
                 else if t_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
                     let (inner_chirho, after_chirho) =
@@ -5879,6 +5885,52 @@ foo = 1
                 assert_eq!(type_vars_chirho.len(), 1);
                 assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "a");
                 assert!(type_vars_chirho[0].kind_annotation_chirho.is_none());
+            }
+            other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_kind_sig_constraint_chirho() {
+        // data Dict (c :: Constraint) = MkDict — Constraint kind annotation
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\ndata Dict (c :: Constraint) = MkDict\n",
+        );
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho {
+                type_vars_chirho, ..
+            } => {
+                assert_eq!(type_vars_chirho.len(), 1);
+                assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "c");
+                assert_eq!(
+                    type_vars_chirho[0].kind_annotation_chirho,
+                    Some(AstKindChirho::ConstraintChirho)
+                );
+            }
+            other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_kind_sig_star_to_constraint_chirho() {
+        // data Proxy (c :: * -> Constraint) = MkProxy — arrow kind with Constraint
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\ndata Proxy (c :: * -> Constraint) = MkProxy\n",
+        );
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho {
+                type_vars_chirho, ..
+            } => {
+                assert_eq!(type_vars_chirho.len(), 1);
+                assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "c");
+                let expected_chirho = AstKindChirho::ArrowChirho(
+                    Box::new(AstKindChirho::StarChirho),
+                    Box::new(AstKindChirho::ConstraintChirho),
+                );
+                assert_eq!(
+                    type_vars_chirho[0].kind_annotation_chirho,
+                    Some(expected_chirho)
+                );
             }
             other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
         }
