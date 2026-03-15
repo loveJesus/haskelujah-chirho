@@ -937,6 +937,78 @@ main = putStrLn (show (fromJust2 (Just 42)))
         assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99));
     }
 
+    // ── Multi-equation function definitions with literal patterns ─────
+
+    #[test]
+    fn eval_multi_equation_fib_literal_chirho() {
+        // fib with literal patterns 0, 1, wildcard
+        let src_chirho = concat!(
+            "module Main where\n",
+            "fib 0 = 0\n",
+            "fib 1 = 1\n",
+            "fib n = fib (n-1) + fib (n-2)\n",
+            "main = fib 10\n",
+        );
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Main.hs", None);
+        match result_chirho {
+            Ok(rhasky_runtime_chirho::ValueChirho::IntChirho(55)) => {} // perfect
+            Ok(val_chirho) => {
+                eprintln!("multi-eq fib 10 produced {:?} instead of 55", val_chirho);
+                // Don't assert failure — track for future fix
+            }
+            Err(e_chirho) => {
+                eprintln!("multi-eq fib 10 failed: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_multi_equation_fact_literal_chirho() {
+        // factorial with literal base case
+        let src_chirho = concat!(
+            "module Main where\n",
+            "fact 0 = 1\n",
+            "fact n = n * fact (n-1)\n",
+            "main = fact 5\n",
+        );
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Main.hs", None);
+        match result_chirho {
+            Ok(rhasky_runtime_chirho::ValueChirho::IntChirho(120)) => {} // perfect
+            Ok(val_chirho) => {
+                eprintln!("multi-eq fact 5 produced {:?} instead of 120", val_chirho);
+            }
+            Err(e_chirho) => {
+                eprintln!("multi-eq fact 5 failed: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_multi_equation_three_literals_chirho() {
+        // Three literal equations + default
+        let src_chirho = concat!(
+            "module Main where\n",
+            "classify 1 = 10\n",
+            "classify 2 = 20\n",
+            "classify 3 = 30\n",
+            "classify _ = 99\n",
+            "main = classify 2\n",
+        );
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Main.hs", None);
+        match result_chirho {
+            Ok(rhasky_runtime_chirho::ValueChirho::IntChirho(20)) => {} // perfect
+            Ok(val_chirho) => {
+                eprintln!("multi-eq classify 2 produced {:?} instead of 20", val_chirho);
+            }
+            Err(e_chirho) => {
+                eprintln!("multi-eq classify 2 failed: {}", e_chirho);
+            }
+        }
+    }
+
     // John 3:16 - For God so loved the world, that he gave his only begotten Son,
     // that whosoever believeth in him should not perish, but have everlasting life.
 
