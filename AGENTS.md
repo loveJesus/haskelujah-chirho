@@ -180,80 +180,97 @@ For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive
 
 ### Phase 2 Priorities
 
-_Phase 1 completed 128 priorities (see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md)). Phase 2 focuses on making the compiler practical: true laziness, real multi-module compilation, backend code generation, CLI usability, and Hackage compatibility._
+_Phase 1 completed 128 priorities (see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md)). Phase 2 focuses on system coherence, then making the compiler practical: true laziness, real multi-module compilation, backend code generation, CLI usability, and Hackage compatibility._
+
+_Codex engineering review: [codex-analysis-chirho.md](codex-analysis-chirho.md)_
+
+#### 0. Coherence & Technical Debt (from Codex review)
+
+_These items address structural issues identified in the Codex engineering review. They should be resolved before or alongside new feature work to prevent the codebase from becoming a hard-to-maintain monolith._
+
+1. **Unify driver pipeline** — `check_source_file_chirho` (lines 64–86) only runs the legacy header parser; `compile_source_chirho` (lines 206–270) runs the real 12-phase pipeline. Collapse to one reusable pipeline coordinator: `check`, `compile`, `run`, `repl`, package-mode, and script-mode should all share one orchestrator that returns unified diagnostics. Remove or quarantine the legacy header-only path.
+2. **Remove stale parser entry point** — `rhasky-parser-chirho/src/lib.rs:26–128` exposes a string-based module-header parser that only skips `--` comments, doesn't handle block comments or pragmas, and accepts malformed headers. Replace with the real CST parser or rename to an internal header scanner and stop using it as a compiler entry point.
+3. **Export list lowering** — `lower_chirho.rs:203–205` still emits `exports_chirho: None // TODO: lower export list`. Implement export list lowering from CST→AST so module interfaces correctly reflect what is publicly visible. This blocks real multi-module and Hackage compatibility.
+4. **Fix token model duplication** — `RawTokenKindChirho` (parser lexer) and `TokenKindChirho` (syntax crate) have an inconsistent mapping: `QualifiedIdChirho` maps only to `QualifiedConIdChirho`, losing `QualifiedVarIdChirho`. Either lex qualified identifiers into value-vs-constructor forms up front, or preserve the ambiguity until name resolution.
+5. **Split oversized files** — `dict_chirho.rs` (~16K lines), `driver/lib.rs` (~15K lines), `infer_chirho.rs` (~6.5K lines), `lower_chirho.rs` (~4.8K lines) are too large for safe localized reasoning. Split into focused submodules: driver tests into separate test files, dict pass into layout/rewrite/prelude-gen submodules, inference into constraint/unify/typeclass submodules.
+6. **Warning cleanup** — treat compiler warnings as backlog items, not background noise. Fix unreachable patterns in runtime, dead helpers in parser, unused variables in core/driver, naming-style warnings in test names. Target zero warnings on `cargo test --workspace`.
+7. **Reconcile spec with code** — `spec-chirho/prd-chirho.json` still references old crate names (`rhasky-hir-chirho`, `rhasky-namer-chirho`, `rhasky-types-chirho`, `rhasky-typecheck-chirho`, `rhasky-package-db-chirho`) and says `M0` is current milestone. Update to match actual workspace crate names and current state, or deprecate in favor of AGENTS.md as the sole source of truth.
+8. **John 3:16 header compliance** — add the header comment to `CLAUDE.md`, `crates/rhasky-incremental-chirho/Cargo.toml`, and `spec-chirho/prd-chirho.json`. Fix Chirho suffix violations in Rust test names (`mapM_`/`forM_` mixed-case forms) and embedded Haskell test snippets (`IntList`/`Age` without Chirho suffix).
 
 #### A. Runtime Semantics — Laziness & Evaluation Model
 
-1. **True lazy evaluation** — replace strict-by-default STG evaluation with proper lazy thunk semantics; `take 5 [1..]` and infinite list idioms must work; update thunk entry, blackholing, and GC root scanning
-2. **Lazy I/O** — `interact`, `getContents`, `hGetContents` return lazy strings; must integrate with GC and exception handling
-3. **Bang patterns and strict fields** — `!` annotations in data declarations and function arguments force evaluation at binding time; `{-# UNPACK #-}` pragma for strict fields
-4. **Weak head normal form semantics** — ensure `seq`, `deepseq`, `evaluate`, `($!)` have correct WHNF forcing behavior; `NFData` type class
-5. **STM (Software Transactional Memory)** — TVar, atomically, retry, orElse; conflict detection and rollback
+9. **True lazy evaluation** — replace strict-by-default STG evaluation with proper lazy thunk semantics; `take 5 [1..]` and infinite list idioms must work; update thunk entry, blackholing, and GC root scanning
+10. **Lazy I/O** — `interact`, `getContents`, `hGetContents` return lazy strings; must integrate with GC and exception handling
+11. **Bang patterns and strict fields** — `!` annotations in data declarations and function arguments force evaluation at binding time; `{-# UNPACK #-}` pragma for strict fields
+12. **Weak head normal form semantics** — ensure `seq`, `deepseq`, `evaluate`, `($!)` have correct WHNF forcing behavior; `NFData` type class
+13. **STM (Software Transactional Memory)** — TVar, atomically, retry, orElse; conflict detection and rollback
 
 #### B. Multi-Module System & Imports
 
-6. **Automatic Prelude import** — every module implicitly imports Prelude unless `{-# LANGUAGE NoImplicitPrelude #-}` or explicit `import Prelude` is present
-7. **Qualified module syntax** — `Data.Map.insert`, `Data.Set.member` as qualified function calls in user source
-8. **Module re-exports** — `module Data.Map (module Data.Map.Internal)` re-export syntax
-9. **Orphan instance detection** — warn on orphan instances; support `{-# OPTIONS_GHC -fno-warn-orphans #-}`
-10. **Hierarchical module compilation** — compile multi-file Haskell projects with proper dependency ordering; `.hi` interface file generation and consumption
-11. **Circular module imports** — handle mutual module dependencies via `.hs-boot` files or a fixpoint approach
+14. **Automatic Prelude import** — every module implicitly imports Prelude unless `{-# LANGUAGE NoImplicitPrelude #-}` or explicit `import Prelude` is present
+15. **Qualified module syntax** — `Data.Map.insert`, `Data.Set.member` as qualified function calls in user source
+16. **Module re-exports** — `module Data.Map (module Data.Map.Internal)` re-export syntax
+17. **Orphan instance detection** — warn on orphan instances; support `{-# OPTIONS_GHC -fno-warn-orphans #-}`
+18. **Hierarchical module compilation** — compile multi-file Haskell projects with proper dependency ordering; `.hi` interface file generation and consumption
+19. **Circular module imports** — handle mutual module dependencies via `.hs-boot` files or a fixpoint approach
 
 #### C. Code Generation Backends
 
-12. **LLVM backend revival** — make `rhasky-backend-llvm-chirho` produce runnable executables; STG closure layout in LLVM IR; entry code, info tables, stack management; link with a minimal RTS
-13. **WebAssembly backend revival** — make `rhasky-backend-wasm-chirho` produce runnable `.wasm` modules; memory management, function tables, linear memory GC
-14. **Cranelift backend expansion** — extend `rhasky-backend-cranelift-chirho` beyond scaffold to compile non-trivial programs; leverage Cranelift's fast compilation for JIT and debug builds
-15. **Shared RTS library** — factor runtime support (GC, thunk entry, stack management, exception frames) into a linkable RTS shared across LLVM/Cranelift/WASM backends
+20. **LLVM backend revival** — make `rhasky-backend-llvm-chirho` produce runnable executables; STG closure layout in LLVM IR; entry code, info tables, stack management; link with a minimal RTS
+21. **WebAssembly backend revival** — make `rhasky-backend-wasm-chirho` produce runnable `.wasm` modules; memory management, function tables, linear memory GC
+22. **Cranelift backend expansion** — extend `rhasky-backend-cranelift-chirho` beyond scaffold to compile non-trivial programs; leverage Cranelift's fast compilation for JIT and debug builds
+23. **Shared RTS library** — factor runtime support (GC, thunk entry, stack management, exception frames) into a linkable RTS shared across LLVM/Cranelift/WASM backends
 
 #### D. CLI & Developer Experience
 
-16. **`rhasky compile`** — compile `.hs` file(s) to object code via selected backend (LLVM default, `--backend=wasm/cranelift/jvm/beam`)
-17. **`rhasky run`** — compile and execute a Haskell source file in one step (via STG interpreter by default, or native via `--native`)
-18. **`rhasky repl`** — interactive REPL with expression evaluation, `:type`, `:info`, `:load`, `:reload` commands
-19. **`rhasky check`** — type-check without code generation (fast feedback loop)
-20. **`rhasky build`** — build a Cabal project (parse `.cabal`, resolve dependencies, compile modules in dependency order)
-21. **Error messages** — structured diagnostics with source spans, suggestions, and color output; follow Rust/Elm error message style
-22. **`--dump-core`/`--dump-stg`/`--dump-llvm`** — debug flags to print intermediate representations
+24. **`rhasky compile`** — compile `.hs` file(s) to object code via selected backend (LLVM default, `--backend=wasm/cranelift/jvm/beam`)
+25. **`rhasky run`** — compile and execute a Haskell source file in one step (via STG interpreter by default, or native via `--native`)
+26. **`rhasky repl`** — interactive REPL with expression evaluation, `:type`, `:info`, `:load`, `:reload` commands
+27. **`rhasky check`** — type-check without code generation (fast feedback loop); must use the real pipeline (see item 1)
+28. **`rhasky build`** — build a Cabal project (parse `.cabal`, resolve dependencies, compile modules in dependency order)
+29. **Error messages** — structured diagnostics with source spans, suggestions, and color output; follow Rust/Elm error message style
+30. **`--dump-core`/`--dump-stg`/`--dump-llvm`** — debug flags to print intermediate representations
 
 #### E. Language Features — Remaining GHC Haskell
 
-23. **Type families** — open and closed type families (`type family F a where ...`); type instance declarations; associated type families in classes
-24. **ExistentialQuantification** — `data Showable = forall a. Show a => MkShowable a`
-25. **TypeApplications** — `read @Int "42"`, `show @Bool True`
-26. **OverloadedStrings** — `IsString` type class; string literals desugar to `fromString`
-27. **OverloadedLists** — `IsList` type class; list literals desugar to `fromList`
-28. **DeriveFunctor/DeriveFoldable/DeriveTraversable** — auto-derive Functor/Foldable/Traversable
-29. **DeriveGeneric** — `Generic` type class and `GHC.Generics` representation types
-30. **ConstraintKinds** — constraints as first-class kinds
-31. **FlexibleInstances/FlexibleContexts** — relax Haskell 98 instance/context restrictions
-32. **DataKinds** — promote data constructors to type-level
-33. **KindSignatures** — explicit kind annotations on type variables
-34. **DefaultSignatures** — default method implementations using superclass constraints
-35. **Template Haskell (basic)** — quasi-quotation, reify, splicing for compile-time metaprogramming
-36. **Foreign exports** — `foreign export ccall` for Haskell functions callable from C/JS
-37. **Monad transformers** — StateT, ReaderT, WriterT, ExceptT, MaybeT evaluation through STG machine
+31. **Type families** — open and closed type families (`type family F a where ...`); type instance declarations; associated type families in classes
+32. **ExistentialQuantification** — `data Showable = forall a. Show a => MkShowable a`
+33. **TypeApplications** — `read @Int "42"`, `show @Bool True`
+34. **OverloadedStrings** — `IsString` type class; string literals desugar to `fromString`
+35. **OverloadedLists** — `IsList` type class; list literals desugar to `fromList`
+36. **DeriveFunctor/DeriveFoldable/DeriveTraversable** — auto-derive Functor/Foldable/Traversable
+37. **DeriveGeneric** — `Generic` type class and `GHC.Generics` representation types
+38. **ConstraintKinds** — constraints as first-class kinds
+39. **FlexibleInstances/FlexibleContexts** — relax Haskell 98 instance/context restrictions
+40. **DataKinds** — promote data constructors to type-level
+41. **KindSignatures** — explicit kind annotations on type variables
+42. **DefaultSignatures** — default method implementations using superclass constraints
+43. **Template Haskell (basic)** — quasi-quotation, reify, splicing for compile-time metaprogramming
+44. **Foreign exports** — `foreign export ccall` for Haskell functions callable from C/JS
+45. **Monad transformers** — StateT, ReaderT, WriterT, ExceptT, MaybeT evaluation through STG machine
 
 #### F. Package Management & Hackage
 
-38. **Cabal file parsing (full)** — complete `.cabal` spec: conditionals, flags, common stanzas, source-repository, custom setup
-39. **Hackage package download** — fetch `.tar.gz` from Hackage, unpack, parse `.cabal`
-40. **Dependency resolution** — solve version constraints across transitive dependency graph; conflict resolution; use `rhasky-package-chirho` resolver
-41. **Package database** — installed package registry; track compiled modules and their interface files
-42. **cabal-install compatibility** — `rhasky install` fetches and builds packages from Hackage
+46. **Cabal file parsing (full)** — complete `.cabal` spec: conditionals, flags, common stanzas, source-repository, custom setup
+47. **Hackage package download** — fetch `.tar.gz` from Hackage, unpack, parse `.cabal`
+48. **Dependency resolution** — solve version constraints across transitive dependency graph; conflict resolution; use `rhasky-package-chirho` resolver
+49. **Package database** — installed package registry; track compiled modules and their interface files
+50. **cabal-install compatibility** — `rhasky install` fetches and builds packages from Hackage
 
 #### G. Optimization
 
-43. **Inlining** — `INLINE`/`NOINLINE` pragmas; automatic small-function inlining in Core simplifier
-44. **Strictness analysis** — worker/wrapper transform; unboxing strict arguments
-45. **Specialization** — `SPECIALIZE` pragma; monomorphize polymorphic functions at known types
-46. **Common subexpression elimination** — CSE pass on Core
-47. **Constructor specialization** — SpecConstr-style optimization for recursive functions
-48. **Demand analysis** — absence analysis, usage analysis for dead argument elimination
+51. **Inlining** — `INLINE`/`NOINLINE` pragmas; automatic small-function inlining in Core simplifier
+52. **Strictness analysis** — worker/wrapper transform; unboxing strict arguments
+53. **Specialization** — `SPECIALIZE` pragma; monomorphize polymorphic functions at known types
+54. **Common subexpression elimination** — CSE pass on Core
+55. **Constructor specialization** — SpecConstr-style optimization for recursive functions
+56. **Demand analysis** — absence analysis, usage analysis for dead argument elimination
 
 #### H. Testing & Conformance
 
-49. **GHC test suite integration** — pull and run relevant GHC test cases; track pass rate
-50. **Property-based testing** — add proptest/quickcheck-style tests for parser, type checker, evaluator
-51. **Benchmark suite** — nofib-style benchmarks for runtime performance tracking
-52. **Haskell Report conformance tracker** — systematic coverage of Haskell 2010 Report sections
+57. **GHC test suite integration** — pull and run relevant GHC test cases; track pass rate
+58. **Property-based testing** — add proptest/quickcheck-style tests for parser, type checker, evaluator; focus on parser/layout malformed-input properties, simplifier semantic-preservation, dictionary-pass invariants, runtime evaluator step/heap invariants
+59. **Benchmark suite** — nofib-style benchmarks for runtime performance tracking
+60. **Haskell Report conformance tracker** — systematic coverage of Haskell 2010 Report sections
+61. **Backend round-trip smoke tests** — execute emitted LLVM/Wasm/Cranelift artifacts where possible and compare output to STG interpreter
+62. **Differential testing against GHC** — syntax and typechecker edge case comparison
