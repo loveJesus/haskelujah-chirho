@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1598 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1615 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -252,9 +252,9 @@ _These items address structural issues identified in the Codex engineering revie
 #### F. Package Management & Hackage
 
 46. ~~**Cabal file parsing (full)** — complete `.cabal` spec: conditionals, flags, common stanzas, source-repository, custom setup~~ — DONE (flag stanzas with default/manual/description; source-repository stanzas with type/location/tag/branch/subdir; benchmark stanzas parallel to test-suite; common stanzas with `import:` field for shared build settings; custom-setup stanza; condition expression parser for `flag()`/`os()`/`arch()`/`impl()` with `&&`/`||`/`!` operators; `eval_condition_chirho` resolver; `merge_build_info_chirho` + `apply_imports_chirho` for common stanza import resolution; 15 new tests; 1598 tests total)
-47. **Hackage package download** — fetch `.tar.gz` from Hackage, unpack, parse `.cabal`
+47. ~~**Hackage package download**~~ — DONE (HTTP download via ureq v3 + tar.gz extraction via flate2/tar: `download_tarball_chirho`, `download_cabal_file_chirho`, `fetch_cabal_desc_chirho` for HTTP fetching; `extract_tarball_chirho`, `extract_cabal_from_tarball_chirho`, `list_tarball_files_chirho` for archive extraction; `fetch_package_chirho` full pipeline: download → extract → find .cabal → parse; `create_test_tarball_chirho` for offline testing; `HackageErrorChirho` error type with HTTP/IO/NoCabal/InvalidArchive variants; 5 offline tests; 1615 tests total)
 48. ~~**Dependency resolution** — solve version constraints across transitive dependency graph; conflict resolution; use `rhasky-package-chirho` resolver~~ — DONE (already implemented in resolve_chirho.rs: SolverChirho with DFS backtracking, newest-first version preference, constraint accumulation from multiple dependents, cycle detection via in_progress_chirho set, conflict detection for incompatible version requirements, topological sort for build order, builtin package skipping; PackageIndexChirho + BuildPlanChirho + BuildStepChirho types; 13 tests: single package, constraints, transitive deps, diamond deps, shared deps with different constraints, not found, no satisfying version, cycle, conflict, builtins, mixed builtins, no deps, newest satisfying)
-49. **Package database** — installed package registry; track compiled modules and their interface files
+49. ~~**Package database** — installed package registry; track compiled modules and their interface files~~ — DONE (pkgdb_chirho module: InstalledPkgDbChirho with register/unregister/lookup/lookup_version/find_module/iface_path/list_packages/total_versions; InstalledPkgChirho + InstalledModuleChirho types with name, version, modules, depends, install_dir; text serialization/deserialization with roundtrip; newest-first ordering; reinstall-replaces semantics; install_dir_for_chirho path computation; 12 new tests; 1610 tests total)
 50. **cabal-install compatibility** — `rhasky install` fetches and builds packages from Hackage
 
 #### G. Optimization

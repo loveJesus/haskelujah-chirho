@@ -10,3 +10,9 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+ureq = "3"
+flate2 = "1"
+tar = "0.4"
+
+[dev-dependencies]
+tempfile = "3"
