@@ -2980,6 +2980,9 @@ impl DictPassCtxChirho {
         // ── Monad transformer infrastructure (MaybeT / StateT) ──
         self.generate_transformer_prelude_chirho();
 
+        // ── Monad transformer evaluation (bind/return/get/put/modify) ──
+        self.generate_transformer_monad_prelude_chirho();
+
         // ── Additional utility functions (repeat, cycle, group, transpose, fix, etc.) ──
         self.generate_utility_prelude_chirho();
 
@@ -3132,6 +3135,358 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+    }
+
+    /// Generate Core IR bindings for monad transformer operations.
+    ///
+    /// StateT operations:
+    ///   get       :: StateT s s           — get = StateT (\s -> (s, s))
+    ///   put       :: s -> StateT s ()     — put s' = StateT (\_ -> ((), s'))
+    ///   modify    :: (s -> s) -> StateT s () — modify f = StateT (\s -> ((), f s))
+    ///   runState  :: StateT s a -> s -> (a, s)  — synonym for runStateT
+    ///   evalState :: StateT s a -> s -> a — evalState m s = fst (runStateT m s)
+    ///   execState :: StateT s a -> s -> s — execState m s = snd (runStateT m s)
+    ///
+    /// MaybeT operations:
+    ///   returnMaybeT :: a -> MaybeT a     — returnMaybeT x = MaybeT (Just x)
+    ///   bindMaybeT   :: MaybeT a -> (a -> MaybeT b) -> MaybeT b
+    fn generate_transformer_monad_prelude_chirho(&mut self) {
+        use rhasky_typing_chirho::ty_chirho::TyVarChirho;
+        let a_chirho = TyChirho::VarChirho(TyVarChirho(9990));
+
+        // ── get :: StateT s s ──
+        // get = StateT (\s -> (s, s))
+        {
+            let get_id_chirho = self.resolve_or_fresh_id_chirho("get");
+            let s_chirho = self.fresh_binder_chirho("s", a_chirho.clone());
+            // \s -> (s, s)
+            let state_fn_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: s_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "$tuple2".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(s_chirho.id_chirho),
+                        CoreExprChirho::VarChirho(s_chirho.id_chirho),
+                    ],
+                }),
+            };
+            // StateT (\s -> (s, s))
+            let rhs_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "StateT".to_string(),
+                args_chirho: vec![state_fn_chirho],
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: get_id_chirho,
+                    name_chirho: "get".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ── put :: s -> StateT s () ──
+        // put s' = StateT (\_ -> ((), s'))
+        {
+            let put_id_chirho = self.resolve_or_fresh_id_chirho("put");
+            let s_prime_chirho = self.fresh_binder_chirho("s'", a_chirho.clone());
+            let wildcard_chirho = self.fresh_binder_chirho("_", a_chirho.clone());
+            // \_ -> ((), s')
+            let inner_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: wildcard_chirho,
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "$tuple2".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::ConAppChirho {
+                            con_name_chirho: "()".to_string(),
+                            args_chirho: vec![],
+                        },
+                        CoreExprChirho::VarChirho(s_prime_chirho.id_chirho),
+                    ],
+                }),
+            };
+            // \s' -> StateT (\_ -> ((), s'))
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: s_prime_chirho,
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "StateT".to_string(),
+                    args_chirho: vec![inner_chirho],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: put_id_chirho,
+                    name_chirho: "put".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ── modify :: (s -> s) -> StateT s () ──
+        // modify f = StateT (\s -> ((), f s))
+        {
+            let modify_id_chirho = self.resolve_or_fresh_id_chirho("modify");
+            let f_chirho = self.fresh_binder_chirho("f", a_chirho.clone());
+            let s_chirho = self.fresh_binder_chirho("s", a_chirho.clone());
+            // \s -> ((), f s)
+            let inner_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: s_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "$tuple2".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::ConAppChirho {
+                            con_name_chirho: "()".to_string(),
+                            args_chirho: vec![],
+                        },
+                        CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
+                            arg_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
+                        },
+                    ],
+                }),
+            };
+            // \f -> StateT (\s -> ((), f s))
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: f_chirho,
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "StateT".to_string(),
+                    args_chirho: vec![inner_chirho],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: modify_id_chirho,
+                    name_chirho: "modify".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ── evalState :: StateT s a -> s -> a ──
+        // evalState m s = fst (runStateT m s)
+        {
+            let eval_state_id_chirho = self.resolve_or_fresh_id_chirho("evalState");
+            let m_chirho = self.fresh_binder_chirho("m", a_chirho.clone());
+            let s_chirho = self.fresh_binder_chirho("s", a_chirho.clone());
+            let run_state_id_chirho = self.resolve_or_fresh_id_chirho("runStateT");
+            let scr_chirho = self.fresh_binder_chirho("_res", a_chirho.clone());
+            let fst_chirho = self.fresh_binder_chirho("a", a_chirho.clone());
+            let snd_chirho = self.fresh_binder_chirho("_s", a_chirho.clone());
+
+            // case (runStateT m s) of { (a, _) -> a }
+            let body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(run_state_id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(m_chirho.id_chirho)),
+                    }),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
+                }),
+                bind_chirho: scr_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
+                    binders_chirho: vec![fst_chirho.clone(), snd_chirho],
+                    rhs_chirho: CoreExprChirho::VarChirho(fst_chirho.id_chirho),
+                }],
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: m_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: s_chirho,
+                    body_chirho: Box::new(body_chirho),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: eval_state_id_chirho,
+                    name_chirho: "evalState".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone())),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ── execState :: StateT s a -> s -> s ──
+        // execState m s = snd (runStateT m s)
+        {
+            let exec_state_id_chirho = self.resolve_or_fresh_id_chirho("execState");
+            let m_chirho = self.fresh_binder_chirho("m", a_chirho.clone());
+            let s_chirho = self.fresh_binder_chirho("s", a_chirho.clone());
+            let run_state_id_chirho = self.resolve_or_fresh_id_chirho("runStateT");
+            let scr_chirho = self.fresh_binder_chirho("_res", a_chirho.clone());
+            let fst_chirho = self.fresh_binder_chirho("_a", a_chirho.clone());
+            let snd_chirho = self.fresh_binder_chirho("s2", a_chirho.clone());
+
+            // case (runStateT m s) of { (_, s2) -> s2 }
+            let body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(run_state_id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(m_chirho.id_chirho)),
+                    }),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
+                }),
+                bind_chirho: scr_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
+                    binders_chirho: vec![fst_chirho, snd_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::VarChirho(snd_chirho.id_chirho),
+                }],
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: m_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: s_chirho,
+                    body_chirho: Box::new(body_chirho),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: exec_state_id_chirho,
+                    name_chirho: "execState".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone())),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ── bindStateT :: StateT s a -> (a -> StateT s b) -> StateT s b ──
+        // bindStateT m k = StateT (\s -> case runStateT m s of { (a, s') -> runStateT (k a) s' })
+        {
+            let bind_st_id_chirho = self.resolve_or_fresh_id_chirho("bindStateT");
+            let m_chirho = self.fresh_binder_chirho("m", a_chirho.clone());
+            let k_chirho = self.fresh_binder_chirho("k", a_chirho.clone());
+            let s_chirho = self.fresh_binder_chirho("s", a_chirho.clone());
+            let run_state_id_chirho = self.resolve_or_fresh_id_chirho("runStateT");
+            let scr_chirho = self.fresh_binder_chirho("_res", a_chirho.clone());
+            let a_bind_chirho = self.fresh_binder_chirho("a", a_chirho.clone());
+            let s_prime_chirho = self.fresh_binder_chirho("s'", a_chirho.clone());
+
+            // runStateT (k a) s'
+            let cont_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(run_state_id_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(k_chirho.id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(a_bind_chirho.id_chirho)),
+                    }),
+                }),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(s_prime_chirho.id_chirho)),
+            };
+
+            // case runStateT m s of { (a, s') -> runStateT (k a) s' }
+            let case_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(run_state_id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(m_chirho.id_chirho)),
+                    }),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(s_chirho.id_chirho)),
+                }),
+                bind_chirho: scr_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
+                    binders_chirho: vec![a_bind_chirho, s_prime_chirho],
+                    rhs_chirho: cont_chirho,
+                }],
+            };
+
+            // StateT (\s -> case ...)
+            let state_fn_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: s_chirho,
+                body_chirho: Box::new(case_chirho),
+            };
+            let wrapped_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "StateT".to_string(),
+                args_chirho: vec![state_fn_chirho],
+            };
+
+            // \m k -> StateT (...)
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: m_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: k_chirho,
+                    body_chirho: Box::new(wrapped_chirho),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: bind_st_id_chirho,
+                    name_chirho: "bindStateT".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone())),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ── returnStateT :: a -> StateT s a ──
+        // returnStateT x = StateT (\s -> (x, s))
+        {
+            let ret_st_id_chirho = self.resolve_or_fresh_id_chirho("returnStateT");
+            let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
+            let s_chirho = self.fresh_binder_chirho("s", a_chirho.clone());
+
+            let state_fn_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: s_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "$tuple2".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                        CoreExprChirho::VarChirho(s_chirho.id_chirho),
+                    ],
+                }),
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho,
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "StateT".to_string(),
+                    args_chirho: vec![state_fn_chirho],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: ret_st_id_chirho,
+                    name_chirho: "returnStateT".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // ── runState :: StateT s a -> s -> (a, s)  (alias for runStateT) ──
+        {
+            let run_state_id_chirho = self.resolve_or_fresh_id_chirho("runState");
+            let run_state_t_id_chirho = self.resolve_or_fresh_id_chirho("runStateT");
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: run_state_id_chirho,
+                    name_chirho: "runState".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::VarChirho(run_state_t_id_chirho),
                 is_rec_chirho: false,
             });
         }

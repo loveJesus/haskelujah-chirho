@@ -1243,5 +1243,83 @@ main = print (length (fromList [10,20,30]))
         assert_eq!(m_chirho.io_output_chirho, "3\n");
     }
 
+    // ── Monad transformer tests ─────────────────────────────────────
+
+    #[test]
+    fn state_t_get_eval_chirho() {
+        // get retrieves the current state; evalState extracts result
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = print (evalState get 42)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("StateT get failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn state_t_put_exec_chirho() {
+        // put sets state; execState extracts final state
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = print (execState (put 99) 0)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("StateT put failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "99\n");
+    }
+
+    #[test]
+    fn state_t_modify_chirho() {
+        // modify applies a function to the state
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+inc3 = bindStateT (modify (\x -> x + 1)) (\_ ->
+       bindStateT (modify (\x -> x + 1)) (\_ ->
+       bindStateT (modify (\x -> x + 1)) (\_ ->
+       get)))
+main = print (evalState inc3 10)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("StateT modify failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "13\n");
+    }
+
+    #[test]
+    fn state_t_bind_return_chirho() {
+        // bindStateT + returnStateT: get, increment, return old value
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+counter = bindStateT get (\n -> bindStateT (put (n + 1)) (\_ -> returnStateT n))
+main = print (execState counter 0)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("StateT bind/return failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "1\n");
+    }
+
+    #[test]
+    fn state_t_run_state_chirho() {
+        // runState returns both value and final state as tuple
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+addToState = bindStateT get (\n -> bindStateT (put (n + 5)) (\_ -> returnStateT (n * 2)))
+main = print (evalState addToState 10)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("StateT runState failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "20\n");
+    }
+
     // ── Algorithmic tests: stress-testing compiler capabilities ───────
 

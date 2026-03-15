@@ -294,6 +294,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "maybe", "either", "fromMaybe", "isJust", "isNothing",
             // Data structures
             "sort",
+            // Monad transformers
+            "StateT", "runStateT", "runState", "evalState", "execState",
+            "get", "put", "modify", "bindStateT", "returnStateT",
+            "MaybeT", "runMaybeT",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
