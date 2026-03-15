@@ -5740,36 +5740,100 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     // NOTE: pi is not bound at the top level to avoid shadowing user-defined
     // local "pi" bindings. It is available via $prim_Floating_pi_Double.
 
-    // ── Functor / Applicative / Monad (monomorphic at Maybe for now) ──
-    let maybe_a_chirho = TyChirho::AppChirho(
-        Box::new(TyChirho::ConChirho("Maybe".to_string())),
-        Box::new(TyChirho::VarChirho(TyVarChirho(9040))),
-    );
-    let maybe_b_chirho = TyChirho::AppChirho(
-        Box::new(TyChirho::ConChirho("Maybe".to_string())),
-        Box::new(TyChirho::VarChirho(TyVarChirho(9041))),
-    );
-    let a_var_chirho = TyChirho::VarChirho(TyVarChirho(9040));
-    let b_var_chirho = TyChirho::VarChirho(TyVarChirho(9041));
+    // ── Functor / Applicative / Monad ──
+    // fmap :: Functor f => (a -> b) -> f a -> f b  (polymorphic)
+    {
+        let fmap_f_chirho = TyVarChirho(9004);
+        let fmap_a_chirho = TyVarChirho(9040);
+        let fmap_b_chirho = TyVarChirho(9041);
+        env_chirho.bind_chirho(
+            "fmap".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![fmap_f_chirho, fmap_a_chirho, fmap_b_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::FunChirho(
+                        Box::new(TyChirho::VarChirho(fmap_a_chirho)),
+                        Box::new(TyChirho::VarChirho(fmap_b_chirho)),
+                    )),
+                    Box::new(TyChirho::FunChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(fmap_f_chirho)),
+                            Box::new(TyChirho::VarChirho(fmap_a_chirho)),
+                        )),
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(fmap_f_chirho)),
+                            Box::new(TyChirho::VarChirho(fmap_b_chirho)),
+                        )),
+                    )),
+                ),
+            },
+        );
+    }
 
-    // fmap :: (a -> b) -> Maybe a -> Maybe b
-    env_chirho.bind_chirho(
-        "fmap".to_string(),
-        SchemeChirho {
-            vars_chirho: vec![TyVarChirho(9040), TyVarChirho(9041)],
-            preds_chirho: vec![],
-            ty_chirho: TyChirho::FunChirho(
-                Box::new(TyChirho::FunChirho(
-                    Box::new(a_var_chirho.clone()),
-                    Box::new(b_var_chirho.clone()),
-                )),
-                Box::new(TyChirho::FunChirho(
-                    Box::new(maybe_a_chirho.clone()),
-                    Box::new(maybe_b_chirho.clone()),
-                )),
-            ),
-        },
-    );
+    // foldMap :: (a -> m) -> t a -> m  (simplified, Monoid m not enforced)
+    {
+        let fold_a_chirho = TyVarChirho(9081);
+        let fold_m_chirho = TyVarChirho(9082);
+        let fold_t_chirho = TyVarChirho(9080);
+        env_chirho.bind_chirho(
+            "foldMap".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![fold_t_chirho, fold_a_chirho, fold_m_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::FunChirho(
+                        Box::new(TyChirho::VarChirho(fold_a_chirho)),
+                        Box::new(TyChirho::VarChirho(fold_m_chirho)),
+                    )),
+                    Box::new(TyChirho::FunChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(fold_t_chirho)),
+                            Box::new(TyChirho::VarChirho(fold_a_chirho)),
+                        )),
+                        Box::new(TyChirho::VarChirho(fold_m_chirho)),
+                    )),
+                ),
+            },
+        );
+    }
+
+    // traverse :: (a -> f b) -> t a -> f (t b)  (simplified, Applicative f not enforced)
+    {
+        let trav_t_chirho = TyVarChirho(9083);
+        let trav_a_chirho = TyVarChirho(9084);
+        let trav_b_chirho = TyVarChirho(9085);
+        let trav_f_chirho = TyVarChirho(9086);
+        env_chirho.bind_chirho(
+            "traverse".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![trav_t_chirho, trav_a_chirho, trav_b_chirho, trav_f_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::FunChirho(
+                        Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                            Box::new(TyChirho::VarChirho(trav_b_chirho)),
+                        )),
+                    )),
+                    Box::new(TyChirho::FunChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(trav_t_chirho)),
+                            Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                        )),
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                            Box::new(TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(trav_t_chirho)),
+                                Box::new(TyChirho::VarChirho(trav_b_chirho)),
+                            )),
+                        )),
+                    )),
+                ),
+            },
+        );
+    }
 
     // ── Monad transformer infrastructure ──
     //

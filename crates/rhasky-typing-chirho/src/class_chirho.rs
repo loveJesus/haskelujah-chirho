@@ -755,6 +755,88 @@ impl ClassEnvChirho {
             defaults_chirho: HashMap::new(),
         });
 
+        // Foldable (t :: * -> *)
+        // foldMap :: Monoid m => (a -> m) -> t a -> m
+        let foldable_t_chirho = TyVarChirho(9080);
+        let foldable_a_chirho = TyVarChirho(9081);
+        let foldable_m_chirho = TyVarChirho(9082);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Foldable".to_string(),
+            supers_chirho: vec![],
+            var_chirho: foldable_t_chirho,
+            methods_chirho: HashMap::from([
+                (
+                    "foldMap".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![foldable_t_chirho, foldable_a_chirho, foldable_m_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::FunChirho(
+                            Box::new(TyChirho::FunChirho(
+                                Box::new(TyChirho::VarChirho(foldable_a_chirho)),
+                                Box::new(TyChirho::VarChirho(foldable_m_chirho)),
+                            )),
+                            Box::new(TyChirho::FunChirho(
+                                Box::new(TyChirho::AppChirho(
+                                    Box::new(TyChirho::VarChirho(foldable_t_chirho)),
+                                    Box::new(TyChirho::VarChirho(foldable_a_chirho)),
+                                )),
+                                Box::new(TyChirho::VarChirho(foldable_m_chirho)),
+                            )),
+                        ),
+                    },
+                ),
+            ]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // Traversable (superclass: Functor, Foldable)
+        // traverse :: Applicative f => (a -> f b) -> t a -> f (t b)
+        let trav_t_chirho = TyVarChirho(9083);
+        let trav_a_chirho = TyVarChirho(9084);
+        let trav_b_chirho = TyVarChirho(9085);
+        let trav_f_chirho = TyVarChirho(9086);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Traversable".to_string(),
+            supers_chirho: vec!["Functor".to_string(), "Foldable".to_string()],
+            var_chirho: trav_t_chirho,
+            methods_chirho: HashMap::from([
+                (
+                    "traverse".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![trav_t_chirho, trav_a_chirho, trav_b_chirho, trav_f_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::FunChirho(
+                            Box::new(TyChirho::FunChirho(
+                                Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                                Box::new(TyChirho::AppChirho(
+                                    Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                                    Box::new(TyChirho::VarChirho(trav_b_chirho)),
+                                )),
+                            )),
+                            Box::new(TyChirho::FunChirho(
+                                Box::new(TyChirho::AppChirho(
+                                    Box::new(TyChirho::VarChirho(trav_t_chirho)),
+                                    Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                                )),
+                                Box::new(TyChirho::AppChirho(
+                                    Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                                    Box::new(TyChirho::AppChirho(
+                                        Box::new(TyChirho::VarChirho(trav_t_chirho)),
+                                        Box::new(TyChirho::VarChirho(trav_b_chirho)),
+                                    )),
+                                )),
+                            )),
+                        ),
+                    },
+                ),
+            ]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
         // Read (no superclasses in Haskell 2010)
         // Simplified: use `read` as the single method (String -> a)
         // instead of the full `readsPrec` / `readList` interface.

@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1405 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1412 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -238,7 +238,7 @@ _These items address structural issues identified in the Codex engineering revie
 33. ~~**TypeApplications** — `read @Int "42"`, `show @Bool True`~~ — DONE (CST parser recognizes `@Type` after expressions via `parse_fexp_chirho`; `TypeAppExprChirho` CST node; AST `TypeAppChirho` variant; CST→AST lowering extracts expression and type children; type inference passes through to inner expression; desugarer erases type application; 4 new e2e tests: `id @Int 42`, `show @Bool True`, `f @Int 41`, `apply @Int (\n -> n+8) 34`; 1405 tests total)
 34. ~~**OverloadedStrings** — `IsString` type class; string literals desugar to `fromString`~~ — DONE
 35. ~~**OverloadedLists** — `IsList` type class; list literals desugar to `fromList`~~ — DONE (IsList class declaration with `fromList :: [a] -> l` and `toList :: l -> [a]` methods in class_chirho.rs; `IsList [a]` identity instance; type signatures in infer_chirho.rs; `$prim_IsList_fromList_[t9037]`/`$prim_IsList_toList_[t9037]` builtin bindings with `id#` primop; dict pass handles IsList defaulting; `IdChirho` primop in runtime for identity function; top-level user binding shadowing prevents dict rewriting of user-defined `toList`/`fromList`; fromList/toList added to Prelude exports; 2 new tests; 1396 tests total)
-36. **DeriveFunctor/DeriveFoldable/DeriveTraversable** — auto-derive Functor/Foldable/Traversable
+36. ~~**DeriveFunctor/DeriveFoldable/DeriveTraversable** — auto-derive Functor/Foldable/Traversable~~ — DONE (derive_functor_chirho generates `fmap` with field-level type analysis: direct var → `f x`, nested var → `fmap f x`, no var → passthrough; derive_foldable_chirho generates `foldMap` combining with `<>`; derive_traversable_chirho generates `traverse` with `<$>`/`<*>` applicative style; `type_is_var_chirho` for span-insensitive type comparison; Foldable/Traversable class declarations in class_chirho.rs; `fmap` now polymorphic `Functor f => (a -> b) -> f a -> f b`; foldMap/traverse type signatures in prelude; 5 unit tests + 2 e2e tests (simple Box fmap, multi-field Tagged fmap); 1412 tests total)
 37. **DeriveGeneric** — `Generic` type class and `GHC.Generics` representation types
 38. **ConstraintKinds** — constraints as first-class kinds
 39. ~~**FlexibleInstances/FlexibleContexts** — relax Haskell 98 instance/context restrictions~~ — DONE (no Haskell 98 restrictions enforced; all instance heads and contexts already flexible)

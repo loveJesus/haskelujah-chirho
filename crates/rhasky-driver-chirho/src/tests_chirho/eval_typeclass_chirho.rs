@@ -1381,5 +1381,40 @@ main = print (apply @Int (\n -> n + 8) 34)
         assert_eq!(m_chirho.io_output_chirho, "42\n");
     }
 
+    // ── DeriveFunctor / DeriveFoldable / DeriveTraversable (§E.36) ────
+
+    #[test]
+    fn derive_functor_simple_chirho() {
+        // data Box a = MkBox a deriving (Functor)
+        // fmap (+1) (MkBox 41) → MkBox 42
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+data Box a = MkBox a deriving (Functor)
+unbox (MkBox x) = x
+main = print (unbox (fmap (\x -> x + 1) (MkBox 41)))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DeriveFunctor simple failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn derive_functor_multiple_fields_chirho() {
+        // data Pair a = MkPair Int a — fmap applies to last field only
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+data Tagged a = MkTagged Int a deriving (Functor)
+getVal (MkTagged _ v) = v
+main = print (getVal (fmap (\x -> x * 2) (MkTagged 0 21)))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DeriveFunctor multi-field failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
     // ── Algorithmic tests: stress-testing compiler capabilities ───────
 

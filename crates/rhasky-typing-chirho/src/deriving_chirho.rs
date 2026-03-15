@@ -134,6 +134,39 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
                                 *span_chirho,
                             ));
                         }
+                        "Functor" => {
+                            match derive_functor_chirho(
+                                name_chirho,
+                                type_vars_chirho,
+                                constructors_chirho,
+                                *span_chirho,
+                            ) {
+                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+                            }
+                        }
+                        "Foldable" => {
+                            match derive_foldable_chirho(
+                                name_chirho,
+                                type_vars_chirho,
+                                constructors_chirho,
+                                *span_chirho,
+                            ) {
+                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+                            }
+                        }
+                        "Traversable" => {
+                            match derive_traversable_chirho(
+                                name_chirho,
+                                type_vars_chirho,
+                                constructors_chirho,
+                                *span_chirho,
+                            ) {
+                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+                            }
+                        }
                         other_chirho => {
                             warnings_chirho.push(format!(
                                 "deriving {} not yet supported for {}",
@@ -207,6 +240,39 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
                                 &cons_chirho,
                                 *span_chirho,
                             ));
+                        }
+                        "Functor" => {
+                            match derive_functor_chirho(
+                                name_chirho,
+                                type_vars_chirho,
+                                &cons_chirho,
+                                *span_chirho,
+                            ) {
+                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+                            }
+                        }
+                        "Foldable" => {
+                            match derive_foldable_chirho(
+                                name_chirho,
+                                type_vars_chirho,
+                                &cons_chirho,
+                                *span_chirho,
+                            ) {
+                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+                            }
+                        }
+                        "Traversable" => {
+                            match derive_traversable_chirho(
+                                name_chirho,
+                                type_vars_chirho,
+                                &cons_chirho,
+                                *span_chirho,
+                            ) {
+                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+                            }
                         }
                         _other_chirho => {
                             // Generalized newtype deriving (GND):
@@ -1031,6 +1097,356 @@ fn derive_newtype_gnd_chirho(
 }
 
 // ---------------------------------------------------------------------------
+// Derive Functor / Foldable / Traversable
+// ---------------------------------------------------------------------------
+
+/// Get the field types for a constructor.
+fn con_field_types_chirho(con_chirho: &ConDeclChirho) -> Vec<TypeChirho> {
+    match con_chirho {
+        ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => fields_chirho.clone(),
+        ConDeclChirho::RecordChirho { fields_chirho, .. } => {
+            fields_chirho.iter().map(|f_chirho| f_chirho.ty_chirho.clone()).collect()
+        }
+    }
+}
+
+/// Check whether a type IS exactly the given type variable (by name, ignoring span).
+fn type_is_var_chirho(ty_chirho: &TypeChirho, var_chirho: &str) -> bool {
+    matches!(ty_chirho, TypeChirho::VarChirho(n_chirho) if n_chirho.text_chirho() == var_chirho)
+}
+
+/// Check whether a type mentions a given type variable name.
+fn type_mentions_var_chirho(ty_chirho: &TypeChirho, var_chirho: &str) -> bool {
+    match ty_chirho {
+        TypeChirho::VarChirho(n_chirho) => n_chirho.text_chirho() == var_chirho,
+        TypeChirho::ConChirho(_) => false,
+        TypeChirho::AppChirho { fun_chirho, arg_chirho, .. } => {
+            type_mentions_var_chirho(fun_chirho, var_chirho)
+                || type_mentions_var_chirho(arg_chirho, var_chirho)
+        }
+        TypeChirho::FunChirho { arg_chirho, result_chirho, .. } => {
+            type_mentions_var_chirho(arg_chirho, var_chirho)
+                || type_mentions_var_chirho(result_chirho, var_chirho)
+        }
+        TypeChirho::TupleChirho { elements_chirho, .. } => {
+            elements_chirho.iter().any(|e_chirho| type_mentions_var_chirho(e_chirho, var_chirho))
+        }
+        TypeChirho::ListChirho { element_chirho, .. } => {
+            type_mentions_var_chirho(element_chirho, var_chirho)
+        }
+        TypeChirho::ParenChirho { inner_chirho, .. } => {
+            type_mentions_var_chirho(inner_chirho, var_chirho)
+        }
+        _ => false,
+    }
+}
+
+/// Generate `instance Functor T where fmap f (C x1 x2) = C (f x1) x2` etc.
+///
+/// For each constructor field whose type mentions the last type variable,
+/// apply `f` to it. Fields that don't mention it are passed through unchanged.
+fn derive_functor_chirho(
+    type_name_chirho: &NameChirho,
+    type_vars_chirho: &[NameChirho],
+    constructors_chirho: &[ConDeclChirho],
+    _span_chirho: SpanChirho,
+) -> Result<DeclChirho, String> {
+    if type_vars_chirho.is_empty() {
+        return Err(format!(
+            "cannot derive Functor for {} — no type parameters",
+            type_name_chirho.text_chirho()
+        ));
+    }
+
+    let last_var_chirho = type_vars_chirho.last().unwrap().text_chirho();
+    let mut matches_chirho: Vec<MatchArmChirho> = Vec::new();
+
+    for con_chirho in constructors_chirho {
+        let cname_chirho = con_name_chirho(con_chirho);
+        let field_types_chirho = con_field_types_chirho(con_chirho);
+        let field_count_chirho = field_types_chirho.len();
+        let x_vars_chirho = field_vars_chirho("x", field_count_chirho);
+
+        let pat_chirho = con_pat_chirho(cname_chirho, &x_vars_chirho);
+
+        // Build result: Con (maybe_f x1) (maybe_f x2) ...
+        let mut result_chirho: ExprChirho = con_expr_chirho(cname_chirho);
+        for (i_chirho, fty_chirho) in field_types_chirho.iter().enumerate() {
+            let var_chirho = var_expr_chirho(&x_vars_chirho[i_chirho]);
+            let mapped_chirho = if type_is_var_chirho(fty_chirho, last_var_chirho) {
+                // Direct occurrence: apply f
+                app_chirho(var_expr_chirho("f"), var_chirho)
+            } else if type_mentions_var_chirho(fty_chirho, last_var_chirho) {
+                // Nested occurrence: fmap f
+                app_chirho(
+                    app_chirho(var_expr_chirho("fmap"), var_expr_chirho("f")),
+                    var_chirho,
+                )
+            } else {
+                // No occurrence: pass through
+                var_chirho
+            };
+            result_chirho = app_chirho(result_chirho, mapped_chirho);
+        }
+
+        matches_chirho.push(MatchArmChirho {
+            pats_chirho: vec![
+                PatChirho::VarChirho(var_name_chirho("f")),
+                pat_chirho,
+            ],
+            rhs_chirho: RhsChirho::UnguardedChirho(result_chirho),
+            where_binds_chirho: vec![],
+            span_chirho: gen_span_chirho(),
+        });
+    }
+
+    let fmap_method_chirho = LocalBindChirho::FunBindChirho {
+        name_chirho: var_name_chirho("fmap"),
+        matches_chirho,
+        span_chirho: gen_span_chirho(),
+    };
+
+    // Functor context for all type vars except the last
+    let context_chirho: Vec<_> = type_vars_chirho[..type_vars_chirho.len() - 1]
+        .iter()
+        .filter(|_| false) // No Functor constraints on other vars needed
+        .map(|tv_chirho| rhasky_ast_chirho::ty_chirho::ConstraintChirho {
+            class_chirho: var_name_chirho("Functor"),
+            args_chirho: vec![TypeChirho::VarChirho(tv_chirho.clone())],
+            span_chirho: gen_span_chirho(),
+        })
+        .collect();
+
+    // Instance type: Functor (T a1 a2 ... ) — all vars except the last
+    let instance_ty_chirho = if type_vars_chirho.len() <= 1 {
+        TypeChirho::ConChirho(type_name_chirho.clone())
+    } else {
+        let mut ty_chirho = TypeChirho::ConChirho(type_name_chirho.clone());
+        for tv_chirho in &type_vars_chirho[..type_vars_chirho.len() - 1] {
+            ty_chirho = TypeChirho::AppChirho {
+                fun_chirho: Box::new(ty_chirho),
+                arg_chirho: Box::new(TypeChirho::VarChirho(tv_chirho.clone())),
+                span_chirho: gen_span_chirho(),
+            };
+        }
+        ty_chirho
+    };
+
+    Ok(DeclChirho::InstanceDeclChirho {
+        context_chirho,
+        class_chirho: var_name_chirho("Functor"),
+        types_chirho: vec![instance_ty_chirho],
+        methods_chirho: vec![fmap_method_chirho],
+        span_chirho: gen_span_chirho(),
+    })
+}
+
+/// Generate `instance Foldable T where foldMap f (C x1 x2) = f x1 <> mempty` etc.
+///
+/// For each field that mentions the last type variable, apply `f` and combine
+/// with `(<>)` (mappend). Fields that don't mention it are skipped.
+fn derive_foldable_chirho(
+    type_name_chirho: &NameChirho,
+    type_vars_chirho: &[NameChirho],
+    constructors_chirho: &[ConDeclChirho],
+    _span_chirho: SpanChirho,
+) -> Result<DeclChirho, String> {
+    if type_vars_chirho.is_empty() {
+        return Err(format!(
+            "cannot derive Foldable for {} — no type parameters",
+            type_name_chirho.text_chirho()
+        ));
+    }
+
+    let last_var_chirho = type_vars_chirho.last().unwrap().text_chirho();
+    let mut matches_chirho: Vec<MatchArmChirho> = Vec::new();
+
+    for con_chirho in constructors_chirho {
+        let cname_chirho = con_name_chirho(con_chirho);
+        let field_types_chirho = con_field_types_chirho(con_chirho);
+        let field_count_chirho = field_types_chirho.len();
+        let x_vars_chirho = field_vars_chirho("x", field_count_chirho);
+
+        let pat_chirho = con_pat_chirho(cname_chirho, &x_vars_chirho);
+
+        // Collect foldMap contributions for fields that mention last_var
+        let mut parts_chirho: Vec<ExprChirho> = Vec::new();
+        for (i_chirho, fty_chirho) in field_types_chirho.iter().enumerate() {
+            let var_chirho = var_expr_chirho(&x_vars_chirho[i_chirho]);
+            if type_is_var_chirho(fty_chirho, last_var_chirho) {
+                // Direct: f x
+                parts_chirho.push(app_chirho(var_expr_chirho("f"), var_chirho));
+            } else if type_mentions_var_chirho(fty_chirho, last_var_chirho) {
+                // Nested: foldMap f x
+                parts_chirho.push(app_chirho(
+                    app_chirho(var_expr_chirho("foldMap"), var_expr_chirho("f")),
+                    var_chirho,
+                ));
+            }
+        }
+
+        let body_chirho = if parts_chirho.is_empty() {
+            var_expr_chirho("mempty")
+        } else {
+            parts_chirho
+                .into_iter()
+                .reduce(|acc_chirho, e_chirho| infix_chirho(acc_chirho, "<>", e_chirho))
+                .unwrap()
+        };
+
+        matches_chirho.push(MatchArmChirho {
+            pats_chirho: vec![
+                PatChirho::VarChirho(var_name_chirho("f")),
+                pat_chirho,
+            ],
+            rhs_chirho: RhsChirho::UnguardedChirho(body_chirho),
+            where_binds_chirho: vec![],
+            span_chirho: gen_span_chirho(),
+        });
+    }
+
+    let foldmap_method_chirho = LocalBindChirho::FunBindChirho {
+        name_chirho: var_name_chirho("foldMap"),
+        matches_chirho,
+        span_chirho: gen_span_chirho(),
+    };
+
+    let instance_ty_chirho = if type_vars_chirho.len() <= 1 {
+        TypeChirho::ConChirho(type_name_chirho.clone())
+    } else {
+        let mut ty_chirho = TypeChirho::ConChirho(type_name_chirho.clone());
+        for tv_chirho in &type_vars_chirho[..type_vars_chirho.len() - 1] {
+            ty_chirho = TypeChirho::AppChirho {
+                fun_chirho: Box::new(ty_chirho),
+                arg_chirho: Box::new(TypeChirho::VarChirho(tv_chirho.clone())),
+                span_chirho: gen_span_chirho(),
+            };
+        }
+        ty_chirho
+    };
+
+    Ok(DeclChirho::InstanceDeclChirho {
+        context_chirho: vec![],
+        class_chirho: var_name_chirho("Foldable"),
+        types_chirho: vec![instance_ty_chirho],
+        methods_chirho: vec![foldmap_method_chirho],
+        span_chirho: gen_span_chirho(),
+    })
+}
+
+/// Generate `instance Traversable T where traverse f (C x1 x2) = C <$> f x1 <*> pure x2`
+///
+/// For each field: if it mentions the last type variable, use `f x` (direct) or
+/// `traverse f x` (nested). Otherwise use `pure x`. Combine with `<$>` and `<*>`.
+fn derive_traversable_chirho(
+    type_name_chirho: &NameChirho,
+    type_vars_chirho: &[NameChirho],
+    constructors_chirho: &[ConDeclChirho],
+    _span_chirho: SpanChirho,
+) -> Result<DeclChirho, String> {
+    if type_vars_chirho.is_empty() {
+        return Err(format!(
+            "cannot derive Traversable for {} — no type parameters",
+            type_name_chirho.text_chirho()
+        ));
+    }
+
+    let last_var_chirho = type_vars_chirho.last().unwrap().text_chirho();
+    let mut matches_chirho: Vec<MatchArmChirho> = Vec::new();
+
+    for con_chirho in constructors_chirho {
+        let cname_chirho = con_name_chirho(con_chirho);
+        let field_types_chirho = con_field_types_chirho(con_chirho);
+        let field_count_chirho = field_types_chirho.len();
+        let x_vars_chirho = field_vars_chirho("x", field_count_chirho);
+
+        let pat_chirho = con_pat_chirho(cname_chirho, &x_vars_chirho);
+
+        if field_count_chirho == 0 {
+            // No fields: pure Con
+            let body_chirho = app_chirho(var_expr_chirho("pure"), con_expr_chirho(cname_chirho));
+            matches_chirho.push(MatchArmChirho {
+                pats_chirho: vec![
+                    PatChirho::VarChirho(var_name_chirho("f")),
+                    pat_chirho,
+                ],
+                rhs_chirho: RhsChirho::UnguardedChirho(body_chirho),
+                where_binds_chirho: vec![],
+                span_chirho: gen_span_chirho(),
+            });
+            continue;
+        }
+
+        // Build: Con <$> action1 <*> action2 <*> ...
+        let mut actions_chirho: Vec<ExprChirho> = Vec::new();
+        for (i_chirho, fty_chirho) in field_types_chirho.iter().enumerate() {
+            let var_chirho = var_expr_chirho(&x_vars_chirho[i_chirho]);
+            if type_is_var_chirho(fty_chirho, last_var_chirho) {
+                // Direct: f x
+                actions_chirho.push(app_chirho(var_expr_chirho("f"), var_chirho));
+            } else if type_mentions_var_chirho(fty_chirho, last_var_chirho) {
+                // Nested: traverse f x
+                actions_chirho.push(app_chirho(
+                    app_chirho(var_expr_chirho("traverse"), var_expr_chirho("f")),
+                    var_chirho,
+                ));
+            } else {
+                // No occurrence: pure x
+                actions_chirho.push(app_chirho(var_expr_chirho("pure"), var_chirho));
+            }
+        }
+
+        // Con <$> first <*> second <*> third ...
+        let mut body_chirho = infix_chirho(
+            con_expr_chirho(cname_chirho),
+            "<$>",
+            actions_chirho[0].clone(),
+        );
+        for action_chirho in &actions_chirho[1..] {
+            body_chirho = infix_chirho(body_chirho, "<*>", action_chirho.clone());
+        }
+
+        matches_chirho.push(MatchArmChirho {
+            pats_chirho: vec![
+                PatChirho::VarChirho(var_name_chirho("f")),
+                pat_chirho,
+            ],
+            rhs_chirho: RhsChirho::UnguardedChirho(body_chirho),
+            where_binds_chirho: vec![],
+            span_chirho: gen_span_chirho(),
+        });
+    }
+
+    let traverse_method_chirho = LocalBindChirho::FunBindChirho {
+        name_chirho: var_name_chirho("traverse"),
+        matches_chirho,
+        span_chirho: gen_span_chirho(),
+    };
+
+    let instance_ty_chirho = if type_vars_chirho.len() <= 1 {
+        TypeChirho::ConChirho(type_name_chirho.clone())
+    } else {
+        let mut ty_chirho = TypeChirho::ConChirho(type_name_chirho.clone());
+        for tv_chirho in &type_vars_chirho[..type_vars_chirho.len() - 1] {
+            ty_chirho = TypeChirho::AppChirho {
+                fun_chirho: Box::new(ty_chirho),
+                arg_chirho: Box::new(TypeChirho::VarChirho(tv_chirho.clone())),
+                span_chirho: gen_span_chirho(),
+            };
+        }
+        ty_chirho
+    };
+
+    Ok(DeclChirho::InstanceDeclChirho {
+        context_chirho: vec![],
+        class_chirho: var_name_chirho("Traversable"),
+        types_chirho: vec![instance_ty_chirho],
+        methods_chirho: vec![traverse_method_chirho],
+        span_chirho: gen_span_chirho(),
+    })
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -1795,9 +2211,9 @@ mod tests_chirho {
     }
 
     #[test]
-    fn derive_newtype_gnd_polymorphic_chirho() {
+    fn derive_newtype_functor_chirho() {
         // newtype App f a = MkApp (f a) deriving (Functor)
-        // Should produce: instance Functor (f a) => Functor (App f a) where {}
+        // Now produces a real fmap implementation (not GND)
         let module_chirho = ModuleChirho {
             name_chirho: var_name_chirho("Test"),
             exports_chirho: None,
@@ -1827,18 +2243,179 @@ mod tests_chirho {
         match &result_chirho.instances_chirho[0] {
             DeclChirho::InstanceDeclChirho {
                 class_chirho,
-                context_chirho,
                 methods_chirho,
                 ..
             } => {
                 assert_eq!(class_chirho.text_chirho(), "Functor");
-                // Context: Functor (f a)
-                assert_eq!(context_chirho.len(), 1);
-                assert_eq!(context_chirho[0].class_chirho.text_chirho(), "Functor");
-                // Methods empty — GND delegation
-                assert!(methods_chirho.is_empty());
+                // Now generates a real fmap method
+                assert_eq!(methods_chirho.len(), 1);
             }
             _ => panic!("expected InstanceDeclChirho"),
         }
+    }
+
+    #[test]
+    fn derive_functor_data_chirho() {
+        // data Box a = MkBox a deriving (Functor)
+        let module_chirho = ModuleChirho {
+            name_chirho: var_name_chirho("Test"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::DataDeclChirho {
+                name_chirho: var_name_chirho("Box"),
+                type_vars_chirho: vec![var_name_chirho("a")],
+                constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    name_chirho: var_name_chirho("MkBox"),
+                    fields_chirho: vec![TypeChirho::VarChirho(var_name_chirho("a"))],
+                    span_chirho: gen_span_chirho(),
+                }],
+                deriving_chirho: vec![var_name_chirho("Functor")],
+                span_chirho: gen_span_chirho(),
+            }],
+            extensions_chirho: vec![],
+            span_chirho: gen_span_chirho(),
+        };
+        let result_chirho = derive_instances_chirho(&module_chirho);
+        assert!(result_chirho.warnings_chirho.is_empty());
+        assert_eq!(result_chirho.instances_chirho.len(), 1);
+        match &result_chirho.instances_chirho[0] {
+            DeclChirho::InstanceDeclChirho {
+                class_chirho, methods_chirho, ..
+            } => {
+                assert_eq!(class_chirho.text_chirho(), "Functor");
+                assert_eq!(methods_chirho.len(), 1);
+            }
+            _ => panic!("expected InstanceDeclChirho"),
+        }
+    }
+
+    #[test]
+    fn derive_functor_no_type_params_chirho() {
+        // data Unit = MkUnit deriving (Functor) — should fail
+        let module_chirho = ModuleChirho {
+            name_chirho: var_name_chirho("Test"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::DataDeclChirho {
+                name_chirho: var_name_chirho("Unit"),
+                type_vars_chirho: vec![],
+                constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    name_chirho: var_name_chirho("MkUnit"),
+                    fields_chirho: vec![],
+                    span_chirho: gen_span_chirho(),
+                }],
+                deriving_chirho: vec![var_name_chirho("Functor")],
+                span_chirho: gen_span_chirho(),
+            }],
+            extensions_chirho: vec![],
+            span_chirho: gen_span_chirho(),
+        };
+        let result_chirho = derive_instances_chirho(&module_chirho);
+        assert_eq!(result_chirho.warnings_chirho.len(), 1);
+        assert!(result_chirho.warnings_chirho[0].contains("no type parameters"));
+    }
+
+    #[test]
+    fn derive_foldable_data_chirho() {
+        // data Pair a = MkPair a a deriving (Foldable)
+        let module_chirho = ModuleChirho {
+            name_chirho: var_name_chirho("Test"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::DataDeclChirho {
+                name_chirho: var_name_chirho("Pair"),
+                type_vars_chirho: vec![var_name_chirho("a")],
+                constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    name_chirho: var_name_chirho("MkPair"),
+                    fields_chirho: vec![
+                        TypeChirho::VarChirho(var_name_chirho("a")),
+                        TypeChirho::VarChirho(var_name_chirho("a")),
+                    ],
+                    span_chirho: gen_span_chirho(),
+                }],
+                deriving_chirho: vec![var_name_chirho("Foldable")],
+                span_chirho: gen_span_chirho(),
+            }],
+            extensions_chirho: vec![],
+            span_chirho: gen_span_chirho(),
+        };
+        let result_chirho = derive_instances_chirho(&module_chirho);
+        assert!(result_chirho.warnings_chirho.is_empty());
+        assert_eq!(result_chirho.instances_chirho.len(), 1);
+        match &result_chirho.instances_chirho[0] {
+            DeclChirho::InstanceDeclChirho {
+                class_chirho, methods_chirho, ..
+            } => {
+                assert_eq!(class_chirho.text_chirho(), "Foldable");
+                assert_eq!(methods_chirho.len(), 1);
+            }
+            _ => panic!("expected InstanceDeclChirho"),
+        }
+    }
+
+    #[test]
+    fn derive_traversable_data_chirho() {
+        // data Maybe2 a = Nothing2 | Just2 a deriving (Traversable)
+        let module_chirho = ModuleChirho {
+            name_chirho: var_name_chirho("Test"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::DataDeclChirho {
+                name_chirho: var_name_chirho("Maybe2"),
+                type_vars_chirho: vec![var_name_chirho("a")],
+                constructors_chirho: vec![
+                    ConDeclChirho::OrdinaryChirho {
+                        name_chirho: var_name_chirho("Nothing2"),
+                        fields_chirho: vec![],
+                        span_chirho: gen_span_chirho(),
+                    },
+                    ConDeclChirho::OrdinaryChirho {
+                        name_chirho: var_name_chirho("Just2"),
+                        fields_chirho: vec![TypeChirho::VarChirho(var_name_chirho("a"))],
+                        span_chirho: gen_span_chirho(),
+                    },
+                ],
+                deriving_chirho: vec![var_name_chirho("Traversable")],
+                span_chirho: gen_span_chirho(),
+            }],
+            extensions_chirho: vec![],
+            span_chirho: gen_span_chirho(),
+        };
+        let result_chirho = derive_instances_chirho(&module_chirho);
+        assert!(result_chirho.warnings_chirho.is_empty());
+        assert_eq!(result_chirho.instances_chirho.len(), 1);
+        match &result_chirho.instances_chirho[0] {
+            DeclChirho::InstanceDeclChirho {
+                class_chirho, methods_chirho, ..
+            } => {
+                assert_eq!(class_chirho.text_chirho(), "Traversable");
+                assert_eq!(methods_chirho.len(), 1);
+            }
+            _ => panic!("expected InstanceDeclChirho"),
+        }
+    }
+
+    #[test]
+    fn type_mentions_var_chirho_test() {
+        assert!(type_mentions_var_chirho(
+            &TypeChirho::VarChirho(var_name_chirho("a")),
+            "a"
+        ));
+        assert!(!type_mentions_var_chirho(
+            &TypeChirho::VarChirho(var_name_chirho("b")),
+            "a"
+        ));
+        assert!(type_mentions_var_chirho(
+            &TypeChirho::AppChirho {
+                fun_chirho: Box::new(TypeChirho::ConChirho(var_name_chirho("Maybe"))),
+                arg_chirho: Box::new(TypeChirho::VarChirho(var_name_chirho("a"))),
+                span_chirho: gen_span_chirho(),
+            },
+            "a"
+        ));
+        assert!(!type_mentions_var_chirho(
+            &TypeChirho::ConChirho(var_name_chirho("Int")),
+            "a"
+        ));
     }
 }

@@ -282,8 +282,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "readFile", "writeFile", "appendFile",
             // Show/Read
             "show", "read",
-            // Monad/Functor
+            // Monad/Functor/Foldable/Traversable
             "fmap", "return", "mapM_", "sequence_", "when", "unless",
+            "foldMap", "traverse",
             // Conversion
             "fromString", "fromList", "toList",
             // Comparison
