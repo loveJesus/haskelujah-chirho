@@ -678,7 +678,9 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::MapAdjustChirho
         | PrimOpKindChirho::MapUnionWithChirho
         | PrimOpKindChirho::MapFilterChirho
-        | PrimOpKindChirho::MapFilterWithKeyChirho => Ok(ValueChirho::IntChirho(0)),
+        | PrimOpKindChirho::MapFilterWithKeyChirho => {
+            unreachable!("Map primop {:?} must be dispatched via MachineChirho::eval_prim_chirho, not standalone prim_chirho", op_chirho)
+        }
         // Data.Set primops — dispatched via MachineChirho::eval_prim_chirho which has
         // access to the heap; the standalone dispatch should never be reached.
         PrimOpKindChirho::SetEmptyChirho
@@ -695,12 +697,16 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::SetNullChirho
         | PrimOpKindChirho::SetMapChirho
         | PrimOpKindChirho::SetFilterChirho
-        | PrimOpKindChirho::SetFoldrChirho => Ok(ValueChirho::IntChirho(0)),
+        | PrimOpKindChirho::SetFoldrChirho => {
+            unreachable!("Set primop {:?} must be dispatched via MachineChirho::eval_prim_chirho, not standalone prim_chirho", op_chirho)
+        }
         // Exception-handling primops that are dispatched directly in eval_prim_chirho
         // on MachineChirho (they need access to the heap and stack) — the
         // standalone prim_chirho dispatch should never be reached for these.
         PrimOpKindChirho::BracketChirho
-        | PrimOpKindChirho::FinallyChirho => Ok(ValueChirho::IntChirho(0)),
+        | PrimOpKindChirho::FinallyChirho => {
+            unreachable!("Exception primop {:?} must be dispatched via MachineChirho::eval_prim_chirho, not standalone prim_chirho", op_chirho)
+        }
         // STM primops — dispatched directly in MachineChirho::eval_prim_chirho
         // which has access to the TVar map; standalone dispatch unreachable.
         PrimOpKindChirho::NewTVarChirho
@@ -708,7 +714,9 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::WriteTVarChirho
         | PrimOpKindChirho::AtomicallyChirho
         | PrimOpKindChirho::RetryChirho
-        | PrimOpKindChirho::OrElseChirho => Ok(ValueChirho::IntChirho(0)),
+        | PrimOpKindChirho::OrElseChirho => {
+            unreachable!("STM primop {:?} must be dispatched via MachineChirho::eval_prim_chirho, not standalone prim_chirho", op_chirho)
+        }
     }
 }
 

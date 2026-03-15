@@ -3743,7 +3743,14 @@ impl MachineChirho {
                 self.arg_regs_chirho = saved_regs_chirho;
                 Ok(self.heap_chirho.follow_ind_chirho(addr_chirho))
             }
-            _ => Ok(resolved_chirho),
+            InfoTagChirho::IndChirho => {
+                // Indirections should have been resolved by follow_ind_chirho above.
+                // If we still see one, follow it again.
+                Ok(self.heap_chirho.follow_ind_chirho(resolved_chirho))
+            }
+            InfoTagChirho::BlackholeChirho => {
+                Err(EvalErrorChirho::BlackholeChirho { addr_chirho: resolved_chirho })
+            }
         }
     }
 

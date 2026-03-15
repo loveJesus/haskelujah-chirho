@@ -3100,8 +3100,76 @@ impl DictPassCtxChirho {
         use rhasky_typing_chirho::ty_chirho::TyVarChirho;
 
         let a_chirho = TyChirho::VarChirho(TyVarChirho(9990));
+        let ty_s_chirho = TyChirho::VarChirho(TyVarChirho(9991));
+        let ty_r_chirho = TyChirho::VarChirho(TyVarChirho(9992));
+        let ty_e_chirho = TyChirho::VarChirho(TyVarChirho(9993));
+        let ty_w_chirho = TyChirho::VarChirho(TyVarChirho(9994));
         let maybe_a_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::ConChirho("Maybe".to_string())),
+            Box::new(a_chirho.clone()),
+        );
+        // s -> (a, s)
+        let state_fn_ty_chirho = TyChirho::fun_chirho(
+            ty_s_chirho.clone(),
+            TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("(,)".to_string())),
+                    Box::new(a_chirho.clone()),
+                )),
+                Box::new(ty_s_chirho.clone()),
+            ),
+        );
+        // StateT s a
+        let state_t_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("StateT".to_string())),
+                Box::new(ty_s_chirho.clone()),
+            )),
+            Box::new(a_chirho.clone()),
+        );
+        // ReaderT r a
+        let reader_t_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                Box::new(ty_r_chirho.clone()),
+            )),
+            Box::new(a_chirho.clone()),
+        );
+        // Either e a
+        let either_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Either".to_string())),
+                Box::new(ty_e_chirho.clone()),
+            )),
+            Box::new(a_chirho.clone()),
+        );
+        // ExceptT e a
+        let except_t_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ExceptT".to_string())),
+                Box::new(ty_e_chirho.clone()),
+            )),
+            Box::new(a_chirho.clone()),
+        );
+        // (a, w)
+        let pair_a_w_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("(,)".to_string())),
+                Box::new(a_chirho.clone()),
+            )),
+            Box::new(ty_w_chirho.clone()),
+        );
+        // WriterT w a
+        let writer_t_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("WriterT".to_string())),
+                Box::new(ty_w_chirho.clone()),
+            )),
+            Box::new(a_chirho.clone()),
+        );
+        // MaybeT a
+        let maybe_t_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("MaybeT".to_string())),
             Box::new(a_chirho.clone()),
         );
 
@@ -3123,7 +3191,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "MaybeT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(maybe_a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(maybe_a_chirho.clone(), maybe_t_ty_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3158,7 +3226,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "runMaybeT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), maybe_a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(maybe_t_ty_chirho.clone(), maybe_a_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3183,7 +3251,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "StateT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(state_fn_ty_chirho.clone(), state_t_ty_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3226,7 +3294,19 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "runStateT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        state_t_ty_chirho.clone(),
+                        TyChirho::fun_chirho(
+                            ty_s_chirho.clone(),
+                            TyChirho::AppChirho(
+                                Box::new(TyChirho::AppChirho(
+                                    Box::new(TyChirho::ConChirho("(,)".to_string())),
+                                    Box::new(a_chirho.clone()),
+                                )),
+                                Box::new(ty_s_chirho.clone()),
+                            ),
+                        ),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3250,7 +3330,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "ReaderT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::fun_chirho(ty_r_chirho.clone(), a_chirho.clone()),
+                        reader_t_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3293,7 +3376,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "runReaderT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        reader_t_ty_chirho.clone(),
+                        TyChirho::fun_chirho(ty_r_chirho.clone(), a_chirho.clone()),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3317,7 +3403,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "ExceptT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(either_ty_chirho.clone(), except_t_ty_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3351,7 +3437,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "runExceptT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(except_t_ty_chirho.clone(), either_ty_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3376,7 +3462,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "WriterT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(pair_a_w_ty_chirho.clone(), writer_t_ty_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3410,7 +3496,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "runWriterT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(writer_t_ty_chirho.clone(), pair_a_w_ty_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3435,7 +3521,70 @@ impl DictPassCtxChirho {
     ///   bindMaybeT   :: MaybeT a -> (a -> MaybeT b) -> MaybeT b
     fn generate_transformer_monad_prelude_chirho(&mut self) {
         use rhasky_typing_chirho::ty_chirho::TyVarChirho;
+        // Generic type used as placeholder for binder types (runtime-erased)
         let a_chirho = TyChirho::VarChirho(TyVarChirho(9990));
+        // Proper type variables for accurate type annotations
+        let ty_a_chirho = TyChirho::VarChirho(TyVarChirho(9990));
+        let ty_s_chirho = TyChirho::VarChirho(TyVarChirho(9991));
+        let ty_r_chirho = TyChirho::VarChirho(TyVarChirho(9992));
+        let ty_e_chirho = TyChirho::VarChirho(TyVarChirho(9993));
+        let ty_b_chirho = TyChirho::VarChirho(TyVarChirho(9995));
+        // StateT s a
+        let state_t_s_a_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("StateT".to_string())),
+                Box::new(ty_s_chirho.clone()),
+            )),
+            Box::new(ty_a_chirho.clone()),
+        );
+        // StateT s ()
+        let state_t_s_unit_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("StateT".to_string())),
+                Box::new(ty_s_chirho.clone()),
+            )),
+            Box::new(TyChirho::ConChirho("()".to_string())),
+        );
+        // StateT s s
+        let state_t_s_s_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("StateT".to_string())),
+                Box::new(ty_s_chirho.clone()),
+            )),
+            Box::new(ty_s_chirho.clone()),
+        );
+        // StateT s b
+        let state_t_s_b_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("StateT".to_string())),
+                Box::new(ty_s_chirho.clone()),
+            )),
+            Box::new(ty_b_chirho.clone()),
+        );
+        // (a, s) — result tuple
+        let pair_a_s_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("(,)".to_string())),
+                Box::new(ty_a_chirho.clone()),
+            )),
+            Box::new(ty_s_chirho.clone()),
+        );
+        // ReaderT r a
+        let reader_t_r_a_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                Box::new(ty_r_chirho.clone()),
+            )),
+            Box::new(ty_a_chirho.clone()),
+        );
+        // ExceptT e a
+        let except_t_e_a_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ExceptT".to_string())),
+                Box::new(ty_e_chirho.clone()),
+            )),
+            Box::new(ty_a_chirho.clone()),
+        );
 
         // ── get :: StateT s s ──
         // get = StateT (\s -> (s, s))
@@ -3462,7 +3611,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: get_id_chirho,
                     name_chirho: "get".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: state_t_s_s_chirho.clone(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3503,7 +3652,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: put_id_chirho,
                     name_chirho: "put".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(ty_s_chirho.clone(), state_t_s_unit_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3547,7 +3696,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: modify_id_chirho,
                     name_chirho: "modify".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::fun_chirho(ty_s_chirho.clone(), ty_s_chirho.clone()),
+                        state_t_s_unit_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3595,7 +3747,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: eval_state_id_chirho,
                     name_chirho: "evalState".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone())),
+                    ty_chirho: TyChirho::fun_chirho(
+                        state_t_s_a_chirho.clone(),
+                        TyChirho::fun_chirho(ty_s_chirho.clone(), ty_a_chirho.clone()),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3643,7 +3798,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: exec_state_id_chirho,
                     name_chirho: "execState".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone())),
+                    ty_chirho: TyChirho::fun_chirho(
+                        state_t_s_a_chirho.clone(),
+                        TyChirho::fun_chirho(ty_s_chirho.clone(), ty_s_chirho.clone()),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3716,7 +3874,13 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: bind_st_id_chirho,
                     name_chirho: "bindStateT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone())),
+                    ty_chirho: TyChirho::fun_chirho(
+                        state_t_s_a_chirho.clone(),
+                        TyChirho::fun_chirho(
+                            TyChirho::fun_chirho(a_chirho.clone(), state_t_s_b_chirho.clone()),
+                            state_t_s_b_chirho.clone(),
+                        ),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3753,7 +3917,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: ret_st_id_chirho,
                     name_chirho: "returnStateT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), state_t_s_a_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3770,7 +3934,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: run_state_id_chirho,
                     name_chirho: "runState".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        state_t_s_a_chirho.clone(),
+                        TyChirho::fun_chirho(ty_s_chirho.clone(), pair_a_s_chirho.clone()),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(run_state_t_id_chirho),
@@ -3802,7 +3969,13 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: ask_id_chirho,
                     name_chirho: "ask".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::AppChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                            Box::new(ty_r_chirho.clone()),
+                        )),
+                        Box::new(ty_r_chirho.clone()),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3861,7 +4034,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: local_id_chirho,
                     name_chirho: "local".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::fun_chirho(ty_r_chirho.clone(), ty_r_chirho.clone()),
+                        TyChirho::fun_chirho(reader_t_r_a_chirho.clone(), reader_t_r_a_chirho.clone()),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3947,7 +4123,28 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: bind_id_chirho,
                     name_chirho: "bindReaderT".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        reader_t_r_a_chirho.clone(),
+                        TyChirho::fun_chirho(
+                            TyChirho::fun_chirho(
+                                ty_a_chirho.clone(),
+                                TyChirho::AppChirho(
+                                    Box::new(TyChirho::AppChirho(
+                                        Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                                        Box::new(ty_r_chirho.clone()),
+                                    )),
+                                    Box::new(ty_b_chirho.clone()),
+                                ),
+                            ),
+                            TyChirho::AppChirho(
+                                Box::new(TyChirho::AppChirho(
+                                    Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                                    Box::new(ty_r_chirho.clone()),
+                                )),
+                                Box::new(ty_b_chirho.clone()),
+                            ),
+                        ),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3978,7 +4175,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: ret_id_chirho,
                     name_chirho: "returnReaderT".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), reader_t_r_a_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -3995,7 +4192,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: run_reader_id_chirho,
                     name_chirho: "runReader".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        reader_t_r_a_chirho.clone(),
+                        TyChirho::fun_chirho(ty_r_chirho.clone(), ty_a_chirho.clone()),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(run_reader_t_id_chirho),
@@ -4028,7 +4228,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: throw_id_chirho,
                     name_chirho: "throwE".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::fun_chirho(ty_e_chirho.clone(), except_t_e_a_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -4057,7 +4257,7 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: ret_id_chirho,
                     name_chirho: "returnExceptT".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), except_t_e_a_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -4154,7 +4354,28 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: bind_id_chirho,
                     name_chirho: "bindExceptT".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        except_t_e_a_chirho.clone(),
+                        TyChirho::fun_chirho(
+                            TyChirho::fun_chirho(
+                                a_chirho.clone(),
+                                TyChirho::AppChirho(
+                                    Box::new(TyChirho::AppChirho(
+                                        Box::new(TyChirho::ConChirho("ExceptT".to_string())),
+                                        Box::new(ty_e_chirho.clone()),
+                                    )),
+                                    Box::new(ty_b_chirho.clone()),
+                                ),
+                            ),
+                            TyChirho::AppChirho(
+                                Box::new(TyChirho::AppChirho(
+                                    Box::new(TyChirho::ConChirho("ExceptT".to_string())),
+                                    Box::new(ty_e_chirho.clone()),
+                                )),
+                                Box::new(ty_b_chirho.clone()),
+                            ),
+                        ),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -4251,7 +4472,13 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: catch_id_chirho,
                     name_chirho: "catchE".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        except_t_e_a_chirho.clone(),
+                        TyChirho::fun_chirho(
+                            TyChirho::fun_chirho(ty_e_chirho.clone(), except_t_e_a_chirho.clone()),
+                            except_t_e_a_chirho.clone(),
+                        ),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -4284,7 +4511,13 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: ret_id_chirho,
                     name_chirho: "returnMaybeT".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        a_chirho.clone(),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::ConChirho("MaybeT".to_string())),
+                            Box::new(a_chirho.clone()),
+                        ),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -4380,7 +4613,25 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: bind_id_chirho,
                     name_chirho: "bindMaybeT".to_string(),
-                    ty_chirho: a_chirho.clone(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::ConChirho("MaybeT".to_string())),
+                            Box::new(a_chirho.clone()),
+                        ),
+                        TyChirho::fun_chirho(
+                            TyChirho::fun_chirho(
+                                ty_a_chirho.clone(),
+                                TyChirho::AppChirho(
+                                    Box::new(TyChirho::ConChirho("MaybeT".to_string())),
+                                    Box::new(ty_b_chirho.clone()),
+                                ),
+                            ),
+                            TyChirho::AppChirho(
+                                Box::new(TyChirho::ConChirho("MaybeT".to_string())),
+                                Box::new(ty_b_chirho.clone()),
+                            ),
+                        ),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
