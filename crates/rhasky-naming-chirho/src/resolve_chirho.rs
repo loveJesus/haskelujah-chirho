@@ -673,6 +673,7 @@ mod tests_chirho {
             imports_chirho,
             decls_chirho,
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }
     }

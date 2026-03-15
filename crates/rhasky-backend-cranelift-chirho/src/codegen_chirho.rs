@@ -281,7 +281,7 @@ mod tests_chirho {
     use crate::TargetConfigChirho;
     use rhasky_core_chirho::expr_chirho::{
         AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-        CoreLitChirho, CoreModuleChirho,
+        CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
     };
     use rhasky_span_chirho::SpanChirho;
     use rhasky_typing_chirho::ty_chirho::TyChirho;
@@ -307,6 +307,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho(name_chirho, 0),
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
         }
@@ -362,6 +363,7 @@ mod tests_chirho {
                     body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(1))),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
         };
@@ -477,6 +479,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("eq_zero", 0),
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
         };
@@ -505,6 +508,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("neq_fn", 0),
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
         };
@@ -533,6 +537,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("lt_fn", 0),
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
         };
@@ -634,6 +639,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("case_zero", 0),
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
         };
@@ -674,6 +680,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("multi_case", 0),
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
         };
@@ -713,6 +720,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("bool_to_int", 0),
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
         };
@@ -772,6 +780,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("let_case_fn", 0),
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
         };
@@ -860,6 +869,7 @@ mod tests_chirho {
                 }),
             },
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
 
         let main_binding_chirho = CoreBindingChirho {
@@ -872,6 +882,7 @@ mod tests_chirho {
                 arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(32))),
             },
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
 
         let module_chirho = CoreModuleChirho {
@@ -901,6 +912,7 @@ mod tests_chirho {
                 }),
             },
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
 
         let main_binding_chirho = CoreBindingChirho {
@@ -910,6 +922,7 @@ mod tests_chirho {
                 arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(41))),
             },
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
 
         let module_chirho = CoreModuleChirho {
@@ -933,6 +946,7 @@ mod tests_chirho {
                 ],
             },
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
 
         // Unreachable binding with dict-like name that should be pruned.
@@ -940,6 +954,7 @@ mod tests_chirho {
             binder_chirho: int_binder_chirho("$fNumInt", 100),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
 
         let module_chirho = CoreModuleChirho {
@@ -988,6 +1003,7 @@ mod tests_chirho {
                 }),
             },
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
 
         let main_binding_chirho = CoreBindingChirho {
@@ -1003,6 +1019,7 @@ mod tests_chirho {
                 arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(3))),
             },
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
 
         let module_chirho = CoreModuleChirho {
@@ -1062,6 +1079,7 @@ mod tests_chirho {
                 }),
             },
             is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
 
         let module_chirho = CoreModuleChirho {

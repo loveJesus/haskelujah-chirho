@@ -12,7 +12,7 @@ use rhasky_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-    CoreLitChirho, CoreModuleChirho,
+    CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
 };
 use super::{DictPassCtxChirho, DictLayoutChirho};
 
@@ -143,6 +143,7 @@ impl DictPassCtxChirho {
                     binder_chirho: sel_binder_chirho,
                     rhs_chirho: selector_rhs_chirho,
                     is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                 });
 
                 self.method_selectors_chirho.insert(
@@ -220,6 +221,7 @@ impl DictPassCtxChirho {
                     binder_chirho: sel_binder_chirho,
                     rhs_chirho: selector_rhs_chirho,
                     is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                 });
 
                 self.super_selectors_chirho.insert(

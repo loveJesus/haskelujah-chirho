@@ -4038,6 +4038,36 @@ main = case safeDivide 20 2 of
 
 
     #[test]
+    fn pragma_inline_noinline_parsed_chirho() {
+        use rhasky_parser_chirho::lower_chirho::lower_module_chirho;
+        use rhasky_ast_chirho::module_chirho::InlinePragmaChirho;
+        let src_chirho = "{-# INLINE foo #-}\n{-# NOINLINE bar #-}\n{-# INLINABLE baz #-}\nmodule Test where\nfoo x = x\nbar x = x\nbaz x = x\nmain = 42\n";
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let sf_chirho = rhasky_syntax_chirho::SourceFileChirho::from_source_map_chirho(
+            &mut sm_chirho, "InlinePragmaTest.hs", src_chirho,
+        );
+        let file_id_chirho = sf_chirho.file_id_chirho();
+        let parser_chirho = rhasky_parser_chirho::cst_parser_chirho::ParserChirho::new_chirho(
+            src_chirho, file_id_chirho,
+        );
+        let green_chirho = parser_chirho.parse_chirho();
+        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+        assert_eq!(
+            module_chirho.inline_pragmas_chirho.get("foo"),
+            Some(&InlinePragmaChirho::InlineChirho)
+        );
+        assert_eq!(
+            module_chirho.inline_pragmas_chirho.get("bar"),
+            Some(&InlinePragmaChirho::NoInlineChirho)
+        );
+        assert_eq!(
+            module_chirho.inline_pragmas_chirho.get("baz"),
+            Some(&InlinePragmaChirho::InlinableChirho)
+        );
+        assert_eq!(module_chirho.inline_pragmas_chirho.get("main"), None);
+    }
+
+    #[test]
     fn eval_data_with_synonym_field_chirho() {
         use crate::eval_source_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();

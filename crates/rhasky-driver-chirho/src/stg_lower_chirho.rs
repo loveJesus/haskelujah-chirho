@@ -1808,7 +1808,7 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
-    use rhasky_core_chirho::expr_chirho::{BinderChirho, CoreBindingChirho, CoreIdChirho};
+    use rhasky_core_chirho::expr_chirho::{BinderChirho, CoreBindingChirho, CoreIdChirho, InlineAnnotationChirho};
     use rhasky_span_chirho::SpanChirho;
     use rhasky_typing_chirho::ty_chirho::TyChirho;
 
@@ -1830,6 +1830,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("x", 0),
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
         };
@@ -1848,6 +1849,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("main", 0),
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
         };
@@ -1865,6 +1867,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("main", 0),
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(3.14)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
         };
@@ -1889,6 +1892,7 @@ mod tests_chirho {
                     body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(1))),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
         };
@@ -1909,11 +1913,13 @@ mod tests_chirho {
                     binder_chirho: int_binder_chirho("x", 0),
                     rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(99)),
                     is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                 },
                 CoreBindingChirho {
                     binder_chirho: int_binder_chirho("main", 1),
                     rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(0)),
                     is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                 },
             ],
             names_chirho: HashMap::new(),
@@ -1939,11 +1945,13 @@ mod tests_chirho {
                     binder_chirho: int_binder_chirho("True", 2),
                     rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
                     is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                 },
                 CoreBindingChirho {
                     binder_chirho: int_binder_chirho("main", 0),
                     rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
                     is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                 },
             ],
             names_chirho: HashMap::new(),
@@ -1968,6 +1976,7 @@ mod tests_chirho {
                         body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(1))),
                     },
                     is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                 },
                 CoreBindingChirho {
                     binder_chirho: int_binder_chirho("main", 2),
@@ -1978,6 +1987,7 @@ mod tests_chirho {
                         )),
                     },
                     is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                 },
             ],
             names_chirho: HashMap::new(),
@@ -1995,6 +2005,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("x", 0),
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
         };
@@ -2012,6 +2023,7 @@ mod tests_chirho {
                 binder_chirho: int_binder_chirho("myEntry", 0),
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(777)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
         };
@@ -2038,6 +2050,7 @@ mod tests_chirho {
                     }),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
         };

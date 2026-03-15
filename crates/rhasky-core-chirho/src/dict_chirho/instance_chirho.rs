@@ -13,7 +13,7 @@ use rhasky_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-    CoreLitChirho, CoreModuleChirho,
+    CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
 };
 use super::{DictPassCtxChirho, DictLayoutChirho};
 
@@ -267,6 +267,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -307,6 +308,7 @@ impl DictPassCtxChirho {
             binder_chirho,
             rhs_chirho,
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
@@ -357,6 +359,7 @@ impl DictPassCtxChirho {
             binder_chirho,
             rhs_chirho,
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
@@ -478,6 +481,7 @@ impl DictPassCtxChirho {
             binder_chirho,
             rhs_chirho,
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
@@ -608,6 +612,7 @@ impl DictPassCtxChirho {
             binder_chirho,
             rhs_chirho,
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
@@ -685,6 +690,7 @@ impl DictPassCtxChirho {
             binder_chirho: tail_binder_chirho,
             rhs_chirho: tail_fn_rhs_chirho,
             is_rec_chirho: true, // recursive
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         // Now generate $prim_Show_show_[Int]
@@ -751,6 +757,7 @@ impl DictPassCtxChirho {
             binder_chirho,
             rhs_chirho: main_fn_rhs_chirho,
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
@@ -898,6 +905,7 @@ impl DictPassCtxChirho {
                 binder_chirho: dict_binder_chirho,
                 rhs_chirho: dict_expr_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             self.instance_dicts_chirho.insert(
@@ -971,6 +979,7 @@ impl DictPassCtxChirho {
                     binder_chirho: alias_binder_chirho,
                     rhs_chirho: CoreExprChirho::VarChirho(underlying_id_chirho),
                     is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                 });
             }
 
@@ -1024,6 +1033,7 @@ impl DictPassCtxChirho {
                 binder_chirho: dict_binder_chirho,
                 rhs_chirho: dict_expr_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             self.instance_dicts_chirho.insert(
@@ -1219,6 +1229,7 @@ impl DictPassCtxChirho {
             binder_chirho: dict_binder_chirho,
             rhs_chirho: dict_body_chirho,
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
@@ -1381,6 +1392,7 @@ impl DictPassCtxChirho {
             binder_chirho: fn_binder_chirho,
             rhs_chirho: fn_body_chirho,
             is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         // Now generate the prim binding that wraps this function
@@ -1390,6 +1402,7 @@ impl DictPassCtxChirho {
             binder_chirho: prim_binder_chirho,
             rhs_chirho: CoreExprChirho::VarChirho(fn_id_chirho),
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         // Generate the Eq dict for this list type
@@ -1428,6 +1441,7 @@ impl DictPassCtxChirho {
             binder_chirho: dict_binder_chirho,
             rhs_chirho: dict_expr_chirho,
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         self.instance_dicts_chirho.insert(
@@ -1525,6 +1539,7 @@ impl DictPassCtxChirho {
             binder_chirho: tail_binder_chirho,
             rhs_chirho: tail_fn_rhs_chirho,
             is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         // Main show function:
@@ -1592,6 +1607,7 @@ impl DictPassCtxChirho {
             binder_chirho: prim_binder_chirho,
             rhs_chirho: main_fn_rhs_chirho,
             is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         // Generate the Show dict for this list type
@@ -1628,6 +1644,7 @@ impl DictPassCtxChirho {
             binder_chirho: dict_binder_chirho,
             rhs_chirho: dict_expr_chirho,
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         self.instance_dicts_chirho.insert(

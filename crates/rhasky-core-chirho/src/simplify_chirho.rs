@@ -11,33 +11,213 @@
 //!   → `rhs[xs := args]`
 //! - **Constant folding**: evaluate known integer/bool operations at compile
 //!   time
+//! - **Inlining**: inline small non-recursive bindings and `{-# INLINE #-}`
+//!   annotated bindings at call sites; respect `{-# NOINLINE #-}`
 //!
 //! Modelled after GHC's simplifier but drastically reduced in scope. Runs a
 //! fixed number of iterations (configurable).
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::expr_chirho::{
     AltConChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho,
-    CoreModuleChirho,
+    CoreModuleChirho, InlineAnnotationChirho,
 };
+
+/// Maximum expression size (AST nodes) for auto-inlining.
+const AUTO_INLINE_THRESHOLD_CHIRHO: usize = 10;
 
 /// Configuration for the simplifier.
 #[derive(Debug, Clone)]
 pub struct SimplifyConfigChirho {
     /// Maximum number of simplification passes.
     pub max_iterations_chirho: usize,
+    /// Size threshold for automatic inlining of small non-recursive bindings.
+    pub inline_threshold_chirho: usize,
 }
 
 impl Default for SimplifyConfigChirho {
     fn default() -> Self {
         Self {
             max_iterations_chirho: 4,
+            inline_threshold_chirho: AUTO_INLINE_THRESHOLD_CHIRHO,
         }
     }
 }
 
+/// Count the number of AST nodes in a Core expression (used for inline size heuristics).
+pub fn expr_size_chirho(expr_chirho: &CoreExprChirho) -> usize {
+    match expr_chirho {
+        CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => 1,
+        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
+            1 + expr_size_chirho(fun_chirho) + expr_size_chirho(arg_chirho)
+        }
+        CoreExprChirho::LamChirho { body_chirho, .. } => 1 + expr_size_chirho(body_chirho),
+        CoreExprChirho::LetChirho { binds_chirho, body_chirho, .. } => {
+            1 + binds_chirho.iter().map(|(_, rhs_chirho)| expr_size_chirho(rhs_chirho)).sum::<usize>()
+                + expr_size_chirho(body_chirho)
+        }
+        CoreExprChirho::CaseChirho { scrutinee_chirho, alts_chirho, .. } => {
+            1 + expr_size_chirho(scrutinee_chirho)
+                + alts_chirho.iter().map(|a_chirho| expr_size_chirho(&a_chirho.rhs_chirho)).sum::<usize>()
+        }
+        CoreExprChirho::TyLamChirho { body_chirho, .. } => 1 + expr_size_chirho(body_chirho),
+        CoreExprChirho::TyAppChirho { expr_chirho: inner_chirho, .. } => 1 + expr_size_chirho(inner_chirho),
+        CoreExprChirho::PrimOpChirho { args_chirho, .. } => {
+            1 + args_chirho.iter().map(|a_chirho| expr_size_chirho(a_chirho)).sum::<usize>()
+        }
+        CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+            1 + args_chirho.iter().map(|a_chirho| expr_size_chirho(a_chirho)).sum::<usize>()
+        }
+    }
+}
+
+/// Check whether an expression is trivial (a variable or literal) and therefore
+/// always safe to inline without duplicating work.
+fn is_trivial_chirho(expr_chirho: &CoreExprChirho) -> bool {
+    matches!(
+        expr_chirho,
+        CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_)
+    )
+}
+
+/// Build the inline environment: a map from CoreId → RHS expression for bindings
+/// that should be inlined at call sites.
+///
+/// Inlining strategy:
+/// - `{-# INLINE f #-}` — always inline regardless of size
+/// - `{-# NOINLINE f #-}` — never inline
+/// - `{-# INLINABLE f #-}` — inline if small and non-recursive
+/// - No annotation — auto-inline only trivial expressions (Var/Lit) to avoid
+///   changing evaluation semantics or duplicating work
+fn build_inline_env_chirho(
+    bindings_chirho: &[CoreBindingChirho],
+    threshold_chirho: usize,
+) -> HashMap<CoreIdChirho, CoreExprChirho> {
+    let mut env_chirho = HashMap::new();
+    for binding_chirho in bindings_chirho {
+        match binding_chirho.inline_chirho {
+            // NOINLINE — never inline
+            InlineAnnotationChirho::NeverChirho => continue,
+            // INLINE — always inline regardless of size
+            InlineAnnotationChirho::AlwaysChirho => {
+                env_chirho.insert(
+                    binding_chirho.binder_chirho.id_chirho,
+                    binding_chirho.rhs_chirho.clone(),
+                );
+            }
+            // INLINABLE — inline if small and non-recursive
+            InlineAnnotationChirho::InlinableChirho => {
+                if !binding_chirho.is_rec_chirho
+                    && expr_size_chirho(&binding_chirho.rhs_chirho) <= threshold_chirho
+                {
+                    env_chirho.insert(
+                        binding_chirho.binder_chirho.id_chirho,
+                        binding_chirho.rhs_chirho.clone(),
+                    );
+                }
+            }
+            // No annotation — auto-inline only trivial expressions (Var/Lit)
+            InlineAnnotationChirho::NoneChirho => {
+                if !binding_chirho.is_rec_chirho
+                    && is_trivial_chirho(&binding_chirho.rhs_chirho)
+                {
+                    env_chirho.insert(
+                        binding_chirho.binder_chirho.id_chirho,
+                        binding_chirho.rhs_chirho.clone(),
+                    );
+                }
+            }
+        }
+    }
+    env_chirho
+}
+
+/// Inline variables from the inline environment into an expression.
+fn inline_expr_chirho(
+    expr_chirho: &CoreExprChirho,
+    env_chirho: &HashMap<CoreIdChirho, CoreExprChirho>,
+) -> CoreExprChirho {
+    match expr_chirho {
+        CoreExprChirho::VarChirho(id_chirho) => {
+            if let Some(rhs_chirho) = env_chirho.get(id_chirho) {
+                rhs_chirho.clone()
+            } else {
+                expr_chirho.clone()
+            }
+        }
+        CoreExprChirho::LitChirho(_) => expr_chirho.clone(),
+        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(inline_expr_chirho(fun_chirho, env_chirho)),
+            arg_chirho: Box::new(inline_expr_chirho(arg_chirho, env_chirho)),
+        },
+        CoreExprChirho::LamChirho { binder_chirho, body_chirho } => {
+            // If the lambda binder shadows an inline candidate, remove it from env
+            let mut env2_chirho = env_chirho.clone();
+            env2_chirho.remove(&binder_chirho.id_chirho);
+            CoreExprChirho::LamChirho {
+                binder_chirho: binder_chirho.clone(),
+                body_chirho: Box::new(inline_expr_chirho(body_chirho, &env2_chirho)),
+            }
+        }
+        CoreExprChirho::LetChirho { rec_chirho, binds_chirho, body_chirho } => {
+            let mut env2_chirho = env_chirho.clone();
+            for (b_chirho, _) in binds_chirho {
+                env2_chirho.remove(&b_chirho.id_chirho);
+            }
+            CoreExprChirho::LetChirho {
+                rec_chirho: *rec_chirho,
+                binds_chirho: binds_chirho.iter().map(|(b_chirho, rhs_chirho)| {
+                    (b_chirho.clone(), inline_expr_chirho(rhs_chirho, &env2_chirho))
+                }).collect(),
+                body_chirho: Box::new(inline_expr_chirho(body_chirho, &env2_chirho)),
+            }
+        }
+        CoreExprChirho::CaseChirho { scrutinee_chirho, bind_chirho, result_ty_chirho, alts_chirho } => {
+            let mut env2_chirho = env_chirho.clone();
+            env2_chirho.remove(&bind_chirho.id_chirho);
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(inline_expr_chirho(scrutinee_chirho, env_chirho)),
+                bind_chirho: bind_chirho.clone(),
+                result_ty_chirho: result_ty_chirho.clone(),
+                alts_chirho: alts_chirho.iter().map(|alt_chirho| {
+                    let mut alt_env_chirho = env2_chirho.clone();
+                    for b_chirho in &alt_chirho.binders_chirho {
+                        alt_env_chirho.remove(&b_chirho.id_chirho);
+                    }
+                    CoreAltChirho {
+                        con_chirho: alt_chirho.con_chirho.clone(),
+                        binders_chirho: alt_chirho.binders_chirho.clone(),
+                        rhs_chirho: inline_expr_chirho(&alt_chirho.rhs_chirho, &alt_env_chirho),
+                    }
+                }).collect(),
+            }
+        }
+        CoreExprChirho::TyLamChirho { ty_var_chirho, body_chirho } => CoreExprChirho::TyLamChirho {
+            ty_var_chirho: ty_var_chirho.clone(),
+            body_chirho: Box::new(inline_expr_chirho(body_chirho, env_chirho)),
+        },
+        CoreExprChirho::TyAppChirho { expr_chirho: inner_chirho, ty_chirho } => CoreExprChirho::TyAppChirho {
+            expr_chirho: Box::new(inline_expr_chirho(inner_chirho, env_chirho)),
+            ty_chirho: ty_chirho.clone(),
+        },
+        CoreExprChirho::PrimOpChirho { name_chirho, args_chirho } => CoreExprChirho::PrimOpChirho {
+            name_chirho: name_chirho.clone(),
+            args_chirho: args_chirho.iter().map(|a_chirho| inline_expr_chirho(a_chirho, env_chirho)).collect(),
+        },
+        CoreExprChirho::ConAppChirho { con_name_chirho, args_chirho } => CoreExprChirho::ConAppChirho {
+            con_name_chirho: con_name_chirho.clone(),
+            args_chirho: args_chirho.iter().map(|a_chirho| inline_expr_chirho(a_chirho, env_chirho)).collect(),
+        },
+    }
+}
+
 /// Run the simplifier on a Core module.
+///
+/// Each iteration performs:
+/// 1. Inlining — substitute small/INLINE bindings at call sites
+/// 2. Simplification — beta reduction, dead binding elimination, case-of-known,
+///    constant folding
 pub fn simplify_module_chirho(
     module_chirho: &CoreModuleChirho,
     config_chirho: &SimplifyConfigChirho,
@@ -45,6 +225,16 @@ pub fn simplify_module_chirho(
     let mut bindings_chirho = module_chirho.bindings_chirho.clone();
 
     for _ in 0..config_chirho.max_iterations_chirho {
+        // Phase 1: Build inline environment and inline variables
+        let inline_env_chirho = build_inline_env_chirho(&bindings_chirho, config_chirho.inline_threshold_chirho);
+        if !inline_env_chirho.is_empty() {
+            bindings_chirho = bindings_chirho.into_iter().map(|mut b_chirho| {
+                b_chirho.rhs_chirho = inline_expr_chirho(&b_chirho.rhs_chirho, &inline_env_chirho);
+                b_chirho
+            }).collect();
+        }
+
+        // Phase 2: Standard simplification
         let new_bindings_chirho: Vec<CoreBindingChirho> = bindings_chirho
             .into_iter()
             .map(|mut binding_chirho| {
@@ -913,6 +1103,7 @@ mod tests_chirho {
                     arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42))),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
         };
@@ -1014,5 +1205,268 @@ mod tests_chirho {
         };
         let result_chirho = simplify_expr_chirho(&expr_chirho);
         assert!(matches!(result_chirho, CoreExprChirho::PrimOpChirho { .. }));
+    }
+
+    // ── Inlining tests ──
+
+    #[test]
+    fn expr_size_lit_chirho() {
+        assert_eq!(expr_size_chirho(&CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42))), 1);
+    }
+
+    #[test]
+    fn expr_size_app_chirho() {
+        // f x → 1 (App) + 1 (Var f) + 1 (Var x) = 3
+        let expr_chirho = CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(0))),
+            arg_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(1))),
+        };
+        assert_eq!(expr_size_chirho(&expr_chirho), 3);
+    }
+
+    #[test]
+    fn expr_size_lam_chirho() {
+        // \x -> 42 → 1 (Lam) + 1 (Lit) = 2
+        let expr_chirho = CoreExprChirho::LamChirho {
+            binder_chirho: dummy_binder_chirho("x", 0),
+            body_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42))),
+        };
+        assert_eq!(expr_size_chirho(&expr_chirho), 2);
+    }
+
+    #[test]
+    fn inline_always_annotation_chirho() {
+        // f = 42 (INLINE), g = f
+        // After inlining: g = 42
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Test".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("f", 10),
+                    rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::AlwaysChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("g", 11),
+                    rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(10)),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: std::collections::HashMap::new(),
+        };
+        let config_chirho = SimplifyConfigChirho::default();
+        let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
+        // g should be inlined to 42
+        assert_eq!(
+            result_chirho.bindings_chirho[1].rhs_chirho,
+            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42))
+        );
+    }
+
+    #[test]
+    fn noinline_annotation_chirho() {
+        // f = 42 (NOINLINE), g = f
+        // After inlining: g should still be Var(f), not 42
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Test".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("f", 10),
+                    rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NeverChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("g", 11),
+                    rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(10)),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: std::collections::HashMap::new(),
+        };
+        let config_chirho = SimplifyConfigChirho::default();
+        let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
+        // g should NOT be inlined — f is NOINLINE
+        assert_eq!(
+            result_chirho.bindings_chirho[1].rhs_chirho,
+            CoreExprChirho::VarChirho(CoreIdChirho(10))
+        );
+    }
+
+    #[test]
+    fn auto_inline_trivial_chirho() {
+        // f = x (trivial var-to-var), g = f
+        // After inlining: g = x
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Test".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("f", 10),
+                    rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(5)),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("g", 11),
+                    rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(10)),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: std::collections::HashMap::new(),
+        };
+        let config_chirho = SimplifyConfigChirho::default();
+        let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
+        // g should be inlined to Var(5) since f = Var(5) is trivial
+        assert_eq!(
+            result_chirho.bindings_chirho[1].rhs_chirho,
+            CoreExprChirho::VarChirho(CoreIdChirho(5))
+        );
+    }
+
+    #[test]
+    fn no_auto_inline_non_trivial_chirho() {
+        // f = \x -> x (non-trivial, size=2), g = f (no annotation)
+        // Auto-inlining should NOT inline because f is not trivial and has no INLINE
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Test".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("f", 10),
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: dummy_binder_chirho("x", 0),
+                        body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(0))),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("g", 11),
+                    rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(10)),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: std::collections::HashMap::new(),
+        };
+        let config_chirho = SimplifyConfigChirho::default();
+        let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
+        // g should NOT be inlined since f is a lambda (not trivial)
+        assert_eq!(
+            result_chirho.bindings_chirho[1].rhs_chirho,
+            CoreExprChirho::VarChirho(CoreIdChirho(10))
+        );
+    }
+
+    #[test]
+    fn inlinable_small_function_chirho() {
+        // f = \x -> x (INLINABLE, size=2 <= threshold), g = f
+        // Should inline because INLINABLE + small
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Test".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("f", 10),
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: dummy_binder_chirho("x", 0),
+                        body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(0))),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::InlinableChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("g", 11),
+                    rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(10)),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: std::collections::HashMap::new(),
+        };
+        let config_chirho = SimplifyConfigChirho::default();
+        let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
+        // g should be the identity lambda after inlining
+        assert!(matches!(
+            result_chirho.bindings_chirho[1].rhs_chirho,
+            CoreExprChirho::LamChirho { .. }
+        ));
+    }
+
+    #[test]
+    fn recursive_not_inlined_chirho() {
+        // f = f (recursive), g = f
+        // Recursive bindings should never be auto-inlined
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Test".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("f", 10),
+                    rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(10)),
+                    is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("g", 11),
+                    rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(10)),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: std::collections::HashMap::new(),
+        };
+        let config_chirho = SimplifyConfigChirho::default();
+        let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
+        // g should not be inlined — f is recursive
+        assert_eq!(
+            result_chirho.bindings_chirho[1].rhs_chirho,
+            CoreExprChirho::VarChirho(CoreIdChirho(10))
+        );
+    }
+
+    #[test]
+    fn inline_always_large_function_chirho() {
+        // f = \x -> \y -> PrimOp("+#", [x, y]) (INLINE — should inline regardless of size)
+        let large_rhs_chirho = CoreExprChirho::LamChirho {
+            binder_chirho: dummy_binder_chirho("x", 0),
+            body_chirho: Box::new(CoreExprChirho::LamChirho {
+                binder_chirho: dummy_binder_chirho("y", 1),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "+#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(CoreIdChirho(0)),
+                        CoreExprChirho::VarChirho(CoreIdChirho(1)),
+                    ],
+                }),
+            }),
+        };
+        assert!(expr_size_chirho(&large_rhs_chirho) > 1); // size = 5
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Test".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("f", 10),
+                    rhs_chirho: large_rhs_chirho,
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::AlwaysChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("g", 11),
+                    rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(10)),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: std::collections::HashMap::new(),
+        };
+        let config_chirho = SimplifyConfigChirho::default();
+        let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
+        // g should be the lambda from f, not Var(10)
+        assert!(matches!(
+            result_chirho.bindings_chirho[1].rhs_chirho,
+            CoreExprChirho::LamChirho { .. }
+        ));
     }
 }

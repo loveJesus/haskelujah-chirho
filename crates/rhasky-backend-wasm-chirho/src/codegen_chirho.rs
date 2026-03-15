@@ -696,6 +696,7 @@ mod tests_chirho {
     use super::*;
     use rhasky_core_chirho::{
         AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreIdChirho,
+        InlineAnnotationChirho,
     };
     use rhasky_typing_chirho::ty_chirho::TyChirho;
 
@@ -722,6 +723,7 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("main", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -735,6 +737,7 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("main", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -751,6 +754,7 @@ mod tests_chirho {
                 body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(0))),
             },
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -805,6 +809,7 @@ mod tests_chirho {
                     }),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             },
             CoreBindingChirho {
                 binder_chirho: dummy_binder_chirho("main", 3),
@@ -813,6 +818,7 @@ mod tests_chirho {
                     arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(41))),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             },
         ]);
 
@@ -841,6 +847,7 @@ mod tests_chirho {
                 }),
             },
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -871,6 +878,7 @@ mod tests_chirho {
                 ],
             },
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -889,6 +897,7 @@ mod tests_chirho {
                 args_chirho: vec![],
             },
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -903,6 +912,7 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("main", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_executable_chirho(&module_chirho);
@@ -930,6 +940,7 @@ mod tests_chirho {
                     }),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             },
             CoreBindingChirho {
                 binder_chirho: dummy_binder_chirho("main", 4),
@@ -941,6 +952,7 @@ mod tests_chirho {
                     arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(32))),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             },
         ]);
 

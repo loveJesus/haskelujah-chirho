@@ -22,7 +22,7 @@ use rhasky_typing_chirho::ty_chirho::TyChirho;
 
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-    CoreLitChirho, CoreModuleChirho,
+    CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
 };
 use crate::simplify_chirho::free_vars_chirho;
 
@@ -430,6 +430,9 @@ impl DesugarCtxChirho {
             }
         }
 
+        // Convert AST inline pragmas to Core inline annotations
+        let inline_pragmas_chirho = &module_chirho.inline_pragmas_chirho;
+
         // Pass 2: Desugar bodies
         let mut bindings_chirho = Vec::new();
         let mut pre_iter_chirho = pre_binders_chirho.into_iter().peekable();
@@ -437,9 +440,9 @@ impl DesugarCtxChirho {
         for (idx_chirho, decl_chirho) in module_chirho.decls_chirho.iter().enumerate() {
             match decl_chirho {
                 DeclChirho::FunBindChirho {
+                    name_chirho,
                     matches_chirho,
                     span_chirho,
-                    ..
                 } => {
                     let core_rhs_chirho =
                         self.desugar_matches_chirho(matches_chirho, *span_chirho);
@@ -466,10 +469,18 @@ impl DesugarCtxChirho {
                             *span_chirho,
                         )
                     };
+                    // Look up inline pragma for this binding
+                    let inline_annotation_chirho = match inline_pragmas_chirho.get(&name_chirho.text_chirho().to_string()) {
+                        Some(rhasky_ast_chirho::module_chirho::InlinePragmaChirho::InlineChirho) => InlineAnnotationChirho::AlwaysChirho,
+                        Some(rhasky_ast_chirho::module_chirho::InlinePragmaChirho::NoInlineChirho) => InlineAnnotationChirho::NeverChirho,
+                        Some(rhasky_ast_chirho::module_chirho::InlinePragmaChirho::InlinableChirho) => InlineAnnotationChirho::InlinableChirho,
+                        None => InlineAnnotationChirho::NoneChirho,
+                    };
                     bindings_chirho.push(CoreBindingChirho {
                         binder_chirho,
                         rhs_chirho: core_rhs_chirho,
                         is_rec_chirho: true,
+                        inline_chirho: inline_annotation_chirho,
                     });
                 }
                 DeclChirho::PatBindChirho {
@@ -489,6 +500,7 @@ impl DesugarCtxChirho {
                         binder_chirho,
                         rhs_chirho: core_rhs_chirho,
                         is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                     });
                 }
                 DeclChirho::InstanceDeclChirho {
@@ -553,6 +565,7 @@ impl DesugarCtxChirho {
                                 binder_chirho,
                                 rhs_chirho: core_rhs_chirho,
                                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                             });
                         }
                     }
@@ -601,6 +614,7 @@ impl DesugarCtxChirho {
                                     binder_chirho,
                                     rhs_chirho: core_rhs_chirho,
                                     is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                                 });
                             }
                         }
@@ -711,6 +725,7 @@ impl DesugarCtxChirho {
                             binder_chirho: accessor_binder_chirho,
                             rhs_chirho: accessor_rhs_chirho,
                             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                         });
 
                         // Generate setter: $setField_f = \newVal -> \rec -> case rec of { Con b0 b1 ... -> Con ... newVal ... }
@@ -799,6 +814,7 @@ impl DesugarCtxChirho {
                             binder_chirho: setter_binder_chirho,
                             rhs_chirho: setter_rhs_chirho,
                             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                         });
                     }
                 }
@@ -3738,6 +3754,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -3851,6 +3868,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -4061,6 +4079,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -4530,6 +4549,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);
@@ -4639,6 +4659,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);
@@ -4742,6 +4763,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);

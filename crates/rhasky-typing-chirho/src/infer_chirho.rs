@@ -6702,6 +6702,7 @@ mod tests_chirho {
                 },
             ],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -6869,6 +6870,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -6920,6 +6922,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -6949,6 +6952,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         });
 
@@ -7000,6 +7004,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -7056,6 +7061,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -7113,6 +7119,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -7173,6 +7180,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -7233,6 +7241,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -7293,6 +7302,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -7325,6 +7335,7 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -7374,6 +7385,7 @@ mod tests_chirho {
                 },
             ],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -7417,6 +7429,7 @@ mod tests_chirho {
                 },
             ],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -7469,6 +7482,7 @@ mod tests_chirho {
                 },
             ],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -7586,6 +7600,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -7653,6 +7668,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 

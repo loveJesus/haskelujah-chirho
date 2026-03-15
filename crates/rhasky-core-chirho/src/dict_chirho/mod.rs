@@ -601,7 +601,7 @@ fn max_in_expr_chirho(expr_chirho: &CoreExprChirho, max_chirho: &mut u32) {
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
-    use crate::expr_chirho::CoreLitChirho;
+    use crate::expr_chirho::{CoreLitChirho, InlineAnnotationChirho};
     use rhasky_typing_chirho::class_chirho::ClassEnvChirho;
     use rhasky_typing_chirho::ty_chirho::SchemePredChirho;
 
@@ -620,6 +620,7 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("f", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
         let scheme_chirho = SchemeChirho::mono_chirho(TyChirho::int_chirho());
 
@@ -641,6 +642,7 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("add", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
         let scheme_chirho = SchemeChirho {
             vars_chirho: vec![rhasky_typing_chirho::ty_chirho::TyVarChirho(0)],
@@ -696,6 +698,7 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("cmp", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
             is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
         let scheme_chirho = SchemeChirho {
             vars_chirho: vec![rhasky_typing_chirho::ty_chirho::TyVarChirho(0)],
@@ -826,6 +829,7 @@ mod tests_chirho {
                     ))),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
         };
@@ -1021,6 +1025,7 @@ mod tests_chirho {
                 binder_chirho: dummy_binder_chirho("add", 0),
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
         };

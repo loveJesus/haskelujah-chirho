@@ -8,6 +8,17 @@ use rhasky_span_chirho::SpanChirho;
 use crate::decl_chirho::DeclChirho;
 use crate::name_chirho::NameChirho;
 
+/// Inline pragma annotation for a binding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InlinePragmaChirho {
+    /// `{-# INLINE f #-}` — always inline this binding.
+    InlineChirho,
+    /// `{-# NOINLINE f #-}` — never inline this binding.
+    NoInlineChirho,
+    /// `{-# INLINABLE f #-}` — make available for inlining at call sites.
+    InlinableChirho,
+}
+
 /// A complete Haskell module.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModuleChirho {
@@ -21,6 +32,8 @@ pub struct ModuleChirho {
     pub decls_chirho: Vec<DeclChirho>,
     /// LANGUAGE extensions enabled via `{-# LANGUAGE ... #-}` pragmas.
     pub extensions_chirho: Vec<String>,
+    /// INLINE/NOINLINE/INLINABLE pragmas: maps binding name → pragma.
+    pub inline_pragmas_chirho: std::collections::HashMap<String, InlinePragmaChirho>,
     /// Span covering the entire module.
     pub span_chirho: SpanChirho,
 }
@@ -103,6 +116,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         assert_eq!(module_chirho.name_chirho.text_chirho(), "Main");

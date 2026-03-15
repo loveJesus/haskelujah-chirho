@@ -174,7 +174,7 @@ fn pretty_alt_chirho(
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
-    use crate::expr_chirho::{AltConChirho, BinderChirho, CoreIdChirho, CoreLitChirho};
+    use crate::expr_chirho::{AltConChirho, BinderChirho, CoreIdChirho, CoreLitChirho, InlineAnnotationChirho};
     use rhasky_typing_chirho::ty_chirho::TyChirho;
 
     #[test]
@@ -190,6 +190,7 @@ mod tests_chirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
         };

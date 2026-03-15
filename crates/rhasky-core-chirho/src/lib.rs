@@ -29,7 +29,7 @@ pub use dict_chirho::{
 };
 pub use expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-    CoreLitChirho, CoreModuleChirho,
+    CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
 };
 pub use pretty_chirho::pretty_module_chirho;
 pub use simplify_chirho::{

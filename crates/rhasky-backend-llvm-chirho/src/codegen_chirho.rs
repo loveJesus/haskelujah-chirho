@@ -789,7 +789,7 @@ pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) 
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
-    use rhasky_core_chirho::{BinderChirho, CoreIdChirho};
+    use rhasky_core_chirho::{BinderChirho, CoreIdChirho, InlineAnnotationChirho};
     use rhasky_typing_chirho::ty_chirho::TyChirho;
     use rhasky_core_chirho::CoreBindingChirho;
 
@@ -814,6 +814,7 @@ mod tests_chirho {
                 binder_chirho: dummy_binder_chirho("main", 0),
                 rhs_chirho: int_lit_chirho(42),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
         };
@@ -836,6 +837,7 @@ mod tests_chirho {
                     body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(0))),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
         };
@@ -861,6 +863,7 @@ mod tests_chirho {
                     body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(0))),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
         };
@@ -895,6 +898,7 @@ mod tests_chirho {
                     ],
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
         };
@@ -927,6 +931,7 @@ mod tests_chirho {
                 binder_chirho: dummy_binder_chirho("main", 0),
                 rhs_chirho: int_lit_chirho(42),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
         };
@@ -949,6 +954,7 @@ mod tests_chirho {
                 binder_chirho: dummy_binder_chirho("helper", 0),
                 rhs_chirho: int_lit_chirho(99),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
         };
@@ -973,6 +979,7 @@ mod tests_chirho {
                     args_chirho: vec![int_lit_chirho(2), int_lit_chirho(3)],
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
         };

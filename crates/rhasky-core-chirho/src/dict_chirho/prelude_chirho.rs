@@ -12,7 +12,7 @@ use rhasky_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-    CoreLitChirho, CoreModuleChirho,
+    CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
 };
 use super::{DictPassCtxChirho, DictLayoutChirho};
 
@@ -173,6 +173,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -213,6 +214,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -253,6 +255,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -309,6 +312,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho: rhs_chirho.clone(),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // Also generate $prim_Num_abs_Int for the instance dictionary
@@ -324,6 +328,7 @@ impl DictPassCtxChirho {
                 binder_chirho: prim_abs_binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -383,6 +388,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -442,6 +448,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -485,6 +492,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -528,6 +536,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -592,6 +601,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -664,6 +674,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -764,6 +775,7 @@ impl DictPassCtxChirho {
                 binder_chirho: enum_binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -869,6 +881,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -963,6 +976,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -991,6 +1005,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1019,6 +1034,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1047,6 +1063,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1075,6 +1092,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1103,6 +1121,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1141,6 +1160,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1163,6 +1183,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1190,6 +1211,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1225,6 +1247,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1277,6 +1300,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1329,6 +1353,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1382,6 +1407,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1447,6 +1473,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1520,6 +1547,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1590,6 +1618,7 @@ impl DictPassCtxChirho {
                 };
                 self.generated_bindings_chirho.push(CoreBindingChirho {
                     binder_chirho, rhs_chirho, is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
                 });
             }
         }
@@ -1674,6 +1703,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1761,6 +1791,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1833,6 +1864,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1905,6 +1937,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1941,6 +1974,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1977,6 +2011,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2024,6 +2059,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2080,6 +2116,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2181,6 +2218,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2275,6 +2313,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2373,6 +2412,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2435,6 +2475,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2521,6 +2562,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2607,6 +2649,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2664,6 +2707,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2721,6 +2765,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2791,6 +2836,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2852,6 +2898,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2920,6 +2967,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3036,6 +3084,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3070,6 +3119,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3094,6 +3144,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3136,6 +3187,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -3187,6 +3239,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3227,6 +3280,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3270,6 +3324,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3317,6 +3372,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3364,6 +3420,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3436,6 +3493,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3472,6 +3530,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3488,6 +3547,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(run_state_t_id_chirho),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -3627,6 +3687,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3751,6 +3812,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3842,6 +3904,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3965,6 +4028,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4014,6 +4078,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4111,6 +4176,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -4203,6 +4269,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4262,6 +4329,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4307,6 +4375,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4351,6 +4420,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4467,6 +4537,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: insert_rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // ── sort ──
@@ -4518,6 +4589,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: sort_rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4589,6 +4661,7 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho: rhs_chirho.clone(), is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // Also generate $prim_Num_signum_Int for the instance dictionary
@@ -4603,6 +4676,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4683,6 +4757,7 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho, is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -4780,6 +4855,7 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho, is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4864,6 +4940,7 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho, is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4909,6 +4986,7 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho, is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5017,6 +5095,7 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho, is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5125,6 +5204,7 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho, is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5212,6 +5292,7 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho, is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5340,6 +5421,7 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho, is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // break = span . not
@@ -5403,6 +5485,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: break_rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5533,6 +5616,7 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho, is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -5559,6 +5643,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
         {
@@ -5578,6 +5663,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5601,6 +5687,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             let prim_name_chirho = "$prim_Enum_fromEnum_Char";
@@ -5619,6 +5706,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5674,6 +5762,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // fromEnum for Bool: \b -> case b of { False -> 0; True -> 1 }
@@ -5711,6 +5800,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5727,6 +5817,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(i64::MIN)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
         {
@@ -5741,6 +5832,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(i64::MAX)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5758,6 +5850,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
             let prim_name_chirho = "$prim_Bounded_maxBound_Char";
             let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
@@ -5770,6 +5863,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0x10FFFF)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5790,6 +5884,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![],
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
             let prim_name_chirho = "$prim_Bounded_maxBound_Bool";
             let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
@@ -5805,6 +5900,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![],
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5826,6 +5922,7 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // fromEnum :: Int -> Int (defaulting to Int-specialized)
@@ -5843,6 +5940,7 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // succ :: Int -> Int = \x -> x +# 1
@@ -5866,6 +5964,7 @@ impl DictPassCtxChirho {
                     }),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // pred :: Int -> Int = \x -> x -# 1
@@ -5889,6 +5988,7 @@ impl DictPassCtxChirho {
                     }),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // minBound :: Int (prelude-level, defaulting to Int)
@@ -5902,6 +6002,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(i64::MIN)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // maxBound :: Int (prelude-level, defaulting to Int)
@@ -5915,6 +6016,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(i64::MAX)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -5960,6 +6062,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5980,6 +6083,7 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6027,6 +6131,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6074,6 +6179,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6106,6 +6212,7 @@ impl DictPassCtxChirho {
                     }),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             let rem_id_chirho = self.resolve_or_fresh_id_chirho("rem");
@@ -6135,6 +6242,7 @@ impl DictPassCtxChirho {
                     }),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -6172,6 +6280,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6198,6 +6307,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6221,6 +6331,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6244,6 +6355,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6267,6 +6379,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6290,6 +6403,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -6330,6 +6444,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // Prelude-level alias: sin = $prim_Floating_sin_Double
@@ -6343,6 +6458,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(prim_id_chirho),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6371,6 +6487,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // NOTE: We intentionally do NOT create a top-level "pi" alias
@@ -6425,6 +6542,7 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(body_chirho),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6502,6 +6620,7 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(body_chirho),
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6526,6 +6645,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6567,6 +6687,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6591,6 +6712,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6626,6 +6748,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6650,6 +6773,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6675,6 +6799,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6741,6 +6866,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // Prelude-level: fmap = $prim_Functor_fmap_Maybe (default to Maybe)
@@ -6754,6 +6880,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(prim_id_chirho),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6772,6 +6899,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(map_id_chirho),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6797,6 +6925,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6877,6 +7006,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6930,6 +7060,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6979,6 +7110,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -7040,6 +7172,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7092,6 +7225,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7169,6 +7303,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7213,6 +7348,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7232,6 +7368,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7256,6 +7393,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7281,6 +7419,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7304,6 +7443,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7333,6 +7473,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7359,6 +7500,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7383,6 +7525,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7417,6 +7560,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7472,6 +7616,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7534,6 +7679,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7566,6 +7712,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7617,6 +7764,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7674,6 +7822,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -7709,6 +7858,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![],
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7743,6 +7893,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7785,6 +7936,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7820,6 +7972,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7854,6 +8007,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7888,6 +8042,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7925,6 +8080,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7949,6 +8105,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7973,6 +8130,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7997,6 +8155,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8021,6 +8180,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8045,6 +8205,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8069,6 +8230,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8094,6 +8256,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8128,6 +8291,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8170,6 +8334,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8212,6 +8377,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8275,6 +8441,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8309,6 +8476,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8344,6 +8512,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8378,6 +8547,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8412,6 +8582,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8462,6 +8633,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8504,6 +8676,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8546,6 +8719,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8588,6 +8762,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -8628,6 +8803,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8662,6 +8838,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -8717,6 +8894,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8752,6 +8930,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8786,6 +8965,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8820,6 +9000,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8862,6 +9043,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8886,6 +9068,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8913,6 +9096,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -8944,6 +9128,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![],
                 },
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8967,6 +9152,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9000,6 +9186,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9033,6 +9220,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9066,6 +9254,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9089,6 +9278,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9112,6 +9302,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9135,6 +9326,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9158,6 +9350,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9191,6 +9384,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9224,6 +9418,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9257,6 +9452,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9304,6 +9500,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9351,6 +9548,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9405,6 +9603,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9445,6 +9644,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9470,6 +9670,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9553,6 +9754,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9608,6 +9810,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9696,6 +9899,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9801,6 +10005,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9850,6 +10055,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9892,6 +10098,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -9923,6 +10130,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9946,6 +10154,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9979,6 +10188,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10043,6 +10253,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -10074,6 +10285,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10097,6 +10309,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10130,6 +10343,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10167,6 +10381,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10191,6 +10406,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -10322,6 +10538,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: insertby_rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // sortBy cmp [] = []
@@ -10386,6 +10603,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: sortby_rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10479,6 +10697,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10582,6 +10801,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10683,6 +10903,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10734,6 +10955,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10837,6 +11059,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10960,6 +11183,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -10995,6 +11219,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11028,6 +11253,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11049,6 +11275,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11085,6 +11312,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11104,6 +11332,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11127,6 +11356,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11211,6 +11441,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -11267,6 +11498,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11301,6 +11533,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11436,6 +11669,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11509,6 +11743,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11544,6 +11779,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11658,6 +11894,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11710,6 +11947,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11757,6 +11995,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11808,6 +12047,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11868,6 +12108,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11962,6 +12203,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -12033,6 +12275,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12089,6 +12332,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12165,6 +12409,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12329,6 +12574,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -12372,6 +12618,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12406,6 +12653,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12435,6 +12683,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12458,6 +12707,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }

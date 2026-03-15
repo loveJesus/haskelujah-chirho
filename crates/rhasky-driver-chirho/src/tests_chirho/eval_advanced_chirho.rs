@@ -1354,3 +1354,41 @@ main = 42
         );
     }
 
+    // ── INLINE / NOINLINE pragma e2e tests ──
+
+    #[test]
+    fn inline_pragma_parse_chirho() {
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Main where\n{-# INLINE double #-}\ndouble x = x + x\nmain = double 21\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "InlineTest.hs", None).unwrap();
+        assert_eq!(result_chirho, ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn noinline_pragma_parse_chirho() {
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Main where\n{-# NOINLINE secret #-}\nsecret = 99\nmain = secret + 1\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NoInlineTest.hs", None).unwrap();
+        assert_eq!(result_chirho, ValueChirho::IntChirho(100));
+    }
+
+    #[test]
+    fn inlinable_pragma_parse_chirho() {
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Main where\n{-# INLINABLE triple #-}\ntriple x = x + x + x\nmain = triple 10\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "InlinableTest.hs", None).unwrap();
+        assert_eq!(result_chirho, ValueChirho::IntChirho(30));
+    }
+
+    #[test]
+    fn inline_pragma_multiple_chirho() {
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Main where\n{-# INLINE add1 #-}\n{-# NOINLINE mul2 #-}\nadd1 x = x + 1\nmul2 x = x * 2\nmain = add1 (mul2 10)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "MultiPragmaTest.hs", None).unwrap();
+        assert_eq!(result_chirho, ValueChirho::IntChirho(21));
+    }
+

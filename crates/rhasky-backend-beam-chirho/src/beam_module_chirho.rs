@@ -143,7 +143,7 @@ mod tests_chirho {
     use super::*;
     use rhasky_core_chirho::expr_chirho::{
         BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho,
-        CoreModuleChirho,
+        CoreModuleChirho, InlineAnnotationChirho,
     };
     use rhasky_span_chirho::SpanChirho;
     use rhasky_typing_chirho::ty_chirho::TyChirho;
@@ -191,6 +191,7 @@ mod tests_chirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
         };

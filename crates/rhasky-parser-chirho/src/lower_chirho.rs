@@ -18,7 +18,8 @@ use rhasky_ast_chirho::expr_chirho::{
 use rhasky_ast_chirho::ty_chirho::ConstraintChirho;
 use rhasky_ast_chirho::lit_chirho::LitChirho;
 use rhasky_ast_chirho::module_chirho::{
-    ExportMembersChirho, ExportSpecChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho, ModuleChirho,
+    ExportMembersChirho, ExportSpecChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
+    InlinePragmaChirho, ModuleChirho,
 };
 use rhasky_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use rhasky_ast_chirho::pat_chirho::{PatChirho, PatFieldChirho};
@@ -143,11 +144,60 @@ impl LowerCtxChirho {
                             }
                         }
                     }
-                    // OPTIONS, INLINE, etc. — silently ignore for now
+                    // OPTIONS, etc. — silently ignore for now
+                    // INLINE/NOINLINE/INLINABLE pragmas are extracted separately
                 }
             }
         }
         extensions_chirho
+    }
+
+    /// Walk all pragma tokens and extract INLINE/NOINLINE/INLINABLE annotations.
+    /// Returns a map from binding name to the inline pragma.
+    fn extract_inline_pragmas_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+    ) -> HashMap<String, InlinePragmaChirho> {
+        let mut pragmas_chirho = HashMap::new();
+        for child_chirho in node_chirho.children_chirho() {
+            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho {
+                if tok_chirho.kind_chirho() == TokenKindChirho::PragmaChirho {
+                    let text_chirho = tok_chirho.text_chirho();
+                    let inner_chirho = text_chirho
+                        .strip_prefix("{-#")
+                        .and_then(|s_chirho| s_chirho.strip_suffix("#-}"))
+                        .unwrap_or("")
+                        .trim();
+                    // Check for NOINLINE first (longer match)
+                    if let Some(rest_chirho) = inner_chirho.strip_prefix("NOINLINE") {
+                        let name_chirho = rest_chirho.trim();
+                        if !name_chirho.is_empty() {
+                            pragmas_chirho.insert(
+                                name_chirho.to_string(),
+                                InlinePragmaChirho::NoInlineChirho,
+                            );
+                        }
+                    } else if let Some(rest_chirho) = inner_chirho.strip_prefix("INLINABLE") {
+                        let name_chirho = rest_chirho.trim();
+                        if !name_chirho.is_empty() {
+                            pragmas_chirho.insert(
+                                name_chirho.to_string(),
+                                InlinePragmaChirho::InlinableChirho,
+                            );
+                        }
+                    } else if let Some(rest_chirho) = inner_chirho.strip_prefix("INLINE") {
+                        let name_chirho = rest_chirho.trim();
+                        if !name_chirho.is_empty() {
+                            pragmas_chirho.insert(
+                                name_chirho.to_string(),
+                                InlinePragmaChirho::InlineChirho,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        pragmas_chirho
     }
 
     // -----------------------------------------------------------------------
@@ -203,6 +253,8 @@ impl LowerCtxChirho {
         let end_chirho = start_chirho + root_chirho.text_len_chirho();
         // Extract LANGUAGE extensions from pragma tokens
         let extensions_chirho = self.extract_pragma_extensions_chirho(root_chirho);
+        // Extract INLINE/NOINLINE/INLINABLE pragmas
+        let inline_pragmas_chirho = self.extract_inline_pragmas_chirho(root_chirho);
 
         ModuleChirho {
             name_chirho: module_name_chirho,
@@ -210,6 +262,7 @@ impl LowerCtxChirho {
             imports_chirho,
             decls_chirho,
             extensions_chirho,
+            inline_pragmas_chirho,
             span_chirho: self.span_chirho(start_chirho, end_chirho),
         }
     }

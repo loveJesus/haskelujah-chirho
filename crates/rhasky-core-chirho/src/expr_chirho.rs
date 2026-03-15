@@ -156,12 +156,27 @@ impl fmt::Display for AltConChirho {
     }
 }
 
+/// Inline annotation for a Core binding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InlineAnnotationChirho {
+    /// `{-# INLINE f #-}` — always inline this binding at call sites.
+    AlwaysChirho,
+    /// `{-# NOINLINE f #-}` — never inline this binding.
+    NeverChirho,
+    /// `{-# INLINABLE f #-}` — available for inlining but not mandatory.
+    InlinableChirho,
+    /// No pragma — eligible for auto-inlining based on size heuristics.
+    NoneChirho,
+}
+
 /// A top-level Core binding (a named function or value).
 #[derive(Debug, Clone, PartialEq)]
 pub struct CoreBindingChirho {
     pub binder_chirho: BinderChirho,
     pub rhs_chirho: CoreExprChirho,
     pub is_rec_chirho: bool,
+    /// Inline annotation from `{-# INLINE/NOINLINE/INLINABLE #-}` pragmas.
+    pub inline_chirho: InlineAnnotationChirho,
 }
 
 /// A Core module — the result of desugaring a source module.
@@ -268,6 +283,7 @@ mod tests_chirho {
                 binder_chirho: main_binder_chirho,
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
                 is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
         };

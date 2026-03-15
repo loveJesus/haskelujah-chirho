@@ -1487,6 +1487,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         }
     }
@@ -1514,6 +1515,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         }
     }
@@ -1667,6 +1669,7 @@ mod tests_chirho {
             span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -1692,6 +1695,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -1735,6 +1739,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
 
@@ -1772,6 +1777,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
 
@@ -1821,6 +1827,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         }
     }
@@ -1928,6 +1935,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -1954,6 +1962,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -1991,6 +2000,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -2041,6 +2051,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -2091,6 +2102,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -2135,6 +2147,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -2191,6 +2204,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -2234,6 +2248,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -2273,6 +2288,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -2308,6 +2324,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -2337,6 +2354,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -2379,6 +2397,7 @@ mod tests_chirho {
                 span_chirho: gen_span_chirho(),
             }],
             extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: gen_span_chirho(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);

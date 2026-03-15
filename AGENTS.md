@@ -143,7 +143,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 6. **Kind Infer** — `rhasky-typing-chirho::kind_chirho` kind inference with unification for higher-kinded types
 7. **Type Infer** — `rhasky-typing-chirho` Hindley-Milner Algorithm W with typeclasses, MPTC, functional dependencies, deriving
 8. **Exhaustiveness Check** — `rhasky-typing-chirho::exhaust_chirho` pattern match exhaustiveness and redundancy checking
-9. **Desugar → Dict Pass → Core → Simplify** — `rhasky-core-chirho` System FC-style Core IR with dictionary-passing transform
+9. **Desugar → Dict Pass → Core → Simplify** — `rhasky-core-chirho` System FC-style Core IR with dictionary-passing transform, INLINE/NOINLINE/INLINABLE pragma support with inlining pass
 10. **STG Evaluation** — `rhasky-runtime-chirho::eval_chirho` STG machine with thunks, closures, PAPs, GC, step limits
 11. **FFI** — `rhasky-runtime-chirho::ffi_chirho` foreign function interface
 12. **Exception Handling** — catch/throw/try/bracket/finally with stack unwinding
@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1412 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1427 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -259,7 +259,7 @@ _These items address structural issues identified in the Codex engineering revie
 
 #### G. Optimization
 
-51. **Inlining** — `INLINE`/`NOINLINE` pragmas; automatic small-function inlining in Core simplifier
+51. ~~**Inlining**~~ — DONE (`{-# INLINE f #-}`, `{-# NOINLINE f #-}`, `{-# INLINABLE f #-}` pragmas parsed from source, stored on `ModuleChirho.inline_pragmas_chirho`, propagated to `CoreBindingChirho.inline_chirho` during desugaring; `InlineAnnotationChirho` enum (Always/Never/Inlinable/None); Core simplifier inlining pass: INLINE always inlines regardless of size, NOINLINE never inlines, INLINABLE inlines small non-recursive bindings (threshold=10 AST nodes), no-annotation auto-inlines trivial expressions (Var/Lit only); `expr_size_chirho` AST node counter; `build_inline_env_chirho` + `inline_expr_chirho` with proper shadow handling; 15 new tests: 8 simplifier unit tests, 1 pragma parsing test, 4 e2e tests, 2 size tests; 1427 tests total)
 52. **Strictness analysis** — worker/wrapper transform; unboxing strict arguments
 53. **Specialization** — `SPECIALIZE` pragma; monomorphize polymorphic functions at known types
 54. **Common subexpression elimination** — CSE pass on Core
