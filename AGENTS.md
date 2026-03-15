@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1401 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1405 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -235,7 +235,7 @@ _These items address structural issues identified in the Codex engineering revie
 
 31. **Type families** — open and closed type families (`type family F a where ...`); type instance declarations; associated type families in classes
 32. ~~**ExistentialQuantification**~~ — DONE (parser `parse_con_decl_chirho` recognizes `forall` keyword before constructor declarations, skips type variables until dot, handles optional class context before `=>`; CST→AST lowerer `lower_con_decl_chirho` detects `ForallKeywordChirho` at start of ConDecl, scans past `DoubleArrowChirho` or `VarSymChirho` (dot) to find the actual constructor name; works with and without context; existential values can be constructed and pattern-matched; 3 new tests: existential with context parses, existential without context parses, existential constructor eval `MkBox 42 → 42`; 1394 tests total)
-33. **TypeApplications** — `read @Int "42"`, `show @Bool True`
+33. ~~**TypeApplications** — `read @Int "42"`, `show @Bool True`~~ — DONE (CST parser recognizes `@Type` after expressions via `parse_fexp_chirho`; `TypeAppExprChirho` CST node; AST `TypeAppChirho` variant; CST→AST lowering extracts expression and type children; type inference passes through to inner expression; desugarer erases type application; 4 new e2e tests: `id @Int 42`, `show @Bool True`, `f @Int 41`, `apply @Int (\n -> n+8) 34`; 1405 tests total)
 34. ~~**OverloadedStrings** — `IsString` type class; string literals desugar to `fromString`~~ — DONE
 35. ~~**OverloadedLists** — `IsList` type class; list literals desugar to `fromList`~~ — DONE (IsList class declaration with `fromList :: [a] -> l` and `toList :: l -> [a]` methods in class_chirho.rs; `IsList [a]` identity instance; type signatures in infer_chirho.rs; `$prim_IsList_fromList_[t9037]`/`$prim_IsList_toList_[t9037]` builtin bindings with `id#` primop; dict pass handles IsList defaulting; `IdChirho` primop in runtime for identity function; top-level user binding shadowing prevents dict rewriting of user-defined `toList`/`fromList`; fromList/toList added to Prelude exports; 2 new tests; 1396 tests total)
 36. **DeriveFunctor/DeriveFoldable/DeriveTraversable** — auto-derive Functor/Foldable/Traversable

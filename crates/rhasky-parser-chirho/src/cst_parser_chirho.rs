@@ -1829,7 +1829,29 @@ impl<'src> ParserChirho<'src> {
         self.eat_trivia_chirho();
 
         let mut count_chirho = 1u32;
-        while self.can_start_aexp_chirho() {
+        loop {
+            // TypeApplications: @Type after an expression
+            if self.at_chirho(RawTokenKindChirho::AtChirho) {
+                self.builder_chirho.start_node_at_chirho(
+                    cp_chirho,
+                    SyntaxKindChirho::TypeAppExprChirho,
+                );
+                // Close any open AppExpr node first
+                if count_chirho > 1 {
+                    self.builder_chirho.finish_node_chirho(); // AppExpr
+                    count_chirho = 1; // reset
+                }
+                self.bump_chirho(); // consume @
+                self.eat_trivia_chirho();
+                self.parse_atype_chirho();
+                self.builder_chirho.finish_node_chirho(); // TypeAppExpr
+                self.eat_trivia_chirho();
+                continue;
+            }
+
+            if !self.can_start_aexp_chirho() {
+                break;
+            }
             let before_chirho = self.pos_chirho;
             if count_chirho == 1 {
                 self.builder_chirho.start_node_at_chirho(

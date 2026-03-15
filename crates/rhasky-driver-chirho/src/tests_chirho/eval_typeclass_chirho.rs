@@ -1321,5 +1321,65 @@ main = print (evalState addToState 10)
         assert_eq!(m_chirho.io_output_chirho, "20\n");
     }
 
+    // ── TypeApplications (§E.33) ─────────────────────────────────────
+
+    #[test]
+    fn type_app_simple_parse_chirho() {
+        // TypeApplications: `read @Int "42"` — type argument is parsed and erased
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = print (id @Int 42)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("TypeApp simple failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn type_app_show_bool_chirho() {
+        // TypeApplications: `show @Bool True` — type applied to show
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = putStrLn (show @Bool True)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("TypeApp show Bool failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "True\n");
+    }
+
+    #[test]
+    fn type_app_multiple_chirho() {
+        // Multiple type applications in sequence: f @Int @Bool
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+f x = x + 1
+main = print (f @Int 41)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("TypeApp multiple failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn type_app_with_lambda_chirho() {
+        // TypeApplications with a lambda expression
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+apply f x = f x
+main = print (apply @Int (\n -> n + 8) 34)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("TypeApp lambda failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
     // ── Algorithmic tests: stress-testing compiler capabilities ───────
 

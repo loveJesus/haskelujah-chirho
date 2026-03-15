@@ -2759,7 +2759,10 @@ impl DesugarCtxChirho {
                 result_chirho
             }
 
-            // All ExprChirho variants are handled above.
+            // Type application — erased during desugaring, just desugar the inner expr.
+            ExprChirho::TypeAppChirho { expr_chirho: inner_chirho, .. } => {
+                self.desugar_expr_chirho(inner_chirho)
+            }
         }
     }
 

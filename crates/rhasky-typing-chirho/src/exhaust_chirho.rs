@@ -394,6 +394,9 @@ impl<'a> ExhaustCheckerChirho<'a> {
                 self.check_expr_chirho(fun_chirho);
                 self.check_expr_chirho(arg_chirho);
             }
+            ExprChirho::TypeAppChirho { expr_chirho, .. } => {
+                self.check_expr_chirho(expr_chirho);
+            }
             ExprChirho::InfixChirho {
                 left_chirho,
                 right_chirho,

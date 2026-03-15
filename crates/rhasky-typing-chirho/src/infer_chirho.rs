@@ -1432,6 +1432,12 @@ impl InferCtxChirho {
                 ..
             } => self.infer_expr_chirho(expr_chirho),
 
+            // TypeApplications: infer the inner expression, type argument
+            // is erased (used only for documentation / disambiguation).
+            ExprChirho::TypeAppChirho { expr_chirho, .. } => {
+                self.infer_expr_chirho(expr_chirho)
+            }
+
             // For remaining expression forms, return a fresh variable
             _ => (SubstChirho::empty_chirho(), self.fresh_var_chirho()),
         }

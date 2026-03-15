@@ -2395,6 +2395,33 @@ impl LowerCtxChirho {
                 let lit_chirho = self.lower_lit_chirho(node_chirho, base_chirho);
                 ExprChirho::LitChirho(lit_chirho)
             }
+            SyntaxKindChirho::TypeAppExprChirho => {
+                // TypeApplications: expr @Type
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let node_children_chirho: Vec<_> = children_chirho
+                    .iter()
+                    .filter(|c_chirho| {
+                        matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(_))
+                    })
+                    .collect();
+                if node_children_chirho.is_empty() {
+                    return self.placeholder_expr_chirho();
+                }
+                // First node child is the expression, last is the type
+                let expr_chirho = self.lower_expr_from_child_chirho(node_children_chirho[0]);
+                let ty_chirho = if node_children_chirho.len() >= 2 {
+                    self.lower_type_from_child_chirho(
+                        node_children_chirho[node_children_chirho.len() - 1],
+                    )
+                } else {
+                    self.placeholder_type_chirho()
+                };
+                ExprChirho::TypeAppChirho {
+                    expr_chirho: Box::new(expr_chirho),
+                    ty_chirho,
+                    span_chirho,
+                }
+            }
             SyntaxKindChirho::AppExprChirho => {
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
                 let expr_nodes_chirho: Vec<_> = children_chirho
@@ -4349,6 +4376,7 @@ fn is_expr_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
     matches!(
         kind_chirho,
         SyntaxKindChirho::AppExprChirho
+            | SyntaxKindChirho::TypeAppExprChirho
             | SyntaxKindChirho::InfixExprChirho
             | SyntaxKindChirho::LambdaExprChirho
             | SyntaxKindChirho::LambdaCaseExprChirho

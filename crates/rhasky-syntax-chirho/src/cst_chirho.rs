@@ -86,6 +86,8 @@ pub enum SyntaxKindChirho {
     // -- Expressions --
     /// Function application (`f x`).
     AppExprChirho,
+    /// Type application (`f @Int`, `read @Bool`).
+    TypeAppExprChirho,
     /// Infix application (`a + b`).
     InfixExprChirho,
     /// Lambda expression (`\x -> expr`).
@@ -223,6 +225,7 @@ impl SyntaxKindChirho {
         matches!(
             self,
             Self::AppExprChirho
+                | Self::TypeAppExprChirho
                 | Self::InfixExprChirho
                 | Self::LambdaExprChirho
                 | Self::LambdaCaseExprChirho

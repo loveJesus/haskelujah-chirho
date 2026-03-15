@@ -25,6 +25,12 @@ pub enum ExprChirho {
         arg_chirho: Box<ExprChirho>,
         span_chirho: SpanChirho,
     },
+    /// Type application (`f @Int`, `read @Bool "True"`).
+    TypeAppChirho {
+        expr_chirho: Box<ExprChirho>,
+        ty_chirho: TypeChirho,
+        span_chirho: SpanChirho,
+    },
     /// Infix application (`a + b`).
     InfixChirho {
         left_chirho: Box<ExprChirho>,
@@ -228,6 +234,7 @@ impl ExprChirho {
             | Self::ListCompChirho { span_chirho, .. }
             | Self::LeftSectionChirho { span_chirho, .. }
             | Self::RightSectionChirho { span_chirho, .. }
+            | Self::TypeAppChirho { span_chirho, .. }
             | Self::AnnChirho { span_chirho, .. }
             | Self::ParenChirho { span_chirho, .. }
             | Self::RecordConChirho { span_chirho, .. }
