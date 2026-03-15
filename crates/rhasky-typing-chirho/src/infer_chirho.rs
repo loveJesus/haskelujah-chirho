@@ -4078,6 +4078,26 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // setFoldr :: (Int -> b -> b) -> b -> Set Int -> b (alias for setFold)
+    {
+        let b_chirho = TyChirho::VarChirho(TyVarChirho(3231));
+        env_chirho.bind_chirho(
+            "setFoldr".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![TyVarChirho(3231)],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::fun_chirho(b_chirho.clone(), b_chirho.clone())),
+                        b_chirho.clone(),
+                        TyChirho::int_chirho(),
+                    ],
+                    b_chirho,
+                ),
+            },
+        );
+    }
+
     // when :: Bool -> IO () -> IO ()
     env_chirho.bind_chirho(
         "when".to_string(),

@@ -399,6 +399,12 @@ pub enum PrimOpKindChirho {
     SetDifferenceChirho,
     /// setNull# :: Set a -> Bool — test if set is empty
     SetNullChirho,
+    /// setMap# :: Ord b => (a -> b) -> Set a -> Set b — map over set elements
+    SetMapChirho,
+    /// setFilter# :: (a -> Bool) -> Set a -> Set a — filter elements
+    SetFilterChirho,
+    /// setFoldr# :: (a -> b -> b) -> b -> Set a -> b — right fold over set
+    SetFoldrChirho,
 }
 
 /// The evaluation stack.

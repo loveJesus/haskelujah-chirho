@@ -1793,6 +1793,9 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "setIntersection#" | "setIntersection" => PrimOpKindChirho::SetIntersectionChirho,
         "setDifference#" | "setDifference" => PrimOpKindChirho::SetDifferenceChirho,
         "setNull#" | "setNull" => PrimOpKindChirho::SetNullChirho,
+        "setMap#" | "setMap" => PrimOpKindChirho::SetMapChirho,
+        "setFilter#" | "setFilter" => PrimOpKindChirho::SetFilterChirho,
+        "setFoldr#" | "setFoldr" | "setFold#" | "setFold" => PrimOpKindChirho::SetFoldrChirho,
         _ => PrimOpKindChirho::AddIntChirho, // fallback
     }
 }

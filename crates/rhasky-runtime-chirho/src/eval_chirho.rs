@@ -3212,6 +3212,53 @@ impl MachineChirho {
                     .collect();
                 return Ok(ValueChirho::SetChirho(result_chirho));
             }
+            PrimOpKindChirho::SetMapChirho => {
+                // setMap# f set — apply f to each element, re-sort and dedup
+                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let set_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
+                let mut new_elems_chirho: Vec<ValueChirho> = Vec::with_capacity(elems_chirho.len());
+                for e_chirho in elems_chirho {
+                    let raw_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), e_chirho)?;
+                    new_elems_chirho.push(self.force_to_prim_chirho(raw_chirho));
+                }
+                new_elems_chirho.sort_by(compare_values_chirho);
+                new_elems_chirho.dedup_by(|a_chirho, b_chirho| compare_values_chirho(a_chirho, b_chirho) == std::cmp::Ordering::Equal);
+                return Ok(ValueChirho::SetChirho(new_elems_chirho));
+            }
+            PrimOpKindChirho::SetFilterChirho => {
+                // setFilter# pred set — keep elements where pred e is True
+                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let set_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
+                let mut kept_chirho: Vec<ValueChirho> = Vec::new();
+                for e_chirho in elems_chirho {
+                    let result_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), e_chirho.clone())?;
+                    let keep_chirho = match self.force_to_prim_chirho(result_chirho) {
+                        ValueChirho::BoolChirho(b_chirho) => b_chirho,
+                        ValueChirho::IntChirho(n_chirho) => n_chirho != 0,
+                        _ => false,
+                    };
+                    if keep_chirho {
+                        kept_chirho.push(e_chirho);
+                    }
+                }
+                return Ok(ValueChirho::SetChirho(kept_chirho));
+            }
+            PrimOpKindChirho::SetFoldrChirho => {
+                // setFoldr# f z set — right fold over set elements
+                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let init_chirho = self.force_to_prim_chirho(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                let set_arg_chirho = args_chirho.get(2).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
+                let mut acc_chirho = init_chirho;
+                for e_chirho in elems_chirho.into_iter().rev() {
+                    let after_e_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), e_chirho)?;
+                    let raw_chirho = self.apply_fn_to_value_chirho(after_e_chirho, acc_chirho)?;
+                    acc_chirho = self.force_to_prim_chirho(raw_chirho);
+                }
+                return Ok(acc_chirho);
+            }
 
             _ => {}
         }

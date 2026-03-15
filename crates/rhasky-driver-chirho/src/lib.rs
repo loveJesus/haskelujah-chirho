@@ -15199,4 +15199,95 @@ main = factorial 10
         assert_eq!(result_chirho.1.io_output_chirho, "42\n");
     }
 
+    // John 3:16 - For God so loved the world, that he gave his only begotten Son,
+    // that whosoever believeth in him should not perish, but have everlasting life.
+
+    // ── Data.Set higher-order operation tests ──
+
+    #[test]
+    fn eval_set_filter_gt3_chirho() {
+        // setFilter (>3) {1,2,3,4,5} → {4,5} → size 2
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             main = setSize (setFilter (\\x -> x > 3) (setFromList [1,2,3,4,5]))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("setFilter should work");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2));
+    }
+
+    #[test]
+    fn eval_set_map_double_chirho() {
+        // setMap (*2) {1,2,3} → {2,4,6} → size 3
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             main = setSize (setMap (\\x -> x * 2) (setFromList [1,2,3]))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("setMap should work");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3));
+    }
+
+    #[test]
+    fn eval_set_map_dedup_chirho() {
+        // setMap (\x -> x `mod` 3) {1,2,3,4,5} → {0,1,2} → size 3 (deduplication)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             main = setSize (setMap (\\x -> x `mod` 3) (setFromList [1,2,3,4,5]))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("setMap with dedup should work");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3));
+    }
+
+    #[test]
+    fn eval_set_fold_sum_chirho() {
+        // setFold (+) 0 {1,2,3,4,5} → 15
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             main = setFold (+) 0 (setFromList [1,2,3,4,5])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("setFold sum should work");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15));
+    }
+
+    // ── zipWith and unzip tests ──
+
+    #[test]
+    fn eval_zipwith_add_sum_chirho() {
+        // zipWith (+) [1,2,3] [10,20,30] → [11,22,33] → sum 66
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             main = sum (zipWith (+) [1,2,3] [10,20,30])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("zipWith should work");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(66));
+    }
+
+    #[test]
+    fn eval_zipwith_mul_chirho() {
+        // zipWith (*) [2,3,4] [5,6,7] → [10,18,28] → sum 56
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             main = sum (zipWith (*) [2,3,4] [5,6,7])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("zipWith mul should work");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(56));
+    }
+
+    #[test]
+    fn eval_concatmap_expand_chirho() {
+        // concatMap (\x -> [x, x*10]) [1,2,3] → [1,10,2,20,3,30] → sum 66
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             main = sum (concatMap (\\x -> [x, x * 10]) [1,2,3])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("concatMap should work");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(66));
+    }
+
 }

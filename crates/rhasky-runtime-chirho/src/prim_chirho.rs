@@ -689,7 +689,10 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::SetUnionChirho
         | PrimOpKindChirho::SetIntersectionChirho
         | PrimOpKindChirho::SetDifferenceChirho
-        | PrimOpKindChirho::SetNullChirho => Ok(ValueChirho::IntChirho(0)),
+        | PrimOpKindChirho::SetNullChirho
+        | PrimOpKindChirho::SetMapChirho
+        | PrimOpKindChirho::SetFilterChirho
+        | PrimOpKindChirho::SetFoldrChirho => Ok(ValueChirho::IntChirho(0)),
         // Exception-handling primops that are dispatched directly in eval_prim_chirho
         // on MachineChirho (they need access to the heap and stack) — the
         // standalone prim_chirho dispatch should never be reached for these.
