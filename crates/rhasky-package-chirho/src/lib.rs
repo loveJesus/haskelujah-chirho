@@ -15,6 +15,7 @@ pub mod cabal_chirho;
 pub mod version_chirho;
 pub mod hackage_chirho;
 pub mod resolve_chirho;
+pub mod pkgdb_chirho;
 
 pub use cabal_chirho::{
     parse_cabal_chirho, BuildInfoChirho, DependencyChirho, ExecutableChirho,
@@ -28,4 +29,8 @@ pub use hackage_chirho::{hackage_tarball_url_chirho, hackage_cabal_url_chirho};
 pub use resolve_chirho::{
     resolve_deps_chirho, BuildPlanChirho, BuildStepChirho,
     PackageIndexChirho, PackageMetaChirho, ResolveErrorChirho,
+};
+pub use pkgdb_chirho::{
+    InstalledPkgDbChirho, InstalledPkgChirho, InstalledModuleChirho,
+    pkg_id_chirho,
 };
