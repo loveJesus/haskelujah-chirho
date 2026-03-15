@@ -216,7 +216,7 @@ _These items address structural issues identified in the Codex engineering revie
 
 #### C. Code Generation Backends
 
-20. **LLVM backend revival** — make `rhasky-backend-llvm-chirho` produce runnable executables; STG closure layout in LLVM IR; entry code, info tables, stack management; link with a minimal RTS
+20. ~~**LLVM backend revival**~~ — DONE (compile_core_to_llvm_executable_chirho produces runnable native executables via `rhasky compile -o <output>`; dictionary elision pass replaces $sel_Num/Eq/Ord selector+dict patterns with direct PrimOps; fromInteger elision for literal folding; reachability analysis from `main` emits only transitively-used bindings; ConApp returns constructor tags; case binder + alt binder binding in LLVM IR; proper cross-reference resolution via toplevel_names_chirho; local scope tracking prevents false top-level calls; CLI `-o`/`--output` flag writes `.ll` then invokes `clang -O2`; tested: `main = 42` → 42, `f x y = x + y; main = f 10 32` → 42, `fib 10` → 55, `fact 12` → 479001600; 3 LLVM executable unit tests + 3 driver integration tests; remaining: closures/heap allocation, string/IO, thunks needed for full Prelude support in native code; 1326 tests total)
 21. **WebAssembly backend revival** — make `rhasky-backend-wasm-chirho` produce runnable `.wasm` modules; memory management, function tables, linear memory GC
 22. **Cranelift backend expansion** — extend `rhasky-backend-cranelift-chirho` beyond scaffold to compile non-trivial programs; leverage Cranelift's fast compilation for JIT and debug builds
 23. **Shared RTS library** — factor runtime support (GC, thunk entry, stack management, exception frames) into a linkable RTS shared across LLVM/Cranelift/WASM backends

@@ -614,7 +614,7 @@ main = unless False (putStrLn "yes")
 
 
     #[test]
-    fn eval_io_mapM_list_prelude_chirho() {
+    fn eval_io_mapm_list_prelude_chirho() {
         // mapM_ putStrLn ["a","b","c"] should print "a\nb\nc\n"
         use crate::eval_source_with_input_chirho;
         let mut sm_chirho = SourceMapChirho::new_chirho();

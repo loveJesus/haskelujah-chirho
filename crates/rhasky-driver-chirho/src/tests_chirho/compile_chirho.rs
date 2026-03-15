@@ -564,3 +564,62 @@ library
         assert!(modules_chirho[0].1.ends_with("Data/Map/Internal.hs"));
     }
 
+    #[test]
+    fn llvm_executable_constant_chirho() {
+        // main = 42 should produce LLVM IR with ret i64 42
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho =
+            compile_source_chirho("module Main where\nmain = 42", &mut sm_chirho, "Main.hs")
+                .expect("should compile");
+
+        let exec_ir_chirho =
+            rhasky_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
+                &result_chirho.core_chirho,
+            );
+        assert!(exec_ir_chirho.contains("define i64 @rhasky_main()"));
+        assert!(exec_ir_chirho.contains("ret i64 42"));
+        assert!(exec_ir_chirho.contains("define i32 @main()"));
+        assert!(exec_ir_chirho.contains("call i64 @rhasky_main()"));
+    }
+
+    #[test]
+    fn llvm_executable_arithmetic_chirho() {
+        // f x y = x + y; main = f 10 32 should produce correct LLVM IR
+        let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
+                .expect("should compile");
+
+        let exec_ir_chirho =
+            rhasky_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
+                &result_chirho.core_chirho,
+            );
+        // f should compile to an add instruction
+        assert!(exec_ir_chirho.contains("add i64"));
+        // main should call f with arguments
+        assert!(exec_ir_chirho.contains("call i64 @rhasky_f(i64 10, i64 32)"));
+    }
+
+    #[test]
+    fn llvm_executable_fibonacci_chirho() {
+        let src_chirho = r#"module Main where
+fib n = case n of
+  0 -> 0
+  1 -> 1
+  _ -> fib (n - 1) + fib (n - 2)
+main = fib 10"#;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
+                .expect("should compile");
+
+        let exec_ir_chirho =
+            rhasky_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
+                &result_chirho.core_chirho,
+            );
+        // Should have recursive fib function and main
+        assert!(exec_ir_chirho.contains("@rhasky_fib"));
+        assert!(exec_ir_chirho.contains("define i32 @main()"));
+    }
+

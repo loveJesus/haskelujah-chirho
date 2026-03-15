@@ -10,6 +10,7 @@
 pub mod codegen_chirho;
 
 pub use codegen_chirho::compile_core_to_llvm_chirho;
+pub use codegen_chirho::compile_core_to_llvm_executable_chirho;
 
 /// Legacy stub — kept for backward compatibility with `check_source_file_chirho`.
 pub fn compile_to_llvm_ir_stub_chirho(module_name_chirho: &str) -> String {
