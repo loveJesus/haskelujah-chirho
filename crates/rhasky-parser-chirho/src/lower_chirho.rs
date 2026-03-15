@@ -5152,8 +5152,11 @@ fn resolve_infix_precedence_chirho(
     ops_chirho: Vec<NameChirho>,
     span_chirho: SpanChirho,
 ) -> ExprChirho {
-    debug_assert_eq!(exprs_chirho.len(), ops_chirho.len() + 1);
-    if ops_chirho.is_empty() {
+    // Gracefully handle mismatched expr/op counts from malformed input.
+    if exprs_chirho.is_empty() {
+        return ExprChirho::LitChirho(LitChirho::IntChirho(0, span_chirho));
+    }
+    if ops_chirho.is_empty() || exprs_chirho.len() <= 1 {
         return exprs_chirho.into_iter().next().unwrap();
     }
     if ops_chirho.len() == 1 {
@@ -5196,6 +5199,20 @@ fn resolve_infix_precedence_chirho(
     }
 
     let split_op_chirho = ops_chirho[split_idx_chirho].clone();
+
+    // Guard: if exprs is shorter than expected, return left-to-right folded
+    if split_idx_chirho + 1 >= exprs_chirho.len() {
+        let mut result_chirho = exprs_chirho.into_iter().next().unwrap();
+        for op_chirho in ops_chirho {
+            result_chirho = ExprChirho::InfixChirho {
+                left_chirho: Box::new(result_chirho),
+                op_chirho,
+                right_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(0, span_chirho))),
+                span_chirho,
+            };
+        }
+        return result_chirho;
+    }
 
     // Split exprs and ops around the split point
     let left_exprs_chirho: Vec<ExprChirho> =

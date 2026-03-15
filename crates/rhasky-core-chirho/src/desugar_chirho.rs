@@ -1039,6 +1039,17 @@ impl DesugarCtxChirho {
             .into_iter()
             .map(|(con_chirho, arms_chirho)| {
                 self.push_scope_chirho();
+                // Guard: if pat_idx is out of bounds (malformed input), fall
+                // through to default alt with the RHS of the first arm.
+                if arms_chirho[0].pats_chirho.len() <= pat_idx_chirho {
+                    let rhs_chirho = self.desugar_arm_rhs_chirho(arms_chirho[0]);
+                    self.pop_scope_chirho();
+                    return CoreAltChirho {
+                        con_chirho: AltConChirho::DefaultChirho,
+                        binders_chirho: vec![],
+                        rhs_chirho,
+                    };
+                }
                 let pat_ref_chirho = &arms_chirho[0].pats_chirho[pat_idx_chirho];
                 let binders_chirho = self.pat_to_binders_chirho(pat_ref_chirho);
                 self.prebind_all_pat_vars_chirho(pat_ref_chirho);

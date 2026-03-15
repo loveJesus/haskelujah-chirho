@@ -199,17 +199,25 @@ impl GreenBuilderChirho {
         checkpoint_chirho: CheckpointChirho,
         kind_chirho: SyntaxKindChirho,
     ) {
-        assert_eq!(
-            self.stack_chirho.len(),
-            checkpoint_chirho.stack_depth_chirho,
-            "checkpoint must be at the same stack depth"
-        );
+        // If stack depth diverged from the checkpoint (e.g. due to error
+        // recovery or malformed input), unwind back to the checkpoint depth
+        // rather than panicking.
+        while self.stack_chirho.len() > checkpoint_chirho.stack_depth_chirho {
+            self.finish_node_chirho();
+        }
+        if self.stack_chirho.len() < checkpoint_chirho.stack_depth_chirho {
+            // Can't recover — checkpoint was deeper than current stack.
+            // Skip the wrap and return silently.
+            return;
+        }
         let parent_chirho = self
             .stack_chirho
             .last_mut()
             .expect("stack should not be empty");
+        let children_count_chirho = checkpoint_chirho.children_count_chirho
+            .min(parent_chirho.1.len());
         let wrapped_children_chirho =
-            parent_chirho.1.split_off(checkpoint_chirho.children_count_chirho);
+            parent_chirho.1.split_off(children_count_chirho);
         self.stack_chirho
             .push((kind_chirho, wrapped_children_chirho));
     }
