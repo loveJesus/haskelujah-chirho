@@ -1512,10 +1512,26 @@ impl InferCtxChirho {
                 ..
             } => self.infer_expr_chirho(expr_chirho),
 
-            // TypeApplications: infer the inner expression, type argument
-            // is erased (used only for documentation / disambiguation).
-            ExprChirho::TypeAppChirho { expr_chirho, .. } => {
-                self.infer_expr_chirho(expr_chirho)
+            // TypeApplications: infer the inner expression, then unify
+            // the result type with the provided type argument so that the
+            // type annotation constrains polymorphic instantiation.
+            ExprChirho::TypeAppChirho { expr_chirho, ty_chirho, span_chirho } => {
+                let (s1_chirho, inferred_chirho) = self.infer_expr_chirho(expr_chirho);
+                let mut var_map_chirho = HashMap::new();
+                let target_chirho = self.ast_type_to_ty_chirho(ty_chirho, &mut var_map_chirho);
+                match crate::unify_chirho::unify_chirho(&inferred_chirho, &target_chirho, *span_chirho) {
+                    Ok(s2_chirho) => {
+                        let composed_chirho = s2_chirho.compose_chirho(&s1_chirho);
+                        let result_chirho = composed_chirho.apply_ty_chirho(&inferred_chirho);
+                        (composed_chirho, result_chirho)
+                    }
+                    Err(_) => {
+                        // If unification fails (e.g. applying @Int to a
+                        // monomorphic String), just keep the inferred type.
+                        // The type argument served as documentation.
+                        (s1_chirho, inferred_chirho)
+                    }
+                }
             }
 
             // For remaining expression forms, return a fresh variable

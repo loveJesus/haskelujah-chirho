@@ -1629,6 +1629,39 @@ main = print (apply @Int (\n -> n + 8) 34)
         assert_eq!(m_chirho.io_output_chirho, "42\n");
     }
 
+    #[test]
+    fn type_app_constrains_polymorphic_chirho() {
+        // TypeApplications actually constraining a polymorphic function:
+        // id @Int 42 — id is polymorphic, @Int constrains to Int
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+myId x = x
+main = print (myId @Int 42 + myId @Int 8)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("TypeApp constrains poly failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "50\n");
+    }
+
+    #[test]
+    fn type_app_nested_type_chirho() {
+        // TypeApplication with a compound type: @[Int]
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+myLength xs = case xs of
+  [] -> 0
+  (_:rest) -> 1 + myLength rest
+main = print (myLength @[Int] [1,2,3])
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("TypeApp nested type failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "3\n");
+    }
+
     // ── DeriveFunctor / DeriveFoldable / DeriveTraversable (§E.36) ────
 
     #[test]
