@@ -15107,4 +15107,68 @@ main = factorial 10
         assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5));
     }
 
+    // ── String case pattern matching tests ──────────────────────────────
+
+    #[test]
+    fn eval_string_case_match_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             greet x = case x of\n  \"hello\" -> 1\n  \"world\" -> 2\n  _ -> 0\n\
+             main = greet \"hello\"\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("string case match should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(1));
+    }
+
+    #[test]
+    fn eval_string_case_default_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             greet x = case x of\n  \"hello\" -> 1\n  _ -> 0\n\
+             main = greet \"other\"\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("string case default should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(0));
+    }
+
+    #[test]
+    fn eval_char_case_match_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             classify c = case c of\n  'a' -> 1\n  'b' -> 2\n  _ -> 0\n\
+             main = classify 'b'\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("char case match should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(2));
+    }
+
+    // ── Negative literal pattern in case tests ────────────────────────
+
+    #[test]
+    fn eval_neg_lit_case_dispatch_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             classify x = case x of\n  (-1) -> 10\n  0 -> 20\n  1 -> 30\n  _ -> 0\n\
+             main = classify (-1)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("negative literal case dispatch should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10));
+    }
+
+    #[test]
+    fn eval_neg_lit_case_default_chirho() {
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             classify x = case x of\n  (-1) -> 10\n  0 -> 20\n  _ -> 99\n\
+             main = classify 5\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("negative literal case default should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99));
+    }
+
 }
