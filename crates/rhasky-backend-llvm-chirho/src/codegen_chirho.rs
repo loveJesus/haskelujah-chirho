@@ -779,7 +779,8 @@ pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) 
         writeln!(ir_chirho, "entry:").unwrap();
         writeln!(ir_chirho, "  %result = call i64 @rhasky_main()").unwrap();
         writeln!(ir_chirho, "  call i32 (ptr, ...) @printf(ptr @.fmt_int, i64 %result)").unwrap();
-        writeln!(ir_chirho, "  ret i32 0").unwrap();
+        writeln!(ir_chirho, "  %exitcode = trunc i64 %result to i32").unwrap();
+        writeln!(ir_chirho, "  ret i32 %exitcode").unwrap();
         writeln!(ir_chirho, "}}").unwrap();
     }
 
@@ -948,7 +949,7 @@ mod tests_chirho {
         assert!(ir_chirho.contains("define i32 @main()"));
         assert!(ir_chirho.contains("call i64 @rhasky_main()"));
         assert!(ir_chirho.contains("@printf"));
-        assert!(ir_chirho.contains("ret i32 0"));
+        assert!(ir_chirho.contains("ret i32 %exitcode"));
     }
 
     #[test]

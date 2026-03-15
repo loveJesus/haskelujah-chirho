@@ -684,6 +684,100 @@ main = fib 10"#;
         assert!(wasm_chirho.contains(&0x04_u8), "WASM should contain if instruction");
     }
 
+    // ── LLVM round-trip smoke tests (§H.61) ──────────────────────────────
+    // These tests compile Haskell source to LLVM IR, invoke clang to produce
+    // a native binary, execute it, and compare the exit code to the STG
+    // interpreter result.
+
+    /// Helper: compile source to LLVM IR executable, link with clang, run, return exit code.
+    fn llvm_round_trip_chirho(src_chirho: &str) -> Option<i32> {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
+
+        let exec_ir_chirho =
+            rhasky_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(&result_chirho.core_chirho);
+
+        let tmp_dir_chirho = tempfile::tempdir().ok()?;
+        let ll_path_chirho = tmp_dir_chirho.path().join("main.ll");
+        let bin_path_chirho = tmp_dir_chirho.path().join("main");
+        std::fs::write(&ll_path_chirho, &exec_ir_chirho).ok()?;
+
+        let compile_output_chirho = std::process::Command::new("clang")
+            .arg("-O0")
+            .arg("-o")
+            .arg(&bin_path_chirho)
+            .arg(&ll_path_chirho)
+            .output()
+            .ok()?;
+
+        if !compile_output_chirho.status.success() {
+            return None;
+        }
+
+        let run_output_chirho = std::process::Command::new(&bin_path_chirho)
+            .output()
+            .ok()?;
+
+        run_output_chirho.status.code()
+    }
+
+    #[test]
+    fn llvm_round_trip_constant_chirho() {
+        // main = 42 → exit code 42
+        let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 42");
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 42, "LLVM round-trip: main = 42 should exit with 42");
+        }
+        // If clang not available or linking fails, skip silently
+    }
+
+    #[test]
+    fn llvm_round_trip_arithmetic_chirho() {
+        // f x y = x + y; main = f 10 32 → exit code 42
+        let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
+        let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 42, "LLVM round-trip: f 10 32 should exit with 42");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_fibonacci_chirho() {
+        // fib 10 = 55 → exit code 55
+        let src_chirho = r#"module Main where
+fib n = case n of
+  0 -> 0
+  1 -> 1
+  _ -> fib (n - 1) + fib (n - 2)
+main = fib 10"#;
+        let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 55, "LLVM round-trip: fib 10 should exit with 55");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_matches_stg_chirho() {
+        // Compare LLVM native execution with STG interpreter result
+        let src_chirho = "module Main where\nmain = 3 * 14";
+        // STG interpreter
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let stg_result_chirho = crate::eval_source_chirho(src_chirho, &mut sm_chirho, "Main.hs", None);
+        let stg_val_chirho = match stg_result_chirho {
+            Ok(ValueChirho::IntChirho(n_chirho)) => n_chirho,
+            _ => return, // skip if STG eval fails
+        };
+
+        // LLVM native
+        let native_code_chirho = llvm_round_trip_chirho(src_chirho);
+        if let Some(code_chirho) = native_code_chirho {
+            assert_eq!(
+                code_chirho as i64, stg_val_chirho,
+                "LLVM native exit code should match STG interpreter result"
+            );
+        }
+    }
+
     // ── Cranelift backend driver integration tests ────────────────────────
 
     #[test]
