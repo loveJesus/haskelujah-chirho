@@ -14,3 +14,6 @@ path = "src/lib.rs"
 rhasky-ast-chirho = { path = "../rhasky-ast-chirho" }
 rhasky-span-chirho = { path = "../rhasky-span-chirho" }
 rhasky-typing-chirho = { path = "../rhasky-typing-chirho" }
+
+[dev-dependencies]
+proptest = "1"

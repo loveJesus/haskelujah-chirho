@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1460 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1479 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -269,7 +269,7 @@ _These items address structural issues identified in the Codex engineering revie
 #### H. Testing & Conformance
 
 57. **GHC test suite integration** — pull and run relevant GHC test cases; track pass rate
-58. **Property-based testing** — add proptest/quickcheck-style tests for parser, type checker, evaluator; focus on parser/layout malformed-input properties, simplifier semantic-preservation, dictionary-pass invariants, runtime evaluator step/heap invariants
+58. ~~**Property-based testing**~~ — DONE (proptest crate integrated across 3 crates: parser (8 tests: arbitrary-input crash-freedom with catch_unwind, random identifiers, module headers, nested parens, do-blocks, type sigs, unbalanced delimiters, valid-input green-node production), core simplifier (3 tests: crash-freedom on random Core expressions, idempotence, literal preservation), driver evaluator (8 tests: integer literal identity, addition, multiplication, let-binding identity, if-true/if-false branching, lambda application, subtraction identity); property tests discovered real parser bug: GreenBuilder checkpoint stack depth mismatch on malformed input; 1479 tests total)
 59. **Benchmark suite** — nofib-style benchmarks for runtime performance tracking
 60. **Haskell Report conformance tracker** — systematic coverage of Haskell 2010 Report sections
 61. **Backend round-trip smoke tests** — execute emitted LLVM/Wasm/Cranelift artifacts where possible and compare output to STG interpreter

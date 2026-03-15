@@ -15,3 +15,4 @@ pub mod eval_data_chirho;
 pub mod eval_prelude_chirho;
 pub mod eval_advanced_chirho;
 pub mod project_chirho;
+pub mod proptest_chirho;

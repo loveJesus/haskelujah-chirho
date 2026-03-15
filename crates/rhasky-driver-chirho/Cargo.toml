@@ -28,3 +28,4 @@ rhasky-package-chirho = { path = "../rhasky-package-chirho" }
 
 [dev-dependencies]
 tempfile = "3"
+proptest = "1"

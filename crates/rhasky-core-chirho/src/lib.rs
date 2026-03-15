@@ -21,6 +21,8 @@ pub mod dict_chirho;
 pub mod expr_chirho;
 pub mod pretty_chirho;
 pub mod simplify_chirho;
+#[cfg(test)]
+mod proptest_chirho;
 
 pub use desugar_chirho::{desugar_module_chirho, DesugarOutputChirho};
 pub use dict_chirho::{

@@ -18,4 +18,5 @@ rhasky-syntax-chirho = { path = "../rhasky-syntax-chirho" }
 
 [dev-dependencies]
 rhasky-test-harness-chirho = { path = "../rhasky-test-harness-chirho" }
+proptest = "1"
 
