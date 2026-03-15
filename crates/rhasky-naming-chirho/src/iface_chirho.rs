@@ -308,6 +308,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             // WriterT
             "WriterT", "runWriterT", "runWriter", "tell",
             "returnWriterT", "bindWriterT", "execWriterT", "execWriter",
+            // NFData / deepseq
+            "deepseq", "force", "evaluate",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);

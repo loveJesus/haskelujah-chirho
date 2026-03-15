@@ -1253,6 +1253,63 @@ main = factorial 10
         assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
     }
 
+    // ── deepseq / force / evaluate (§A.12) ─────────────────────────────
+
+    #[test]
+    fn eval_deepseq_basic_chirho() {
+        // deepseq x y = x `seq` y — forces x, returns y
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = deepseq 1 42\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("deepseq basic");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn eval_deepseq_list_chirho() {
+        // deepseq forces first arg, returns second
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = deepseq [1,2,3] 99\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("deepseq list");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99));
+    }
+
+    #[test]
+    fn eval_force_basic_chirho() {
+        // force x = x `seq` x — forces and returns same value
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = force 42\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("force basic");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn eval_evaluate_basic_chirho() {
+        // evaluate x forces to WHNF, returns result
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = evaluate (2 + 3)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("evaluate basic");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5));
+    }
+
+    #[test]
+    fn eval_force_in_expression_chirho() {
+        // force can be used in larger expressions
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = force 10 + force 32\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("force in expression");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
     #[test]
     fn eval_repl_style_expression_chirho() {
         // REPL wraps expressions as `main = <expr>` in a module.
