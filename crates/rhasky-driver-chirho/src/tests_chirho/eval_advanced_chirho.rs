@@ -1167,5 +1167,41 @@ main = factorial 10
     // John 3:16 - For God so loved the world, that he gave his only begotten Son,
     // that whosoever believeth in him should not perish, but have everlasting life.
 
-    // ── Data.Set higher-order operation tests ──
+    // ── Automatic Prelude import tests ──
+
+    #[test]
+    fn eval_prelude_import_implicit_chirho() {
+        // Every module automatically imports Prelude — using Prelude functions
+        // (show, putStrLn, etc.) should work without explicit imports
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = putStrLn (show (2 + 3))\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("implicit Prelude import should work");
+        assert_eq!(result_chirho.1.io_output_chirho, "5\n");
+    }
+
+    #[test]
+    fn eval_no_implicit_prelude_chirho() {
+        // {-# LANGUAGE NoImplicitPrelude #-} should suppress automatic Prelude import
+        // The program should still compile because our builtins are injected at
+        // the type inference level, not through the Prelude module import
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nmain = 42\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("NoImplicitPrelude should compile");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn eval_explicit_prelude_import_chirho() {
+        // Explicit `import Prelude` should not cause double import
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nimport Prelude\nmain = max 3 7\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("explicit Prelude import should work");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(7));
+    }
 

@@ -207,7 +207,7 @@ _These items address structural issues identified in the Codex engineering revie
 
 #### B. Multi-Module System & Imports
 
-14. **Automatic Prelude import** — every module implicitly imports Prelude unless `{-# LANGUAGE NoImplicitPrelude #-}` or explicit `import Prelude` is present
+14. ~~**Automatic Prelude import**~~ — DONE (inject_prelude_import_chirho in driver adds implicit `import Prelude` after AST lowering; suppressed by `{-# LANGUAGE NoImplicitPrelude #-}`; explicit `import Prelude` prevents double import; Prelude ModuleIfaceChirho with 80+ exported values/types added to builtin_module_ifaces_chirho; 3 e2e tests; 1320 tests total)
 15. **Qualified module syntax** — `Data.Map.insert`, `Data.Set.member` as qualified function calls in user source
 16. **Module re-exports** — `module Data.Map (module Data.Map.Internal)` re-export syntax
 17. **Orphan instance detection** — warn on orphan instances; support `{-# OPTIONS_GHC -fno-warn-orphans #-}`

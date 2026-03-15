@@ -225,6 +225,71 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Prelude — the implicit import every Haskell module gets
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        // Core types
+        for (type_name_chirho, cons_chirho) in &[
+            ("Bool", &["False", "True"][..]),
+            ("Maybe", &["Nothing", "Just"][..]),
+            ("Either", &["Left", "Right"][..]),
+            ("Ordering", &["LT", "EQ", "GT"][..]),
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(type_name_chirho, cons_chirho);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+            for con_chirho in *cons_chirho {
+                let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);
+                exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+            }
+        }
+        // Standard Prelude functions
+        for name_chirho in &[
+            // Numeric
+            "abs", "signum", "negate", "fromInteger", "fromIntegral", "toInteger",
+            "even", "odd", "max", "min", "div", "mod", "quot", "rem",
+            "succ", "pred", "toEnum", "fromEnum", "minBound", "maxBound",
+            "floor", "ceiling", "round", "truncate",
+            // Boolean
+            "not", "otherwise",
+            // Tuple
+            "fst", "snd", "curry", "uncurry",
+            // Function
+            "id", "const", "flip", "error", "undefined",
+            // List
+            "map", "filter", "foldr", "foldl", "head", "tail", "last", "init",
+            "null", "length", "reverse", "concat", "concatMap",
+            "take", "drop", "takeWhile", "dropWhile", "span",
+            "zip", "zipWith", "unzip", "elem", "notElem", "lookup",
+            "sum", "product", "minimum", "maximum", "any", "all",
+            "iterate", "scanl", "words", "unwords", "lines", "unlines",
+            // IO
+            "putStrLn", "putStr", "putChar", "print",
+            "getLine", "getChar", "getContents", "interact",
+            "readFile", "writeFile", "appendFile",
+            // Show/Read
+            "show", "read",
+            // Monad/Functor
+            "fmap", "return", "mapM_", "sequence_", "when", "unless",
+            // Conversion
+            "fromString",
+            // Comparison
+            "compare",
+            // String ops
+            "intercalate",
+            // Maybe/Either
+            "maybe", "either", "fromMaybe", "isJust", "isNothing",
+            // Data structures
+            "sort",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Prelude".to_string(),
+            exports_chirho,
+        });
+    }
+
     modules_chirho
 }
 

@@ -93,6 +93,12 @@ pub fn run_frontend_chirho(
     // Phase 2: CST → AST lowering
     let mut module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
 
+    // Phase 2.1: Automatic Prelude import
+    // Every Haskell module implicitly imports Prelude unless:
+    //   - {-# LANGUAGE NoImplicitPrelude #-} is present
+    //   - The module already has an explicit `import Prelude`
+    inject_prelude_import_chirho(&mut module_chirho);
+
     // Phase 2.5: Deriving — generate instance declarations for `deriving` clauses
     let deriving_warnings_chirho =
         rhasky_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
@@ -147,6 +153,38 @@ pub fn run_frontend_chirho(
         infer_result_chirho,
         warnings_chirho,
     })
+}
+
+/// Inject an implicit `import Prelude` into a module unless:
+/// - `{-# LANGUAGE NoImplicitPrelude #-}` is present, or
+/// - the module already has an explicit `import Prelude`.
+fn inject_prelude_import_chirho(module_chirho: &mut ModuleChirho) {
+    // Check for NoImplicitPrelude extension
+    if module_chirho.extensions_chirho.iter().any(|e_chirho| e_chirho == "NoImplicitPrelude") {
+        return;
+    }
+
+    // Check if Prelude is already explicitly imported
+    let has_prelude_import_chirho = module_chirho.imports_chirho.iter().any(|imp_chirho| {
+        imp_chirho.module_chirho.text_chirho() == "Prelude"
+    });
+    if has_prelude_import_chirho {
+        return;
+    }
+
+    // Inject implicit Prelude import (unqualified, import everything)
+    module_chirho.imports_chirho.push(rhasky_ast_chirho::module_chirho::ImportDeclChirho {
+        module_chirho: rhasky_ast_chirho::name_chirho::NameChirho::RawChirho(
+            rhasky_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+                "Prelude",
+                rhasky_span_chirho::SpanChirho::DUMMY_CHIRHO,
+            ),
+        ),
+        qualified_chirho: false,
+        alias_chirho: None,
+        spec_chirho: None,
+        span_chirho: rhasky_span_chirho::SpanChirho::DUMMY_CHIRHO,
+    });
 }
 
 pub fn check_source_path_chirho(
