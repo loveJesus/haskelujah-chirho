@@ -1469,6 +1469,106 @@ main = case runExceptT comp of
         assert_eq!(m_chirho.io_output_chirho, "100\n");
     }
 
+    // ── MaybeT operations (returnMaybeT, bindMaybeT) ──────────────────
+
+    #[test]
+    fn maybe_t_return_just_chirho() {
+        // returnMaybeT 42 → MaybeT (Just 42) → Just 42
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = case runMaybeT (returnMaybeT 42) of
+  Just v  -> print v
+  Nothing -> print 0
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("MaybeT return failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn maybe_t_bind_success_chirho() {
+        // bindMaybeT (returnMaybeT 10) (\x -> returnMaybeT (x + 5)) → Just 15
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+comp = bindMaybeT (returnMaybeT 10) (\x -> returnMaybeT (x + 5))
+main = case runMaybeT comp of
+  Just v  -> print v
+  Nothing -> print 0
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("MaybeT bind success failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "15\n");
+    }
+
+    #[test]
+    fn maybe_t_bind_short_circuit_chirho() {
+        // bindMaybeT (MaybeT Nothing) (\x -> returnMaybeT (x + 5)) → Nothing
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+comp = bindMaybeT (MaybeT Nothing) (\x -> returnMaybeT (x + 5))
+main = case runMaybeT comp of
+  Just _  -> print 1
+  Nothing -> print 0
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("MaybeT bind short-circuit failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "0\n");
+    }
+
+    // ── WriterT operations (tell, returnWriterT, bindWriterT, execWriterT) ──
+
+    #[test]
+    fn writer_t_tell_chirho() {
+        // tell [1] → WriterT ((), [1])
+        // execWriterT (tell [1]) → [1]
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = print (execWriterT (tell [1]))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("WriterT tell failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "[1]\n");
+    }
+
+    #[test]
+    fn writer_t_return_chirho() {
+        // returnWriterT 42 → WriterT (42, [])
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = case runWriterT (returnWriterT 42) of
+  (v, _) -> print v
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("WriterT return failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn writer_t_bind_accumulate_chirho() {
+        // bindWriterT m1 m2: should accumulate logs via ++
+        // bindWriterT (tell [1]) (\_ -> tell [2]) → WriterT ((), [1,2])
+        // execWriterT (bindWriterT (tell [1]) (\_ -> tell [2])) → [1,2]
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = print (length (execWriterT (bindWriterT (tell [1]) (\x -> tell [2]))))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("WriterT bind accumulate failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "2\n");
+    }
+
     // ── TypeApplications (§E.33) ─────────────────────────────────────
 
     #[test]
