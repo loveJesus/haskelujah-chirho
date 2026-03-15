@@ -2118,6 +2118,22 @@ impl<'src> ParserChirho<'src> {
             Some(RawTokenKindChirho::LeftBracketChirho) => {
                 self.parse_list_expr_chirho();
             }
+            // BlockArguments: block-like expressions valid as function arguments
+            Some(RawTokenKindChirho::BackslashChirho) => {
+                self.parse_lambda_chirho();
+            }
+            Some(RawTokenKindChirho::DoChirho) => {
+                self.parse_do_expr_chirho();
+            }
+            Some(RawTokenKindChirho::CaseChirho) => {
+                self.parse_case_expr_chirho();
+            }
+            Some(RawTokenKindChirho::IfChirho) => {
+                self.parse_if_expr_chirho();
+            }
+            Some(RawTokenKindChirho::LetChirho) => {
+                self.parse_let_expr_chirho();
+            }
             _ => {
                 // Unexpected token — wrap in error
                 self.builder_chirho
@@ -2734,6 +2750,12 @@ impl<'src> ParserChirho<'src> {
                 | Some(RawTokenKindChirho::StringLitChirho)
                 | Some(RawTokenKindChirho::LeftParenChirho)
                 | Some(RawTokenKindChirho::LeftBracketChirho)
+                // BlockArguments: block-like expressions as function arguments
+                | Some(RawTokenKindChirho::BackslashChirho)
+                | Some(RawTokenKindChirho::DoChirho)
+                | Some(RawTokenKindChirho::CaseChirho)
+                | Some(RawTokenKindChirho::IfChirho)
+                | Some(RawTokenKindChirho::LetChirho)
         )
     }
 
