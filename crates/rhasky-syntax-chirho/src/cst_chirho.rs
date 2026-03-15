@@ -52,6 +52,10 @@ pub enum SyntaxKindChirho {
     FieldDeclChirho,
     /// `type Name = Type` — type alias.
     TypeAliasDeclChirho,
+    /// `type family F a :: *` or `type family F a where ...` — type family.
+    TypeFamilyDeclChirho,
+    /// `type instance F Int = Bool` — open type family instance.
+    TypeFamilyInstanceDeclChirho,
     /// `newtype Name = Con Type`.
     NewtypeDeclChirho,
     /// `class Ctx => Name a where` — type class declaration.
@@ -217,6 +221,8 @@ impl SyntaxKindChirho {
                 | Self::FunBindChirho
                 | Self::PatBindChirho
                 | Self::ImportDeclChirho
+                | Self::TypeFamilyDeclChirho
+                | Self::TypeFamilyInstanceDeclChirho
         )
     }
 

@@ -2018,3 +2018,82 @@ main = putStrLn (show (length [1, 2, 3]))
         }
     }
 
+    #[test]
+    fn eval_open_type_family_compiles_chirho() {
+        // Open type family declaration should be accepted by the compiler
+        let source_chirho = r#"
+module Main where
+type family F a
+type instance F Int = Bool
+main = putStrLn "ok"
+"#;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_with_machine_chirho(
+            source_chirho,
+            &mut source_map_chirho,
+            "TypeFamilyOpenChirho.hs",
+            None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(machine_chirho.io_output_chirho, "ok\n");
+            }
+            Err(e_chirho) => {
+                panic!("open type family should compile: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_closed_type_family_compiles_chirho() {
+        // Closed type family declaration should be accepted by the compiler
+        let source_chirho = r#"
+module Main where
+type family IsInt a where
+  IsInt Int = Bool
+main = putStrLn "closed ok"
+"#;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_with_machine_chirho(
+            source_chirho,
+            &mut source_map_chirho,
+            "TypeFamilyClosedChirho.hs",
+            None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(machine_chirho.io_output_chirho, "closed ok\n");
+            }
+            Err(e_chirho) => {
+                panic!("closed type family should compile: {}", e_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_type_family_with_regular_code_chirho() {
+        // Type family declarations alongside regular functions
+        let source_chirho = r#"
+module Main where
+type family G a
+type instance G Int = Char
+add1 x = x + 1
+main = putStrLn (show (add1 41))
+"#;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_with_machine_chirho(
+            source_chirho,
+            &mut source_map_chirho,
+            "TypeFamilyMixChirho.hs",
+            None,
+        );
+        match result_chirho {
+            Ok((_val_chirho, machine_chirho)) => {
+                assert_eq!(machine_chirho.io_output_chirho, "42\n");
+            }
+            Err(e_chirho) => {
+                panic!("type family with regular code should compile: {}", e_chirho);
+            }
+        }
+    }
+

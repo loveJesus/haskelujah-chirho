@@ -59,6 +59,9 @@ pub struct InferCtxChirho {
     /// Type synonym environment: name → (param names, expanded RHS TyChirho).
     /// Populated from `TypeAliasDeclChirho` declarations before inference.
     type_synonyms_chirho: HashMap<String, (Vec<String>, TyChirho)>,
+    /// Type family environment: family name → list of equations (lhs patterns, rhs type).
+    /// Each equation is (param type patterns as TyChirho, result TyChirho).
+    type_families_chirho: HashMap<String, Vec<(Vec<TyChirho>, TyChirho)>>,
 }
 
 impl InferCtxChirho {
@@ -85,7 +88,64 @@ impl InferCtxChirho {
             deferred_preds_chirho: Vec::new(),
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             type_synonyms_chirho,
+            type_families_chirho: HashMap::new(),
         }
+    }
+
+    /// Register a type family (open or closed). For open families this
+    /// creates an empty equation list; for closed families it stores all
+    /// equations immediately.
+    pub fn register_type_family_chirho(
+        &mut self,
+        name_chirho: String,
+        equations_chirho: Vec<(Vec<TyChirho>, TyChirho)>,
+    ) {
+        self.type_families_chirho
+            .entry(name_chirho)
+            .or_default()
+            .extend(equations_chirho);
+    }
+
+    /// Add an equation to an open type family from a `type instance` decl.
+    pub fn register_type_family_instance_chirho(
+        &mut self,
+        family_name_chirho: String,
+        lhs_types_chirho: Vec<TyChirho>,
+        rhs_chirho: TyChirho,
+    ) {
+        self.type_families_chirho
+            .entry(family_name_chirho)
+            .or_default()
+            .push((lhs_types_chirho, rhs_chirho));
+    }
+
+    /// Try to reduce a type family application `F args...` by matching
+    /// against registered equations. Returns `Some(reduced)` if a match
+    /// is found, `None` otherwise (stuck family application).
+    pub fn reduce_type_family_chirho(
+        &self,
+        family_name_chirho: &str,
+        args_chirho: &[TyChirho],
+    ) -> Option<TyChirho> {
+        let equations_chirho = self.type_families_chirho.get(family_name_chirho)?;
+        for (lhs_chirho, rhs_chirho) in equations_chirho {
+            if lhs_chirho.len() != args_chirho.len() {
+                continue;
+            }
+            // Try to match each LHS pattern against the corresponding arg
+            let mut bindings_chirho: HashMap<String, TyChirho> = HashMap::new();
+            let mut matched_chirho = true;
+            for (pat_chirho, arg_chirho) in lhs_chirho.iter().zip(args_chirho.iter()) {
+                if !match_type_pattern_chirho(pat_chirho, arg_chirho, &mut bindings_chirho) {
+                    matched_chirho = false;
+                    break;
+                }
+            }
+            if matched_chirho {
+                return Some(substitute_type_vars_chirho(rhs_chirho, &bindings_chirho));
+            }
+        }
+        None
     }
 
     /// Register a type synonym from a `TypeAliasDeclChirho`.
@@ -1743,6 +1803,53 @@ impl InferCtxChirho {
                     params_chirho,
                     rhs_ty_chirho,
                 );
+            }
+        }
+
+        // Phase -0.5: Register type families and type family instances
+        for decl_chirho in &module_chirho.decls_chirho {
+            match decl_chirho {
+                DeclChirho::TypeFamilyDeclChirho {
+                    name_chirho,
+                    type_vars_chirho,
+                    equations_chirho,
+                    ..
+                } => {
+                    let family_name_chirho = name_chirho.text_chirho().to_string();
+                    let param_names_chirho: Vec<String> = type_vars_chirho
+                        .iter()
+                        .map(|v_chirho| v_chirho.text_chirho().to_string())
+                        .collect();
+                    let eqs_chirho: Vec<(Vec<TyChirho>, TyChirho)> = equations_chirho
+                        .iter()
+                        .map(|eq_chirho| {
+                            let lhs_chirho: Vec<TyChirho> = eq_chirho
+                                .lhs_types_chirho
+                                .iter()
+                                .map(|t_chirho| ast_type_to_syn_rhs_chirho(t_chirho, &param_names_chirho))
+                                .collect();
+                            let rhs_chirho =
+                                ast_type_to_syn_rhs_chirho(&eq_chirho.rhs_chirho, &param_names_chirho);
+                            (lhs_chirho, rhs_chirho)
+                        })
+                        .collect();
+                    self.register_type_family_chirho(family_name_chirho, eqs_chirho);
+                }
+                DeclChirho::TypeFamilyInstanceDeclChirho {
+                    family_name_chirho,
+                    lhs_types_chirho,
+                    rhs_chirho,
+                    ..
+                } => {
+                    let fname_chirho = family_name_chirho.text_chirho().to_string();
+                    let lhs_chirho: Vec<TyChirho> = lhs_types_chirho
+                        .iter()
+                        .map(|t_chirho| ast_type_to_syn_rhs_chirho(t_chirho, &[]))
+                        .collect();
+                    let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_chirho, &[]);
+                    self.register_type_family_instance_chirho(fname_chirho, lhs_chirho, rhs_ty_chirho);
+                }
+                _ => {}
             }
         }
 
@@ -7182,6 +7289,107 @@ pub fn infer_module_with_imports_chirho(
     result_chirho
 }
 
+/// Match a type family LHS pattern against a concrete type argument.
+/// Type variables in the pattern bind to the corresponding argument types.
+/// Type constructors must match exactly.
+fn match_type_pattern_chirho(
+    pat_chirho: &TyChirho,
+    arg_chirho: &TyChirho,
+    bindings_chirho: &mut HashMap<String, TyChirho>,
+) -> bool {
+    match pat_chirho {
+        // A type variable in the pattern matches anything
+        TyChirho::VarChirho(tv_chirho) => {
+            let var_name_chirho = format!("tv{}", tv_chirho.0);
+            if let Some(existing_chirho) = bindings_chirho.get(&var_name_chirho) {
+                existing_chirho == arg_chirho
+            } else {
+                bindings_chirho.insert(var_name_chirho, arg_chirho.clone());
+                true
+            }
+        }
+        // A constructor must match the same constructor
+        TyChirho::ConChirho(name_chirho) => {
+            matches!(arg_chirho, TyChirho::ConChirho(arg_name_chirho) if arg_name_chirho == name_chirho)
+        }
+        // Type application: both sides must be apps with matching structure
+        TyChirho::AppChirho(f_chirho, a_chirho) => {
+            if let TyChirho::AppChirho(af_chirho, aa_chirho) = arg_chirho {
+                match_type_pattern_chirho(f_chirho, af_chirho, bindings_chirho)
+                    && match_type_pattern_chirho(a_chirho, aa_chirho, bindings_chirho)
+            } else {
+                false
+            }
+        }
+        TyChirho::ListChirho(inner_chirho) => {
+            if let TyChirho::ListChirho(arg_inner_chirho) = arg_chirho {
+                match_type_pattern_chirho(inner_chirho, arg_inner_chirho, bindings_chirho)
+            } else {
+                false
+            }
+        }
+        TyChirho::TupleChirho(elems_chirho) => {
+            if let TyChirho::TupleChirho(arg_elems_chirho) = arg_chirho {
+                if elems_chirho.len() != arg_elems_chirho.len() {
+                    return false;
+                }
+                elems_chirho.iter().zip(arg_elems_chirho.iter()).all(
+                    |(p_chirho, a_chirho)| {
+                        match_type_pattern_chirho(p_chirho, a_chirho, bindings_chirho)
+                    },
+                )
+            } else {
+                false
+            }
+        }
+        TyChirho::FunChirho(a_chirho, r_chirho) => {
+            if let TyChirho::FunChirho(aa_chirho, ar_chirho) = arg_chirho {
+                match_type_pattern_chirho(a_chirho, aa_chirho, bindings_chirho)
+                    && match_type_pattern_chirho(r_chirho, ar_chirho, bindings_chirho)
+            } else {
+                false
+            }
+        }
+        // Int, Bool, Char literals — exact match only
+        _ => pat_chirho == arg_chirho,
+    }
+}
+
+/// Substitute type variables in a type family equation RHS using the
+/// bindings collected during pattern matching.
+fn substitute_type_vars_chirho(
+    ty_chirho: &TyChirho,
+    bindings_chirho: &HashMap<String, TyChirho>,
+) -> TyChirho {
+    match ty_chirho {
+        TyChirho::VarChirho(tv_chirho) => {
+            let var_name_chirho = format!("tv{}", tv_chirho.0);
+            bindings_chirho
+                .get(&var_name_chirho)
+                .cloned()
+                .unwrap_or_else(|| ty_chirho.clone())
+        }
+        TyChirho::AppChirho(f_chirho, a_chirho) => TyChirho::AppChirho(
+            Box::new(substitute_type_vars_chirho(f_chirho, bindings_chirho)),
+            Box::new(substitute_type_vars_chirho(a_chirho, bindings_chirho)),
+        ),
+        TyChirho::FunChirho(a_chirho, r_chirho) => TyChirho::FunChirho(
+            Box::new(substitute_type_vars_chirho(a_chirho, bindings_chirho)),
+            Box::new(substitute_type_vars_chirho(r_chirho, bindings_chirho)),
+        ),
+        TyChirho::ListChirho(inner_chirho) => TyChirho::ListChirho(Box::new(
+            substitute_type_vars_chirho(inner_chirho, bindings_chirho),
+        )),
+        TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
+            elems_chirho
+                .iter()
+                .map(|e_chirho| substitute_type_vars_chirho(e_chirho, bindings_chirho))
+                .collect(),
+        ),
+        _ => ty_chirho.clone(),
+    }
+}
+
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
@@ -8320,5 +8528,49 @@ mod tests_chirho {
             TyChirho::int_chirho(),
             "do-let block returning Int literal should infer Int"
         );
+    }
+
+    #[test]
+    fn type_family_registration_and_reduction_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        // Register a closed type family: F Int = Bool, F Char = Int
+        ctx_chirho.register_type_family_chirho(
+            "F".to_string(),
+            vec![
+                (vec![TyChirho::int_chirho()], TyChirho::bool_chirho()),
+                (vec![TyChirho::char_chirho()], TyChirho::int_chirho()),
+            ],
+        );
+        // Reduce F Int → Bool
+        let result_chirho = ctx_chirho.reduce_type_family_chirho("F", &[TyChirho::int_chirho()]);
+        assert_eq!(result_chirho, Some(TyChirho::bool_chirho()), "F Int should reduce to Bool");
+        // Reduce F Char → Int
+        let result2_chirho = ctx_chirho.reduce_type_family_chirho("F", &[TyChirho::char_chirho()]);
+        assert_eq!(result2_chirho, Some(TyChirho::int_chirho()), "F Char should reduce to Int");
+        // F String should not reduce (stuck)
+        let result3_chirho = ctx_chirho.reduce_type_family_chirho("F", &[TyChirho::string_chirho()]);
+        assert_eq!(result3_chirho, None, "F String should be stuck (no matching equation)");
+    }
+
+    #[test]
+    fn type_family_instance_registration_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        // Register open type family F
+        ctx_chirho.register_type_family_chirho("F".to_string(), vec![]);
+        // Add instance: F Int = Bool
+        ctx_chirho.register_type_family_instance_chirho(
+            "F".to_string(),
+            vec![TyChirho::int_chirho()],
+            TyChirho::bool_chirho(),
+        );
+        let result_chirho = ctx_chirho.reduce_type_family_chirho("F", &[TyChirho::int_chirho()]);
+        assert_eq!(result_chirho, Some(TyChirho::bool_chirho()), "open F Int should reduce to Bool");
+    }
+
+    #[test]
+    fn type_family_nonexistent_chirho() {
+        let ctx_chirho = InferCtxChirho::new_chirho();
+        let result_chirho = ctx_chirho.reduce_type_family_chirho("NoSuchFamily", &[TyChirho::int_chirho()]);
+        assert_eq!(result_chirho, None, "unregistered family should return None");
     }
 }

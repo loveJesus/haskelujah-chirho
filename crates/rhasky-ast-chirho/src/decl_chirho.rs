@@ -23,6 +23,15 @@ pub enum AstKindChirho {
     ArrowChirho(Box<AstKindChirho>, Box<AstKindChirho>),
 }
 
+/// One equation in a closed type family:
+/// `F Int = Bool` or `F [a] = a`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeFamilyEquationChirho {
+    pub lhs_types_chirho: Vec<TypeChirho>,
+    pub rhs_chirho: TypeChirho,
+    pub span_chirho: SpanChirho,
+}
+
 /// A type variable, optionally annotated with a kind signature.
 ///
 /// Without KindSignatures: `data Foo a = ...` → `TyVarChirho { name: a, kind: None }`
@@ -106,6 +115,24 @@ pub enum DeclChirho {
     TypeAliasDeclChirho {
         name_chirho: NameChirho,
         type_vars_chirho: Vec<TyVarChirho>,
+        rhs_chirho: TypeChirho,
+        span_chirho: SpanChirho,
+    },
+    /// Type family declaration (open or closed).
+    /// Open: `type family F a :: *`
+    /// Closed: `type family F a where { F Int = Bool; ... }`
+    TypeFamilyDeclChirho {
+        name_chirho: NameChirho,
+        type_vars_chirho: Vec<TyVarChirho>,
+        result_kind_chirho: Option<TypeChirho>,
+        /// Equations for closed families; empty for open families.
+        equations_chirho: Vec<TypeFamilyEquationChirho>,
+        span_chirho: SpanChirho,
+    },
+    /// Open type family instance (`type instance F Int = Bool`).
+    TypeFamilyInstanceDeclChirho {
+        family_name_chirho: NameChirho,
+        lhs_types_chirho: Vec<TypeChirho>,
         rhs_chirho: TypeChirho,
         span_chirho: SpanChirho,
     },
@@ -220,7 +247,9 @@ impl DeclChirho {
             | Self::InstanceDeclChirho { span_chirho, .. }
             | Self::FixityDeclChirho { span_chirho, .. }
             | Self::DefaultDeclChirho { span_chirho, .. }
-            | Self::ForeignDeclChirho { span_chirho, .. } => *span_chirho,
+            | Self::ForeignDeclChirho { span_chirho, .. }
+            | Self::TypeFamilyDeclChirho { span_chirho, .. }
+            | Self::TypeFamilyInstanceDeclChirho { span_chirho, .. } => *span_chirho,
         }
     }
 }

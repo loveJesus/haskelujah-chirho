@@ -319,7 +319,7 @@ impl<'src> ParserChirho<'src> {
         match self.current_kind_chirho() {
             Some(RawTokenKindChirho::ImportChirho) => self.parse_import_decl_chirho(),
             Some(RawTokenKindChirho::DataChirho) => self.parse_data_decl_chirho(),
-            Some(RawTokenKindChirho::TypeChirho) => self.parse_type_alias_decl_chirho(),
+            Some(RawTokenKindChirho::TypeChirho) => self.parse_type_or_family_decl_chirho(),
             Some(RawTokenKindChirho::NewtypeChirho) => self.parse_newtype_decl_chirho(),
             Some(RawTokenKindChirho::ClassChirho) => self.parse_class_decl_chirho(),
             Some(RawTokenKindChirho::InstanceChirho) => self.parse_instance_decl_chirho(),
@@ -711,6 +711,120 @@ impl<'src> ParserChirho<'src> {
     // -----------------------------------------------------------------------
     // Type alias declarations
     // -----------------------------------------------------------------------
+
+    /// Dispatch `type` keyword: check if followed by `family` or `instance`.
+    fn parse_type_or_family_decl_chirho(&mut self) {
+        // Peek ahead past trivia to see if next token is "family" or "instance"
+        let mut look_chirho = self.pos_chirho + 1;
+        while look_chirho < self.tokens_chirho.len()
+            && matches!(
+                self.tokens_chirho[look_chirho].kind_chirho,
+                RawTokenKindChirho::WhitespaceChirho
+                    | RawTokenKindChirho::LineCommentChirho
+                    | RawTokenKindChirho::BlockCommentChirho
+            )
+        {
+            look_chirho += 1;
+        }
+        let next_text_chirho = if look_chirho < self.tokens_chirho.len() {
+            self.token_text_chirho(&self.tokens_chirho[look_chirho])
+        } else {
+            ""
+        };
+        match next_text_chirho {
+            "family" => self.parse_type_family_decl_chirho(),
+            "instance" => self.parse_type_family_instance_decl_chirho(),
+            _ => self.parse_type_alias_decl_chirho(),
+        }
+    }
+
+    fn parse_type_family_decl_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::TypeFamilyDeclChirho);
+
+        self.expect_chirho(RawTokenKindChirho::TypeChirho); // type
+        self.eat_trivia_chirho();
+        self.bump_chirho(); // family
+        self.eat_trivia_chirho();
+
+        // Family name and type variables until `where`, `::`, or end of decl
+        self.eat_until_any_chirho(&[
+            RawTokenKindChirho::WhereChirho,
+            RawTokenKindChirho::ColonColonChirho,
+            RawTokenKindChirho::VirtualSemicolonChirho,
+            RawTokenKindChirho::VirtualRightBraceChirho,
+        ]);
+
+        // Optional result kind annotation `:: *`
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+            self.bump_chirho(); // ::
+            self.eat_trivia_chirho();
+            self.parse_type_chirho(); // kind
+        }
+
+        // Check for `where` (closed type family)
+        if self.at_chirho(RawTokenKindChirho::WhereChirho) {
+            self.bump_chirho(); // where
+            self.eat_trivia_chirho();
+            // Parse equations: each is `F lhs_types = rhs_type`
+            if self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho) {
+                self.bump_chirho();
+            }
+            while !self.at_eof_chirho()
+                && !self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
+            {
+                self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho) {
+                    self.bump_chirho();
+                    continue;
+                }
+                if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho) {
+                    break;
+                }
+                // Each equation: lhs = rhs
+                self.eat_until_any_chirho(&[
+                    RawTokenKindChirho::EqualsChirho,
+                    RawTokenKindChirho::VirtualSemicolonChirho,
+                    RawTokenKindChirho::VirtualRightBraceChirho,
+                ]);
+                if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+                    self.bump_chirho(); // =
+                    self.eat_trivia_chirho();
+                    self.parse_type_chirho(); // rhs
+                }
+            }
+            if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho) {
+                self.bump_chirho();
+            }
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    fn parse_type_family_instance_decl_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::TypeFamilyInstanceDeclChirho);
+
+        self.expect_chirho(RawTokenKindChirho::TypeChirho); // type
+        self.eat_trivia_chirho();
+        self.bump_chirho(); // instance
+        self.eat_trivia_chirho();
+
+        // LHS patterns until =
+        self.eat_until_any_chirho(&[
+            RawTokenKindChirho::EqualsChirho,
+            RawTokenKindChirho::VirtualSemicolonChirho,
+            RawTokenKindChirho::VirtualRightBraceChirho,
+        ]);
+
+        if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+            self.bump_chirho(); // =
+            self.eat_trivia_chirho();
+            self.parse_type_chirho(); // RHS type
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
 
     fn parse_type_alias_decl_chirho(&mut self) {
         self.builder_chirho
@@ -3058,5 +3172,41 @@ mod tests_chirho {
                 src_chirho.trim()
             );
         }
+    }
+
+    #[test]
+    fn parse_open_type_family_chirho() {
+        let source_chirho = "module M where\ntype family F a :: Type\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::TypeFamilyDeclChirho),
+            "should have TypeFamilyDecl: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_closed_type_family_chirho() {
+        let source_chirho = "module M where\ntype family F a where\n  F Int = Bool\n  F Char = Int\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::TypeFamilyDeclChirho),
+            "should have TypeFamilyDecl: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_type_family_instance_chirho() {
+        let source_chirho = "module M where\ntype instance F Int = Bool\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::TypeFamilyInstanceDeclChirho),
+            "should have TypeFamilyInstanceDecl: {:?}",
+            kinds_chirho
+        );
     }
 }

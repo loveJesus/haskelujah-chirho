@@ -162,6 +162,11 @@ pub fn resolve_module_with_imports_chirho(
                     );
                 }
             }
+            rhasky_ast_chirho::decl_chirho::DeclChirho::TypeFamilyDeclChirho {
+                name_chirho, ..
+            } => {
+                bind_name_chirho(&mut env_chirho, name_chirho, NamespaceChirho::TypeChirho);
+            }
             _ => {}
         }
     }
@@ -506,7 +511,8 @@ fn local_defined_names_chirho(module_chirho: &ModuleChirho) -> std::collections:
             DeclChirho::DataDeclChirho { name_chirho, .. }
             | DeclChirho::NewtypeDeclChirho { name_chirho, .. }
             | DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
-            | DeclChirho::ClassDeclChirho { name_chirho, .. } => {
+            | DeclChirho::ClassDeclChirho { name_chirho, .. }
+            | DeclChirho::TypeFamilyDeclChirho { name_chirho, .. } => {
                 names_chirho.insert(name_chirho.text_chirho().to_string());
             }
             _ => {}

@@ -1,172 +1,209 @@
+<!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 -->
+
 # RHasky Chirho
 
-> *For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.* — **John 3:16**
+> *"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."* — John 3:16
 
-> *Jesus said to him, "I am the way, the truth, and the life. No one comes to the Father except through Me."* — **John 14:6**
+RHasky Chirho is a Haskell compiler written in Rust. It targets practical compatibility with real-world Haskell (GHC semantics, Cabal packages, Hackage libraries) through a typed, modular pipeline with first-class WebAssembly support and multiple native code generation backends.
 
-> *Trust in the Lord with all your heart, and lean not on your own understanding; in all your ways acknowledge Him, and He shall direct your paths.* — **Proverbs 3:5-6**
+## Status
 
----
+| Metric | Value |
+|---|---|
+| Tests | **1,536 passing**, 0 failures |
+| Workspace | 19 crates |
+| Codebase | ~100,000 lines of Rust |
+| Rust edition | 2024 (rustc 1.93.0+) |
+| License | MIT OR Apache-2.0 |
 
-**RHasky Chirho** is a Haskell compiler written in Rust, built to the glory of God. It aims for practical compatibility with real-world Haskell (GHC semantics, Cabal packages, Hackage libraries) while pursuing a clean, modular architecture with typed phase boundaries and first-class WebAssembly support.
+## Features
 
-## Architecture
+**Language support:**
+- Haskell 2010 lexing, layout insertion, and parsing
+- Hindley-Milner type inference with typeclasses, multi-parameter type classes, functional dependencies, and deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+- Kind inference with explicit kind signatures
+- Pattern match exhaustiveness and redundancy checking
+- True lazy evaluation with infinite lists and bang patterns
+- IO, closures, recursion, list operations, arithmetic sequences
+- Monad transformers (StateT, ReaderT, WriterT, ExceptT, MaybeT)
+- Overloaded strings and overloaded lists
+- Existential quantification, type applications, default signatures
+- WHNF semantics (seq, deepseq, force, evaluate, NFData)
+- Exception handling (catch/throw/try/bracket/finally with stack unwinding)
+- FFI (foreign function interface)
+- Automatic Prelude import, qualified imports, module re-exports
+- Hierarchical multi-module compilation with dependency ordering
+- Orphan instance detection
+- Incremental compilation with fingerprinting and artifact caching
 
-The compiler follows an explicit pipeline with typed phase boundaries:
+**Optimization passes:**
+- Inlining (INLINE/NOINLINE/INLINABLE pragmas)
+- Specialization (SPECIALIZE pragma)
+- Common subexpression elimination
+- Core simplification
+
+**Backends:**
+- LLVM IR (native executables via clang)
+- WebAssembly (binary .wasm output)
+- Cranelift (native object files: x86_64, aarch64, s390x, riscv64)
+- JVM bytecode (.class files) -- experimental
+- BEAM bytecode (.beam files) -- experimental
+
+## Compiler Pipeline
+
+The compiler runs a 12-phase pipeline, wired end-to-end in `rhasky-driver-chirho`:
 
 ```
-Source Code (.hs)
-    |
-    v
-+--------------+    +---------------+    +---------------+
-|  LexerChirho |---\>| LayoutChirho  |---\>| ParserChirho  |
-|  (tokenize)  |    | (braces/;)    |    | (green tree)  |
-+--------------+    +---------------+    +---------------+
-                                               |
-                                               v
-                                        +---------------+
-                                        | LowerChirho   |
-                                        | (CST -> AST)  |
-                                        +---------------+
-                                               |
-                    +--------------------------+---------------------------+
-                    v                          v                           v
-             +---------------+          +---------------+          +---------------+
-             | NamingChirho  |          | KindChirho    |          | ExhaustChirho |
-             | (scoping)     |          | (HKT kinds)   |          | (coverage)    |
-             +---------------+          +---------------+          +---------------+
-                    |                          |                           |
-                    +--------------------------+---------------------------+
-                                               v
-                                        +---------------+
-                                        | InferChirho   |
-                                        | (HM + TC)     |
-                                        +---------------+
-                                               |
-                                               v
-                                        +---------------+
-                                        | DesugarChirho |
-                                        | (AST -> Core) |
-                                        +---------------+
-                                               |
-                                               v
-                                        +---------------+
-                                        | DictChirho    |
-                                        | (typeclasses) |
-                                        +---------------+
-                                               |
-                                               v
-                                        +---------------+
-                                        | SimplifyChirho|
-                                        | (Core->Core)  |
-                                        +---------------+
-                                               |
-                    +--------------------------+---------------------------+
-                    v                          v                           v
-             +---------------+          +---------------+          +---------------+
-             | LlvmChirho    |          | WasmChirho    |          | StgChirho     |
-             | (LLVM IR)     |          | (WebAssembly) |          | (interpreter) |
-             +---------------+          +---------------+          +---------------+
+Haskell source
+  1. Lex              — rhasky-syntax-chirho tokenizer
+  2. Layout           — layout rule insertion (braces/semicolons)
+  3. CST Parse        — lossless green-tree concrete syntax tree
+  4. AST Lower        — abstract syntax tree from CST
+  5. Name Resolve     — scope resolution, qualified names, module interfaces
+  6. Kind Infer       — kind inference with unification
+  7. Type Infer       — HM Algorithm W, typeclasses, MPTC, fundeps, deriving
+  8. Exhaustiveness   — pattern match exhaustiveness and redundancy checking
+  9. Desugar/Core     — System FC-style Core IR, dictionary passing, simplification
+ 10. STG Evaluation   — thunks, closures, PAPs, GC, step limits
+ 11. FFI              — foreign function interface
+ 12. Exceptions       — catch/throw/try/bracket/finally with stack unwinding
 ```
+
+The driver exposes a shared frontend runner (`run_frontend_chirho`), so check, compile, and multi-module flows all execute the same analysis phases.
 
 ## Workspace Crates
 
+### Foundation
+
 | Crate | Purpose |
 |---|---|
-| `rhasky-span-chirho` | Source locations, file IDs, source map |
-| `rhasky-diagnostics-chirho` | Structured compiler diagnostics |
-| `rhasky-syntax-chirho` | Tokens, SyntaxKind, green tree nodes, lexer, layout |
-| `rhasky-parser-chirho` | CST parser (green tree builder), CST->AST lowering |
-| `rhasky-ast-chirho` | Abstract syntax tree types |
-| `rhasky-naming-chirho` | Name resolution, module interfaces, import/export resolution |
-| `rhasky-typing-chirho` | HM type inference, unification, typeclasses, kind inference, exhaustiveness, deriving |
-| `rhasky-core-chirho` | System FC-style Core IR, desugaring, dictionary-passing, simplifier |
-| `rhasky-backend-llvm-chirho` | Core -> textual LLVM IR codegen |
-| `rhasky-backend-wasm-chirho` | Core -> binary WebAssembly codegen |
-| `rhasky-driver-chirho` | Pipeline orchestration, STG lowering |
-| `rhasky-runtime-chirho` | STG machine: values, heap, GC, evaluation, FFI, primitives |
-| `rhasky-incremental-chirho` | Incremental compilation: fingerprinting, dependency graph, caching |
-| `rhasky-package-chirho` | Cabal file parser, version constraints, Hackage integration |
-| `rhasky-cli-chirho` | Command-line interface |
-| `rhasky-test-harness-chirho` | Golden test utilities |
+| `rhasky-span-chirho` | Source locations, file IDs, source maps, span arithmetic |
+| `rhasky-diagnostics-chirho` | Structured diagnostics with codes, labels, suggestions, ANSI color rendering |
+| `rhasky-syntax-chirho` | Token kinds, syntax kinds, green tree data structures, lexer, layout |
+| `rhasky-test-harness-chirho` | Golden test helpers and snapshot utilities |
 
-## What Works Today
+### Frontend
 
-RHasky can parse, typecheck, and evaluate a substantial subset of Haskell 2010:
+| Crate | Purpose |
+|---|---|
+| `rhasky-parser-chirho` | CST parser (green tree builder), golden tests, property tests |
+| `rhasky-ast-chirho` | AST data types and CST-to-AST lowering |
+| `rhasky-naming-chirho` | Scopes, imports, module interfaces, qualified names, orphan-instance warnings |
+| `rhasky-typing-chirho` | Kind inference, HM type inference, typeclasses, deriving, exhaustiveness checking |
 
-- **Full Hindley-Milner type inference** with let-generalization, type signatures, and polymorphism
-- **Type classes** -- class declarations, instance declarations, dictionary-passing transform, superclass extraction, derived instances (Eq, Ord, Show, Enum), multi-parameter type classes with functional dependencies
-- **Pattern matching** -- constructors, literals, nested patterns, as-patterns, wildcards, tuple patterns, record patterns, guards, exhaustiveness/redundancy checking
-- **Data types** -- algebraic data types, newtypes (with erasure), record syntax (construction, field access, update), GADTs syntax
-- **Expressions** -- let/where, lambdas, case, do-notation, list comprehensions, arithmetic sequences, operator sections, backtick infix, if-then-else
-- **Module system** -- multi-module compilation, qualified imports, import lists, hiding, aliases
-- **Standard library** -- Prelude functions (map, filter, fold, head, tail, reverse, sort, zip, take, drop, words, etc.), numeric classes (Num, Fractional, Floating, Integral, Enum, Bounded), Maybe/Either, Functor/Applicative/Monad for Maybe, string operations, I/O (putStrLn, putChar, getLine, readFile, writeFile, when, unless, mapM_, forM_)
-- **STG runtime** -- lazy evaluation with thunks/blackholing, closures with free variable capture, PAP support, mark-sweep garbage collection, foreign function interface
-- **Backends** -- LLVM IR codegen, WebAssembly binary codegen, interpreted STG evaluation
-- **830+ tests** passing across all crates
+### Middle End and Runtime
 
-## Building
+| Crate | Purpose |
+|---|---|
+| `rhasky-core-chirho` | Core IR (System FC-style), desugaring, dictionary passing, simplification, pretty-printing |
+| `rhasky-runtime-chirho` | STG machine: heap, stack, values, primops, GC, evaluator, FFI, exception handling |
+| `rhasky-driver-chirho` | Pipeline orchestration, shared frontend, compilation coordination |
+
+### Backends
+
+| Crate | Purpose |
+|---|---|
+| `rhasky-backend-llvm-chirho` | Core to textual LLVM IR, native executable path |
+| `rhasky-backend-wasm-chirho` | Core to binary WebAssembly |
+| `rhasky-backend-cranelift-chirho` | Native backend via Cranelift (x86_64, aarch64, s390x, riscv64) |
+| `rhasky-backend-jvm-chirho` | JVM .class bytecode (experimental) |
+| `rhasky-backend-beam-chirho` | BEAM .beam bytecode (experimental) |
+
+### Packaging and Tooling
+
+| Crate | Purpose |
+|---|---|
+| `rhasky-package-chirho` | Cabal file parsing, version constraints, Hackage URL construction |
+| `rhasky-incremental-chirho` | Fingerprinting, dependency graph, artifact caching, recompilation avoidance |
+| `rhasky-cli-chirho` | Command-line interface and REPL |
+
+## Getting Started
+
+### Build
 
 ```bash
-# Build the compiler
-cargo build
+cargo build --workspace
+```
 
-# Run all tests
-cargo test
+### Test
 
-# Run a specific crate's tests
+```bash
+# Run the full test suite
+cargo test --workspace
+
+# Run driver/runtime integration tests
 cargo test -p rhasky-driver-chirho
+
+# Run parser golden tests
+cargo test -p rhasky-parser-chirho --test golden_parse_chirho
 ```
 
-## Example
+### CLI Usage
 
-RHasky can compile and evaluate programs like:
+```bash
+# Type-check a Haskell source file
+cargo run -p rhasky-cli-chirho -- check examples-chirho/MainChirho.hs
 
-```haskell
--- For God so loved the world that he gave his only begotten Son, that whoever
--- believes in him should not perish but have eternal life. -- John 3:16
+# Evaluate via the STG interpreter
+cargo run -p rhasky-cli-chirho -- run examples-chirho/MainChirho.hs
 
-{-# LANGUAGE BangPatterns #-}
-module MainChirho where
+# Compile to a native executable (via LLVM)
+cargo run -p rhasky-cli-chirho -- compile examples-chirho/MainChirho.hs -o main-chirho
 
-factorialChirho :: Int -> Int
-factorialChirho 0 = 1
-factorialChirho nChirho = nChirho * factorialChirho (nChirho - 1)
+# Compile to WebAssembly
+cargo run -p rhasky-cli-chirho -- compile examples-chirho/MainChirho.hs --wasm -o out-chirho.wasm
 
-fibonacciChirho :: Int -> Int
-fibonacciChirho nChirho = goChirho 0 1 nChirho
-  where
-    goChirho aChirho _ 0 = aChirho
-    goChirho aChirho bChirho nChirho = goChirho bChirho (aChirho + bChirho) (nChirho - 1)
+# Compile via Cranelift
+cargo run -p rhasky-cli-chirho -- compile examples-chirho/MainChirho.hs --cranelift -o main-chirho
 
-sumOfSquaresChirho :: [Int] -> Int
-sumOfSquaresChirho xsChirho = sum (map (\xChirho -> xChirho * xChirho) xsChirho)
+# Build a multi-module project
+cargo run -p rhasky-cli-chirho -- build examples-chirho/project-chirho
 
-main :: IO ()
-main = do
-  putStrLn (show (factorialChirho 10))
-  putStrLn (show (fibonacciChirho 20))
-  let numbersChirho = [1..10]
-  putStrLn (show (sumOfSquaresChirho numbersChirho))
-  when (even 42) (putStrLn "42 is even, hallelujah!")
-  mapM_ (\xChirho -> putStrLn (show xChirho)) [1, 2, 3]
+# Start the REPL
+cargo run -p rhasky-cli-chirho -- repl
 ```
 
-## Design Goals
+**REPL commands:** `:type <expr>`, `:info <name>`, `:load <file>`, `:reload`, `:let <decl>`, `:clear`, `:{`/`:}` (multi-line), `:quit`
 
-- **Practical Haskell compatibility** -- aim for near 1:1 behavior with GHC semantics; compile real Hackage packages, not a toy subset
-- **Clean modular architecture** -- typed phase boundaries, focused crates, testable subsystems
-- **WebAssembly as first-class target** -- the compiler and generated programs run well on the web and in sandboxed environments
-- **Backend-agnostic pipeline** -- LLVM IR first for optimization, with WebAssembly and interpreted evaluation
-- **Incremental compilation** -- fingerprinting, dependency graphs, artifact caching for fast rebuilds
-- **Where GHC is buggy or brittle** -- prefer a cleaner design without breaking source compatibility
+**Diagnostic flags:** `--dump-core`, `--dump-stg`, `--dump-llvm`
 
 ## Naming Convention
 
-All identifiers in the RHasky codebase use the **Chirho suffix** (the Chi-Rho Christogram) as a declaration of faith. Every variable, function, struct, module, and file name carries this suffix as a reminder of whose glory this work is built for.
+All identifiers created in this project use the **Chirho suffix** (e.g., `function_name_chirho` in Rust, `functionNameChirho` in Haskell/JS, `ClassNameChirho` for types, `CONSTANT_NAME_CHIRHO` for constants). This applies to variables, functions, types, modules, file names, directory names, database columns, API routes, and all other identifiers without exception.
+
+See [AGENTS.md](AGENTS.md) for the full convention with language-specific examples.
+
+## Project Structure
+
+- `crates/` -- all 19 workspace crates
+- `spec-chirho/` -- specifications, progress database, phase archive
+- `examples-chirho/` -- example Haskell source files
+- `AGENTS.md` -- authoritative project spec, naming convention, and phase priorities
+- `codex-analysis-chirho.md` -- engineering review of the repository
+
+## Current Development
+
+The project completed Phase 1 (128 priorities) and is in **Phase 2**, which focuses on making the compiler practical:
+
+- **Done:** true lazy evaluation, lazy I/O, bang patterns, WHNF semantics (deepseq/force/evaluate/NFData), automatic Prelude import, qualified imports, module re-exports, orphan instance detection, hierarchical multi-module compilation, LLVM/WebAssembly/Cranelift backend revival, CLI (compile/run/repl/check/build), structured error messages, inlining/specialization/CSE optimization, existential quantification, type applications, overloaded strings/lists, kind signatures, default signatures, monad transformers, property-based testing, backend round-trip smoke tests
+- **In progress:** STM, circular module imports, shared RTS library, type families, DataKinds, ConstraintKinds, DeriveGeneric, Template Haskell, foreign exports, full Cabal parsing, Hackage integration, dependency resolution, strictness analysis, demand analysis, benchmark suite, GHC test suite integration, Haskell Report conformance
+
+See [AGENTS.md](AGENTS.md) for the full Phase 2 priority list with detailed status.
+
+## Design Goals
+
+- Practical Haskell compatibility rather than a toy subset
+- Typed, explicit compiler phase boundaries
+- Portable Rust implementation with focused crates
+- WebAssembly as a first-class target
+- Backend-agnostic pipeline design
+- Testable subsystems with golden tests and property tests
+
+## Git Workflow
+
+- Primary branch: `main_chirho`
+- GitHub remote name: `gh_chirho`
 
 ## License
 
-This project is developed to the glory of God.
-
-> *Whatever you do, work heartily, as for the Lord and not for men.* -- **Colossians 3:23**
+MIT OR Apache-2.0

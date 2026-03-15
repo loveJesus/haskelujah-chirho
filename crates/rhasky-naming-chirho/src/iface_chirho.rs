@@ -460,6 +460,25 @@ fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsC
             | DeclChirho::FixityDeclChirho { .. }
             | DeclChirho::DefaultDeclChirho { .. }
             | DeclChirho::ForeignDeclChirho { .. } => {}
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                span_chirho,
+                ..
+            } => {
+                let family_name_chirho = name_chirho.text_chirho().to_string();
+                exports_chirho.types_chirho.insert(
+                    family_name_chirho.clone(),
+                    IfaceTypeChirho {
+                        name_chirho: family_name_chirho,
+                        constructors_chirho: vec![],
+                        methods_chirho: vec![],
+                        span_chirho: *span_chirho,
+                    },
+                );
+            }
+            DeclChirho::TypeFamilyInstanceDeclChirho { .. } => {
+                // Type family instances don't introduce new names
+            }
         }
     }
 

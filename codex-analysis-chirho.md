@@ -2,283 +2,264 @@
 
 # Rhasky Chirho Codebase Analysis
 
-## Snapshot
+## Current Snapshot
 
-- Workspace size: 19 crates, about 79,235 lines of Rust under `crates/`.
-- Test surface: about 1,104 `#[test]` cases. Test volume is strongest in `rhasky-driver-chirho` (589), `rhasky-typing-chirho` (142), and `rhasky-core-chirho` / `rhasky-parser-chirho` / `rhasky-runtime-chirho` (65 each).
-- Property testing: I found no active `proptest!` or `quickcheck!` usage.
-- Current repo state: dirty working tree. `git status --short` shows modified `Cargo.toml`, `Cargo.lock`, `spec-chirho/progress-chirho.sqlite`, plus untracked backend crates for BEAM, Cranelift, and JVM.
-- Verification run:
-  - `cargo test --workspace --quiet`
-  - targeted `cargo test -p rhasky-driver-chirho let_expression_infers_chirho -- --exact --nocapture`
+- Date checked: 2026-03-15
+- Workspace size: 19 crates
+- Rust size under `crates/`: about 99,905 lines
+- Static test count: 1,530 `#[test]` cases
+- Property-test presence: active `proptest!` suites in parser, core, and driver
+- Verification: `cargo test --workspace --quiet` passed on this review
+- Worktree status during review: active development branch with unrelated local changes in parser, syntax, naming, typing, and AST files
 
-## Overall Assessment
+## Executive Summary
 
-This is no longer a bootstrap compiler skeleton. The codebase already has a real multi-phase pipeline, a lossless green CST, non-trivial Haskell surface support, a substantial HM/typeclass implementation, a Core language, an STG-style runtime/evaluator, package and incremental subsystems, and broad test coverage.
+The codebase is in materially better shape than the previous analysis reflected. The workspace is green, the PRD is much closer to the actual implementation, the driver now has a shared frontend pipeline, property tests exist, and the project is no longer just "broad but drifting". It is broad and increasingly coherent.
 
-The strongest pattern is ambition plus breadth. The weakest pattern is drift: the code, tests, workspace manifest, and PRD are moving at different speeds. That drift is now large enough to create correctness risk, broken workspace builds, and duplicated phase logic.
+The project still reads as `M1` rather than "finished M1", but that is now because of hardening and completeness, not because the core compiler is missing. You already have a real end-to-end compiler/evaluator stack:
 
-## Highest-Priority Findings
+- lossless CST parsing with layout
+- CST-to-AST lowering
+- implicit Prelude handling
+- name resolution and module interfaces
+- kind inference
+- HM type inference with typeclasses and deriving
+- exhaustiveness checking
+- Core desugaring, dictionary passing, and simplification
+- STG-style evaluation runtime
+- LLVM IR and Wasm emission
+- Cabal / package / incremental support crates
 
-### 1. The workspace is not green
+## What Is Better Than Before
 
-`cargo test --workspace --quiet` currently fails.
+### 1. The workspace is green again
 
-- `crates/rhasky-backend-beam-chirho/src/beam_module_chirho:153`, `:169`, `:181`
-  - `CoreModuleChirho` initializers are missing the now-required `name_chirho` field.
-- `crates/rhasky-backend-jvm-chirho/src/class_chirho:96`, `:112`
-  - same schema drift.
-- `crates/rhasky-backend-cranelift-chirho/src/codegen_chirho:110-111`
-  - the crate uses `iconst` and `return_` without importing Cranelift's `InstBuilder` trait, so the library itself does not compile.
-- `crates/rhasky-backend-cranelift-chirho/src/codegen_chirho:149`, `:163`, `:183`
-  - more `CoreModuleChirho` initializers missing `name_chirho`.
+The most important outdated finding is gone: `cargo test --workspace --quiet` now passes.
 
-Impact:
+That changes the project posture substantially. It means the current codebase is once again safe to describe as actively evolving but integrated, rather than "interesting subsystems with a broken workspace".
 
-- The repo cannot currently claim workspace-level correctness.
-- Backend additions are landing in the workspace before they are integration-safe.
+### 2. The driver architecture is more coherent
 
-Recommendation:
+`crates/rhasky-driver-chirho/src/lib.rs:83-167` now has a shared `run_frontend_chirho` path that centralizes:
 
-- Either fix these crates immediately or gate them behind features / remove them from default workspace verification until they compile and have passing smoke tests.
+- CST parse
+- AST lowering
+- implicit Prelude import injection
+- deriving
+- name resolution
+- orphan-instance warnings
+- kind inference
+- type inference
+- exhaustiveness checking
 
-### 2. `check` is not actually a compiler check
+That is a meaningful architectural improvement. It reduces phase drift and gives the project a clearer compiler entry boundary.
 
-There are two materially different front doors in the driver:
+### 3. `check` now uses the real frontend
 
-- `crates/rhasky-driver-chirho/src/lib.rs:64-86`
-  - `check_source_file_chirho` only calls `parse_source_file_chirho`, extracts a module name, and emits legacy LLVM/Wasm stubs.
-- `crates/rhasky-driver-chirho/src/lib.rs:206-270`
-  - `compile_source_chirho` runs the real pipeline: CST parse, lower, deriving, name resolution, kind inference, type inference, exhaustiveness, Core lowering, dictionary pass, simplification, and backend generation.
+`crates/rhasky-driver-chirho/src/lib.rs:219-259` now runs `run_frontend_chirho` and extracts the module name from the real AST, instead of the older header-only path.
 
-That means the CLI `check` / `plan` path is not validating the same thing the compiler pipeline validates.
+This is not full backend compilation, but it is no longer a fake "check". It is a genuine frontend pass with warnings, which is the right direction.
 
-Impact:
+### 4. The PRD is much closer to reality
 
-- User-facing commands can report success on code that would fail in the real parser, typechecker, or backend path.
-- Bugs found through `compile_source_chirho` are invisible to the `check` path.
+`spec-chirho/prd-chirho.json:3-10` now says `M1` is in progress, and `spec-chirho/prd-chirho.json:235-330` reflects the actual workspace crates instead of the older `hir/namer/typecheck/package-db` split.
 
-Recommendation:
+This was one of the biggest process problems before. It is much better now.
 
-- Make `check_source_file_chirho` a thin wrapper around the real phase pipeline and downgrade the old module-header-only path to an internal helper or remove it entirely.
+### 5. Property tests are now real, not just aspirational
 
-### 3. The public parser entry point in `rhasky-parser-chirho` is stale and semantically weak
+There are active property tests in:
 
-`crates/rhasky-parser-chirho/src/lib.rs:26-128` still exposes a string-based module-header parser that:
+- `crates/rhasky-parser-chirho/src/proptest_chirho.rs`
+- `crates/rhasky-core-chirho/src/proptest_chirho.rs`
+- `crates/rhasky-driver-chirho/src/tests_chirho/proptest_chirho.rs`
 
-- only skips blank lines and `--` comments (`:41-47`)
-- does not handle block comments, pragmas, or other leading trivia
-- accepts header text by `starts_with("module ")` and `strip_suffix("where")` (`:86-97`)
+That is important because it moves the project from "lots of example tests" toward actual invariant checking.
 
-That parser will mis-handle valid Haskell with leading pragmas/comments, and it also accepts malformed text such as a header ending in `where` without requiring token boundaries.
+## Current Strengths
 
-Impact:
+### Foundation crates are solid
 
-- The crate's top-level API no longer matches the real parser capability.
-- Anything calling `parse_source_file_chirho` is getting a partial and misleading result.
+`rhasky-span-chirho`, `rhasky-diagnostics-chirho`, `rhasky-syntax-chirho`, and `rhasky-test-harness-chirho` remain the cleanest part of the repo. They are focused, reusable, and aligned with the intended long-term architecture.
 
-Recommendation:
+### The front-end is now genuinely substantial
 
-- Replace this API with the real CST parser or rename it to something honest like a header scanner and stop using it as a compiler entry point.
+The parser, lowerer, naming, and typing layers are no longer toy implementations. The compiler supports enough real Haskell surface area that the remaining questions are about semantics, robustness, and packaging, not whether the pipeline exists.
 
-### 4. The PRD and the workspace no longer describe the same system
+### The runtime and evaluator are real
 
-The manifest and the PRD have drifted:
+`rhasky-runtime-chirho` plus `rhasky-driver-chirho/src/stg_lower_chirho.rs` give the project an actual execution story. This is no longer just a parser/typechecker repo.
 
-- `Cargo.toml` lists actual crates like `rhasky-naming-chirho`, `rhasky-typing-chirho`, `rhasky-package-chirho`, `rhasky-incremental-chirho`, and the three new backend crates.
-- `spec-chirho/prd-chirho.json:271-345` still describes older crate names such as `rhasky-hir-chirho`, `rhasky-namer-chirho`, `rhasky-types-chirho`, `rhasky-typecheck-chirho`, and `rhasky-package-db-chirho`.
-- `spec-chirho/prd-chirho.json:8` still says `"current_milestone_chirho": "M0"` while `spec-chirho/prd-chirho.json:379-394` says `M0` is complete and `M1` is in progress.
+### Package and incremental work are valuable
 
-Impact:
+`rhasky-package-chirho` and `rhasky-incremental-chirho` are still among the more disciplined parts of the project. They give the repo a credible path toward real-world compilation rather than isolated source-file demos.
 
-- The spec is no longer reliable as an architecture map or milestone tracker.
-- Contributors can make "correct" decisions against the PRD and still diverge from the real codebase.
+## Current Highest-Priority Issues
 
-Recommendation:
+### 1. Malformed-input parser robustness is still not where it needs to be
 
-- Reconcile the PRD against the actual workspace before adding more crates or milestones. The spec should describe the implementation that exists now, not the one from several design iterations ago.
+The strongest current correctness signal is in the parser proptest file itself:
 
-### 5. Phase sequencing is duplicated in the driver, and warning handling is inconsistent
+- `crates/rhasky-parser-chirho/src/proptest_chirho.rs:9-13`
+- `crates/rhasky-parser-chirho/src/proptest_chirho.rs:54-60`
 
-The driver repeats large chunks of pipeline logic in multiple paths. One visible consequence:
+The tests explicitly say arbitrary-input parsing currently uses `catch_unwind` because the parser can still panic on malformed input due to checkpoint stack depth mismatches in the green builder.
 
-- `crates/rhasky-driver-chirho/src/lib.rs:223-224`
-  - deriving warnings are computed and immediately discarded.
-- `crates/rhasky-driver-chirho/src/lib.rs:247-254`
-  - exhaustiveness warnings are noted as non-fatal but not unified into returned diagnostics.
-- `crates/rhasky-driver-chirho/src/lib.rs:345-347`
-  - the package/multi-module path uses `infer_module_with_imports_chirho`.
-- `crates/rhasky-driver-chirho/src/lib.rs:242`
-  - the single-module path uses `infer_module_chirho`.
+That means:
 
-Inference from structure:
+- the parser is good on valid and semi-structured inputs
+- malformed-input recovery still has a real internal panic bug
+- this matters for CLI robustness, fuzzing, editor/LSP scenarios, and future package-ecosystem ingestion
 
-- The project already knows it needs an import-aware typing path, but the single-source path still uses the simpler API.
-- Duplicated orchestration is likely to keep drifting in exactly this way.
+This is the highest-priority technical debt now that the workspace is green.
 
-Recommendation:
+### 2. Non-fatal warnings are collected but not consistently surfaced
 
-- Move phase orchestration into one reusable pipeline builder or coordinator struct that always returns one unified diagnostic collection and takes configuration for imports/execution mode.
+`run_frontend_chirho` collects deriving, exhaustiveness, and orphan-instance warnings:
 
-### 6. The token model is duplicated and currently inconsistent
+- `crates/rhasky-driver-chirho/src/lib.rs:102-161`
 
-There are two token enums:
+`check_source_file_chirho` returns those warnings in `CheckSummaryChirho`:
 
-- `crates/rhasky-parser-chirho/src/lexer_chirho.rs`
-  - `RawTokenKindChirho`
-- `crates/rhasky-syntax-chirho/src/token_chirho.rs`
-  - `TokenKindChirho`
+- `crates/rhasky-driver-chirho/src/lib.rs:250-259`
 
-The mapper in `crates/rhasky-parser-chirho/src/cst_parser_chirho.rs:33-66` includes this line:
+But `compile_source_chirho` and `compile_modules_chirho` currently discard them when destructuring `FrontendResultChirho`:
 
-- `RawTokenKindChirho::QualifiedIdChirho => TokenKindChirho::QualifiedConIdChirho`
+- `crates/rhasky-driver-chirho/src/lib.rs:422-428`
+- `crates/rhasky-driver-chirho/src/lib.rs:511-515`
 
-But the syntax layer also defines `QualifiedVarIdChirho`.
-
-Inference from code structure:
-
-- Qualified value identifiers appear to be collapsed too early in the raw lexer and then reclassified as constructor-qualified tokens in the CST mapping.
-- Even if the current parser mostly survives this, it is the wrong long-term abstraction boundary.
-
-Recommendation:
-
-- Either lex qualified identifiers into value-vs-constructor forms up front, or make the syntax layer preserve the ambiguity until lowering/name resolution.
-
-### 7. Export-list semantics are still absent from lowering
-
-`crates/rhasky-parser-chirho/src/lower_chirho.rs:203-205` still emits:
-
-- `exports_chirho: None // TODO: lower export list`
+This is no longer a phase-ordering problem. It is now a diagnostics plumbing problem.
 
 Impact:
 
-- Interface construction, package visibility, and import/export correctness are incomplete.
-- This blocks meaningful progress toward real Cabal/Hackage compatibility even if parsing and typing improve.
+- front-end warning infrastructure exists
+- backend consumers do not receive it consistently
+- tools using `compile_source_chirho` can miss meaningful diagnostics
 
-Recommendation:
+### 3. Incremental compilation exists, but full compile-result reuse is not finished
 
-- Treat export list lowering as a near-term requirement, not a late parser TODO.
+`rhasky-incremental-chirho` is real, and the driver uses session-based compilation ordering. But the integration is still incomplete:
 
-## Architectural Analysis By Area
+- `crates/rhasky-driver-chirho/src/lib.rs:966-967`
 
-### Foundation Crates
+The driver still has a TODO to cache serialized `CompileResultChirho` in the artifact store so cache-hit paths can skip recompilation entirely.
 
-`rhasky-span-chirho`, `rhasky-diagnostics-chirho`, `rhasky-syntax-chirho`, and `rhasky-test-harness-chirho` are the cleanest part of the repo. They are focused, portable, and broadly aligned with the intended architecture. The span/diagnostic model is strong enough to support CLI, IDE, and REPL rendering later.
+That means the architecture is present, but the high-value optimization loop is not closed yet.
 
-The green-tree layer is especially valuable. That was the right investment. It gives you a stable lossless surface for parser and tooling work.
+### 4. `check` is now real frontend checking, but backend reporting is still stub-based
 
-### Parser / CST / AST Boundary
+`check_source_file_chirho` now runs the real frontend, which is good. But it still reports backend output via lightweight stubs:
 
-The real parser is substantially ahead of what the crate-level docs imply. The CST parser, layout logic, and lowerer cover a meaningful Haskell subset and already have golden tests. The problem is not lack of functionality; it is split authority.
+- `crates/rhasky-driver-chirho/src/lib.rs:246-248`
 
-Right now there is a "real parser stack" and a "legacy header parser". That split should end. The lowerer is also getting too large for safe maintenance at 4,800 lines, and its responsibilities include feature lowering, AST shaping, and pragma extraction all in one place.
+This is fine if the command is documented honestly. It becomes confusing only if the README or CLI messaging suggests `check` validates backend lowering too.
 
-### Naming / Typing
+### 5. Experimental backends should be described as experimental
 
-This is ambitious and already useful. The typing crate has real breadth: kind inference, type inference, typeclasses, deriving, and exhaustiveness. That is a strong foundation.
+The workspace now includes:
 
-The main risk here is monolithic complexity. `infer_chirho.rs` is 6,471 lines and `class_chirho.rs` is 1,891. That makes localized reasoning hard, especially for subtle solver behavior. The presence of both `infer_module_chirho` and `infer_module_with_imports_chirho` is good design, but the driver needs to stop using them inconsistently.
+- `rhasky-backend-cranelift-chirho`
+- `rhasky-backend-jvm-chirho`
+- `rhasky-backend-beam-chirho`
 
-### Core / Runtime / Driver
+and the PRD marks them as scaffold/in-progress:
 
-This is where capability and risk are both highest.
+- `spec-chirho/prd-chirho.json:300-337`
 
-- `crates/rhasky-core-chirho/src/dict_chirho.rs` is 16,567 lines.
-- `crates/rhasky-driver-chirho/src/lib.rs` is 12,471 lines.
-- `crates/rhasky-runtime-chirho/src/eval_chirho.rs` is 2,986 lines.
+This is healthy, but only if the docs say the same thing. The README should distinguish:
 
-Those file sizes are no longer a style issue; they are an architectural issue. The driver is acting as:
+- currently-used backends and runtime paths
+- experimental backends present in the workspace for future work
 
-- compiler orchestrator
-- package loader
-- builtin module provider
-- evaluator harness
-- integration test container
-- partial STG layer host
+### 6. The largest modules are still large enough to be architectural risks
 
-That concentration will slow every future change, especially when backend and runtime semantics keep evolving.
+The top files are now roughly:
 
-### Package / Incremental
+- `crates/rhasky-core-chirho/src/dict_chirho/prelude_chirho.rs` — 13,832 lines
+- `crates/rhasky-typing-chirho/src/infer_chirho.rs` — 8,532 lines
+- `crates/rhasky-driver-chirho/src/tests_chirho/eval_basic_chirho.rs` — 6,054 lines
+- `crates/rhasky-parser-chirho/src/lower_chirho.rs` — 5,975 lines
+- `crates/rhasky-core-chirho/src/desugar_chirho.rs` — 4,790 lines
+- `crates/rhasky-runtime-chirho/src/eval_chirho.rs` — 4,494 lines
 
-These crates are comparatively disciplined. `rhasky-package-chirho` and `rhasky-incremental-chirho` have focused APIs and reasonable internal boundaries. They look more maintainable than the parser/core/driver center.
+This is better than having one giant driver/test monolith, and some splitting has clearly already happened. But these files are still large enough that local reasoning, refactoring safety, and review quality will remain hard unless they keep being decomposed.
 
-The main issue is integration: the implementation has outgrown the PRD, and the package / incremental story is further along than the spec says.
+## Architectural Assessment By Area
 
-### Backends
+### Frontend
 
-LLVM and Wasm are usable as early-stage emitters, but their current implementations are still subset code generators from Core, not the eventual laziness-preserving backend story described in the PRD.
+The frontend has become the clearest success story in the repo. The phases are explicit, the driver shares them, the parser/lowering/naming/typing path is real, and the PRD now reflects that.
 
-BEAM, JVM, and Cranelift are not yet workspace-stable. They read as promising scaffolds rather than production compiler targets. They should be managed that way.
+The main remaining frontend weakness is malformed-input hardening, not lack of language support.
 
-## Quality, Testing, and Compliance
+### Middle End
 
-### Test Posture
+Core desugaring, dictionary passing, simplification, specialization metadata, and inline annotations make the middle end much richer than the earlier README suggested.
 
-The quantity of tests is good. The distribution is less ideal.
+This is now a serious compiler middle layer. The main challenge is maintainability, especially in the Core prelude generation and inference-heavy logic.
 
-- Driver tests dominate the tree, which is useful for integration confidence but can hide subsystem regressions inside one giant file.
-- There are currently no active property-test suites even though the project explicitly wants them.
-- The most important missing classes are:
-  - parser/layout malformed-input properties
-  - simplifier semantic-preservation checks
-  - dictionary-pass invariants
-  - runtime evaluator step/heap invariants
-  - backend round-trip smoke tests that execute emitted artifacts where possible
-  - differential tests against GHC for syntax/typechecker edge cases
+### Runtime and Evaluation
 
-### Warning Debt
+The STG-style runtime is one of the most impressive parts of the codebase. It already supports a substantial execution story, including closures, PAPs, GC, I/O capture, FFI, and many builtins.
 
-The warning profile is now meaningful, not cosmetic.
+The remaining risk is semantic completeness and keeping runtime/compiler assumptions aligned as more language surface area and more backends arrive.
 
-- runtime: unreachable pattern and unused label
-- parser: dead helper plus unused variables
-- core: dead code and many unused variables in large transformation files
-- driver: unused imports, unused variables, and naming-style warnings
+### Tooling and Process
 
-The codebase would benefit from treating warnings as backlog items rather than normal background noise.
+The project process is healthier than before because:
 
-### Naming / Header Compliance
+- the workspace is green
+- the PRD is closer to reality
+- the progress database is active
+- tests are abundant
+- property tests now exist
 
-Automated scans found three files missing the John 3:16 header near the top:
+The next process improvement should be to keep README, PRD, and actual compiler entrypoints in sync so that the docs stop lagging behind the code.
 
-- `CLAUDE.md`
-- `crates/rhasky-incremental-chirho/Cargo.toml`
-- `spec-chirho/prd-chirho.json`
+## Progress Against Milestones
 
-I also found naming drift in places that are meant to follow the repo convention:
+### M0
 
-- Rust test names in `crates/rhasky-driver-chirho/src/lib.rs:9158`, `:9218`, `:9369`, `:12457` use `mapM` / `forM` mixed-case forms and trigger `non_snake_case` warnings.
-- Embedded Haskell test snippets in `crates/rhasky-driver-chirho/src/lib.rs:10647` and `:12198` define `IntList` and `Age` without the required `Chirho` suffix.
+This looks complete in both code and PRD terms.
 
-Most other apparent scan hits were trait methods like `fmt`, `default`, and `from`, which are dictated by Rust traits and should be treated as unavoidable exceptions.
+### M1
 
-## Strengths Worth Preserving
+`M1` being "in-progress" still makes sense, but it is an advanced in-progress, not an early one.
 
-- The crate split is directionally correct.
-- The span + diagnostic foundation is strong.
-- The green CST is the right long-term parser architecture.
-- The typing and runtime work are already beyond "toy compiler" level.
-- Package and incremental crates are relatively clean and reusable.
-- The codebase already has enough test mass to support real refactoring if the workspace is kept green.
+The project already satisfies most of the spirit of the current M1 acceptance list:
 
-## Recommended Sequence
+- lexer/layout/CST/AST stack
+- module loading and multi-module support
+- HM typing, kind inference, typeclasses, deriving
+- exhaustiveness
+- Core IR and simplification
+- STG evaluation path
+- LLVM / Wasm emission
+- incremental-session groundwork
+- large test corpus
 
-1. Restore a green workspace.
-   - Fix or gate BEAM/JVM/Cranelift immediately.
-2. Collapse to one real driver pipeline.
-   - `check`, `compile`, package compilation, and script mode should share one orchestrator.
-3. Remove or quarantine the legacy header parser.
-   - The parser crate should expose the real parser stack, not a bootstrap remnant.
-4. Reconcile the PRD with the actual workspace.
-   - Crate names, milestones, and current status need one source of truth.
-5. Split the biggest files.
-   - Start with `driver/lib.rs`, `core/dict_chirho.rs`, `typing/infer_chirho.rs`, and `parser/lower_chirho.rs`.
-6. Add property and differential tests where invariants matter most.
-   - Parser/layout, simplifier, dictionary pass, runtime evaluator.
-7. Finish export/import semantics before claiming serious package compatibility progress.
+What still keeps `M1` from feeling done is mainly:
+
+- malformed-input panic hardening
+- better warning/reporting plumbing
+- clearer status for experimental backends
+- finishing the artifact-cache reuse story
+
+## Recommended Next Moves
+
+1. Remove the parser panic path.
+   - Make arbitrary malformed input produce diagnostics, not `catch_unwind`-guarded panics.
+2. Carry warnings through `compile_source_chirho` and `compile_modules_chirho`.
+   - The collection work is already done; the API just does not expose it consistently.
+3. Finish artifact-store reuse in the driver.
+   - This is the next high-leverage systems improvement.
+4. Keep splitting the largest files.
+   - Especially Core prelude generation, type inference helpers, parser lowering, and huge driver test files.
+5. Document backend maturity accurately.
+   - LLVM/Wasm/STG evaluation are current execution paths; Cranelift/JVM/BEAM are experimental.
 
 ## Bottom Line
 
-The project already contains the core of a real Haskell compiler in Rust, not just a scaffold. The current limiting factor is no longer lack of features. It is system coherence: green builds, one authoritative pipeline, one authoritative spec, and smaller phase-local modules with explicit invariants.
+Rhasky Chirho is now a real compiler project with a green workspace, a coherent shared frontend, active property tests, and an execution story that goes well beyond parsing and typing.
 
-If those are fixed, the existing breadth becomes a major asset. If they are not, the current rate of accretion will keep converting working subsystems into a hard-to-maintain monolith.
+The previous analysis was right that coherence mattered. The current analysis is that coherence has improved enough that the remaining work is now sharper and more valuable: robustness, warning propagation, cache integration, and continued modularization.
