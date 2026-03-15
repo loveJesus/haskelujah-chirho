@@ -466,8 +466,14 @@ library
                     ghc_options_chirho: vec![],
                     default_extensions_chirho: vec![],
                     other_extensions_chirho: vec![],
+                    imports_chirho: vec![],
                 },
             }],
+            benchmarks_chirho: vec![],
+            flags_chirho: vec![],
+            source_repos_chirho: vec![],
+            common_stanzas_chirho: vec![],
+            custom_setup_chirho: None,
         };
 
         let modules_chirho = crate::discover_modules_chirho(&pkg_chirho, dir_chirho.path());
@@ -506,6 +512,11 @@ library
             library_chirho: None,
             executables_chirho: vec![],
             test_suites_chirho: vec![],
+            benchmarks_chirho: vec![],
+            flags_chirho: vec![],
+            source_repos_chirho: vec![],
+            common_stanzas_chirho: vec![],
+            custom_setup_chirho: None,
         };
 
         let modules_chirho = crate::discover_modules_chirho(&pkg_chirho, dir_chirho.path());
@@ -552,10 +563,16 @@ library
                     ghc_options_chirho: vec![],
                     default_extensions_chirho: vec![],
                     other_extensions_chirho: vec![],
+                    imports_chirho: vec![],
                 },
             }),
             executables_chirho: vec![],
             test_suites_chirho: vec![],
+            benchmarks_chirho: vec![],
+            flags_chirho: vec![],
+            source_repos_chirho: vec![],
+            common_stanzas_chirho: vec![],
+            custom_setup_chirho: None,
         };
 
         let modules_chirho = crate::discover_modules_chirho(&pkg_chirho, dir_chirho.path());
