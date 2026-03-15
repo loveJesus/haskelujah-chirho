@@ -9,6 +9,7 @@
 
 pub mod bench_chirho;
 pub mod ghc_suite_chirho;
+pub mod report_chirho;
 
 use std::fs;
 use std::path::{Path, PathBuf};
