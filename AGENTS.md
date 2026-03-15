@@ -236,7 +236,7 @@ _These items address structural issues identified in the Codex engineering revie
 31. **Type families** — open and closed type families (`type family F a where ...`); type instance declarations; associated type families in classes
 32. **ExistentialQuantification** — `data Showable = forall a. Show a => MkShowable a`
 33. **TypeApplications** — `read @Int "42"`, `show @Bool True`
-34. **OverloadedStrings** — `IsString` type class; string literals desugar to `fromString`
+34. ~~**OverloadedStrings** — `IsString` type class; string literals desugar to `fromString`~~ — DONE
 35. **OverloadedLists** — `IsList` type class; list literals desugar to `fromList`
 36. **DeriveFunctor/DeriveFoldable/DeriveTraversable** — auto-derive Functor/Foldable/Traversable
 37. **DeriveGeneric** — `Generic` type class and `GHC.Generics` representation types

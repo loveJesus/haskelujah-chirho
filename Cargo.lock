@@ -432,6 +432,7 @@ dependencies = [
 name = "rhasky-cli-chirho"
 version = "0.1.0"
 dependencies = [
+ "rhasky-core-chirho",
  "rhasky-driver-chirho",
  "rhasky-runtime-chirho",
  "rhasky-span-chirho",

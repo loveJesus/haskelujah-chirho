@@ -1477,6 +1477,36 @@ impl ClassEnvChirho {
             fundeps_chirho: vec![],
             defaults_chirho: HashMap::new(),
         });
+
+        // IsString (for OverloadedStrings extension)
+        let is_string_var_chirho = TyVarChirho(9020);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "IsString".to_string(),
+            supers_chirho: vec![],
+            var_chirho: is_string_var_chirho,
+            methods_chirho: HashMap::from([(
+                "fromString".to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![is_string_var_chirho],
+                    preds_chirho: vec![],
+                    ty_chirho: TyChirho::FunChirho(
+                        Box::new(TyChirho::string_chirho()),
+                        Box::new(TyChirho::VarChirho(is_string_var_chirho)),
+                    ),
+                },
+            )]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // instance IsString String  (identity)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "IsString".to_string(),
+            head_ty_chirho: TyChirho::string_chirho(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
     }
 }
 

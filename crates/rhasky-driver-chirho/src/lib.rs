@@ -14981,4 +14981,47 @@ main = factorial 10
         assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(3628800));
     }
 
+    // ── OverloadedStrings tests ──────────────────────────────────────────
+
+    #[test]
+    fn eval_overloaded_strings_identity_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = rhasky_span_chirho::SourceMapChirho::new_chirho();
+        let src_chirho = "{-# LANGUAGE OverloadedStrings #-}\n\
+             module Test where\n\
+             main = putStrLn \"hello overloaded\"\n";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        )
+        .expect("overloaded strings identity should evaluate");
+        assert_eq!(result_chirho.1.io_output_chirho, "hello overloaded\n");
+    }
+
+    #[test]
+    fn eval_overloaded_strings_concat_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = rhasky_span_chirho::SourceMapChirho::new_chirho();
+        let src_chirho = "{-# LANGUAGE OverloadedStrings #-}\n\
+             module Test where\n\
+             main = putStrLn (\"hello\" ++ \" \" ++ \"world\")\n";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        )
+        .expect("overloaded strings concat should evaluate");
+        assert_eq!(result_chirho.1.io_output_chirho, "hello world\n");
+    }
+
+    #[test]
+    fn eval_no_overloaded_strings_chirho() {
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = rhasky_span_chirho::SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             main = putStrLn \"plain string\"\n";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        )
+        .expect("plain string should evaluate");
+        assert_eq!(result_chirho.1.io_output_chirho, "plain string\n");
+    }
+
 }

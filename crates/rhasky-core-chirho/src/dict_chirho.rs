@@ -764,6 +764,8 @@ impl DictPassCtxChirho {
             ("Show", "show", "Ordering", 2),
             ("Eq", "==", "Ordering", 1),
             ("Ord", "compare", "Ordering", 1),
+            // IsString (OverloadedStrings)
+            ("IsString", "fromString", "[Char]", 0),
         ];
 
         let primop_for_chirho =
@@ -13572,6 +13574,7 @@ impl DictPassCtxChirho {
                     "Num" | "Eq" | "Ord" | "Show" | "Read" | "Enum"
                     | "Bounded" | "Integral" | "Real" | "RealFrac"
                     | "Floating" | "RealFloat" => Some("Int"),
+                    "IsString" => Some("[Char]"),
                     _ => None,
                 };
                 default_type_chirho.and_then(|dt_chirho| {

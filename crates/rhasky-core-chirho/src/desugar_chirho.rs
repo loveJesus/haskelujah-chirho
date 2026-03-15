@@ -47,6 +47,8 @@ pub struct DesugarCtxChirho {
     /// the same CoreId across multiple references, so the dict pass can
     /// create a single binding that all references share.
     free_var_cache_chirho: HashMap<String, CoreIdChirho>,
+    /// Active LANGUAGE extensions (e.g. "OverloadedStrings").
+    extensions_chirho: Vec<String>,
 }
 
 impl DesugarCtxChirho {
@@ -56,6 +58,7 @@ impl DesugarCtxChirho {
             names_chirho: HashMap::new(),
             scope_chirho: vec![HashMap::new()],
             free_var_cache_chirho: HashMap::new(),
+            extensions_chirho: Vec::new(),
         }
     }
 
@@ -1746,6 +1749,20 @@ impl DesugarCtxChirho {
                     CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::VarChirho(
                             from_integer_id_chirho,
+                        )),
+                        arg_chirho: Box::new(CoreExprChirho::LitChirho(
+                            core_lit_chirho,
+                        )),
+                    }
+                } else if matches!(core_lit_chirho, CoreLitChirho::StringChirho(_))
+                    && self.extensions_chirho.contains(&"OverloadedStrings".to_string())
+                {
+                    // OverloadedStrings: string literals become `fromString "lit"`
+                    let from_string_id_chirho =
+                        self.resolve_var_chirho("fromString");
+                    CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                            from_string_id_chirho,
                         )),
                         arg_chirho: Box::new(CoreExprChirho::LitChirho(
                             core_lit_chirho,
@@ -3545,6 +3562,7 @@ fn is_var_pat_chirho(pat_chirho: &PatChirho) -> bool {
 /// Desugar a module from AST to Core, returning the Core module and a name map.
 pub fn desugar_module_chirho(module_chirho: &ModuleChirho) -> DesugarOutputChirho {
     let mut ctx_chirho = DesugarCtxChirho::new_chirho();
+    ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
     ctx_chirho.desugar_module_chirho(module_chirho)
 }
 

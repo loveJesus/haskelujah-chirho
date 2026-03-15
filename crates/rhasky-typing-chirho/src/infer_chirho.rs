@@ -2541,6 +2541,23 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // fromString :: forall a. IsString a => String -> a
+    let fs_v_chirho = TyVarChirho(1197);
+    env_chirho.bind_chirho(
+        "fromString".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![fs_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "IsString".to_string(),
+                ty_chirho: TyChirho::VarChirho(fs_v_chirho),
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::string_chirho(),
+                TyChirho::VarChirho(fs_v_chirho),
+            ),
+        },
+    );
+
     // div :: Int -> Int -> Int  (Integral-specialized to Int)
     env_chirho.bind_chirho(
         "div".to_string(),

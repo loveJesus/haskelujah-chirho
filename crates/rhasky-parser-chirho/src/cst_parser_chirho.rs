@@ -155,6 +155,9 @@ impl<'src> ParserChirho<'src> {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::SourceFileChirho);
 
+        // Skip leading trivia (pragmas, comments, whitespace) before module header
+        self.eat_trivia_chirho();
+
         // Parse module header if present
         if self.at_chirho(RawTokenKindChirho::ModuleChirho) {
             self.parse_module_header_chirho();
