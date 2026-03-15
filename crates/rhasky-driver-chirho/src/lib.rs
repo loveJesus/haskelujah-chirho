@@ -22,7 +22,9 @@ use rhasky_core_chirho::{
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
 use rhasky_naming_chirho::resolve_chirho::resolve_module_with_imports_chirho;
 use rhasky_naming_chirho::iface_chirho::{build_iface_chirho, ModuleIfaceChirho};
-use rhasky_typing_chirho::infer_chirho::{infer_module_chirho, infer_module_with_imports_chirho};
+use rhasky_typing_chirho::infer_chirho::{
+    InferResultChirho, infer_module_chirho, infer_module_with_imports_chirho,
+};
 use rhasky_parser_chirho::cst_parser_chirho::ParserChirho;
 use rhasky_parser_chirho::lower_chirho::lower_module_chirho;
 use rhasky_runtime_chirho::{ExecutionModeChirho, RuntimePlanChirho};
@@ -43,6 +45,108 @@ pub struct CheckSummaryChirho {
     pub backend_plan_chirho: BackendPlanChirho,
     /// Non-fatal warnings collected from the pipeline (deriving, exhaustiveness).
     pub warnings_chirho: Vec<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Shared front-end result and runner
+// ---------------------------------------------------------------------------
+
+/// Holds the results of the shared front-end compiler phases (1 through 4.5):
+/// CST parse → AST lower → deriving → name resolve → kind infer → type infer
+/// → exhaustiveness check.
+///
+/// Downstream pipeline stages (desugar, dict pass, backends) consume this
+/// together with the original AST module.
+pub struct FrontendResultChirho {
+    /// The fully lowered and derived AST module.
+    pub module_chirho: ModuleChirho,
+    /// Results of type inference, including the type environment and class
+    /// environment needed by the dictionary-passing transform.
+    pub infer_result_chirho: InferResultChirho,
+    /// Non-fatal warnings collected from deriving and exhaustiveness checking.
+    pub warnings_chirho: Vec<String>,
+}
+
+/// Run the shared front-end compiler phases for a single Haskell module.
+///
+/// Executes phases 1 through 4.5 in order:
+/// 1. CST parse (lex + layout + recursive-descent)
+/// 2. CST → AST lowering
+/// 2.5. Deriving (generate instance declarations)
+/// 3. Name resolution (against `ifaces_chirho`)
+/// 3.5. Kind inference
+/// 4. Type inference (with `imported_types_chirho` if non-empty)
+/// 4.5. Pattern match exhaustiveness and redundancy checking
+///
+/// Returns a [`FrontendResultChirho`] on success, or a
+/// [`DiagnosticBundleChirho`] containing the first fatal error.
+pub fn run_frontend_chirho(
+    source_chirho: &str,
+    file_id_chirho: rhasky_span_chirho::FileIdChirho,
+    ifaces_chirho: &[ModuleIfaceChirho],
+    imported_types_chirho: &std::collections::HashMap<String, rhasky_typing_chirho::SchemeChirho>,
+) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
+    // Phase 1: CST parse (lex + layout + recursive-descent)
+    let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
+    let green_chirho = parser_chirho.parse_chirho();
+
+    // Phase 2: CST → AST lowering
+    let mut module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+
+    // Phase 2.5: Deriving — generate instance declarations for `deriving` clauses
+    let deriving_warnings_chirho =
+        rhasky_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
+
+    // Phase 3: Name resolution
+    let resolve_result_chirho =
+        resolve_module_with_imports_chirho(&module_chirho, ifaces_chirho);
+    if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(resolve_result_chirho.diagnostics_chirho);
+    }
+
+    // Phase 3.5: Kind inference
+    let kind_result_chirho =
+        rhasky_typing_chirho::infer_module_kinds_chirho(&module_chirho);
+    if kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(kind_result_chirho.diagnostics_chirho);
+    }
+
+    // Phase 4: Type inference — use import-aware variant when upstream
+    // type schemes are available, plain variant otherwise.
+    let infer_result_chirho = if imported_types_chirho.is_empty() {
+        infer_module_chirho(&module_chirho)
+    } else {
+        infer_module_with_imports_chirho(&module_chirho, imported_types_chirho)
+    };
+    if infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(infer_result_chirho.diagnostics_chirho);
+    }
+
+    // Phase 4.5: Pattern match exhaustiveness and redundancy checking
+    let exhaust_result_chirho =
+        rhasky_typing_chirho::check_module_exhaustiveness_chirho(&module_chirho);
+    if exhaust_result_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(exhaust_result_chirho.diagnostics_chirho);
+    }
+
+    // Collect non-fatal warnings from exhaustiveness checking.
+    let exhaust_warnings_chirho: Vec<String> = exhaust_result_chirho
+        .diagnostics_chirho
+        .diagnostics_chirho()
+        .iter()
+        .filter(|d_chirho| !d_chirho.is_error_chirho())
+        .map(|d_chirho| d_chirho.to_string())
+        .collect();
+
+    // Merge deriving and exhaustiveness warnings.
+    let mut warnings_chirho = deriving_warnings_chirho;
+    warnings_chirho.extend(exhaust_warnings_chirho);
+
+    Ok(FrontendResultChirho {
+        module_chirho,
+        infer_result_chirho,
+        warnings_chirho,
+    })
 }
 
 pub fn check_source_path_chirho(
@@ -70,60 +174,22 @@ pub fn check_source_file_chirho(
     let source_chirho = source_file_chirho.contents_chirho().to_string();
     let file_id_chirho = source_file_chirho.file_id_chirho();
 
-    // Phase 1: CST parse (lex + layout + recursive-descent) — the real parser
-    let parser_chirho = ParserChirho::new_chirho(&source_chirho, file_id_chirho);
-    let green_chirho = parser_chirho.parse_chirho();
-
-    // Phase 2: CST → AST lowering
-    let mut module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
-
-    // Phase 2.5: Deriving
-    let deriving_warnings_chirho =
-        rhasky_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
-
-    // Phase 3: Name resolution
     let builtin_ifaces_chirho = rhasky_naming_chirho::builtin_module_ifaces_chirho();
-    let resolve_result_chirho =
-        resolve_module_with_imports_chirho(&module_chirho, &builtin_ifaces_chirho);
-    if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
-        return Err(resolve_result_chirho.diagnostics_chirho);
-    }
+    let empty_imported_types_chirho = std::collections::HashMap::new();
 
-    // Phase 3.5: Kind inference
-    let kind_result_chirho =
-        rhasky_typing_chirho::infer_module_kinds_chirho(&module_chirho);
-    if kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
-        return Err(kind_result_chirho.diagnostics_chirho);
-    }
-
-    // Phase 4: Type inference
-    let infer_result_chirho = infer_module_chirho(&module_chirho);
-    if infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
-        return Err(infer_result_chirho.diagnostics_chirho);
-    }
-
-    // Phase 4.5: Exhaustiveness checking
-    let exhaust_result_chirho =
-        rhasky_typing_chirho::check_module_exhaustiveness_chirho(&module_chirho);
-    if exhaust_result_chirho.diagnostics_chirho.has_errors_chirho() {
-        return Err(exhaust_result_chirho.diagnostics_chirho);
-    }
-
-    // Collect non-fatal warnings from exhaustiveness (e.g. redundant patterns).
-    let exhaust_warnings_chirho: Vec<String> = exhaust_result_chirho
-        .diagnostics_chirho
-        .diagnostics_chirho()
-        .iter()
-        .filter(|d_chirho| !d_chirho.is_error_chirho())
-        .map(|d_chirho| d_chirho.to_string())
-        .collect();
-
-    // Merge all warnings.
-    let mut warnings_chirho = deriving_warnings_chirho;
-    warnings_chirho.extend(exhaust_warnings_chirho);
+    let frontend_result_chirho = run_frontend_chirho(
+        &source_chirho,
+        file_id_chirho,
+        &builtin_ifaces_chirho,
+        &empty_imported_types_chirho,
+    )?;
 
     // Extract module name from the AST (produced by the real parser)
-    let module_name_chirho = module_chirho.name_chirho.text_chirho().to_string();
+    let module_name_chirho = frontend_result_chirho
+        .module_chirho
+        .name_chirho
+        .text_chirho()
+        .to_string();
     let runtime_plan_chirho =
         RuntimePlanChirho::for_module_chirho(execution_mode_chirho, module_name_chirho.clone());
 
@@ -139,7 +205,7 @@ pub fn check_source_file_chirho(
             llvm_preview_chirho,
             wasm_stub_size_chirho,
         },
-        warnings_chirho,
+        warnings_chirho: frontend_result_chirho.warnings_chirho,
     })
 }
 
@@ -269,47 +335,33 @@ pub fn compile_source_chirho(
         SourceFileChirho::from_source_map_chirho(source_map_chirho, file_name_chirho, source_chirho);
     let file_id_chirho = source_file_chirho.file_id_chirho();
 
-    // Phase 1: CST parse (lex + layout + recursive-descent)
-    let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
-    let green_chirho = parser_chirho.parse_chirho();
-
-    // Phase 2: CST → AST lowering
-    let mut module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
-
-    // Phase 2.5: Deriving — generate instance declarations for `deriving` clauses
-    let _deriving_warnings_chirho =
-        rhasky_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
-
-    // Phase 3: Name resolution (with built-in module interfaces for Data.Map etc.)
     let builtin_ifaces_chirho = rhasky_naming_chirho::builtin_module_ifaces_chirho();
-    let resolve_result_chirho =
-        resolve_module_with_imports_chirho(&module_chirho, &builtin_ifaces_chirho);
-    if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
-        return Err(resolve_result_chirho.diagnostics_chirho);
-    }
+    let empty_imported_types_chirho = std::collections::HashMap::new();
 
-    // Phase 3.5: Kind inference
-    let kind_result_chirho =
-        rhasky_typing_chirho::infer_module_kinds_chirho(&module_chirho);
-    if kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
-        return Err(kind_result_chirho.diagnostics_chirho);
-    }
+    let frontend_result_chirho = run_frontend_chirho(
+        source_chirho,
+        file_id_chirho,
+        &builtin_ifaces_chirho,
+        &empty_imported_types_chirho,
+    )?;
 
-    // Phase 4: Type inference
-    let infer_result_chirho = infer_module_chirho(&module_chirho);
-    if infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
-        return Err(infer_result_chirho.diagnostics_chirho);
-    }
+    let FrontendResultChirho {
+        module_chirho,
+        infer_result_chirho,
+        warnings_chirho: _warnings_chirho,
+    } = frontend_result_chirho;
 
-    // Phase 4.5: Pattern match exhaustiveness & redundancy checking
-    let exhaust_result_chirho =
-        rhasky_typing_chirho::check_module_exhaustiveness_chirho(&module_chirho);
-    if exhaust_result_chirho.diagnostics_chirho.has_errors_chirho() {
-        return Err(exhaust_result_chirho.diagnostics_chirho);
-    }
-    // Warnings from exhaustiveness are non-fatal; merge into diagnostic output.
-    // (For now we proceed — a future diagnostic collector will unify these.)
+    compile_backend_chirho(module_chirho, infer_result_chirho)
+}
 
+/// Run the back-end pipeline phases (5 through 7) on an already-front-end-compiled
+/// module, producing a [`CompileResultChirho`].
+///
+/// Phases: desugar → dict pass → simplify → LLVM IR → Wasm bytes.
+fn compile_backend_chirho(
+    module_chirho: ModuleChirho,
+    infer_result_chirho: InferResultChirho,
+) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
     // Phase 5: Desugar AST → Core IR
     let desugar_output_chirho = desugar_module_chirho(&module_chirho);
 
@@ -374,74 +426,21 @@ pub fn compile_modules_chirho(
         );
         let file_id_chirho = source_file_chirho.file_id_chirho();
 
-        // Phase 1: CST parse
-        let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
-        let green_chirho = parser_chirho.parse_chirho();
+        // Phases 1–4.5: shared front-end
+        let frontend_result_chirho = run_frontend_chirho(
+            source_chirho,
+            file_id_chirho,
+            &ifaces_chirho,
+            &imported_types_chirho,
+        )?;
 
-        // Phase 2: CST → AST
-        let mut module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+        let FrontendResultChirho {
+            module_chirho,
+            infer_result_chirho,
+            warnings_chirho: _warnings_chirho,
+        } = frontend_result_chirho;
 
-        // Phase 2.5: Deriving
-        let _deriving_warnings_chirho =
-            rhasky_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
-
-        // Phase 3: Name resolution with access to prior module interfaces
-        let resolve_result_chirho =
-            resolve_module_with_imports_chirho(&module_chirho, &ifaces_chirho);
-        if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
-            return Err(resolve_result_chirho.diagnostics_chirho);
-        }
-
-        // Phase 3.5: Kind inference
-        let kind_result_chirho =
-            rhasky_typing_chirho::infer_module_kinds_chirho(&module_chirho);
-        if kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
-            return Err(kind_result_chirho.diagnostics_chirho);
-        }
-
-        // Phase 4: Type inference with imported type schemes
-        let infer_result_chirho =
-            infer_module_with_imports_chirho(&module_chirho, &imported_types_chirho);
-        if infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
-            return Err(infer_result_chirho.diagnostics_chirho);
-        }
-
-        // Phase 4.5: Pattern match exhaustiveness
-        let exhaust_result_chirho =
-            rhasky_typing_chirho::check_module_exhaustiveness_chirho(&module_chirho);
-        if exhaust_result_chirho.diagnostics_chirho.has_errors_chirho() {
-            return Err(exhaust_result_chirho.diagnostics_chirho);
-        }
-
-        // Phase 5: Desugar AST → Core IR
-        let desugar_output_chirho = desugar_module_chirho(&module_chirho);
-
-        // Phase 5.5: Dictionary-passing transform
-        let con_types_chirho = build_con_type_map_chirho(&module_chirho);
-        let newtype_info_chirho = build_newtype_info_chirho(&module_chirho);
-        let newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
-            .values()
-            .map(|(con_name_chirho, _)| con_name_chirho.clone())
-            .collect();
-        let dict_result_chirho = rhasky_core_chirho::dict_pass_module_full_chirho(
-            &desugar_output_chirho.module_chirho,
-            desugar_output_chirho.names_chirho,
-            &infer_result_chirho.env_chirho,
-            &infer_result_chirho.class_env_chirho,
-            con_types_chirho,
-            newtype_info_chirho,
-        );
-        let core_chirho = dict_result_chirho.module_chirho;
-
-        // Phase 6: Core-to-Core simplification
-        let config_chirho = SimplifyConfigChirho::default();
-        let core_chirho = simplify_module_chirho(&core_chirho, &config_chirho);
-
-        // Phase 7: Backend lowering
-        let llvm_ir_chirho = compile_core_to_llvm_chirho(&core_chirho);
-        let wasm_bytes_chirho = compile_core_to_wasm_chirho(&core_chirho);
-
-        // Build interface for downstream modules
+        // Build interface for downstream modules before consuming module_chirho.
         let iface_chirho = build_iface_chirho(&module_chirho);
 
         // Extract type schemes for exported names and accumulate them
@@ -462,13 +461,9 @@ pub fn compile_modules_chirho(
 
         ifaces_chirho.push(iface_chirho);
 
-        results_chirho.push(CompileResultChirho {
-            module_chirho,
-            core_chirho,
-            llvm_ir_chirho,
-            wasm_bytes_chirho,
-            newtype_cons_chirho,
-        });
+        // Phases 5–7: back-end
+        let compile_result_chirho = compile_backend_chirho(module_chirho, infer_result_chirho)?;
+        results_chirho.push(compile_result_chirho);
     }
 
     Ok(results_chirho)
@@ -908,137 +903,39 @@ pub fn compile_modules_incremental_chirho(
             session_chirho.needs_rebuild_chirho(module_name_chirho, source_fp_chirho);
         let recompiled_chirho = needs_rebuild_chirho.is_some();
 
-        let compile_result_chirho = if recompiled_chirho {
-            // Full recompilation.
-            let parser_chirho = ParserChirho::new_chirho(source_chirho, *file_id_chirho);
-            let green_chirho = parser_chirho.parse_chirho();
-            let module_chirho = lower_module_chirho(&green_chirho, *file_id_chirho);
+        // Phases 1–4.5: shared front-end (same path for both recompile and cache-hit,
+        // since Core/AST are not yet serialised to the artifact store).
+        let empty_imported_types_chirho = std::collections::HashMap::new();
+        let frontend_result_chirho = run_frontend_chirho(
+            source_chirho,
+            *file_id_chirho,
+            &ifaces_chirho,
+            &empty_imported_types_chirho,
+        )?;
+        let FrontendResultChirho {
+            module_chirho,
+            infer_result_chirho,
+            warnings_chirho: _warnings_chirho,
+        } = frontend_result_chirho;
 
-            let resolve_result_chirho =
-                resolve_module_with_imports_chirho(&module_chirho, &ifaces_chirho);
-            if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
-                return Err(resolve_result_chirho.diagnostics_chirho);
-            }
+        // Build and register the module interface for downstream modules.
+        let iface_chirho = build_iface_chirho(&module_chirho);
 
-            let kind_result_chirho =
-                rhasky_typing_chirho::infer_module_kinds_chirho(&module_chirho);
-            if kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
-                return Err(kind_result_chirho.diagnostics_chirho);
-            }
-
-            let infer_result_chirho = infer_module_chirho(&module_chirho);
-            if infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
-                return Err(infer_result_chirho.diagnostics_chirho);
-            }
-
-            let exhaust_result_chirho =
-                rhasky_typing_chirho::check_module_exhaustiveness_chirho(&module_chirho);
-            if exhaust_result_chirho.diagnostics_chirho.has_errors_chirho() {
-                return Err(exhaust_result_chirho.diagnostics_chirho);
-            }
-
-            let desugar_output_chirho = desugar_module_chirho(&module_chirho);
-            let con_types_chirho = build_con_type_map_chirho(&module_chirho);
-            let newtype_info_chirho = build_newtype_info_chirho(&module_chirho);
-            let newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
-                .values()
-                .map(|(con_name_chirho, _)| con_name_chirho.clone())
-                .collect();
-            let dict_result_chirho = rhasky_core_chirho::dict_pass_module_full_chirho(
-                &desugar_output_chirho.module_chirho,
-                desugar_output_chirho.names_chirho,
-                &infer_result_chirho.env_chirho,
-                &infer_result_chirho.class_env_chirho,
-                con_types_chirho,
-                newtype_info_chirho,
-            );
-            let core_chirho = dict_result_chirho.module_chirho;
-            let config_chirho = SimplifyConfigChirho::default();
-            let core_chirho = simplify_module_chirho(&core_chirho, &config_chirho);
-            let llvm_ir_chirho = compile_core_to_llvm_chirho(&core_chirho);
-            let wasm_bytes_chirho = compile_core_to_wasm_chirho(&core_chirho);
-
-            // Record compilation and iface fingerprint.
-            let iface_chirho = build_iface_chirho(&module_chirho);
+        if recompiled_chirho {
+            // Record compilation fingerprint for incremental tracking.
             let iface_fp_chirho =
                 FingerprintChirho::from_str_chirho(&format!("{:?}", iface_chirho));
             let record_chirho =
                 session_chirho.record_compilation_chirho(module_name_chirho, source_fp_chirho);
             record_chirho.set_phase_chirho(PhaseTagChirho::IfaceChirho, iface_fp_chirho);
+        }
+        // Cache-hit branch skips fingerprint bookkeeping but still pushes the
+        // interface so downstream modules resolve correctly.
 
-            ifaces_chirho.push(iface_chirho);
+        ifaces_chirho.push(iface_chirho);
 
-            CompileResultChirho {
-                module_chirho,
-                core_chirho,
-                llvm_ir_chirho,
-                wasm_bytes_chirho,
-                newtype_cons_chirho,
-            }
-        } else {
-            // Cache hit — we still need to provide the interface for downstream
-            // modules and produce a CompileResultChirho.  Until we serialize
-            // Core/AST to the artifact store we re-run the pipeline but skip
-            // the expensive fingerprint bookkeeping.
-            let parser_chirho = ParserChirho::new_chirho(source_chirho, *file_id_chirho);
-            let green_chirho = parser_chirho.parse_chirho();
-            let module_chirho = lower_module_chirho(&green_chirho, *file_id_chirho);
-
-            let resolve_result_chirho =
-                resolve_module_with_imports_chirho(&module_chirho, &ifaces_chirho);
-            if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
-                return Err(resolve_result_chirho.diagnostics_chirho);
-            }
-
-            let kind_result_chirho =
-                rhasky_typing_chirho::infer_module_kinds_chirho(&module_chirho);
-            if kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
-                return Err(kind_result_chirho.diagnostics_chirho);
-            }
-
-            let infer_result_chirho = infer_module_chirho(&module_chirho);
-            if infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
-                return Err(infer_result_chirho.diagnostics_chirho);
-            }
-
-            let exhaust_result_chirho =
-                rhasky_typing_chirho::check_module_exhaustiveness_chirho(&module_chirho);
-            if exhaust_result_chirho.diagnostics_chirho.has_errors_chirho() {
-                return Err(exhaust_result_chirho.diagnostics_chirho);
-            }
-
-            let desugar_output_chirho = desugar_module_chirho(&module_chirho);
-            let con_types_chirho = build_con_type_map_chirho(&module_chirho);
-            let newtype_info_chirho = build_newtype_info_chirho(&module_chirho);
-            let newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
-                .values()
-                .map(|(con_name_chirho, _)| con_name_chirho.clone())
-                .collect();
-            let dict_result_chirho = rhasky_core_chirho::dict_pass_module_full_chirho(
-                &desugar_output_chirho.module_chirho,
-                desugar_output_chirho.names_chirho,
-                &infer_result_chirho.env_chirho,
-                &infer_result_chirho.class_env_chirho,
-                con_types_chirho,
-                newtype_info_chirho,
-            );
-            let core_chirho = dict_result_chirho.module_chirho;
-            let config_chirho = SimplifyConfigChirho::default();
-            let core_chirho = simplify_module_chirho(&core_chirho, &config_chirho);
-            let llvm_ir_chirho = compile_core_to_llvm_chirho(&core_chirho);
-            let wasm_bytes_chirho = compile_core_to_wasm_chirho(&core_chirho);
-
-            let iface_chirho = build_iface_chirho(&module_chirho);
-            ifaces_chirho.push(iface_chirho);
-
-            CompileResultChirho {
-                module_chirho,
-                core_chirho,
-                llvm_ir_chirho,
-                wasm_bytes_chirho,
-                newtype_cons_chirho,
-            }
-        };
+        // Phases 5–7: back-end
+        let compile_result_chirho = compile_backend_chirho(module_chirho, infer_result_chirho)?;
 
         results_chirho.push((compile_result_chirho, recompiled_chirho));
     }
