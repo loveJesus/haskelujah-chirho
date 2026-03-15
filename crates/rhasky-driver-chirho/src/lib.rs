@@ -21,7 +21,7 @@ use rhasky_core_chirho::{
 };
 use rhasky_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
 use rhasky_naming_chirho::resolve_chirho::resolve_module_with_imports_chirho;
-use rhasky_naming_chirho::iface_chirho::{build_iface_chirho, ModuleIfaceChirho};
+use rhasky_naming_chirho::iface_chirho::{build_iface_with_imports_chirho, ModuleIfaceChirho};
 use rhasky_typing_chirho::infer_chirho::{
     InferResultChirho, infer_module_chirho, infer_module_with_imports_chirho,
 };
@@ -479,7 +479,9 @@ pub fn compile_modules_chirho(
         } = frontend_result_chirho;
 
         // Build interface for downstream modules before consuming module_chirho.
-        let iface_chirho = build_iface_chirho(&module_chirho);
+        // Use import-aware variant so `module Foo` re-exports work.
+        let iface_chirho =
+            build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
 
         // Extract type schemes for exported names and accumulate them
         // so downstream modules can type-check cross-module references.
@@ -957,7 +959,8 @@ pub fn compile_modules_incremental_chirho(
         } = frontend_result_chirho;
 
         // Build and register the module interface for downstream modules.
-        let iface_chirho = build_iface_chirho(&module_chirho);
+        let iface_chirho =
+            build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
 
         if recompiled_chirho {
             // Record compilation fingerprint for incremental tracking.

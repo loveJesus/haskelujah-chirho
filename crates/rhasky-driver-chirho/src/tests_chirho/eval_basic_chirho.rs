@@ -2277,10 +2277,43 @@ main = bumpTwo 10
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Priority 63: Additional Prelude list functions
-    // -----------------------------------------------------------------------
-
+    #[test]
+    fn eval_module_re_export_chirho() {
+        // Inner defines add1; Reexporter re-exports Inner; Main imports Reexporter.
+        use crate::eval_modules_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let inner_chirho = "\
+module Inner where
+add1 x = x + 1
+";
+        let reexporter_chirho = "\
+module Reexporter (module Inner) where
+import Inner
+";
+        let main_chirho = "\
+module Main where
+import Reexporter
+main = add1 99
+";
+        let result_chirho = eval_modules_chirho(
+            &[
+                ("Inner.hs", inner_chirho),
+                ("Reexporter.hs", reexporter_chirho),
+                ("Main.hs", main_chirho),
+            ],
+            &mut source_map_chirho,
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(
+                    *val_chirho,
+                    rhasky_runtime_chirho::ValueChirho::IntChirho(100),
+                );
+            }
+            Err(e_chirho) => panic!("module re-export should evaluate: {}", e_chirho),
+        }
+    }
 
     // -----------------------------------------------------------------------
     // Priority 63: Additional Prelude list functions

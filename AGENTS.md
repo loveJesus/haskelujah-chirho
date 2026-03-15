@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1355 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1358 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -209,7 +209,7 @@ _These items address structural issues identified in the Codex engineering revie
 
 14. ~~**Automatic Prelude import**~~ — DONE (inject_prelude_import_chirho in driver adds implicit `import Prelude` after AST lowering; suppressed by `{-# LANGUAGE NoImplicitPrelude #-}`; explicit `import Prelude` prevents double import; Prelude ModuleIfaceChirho with 80+ exported values/types added to builtin_module_ifaces_chirho; 3 e2e tests; 1320 tests total)
 15. ~~**Qualified module syntax**~~ — DONE (already supported end-to-end: `name_from_text_chirho` splits dotted names on last dot; `NameEnvChirho` has `bind_qualified_chirho`/`lookup_qualified_chirho`; import processing uses full module name as qualifier when no `as` alias; `import qualified Data.Map` → `Data.Map.mapInsert`, `import qualified Data.List` → `Data.List.head`/`Data.List.sort`, aliased `import qualified Data.Map as Map` → `Map.mapInsert`; 4 e2e tests: qualified with alias Data.Map/Data.List, qualified without alias Data.Map/Data.List; 1348 tests total)
-16. **Module re-exports** — `module Data.Map (module Data.Map.Internal)` re-export syntax
+16. ~~**Module re-exports**~~ — DONE (`module Foo (module Bar) where` re-export syntax: `build_iface_with_imports_chirho` takes available imported module interfaces, `filter_exports_chirho` handles `ExportSpecChirho::ModuleChirho` by merging the target module's exports into the current module's interface; self-re-export `module Foo (module Foo)` exports all local definitions; driver's `compile_modules_chirho` and `compile_modules_incremental_chirho` pass accumulated ifaces to re-export-aware builder; 2 new naming unit tests + 1 driver e2e test: Inner→Reexporter→Main chain with `add1 99→100`; 1358 tests total)
 17. **Orphan instance detection** — warn on orphan instances; support `{-# OPTIONS_GHC -fno-warn-orphans #-}`
 18. **Hierarchical module compilation** — compile multi-file Haskell projects with proper dependency ordering; `.hi` interface file generation and consumption
 19. **Circular module imports** — handle mutual module dependencies via `.hs-boot` files or a fixpoint approach

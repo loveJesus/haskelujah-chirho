@@ -60,6 +60,15 @@ pub struct ModuleIfaceChirho {
 /// Build a module interface from a parsed module. Applies the export list
 /// to determine which names are publicly visible.
 pub fn build_iface_chirho(module_chirho: &ModuleChirho) -> ModuleIfaceChirho {
+    build_iface_with_imports_chirho(module_chirho, &[])
+}
+
+/// Build a module interface from a parsed module, with access to imported
+/// module interfaces for handling `module Foo` re-exports in the export list.
+pub fn build_iface_with_imports_chirho(
+    module_chirho: &ModuleChirho,
+    imported_ifaces_chirho: &[ModuleIfaceChirho],
+) -> ModuleIfaceChirho {
     let module_name_chirho = module_chirho.name_chirho.text_chirho().to_string();
 
     // First, collect ALL definitions in the module.
@@ -71,7 +80,12 @@ pub fn build_iface_chirho(module_chirho: &ModuleChirho) -> ModuleIfaceChirho {
             // No export list means export everything.
             all_exports_chirho
         }
-        Some(specs_chirho) => filter_exports_chirho(&all_exports_chirho, specs_chirho),
+        Some(specs_chirho) => filter_exports_chirho(
+            &all_exports_chirho,
+            specs_chirho,
+            module_chirho,
+            imported_ifaces_chirho,
+        ),
     };
 
     ModuleIfaceChirho {
@@ -437,9 +451,13 @@ fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsC
 }
 
 /// Apply an explicit export list to filter the module's definitions.
+/// `module_chirho` is the parsed module (for checking imports of re-exported modules).
+/// `imported_ifaces_chirho` provides the interfaces of imported modules for re-exports.
 fn filter_exports_chirho(
     all_chirho: &IfaceExportsChirho,
     specs_chirho: &[ExportSpecChirho],
+    module_chirho: &ModuleChirho,
+    imported_ifaces_chirho: &[ModuleIfaceChirho],
 ) -> IfaceExportsChirho {
     let mut result_chirho = IfaceExportsChirho::default();
 
@@ -525,9 +543,47 @@ fn filter_exports_chirho(
                     );
                 }
             }
-            ExportSpecChirho::ModuleChirho(_re_export_chirho) => {
-                // Re-export entire module — would need the imported module's
-                // interface. For now, skip.
+            ExportSpecChirho::ModuleChirho(re_export_name_chirho) => {
+                let target_mod_chirho = re_export_name_chirho.text_chirho();
+                // Check the module is actually imported.
+                let is_imported_chirho = module_chirho.imports_chirho.iter().any(|imp_chirho| {
+                    imp_chirho.module_chirho.text_chirho() == target_mod_chirho
+                });
+                // `module M` in the export list of module M itself means
+                // "export all local definitions" — this is the self-re-export pattern.
+                let is_self_chirho = module_chirho.name_chirho.text_chirho() == target_mod_chirho;
+
+                if is_self_chirho {
+                    // Export all local definitions.
+                    for (k_chirho, v_chirho) in &all_chirho.values_chirho {
+                        result_chirho
+                            .values_chirho
+                            .insert(k_chirho.clone(), v_chirho.clone());
+                    }
+                    for (k_chirho, v_chirho) in &all_chirho.types_chirho {
+                        result_chirho
+                            .types_chirho
+                            .insert(k_chirho.clone(), v_chirho.clone());
+                    }
+                } else if is_imported_chirho {
+                    // Find the matching interface and re-export all its names.
+                    if let Some(iface_chirho) = imported_ifaces_chirho
+                        .iter()
+                        .find(|i_chirho| i_chirho.name_chirho == target_mod_chirho)
+                    {
+                        for (k_chirho, v_chirho) in &iface_chirho.exports_chirho.values_chirho {
+                            result_chirho
+                                .values_chirho
+                                .insert(k_chirho.clone(), v_chirho.clone());
+                        }
+                        for (k_chirho, v_chirho) in &iface_chirho.exports_chirho.types_chirho {
+                            result_chirho
+                                .types_chirho
+                                .insert(k_chirho.clone(), v_chirho.clone());
+                        }
+                    }
+                }
+                // If not imported and not self, silently skip (could warn).
             }
         }
     }
@@ -776,5 +832,131 @@ mod tests_chirho {
         let iface_chirho = build_iface_chirho(&module_chirho);
         assert!(iface_chirho.exports_chirho.types_chirho.contains_key("Wrapper"));
         assert!(iface_chirho.exports_chirho.values_chirho.contains_key("Wrap"));
+    }
+
+    #[test]
+    fn module_re_export_chirho() {
+        // module Reexporter (module Inner) where
+        // import Inner
+        // extra = 42
+        use rhasky_ast_chirho::module_chirho::ImportDeclChirho;
+
+        // Simulate the Inner module interface.
+        let inner_iface_chirho = ModuleIfaceChirho {
+            name_chirho: "Inner".to_string(),
+            exports_chirho: {
+                let mut e_chirho = IfaceExportsChirho::default();
+                e_chirho.values_chirho.insert(
+                    "innerFn".to_string(),
+                    IfaceValueChirho {
+                        name_chirho: "innerFn".to_string(),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                );
+                e_chirho.types_chirho.insert(
+                    "InnerType".to_string(),
+                    IfaceTypeChirho {
+                        name_chirho: "InnerType".to_string(),
+                        constructors_chirho: vec!["MkInner".to_string()],
+                        methods_chirho: vec![],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                );
+                e_chirho.values_chirho.insert(
+                    "MkInner".to_string(),
+                    IfaceValueChirho {
+                        name_chirho: "MkInner".to_string(),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                );
+                e_chirho
+            },
+        };
+
+        let module_chirho = ModuleChirho {
+            name_chirho: mk_name_chirho("Reexporter"),
+            exports_chirho: Some(vec![
+                // Re-export everything from Inner.
+                ExportSpecChirho::ModuleChirho(mk_name_chirho("Inner")),
+            ]),
+            imports_chirho: vec![ImportDeclChirho {
+                module_chirho: mk_name_chirho("Inner"),
+                qualified_chirho: false,
+                alias_chirho: None,
+                spec_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            decls_chirho: vec![DeclChirho::FunBindChirho {
+                name_chirho: mk_name_chirho("extra"),
+                matches_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let iface_chirho =
+            build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho]);
+
+        // Re-exported names from Inner should be present.
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("innerFn"),
+            "innerFn should be re-exported"
+        );
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("MkInner"),
+            "MkInner constructor should be re-exported"
+        );
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("InnerType"),
+            "InnerType should be re-exported"
+        );
+        // `extra` is NOT in the export list (only `module Inner` is).
+        assert!(
+            !iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("extra"),
+            "extra should NOT be exported (not in export list)"
+        );
+    }
+
+    #[test]
+    fn self_re_export_chirho() {
+        // module Lib (module Lib) where
+        // foo = 1
+        let module_chirho = ModuleChirho {
+            name_chirho: mk_name_chirho("Lib"),
+            exports_chirho: Some(vec![
+                ExportSpecChirho::ModuleChirho(mk_name_chirho("Lib")),
+            ]),
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::FunBindChirho {
+                name_chirho: mk_name_chirho("foo"),
+                matches_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let iface_chirho = build_iface_chirho(&module_chirho);
+        // Self re-export means export all local definitions.
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("foo"),
+            "foo should be exported via self re-export"
+        );
     }
 }
