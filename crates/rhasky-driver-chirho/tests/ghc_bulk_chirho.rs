@@ -145,11 +145,8 @@ fn ghc_bulk_parser_should_compile_chirho() {
     );
     if !failures_chirho.is_empty() {
         eprintln!("  Failed ({}):", failures_chirho.len());
-        for f_chirho in failures_chirho.iter().take(20) {
+        for f_chirho in &failures_chirho {
             eprintln!("    - {}", f_chirho);
-        }
-        if failures_chirho.len() > 20 {
-            eprintln!("    ... and {} more", failures_chirho.len() - 20);
         }
     }
 
@@ -220,11 +217,8 @@ fn ghc_bulk_typecheck_should_compile_chirho() {
     );
     if !failures_chirho.is_empty() {
         eprintln!("  Failed ({}):", failures_chirho.len());
-        for f_chirho in failures_chirho.iter().take(20) {
+        for f_chirho in &failures_chirho {
             eprintln!("    - {}", f_chirho);
-        }
-        if failures_chirho.len() > 20 {
-            eprintln!("    ... and {} more", failures_chirho.len() - 20);
         }
     }
 }
