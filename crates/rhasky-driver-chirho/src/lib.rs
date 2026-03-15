@@ -14673,6 +14673,88 @@ main = putStrLn (show (fromJust2 (Just 42)))
     }
 
     // ---------------------------------------------------------------
+    // IO control flow: when, unless, mapM_, and lazy utility e2e
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn eval_io_when_true_prelude_chirho() {
+        // when True (putStrLn "yes") should print "yes"
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = when True (putStrLn "yes")
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_input_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None, &[])
+                .unwrap_or_else(|e_chirho| panic!("when True: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "yes\n");
+    }
+
+    #[test]
+    fn eval_io_when_false_prelude_chirho() {
+        // when False (putStrLn "no") should print nothing
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = when False (putStrLn "no")
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_input_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None, &[])
+                .unwrap_or_else(|e_chirho| panic!("when False: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "");
+    }
+
+    #[test]
+    fn eval_io_unless_false_prelude_chirho() {
+        // unless False (putStrLn "yes") should print "yes"
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = unless False (putStrLn "yes")
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_input_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None, &[])
+                .unwrap_or_else(|e_chirho| panic!("unless False: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "yes\n");
+    }
+
+    #[test]
+    fn eval_io_mapM_list_prelude_chirho() {
+        // mapM_ putStrLn ["a","b","c"] should print "a\nb\nc\n"
+        use super::eval_source_with_input_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = mapM_ putStrLn ["a","b","c"]
+"#;
+        let (_, machine_chirho) =
+            eval_source_with_input_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None, &[])
+                .unwrap_or_else(|e_chirho| panic!("mapM_ putStrLn: {}", e_chirho));
+        assert_eq!(machine_chirho.io_output_chirho, "a\nb\nc\n");
+    }
+
+    #[test]
+    fn eval_lazy_repeat_take_prelude_chirho() {
+        // take 5 (repeat 7) should produce [7,7,7,7,7], sum = 35
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (take 5 (repeat 7))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("take 5 (repeat 7): {}", e_chirho));
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(35));
+    }
+
+    #[test]
+    fn eval_lazy_iterate_take_prelude_chirho() {
+        // take 5 (iterate (*2) 1) should produce [1,2,4,8,16], sum = 31
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (take 5 (iterate (*2) 1))\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("take 5 (iterate (*2) 1): {}", e_chirho));
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(31));
+    }
+
+    // ---------------------------------------------------------------
     // Phase 2 §A.9: True lazy evaluation — infinite lists
     // ---------------------------------------------------------------
 
