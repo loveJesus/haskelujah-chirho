@@ -396,8 +396,10 @@ fn atty_is_terminal_chirho() -> bool {
 }
 
 /// `rhasky build [<dir>]` — compile a multi-module Haskell project from a directory.
-/// Discovers `.hs` files, resolves inter-module dependencies, and compiles
-/// in topological order.
+///
+/// If a `.cabal` file is found, uses Cabal-based compilation (parses `.cabal`,
+/// resolves dependencies, discovers modules from `hs-source-dirs`).
+/// Otherwise, discovers `.hs` files recursively and compiles in dependency order.
 fn build_command_chirho(
     _program_name_chirho: &str,
     path_arg_chirho: Option<String>,
@@ -412,27 +414,64 @@ fn build_command_chirho(
         return ExitCode::from(1);
     }
 
-    eprintln!("Building project in {}...", project_path_chirho.display());
+    // Check for .cabal file
+    let cabal_file_chirho = find_cabal_file_chirho(project_path_chirho);
 
-    let mut sm_chirho = SourceMapChirho::new_chirho();
-    match rhasky_driver_chirho::compile_project_dir_chirho(project_path_chirho, &mut sm_chirho) {
-        Ok(result_chirho) => {
-            eprintln!(
-                "Compiled {} modules in order: {}",
-                result_chirho.compilation_order_chirho.len(),
-                result_chirho.compilation_order_chirho.join(" → "),
-            );
-            for warning_chirho in &result_chirho.warnings_chirho {
-                eprintln!("warning: {}", warning_chirho);
+    if let Some(cabal_path_chirho) = cabal_file_chirho {
+        eprintln!(
+            "Found Cabal file: {}",
+            cabal_path_chirho.display()
+        );
+        let index_chirho = rhasky_package_chirho::PackageIndexChirho::new_chirho();
+        match rhasky_driver_chirho::compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho) {
+            Ok(result_chirho) => {
+                eprintln!(
+                    "Compiled {} modules from package '{}'",
+                    result_chirho.module_results_chirho.len(),
+                    result_chirho.package_chirho.name_chirho,
+                );
+                eprintln!("Build successful.");
+                ExitCode::SUCCESS
             }
-            eprintln!("Build successful.");
-            ExitCode::SUCCESS
+            Err(error_chirho) => {
+                eprintln!("error: {}", error_chirho);
+                ExitCode::from(1)
+            }
         }
-        Err(error_chirho) => {
-            eprintln!("error: {}", error_chirho);
-            ExitCode::from(1)
+    } else {
+        eprintln!("Building project in {}...", project_path_chirho.display());
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        match rhasky_driver_chirho::compile_project_dir_chirho(project_path_chirho, &mut sm_chirho) {
+            Ok(result_chirho) => {
+                eprintln!(
+                    "Compiled {} modules in order: {}",
+                    result_chirho.compilation_order_chirho.len(),
+                    result_chirho.compilation_order_chirho.join(" → "),
+                );
+                for warning_chirho in &result_chirho.warnings_chirho {
+                    eprintln!("warning: {}", warning_chirho);
+                }
+                eprintln!("Build successful.");
+                ExitCode::SUCCESS
+            }
+            Err(error_chirho) => {
+                eprintln!("error: {}", error_chirho);
+                ExitCode::from(1)
+            }
         }
     }
+}
+
+/// Find a `.cabal` file in the given directory (first match).
+fn find_cabal_file_chirho(dir_chirho: &std::path::Path) -> Option<std::path::PathBuf> {
+    let entries_chirho = std::fs::read_dir(dir_chirho).ok()?;
+    for entry_chirho in entries_chirho.flatten() {
+        let path_chirho = entry_chirho.path();
+        if path_chirho.extension().map_or(false, |ext_chirho| ext_chirho == "cabal") {
+            return Some(path_chirho);
+        }
+    }
+    None
 }
 
 fn print_usage_chirho(program_name_chirho: &str) {

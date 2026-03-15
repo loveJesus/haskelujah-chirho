@@ -249,4 +249,72 @@ mod tests_chirho {
         assert_eq!(result_chirho.compilation_order_chirho, vec!["Main"]);
         assert_eq!(result_chirho.module_results_chirho.len(), 1);
     }
+
+    #[test]
+    fn compile_project_cabal_based_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use rhasky_package_chirho::PackageIndexChirho;
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let src_dir_chirho = tmp_chirho.path().join("src");
+        fs::create_dir_all(&src_dir_chirho).unwrap();
+
+        // Write a minimal .cabal file
+        fs::write(
+            tmp_chirho.path().join("myproject.cabal"),
+            "\
+name: myproject
+version: 0.1.0.0
+library
+  exposed-modules: Lib
+  hs-source-dirs: src
+executable myproject
+  main-is: Main.hs
+  other-modules: Lib
+  hs-source-dirs: src
+",
+        )
+        .unwrap();
+
+        fs::write(
+            src_dir_chirho.join("Lib.hs"),
+            "module Lib where\nadd1 x = x + 1\n",
+        )
+        .unwrap();
+        fs::write(
+            src_dir_chirho.join("Main.hs"),
+            "module Main where\nimport Lib\nmain = add1 41\n",
+        )
+        .unwrap();
+
+        let index_chirho = PackageIndexChirho::new_chirho();
+        let cabal_path_chirho = tmp_chirho.path().join("myproject.cabal");
+        let result_chirho =
+            compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+                .expect("cabal project should compile");
+        assert_eq!(result_chirho.package_chirho.name_chirho, "myproject");
+        assert!(!result_chirho.module_results_chirho.is_empty());
+    }
+
+    #[test]
+    fn compile_project_skips_hidden_dirs_chirho() {
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::write(
+            tmp_chirho.path().join("Main.hs"),
+            "module Main where\nmain = 42\n",
+        )
+        .unwrap();
+
+        // Create a hidden directory with an .hs file that should be skipped
+        let hidden_dir_chirho = tmp_chirho.path().join(".hidden");
+        fs::create_dir_all(&hidden_dir_chirho).unwrap();
+        fs::write(
+            hidden_dir_chirho.join("Secret.hs"),
+            "module Secret where\nsecret = 99\n",
+        )
+        .unwrap();
+
+        let files_chirho = discover_hs_files_chirho(tmp_chirho.path());
+        assert_eq!(files_chirho.len(), 1); // Only Main.hs, not Secret.hs
+    }
 }

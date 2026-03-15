@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1389 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1391 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -227,7 +227,7 @@ _These items address structural issues identified in the Codex engineering revie
 25. ~~**`rhasky run`**~~ — DONE (CLI command reads `.hs` file, evaluates via STG interpreter, prints IO output to stdout; works with infinite lists, IO, typeclasses, all Phase 1+2 features)
 26. ~~**`rhasky repl`**~~ — DONE (interactive REPL loop with expression evaluation via STG machine, IO action execution with output capture, user-friendly value display; commands: `:type <expr>` shows inferred type via run_frontend_chirho, `:info <name>` looks up type in env, `:load <file>` loads declarations and type environment, `:reload` re-loads last file, `:let <decl>` accumulates definitions, `:clear` resets, `:{`/`:}` for multi-line input, `:quit` exits; smart declaration vs expression detection via `has_toplevel_equals_chirho` that skips `=` inside strings/parens/`==`; fallback `print()` wrapping on eval failure; 3 new e2e tests: REPL-style expression, IO with show, let binding; 1355 tests total)
 27. ~~**`rhasky check`**~~ — DONE (CLI command reads `.hs` file, runs frontend pipeline through type-checking, reports module/mode/diagnostics without full code generation; already wired as `check`/`plan`/`script` subcommands)
-28. **`rhasky build`** — build a Cabal project (parse `.cabal`, resolve dependencies, compile modules in dependency order)
+28. ~~**`rhasky build`**~~ — DONE (CLI `rhasky build [dir]` command: auto-detects `.cabal` files via `find_cabal_file_chirho` and uses `compile_cabal_project_chirho` with package index and dependency resolution; falls back to `compile_project_dir_chirho` for bare directories; reports package name, module count, and compilation order; 2 new tests: cabal-based project compilation, hidden directory skipping; 1391 tests total)
 29. ~~**Error messages**~~ — DONE (render_chirho.rs in rhasky-diagnostics-chirho: Rust/Elm-style diagnostic renderer with source code snippets, underline annotations `^^^`, ANSI color support, file:line:col location arrows, secondary label rendering, notes and fix suggestions, bundle summary line; RenderConfigChirho with color_chirho and context_lines_chirho; AnsiChirho helper with severity-colored output (red errors, yellow warnings, cyan info, green hints); render_diagnostic_chirho/render_bundle_chirho public API; render_diagnostics_chirho convenience in driver; CLI check/compile commands use renderer with terminal color detection via IsTerminal; 6 new tests: error with span, warning with note, secondary label, bundle summary, dummy span, primary label message; 1372 tests total)
 30. ~~**`--dump-core`/`--dump-stg`/`--dump-llvm`**~~ — DONE (CLI flags print Core IR via pretty_module_chirho, STG code table entries via Debug, and LLVM IR text to stderr; work with both `run` and `compile` subcommands; proper flag parsing separated from positional args; help text with usage examples)
 

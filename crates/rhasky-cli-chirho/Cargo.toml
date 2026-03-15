@@ -18,6 +18,7 @@ rhasky-backend-llvm-chirho = { path = "../rhasky-backend-llvm-chirho" }
 rhasky-backend-wasm-chirho = { path = "../rhasky-backend-wasm-chirho" }
 rhasky-core-chirho = { path = "../rhasky-core-chirho" }
 rhasky-naming-chirho = { path = "../rhasky-naming-chirho" }
+rhasky-package-chirho = { path = "../rhasky-package-chirho" }
 rhasky-driver-chirho = { path = "../rhasky-driver-chirho" }
 rhasky-runtime-chirho = { path = "../rhasky-runtime-chirho" }
 rhasky-span-chirho = { path = "../rhasky-span-chirho" }
