@@ -1186,7 +1186,43 @@ impl LowerCtxChirho {
         let mut has_record_chirho = false;
         let mut record_fields_chirho: Vec<FieldDeclChirho> = Vec::new();
 
-        for child_chirho in &children_chirho {
+        // ExistentialQuantification: skip past `forall ... . [Context =>]`
+        // by finding the index after DoubleArrow (=>) if present, or after Dot
+        // if forall is present without a context.
+        let mut start_idx_chirho = 0;
+        let has_forall_chirho = children_chirho.first().map_or(false, |c_chirho| {
+            matches!(
+                c_chirho.element_chirho,
+                GreenElementChirho::TokenChirho(t_chirho) if t_chirho.kind_chirho() == TokenKindChirho::ForallKeywordChirho
+            )
+        });
+        if has_forall_chirho {
+            // Look for => first (forall with context), then . (forall without context)
+            let mut found_double_arrow_chirho = false;
+            for (idx_chirho, child_chirho) in children_chirho.iter().enumerate() {
+                if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
+                    if tok_chirho.kind_chirho() == TokenKindChirho::DoubleArrowChirho {
+                        start_idx_chirho = idx_chirho + 1;
+                        found_double_arrow_chirho = true;
+                        break;
+                    }
+                }
+            }
+            if !found_double_arrow_chirho {
+                // No context, just forall a .
+                for (idx_chirho, child_chirho) in children_chirho.iter().enumerate() {
+                    if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
+                        // The dot `.` in `forall a.` is a VarSymChirho token
+                    if tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho {
+                            start_idx_chirho = idx_chirho + 1;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        for child_chirho in children_chirho.iter().skip(start_idx_chirho) {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
                     if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho

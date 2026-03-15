@@ -1400,3 +1400,60 @@ main = sum (mapElems (mapUnionWith (+) m1 m2))
 
     // ── zipWith and unzip tests ──
 
+    // ── ExistentialQuantification tests ──
+
+    #[test]
+    fn existential_data_parses_chirho() {
+        // ExistentialQuantification: `forall a. Show a => MkShowable a`
+        // Test that the parser correctly extracts "MkShowable" as the constructor
+        // name, not "Show" from the context.
+        use crate::compile_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Showable = forall a. Show a => MkShowable a
+main = 42
+";
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs");
+        assert!(
+            result_chirho.is_ok(),
+            "existential data decl should parse and compile: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn existential_data_no_context_parses_chirho() {
+        // ExistentialQuantification without a context: `forall a. MkBox a`
+        use crate::compile_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Box = forall a. MkBox a
+main = 42
+";
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs");
+        assert!(
+            result_chirho.is_ok(),
+            "existential without context should parse: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn existential_constructor_eval_chirho() {
+        // Construct an existential value and extract the inner value
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Box = forall a. MkBox a
+unbox (MkBox x) = x
+main = unbox (MkBox 42)
+";
+        let (val_chirho, _machine_chirho) = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("existential eval should work");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+

@@ -520,6 +520,56 @@ impl<'src> ParserChirho<'src> {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::ConDeclChirho);
 
+        // ExistentialQuantification: `forall a. Ctx => Con ...`
+        if self.at_chirho(RawTokenKindChirho::ForallChirho) {
+            self.bump_chirho(); // forall
+            self.eat_trivia_chirho();
+            // Eat type variables until dot
+            while self.at_chirho(RawTokenKindChirho::VarIdChirho) {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+            // Expect '.'
+            if self.at_dot_chirho() {
+                self.bump_chirho(); // .
+                self.eat_trivia_chirho();
+            }
+            // Optional context: `Show a =>`
+            // Check for `ConId VarId ... =>` pattern
+            let _save_pos_chirho = self.pos_chirho;
+            let mut found_arrow_chirho = false;
+            let mut lookahead_chirho = self.pos_chirho;
+            while lookahead_chirho < self.tokens_chirho.len() {
+                let tk_chirho = self.tokens_chirho[lookahead_chirho].kind_chirho;
+                if tk_chirho == RawTokenKindChirho::RightArrowChirho {
+                    // Check if it's => (FatArrow) — but our lexer may produce RightArrow for =>
+                    // Actually let's check for FatArrow
+                    break;
+                }
+                if tk_chirho == RawTokenKindChirho::FatArrowChirho {
+                    found_arrow_chirho = true;
+                    break;
+                }
+                if tk_chirho == RawTokenKindChirho::VirtualSemicolonChirho
+                    || tk_chirho == RawTokenKindChirho::PipeChirho
+                {
+                    break;
+                }
+                lookahead_chirho += 1;
+            }
+            if found_arrow_chirho {
+                // Parse constraint(s) before =>
+                while !self.at_chirho(RawTokenKindChirho::FatArrowChirho) && !self.at_eof_chirho() {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                }
+                if self.at_chirho(RawTokenKindChirho::FatArrowChirho) {
+                    self.bump_chirho(); // =>
+                    self.eat_trivia_chirho();
+                }
+            }
+        }
+
         // Constructor name
         if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
             self.bump_chirho();

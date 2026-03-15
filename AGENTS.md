@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1391 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1394 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -234,7 +234,7 @@ _These items address structural issues identified in the Codex engineering revie
 #### E. Language Features — Remaining GHC Haskell
 
 31. **Type families** — open and closed type families (`type family F a where ...`); type instance declarations; associated type families in classes
-32. **ExistentialQuantification** — `data Showable = forall a. Show a => MkShowable a`
+32. ~~**ExistentialQuantification**~~ — DONE (parser `parse_con_decl_chirho` recognizes `forall` keyword before constructor declarations, skips type variables until dot, handles optional class context before `=>`; CST→AST lowerer `lower_con_decl_chirho` detects `ForallKeywordChirho` at start of ConDecl, scans past `DoubleArrowChirho` or `VarSymChirho` (dot) to find the actual constructor name; works with and without context; existential values can be constructed and pattern-matched; 3 new tests: existential with context parses, existential without context parses, existential constructor eval `MkBox 42 → 42`; 1394 tests total)
 33. **TypeApplications** — `read @Int "42"`, `show @Bool True`
 34. ~~**OverloadedStrings** — `IsString` type class; string literals desugar to `fromString`~~ — DONE
 35. **OverloadedLists** — `IsList` type class; list literals desugar to `fromList`
