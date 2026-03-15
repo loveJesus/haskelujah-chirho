@@ -1392,3 +1392,51 @@ main = 42
         assert_eq!(result_chirho, ValueChirho::IntChirho(21));
     }
 
+    // ── SPECIALIZE pragma e2e tests ──
+
+    #[test]
+    fn specialize_pragma_basic_chirho() {
+        // {-# SPECIALIZE double :: Int -> Int #-} should not affect evaluation
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Main where\n{-# SPECIALIZE double :: Int -> Int #-}\ndouble x = x + x\nmain = double 21\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "SpecTest.hs", None).unwrap();
+        assert_eq!(result_chirho, ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn specialize_pragma_creates_binding_chirho() {
+        // Verify the specialized binding $spec_double_0 appears in Core output
+        use crate::compile_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Main where\n{-# SPECIALIZE double :: Int -> Int #-}\ndouble x = x + x\nmain = double 21\n";
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "SpecBindTest.hs").unwrap();
+        let core_chirho = &result_chirho.core_chirho;
+        // Find the $spec_double_0 binding
+        let spec_binding_chirho = core_chirho
+            .bindings_chirho
+            .iter()
+            .find(|b_chirho| b_chirho.binder_chirho.name_chirho.contains("$spec_double"));
+        assert!(spec_binding_chirho.is_some(), "Expected $spec_double binding in Core");
+    }
+
+    #[test]
+    fn specialise_british_spelling_eval_chirho() {
+        // SPECIALISE (British spelling) should also work
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Main where\n{-# SPECIALISE triple :: Int -> Int #-}\ntriple x = x + x + x\nmain = triple 14\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "SpecialiseTest.hs", None).unwrap();
+        assert_eq!(result_chirho, ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn specialize_multiple_types_eval_chirho() {
+        // Multiple SPECIALIZE pragmas for the same function
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Main where\n{-# SPECIALIZE f :: Int -> Int #-}\n{-# SPECIALIZE f :: Int -> Int #-}\nf x = x + 1\nmain = f 41\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "MultiSpecTest.hs", None).unwrap();
+        assert_eq!(result_chirho, ValueChirho::IntChirho(42));
+    }
+

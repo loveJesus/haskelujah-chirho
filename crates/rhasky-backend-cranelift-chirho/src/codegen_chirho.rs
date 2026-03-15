@@ -310,6 +310,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         }
     }
 
@@ -334,6 +335,7 @@ mod tests_chirho {
             name_chirho: "Test".to_string(),
             bindings_chirho: vec![],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         let config_chirho = TargetConfigChirho::default();
         let result_chirho = compile_core_to_object_chirho(&module_chirho, &config_chirho);
@@ -366,6 +368,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -482,6 +485,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -511,6 +515,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -540,6 +545,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -642,6 +648,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -683,6 +690,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -723,6 +731,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -783,6 +792,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -889,6 +899,7 @@ mod tests_chirho {
             name_chirho: "Test".to_string(),
             bindings_chirho: vec![f_binding_chirho, main_binding_chirho],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -929,6 +940,7 @@ mod tests_chirho {
             name_chirho: "Test".to_string(),
             bindings_chirho: vec![inc_binding_chirho, main_binding_chirho],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -961,6 +973,7 @@ mod tests_chirho {
             name_chirho: "Test".to_string(),
             bindings_chirho: vec![main_binding_chirho, dead_binding_chirho],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
 
         let config_chirho = TargetConfigChirho::default();
@@ -1026,6 +1039,7 @@ mod tests_chirho {
             name_chirho: "Test".to_string(),
             bindings_chirho: vec![f_binding_chirho, main_binding_chirho],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -1086,6 +1100,7 @@ mod tests_chirho {
             name_chirho: "Test".to_string(),
             bindings_chirho: vec![fact_binding_chirho],
             names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }

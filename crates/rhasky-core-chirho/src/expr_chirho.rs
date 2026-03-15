@@ -186,6 +186,8 @@ pub struct CoreModuleChirho {
     pub bindings_chirho: Vec<CoreBindingChirho>,
     /// CoreId → name mapping for all identifiers created during desugaring.
     pub names_chirho: HashMap<CoreIdChirho, String>,
+    /// SPECIALIZE pragmas: binding name → list of specialization type strings.
+    pub specialize_pragmas_chirho: HashMap<String, Vec<String>>,
 }
 
 #[cfg(test)]
@@ -286,6 +288,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
         };
         assert_eq!(module_chirho.name_chirho, "Main");
         assert_eq!(module_chirho.bindings_chirho.len(), 1);

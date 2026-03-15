@@ -34,6 +34,9 @@ pub struct ModuleChirho {
     pub extensions_chirho: Vec<String>,
     /// INLINE/NOINLINE/INLINABLE pragmas: maps binding name → pragma.
     pub inline_pragmas_chirho: std::collections::HashMap<String, InlinePragmaChirho>,
+    /// SPECIALIZE pragmas: maps binding name → list of specialization type strings.
+    /// Each string is the raw type text from `{-# SPECIALIZE f :: Type #-}`.
+    pub specialize_pragmas_chirho: std::collections::HashMap<String, Vec<String>>,
     /// Span covering the entire module.
     pub span_chirho: SpanChirho,
 }
@@ -117,6 +120,7 @@ mod tests_chirho {
             decls_chirho: vec![],
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         assert_eq!(module_chirho.name_chirho.text_chirho(), "Main");

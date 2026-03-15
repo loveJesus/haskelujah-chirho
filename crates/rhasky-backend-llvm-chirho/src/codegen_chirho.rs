@@ -817,6 +817,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
@@ -840,6 +841,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
@@ -866,6 +868,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
@@ -901,6 +904,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
@@ -934,6 +938,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
         };
 
         let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
@@ -957,6 +962,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
         };
 
         let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
@@ -982,6 +988,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
         };
 
         let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);

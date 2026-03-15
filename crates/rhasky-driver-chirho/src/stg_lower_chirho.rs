@@ -1833,6 +1833,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
         };
 
         let program_chirho = lower_module_to_stg_chirho(&module_chirho, HashSet::new());
@@ -1852,6 +1853,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
         };
 
         let (result_chirho, _machine_chirho) =
@@ -1870,6 +1872,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
         };
 
         let (result_chirho, _) = lower_and_run_chirho(&module_chirho, None, HashSet::new()).unwrap();
@@ -1895,6 +1898,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
         };
 
         let (result_chirho, _) = lower_and_run_chirho(&module_chirho, None, HashSet::new()).unwrap();
@@ -1923,6 +1927,7 @@ mod tests_chirho {
                 },
             ],
             names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
         };
 
         let (result_chirho, _) = lower_and_run_chirho(&module_chirho, None, HashSet::new()).unwrap();
@@ -1955,6 +1960,7 @@ mod tests_chirho {
                 },
             ],
             names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
         };
 
         let (result_chirho, _) = lower_and_run_chirho(&module_chirho, None, HashSet::new()).unwrap();
@@ -1991,6 +1997,7 @@ mod tests_chirho {
                 },
             ],
             names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
         };
 
         let (result_chirho, _) = lower_and_run_chirho(&module_chirho, None, HashSet::new()).unwrap();
@@ -2008,6 +2015,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
         };
 
         let result_chirho = lower_and_run_chirho(&module_chirho, None, HashSet::new());
@@ -2026,6 +2034,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
         };
 
         let (result_chirho, _) =
@@ -2053,6 +2062,7 @@ mod tests_chirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
         };
 
         let (result_chirho, _) = lower_and_run_chirho(&module_chirho, None, HashSet::new()).unwrap();

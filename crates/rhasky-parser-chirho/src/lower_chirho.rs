@@ -200,6 +200,46 @@ impl LowerCtxChirho {
         pragmas_chirho
     }
 
+    /// Walk all pragma tokens and extract SPECIALIZE/SPECIALISE annotations.
+    /// Returns a map from binding name to the list of specialization type strings.
+    fn extract_specialize_pragmas_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+    ) -> HashMap<String, Vec<String>> {
+        let mut pragmas_chirho: HashMap<String, Vec<String>> = HashMap::new();
+        for child_chirho in node_chirho.children_chirho() {
+            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho {
+                if tok_chirho.kind_chirho() == TokenKindChirho::PragmaChirho {
+                    let text_chirho = tok_chirho.text_chirho();
+                    let inner_chirho = text_chirho
+                        .strip_prefix("{-#")
+                        .and_then(|s_chirho| s_chirho.strip_suffix("#-}"))
+                        .unwrap_or("")
+                        .trim();
+                    // Accept both SPECIALIZE and SPECIALISE (British spelling)
+                    let rest_chirho = inner_chirho
+                        .strip_prefix("SPECIALIZE")
+                        .or_else(|| inner_chirho.strip_prefix("SPECIALISE"));
+                    if let Some(rest_chirho) = rest_chirho {
+                        let rest_chirho = rest_chirho.trim();
+                        // Format: "functionName :: Type"
+                        if let Some(colons_pos_chirho) = rest_chirho.find("::") {
+                            let name_chirho = rest_chirho[..colons_pos_chirho].trim();
+                            let ty_text_chirho = rest_chirho[colons_pos_chirho + 2..].trim();
+                            if !name_chirho.is_empty() && !ty_text_chirho.is_empty() {
+                                pragmas_chirho
+                                    .entry(name_chirho.to_string())
+                                    .or_default()
+                                    .push(ty_text_chirho.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        pragmas_chirho
+    }
+
     // -----------------------------------------------------------------------
     // SourceFile
     // -----------------------------------------------------------------------
@@ -255,6 +295,8 @@ impl LowerCtxChirho {
         let extensions_chirho = self.extract_pragma_extensions_chirho(root_chirho);
         // Extract INLINE/NOINLINE/INLINABLE pragmas
         let inline_pragmas_chirho = self.extract_inline_pragmas_chirho(root_chirho);
+        // Extract SPECIALIZE pragmas
+        let specialize_pragmas_chirho = self.extract_specialize_pragmas_chirho(root_chirho);
 
         ModuleChirho {
             name_chirho: module_name_chirho,
@@ -263,6 +305,7 @@ impl LowerCtxChirho {
             decls_chirho,
             extensions_chirho,
             inline_pragmas_chirho,
+            specialize_pragmas_chirho,
             span_chirho: self.span_chirho(start_chirho, end_chirho),
         }
     }
@@ -5506,5 +5549,42 @@ foo = 1
             }
             other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
         }
+    }
+
+    #[test]
+    fn lower_specialize_pragma_chirho() {
+        let src_chirho = "module M where\n{-# SPECIALIZE double :: Int -> Int #-}\ndouble x = x + x\n";
+        let module_chirho = parse_and_lower_chirho(src_chirho);
+        assert_eq!(module_chirho.specialize_pragmas_chirho.len(), 1);
+        let specs_chirho = module_chirho.specialize_pragmas_chirho.get("double").expect("missing double");
+        assert_eq!(specs_chirho.len(), 1);
+        assert_eq!(specs_chirho[0], "Int -> Int");
+    }
+
+    #[test]
+    fn lower_specialise_british_spelling_chirho() {
+        let src_chirho = "module M where\n{-# SPECIALISE sort :: [Int] -> [Int] #-}\nsort xs = xs\n";
+        let module_chirho = parse_and_lower_chirho(src_chirho);
+        assert_eq!(module_chirho.specialize_pragmas_chirho.len(), 1);
+        let specs_chirho = module_chirho.specialize_pragmas_chirho.get("sort").expect("missing sort");
+        assert_eq!(specs_chirho.len(), 1);
+        assert_eq!(specs_chirho[0], "[Int] -> [Int]");
+    }
+
+    #[test]
+    fn lower_multiple_specialize_pragmas_chirho() {
+        let src_chirho = "module M where\n{-# SPECIALIZE f :: Int -> Int #-}\n{-# SPECIALIZE f :: Double -> Double #-}\nf x = x\n";
+        let module_chirho = parse_and_lower_chirho(src_chirho);
+        let specs_chirho = module_chirho.specialize_pragmas_chirho.get("f").expect("missing f");
+        assert_eq!(specs_chirho.len(), 2);
+        assert_eq!(specs_chirho[0], "Int -> Int");
+        assert_eq!(specs_chirho[1], "Double -> Double");
+    }
+
+    #[test]
+    fn lower_no_specialize_pragma_chirho() {
+        let src_chirho = "module M where\nf x = x\n";
+        let module_chirho = parse_and_lower_chirho(src_chirho);
+        assert!(module_chirho.specialize_pragmas_chirho.is_empty());
     }
 }

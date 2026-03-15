@@ -799,6 +799,7 @@ pub fn eval_modules_chirho(
         name_chirho: results_chirho.last().unwrap().module_chirho.name_chirho.text_chirho().to_string(),
         bindings_chirho: merged_bindings_chirho,
         names_chirho: merged_names_chirho,
+        specialize_pragmas_chirho: std::collections::HashMap::new(),
     };
 
     let (value_chirho, _machine_chirho) = stg_lower_chirho::lower_and_run_chirho(

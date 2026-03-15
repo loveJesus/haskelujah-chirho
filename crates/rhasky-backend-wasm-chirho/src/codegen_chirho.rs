@@ -714,6 +714,7 @@ mod tests_chirho {
             name_chirho: "Test".to_string(),
             bindings_chirho,
             names_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
         }
     }
 

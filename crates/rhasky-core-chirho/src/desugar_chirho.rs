@@ -826,6 +826,7 @@ impl DesugarCtxChirho {
                 name_chirho: module_chirho.name_chirho.text_chirho().to_string(),
                 bindings_chirho,
                 names_chirho: self.names_chirho.clone(),
+                specialize_pragmas_chirho: module_chirho.specialize_pragmas_chirho.clone(),
             },
             names_chirho: self.names_chirho.clone(),
         }
@@ -3755,6 +3756,7 @@ mod tests_chirho {
             }],
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -3869,6 +3871,7 @@ mod tests_chirho {
             }],
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -4080,6 +4083,7 @@ mod tests_chirho {
             }],
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -4550,6 +4554,7 @@ mod tests_chirho {
             }],
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);
@@ -4660,6 +4665,7 @@ mod tests_chirho {
             }],
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);
@@ -4764,6 +4770,7 @@ mod tests_chirho {
             }],
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);

@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1443 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1455 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -261,7 +261,7 @@ _These items address structural issues identified in the Codex engineering revie
 
 51. ~~**Inlining**~~ — DONE (`{-# INLINE f #-}`, `{-# NOINLINE f #-}`, `{-# INLINABLE f #-}` pragmas parsed from source, stored on `ModuleChirho.inline_pragmas_chirho`, propagated to `CoreBindingChirho.inline_chirho` during desugaring; `InlineAnnotationChirho` enum (Always/Never/Inlinable/None); Core simplifier inlining pass: INLINE always inlines regardless of size, NOINLINE never inlines, INLINABLE inlines small non-recursive bindings (threshold=10 AST nodes), no-annotation auto-inlines trivial expressions (Var/Lit only); `expr_size_chirho` AST node counter; `build_inline_env_chirho` + `inline_expr_chirho` with proper shadow handling; 15 new tests: 8 simplifier unit tests, 1 pragma parsing test, 4 e2e tests, 2 size tests; 1427 tests total)
 52. **Strictness analysis** — worker/wrapper transform; unboxing strict arguments
-53. **Specialization** — `SPECIALIZE` pragma; monomorphize polymorphic functions at known types
+53. ~~**Specialization**~~ — DONE (`{-# SPECIALIZE f :: Type #-}` and `{-# SPECIALISE f :: Type #-}` pragmas parsed from source via `extract_specialize_pragmas_chirho`; stored on `ModuleChirho.specialize_pragmas_chirho` and propagated to `CoreModuleChirho.specialize_pragmas_chirho`; `specialize_bindings_chirho` Core-to-Core pass in simplifier Phase 4 clones binding RHS for each specialization, creates `$spec_f_N` named bindings marked `InlineAnnotationChirho::AlwaysChirho` for aggressive optimization; handles multiple specializations per function and nonexistent targets gracefully; 4 parser unit tests (basic, British spelling, multiple, absent) + 4 simplifier unit tests (creates copy, multiple types, nonexistent, preserves RHS) + 4 e2e driver tests (basic eval, Core binding created, SPECIALISE spelling, multiple specs); 1455 tests total)
 54. ~~**Common subexpression elimination**~~ — DONE (two-level CSE pass: top-level binding deduplication via `cse_top_level_chirho` identifies non-recursive bindings with identical non-trivial RHS and redirects duplicates to canonical binding; intra-expression CSE via `cse_expr_chirho` deduplicates identical RHS within `let` blocks and rewrites body references; respects INLINE/INLINABLE annotations — never deduplicates annotated bindings; recursive bindings skipped; `apply_cse_redirects_chirho` rewrites variable references throughout expression tree; integrated as Phase 3 in simplify_module_chirho iteration loop; 6 new unit tests: top-level duplicate/no-dup/recursive-skip, let-binding dup/different-rhs/redirect-in-body; 1443 tests total)
 55. **Constructor specialization** — SpecConstr-style optimization for recursive functions
 56. **Demand analysis** — absence analysis, usage analysis for dead argument elimination
