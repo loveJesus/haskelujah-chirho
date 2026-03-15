@@ -12,6 +12,7 @@ name = "rhasky-cli-chirho"
 path = "src/main.rs"
 
 [dependencies]
+rhasky-backend-cranelift-chirho = { path = "../rhasky-backend-cranelift-chirho" }
 rhasky-backend-llvm-chirho = { path = "../rhasky-backend-llvm-chirho" }
 rhasky-backend-wasm-chirho = { path = "../rhasky-backend-wasm-chirho" }
 rhasky-core-chirho = { path = "../rhasky-core-chirho" }

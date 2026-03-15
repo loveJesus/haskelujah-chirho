@@ -684,3 +684,74 @@ main = fib 10"#;
         assert!(wasm_chirho.contains(&0x04_u8), "WASM should contain if instruction");
     }
 
+    // ── Cranelift backend driver integration tests ────────────────────────
+
+    #[test]
+    fn cranelift_executable_constant_chirho() {
+        // main = 42 should produce valid native object file
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho =
+            compile_source_chirho("module Main where\nmain = 42", &mut sm_chirho, "Main.hs")
+                .expect("should compile");
+
+        let config_chirho = rhasky_backend_cranelift_chirho::TargetConfigChirho::default();
+        let obj_chirho =
+            rhasky_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
+                &result_chirho.core_chirho,
+                &config_chirho,
+            )
+            .expect("cranelift compilation should succeed");
+        assert!(
+            !obj_chirho.object_bytes_chirho.is_empty(),
+            "object file should not be empty"
+        );
+    }
+
+    #[test]
+    fn cranelift_executable_arithmetic_chirho() {
+        // f x y = x + y; main = f 10 32 should produce valid object with function call
+        let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
+                .expect("should compile");
+
+        let config_chirho = rhasky_backend_cranelift_chirho::TargetConfigChirho::default();
+        let obj_chirho =
+            rhasky_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
+                &result_chirho.core_chirho,
+                &config_chirho,
+            )
+            .expect("cranelift compilation should succeed");
+        assert!(
+            !obj_chirho.object_bytes_chirho.is_empty(),
+            "object file should not be empty"
+        );
+    }
+
+    #[test]
+    fn cranelift_executable_fibonacci_chirho() {
+        let src_chirho = r#"module Main where
+fib n = case n of
+  0 -> 0
+  1 -> 1
+  _ -> fib (n - 1) + fib (n - 2)
+main = fib 10"#;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
+                .expect("should compile");
+
+        let config_chirho = rhasky_backend_cranelift_chirho::TargetConfigChirho::default();
+        let obj_chirho =
+            rhasky_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
+                &result_chirho.core_chirho,
+                &config_chirho,
+            )
+            .expect("cranelift compilation should succeed");
+        assert!(
+            !obj_chirho.object_bytes_chirho.is_empty(),
+            "object file should not be empty"
+        );
+    }
+

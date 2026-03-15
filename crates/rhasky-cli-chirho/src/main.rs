@@ -6,6 +6,9 @@ use std::fs;
 use std::path::Path;
 use std::process::{Command, ExitCode};
 
+use rhasky_backend_cranelift_chirho::{
+    compile_core_to_object_executable_chirho, TargetConfigChirho,
+};
 use rhasky_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
 use rhasky_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
 use rhasky_driver_chirho::{
@@ -26,6 +29,7 @@ struct FlagsChirho {
     dump_llvm_chirho: bool,
     output_path_chirho: Option<String>,
     emit_wasm_chirho: bool,
+    emit_cranelift_chirho: bool,
 }
 
 fn main_chirho() -> ExitCode {
@@ -42,6 +46,7 @@ fn main_chirho() -> ExitCode {
         dump_llvm_chirho: false,
         output_path_chirho: None,
         emit_wasm_chirho: false,
+        emit_cranelift_chirho: false,
     };
     let mut positional_chirho: Vec<&str> = Vec::new();
     let mut skip_next_chirho = false;
@@ -55,6 +60,7 @@ fn main_chirho() -> ExitCode {
             "--dump-stg" => flags_chirho.dump_stg_chirho = true,
             "--dump-llvm" => flags_chirho.dump_llvm_chirho = true,
             "--wasm" => flags_chirho.emit_wasm_chirho = true,
+            "--cranelift" => flags_chirho.emit_cranelift_chirho = true,
             "-o" | "--output" => {
                 if let Some(next_chirho) = raw_args_chirho.get(idx_chirho + 2) {
                     flags_chirho.output_path_chirho = Some(next_chirho.clone());
@@ -225,7 +231,45 @@ fn compile_command_chirho(
     match compile_source_chirho(&source_text_chirho, &mut source_map_chirho, file_name_chirho) {
         Ok(result_chirho) => {
             if let Some(ref output_path_chirho) = flags_chirho.output_path_chirho {
-                if flags_chirho.emit_wasm_chirho {
+                if flags_chirho.emit_cranelift_chirho {
+                    // Generate native object file via Cranelift
+                    let config_chirho = TargetConfigChirho::default();
+                    match compile_core_to_object_executable_chirho(
+                        &result_chirho.core_chirho,
+                        &config_chirho,
+                    ) {
+                        Ok(obj_chirho) => {
+                            let obj_path_chirho = format!("{output_path_chirho}.o");
+                            if let Err(e_chirho) = fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho) {
+                                eprintln!("error writing object to `{obj_path_chirho}`: {e_chirho}");
+                                return ExitCode::from(1);
+                            }
+                            // Link with system linker
+                            let linker_status_chirho = Command::new("cc")
+                                .args(["-o", output_path_chirho, &obj_path_chirho])
+                                .status();
+                            match linker_status_chirho {
+                                Ok(status_chirho) if status_chirho.success() => {
+                                    println!("compiled (cranelift): {path_chirho} → {output_path_chirho}");
+                                    let _ = fs::remove_file(&obj_path_chirho);
+                                }
+                                Ok(status_chirho) => {
+                                    eprintln!("linker failed with exit code {}; object saved to {obj_path_chirho}",
+                                        status_chirho.code().unwrap_or(-1));
+                                    return ExitCode::from(1);
+                                }
+                                Err(e_chirho) => {
+                                    eprintln!("could not run linker: {e_chirho}; object saved to {obj_path_chirho}");
+                                    return ExitCode::from(1);
+                                }
+                            }
+                        }
+                        Err(e_chirho) => {
+                            eprintln!("cranelift compilation failed: {e_chirho}");
+                            return ExitCode::from(1);
+                        }
+                    }
+                } else if flags_chirho.emit_wasm_chirho {
                     // Generate WASM binary with dict elision
                     let wasm_bytes_chirho =
                         compile_core_to_wasm_executable_chirho(&result_chirho.core_chirho);
@@ -326,6 +370,7 @@ fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("flags:");
     eprintln!("  -o, --output <path>  output native executable or .wasm file (compile only)");
     eprintln!("  --wasm               emit WebAssembly instead of native (with -o)");
+    eprintln!("  --cranelift          emit native code via Cranelift (with -o)");
     eprintln!("  --dump-core          print Core IR to stderr");
     eprintln!("  --dump-stg           print STG code table to stderr (run only)");
     eprintln!("  --dump-llvm          print LLVM IR to stderr");

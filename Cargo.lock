@@ -432,6 +432,7 @@ dependencies = [
 name = "rhasky-cli-chirho"
 version = "0.1.0"
 dependencies = [
+ "rhasky-backend-cranelift-chirho",
  "rhasky-backend-llvm-chirho",
  "rhasky-backend-wasm-chirho",
  "rhasky-core-chirho",
@@ -461,6 +462,7 @@ name = "rhasky-driver-chirho"
 version = "0.1.0"
 dependencies = [
  "rhasky-ast-chirho",
+ "rhasky-backend-cranelift-chirho",
  "rhasky-backend-llvm-chirho",
  "rhasky-backend-wasm-chirho",
  "rhasky-core-chirho",

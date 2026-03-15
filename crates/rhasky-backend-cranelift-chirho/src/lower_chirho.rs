@@ -68,6 +68,9 @@ pub struct LowerCtxChirho<'a> {
     pub next_var_idx_chirho: &'a mut u32,
     /// Cranelift Variable environment for `LetChirho` bindings.
     pub cl_vars_chirho: &'a mut HashMap<CoreIdChirho, ClVariableChirho>,
+    /// Map of CoreId → (FuncRef, arity) for direct top-level function calls.
+    /// FuncRef is pre-imported into the current function via declare_func_in_func.
+    pub func_ref_map_chirho: &'a HashMap<CoreIdChirho, (cranelift_codegen::ir::FuncRef, usize)>,
 }
 
 impl<'a> LowerCtxChirho<'a> {
@@ -468,26 +471,62 @@ fn alt_expected_value_chirho(
 
 // ─── Application lowering ──────────────────────────────────────────────────────
 
+/// Flatten App chains: `(((f a) b) c)` → `(f, [a, b, c])`.
+fn flatten_apps_chirho(expr_chirho: &CoreExprChirho) -> (&CoreExprChirho, Vec<&CoreExprChirho>) {
+    let mut args_chirho = Vec::new();
+    let mut current_chirho = expr_chirho;
+    while let CoreExprChirho::AppChirho { fun_chirho, arg_chirho } = current_chirho {
+        args_chirho.push(arg_chirho.as_ref());
+        current_chirho = fun_chirho;
+    }
+    args_chirho.reverse();
+    (current_chirho, args_chirho)
+}
+
 /// Lower a function application `(fun arg)` to a Cranelift call.
 ///
-/// For the simplified backend, we handle the common case where `fun` is a
-/// direct variable reference. In that case we try to locate a declared
-/// function and emit `call`. For unknown callees we use `call_indirect`.
+/// For known top-level functions, emits a direct `call` instruction using
+/// pre-imported `FuncRef`s from `func_ref_map_chirho`. For unknown callees,
+/// falls back to `call_indirect`.
 fn lower_app_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     ctx_chirho: &mut LowerCtxChirho<'_>,
     fun_chirho: &CoreExprChirho,
     arg_chirho: &CoreExprChirho,
 ) -> ClValueChirho {
-    // Lower the argument.
+    // Flatten the full App chain to detect multi-arg direct calls.
+    let full_expr_chirho = CoreExprChirho::AppChirho {
+        fun_chirho: Box::new(fun_chirho.clone()),
+        arg_chirho: Box::new(arg_chirho.clone()),
+    };
+    let (callee_chirho, all_args_chirho) = flatten_apps_chirho(&full_expr_chirho);
+
+    // Try direct call for known functions via pre-imported FuncRefs.
+    if let CoreExprChirho::VarChirho(func_id_chirho) = callee_chirho {
+        if let Some((func_ref_chirho, _arity_chirho)) =
+            ctx_chirho.func_ref_map_chirho.get(func_id_chirho)
+        {
+            // Lower all arguments.
+            let mut arg_vals_chirho = Vec::new();
+            for a_chirho in &all_args_chirho {
+                let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, a_chirho);
+                arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, val_chirho, false));
+            }
+
+            let call_inst_chirho = builder_chirho
+                .ins()
+                .call(*func_ref_chirho, &arg_vals_chirho);
+            return builder_chirho.inst_results(call_inst_chirho)[0];
+        }
+    }
+
+    // Fallback: lower both sides and use call_indirect.
     let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
     let arg_i64_chirho = ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
 
-    // Lower the function expression to a function pointer (i64).
     let fun_ptr_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, fun_chirho);
     let fun_ptr_i64_chirho = ensure_i64_chirho(builder_chirho, fun_ptr_chirho, false);
 
-    // Build an indirect call signature: i64 -> i64.
     let mut sig_chirho = builder_chirho.func.stencil.signature.clone();
     sig_chirho.params.clear();
     sig_chirho.returns.clear();

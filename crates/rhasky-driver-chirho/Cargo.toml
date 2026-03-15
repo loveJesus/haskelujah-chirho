@@ -15,6 +15,7 @@ rhasky-ast-chirho = { path = "../rhasky-ast-chirho" }
 rhasky-backend-llvm-chirho = { path = "../rhasky-backend-llvm-chirho" }
 rhasky-core-chirho = { path = "../rhasky-core-chirho" }
 rhasky-backend-wasm-chirho = { path = "../rhasky-backend-wasm-chirho" }
+rhasky-backend-cranelift-chirho = { path = "../rhasky-backend-cranelift-chirho" }
 rhasky-diagnostics-chirho = { path = "../rhasky-diagnostics-chirho" }
 rhasky-naming-chirho = { path = "../rhasky-naming-chirho" }
 rhasky-parser-chirho = { path = "../rhasky-parser-chirho" }

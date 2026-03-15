@@ -32,7 +32,7 @@ pub mod codegen_chirho;
 pub mod lower_chirho;
 pub mod runtime_layout_chirho;
 
-pub use codegen_chirho::compile_core_to_object_chirho;
+pub use codegen_chirho::{compile_core_to_object_chirho, compile_core_to_object_executable_chirho};
 
 /// Target triple for native code generation.
 #[derive(Debug, Clone)]
