@@ -1,6 +1,8 @@
 // For God so loved the world that he gave his only begotten Son, that whoever
 // believes in him should not perish but have eternal life. — John 3:16
 
+mod repl_chirho;
+
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -109,13 +111,7 @@ fn main_chirho() -> ExitCode {
         }
         "run" => run_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
         "compile" => compile_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
-        "repl" => {
-            println!(
-                "repl mode is not implemented yet, but the runtime plan reserves {:?} for it",
-                ExecutionModeChirho::ReplChirho
-            );
-            ExitCode::SUCCESS
-        }
+        "repl" => repl_chirho::repl_command_chirho(),
         _ => {
             eprintln!("unknown command `{command_chirho}`");
             print_usage_chirho(program_name_chirho);
@@ -365,7 +361,7 @@ fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("  check    type-check a .hs file without code generation");
     eprintln!("  run      evaluate a .hs file via the STG interpreter");
     eprintln!("  compile  compile a .hs file (with -o: produce native executable or .wasm)");
-    eprintln!("  repl     interactive session (not yet implemented)");
+    eprintln!("  repl     interactive REPL with expression evaluation");
     eprintln!();
     eprintln!("flags:");
     eprintln!("  -o, --output <path>  output native executable or .wasm file (compile only)");

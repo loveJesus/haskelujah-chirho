@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1352 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1355 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -225,7 +225,7 @@ _These items address structural issues identified in the Codex engineering revie
 
 24. ~~**`rhasky compile`**~~ — DONE (CLI command reads `.hs` file, runs full pipeline, reports module name, core bindings count, LLVM IR and WASM output sizes)
 25. ~~**`rhasky run`**~~ — DONE (CLI command reads `.hs` file, evaluates via STG interpreter, prints IO output to stdout; works with infinite lists, IO, typeclasses, all Phase 1+2 features)
-26. **`rhasky repl`** — interactive REPL with expression evaluation, `:type`, `:info`, `:load`, `:reload` commands
+26. ~~**`rhasky repl`**~~ — DONE (interactive REPL loop with expression evaluation via STG machine, IO action execution with output capture, user-friendly value display; commands: `:type <expr>` shows inferred type via run_frontend_chirho, `:info <name>` looks up type in env, `:load <file>` loads declarations and type environment, `:reload` re-loads last file, `:let <decl>` accumulates definitions, `:clear` resets, `:{`/`:}` for multi-line input, `:quit` exits; smart declaration vs expression detection via `has_toplevel_equals_chirho` that skips `=` inside strings/parens/`==`; fallback `print()` wrapping on eval failure; 3 new e2e tests: REPL-style expression, IO with show, let binding; 1355 tests total)
 27. ~~**`rhasky check`**~~ — DONE (CLI command reads `.hs` file, runs frontend pipeline through type-checking, reports module/mode/diagnostics without full code generation; already wired as `check`/`plan`/`script` subcommands)
 28. **`rhasky build`** — build a Cabal project (parse `.cabal`, resolve dependencies, compile modules in dependency order)
 29. **Error messages** — structured diagnostics with source spans, suggestions, and color output; follow Rust/Elm error message style

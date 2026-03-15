@@ -1253,3 +1253,38 @@ main = factorial 10
         assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
     }
 
+    #[test]
+    fn eval_repl_style_expression_chirho() {
+        // REPL wraps expressions as `main = <expr>` in a module.
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module ReplMain where\nmain = sum [1..10]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "REPL", None)
+            .expect("repl-style expression");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(55));
+    }
+
+    #[test]
+    fn eval_repl_style_io_chirho() {
+        // REPL evaluates IO actions and captures output.
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module ReplMain where\nmain = putStrLn (\"1+2 = \" ++ show (1+2))\n";
+        let (_val_chirho, machine_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "REPL", None)
+                .expect("repl-style IO");
+        assert_eq!(machine_chirho.io_output_chirho, "1+2 = 3\n");
+    }
+
+    #[test]
+    fn eval_repl_style_let_binding_chirho() {
+        // REPL :let adds definitions that subsequent expressions can use.
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho =
+            "module ReplMain where\ndouble x = x * 2\nmain = double 21\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "REPL", None)
+            .expect("repl-style let binding");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+

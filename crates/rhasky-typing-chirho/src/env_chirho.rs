@@ -75,6 +75,21 @@ impl TyEnvChirho {
         vars_chirho
     }
 
+    /// Iterate over all bindings across all scopes (outermost first).
+    /// If a name appears in multiple scopes, only the innermost is yielded.
+    pub fn all_bindings_chirho(&self) -> Vec<(&String, &SchemeChirho)> {
+        let mut seen_chirho = std::collections::HashSet::new();
+        let mut result_chirho = Vec::new();
+        for scope_chirho in self.scopes_chirho.iter().rev() {
+            for (name_chirho, scheme_chirho) in scope_chirho {
+                if seen_chirho.insert(name_chirho) {
+                    result_chirho.push((name_chirho, scheme_chirho));
+                }
+            }
+        }
+        result_chirho
+    }
+
     /// Apply a substitution to every type scheme in every scope.
     pub fn apply_subst_chirho(&mut self, subst_chirho: &SubstChirho) {
         for scope_chirho in &mut self.scopes_chirho {
