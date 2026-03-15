@@ -15024,4 +15024,87 @@ main = factorial 10
         assert_eq!(result_chirho.1.io_output_chirho, "plain string\n");
     }
 
+    // ── N-ary tuple tests ───────────────────────────────────────────────
+
+    #[test]
+    fn eval_3tuple_construct_chirho() {
+        // 3-tuple construction and case dispatch
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             fst3 (a, b, c) = a\n\
+             main = fst3 (10, 20, 30)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("3-tuple fst3 should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(10));
+    }
+
+    #[test]
+    fn eval_3tuple_snd_chirho() {
+        // 3-tuple second element extraction
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             snd3 (a, b, c) = b\n\
+             main = snd3 (10, 20, 30)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("3-tuple snd3 should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(20));
+    }
+
+    #[test]
+    fn eval_3tuple_thd_chirho() {
+        // 3-tuple third element extraction
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             thd3 (a, b, c) = c\n\
+             main = thd3 (10, 20, 30)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("3-tuple thd3 should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(30));
+    }
+
+    #[test]
+    fn eval_3tuple_sum_show_chirho() {
+        // 3-tuple element extraction and showing the sum
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             sumTriple (a, b, c) = a + b + c\n\
+             main = putStrLn (show (sumTriple (10, 20, 30)))\n";
+        let result_chirho = eval_source_with_machine_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        )
+        .expect("show 3-tuple sum should evaluate");
+        assert_eq!(result_chirho.1.io_output_chirho, "60\n");
+    }
+
+    #[test]
+    fn eval_3tuple_arithmetic_chirho() {
+        // 3-tuple with arithmetic on elements
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             sumTriple (a, b, c) = a + b + c\n\
+             main = sumTriple (10, 20, 30)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("3-tuple sum should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(60));
+    }
+
+    #[test]
+    fn eval_4tuple_construct_chirho() {
+        // 4-tuple construction and case dispatch
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             first4 (a, b, c, d) = a\n\
+             last4 (a, b, c, d) = d\n\
+             main = first4 (1, 2, 3, 4) + last4 (1, 2, 3, 4)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("4-tuple should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5));
+    }
+
 }

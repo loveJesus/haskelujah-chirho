@@ -3491,14 +3491,12 @@ impl MachineChirho {
                     "LT" => "LT".to_string(),
                     "EQ" => "EQ".to_string(),
                     "GT" => "GT".to_string(),
-                    "(,)" | "$tuple2" => {
-                        if closure_chirho.payload_chirho.len() >= 2 {
-                            let a_chirho = self.show_value_as_string_chirho(&closure_chirho.payload_chirho[0]);
-                            let b_chirho = self.show_value_as_string_chirho(&closure_chirho.payload_chirho[1]);
-                            format!("({},{})", a_chirho, b_chirho)
-                        } else {
-                            "(?,?)".to_string()
-                        }
+                    name_chirho if name_chirho.starts_with("$tuple") || name_chirho == "(,)" || name_chirho == "(,,)" || name_chirho == "(,,,)" || name_chirho == "(,,,,)" => {
+                        let parts_chirho: Vec<String> = closure_chirho.payload_chirho
+                            .iter()
+                            .map(|v_chirho| self.show_value_as_string_chirho(v_chirho))
+                            .collect();
+                        format!("({})", parts_chirho.join(","))
                     }
                     "[]" => "[]".to_string(),
                     ":" => {

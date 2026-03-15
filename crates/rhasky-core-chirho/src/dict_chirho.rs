@@ -268,14 +268,13 @@ impl DictPassCtxChirho {
                             }
                             Some("Maybe Int".to_string())
                         }
-                        "(,)" | "$tuple2" => {
-                            if args_chirho.len() >= 2 {
-                                let a_chirho = self.infer_type_key_chirho(&args_chirho[0]).unwrap_or("Int".to_string());
-                                let b_chirho = self.infer_type_key_chirho(&args_chirho[1]).unwrap_or("Int".to_string());
-                                // Map [Char] to String for readability
-                                let a_key_chirho = if a_chirho == "[Char]" { "String" } else { &a_chirho };
-                                let b_key_chirho = if b_chirho == "[Char]" { "String" } else { &b_chirho };
-                                return Some(format!("({},{})", a_key_chirho, b_key_chirho));
+                        name_chirho if name_chirho == "(,)" || name_chirho.starts_with("$tuple") || name_chirho == "(,,)" || name_chirho == "(,,,)" => {
+                            if !args_chirho.is_empty() {
+                                let keys_chirho: Vec<String> = args_chirho.iter().map(|a_chirho| {
+                                    let k_chirho = self.infer_type_key_chirho(a_chirho).unwrap_or("Int".to_string());
+                                    if k_chirho == "[Char]" { "String".to_string() } else { k_chirho }
+                                }).collect();
+                                return Some(format!("({})", keys_chirho.join(",")));
                             }
                             Some("(Int,Int)".to_string())
                         }
@@ -755,6 +754,11 @@ impl DictPassCtxChirho {
             ("Show", "show", "(Double,Double)", 2),
             ("Show", "show", "(Bool,String)", 2),
             ("Show", "show", "(String,Bool)", 2),
+            // 3-tuples
+            ("Show", "show", "(Int,Int,Int)", 2),
+            ("Show", "show", "(Int,Int,String)", 2),
+            ("Show", "show", "(String,Int,Int)", 2),
+            ("Show", "show", "(Int,String,Int)", 2),
             // Either
             ("Show", "show", "Either Int Int", 2),
             ("Show", "show", "Either String Int", 2),

@@ -241,7 +241,7 @@ _These items address structural issues identified in the Codex engineering revie
 36. **DeriveFunctor/DeriveFoldable/DeriveTraversable** — auto-derive Functor/Foldable/Traversable
 37. **DeriveGeneric** — `Generic` type class and `GHC.Generics` representation types
 38. **ConstraintKinds** — constraints as first-class kinds
-39. **FlexibleInstances/FlexibleContexts** — relax Haskell 98 instance/context restrictions
+39. ~~**FlexibleInstances/FlexibleContexts** — relax Haskell 98 instance/context restrictions~~ — DONE (no Haskell 98 restrictions enforced; all instance heads and contexts already flexible)
 40. **DataKinds** — promote data constructors to type-level
 41. **KindSignatures** — explicit kind annotations on type variables
 42. **DefaultSignatures** — default method implementations using superclass constraints
