@@ -3172,6 +3172,27 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // ($!) :: forall a b. (a -> b) -> a -> b  (strict application)
+    let bang_dollar_a_chirho = TyVarChirho(2010);
+    let bang_dollar_b_chirho = TyVarChirho(2011);
+    env_chirho.bind_chirho(
+        "$!".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![bang_dollar_a_chirho, bang_dollar_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(bang_dollar_a_chirho),
+                        TyChirho::VarChirho(bang_dollar_b_chirho),
+                    ),
+                    TyChirho::VarChirho(bang_dollar_a_chirho),
+                ],
+                TyChirho::VarChirho(bang_dollar_b_chirho),
+            ),
+        },
+    );
+
     // (.) :: forall a b c. (b -> c) -> (a -> b) -> a -> c
     let dot_a_chirho = TyVarChirho(2100);
     let dot_b_chirho = TyVarChirho(2101);

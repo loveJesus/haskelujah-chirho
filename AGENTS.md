@@ -199,10 +199,10 @@ _These items address structural issues identified in the Codex engineering revie
 
 #### A. Runtime Semantics — Laziness & Evaluation Model
 
-9. ~~**True lazy evaluation**~~ — DONE (replaced eager enumFrom/enumFromThen/enumFromTo/enumFromThenTo primops with recursive Core IR Prelude functions whose cons tails are ThunkCodeChirho-based lazy thunks; desugarer emits function calls instead of primops for ArithSeqChirho; `take 5 [1..]` → 15, `take 4 [1,3..]` → 16, `head [42..]` → 42, all working with truly infinite lists; 7 new e2e tests; 1280 tests total)
+9. ~~**True lazy evaluation**~~ — DONE (replaced eager enumFrom/enumFromThen/enumFromTo/enumFromThenTo primops with recursive Core IR Prelude functions whose cons tails are ThunkCodeChirho-based lazy thunks; desugarer emits function calls instead of primops for ArithSeqChirho; `take 5 [1..]` → 15, `take 4 [1,3..]` → 16, `head [42..]` → 42, all working with truly infinite lists; 7 new e2e tests; 1310 tests total)
 10. **Lazy I/O** — `interact`, `getContents`, `hGetContents` return lazy strings; must integrate with GC and exception handling
 11. **Bang patterns and strict fields** — `!` annotations in data declarations and function arguments force evaluation at binding time; `{-# UNPACK #-}` pragma for strict fields
-12. **Weak head normal form semantics** — ensure `seq`, `deepseq`, `evaluate`, `($!)` have correct WHNF forcing behavior; `NFData` type class
+12. **Weak head normal form semantics** — `seq` and `($!)` have correct WHNF forcing behavior (DONE: `seq a b` forces `a` returns `b`, `f $! x` desugars to `case x of _ -> f x`; 2 e2e tests); remaining: `deepseq`, `evaluate`, `NFData` type class
 13. **STM (Software Transactional Memory)** — TVar, atomically, retry, orElse; conflict detection and rollback
 
 #### B. Multi-Module System & Imports

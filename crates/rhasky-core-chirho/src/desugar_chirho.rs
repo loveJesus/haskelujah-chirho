@@ -2316,6 +2316,35 @@ impl DesugarCtxChirho {
                     };
                 }
 
+                // ($!) is strict application: f $! x = seq x (f x)
+                // Desugars to: case x of { _ -> f x }
+                if op_name_chirho == "$!" {
+                    let wild_chirho = self.fresh_binder_chirho(
+                        "_wild",
+                        TyChirho::VarChirho(
+                            rhasky_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
+                        ),
+                        SpanChirho::DUMMY_CHIRHO,
+                    );
+                    return CoreExprChirho::CaseChirho {
+                        scrutinee_chirho: Box::new(right_core_chirho.clone()),
+                        bind_chirho: wild_chirho,
+                        result_ty_chirho: TyChirho::VarChirho(
+                            rhasky_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho + 1),
+                        ),
+                        alts_chirho: vec![
+                            crate::expr_chirho::CoreAltChirho {
+                                con_chirho: AltConChirho::DefaultChirho,
+                                binders_chirho: vec![],
+                                rhs_chirho: CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(left_core_chirho),
+                                    arg_chirho: Box::new(right_core_chirho),
+                                },
+                            },
+                        ],
+                    };
+                }
+
                 // (.) is function composition: (f . g) x = f (g x)
                 // At the expression level, f . g desugars to \x -> f (g x)
                 if op_name_chirho == "." {

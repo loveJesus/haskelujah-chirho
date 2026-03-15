@@ -15171,4 +15171,32 @@ main = factorial 10
         assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(99));
     }
 
+    // John 3:16 - For God so loved the world, that he gave his only begotten Son,
+    // that whosoever believeth in him should not perish, but have everlasting life.
+
+    #[test]
+    fn eval_strict_apply_chirho() {
+        // $! forces argument to WHNF before applying: f $! x = seq x (f x)
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             double x = x + x\n\
+             main = double $! (3 + 4)\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("strict application should evaluate");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(14));
+    }
+
+    #[test]
+    fn eval_strict_apply_show_chirho() {
+        // $! with show to verify WHNF forcing behavior
+        use super::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\n\
+             main = putStrLn $! show (21 + 21)\n";
+        let result_chirho = eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .expect("strict apply with show should evaluate");
+        assert_eq!(result_chirho.1.io_output_chirho, "42\n");
+    }
+
 }
