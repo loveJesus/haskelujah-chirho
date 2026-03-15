@@ -22,6 +22,7 @@ members = [
   "crates/rhasky-backend-cranelift-chirho",
   "crates/rhasky-backend-jvm-chirho",
   "crates/rhasky-backend-beam-chirho",
+  "crates/rhasky-rts-chirho",
 ]
 
 [workspace.package]

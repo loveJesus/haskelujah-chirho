@@ -148,7 +148,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 11. **FFI** — `rhasky-runtime-chirho::ffi_chirho` foreign function interface
 12. **Exception Handling** — catch/throw/try/bracket/finally with stack unwinding
 
-### Workspace Crates (19 crates)
+### Workspace Crates (20 crates)
 
 | Crate | Purpose |
 |---|---|
@@ -166,7 +166,8 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 | `rhasky-backend-jvm-chirho` | Core → JVM .class bytecode files (constant pool, bytecode emitter) |
 | `rhasky-backend-beam-chirho` | Core → BEAM .beam bytecode files (IFF format, ETF, opcodes) |
 | `rhasky-driver-chirho` | Pipeline orchestration, CompileResultChirho (AST + Core + LLVM IR + Wasm bytes) |
-| `rhasky-runtime-chirho` | STG runtime: value types, heap, evaluation stack, primitive ops, evaluation loop (MachineChirho), mark-sweep GC (GcStateChirho), FFI (ForeignTableChirho) |
+| `rhasky-rts-chirho` | Shared runtime system: value types, heap allocator, mark-sweep GC — backend-agnostic, linkable by LLVM/Cranelift/WASM backends |
+| `rhasky-runtime-chirho` | STG interpreter: evaluation stack, primitive ops, evaluation loop (MachineChirho), FFI (ForeignTableChirho); re-exports value/heap/GC from rhasky-rts-chirho |
 | `rhasky-incremental-chirho` | Incremental compilation: fingerprinting, dependency graph, artifact caching, recompilation avoidance |
 | `rhasky-package-chirho` | Cabal file parser, version constraints, Hackage URL construction |
 | `rhasky-cli-chirho` | Command-line interface (scaffold) |
@@ -219,7 +220,7 @@ _These items address structural issues identified in the Codex engineering revie
 20. ~~**LLVM backend revival**~~ — DONE (compile_core_to_llvm_executable_chirho produces runnable native executables via `rhasky compile -o <output>`; dictionary elision pass replaces $sel_Num/Eq/Ord selector+dict patterns with direct PrimOps; fromInteger elision for literal folding; reachability analysis from `main` emits only transitively-used bindings; ConApp returns constructor tags; case binder + alt binder binding in LLVM IR; proper cross-reference resolution via toplevel_names_chirho; local scope tracking prevents false top-level calls; CLI `-o`/`--output` flag writes `.ll` then invokes `clang -O2`; tested: `main = 42` → 42, `f x y = x + y; main = f 10 32` → 42, `fib 10` → 55, `fact 12` → 479001600; 3 LLVM executable unit tests + 3 driver integration tests; remaining: closures/heap allocation, string/IO, thunks needed for full Prelude support in native code; 1326 tests total)
 21. ~~**WebAssembly backend revival**~~ — DONE (rewrote `rhasky-backend-wasm-chirho` codegen: proper function calls via `call` instruction with name→func_idx map, let bindings via `local.set`/`local.get` with `EmitCtxChirho` local allocation, case expressions with `if`/`else` chains for literal/constructor/default dispatch, `local.tee` for case binder binding, `compile_core_to_wasm_executable_chirho` with shared dict elision via `elide_dicts_and_filter_chirho`, CLI `--wasm -o` flag for `.wasm` output, constructor tags as i64, float literals as f64 bit patterns; 6 new backend unit tests + 3 driver integration tests; remaining: closures/heap in linear memory, I/O host imports, full constructor field access; 1335 tests total)
 22. ~~**Cranelift backend expansion**~~ — DONE (fixed two-pass declare/define architecture with pre-imported FuncRefs via `declare_func_in_func` for direct function calls; `func_ref_map_chirho` in `LowerCtxChirho` replaces broken `func_decl_map_chirho` approach; `compile_core_to_object_executable_chirho` with shared dict elision via `elide_dicts_and_filter_chirho`; `flatten_apps_chirho` for multi-arg call detection; CLI `--cranelift -o` flag produces native object → links via `cc`; 6 new backend unit tests (function call, single-arg call, dict-elided executable, multi-arg call, recursive function, constructor app) + 3 driver integration tests (constant, arithmetic with call, recursive fibonacci); remaining: closures/heap allocation, I/O via runtime linking, thunks; 1346 tests total)
-23. **Shared RTS library** — factor runtime support (GC, thunk entry, stack management, exception frames) into a linkable RTS shared across LLVM/Cranelift/WASM backends
+23. ~~**Shared RTS library**~~ — DONE (extracted `rhasky-rts-chirho` crate with backend-agnostic runtime primitives: `value_chirho` (ValueChirho, ClosureChirho, InfoTableChirho, InfoTagChirho, CodePtrChirho, DataConTagChirho, HeapAddrChirho), `heap_chirho` (HeapChirho with alloc/read/update/blackhole/follow_ind/tombstone), `gc_chirho` (GcConfigChirho, GcStatsChirho, GcStateChirho mark-sweep collector, extract_roots_from_values_chirho); runtime re-exports from RTS, keeps interpreter-specific extract_roots_from_stack_chirho locally; backends can depend on rhasky-rts-chirho for heap/GC without pulling in interpreter machinery; 20 crates, 1642 tests)
 
 #### D. CLI & Developer Experience
 

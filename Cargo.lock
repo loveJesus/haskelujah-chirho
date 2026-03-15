@@ -778,8 +778,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rhasky-rts-chirho"
+version = "0.1.0"
+
+[[package]]
 name = "rhasky-runtime-chirho"
 version = "0.1.0"
+dependencies = [
+ "rhasky-rts-chirho",
+]
 
 [[package]]
 name = "rhasky-span-chirho"
