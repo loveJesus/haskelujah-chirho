@@ -2559,6 +2559,9 @@ impl DesugarCtxChirho {
                 to_chirho,
                 ..
             } => {
+                // Desugar to calls to lazy Prelude functions (not primops)
+                // so infinite lists like [1..] are properly lazy.
+                //
                 // [from ..]       → enumFrom from
                 // [from,then ..]  → enumFromThen from then
                 // [from .. to]    → enumFromTo from to
@@ -2566,35 +2569,47 @@ impl DesugarCtxChirho {
                 let from_core_chirho = self.desugar_expr_chirho(from_chirho);
                 match (then_chirho, to_chirho) {
                     (None, None) => {
-                        // [from..] → enumFrom# from (infinite list; capped at reasonable limit)
-                        CoreExprChirho::PrimOpChirho {
-                            name_chirho: "enumFrom#".to_string(),
-                            args_chirho: vec![from_core_chirho],
+                        let fun_id_chirho = self.resolve_var_chirho("enumFrom");
+                        CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(fun_id_chirho)),
+                            arg_chirho: Box::new(from_core_chirho),
                         }
                     }
                     (Some(then_e_chirho), None) => {
-                        // [from,then..] → enumFromThen# from then
                         let then_core_chirho = self.desugar_expr_chirho(then_e_chirho);
-                        CoreExprChirho::PrimOpChirho {
-                            name_chirho: "enumFromThen#".to_string(),
-                            args_chirho: vec![from_core_chirho, then_core_chirho],
+                        let fun_id_chirho = self.resolve_var_chirho("enumFromThen");
+                        CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(CoreExprChirho::VarChirho(fun_id_chirho)),
+                                arg_chirho: Box::new(from_core_chirho),
+                            }),
+                            arg_chirho: Box::new(then_core_chirho),
                         }
                     }
                     (None, Some(to_e_chirho)) => {
-                        // [from..to] → enumFromTo# from to
                         let to_core_chirho = self.desugar_expr_chirho(to_e_chirho);
-                        CoreExprChirho::PrimOpChirho {
-                            name_chirho: "enumFromTo#".to_string(),
-                            args_chirho: vec![from_core_chirho, to_core_chirho],
+                        let fun_id_chirho = self.resolve_var_chirho("enumFromTo");
+                        CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(CoreExprChirho::VarChirho(fun_id_chirho)),
+                                arg_chirho: Box::new(from_core_chirho),
+                            }),
+                            arg_chirho: Box::new(to_core_chirho),
                         }
                     }
                     (Some(then_e_chirho), Some(to_e_chirho)) => {
-                        // [from,then..to] → enumFromThenTo# from then to
                         let then_core_chirho = self.desugar_expr_chirho(then_e_chirho);
                         let to_core_chirho = self.desugar_expr_chirho(to_e_chirho);
-                        CoreExprChirho::PrimOpChirho {
-                            name_chirho: "enumFromThenTo#".to_string(),
-                            args_chirho: vec![from_core_chirho, then_core_chirho, to_core_chirho],
+                        let fun_id_chirho = self.resolve_var_chirho("enumFromThenTo");
+                        CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(CoreExprChirho::VarChirho(fun_id_chirho)),
+                                    arg_chirho: Box::new(from_core_chirho),
+                                }),
+                                arg_chirho: Box::new(then_core_chirho),
+                            }),
+                            arg_chirho: Box::new(to_core_chirho),
                         }
                     }
                 }
@@ -3899,8 +3914,8 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
-        // Should be enumFrom# primop with 1 arg
-        assert!(matches!(core_chirho, CoreExprChirho::PrimOpChirho { .. }));
+        // Should be App(enumFrom, 1) — a function call, not a primop
+        assert!(matches!(core_chirho, CoreExprChirho::AppChirho { .. }));
     }
 
     #[test]
@@ -4090,8 +4105,8 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
-        // Should be PrimOp(enumFromTo#, [1, 10])
-        assert!(matches!(core_chirho, CoreExprChirho::PrimOpChirho { .. }));
+        // Should be App(App(enumFromTo, 1), 10) — a function call, not a primop
+        assert!(matches!(core_chirho, CoreExprChirho::AppChirho { .. }));
     }
 
     // -------------------------------------------------------------------

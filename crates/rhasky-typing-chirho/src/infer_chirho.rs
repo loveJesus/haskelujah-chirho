@@ -5410,6 +5410,54 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // enumFrom :: Int -> [Int]
+    env_chirho.bind_chirho(
+        "enumFrom".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+        )),
+    );
+
+    // enumFromThen :: Int -> Int -> [Int]
+    env_chirho.bind_chirho(
+        "enumFromThen".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::fun_chirho(
+                TyChirho::int_chirho(),
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+            ),
+        )),
+    );
+
+    // enumFromTo :: Int -> Int -> [Int]
+    env_chirho.bind_chirho(
+        "enumFromTo".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::fun_chirho(
+                TyChirho::int_chirho(),
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+            ),
+        )),
+    );
+
+    // enumFromThenTo :: Int -> Int -> Int -> [Int]
+    env_chirho.bind_chirho(
+        "enumFromThenTo".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::fun_chirho(
+                TyChirho::int_chirho(),
+                TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                ),
+            ),
+        )),
+    );
+
     // minBound :: forall a. Bounded a => a
     let min_bound_a_chirho = TyVarChirho(3264);
     env_chirho.bind_chirho(

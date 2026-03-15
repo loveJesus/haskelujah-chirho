@@ -14672,4 +14672,85 @@ main = putStrLn (show (fromJust2 (Just 42)))
         assert_eq!(machine_chirho.io_output_chirho, "42\n");
     }
 
+    // ---------------------------------------------------------------
+    // Phase 2 §A.9: True lazy evaluation — infinite lists
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn eval_take_infinite_list_chirho() {
+        // take 5 [1..] should produce [1,2,3,4,5], sum = 15
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (take 5 [1..])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("take 5 [1..]: {}", e_chirho));
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15));
+    }
+
+    #[test]
+    fn eval_take_infinite_list_then_chirho() {
+        // take 4 [1,3..] should produce [1,3,5,7], sum = 16
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (take 4 [1,3..])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("take 4 [1,3..]: {}", e_chirho));
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(16));
+    }
+
+    #[test]
+    fn eval_head_infinite_list_chirho() {
+        // head [42..] should be 42
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = head [42..]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("head [42..]: {}", e_chirho));
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn eval_take_10_enum_from_then_chirho() {
+        // take 10 [0,2..] → [0,2,4,6,8,10,12,14,16,18], sum = 90
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum (take 10 [0,2..])\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("take 10 [0,2..]: {}", e_chirho));
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(90));
+    }
+
+    #[test]
+    fn eval_lazy_enum_from_to_chirho() {
+        // [1..5] should still work with the lazy implementation, sum = 15
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum [1..5]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("sum [1..5]: {}", e_chirho));
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(15));
+    }
+
+    #[test]
+    fn eval_lazy_enum_from_then_to_chirho() {
+        // [1,3..10] → [1,3,5,7,9], sum = 25
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum [1,3..10]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("sum [1,3..10]: {}", e_chirho));
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(25));
+    }
+
+    #[test]
+    fn eval_lazy_enum_from_then_to_desc_chirho() {
+        // [10,8..1] → [10,8,6,4,2], sum = 30
+        use super::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = sum [10,8..1]\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("sum [10,8..1]: {}", e_chirho));
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(30));
+    }
+
 }
