@@ -1321,6 +1321,154 @@ main = print (evalState addToState 10)
         assert_eq!(m_chirho.io_output_chirho, "20\n");
     }
 
+    // ── ReaderT (§E.45) ─────────────────────────────────────────────
+
+    #[test]
+    fn reader_t_ask_eval_chirho() {
+        // ask returns the environment: runReader ask 42 → 42
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = print (runReader ask 42)
+"#;
+        let result_chirho =
+            crate::eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        assert!(result_chirho.is_ok(), "ReaderT ask failed: {:?}", result_chirho.err());
+    }
+
+    #[test]
+    fn reader_t_bind_return_chirho() {
+        // bindReaderT ask (\r -> returnReaderT (r + 1)), run with env=10 → 11
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+inc = bindReaderT ask (\r -> returnReaderT (r + 1))
+main = print (runReader inc 10)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("ReaderT bind/return failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "11\n");
+    }
+
+    #[test]
+    fn reader_t_local_chirho() {
+        // local modifies the environment for its action:
+        // runReader (local (\r -> r * 2) ask) 5 → 10
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+doubled = local (\r -> r * 2) ask
+main = print (runReader doubled 5)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("ReaderT local failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "10\n");
+    }
+
+    #[test]
+    fn reader_t_chain_chirho() {
+        // Chain multiple bindReaderT operations
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+computation = bindReaderT ask (\r ->
+  bindReaderT (returnReaderT (r * 3)) (\tripled ->
+  returnReaderT (tripled + r)))
+main = print (runReader computation 7)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("ReaderT chain failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "28\n"); // 7*3 + 7 = 28
+    }
+
+    // ── ExceptT (§E.45) ───────────────────────────────────────────────
+
+    #[test]
+    fn except_t_return_right_chirho() {
+        // returnExceptT wraps in Right: runExceptT (returnExceptT 42) → Right 42
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = case runExceptT (returnExceptT 42) of
+  Right x -> print x
+  Left _  -> print 0
+"#;
+        let result_chirho =
+            crate::eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        assert!(result_chirho.is_ok(), "ExceptT returnExceptT failed: {:?}", result_chirho.err());
+    }
+
+    #[test]
+    fn except_t_throw_left_chirho() {
+        // throwE wraps in Left: runExceptT (throwE 99) → Left 99
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+main = case runExceptT (throwE 99) of
+  Left e  -> print e
+  Right _ -> print 0
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("ExceptT throwE failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "99\n");
+    }
+
+    #[test]
+    fn except_t_bind_success_chirho() {
+        // bindExceptT propagates Right:
+        // bindExceptT (returnExceptT 10) (\x -> returnExceptT (x + 5)) → Right 15
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+comp = bindExceptT (returnExceptT 10) (\x -> returnExceptT (x + 5))
+main = case runExceptT comp of
+  Right v -> print v
+  Left _  -> print 0
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("ExceptT bind success failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "15\n");
+    }
+
+    #[test]
+    fn except_t_bind_short_circuit_chirho() {
+        // bindExceptT short-circuits on Left:
+        // bindExceptT (throwE 42) (\x -> returnExceptT (x + 1)) → Left 42
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+comp = bindExceptT (throwE 42) (\x -> returnExceptT (x + 1))
+main = case runExceptT comp of
+  Left e  -> print e
+  Right _ -> print 0
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("ExceptT bind short-circuit failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn except_t_catch_chirho() {
+        // catchE catches Left and recovers:
+        // catchE (throwE 99) (\e -> returnExceptT (e + 1)) → Right 100
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"module Test where
+comp = catchE (throwE 99) (\e -> returnExceptT (e + 1))
+main = case runExceptT comp of
+  Right v -> print v
+  Left _  -> print 0
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("ExceptT catchE failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "100\n");
+    }
+
     // ── TypeApplications (§E.33) ─────────────────────────────────────
 
     #[test]

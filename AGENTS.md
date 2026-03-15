@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1479 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1488 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -247,7 +247,7 @@ _These items address structural issues identified in the Codex engineering revie
 42. ~~**DefaultSignatures**~~ — DONE (`default methodName :: ConstrainedType` syntax parsed in class bodies via `try_extract_default_sig_chirho`; detects `default VarId :: ...` pattern in DefaultDeclChirho CST nodes, distinguishing from `default (Int, Double)` declarations; stores raw type text on `ClassMethodChirho.default_sig_chirho: Option<String>`; class body where-clause scanning handles both direct DefaultDecl children and nested WhereClause children; default method implementations already work end-to-end with instance method fallback; 2 parser unit tests (default sig present, absent) + 3 e2e driver tests (basic eval with default, override eval, AST verification); 1460 tests total)
 43. **Template Haskell (basic)** — quasi-quotation, reify, splicing for compile-time metaprogramming
 44. **Foreign exports** — `foreign export ccall` for Haskell functions callable from C/JS
-45. ~~**Monad transformers** — StateT, ReaderT, WriterT, ExceptT, MaybeT evaluation through STG machine~~ — DONE (StateT monad operations: `get` retrieves state, `put` sets state, `modify` applies function to state, `bindStateT`/`returnStateT` for monadic composition, `evalState`/`execState`/`runState`/`runStateT` for running computations; MaybeT constructor/destructor (`MaybeT`/`runMaybeT`); all operations generated as Core IR prelude bindings with proper tuple construction/destruction; type signatures in infer_chirho.rs; names exported from Prelude; 5 new e2e tests: get+evalState, put+execState, modify×3, bind+return counter, bind+return with arithmetic; remaining: ReaderT/WriterT/ExceptT operations, MonadTrans lift instances; 1401 tests total)
+45. ~~**Monad transformers** — StateT, ReaderT, WriterT, ExceptT, MaybeT evaluation through STG machine~~ — DONE (StateT: get/put/modify/bindStateT/returnStateT/evalState/execState/runState/runStateT with 5 e2e tests; ReaderT: constructor/runReaderT/runReader/ask/local/bindReaderT/returnReaderT with 4 e2e tests; ExceptT: constructor/runExceptT/throwE/returnExceptT/bindExceptT/catchE with 5 e2e tests; MaybeT: constructor/runMaybeT; all transformers use Core IR newtype-erasion with case dispatch; type signatures in infer_chirho.rs; names exported from Prelude; remaining: WriterT requires Monoid infrastructure; 1488 tests total)
 
 #### F. Package Management & Hackage
 

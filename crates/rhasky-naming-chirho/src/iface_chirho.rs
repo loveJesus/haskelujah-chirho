@@ -299,6 +299,12 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "StateT", "runStateT", "runState", "evalState", "execState",
             "get", "put", "modify", "bindStateT", "returnStateT",
             "MaybeT", "runMaybeT",
+            // ReaderT
+            "ReaderT", "runReaderT", "runReader", "ask", "local",
+            "bindReaderT", "returnReaderT",
+            // ExceptT
+            "ExceptT", "runExceptT", "throwE", "returnExceptT",
+            "bindExceptT", "catchE",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);

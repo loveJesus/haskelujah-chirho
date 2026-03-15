@@ -3190,6 +3190,131 @@ impl DictPassCtxChirho {
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
+
+        // ── ReaderT constructor: ReaderT :: (r -> a) -> ReaderT r a ──
+        {
+            let fn_id_chirho = self.resolve_or_fresh_id_chirho("ReaderT");
+            let f_chirho = self.fresh_binder_chirho("f", a_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: f_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "ReaderT".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(f_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: fn_id_chirho,
+                    name_chirho: "ReaderT".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── runReaderT :: ReaderT r a -> r -> a ──
+        // Implementation: case dispatch extracts the reader function, then applies it.
+        {
+            let fn_id_chirho = self.resolve_or_fresh_id_chirho("runReaderT");
+            let t_chirho = self.fresh_binder_chirho("t", a_chirho.clone());
+            let r_chirho = self.fresh_binder_chirho("r", a_chirho.clone());
+            let scr_chirho = self.fresh_binder_chirho("_sr", a_chirho.clone());
+            let field_chirho = self.fresh_binder_chirho("f", a_chirho.clone());
+
+            // case t of { ReaderT f -> f r }
+            let body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(t_chirho.id_chirho)),
+                bind_chirho: scr_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("ReaderT".to_string()),
+                    binders_chirho: vec![field_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(field_chirho.id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
+                    },
+                }],
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: t_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: r_chirho,
+                    body_chirho: Box::new(body_chirho),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: fn_id_chirho,
+                    name_chirho: "runReaderT".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── ExceptT constructor: ExceptT :: Either e a -> ExceptT e a ──
+        {
+            let fn_id_chirho = self.resolve_or_fresh_id_chirho("ExceptT");
+            let inner_chirho = self.fresh_binder_chirho("inner", a_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: inner_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "ExceptT".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(inner_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: fn_id_chirho,
+                    name_chirho: "ExceptT".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── runExceptT :: ExceptT e a -> Either e a ──
+        {
+            let fn_id_chirho = self.resolve_or_fresh_id_chirho("runExceptT");
+            let arg_chirho = self.fresh_binder_chirho("t", a_chirho.clone());
+            let scr_chirho = self.fresh_binder_chirho("_s", a_chirho.clone());
+            let field_chirho = self.fresh_binder_chirho("inner", a_chirho.clone());
+
+            let body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(arg_chirho.id_chirho)),
+                bind_chirho: scr_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("ExceptT".to_string()),
+                    binders_chirho: vec![field_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::VarChirho(field_chirho.id_chirho),
+                }],
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: arg_chirho,
+                body_chirho: Box::new(body_chirho),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: fn_id_chirho,
+                    name_chirho: "runExceptT".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
     }
 
     /// Generate Core IR bindings for monad transformer operations.
@@ -3546,6 +3671,487 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(run_state_t_id_chirho),
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // =====================================================================
+        // ReaderT operations
+        // =====================================================================
+
+        // ── ask :: ReaderT r r ──
+        // ask = ReaderT (\r -> r)   (identity function wrapped in ReaderT)
+        {
+            let ask_id_chirho = self.resolve_or_fresh_id_chirho("ask");
+            let r_chirho = self.fresh_binder_chirho("r", a_chirho.clone());
+            // \r -> r
+            let reader_fn_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: r_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
+            };
+            // ReaderT (\r -> r)
+            let rhs_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "ReaderT".to_string(),
+                args_chirho: vec![reader_fn_chirho],
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: ask_id_chirho,
+                    name_chirho: "ask".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── local :: (r -> r) -> ReaderT r a -> ReaderT r a ──
+        // local f m = ReaderT (\r -> runReaderT m (f r))
+        {
+            let local_id_chirho = self.resolve_or_fresh_id_chirho("local");
+            let f_chirho = self.fresh_binder_chirho("f", a_chirho.clone());
+            let m_chirho = self.fresh_binder_chirho("m", a_chirho.clone());
+            let r_chirho = self.fresh_binder_chirho("r", a_chirho.clone());
+            let scr_chirho = self.fresh_binder_chirho("_sl", a_chirho.clone());
+            let field_chirho = self.fresh_binder_chirho("g", a_chirho.clone());
+
+            // f r
+            let f_r_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
+            };
+            // case m of { ReaderT g -> g (f r) }
+            let inner_body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(m_chirho.id_chirho)),
+                bind_chirho: scr_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("ReaderT".to_string()),
+                    binders_chirho: vec![field_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(field_chirho.id_chirho)),
+                        arg_chirho: Box::new(f_r_chirho),
+                    },
+                }],
+            };
+            // ReaderT (\r -> case m of { ReaderT g -> g (f r) })
+            let reader_fn_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: r_chirho,
+                body_chirho: Box::new(inner_body_chirho),
+            };
+            let reader_wrapped_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "ReaderT".to_string(),
+                args_chirho: vec![reader_fn_chirho],
+            };
+            // \f -> \m -> ReaderT (...)
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: f_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: m_chirho,
+                    body_chirho: Box::new(reader_wrapped_chirho),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: local_id_chirho,
+                    name_chirho: "local".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── bindReaderT :: ReaderT r a -> (a -> ReaderT r b) -> ReaderT r b ──
+        // bindReaderT m k = ReaderT (\r -> let a = runReaderT m r in runReaderT (k a) r)
+        {
+            let bind_id_chirho = self.resolve_or_fresh_id_chirho("bindReaderT");
+            let m_chirho = self.fresh_binder_chirho("m", a_chirho.clone());
+            let k_chirho = self.fresh_binder_chirho("k", a_chirho.clone());
+            let r_chirho = self.fresh_binder_chirho("r", a_chirho.clone());
+            let scr_m_chirho = self.fresh_binder_chirho("_sm", a_chirho.clone());
+            let field_m_chirho = self.fresh_binder_chirho("fm", a_chirho.clone());
+            let a_val_chirho = self.fresh_binder_chirho("a_val", a_chirho.clone());
+            let scr_k_chirho = self.fresh_binder_chirho("_sk", a_chirho.clone());
+            let field_k_chirho = self.fresh_binder_chirho("fk", a_chirho.clone());
+
+            // case m of { ReaderT fm -> fm r }  (this is runReaderT m r)
+            let run_m_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(m_chirho.id_chirho)),
+                bind_chirho: scr_m_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("ReaderT".to_string()),
+                    binders_chirho: vec![field_m_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(field_m_chirho.id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
+                    },
+                }],
+            };
+
+            // k a_val  (produces ReaderT r b)
+            let k_a_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(k_chirho.id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(a_val_chirho.id_chirho)),
+            };
+
+            // case (k a_val) of { ReaderT fk -> fk r }  (this is runReaderT (k a) r)
+            let run_k_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(k_a_chirho),
+                bind_chirho: scr_k_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("ReaderT".to_string()),
+                    binders_chirho: vec![field_k_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(field_k_chirho.id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(r_chirho.id_chirho)),
+                    },
+                }],
+            };
+
+            // let a_val = runReaderT m r in runReaderT (k a_val) r
+            let let_body_chirho = CoreExprChirho::LetChirho {
+                rec_chirho: false,
+                binds_chirho: vec![(a_val_chirho, run_m_chirho)],
+                body_chirho: Box::new(run_k_chirho),
+            };
+
+            // ReaderT (\r -> let a_val = ... in ...)
+            let reader_fn_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: r_chirho,
+                body_chirho: Box::new(let_body_chirho),
+            };
+            let reader_wrapped_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "ReaderT".to_string(),
+                args_chirho: vec![reader_fn_chirho],
+            };
+            // \m -> \k -> ReaderT (...)
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: m_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: k_chirho,
+                    body_chirho: Box::new(reader_wrapped_chirho),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: bind_id_chirho,
+                    name_chirho: "bindReaderT".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── returnReaderT :: a -> ReaderT r a ──
+        // returnReaderT x = ReaderT (\_ -> x)
+        {
+            let ret_id_chirho = self.resolve_or_fresh_id_chirho("returnReaderT");
+            let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
+            let r_chirho = self.fresh_binder_chirho("_r", a_chirho.clone());
+            // \_ -> x
+            let reader_fn_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: r_chirho,
+                body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho,
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "ReaderT".to_string(),
+                    args_chirho: vec![reader_fn_chirho],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: ret_id_chirho,
+                    name_chirho: "returnReaderT".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── runReader :: ReaderT r a -> r -> a  (alias for runReaderT) ──
+        {
+            let run_reader_id_chirho = self.resolve_or_fresh_id_chirho("runReader");
+            let run_reader_t_id_chirho = self.resolve_or_fresh_id_chirho("runReaderT");
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: run_reader_id_chirho,
+                    name_chirho: "runReader".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::VarChirho(run_reader_t_id_chirho),
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // =====================================================================
+        // ExceptT operations
+        // =====================================================================
+
+        // ── throwE :: e -> ExceptT e a ──
+        // throwE e = ExceptT (Left e)
+        {
+            let throw_id_chirho = self.resolve_or_fresh_id_chirho("throwE");
+            let e_chirho = self.fresh_binder_chirho("e", a_chirho.clone());
+            let left_val_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "Left".to_string(),
+                args_chirho: vec![CoreExprChirho::VarChirho(e_chirho.id_chirho)],
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: e_chirho,
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "ExceptT".to_string(),
+                    args_chirho: vec![left_val_chirho],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: throw_id_chirho,
+                    name_chirho: "throwE".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── returnExceptT :: a -> ExceptT e a ──
+        // returnExceptT x = ExceptT (Right x)
+        {
+            let ret_id_chirho = self.resolve_or_fresh_id_chirho("returnExceptT");
+            let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
+            let right_val_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "Right".to_string(),
+                args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho,
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "ExceptT".to_string(),
+                    args_chirho: vec![right_val_chirho],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: ret_id_chirho,
+                    name_chirho: "returnExceptT".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── bindExceptT :: ExceptT e a -> (a -> ExceptT e b) -> ExceptT e b ──
+        // bindExceptT m k = ExceptT (case runExceptT m of
+        //   Left e  -> Left e
+        //   Right a -> runExceptT (k a))
+        {
+            let bind_id_chirho = self.resolve_or_fresh_id_chirho("bindExceptT");
+            let m_chirho = self.fresh_binder_chirho("m", a_chirho.clone());
+            let k_chirho = self.fresh_binder_chirho("k", a_chirho.clone());
+            let scr_m_chirho = self.fresh_binder_chirho("_sm", a_chirho.clone());
+            let field_m_chirho = self.fresh_binder_chirho("inner_m", a_chirho.clone());
+            let scr_either_chirho = self.fresh_binder_chirho("_se", a_chirho.clone());
+            let err_chirho = self.fresh_binder_chirho("err", a_chirho.clone());
+            let val_chirho = self.fresh_binder_chirho("val", a_chirho.clone());
+            let scr_k_chirho = self.fresh_binder_chirho("_sk", a_chirho.clone());
+            let field_k_chirho = self.fresh_binder_chirho("inner_k", a_chirho.clone());
+
+            // case m of { ExceptT inner_m -> inner_m }  (runExceptT m)
+            let run_m_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(m_chirho.id_chirho)),
+                bind_chirho: scr_m_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("ExceptT".to_string()),
+                    binders_chirho: vec![field_m_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::VarChirho(field_m_chirho.id_chirho),
+                }],
+            };
+
+            // k val  (produces ExceptT e b)
+            let k_val_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(k_chirho.id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(val_chirho.id_chirho)),
+            };
+
+            // case (k val) of { ExceptT inner_k -> inner_k }  (runExceptT (k val))
+            let run_k_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(k_val_chirho),
+                bind_chirho: scr_k_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("ExceptT".to_string()),
+                    binders_chirho: vec![field_k_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::VarChirho(field_k_chirho.id_chirho),
+                }],
+            };
+
+            // case (runExceptT m) of
+            //   Left err  -> Left err
+            //   Right val -> runExceptT (k val)
+            let either_dispatch_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(run_m_chirho),
+                bind_chirho: scr_either_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("Left".to_string()),
+                        binders_chirho: vec![err_chirho.clone()],
+                        rhs_chirho: CoreExprChirho::ConAppChirho {
+                            con_name_chirho: "Left".to_string(),
+                            args_chirho: vec![CoreExprChirho::VarChirho(err_chirho.id_chirho)],
+                        },
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("Right".to_string()),
+                        binders_chirho: vec![val_chirho],
+                        rhs_chirho: run_k_chirho,
+                    },
+                ],
+            };
+
+            // ExceptT (case ...)
+            let except_wrapped_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "ExceptT".to_string(),
+                args_chirho: vec![either_dispatch_chirho],
+            };
+
+            // \m -> \k -> ExceptT (...)
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: m_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: k_chirho,
+                    body_chirho: Box::new(except_wrapped_chirho),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: bind_id_chirho,
+                    name_chirho: "bindExceptT".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── catchE :: ExceptT e a -> (e -> ExceptT e a) -> ExceptT e a ──
+        // catchE m handler = ExceptT (case runExceptT m of
+        //   Left e  -> runExceptT (handler e)
+        //   Right a -> Right a)
+        {
+            let catch_id_chirho = self.resolve_or_fresh_id_chirho("catchE");
+            let m_chirho = self.fresh_binder_chirho("m", a_chirho.clone());
+            let handler_chirho = self.fresh_binder_chirho("handler", a_chirho.clone());
+            let scr_m_chirho = self.fresh_binder_chirho("_sm", a_chirho.clone());
+            let field_m_chirho = self.fresh_binder_chirho("inner_m", a_chirho.clone());
+            let scr_either_chirho = self.fresh_binder_chirho("_se", a_chirho.clone());
+            let err_chirho = self.fresh_binder_chirho("err", a_chirho.clone());
+            let val_chirho = self.fresh_binder_chirho("val", a_chirho.clone());
+            let scr_h_chirho = self.fresh_binder_chirho("_sh", a_chirho.clone());
+            let field_h_chirho = self.fresh_binder_chirho("inner_h", a_chirho.clone());
+
+            // case m of { ExceptT inner_m -> inner_m }
+            let run_m_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(m_chirho.id_chirho)),
+                bind_chirho: scr_m_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("ExceptT".to_string()),
+                    binders_chirho: vec![field_m_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::VarChirho(field_m_chirho.id_chirho),
+                }],
+            };
+
+            // handler err  (produces ExceptT e a)
+            let handler_err_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(handler_chirho.id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(err_chirho.id_chirho)),
+            };
+
+            // case (handler err) of { ExceptT inner_h -> inner_h }
+            let run_handler_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(handler_err_chirho),
+                bind_chirho: scr_h_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("ExceptT".to_string()),
+                    binders_chirho: vec![field_h_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::VarChirho(field_h_chirho.id_chirho),
+                }],
+            };
+
+            // case (runExceptT m) of
+            //   Left err  -> runExceptT (handler err)
+            //   Right val -> Right val
+            let either_dispatch_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(run_m_chirho),
+                bind_chirho: scr_either_chirho,
+                result_ty_chirho: a_chirho.clone(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("Left".to_string()),
+                        binders_chirho: vec![err_chirho],
+                        rhs_chirho: run_handler_chirho,
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("Right".to_string()),
+                        binders_chirho: vec![val_chirho.clone()],
+                        rhs_chirho: CoreExprChirho::ConAppChirho {
+                            con_name_chirho: "Right".to_string(),
+                            args_chirho: vec![CoreExprChirho::VarChirho(val_chirho.id_chirho)],
+                        },
+                    },
+                ],
+            };
+
+            // ExceptT (case ...)
+            let except_wrapped_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho: "ExceptT".to_string(),
+                args_chirho: vec![either_dispatch_chirho],
+            };
+
+            // \m -> \handler -> ExceptT (...)
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: m_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: handler_chirho,
+                    body_chirho: Box::new(except_wrapped_chirho),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: catch_id_chirho,
+                    name_chirho: "catchE".to_string(),
+                    ty_chirho: a_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
                 is_rec_chirho: false,
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
             });

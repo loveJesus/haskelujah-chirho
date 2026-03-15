@@ -6171,6 +6171,352 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     }
 
     // -----------------------------------------------------------------------
+    // ReaderT monad transformer
+    // -----------------------------------------------------------------------
+
+    // ReaderT :: (r -> a) -> ReaderT r a
+    // runReaderT :: ReaderT r a -> r -> a
+    {
+        let rt_r_chirho = TyVarChirho(3530);
+        let rt_a_chirho = TyVarChirho(3531);
+        let rt_fn_ty_chirho = TyChirho::fun_chirho(
+            TyChirho::VarChirho(rt_r_chirho),
+            TyChirho::VarChirho(rt_a_chirho),
+        );
+        let readert_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                Box::new(TyChirho::VarChirho(rt_r_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(rt_a_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "ReaderT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![rt_r_chirho, rt_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    rt_fn_ty_chirho.clone(),
+                    readert_ty_chirho.clone(),
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "runReaderT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![rt_r_chirho, rt_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    readert_ty_chirho.clone(),
+                    rt_fn_ty_chirho.clone(),
+                ),
+            },
+        );
+    }
+
+    // ask :: ReaderT r r
+    {
+        let ar_chirho = TyVarChirho(3532);
+        let ask_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                Box::new(TyChirho::VarChirho(ar_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(ar_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "ask".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![ar_chirho],
+                preds_chirho: vec![],
+                ty_chirho: ask_ty_chirho,
+            },
+        );
+    }
+
+    // local :: (r -> r) -> ReaderT r a -> ReaderT r a
+    {
+        let lr_chirho = TyVarChirho(3533);
+        let la_chirho = TyVarChirho(3534);
+        let readert_ra_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                Box::new(TyChirho::VarChirho(lr_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(la_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "local".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![lr_chirho, la_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(lr_chirho),
+                        TyChirho::VarChirho(lr_chirho),
+                    ),
+                    TyChirho::fun_chirho(
+                        readert_ra_chirho.clone(),
+                        readert_ra_chirho,
+                    ),
+                ),
+            },
+        );
+    }
+
+    // bindReaderT :: ReaderT r a -> (a -> ReaderT r b) -> ReaderT r b
+    {
+        let br_chirho = TyVarChirho(3535);
+        let ba_chirho = TyVarChirho(3536);
+        let bb_chirho = TyVarChirho(3537);
+        let readert_ra_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                Box::new(TyChirho::VarChirho(br_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(ba_chirho)),
+        );
+        let readert_rb_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                Box::new(TyChirho::VarChirho(br_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(bb_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "bindReaderT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![br_chirho, ba_chirho, bb_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    readert_ra_chirho,
+                    TyChirho::fun_chirho(
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(ba_chirho),
+                            readert_rb_chirho.clone(),
+                        ),
+                        readert_rb_chirho,
+                    ),
+                ),
+            },
+        );
+    }
+
+    // returnReaderT :: a -> ReaderT r a
+    {
+        let rr_chirho = TyVarChirho(3538);
+        let ra_chirho = TyVarChirho(3539);
+        let readert_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                Box::new(TyChirho::VarChirho(rr_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(ra_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "returnReaderT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![rr_chirho, ra_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(ra_chirho),
+                    readert_ty_chirho,
+                ),
+            },
+        );
+    }
+
+    // runReader :: ReaderT r a -> r -> a  (alias)
+    {
+        let rnr_r_chirho = TyVarChirho(3540);
+        let rnr_a_chirho = TyVarChirho(3541);
+        let readert_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                Box::new(TyChirho::VarChirho(rnr_r_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(rnr_a_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "runReader".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![rnr_r_chirho, rnr_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    readert_ty_chirho,
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(rnr_r_chirho),
+                        TyChirho::VarChirho(rnr_a_chirho),
+                    ),
+                ),
+            },
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // ExceptT monad transformer
+    // -----------------------------------------------------------------------
+
+    // ExceptT :: Either e a -> ExceptT e a
+    // runExceptT :: ExceptT e a -> Either e a
+    {
+        let et_e_chirho = TyVarChirho(3550);
+        let et_a_chirho = TyVarChirho(3551);
+        let either_ea_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Either".to_string())),
+                Box::new(TyChirho::VarChirho(et_e_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(et_a_chirho)),
+        );
+        let exceptt_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ExceptT".to_string())),
+                Box::new(TyChirho::VarChirho(et_e_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(et_a_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "ExceptT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![et_e_chirho, et_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    either_ea_chirho.clone(),
+                    exceptt_ty_chirho.clone(),
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "runExceptT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![et_e_chirho, et_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    exceptt_ty_chirho,
+                    either_ea_chirho,
+                ),
+            },
+        );
+    }
+
+    // throwE :: e -> ExceptT e a
+    {
+        let te_e_chirho = TyVarChirho(3552);
+        let te_a_chirho = TyVarChirho(3553);
+        let exceptt_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ExceptT".to_string())),
+                Box::new(TyChirho::VarChirho(te_e_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(te_a_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "throwE".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![te_e_chirho, te_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(te_e_chirho),
+                    exceptt_ty_chirho,
+                ),
+            },
+        );
+    }
+
+    // returnExceptT :: a -> ExceptT e a
+    {
+        let re_e_chirho = TyVarChirho(3554);
+        let re_a_chirho = TyVarChirho(3555);
+        let exceptt_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ExceptT".to_string())),
+                Box::new(TyChirho::VarChirho(re_e_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(re_a_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "returnExceptT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![re_e_chirho, re_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(re_a_chirho),
+                    exceptt_ty_chirho,
+                ),
+            },
+        );
+    }
+
+    // bindExceptT :: ExceptT e a -> (a -> ExceptT e b) -> ExceptT e b
+    {
+        let be_e_chirho = TyVarChirho(3556);
+        let be_a_chirho = TyVarChirho(3557);
+        let be_b_chirho = TyVarChirho(3558);
+        let exceptt_ea_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ExceptT".to_string())),
+                Box::new(TyChirho::VarChirho(be_e_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(be_a_chirho)),
+        );
+        let exceptt_eb_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ExceptT".to_string())),
+                Box::new(TyChirho::VarChirho(be_e_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(be_b_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "bindExceptT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![be_e_chirho, be_a_chirho, be_b_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    exceptt_ea_chirho,
+                    TyChirho::fun_chirho(
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(be_a_chirho),
+                            exceptt_eb_chirho.clone(),
+                        ),
+                        exceptt_eb_chirho,
+                    ),
+                ),
+            },
+        );
+    }
+
+    // catchE :: ExceptT e a -> (e -> ExceptT e a) -> ExceptT e a
+    {
+        let ce_e_chirho = TyVarChirho(3559);
+        let ce_a_chirho = TyVarChirho(3560);
+        let exceptt_ea_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ExceptT".to_string())),
+                Box::new(TyChirho::VarChirho(ce_e_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(ce_a_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "catchE".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![ce_e_chirho, ce_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    exceptt_ea_chirho.clone(),
+                    TyChirho::fun_chirho(
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(ce_e_chirho),
+                            exceptt_ea_chirho.clone(),
+                        ),
+                        exceptt_ea_chirho,
+                    ),
+                ),
+            },
+        );
+    }
+
+    // -----------------------------------------------------------------------
     // Additional utility functions (repeat, cycle, fix, group, etc.)
     // -----------------------------------------------------------------------
 
