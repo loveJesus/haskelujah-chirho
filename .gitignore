@@ -25,5 +25,11 @@ Thumbs.db
 .idea/
 .vscode/
 
-# GHC test suite (local verification only)
-/ghc-tests-chirho/
+# GHC full testsuite clone (too large to track)
+/ghc-testsuite-clone-chirho/
+
+# Installed packages (local state)
+/.rhasky-packages-chirho/
+
+# Claude state
+.claude/

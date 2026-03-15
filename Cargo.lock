@@ -797,6 +797,8 @@ name = "rhasky-test-harness-chirho"
 version = "0.1.0"
 dependencies = [
  "rhasky-diagnostics-chirho",
+ "rhasky-driver-chirho",
+ "rhasky-runtime-chirho",
  "rhasky-span-chirho",
  "tempfile",
 ]

@@ -7,6 +7,8 @@
 //! Provides golden test runners, test corpus discovery, and snapshot
 //! comparison utilities.
 
+pub mod ghc_suite_chirho;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
