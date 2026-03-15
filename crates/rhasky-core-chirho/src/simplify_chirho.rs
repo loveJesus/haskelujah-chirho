@@ -544,6 +544,208 @@ fn collect_free_vars_chirho(
     }
 }
 
+// ── Dictionary elision for backend code generation ──
+// Replaces selector+dict patterns with direct PrimOps, enabling
+// LLVM and WASM backends to compile programs without heap-allocated dictionaries.
+
+/// Resolve the binding name for a CoreId from a bindings list.
+fn resolve_name_for_id_chirho(
+    id_chirho: &CoreIdChirho,
+    bindings_chirho: &[CoreBindingChirho],
+) -> Option<String> {
+    bindings_chirho
+        .iter()
+        .find(|b_chirho| b_chirho.binder_chirho.id_chirho == *id_chirho)
+        .map(|b_chirho| b_chirho.binder_chirho.name_chirho.clone())
+}
+
+/// Map known typeclass selector names to their primop equivalents.
+fn selector_primop_chirho(name_chirho: &str) -> Option<&'static str> {
+    match name_chirho {
+        "$sel_Num_+" => Some("+#"),
+        "$sel_Num_-" => Some("-#"),
+        "$sel_Num_*" => Some("*#"),
+        "$sel_Num_negate" => Some("negate#"),
+        "$sel_Eq_==" => Some("==#"),
+        "$sel_Ord_compare" => Some("compare#"),
+        _ => None,
+    }
+}
+
+/// Flatten nested App chains into callee + argument list.
+fn flatten_apps_chirho(expr_chirho: &CoreExprChirho) -> (&CoreExprChirho, Vec<&CoreExprChirho>) {
+    let mut args_chirho = Vec::new();
+    let mut cur_chirho = expr_chirho;
+    while let CoreExprChirho::AppChirho {
+        fun_chirho,
+        arg_chirho,
+    } = cur_chirho
+    {
+        args_chirho.push(arg_chirho.as_ref());
+        cur_chirho = fun_chirho;
+    }
+    args_chirho.reverse();
+    (cur_chirho, args_chirho)
+}
+
+/// Dictionary elision: replace typeclass selector+dict application patterns
+/// with direct PrimOp calls. Handles:
+/// - `$sel_Num_fromInteger dict lit` → `lit`
+/// - `$sel_Num_+ dict x y` → `+# x y` (and -, *, ==, compare, negate)
+/// - Strip `\$dXxx -> body` dict lambda parameters
+/// - Skip dict arguments (`$f`-prefixed binding references) at call sites
+pub fn elide_dicts_chirho(
+    expr_chirho: &CoreExprChirho,
+    all_bindings_chirho: &[CoreBindingChirho],
+) -> CoreExprChirho {
+    // Check for selector+dict patterns via flattened App chain
+    let (callee_chirho, all_args_chirho) = flatten_apps_chirho(expr_chirho);
+
+    if let CoreExprChirho::VarChirho(sel_id_chirho) = callee_chirho {
+        if let Some(name_chirho) = resolve_name_for_id_chirho(sel_id_chirho, all_bindings_chirho) {
+            // $sel_Num_fromInteger dict lit → lit
+            if name_chirho == "$sel_Num_fromInteger" && all_args_chirho.len() >= 2 {
+                let simplified_chirho = elide_dicts_chirho(all_args_chirho[1], all_bindings_chirho);
+                if let CoreExprChirho::LitChirho(lit_chirho) = &simplified_chirho {
+                    return CoreExprChirho::LitChirho(lit_chirho.clone());
+                }
+                return simplified_chirho;
+            }
+
+            // $sel_Num_+ dict x y → +# x y (and similar binary/unary primops)
+            if let Some(primop_chirho) = selector_primop_chirho(&name_chirho) {
+                if all_args_chirho.len() >= 3 {
+                    let real_args_chirho: Vec<CoreExprChirho> = all_args_chirho[1..]
+                        .iter()
+                        .map(|a_chirho| elide_dicts_chirho(a_chirho, all_bindings_chirho))
+                        .collect();
+                    return CoreExprChirho::PrimOpChirho {
+                        name_chirho: primop_chirho.to_string(),
+                        args_chirho: real_args_chirho,
+                    };
+                }
+            }
+        }
+    }
+
+    // Strip dict lambda parameters (\$dXxx -> body)
+    if let CoreExprChirho::LamChirho { binder_chirho, body_chirho } = expr_chirho {
+        if binder_chirho.name_chirho.starts_with("$d") {
+            return elide_dicts_chirho(body_chirho, all_bindings_chirho);
+        }
+    }
+
+    // Recurse
+    match expr_chirho {
+        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
+            let sf_chirho = elide_dicts_chirho(fun_chirho, all_bindings_chirho);
+            let sa_chirho = elide_dicts_chirho(arg_chirho, all_bindings_chirho);
+            // Skip dict arguments ($f-prefixed binding refs)
+            if let CoreExprChirho::VarChirho(id_chirho) = &sa_chirho {
+                if let Some(n_chirho) = resolve_name_for_id_chirho(id_chirho, all_bindings_chirho) {
+                    if n_chirho.starts_with("$f") || n_chirho.starts_with("$d") {
+                        return sf_chirho;
+                    }
+                }
+            }
+            CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(sf_chirho),
+                arg_chirho: Box::new(sa_chirho),
+            }
+        }
+        CoreExprChirho::LamChirho { binder_chirho, body_chirho } => CoreExprChirho::LamChirho {
+            binder_chirho: binder_chirho.clone(),
+            body_chirho: Box::new(elide_dicts_chirho(body_chirho, all_bindings_chirho)),
+        },
+        CoreExprChirho::LetChirho { rec_chirho, binds_chirho, body_chirho } => CoreExprChirho::LetChirho {
+            rec_chirho: *rec_chirho,
+            binds_chirho: binds_chirho
+                .iter()
+                .map(|(b_chirho, r_chirho)| (b_chirho.clone(), elide_dicts_chirho(r_chirho, all_bindings_chirho)))
+                .collect(),
+            body_chirho: Box::new(elide_dicts_chirho(body_chirho, all_bindings_chirho)),
+        },
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho, bind_chirho, result_ty_chirho, alts_chirho,
+        } => CoreExprChirho::CaseChirho {
+            scrutinee_chirho: Box::new(elide_dicts_chirho(scrutinee_chirho, all_bindings_chirho)),
+            bind_chirho: bind_chirho.clone(),
+            result_ty_chirho: result_ty_chirho.clone(),
+            alts_chirho: alts_chirho
+                .iter()
+                .map(|a_chirho| CoreAltChirho {
+                    con_chirho: a_chirho.con_chirho.clone(),
+                    binders_chirho: a_chirho.binders_chirho.clone(),
+                    rhs_chirho: elide_dicts_chirho(&a_chirho.rhs_chirho, all_bindings_chirho),
+                })
+                .collect(),
+        },
+        CoreExprChirho::PrimOpChirho { name_chirho, args_chirho } => CoreExprChirho::PrimOpChirho {
+            name_chirho: name_chirho.clone(),
+            args_chirho: args_chirho
+                .iter()
+                .map(|a_chirho| elide_dicts_chirho(a_chirho, all_bindings_chirho))
+                .collect(),
+        },
+        _ => expr_chirho.clone(),
+    }
+}
+
+/// Apply dictionary elision to all bindings in a module, then return only
+/// bindings transitively reachable from `main`.
+pub fn elide_dicts_and_filter_chirho(module_chirho: &CoreModuleChirho) -> CoreModuleChirho {
+    let all_chirho = &module_chirho.bindings_chirho;
+
+    // Step 1: Elide dicts in all bindings
+    let simplified_chirho: Vec<CoreBindingChirho> = all_chirho
+        .iter()
+        .map(|b_chirho| {
+            let mut b2_chirho = b_chirho.clone();
+            b2_chirho.rhs_chirho = elide_dicts_chirho(&b2_chirho.rhs_chirho, all_chirho);
+            b2_chirho
+        })
+        .collect();
+
+    // Step 2: Build id→index map
+    let mut id_to_idx_chirho = std::collections::HashMap::new();
+    for (i_chirho, b_chirho) in simplified_chirho.iter().enumerate() {
+        id_to_idx_chirho.insert(b_chirho.binder_chirho.id_chirho, i_chirho);
+    }
+
+    // Step 3: BFS from main
+    let mut reachable_chirho: HashSet<usize> = HashSet::new();
+    let mut worklist_chirho: Vec<usize> = Vec::new();
+    for (i_chirho, b_chirho) in simplified_chirho.iter().enumerate() {
+        if b_chirho.binder_chirho.name_chirho == "main" {
+            reachable_chirho.insert(i_chirho);
+            worklist_chirho.push(i_chirho);
+        }
+    }
+    while let Some(idx_chirho) = worklist_chirho.pop() {
+        let refs_chirho = free_vars_chirho(&simplified_chirho[idx_chirho].rhs_chirho);
+        for id_chirho in refs_chirho {
+            if let Some(&dep_chirho) = id_to_idx_chirho.get(&id_chirho) {
+                if reachable_chirho.insert(dep_chirho) {
+                    worklist_chirho.push(dep_chirho);
+                }
+            }
+        }
+    }
+
+    let filtered_chirho: Vec<CoreBindingChirho> = simplified_chirho
+        .into_iter()
+        .enumerate()
+        .filter(|(i_chirho, _)| reachable_chirho.contains(i_chirho))
+        .map(|(_, b_chirho)| b_chirho)
+        .collect();
+
+    CoreModuleChirho {
+        name_chirho: module_chirho.name_chirho.clone(),
+        bindings_chirho: filtered_chirho,
+        names_chirho: module_chirho.names_chirho.clone(),
+    }
+}
+
 #[cfg(test)]
 mod tests_chirho {
     use super::*;

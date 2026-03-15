@@ -7,6 +7,7 @@ use std::path::Path;
 use std::process::{Command, ExitCode};
 
 use rhasky_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
+use rhasky_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
 use rhasky_driver_chirho::{
     check_source_path_chirho, compile_source_chirho, eval_source_with_machine_chirho,
     render_summary_chirho,
@@ -24,6 +25,7 @@ struct FlagsChirho {
     dump_stg_chirho: bool,
     dump_llvm_chirho: bool,
     output_path_chirho: Option<String>,
+    emit_wasm_chirho: bool,
 }
 
 fn main_chirho() -> ExitCode {
@@ -39,6 +41,7 @@ fn main_chirho() -> ExitCode {
         dump_stg_chirho: false,
         dump_llvm_chirho: false,
         output_path_chirho: None,
+        emit_wasm_chirho: false,
     };
     let mut positional_chirho: Vec<&str> = Vec::new();
     let mut skip_next_chirho = false;
@@ -51,6 +54,7 @@ fn main_chirho() -> ExitCode {
             "--dump-core" => flags_chirho.dump_core_chirho = true,
             "--dump-stg" => flags_chirho.dump_stg_chirho = true,
             "--dump-llvm" => flags_chirho.dump_llvm_chirho = true,
+            "--wasm" => flags_chirho.emit_wasm_chirho = true,
             "-o" | "--output" => {
                 if let Some(next_chirho) = raw_args_chirho.get(idx_chirho + 2) {
                     flags_chirho.output_path_chirho = Some(next_chirho.clone());
@@ -221,44 +225,55 @@ fn compile_command_chirho(
     match compile_source_chirho(&source_text_chirho, &mut source_map_chirho, file_name_chirho) {
         Ok(result_chirho) => {
             if let Some(ref output_path_chirho) = flags_chirho.output_path_chirho {
-                // Generate executable LLVM IR with C main() entry point
-                let exec_ir_chirho =
-                    compile_core_to_llvm_executable_chirho(&result_chirho.core_chirho);
-
-                let ll_path_chirho = format!("{output_path_chirho}.ll");
-                if let Err(e_chirho) = fs::write(&ll_path_chirho, &exec_ir_chirho) {
-                    eprintln!("error writing LLVM IR to `{ll_path_chirho}`: {e_chirho}");
-                    return ExitCode::from(1);
-                }
-
-                if flags_chirho.dump_llvm_chirho {
-                    eprintln!("=== LLVM IR ===");
-                    eprintln!("{exec_ir_chirho}");
-                }
-
-                // Invoke clang to compile .ll → native executable
-                let clang_status_chirho = Command::new("clang")
-                    .args(["-O2", "-o", output_path_chirho, &ll_path_chirho])
-                    .status();
-
-                match clang_status_chirho {
-                    Ok(status_chirho) if status_chirho.success() => {
-                        println!("compiled: {path_chirho} → {output_path_chirho}");
-                        // Clean up the intermediate .ll file
-                        let _ = fs::remove_file(&ll_path_chirho);
-                    }
-                    Ok(status_chirho) => {
-                        eprintln!(
-                            "clang failed with exit code {}; LLVM IR saved to {ll_path_chirho}",
-                            status_chirho.code().unwrap_or(-1)
-                        );
+                if flags_chirho.emit_wasm_chirho {
+                    // Generate WASM binary with dict elision
+                    let wasm_bytes_chirho =
+                        compile_core_to_wasm_executable_chirho(&result_chirho.core_chirho);
+                    if let Err(e_chirho) = fs::write(output_path_chirho, &wasm_bytes_chirho) {
+                        eprintln!("error writing WASM to `{output_path_chirho}`: {e_chirho}");
                         return ExitCode::from(1);
                     }
-                    Err(e_chirho) => {
-                        eprintln!(
-                            "could not run clang: {e_chirho}; LLVM IR saved to {ll_path_chirho}"
-                        );
+                    println!("compiled: {path_chirho} → {output_path_chirho} ({} bytes wasm)", wasm_bytes_chirho.len());
+                } else {
+                    // Generate executable LLVM IR with C main() entry point
+                    let exec_ir_chirho =
+                        compile_core_to_llvm_executable_chirho(&result_chirho.core_chirho);
+
+                    let ll_path_chirho = format!("{output_path_chirho}.ll");
+                    if let Err(e_chirho) = fs::write(&ll_path_chirho, &exec_ir_chirho) {
+                        eprintln!("error writing LLVM IR to `{ll_path_chirho}`: {e_chirho}");
                         return ExitCode::from(1);
+                    }
+
+                    if flags_chirho.dump_llvm_chirho {
+                        eprintln!("=== LLVM IR ===");
+                        eprintln!("{exec_ir_chirho}");
+                    }
+
+                    // Invoke clang to compile .ll → native executable
+                    let clang_status_chirho = Command::new("clang")
+                        .args(["-O2", "-o", output_path_chirho, &ll_path_chirho])
+                        .status();
+
+                    match clang_status_chirho {
+                        Ok(status_chirho) if status_chirho.success() => {
+                            println!("compiled: {path_chirho} → {output_path_chirho}");
+                            // Clean up the intermediate .ll file
+                            let _ = fs::remove_file(&ll_path_chirho);
+                        }
+                        Ok(status_chirho) => {
+                            eprintln!(
+                                "clang failed with exit code {}; LLVM IR saved to {ll_path_chirho}",
+                                status_chirho.code().unwrap_or(-1)
+                            );
+                            return ExitCode::from(1);
+                        }
+                        Err(e_chirho) => {
+                            eprintln!(
+                                "could not run clang: {e_chirho}; LLVM IR saved to {ll_path_chirho}"
+                            );
+                            return ExitCode::from(1);
+                        }
                     }
                 }
             } else {
@@ -305,11 +320,12 @@ fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("commands:");
     eprintln!("  check    type-check a .hs file without code generation");
     eprintln!("  run      evaluate a .hs file via the STG interpreter");
-    eprintln!("  compile  compile a .hs file (with -o: produce native executable via clang)");
+    eprintln!("  compile  compile a .hs file (with -o: produce native executable or .wasm)");
     eprintln!("  repl     interactive session (not yet implemented)");
     eprintln!();
     eprintln!("flags:");
-    eprintln!("  -o, --output <path>  output native executable (compile only; requires clang)");
+    eprintln!("  -o, --output <path>  output native executable or .wasm file (compile only)");
+    eprintln!("  --wasm               emit WebAssembly instead of native (with -o)");
     eprintln!("  --dump-core          print Core IR to stderr");
     eprintln!("  --dump-stg           print STG code table to stderr (run only)");
     eprintln!("  --dump-llvm          print LLVM IR to stderr");

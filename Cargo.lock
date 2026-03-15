@@ -433,6 +433,7 @@ name = "rhasky-cli-chirho"
 version = "0.1.0"
 dependencies = [
  "rhasky-backend-llvm-chirho",
+ "rhasky-backend-wasm-chirho",
  "rhasky-core-chirho",
  "rhasky-driver-chirho",
  "rhasky-runtime-chirho",

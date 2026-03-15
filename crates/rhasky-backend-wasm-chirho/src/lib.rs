@@ -9,7 +9,7 @@
 
 pub mod codegen_chirho;
 
-pub use codegen_chirho::compile_core_to_wasm_chirho;
+pub use codegen_chirho::{compile_core_to_wasm_chirho, compile_core_to_wasm_executable_chirho};
 
 /// Legacy stub — kept for backward compatibility with `check_source_file_chirho`.
 pub fn compile_to_wasm_stub_chirho(module_name_chirho: &str) -> Vec<u8> {

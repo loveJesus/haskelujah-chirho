@@ -32,4 +32,7 @@ pub use expr_chirho::{
     CoreLitChirho, CoreModuleChirho,
 };
 pub use pretty_chirho::pretty_module_chirho;
-pub use simplify_chirho::{simplify_module_chirho, SimplifyConfigChirho};
+pub use simplify_chirho::{
+    elide_dicts_and_filter_chirho, elide_dicts_chirho, simplify_module_chirho,
+    SimplifyConfigChirho,
+};

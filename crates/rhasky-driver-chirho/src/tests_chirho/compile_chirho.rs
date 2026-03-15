@@ -623,3 +623,64 @@ main = fib 10"#;
         assert!(exec_ir_chirho.contains("define i32 @main()"));
     }
 
+    #[test]
+    fn wasm_executable_constant_chirho() {
+        // main = 42 should produce valid WASM with dict elision
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho =
+            compile_source_chirho("module Main where\nmain = 42", &mut sm_chirho, "Main.hs")
+                .expect("should compile");
+
+        let wasm_chirho =
+            rhasky_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
+                &result_chirho.core_chirho,
+            );
+        assert_eq!(&wasm_chirho[0..4], b"\0asm");
+        assert_eq!(&wasm_chirho[4..8], &[1, 0, 0, 0]);
+        assert!(wasm_chirho.len() > 20);
+    }
+
+    #[test]
+    fn wasm_executable_arithmetic_chirho() {
+        // f x y = x + y; main = f 10 32 should produce WASM with call instruction
+        let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
+                .expect("should compile");
+
+        let wasm_chirho =
+            rhasky_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
+                &result_chirho.core_chirho,
+            );
+        assert_eq!(&wasm_chirho[0..4], b"\0asm");
+        // Should contain call opcode (0x10) for the function call f 10 32
+        assert!(
+            wasm_chirho.contains(&0x10_u8),
+            "WASM should contain call instruction"
+        );
+    }
+
+    #[test]
+    fn wasm_executable_fibonacci_chirho() {
+        let src_chirho = r#"module Main where
+fib n = case n of
+  0 -> 0
+  1 -> 1
+  _ -> fib (n - 1) + fib (n - 2)
+main = fib 10"#;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
+                .expect("should compile");
+
+        let wasm_chirho =
+            rhasky_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
+                &result_chirho.core_chirho,
+            );
+        assert_eq!(&wasm_chirho[0..4], b"\0asm");
+        // Should contain function call and case/if instructions
+        assert!(wasm_chirho.contains(&0x10_u8), "WASM should contain call instruction");
+        assert!(wasm_chirho.contains(&0x04_u8), "WASM should contain if instruction");
+    }
+
