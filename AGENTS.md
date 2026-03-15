@@ -174,7 +174,7 @@ The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-
 
 ### Test Coverage
 
-**1543 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1552 tests passing**, 0 failures, 1 ignored (1 doctest)
 
 For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
 
@@ -264,7 +264,7 @@ _These items address structural issues identified in the Codex engineering revie
 53. ~~**Specialization**~~ — DONE (`{-# SPECIALIZE f :: Type #-}` and `{-# SPECIALISE f :: Type #-}` pragmas parsed from source via `extract_specialize_pragmas_chirho`; stored on `ModuleChirho.specialize_pragmas_chirho` and propagated to `CoreModuleChirho.specialize_pragmas_chirho`; `specialize_bindings_chirho` Core-to-Core pass in simplifier Phase 4 clones binding RHS for each specialization, creates `$spec_f_N` named bindings marked `InlineAnnotationChirho::AlwaysChirho` for aggressive optimization; handles multiple specializations per function and nonexistent targets gracefully; 4 parser unit tests (basic, British spelling, multiple, absent) + 4 simplifier unit tests (creates copy, multiple types, nonexistent, preserves RHS) + 4 e2e driver tests (basic eval, Core binding created, SPECIALISE spelling, multiple specs); 1455 tests total)
 54. ~~**Common subexpression elimination**~~ — DONE (two-level CSE pass: top-level binding deduplication via `cse_top_level_chirho` identifies non-recursive bindings with identical non-trivial RHS and redirects duplicates to canonical binding; intra-expression CSE via `cse_expr_chirho` deduplicates identical RHS within `let` blocks and rewrites body references; respects INLINE/INLINABLE annotations — never deduplicates annotated bindings; recursive bindings skipped; `apply_cse_redirects_chirho` rewrites variable references throughout expression tree; integrated as Phase 3 in simplify_module_chirho iteration loop; 6 new unit tests: top-level duplicate/no-dup/recursive-skip, let-binding dup/different-rhs/redirect-in-body; 1443 tests total)
 55. **Constructor specialization** — SpecConstr-style optimization for recursive functions
-56. **Demand analysis** — absence analysis, usage analysis for dead argument elimination
+56. ~~**Demand analysis**~~ — DONE (usage counting with `UsageChirho::AbsentChirho`/`UsedOnceChirho`/`UsedManyChirho`; `count_var_occurrences_chirho` with proper shadowing for let/case/lambda; `analyze_usage_chirho` peels leading lambdas and looks through nested lambdas; `dead_arg_elimination_chirho` removes absent parameters from function lambda chains; skips recursive, NOINLINE, `$w`/`$spec_`/`$dae_` bindings; gated by `enable_dead_arg_elim_chirho` config flag; 9 unit tests: absent/once/many usage, multi-arg mixed, shadowed let, dead arg removal/preservation/skip-noinline/middle-arg; 1552 tests total)
 
 #### H. Testing & Conformance
 
