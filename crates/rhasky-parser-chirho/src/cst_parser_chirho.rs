@@ -30,7 +30,7 @@ use rhasky_span_chirho::FileIdChirho;
 // Token mapping: RawTokenKindChirho → TokenKindChirho
 // ---------------------------------------------------------------------------
 
-fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho) -> TokenKindChirho {
+fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho, text_chirho: &str) -> TokenKindChirho {
     match raw_chirho {
         // Keywords
         RawTokenKindChirho::CaseChirho => TokenKindChirho::CaseKeywordChirho,
@@ -62,7 +62,17 @@ fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho) -> TokenKindChirho {
         RawTokenKindChirho::ConIdChirho => TokenKindChirho::ConIdChirho,
         RawTokenKindChirho::VarSymChirho => TokenKindChirho::VarSymChirho,
         RawTokenKindChirho::ConSymChirho => TokenKindChirho::ConSymChirho,
-        RawTokenKindChirho::QualifiedIdChirho => TokenKindChirho::QualifiedConIdChirho,
+        RawTokenKindChirho::QualifiedIdChirho => {
+            // Distinguish qualified variable (Data.List.sort) from qualified
+            // constructor (Data.Map.Map) by checking if the local part after
+            // the last '.' starts with a lowercase letter.
+            let local_chirho = text_chirho.rsplit('.').next().unwrap_or(text_chirho);
+            if local_chirho.starts_with(|c_chirho: char| c_chirho.is_ascii_lowercase() || c_chirho == '_') {
+                TokenKindChirho::QualifiedVarIdChirho
+            } else {
+                TokenKindChirho::QualifiedConIdChirho
+            }
+        }
 
         // Literals
         RawTokenKindChirho::IntLitChirho => TokenKindChirho::IntegerLiteralChirho,
@@ -2583,7 +2593,7 @@ impl<'src> ParserChirho<'src> {
     fn bump_chirho(&mut self) {
         if let Some(tok_chirho) = self.current_chirho().copied() {
             let text_chirho = self.token_text_chirho(&tok_chirho);
-            let kind_chirho = map_token_kind_chirho(tok_chirho.kind_chirho);
+            let kind_chirho = map_token_kind_chirho(tok_chirho.kind_chirho, text_chirho);
             self.builder_chirho.token_chirho(kind_chirho, text_chirho);
             self.pos_chirho += 1;
         }

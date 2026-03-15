@@ -3,8 +3,11 @@
 
 //! # rhasky-parser-chirho
 //!
-//! Parser for Haskell source files. Currently handles module header extraction;
-//! will be expanded to a full recursive-descent parser with layout rule support.
+//! Full recursive-descent parser for Haskell source files with layout rule support.
+//! The main entry point is [`cst_parser_chirho::ParserChirho`] which produces a
+//! lossless green CST. [`lower_chirho::lower_module_chirho`] converts the CST to
+//! an AST. A lightweight [`scan_module_header_chirho`] scanner is also provided
+//! for quick module-name extraction without full parsing.
 
 pub mod cst_parser_chirho;
 pub mod layout_chirho;
