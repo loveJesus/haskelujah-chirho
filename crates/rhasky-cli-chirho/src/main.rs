@@ -139,6 +139,7 @@ fn main_chirho() -> ExitCode {
         "run" => run_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
         "compile" => compile_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
         "build" => build_command_chirho(program_name_chirho, path_chirho),
+        "install" => install_command_chirho(program_name_chirho, &positional_chirho),
         "repl" => repl_chirho::repl_command_chirho(),
         _ => {
             eprintln!("unknown command `{command_chirho}`");
@@ -474,15 +475,110 @@ fn find_cabal_file_chirho(dir_chirho: &std::path::Path) -> Option<std::path::Pat
     None
 }
 
+/// `rhasky install <package-name> <version>` — fetch a package from Hackage,
+/// compile it, and register it in the local package database.
+fn install_command_chirho(
+    program_name_chirho: &str,
+    positional_chirho: &[&str],
+) -> ExitCode {
+    // Expect: install <name> <version>
+    let pkg_name_chirho = match positional_chirho.get(1) {
+        Some(name_chirho) => *name_chirho,
+        None => {
+            eprintln!("missing package name for `install`");
+            eprintln!("usage: {} install <package-name> <version>", program_name_chirho);
+            return ExitCode::from(2);
+        }
+    };
+
+    let version_str_chirho = match positional_chirho.get(2) {
+        Some(v_chirho) => *v_chirho,
+        None => {
+            eprintln!("missing version for `install`");
+            eprintln!("usage: {} install <package-name> <version>", program_name_chirho);
+            return ExitCode::from(2);
+        }
+    };
+
+    let version_chirho = match rhasky_package_chirho::parse_version_chirho(version_str_chirho) {
+        Some(v_chirho) => v_chirho,
+        None => {
+            eprintln!("invalid version: `{version_str_chirho}`");
+            return ExitCode::from(2);
+        }
+    };
+
+    eprintln!("Installing {pkg_name_chirho}-{version_chirho}...");
+
+    // Use a subdirectory of the current directory as the install root.
+    let install_dir_chirho = std::path::PathBuf::from(".rhasky-packages-chirho");
+    if let Err(e_chirho) = fs::create_dir_all(&install_dir_chirho) {
+        eprintln!("cannot create install directory: {e_chirho}");
+        return ExitCode::from(1);
+    }
+
+    // Load or create the package database.
+    let db_path_chirho = install_dir_chirho.join("pkgdb-chirho.txt");
+    let mut db_chirho = if db_path_chirho.exists() {
+        match fs::read_to_string(&db_path_chirho) {
+            Ok(content_chirho) => {
+                rhasky_package_chirho::InstalledPkgDbChirho::from_string_chirho(&content_chirho)
+            }
+            Err(_) => rhasky_package_chirho::InstalledPkgDbChirho::new_chirho(),
+        }
+    } else {
+        rhasky_package_chirho::InstalledPkgDbChirho::new_chirho()
+    };
+
+    // Empty index for now — real Hackage index would be populated separately.
+    let index_chirho = rhasky_package_chirho::PackageIndexChirho::new_chirho();
+
+    match rhasky_driver_chirho::install_package_chirho(
+        pkg_name_chirho,
+        &version_chirho,
+        &install_dir_chirho,
+        &index_chirho,
+        &mut db_chirho,
+    ) {
+        Ok(result_chirho) => {
+            // Save updated package database.
+            if let Err(e_chirho) = fs::write(&db_path_chirho, db_chirho.to_string_chirho()) {
+                eprintln!("warning: could not save package database: {e_chirho}");
+            }
+
+            eprintln!(
+                "Installed {}-{} ({} modules, {} dependencies)",
+                result_chirho.installed_pkg_chirho.name_chirho,
+                result_chirho.installed_pkg_chirho.version_chirho,
+                result_chirho.modules_compiled_chirho,
+                result_chirho.installed_pkg_chirho.depends_chirho.len(),
+            );
+            if !result_chirho.installed_pkg_chirho.exposed_modules_chirho.is_empty() {
+                eprintln!("  exposed modules:");
+                for mod_chirho in &result_chirho.installed_pkg_chirho.exposed_modules_chirho {
+                    eprintln!("    {}", mod_chirho.module_name_chirho);
+                }
+            }
+            eprintln!("Package registered in {}", db_path_chirho.display());
+            ExitCode::SUCCESS
+        }
+        Err(error_chirho) => {
+            eprintln!("error: {error_chirho}");
+            ExitCode::from(1)
+        }
+    }
+}
+
 fn print_usage_chirho(program_name_chirho: &str) {
-    eprintln!("usage: {program_name_chirho} <check|run|compile|build|repl> <path> [options]");
+    eprintln!("usage: {program_name_chirho} <command> [args] [options]");
     eprintln!();
     eprintln!("commands:");
-    eprintln!("  check    type-check a .hs file without code generation");
-    eprintln!("  run      evaluate a .hs file via the STG interpreter");
-    eprintln!("  compile  compile a .hs file (with -o: produce native executable or .wasm)");
-    eprintln!("  build    compile a multi-module project from a directory");
-    eprintln!("  repl     interactive REPL with expression evaluation");
+    eprintln!("  check    <file.hs>              type-check without code generation");
+    eprintln!("  run      <file.hs>              evaluate via the STG interpreter");
+    eprintln!("  compile  <file.hs>              compile (with -o: produce native/.wasm)");
+    eprintln!("  build    [dir]                  compile a multi-module project");
+    eprintln!("  install  <package> <version>    fetch from Hackage, compile, register");
+    eprintln!("  repl                            interactive REPL");
     eprintln!();
     eprintln!("flags:");
     eprintln!("  -o, --output <path>  output native executable or .wasm file (compile only)");
