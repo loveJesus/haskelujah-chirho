@@ -987,6 +987,9 @@ impl MachineChirho {
                     // Otherwise, restore the saved arg_regs so the alt body
                     // can still access enclosing function parameters.
                     let fields_chirho = closure_chirho.payload_chirho.clone();
+                    // Keep a copy of original saved regs for default alt
+                    // (default alt has no binders, so no field prepending).
+                    let saved_arg_regs_chirho_for_default = saved_arg_regs_chirho.clone();
                     let new_regs_chirho = if fields_chirho.is_empty() {
                         saved_arg_regs_chirho
                     } else {
@@ -1005,9 +1008,12 @@ impl MachineChirho {
                             return Ok(ReturnActionChirho::ContinueChirho(*entry_chirho));
                         }
                     }
-                    // Try default
+                    // Try default — restore saved arg_regs WITHOUT prepending
+                    // constructor fields, since the default alt has no binders
+                    // that would consume the fields. The STG lowerer doesn't
+                    // shift arg_param_indices for default alts.
                     if let Some(def_chirho) = default_entry_chirho {
-                        self.arg_regs_chirho = new_regs_chirho;
+                        self.arg_regs_chirho = saved_arg_regs_chirho_for_default;
                         return Ok(ReturnActionChirho::ContinueChirho(def_chirho));
                     }
                     return Err(EvalErrorChirho::NoMatchingAltChirho {

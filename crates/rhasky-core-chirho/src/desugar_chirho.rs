@@ -840,10 +840,8 @@ impl DesugarCtxChirho {
         self.push_scope_chirho();
         let param_binders_chirho: Vec<BinderChirho> = (0..arity_chirho)
             .map(|i_chirho| {
-                let name_chirho = match &first_chirho.pats_chirho[i_chirho] {
-                    PatChirho::VarChirho(n_chirho) => n_chirho.text_chirho().to_string(),
-                    _ => format!("_arg{i_chirho}"),
-                };
+                let name_chirho = extract_var_name_from_pat_chirho(&first_chirho.pats_chirho[i_chirho])
+                    .unwrap_or_else(|| format!("_arg{i_chirho}"));
                 let binder_chirho = self.fresh_binder_chirho(&name_chirho, TyChirho::VarChirho(
                     rhasky_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
                 ), SpanChirho::DUMMY_CHIRHO);
@@ -866,10 +864,50 @@ impl DesugarCtxChirho {
             )
         };
 
+        // Pre-allocate fresh binders for bang-pattern seq-forcing before popping scope.
+        let bang_wild_binders_chirho: Vec<Option<BinderChirho>> = first_chirho
+            .pats_chirho
+            .iter()
+            .map(|pat_chirho| {
+                if is_bang_pat_chirho(pat_chirho) {
+                    Some(self.fresh_binder_chirho(
+                        "_bang_wild",
+                        TyChirho::VarChirho(rhasky_typing_chirho::ty_chirho::TyVarChirho(
+                            self.next_id_chirho,
+                        )),
+                        SpanChirho::DUMMY_CHIRHO,
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         self.pop_scope_chirho();
 
-        // Wrap body in lambdas
+        // Wrap body in seq-forcing for bang-patterned parameters.
+        // `f !x !y = body` → `\x -> \y -> case x of { _ -> case y of { _ -> body }}`
         let mut result_chirho = body_chirho;
+        for (i_chirho, wild_opt_chirho) in bang_wild_binders_chirho.iter().enumerate().rev() {
+            if let Some(wild_binder_chirho) = wild_opt_chirho {
+                result_chirho = CoreExprChirho::CaseChirho {
+                    scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
+                        param_binders_chirho[i_chirho].id_chirho,
+                    )),
+                    bind_chirho: wild_binder_chirho.clone(),
+                    result_ty_chirho: TyChirho::VarChirho(
+                        rhasky_typing_chirho::ty_chirho::TyVarChirho(0),
+                    ),
+                    alts_chirho: vec![CoreAltChirho {
+                        con_chirho: AltConChirho::DefaultChirho,
+                        binders_chirho: vec![],
+                        rhs_chirho: result_chirho,
+                    }],
+                };
+            }
+        }
+
+        // Wrap body in lambdas
         for binder_chirho in param_binders_chirho.into_iter().rev() {
             result_chirho = CoreExprChirho::LamChirho {
                 binder_chirho,
@@ -3585,6 +3623,28 @@ fn is_var_pat_chirho(pat_chirho: &PatChirho) -> bool {
         | PatChirho::LazyChirho { inner_chirho, .. }
         | PatChirho::ParenChirho { inner_chirho, .. } => is_var_pat_chirho(inner_chirho),
         _ => false,
+    }
+}
+
+/// Check if a pattern is a bang pattern (including through paren wrappers).
+fn is_bang_pat_chirho(pat_chirho: &PatChirho) -> bool {
+    match pat_chirho {
+        PatChirho::BangChirho { .. } => true,
+        PatChirho::ParenChirho { inner_chirho, .. } => is_bang_pat_chirho(inner_chirho),
+        _ => false,
+    }
+}
+
+/// Extract the variable name from a pattern, peeling through bang/lazy/paren.
+fn extract_var_name_from_pat_chirho(pat_chirho: &PatChirho) -> Option<String> {
+    match pat_chirho {
+        PatChirho::VarChirho(n_chirho) => Some(n_chirho.text_chirho().to_string()),
+        PatChirho::BangChirho { inner_chirho, .. }
+        | PatChirho::LazyChirho { inner_chirho, .. }
+        | PatChirho::ParenChirho { inner_chirho, .. } => {
+            extract_var_name_from_pat_chirho(inner_chirho)
+        }
+        _ => None,
     }
 }
 

@@ -1205,3 +1205,51 @@ main = factorial 10
         assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(7));
     }
 
+    // ── Bang patterns ───────────────────────────────────────────────────
+
+    #[test]
+    fn eval_bang_pattern_basic_chirho() {
+        // f !x = x + 1; main = f 41  → 42
+        // Bang pattern forces x to WHNF before evaluating body.
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nf !x = x + 1\nmain = f 41\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("bang pattern basic");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn eval_bang_pattern_two_args_chirho() {
+        // f !x !y = x + y; main = f 10 32  → 42
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nf !x !y = x + y\nmain = f 10 32\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("bang pattern two args");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn eval_bang_pattern_mixed_chirho() {
+        // f !x y = x + y; main = f 10 32  → 42
+        // Only first arg is strict.
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nf !x y = x + y\nmain = f 10 32\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("bang pattern mixed");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn eval_strict_apply_with_bang_chirho() {
+        // ($!) forces argument then applies: f $! 42 → f 42
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nf x = x + 1\nmain = f $! 41\n";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None)
+            .expect("strict apply with bang");
+        assert_eq!(result_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+

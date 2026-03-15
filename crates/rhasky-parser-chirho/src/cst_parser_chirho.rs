@@ -990,7 +990,8 @@ impl<'src> ParserChirho<'src> {
         // recognized.
         while self.can_start_apat_chirho()
             || (self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
-                && self.current_text_chirho() == "-")
+                && (self.current_text_chirho() == "-"
+                    || self.current_text_chirho() == "!"))
         {
             let before_chirho = self.pos_chirho;
             self.parse_lpat_chirho();
