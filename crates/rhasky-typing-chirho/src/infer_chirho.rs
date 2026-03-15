@@ -384,7 +384,9 @@ impl InferCtxChirho {
                             "type mismatch: expected `{expected_chirho}`, found `{actual_chirho}`"
                         ),
                         *span_chirho,
-                    ),
+                    )
+                    .with_note_chirho(format!("expected type: {expected_chirho}"))
+                    .with_note_chirho(format!("   found type: {actual_chirho}")),
                 );
             }
             UnifyErrorChirho::OccursCheckChirho {
@@ -762,13 +764,24 @@ impl InferCtxChirho {
                         (SubstChirho::empty_chirho(), ty_chirho)
                     }
                     None => {
-                        self.diagnostics_chirho.push_chirho(
-                            DiagnosticChirho::error_with_code_chirho(
-                                ErrorCodeChirho::error_chirho(UNBOUND_VAR_CODE_CHIRHO),
-                                format!("unbound variable: `{text_chirho}`"),
-                                span_chirho,
-                            ),
+                        let mut diag_chirho = DiagnosticChirho::error_with_code_chirho(
+                            ErrorCodeChirho::error_chirho(UNBOUND_VAR_CODE_CHIRHO),
+                            format!("unbound variable: `{text_chirho}`"),
+                            span_chirho,
                         );
+                        // Add "did you mean?" suggestions from the type env.
+                        let candidates_chirho = self.env_chirho.all_names_chirho();
+                        let max_dist_chirho = rhasky_diagnostics_chirho::suggest_chirho::default_max_distance_chirho(text_chirho.len());
+                        let suggestions_chirho = rhasky_diagnostics_chirho::suggest_chirho::suggest_similar_names_chirho(
+                            text_chirho,
+                            candidates_chirho.into_iter(),
+                            max_dist_chirho,
+                            3,
+                        );
+                        if let Some(note_chirho) = rhasky_diagnostics_chirho::suggest_chirho::format_did_you_mean_chirho(&suggestions_chirho) {
+                            diag_chirho = diag_chirho.with_note_chirho(note_chirho);
+                        }
+                        self.diagnostics_chirho.push_chirho(diag_chirho);
                         (SubstChirho::empty_chirho(), self.fresh_var_chirho())
                     }
                 }

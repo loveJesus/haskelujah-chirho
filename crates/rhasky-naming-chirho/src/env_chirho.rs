@@ -217,6 +217,25 @@ impl NameEnvChirho {
         })
     }
 
+    /// Collect all visible names in a given namespace across all scopes.
+    pub fn all_names_in_namespace_chirho(&self, namespace_chirho: NamespaceChirho) -> Vec<&str> {
+        let mut seen_chirho = std::collections::HashSet::new();
+        let mut names_chirho = Vec::new();
+        for scope_chirho in self.scopes_chirho.iter().rev() {
+            for (name_chirho, infos_chirho) in &scope_chirho.bindings_chirho {
+                if infos_chirho
+                    .iter()
+                    .any(|i_chirho| i_chirho.namespace_chirho == namespace_chirho)
+                {
+                    if seen_chirho.insert(name_chirho.as_str()) {
+                        names_chirho.push(name_chirho.as_str());
+                    }
+                }
+            }
+        }
+        names_chirho
+    }
+
     /// How many definitions have been allocated.
     pub fn def_count_chirho(&self) -> u32 {
         self.next_def_id_chirho

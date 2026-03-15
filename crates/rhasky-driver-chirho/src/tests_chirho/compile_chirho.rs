@@ -862,7 +862,85 @@ main = fib 10"#;
             .expect("cranelift compilation should succeed");
         assert!(
             !obj_chirho.object_bytes_chirho.is_empty(),
-            "object file should not be empty"
+            "cranelift fibonacci object file should not be empty"
+        );
+    }
+
+    // ---------------------------------------------------------------
+    // §29 — Structured error messages with "did you mean?" suggestions
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn unbound_var_suggests_similar_name_chirho() {
+        // Typo: "ad1" instead of "add1"
+        let src_chirho = "module Main where\nadd1 x = x + 1\nmain = ad1 41\n";
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
+        assert!(result_chirho.is_err(), "should fail with unbound variable");
+        let diag_chirho = result_chirho.unwrap_err();
+        let rendered_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
+        assert!(
+            rendered_chirho.contains("did you mean"),
+            "error should contain 'did you mean' suggestion, got: {rendered_chirho}"
+        );
+        assert!(
+            rendered_chirho.contains("add1"),
+            "suggestion should include 'add1', got: {rendered_chirho}"
+        );
+    }
+
+    #[test]
+    fn type_mismatch_shows_expected_found_chirho() {
+        let src_chirho = "module Main where\nf :: Int -> Int\nf x = x + 1\nmain = f True\n";
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
+        assert!(result_chirho.is_err());
+        let diag_chirho = result_chirho.unwrap_err();
+        let rendered_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
+        assert!(
+            rendered_chirho.contains("type mismatch"),
+            "error should mention 'type mismatch', got: {rendered_chirho}"
+        );
+        assert!(
+            rendered_chirho.contains("expected type:") && rendered_chirho.contains("found type:"),
+            "error should show expected/found types, got: {rendered_chirho}"
+        );
+    }
+
+    #[test]
+    fn error_rendered_with_source_snippet_chirho() {
+        let src_chirho = "module Main where\nmain = undefined_func 42\n";
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
+        assert!(result_chirho.is_err());
+        let diag_chirho = result_chirho.unwrap_err();
+        let rendered_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
+        assert!(
+            rendered_chirho.contains("Main.hs"),
+            "error should reference file, got: {rendered_chirho}"
+        );
+        assert!(
+            rendered_chirho.contains("-->"),
+            "error should have --> source pointer, got: {rendered_chirho}"
+        );
+    }
+
+    #[test]
+    fn error_rendered_with_color_chirho() {
+        let src_chirho = "module Main where\nmain = no_such_var\n";
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
+        assert!(result_chirho.is_err());
+        let diag_chirho = result_chirho.unwrap_err();
+        let colored_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, true);
+        assert!(
+            colored_chirho.contains("\x1b["),
+            "colored output should contain ANSI escapes"
+        );
+        let plain_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
+        assert!(
+            !plain_chirho.contains("\x1b["),
+            "plain output should not contain ANSI escapes"
         );
     }
 

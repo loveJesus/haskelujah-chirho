@@ -399,13 +399,36 @@ fn import_item_names_chirho(
     }
 }
 
-/// Report an "undefined name" diagnostic.
+/// Report an "undefined name" diagnostic with optional "did you mean?" suggestions.
 pub fn report_undefined_chirho(
     diagnostics_chirho: &mut DiagnosticBundleChirho,
     name_chirho: &str,
     namespace_chirho: NamespaceChirho,
     span_chirho: SpanChirho,
 ) {
+    report_undefined_with_suggestions_chirho(
+        diagnostics_chirho,
+        name_chirho,
+        namespace_chirho,
+        span_chirho,
+        None,
+    );
+}
+
+/// Report an "undefined name" diagnostic with "did you mean?" suggestions
+/// based on names currently in scope.
+pub fn report_undefined_with_suggestions_chirho(
+    diagnostics_chirho: &mut DiagnosticBundleChirho,
+    name_chirho: &str,
+    namespace_chirho: NamespaceChirho,
+    span_chirho: SpanChirho,
+    env_chirho: Option<&NameEnvChirho>,
+) {
+    use rhasky_diagnostics_chirho::suggest_chirho::{
+        default_max_distance_chirho, format_did_you_mean_chirho,
+        suggest_similar_names_chirho,
+    };
+
     let code_chirho = match namespace_chirho {
         NamespaceChirho::ValueChirho => UNDEFINED_VALUE_CODE_CHIRHO,
         NamespaceChirho::TypeChirho => UNDEFINED_TYPE_CODE_CHIRHO,
@@ -414,11 +437,28 @@ pub fn report_undefined_chirho(
         NamespaceChirho::ValueChirho => format!("variable not in scope: `{name_chirho}`"),
         NamespaceChirho::TypeChirho => format!("type not in scope: `{name_chirho}`"),
     };
-    diagnostics_chirho.push_chirho(DiagnosticChirho::error_with_code_chirho(
+    let mut diag_chirho = DiagnosticChirho::error_with_code_chirho(
         ErrorCodeChirho::error_chirho(code_chirho),
         msg_chirho,
         span_chirho,
-    ));
+    );
+
+    // Add "did you mean?" note if we have scope information.
+    if let Some(env_chirho) = env_chirho {
+        let candidates_chirho = env_chirho.all_names_in_namespace_chirho(namespace_chirho);
+        let max_dist_chirho = default_max_distance_chirho(name_chirho.len());
+        let suggestions_chirho = suggest_similar_names_chirho(
+            name_chirho,
+            candidates_chirho.into_iter(),
+            max_dist_chirho,
+            3,
+        );
+        if let Some(note_chirho) = format_did_you_mean_chirho(&suggestions_chirho) {
+            diag_chirho = diag_chirho.with_note_chirho(note_chirho);
+        }
+    }
+
+    diagnostics_chirho.push_chirho(diag_chirho);
 }
 
 /// Extract variable names from a pattern and bind them in the value namespace.

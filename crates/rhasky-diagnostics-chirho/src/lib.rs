@@ -12,6 +12,7 @@
 //! text renderer with source code snippets and ANSI color support.
 
 pub mod render_chirho;
+pub mod suggest_chirho;
 
 use std::fmt::{self, Display, Formatter};
 

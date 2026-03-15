@@ -90,6 +90,20 @@ impl TyEnvChirho {
         result_chirho
     }
 
+    /// Collect all visible names across all scopes (deduplicated, innermost wins).
+    pub fn all_names_chirho(&self) -> Vec<&str> {
+        let mut seen_chirho = std::collections::HashSet::new();
+        let mut names_chirho = Vec::new();
+        for scope_chirho in self.scopes_chirho.iter().rev() {
+            for name_chirho in scope_chirho.keys() {
+                if seen_chirho.insert(name_chirho.as_str()) {
+                    names_chirho.push(name_chirho.as_str());
+                }
+            }
+        }
+        names_chirho
+    }
+
     /// Apply a substitution to every type scheme in every scope.
     pub fn apply_subst_chirho(&mut self, subst_chirho: &SubstChirho) {
         for scope_chirho in &mut self.scopes_chirho {
