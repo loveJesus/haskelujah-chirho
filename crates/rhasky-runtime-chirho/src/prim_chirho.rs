@@ -631,6 +631,8 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::ErrorChirho
         | PrimOpKindChirho::UndefinedChirho
         | PrimOpKindChirho::SeqChirho
+        | PrimOpKindChirho::EvaluateChirho
+        | PrimOpKindChirho::ForceChirho
         | PrimOpKindChirho::ShowMaybeChirho
         | PrimOpKindChirho::ShowTuple2Chirho
         | PrimOpKindChirho::ShowEitherChirho

@@ -4268,6 +4268,82 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     );
 
     // -----------------------------------------------------------------------
+    // NFData / deepseq / force / evaluate
+    // -----------------------------------------------------------------------
+
+    // deepseq :: forall a b. NFData a => a -> b -> b
+    let ds_a_chirho = TyVarChirho(3410);
+    let ds_b_chirho = TyVarChirho(3411);
+    env_chirho.bind_chirho(
+        "deepseq".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![ds_a_chirho, ds_b_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "NFData".to_string(),
+                ty_chirho: TyChirho::VarChirho(ds_a_chirho),
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(ds_a_chirho),
+                    TyChirho::VarChirho(ds_b_chirho),
+                ],
+                TyChirho::VarChirho(ds_b_chirho),
+            ),
+        },
+    );
+
+    // force :: forall a. NFData a => a -> a
+    let force_a_chirho = TyVarChirho(3412);
+    env_chirho.bind_chirho(
+        "force".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![force_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "NFData".to_string(),
+                ty_chirho: TyChirho::VarChirho(force_a_chirho),
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![TyChirho::VarChirho(force_a_chirho)],
+                TyChirho::VarChirho(force_a_chirho),
+            ),
+        },
+    );
+
+    // evaluate :: forall a. a -> IO a
+    let eval_a_chirho = TyVarChirho(3413);
+    env_chirho.bind_chirho(
+        "evaluate".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![eval_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![TyChirho::VarChirho(eval_a_chirho)],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("IO".to_string())),
+                    Box::new(TyChirho::VarChirho(eval_a_chirho)),
+                ),
+            ),
+        },
+    );
+
+    // rnf :: forall a. NFData a => a -> ()
+    let rnf_a_chirho = TyVarChirho(3414);
+    env_chirho.bind_chirho(
+        "rnf".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![rnf_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "NFData".to_string(),
+                ty_chirho: TyChirho::VarChirho(rnf_a_chirho),
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![TyChirho::VarChirho(rnf_a_chirho)],
+                TyChirho::TupleChirho(vec![]),
+            ),
+        },
+    );
+
+    // -----------------------------------------------------------------------
     // Semigroup / Monoid
     // -----------------------------------------------------------------------
 

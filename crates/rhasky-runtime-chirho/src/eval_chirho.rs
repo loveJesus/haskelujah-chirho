@@ -1632,6 +1632,17 @@ impl MachineChirho {
                 // seq a b = b (a is already evaluated to WHNF by the time we reach here)
                 return Ok(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
             }
+            PrimOpKindChirho::EvaluateChirho => {
+                // evaluate a = return a (forces a to WHNF, wraps in IO)
+                // Since our primop args are already forced, just return the value.
+                return Ok(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+            }
+            PrimOpKindChirho::ForceChirho => {
+                // force a = deepseq a a (fully evaluates and returns a)
+                // Since our values are already fully evaluated for primitives,
+                // this is equivalent to identity.
+                return Ok(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+            }
             PrimOpKindChirho::CatchChirho => {
                 // catch# body handler
                 // body is the IO action, handler is the exception handler.

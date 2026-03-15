@@ -2985,6 +2985,9 @@ impl DictPassCtxChirho {
 
         // ── Lazy arithmetic sequence functions (enumFrom, enumFromThen, enumFromTo, enumFromThenTo) ──
         self.generate_enum_sequence_prelude_chirho();
+
+        // ── NFData / deepseq / evaluate / force ──
+        self.generate_nfdata_prelude_chirho();
     }
 
     /// Generate Core IR bindings for monad transformer infrastructure.
@@ -11971,6 +11974,135 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
+            });
+        }
+    }
+
+    /// Generate `$prim_NFData_rnf_*` bindings and prelude-level `deepseq`, `force`, `evaluate`.
+    ///
+    /// For primitive types (Int, Char, Bool, Double), `rnf` is essentially `seq`:
+    /// force to WHNF (which IS NF for primitives) and return `()`.
+    /// `deepseq x y = rnf x `seq` y` — but since our runtime already forces to WHNF on
+    /// seq, and primitives are already in NF at WHNF, we implement deepseq as seq.
+    /// `force x = deepseq x x`
+    /// `evaluate x = return x` (force to WHNF, which is what our STG evaluator does)
+    fn generate_nfdata_prelude_chirho(&mut self) {
+        let unit_ty_chirho = TyChirho::TupleChirho(vec![]);
+
+        // $prim_NFData_rnf_Int, _Char, _Bool, _Double
+        // All are: \x -> seq x ()
+        for type_name_chirho in &["Int", "Char", "Bool", "Double"] {
+            let prim_name_chirho = format!("$prim_NFData_rnf_{}", type_name_chirho);
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
+            let arg_ty_chirho = TyChirho::ConChirho(type_name_chirho.to_string());
+            let x_chirho = self.fresh_binder_chirho("x", arg_ty_chirho.clone());
+
+            // rnf x = x `seq` ()  ≈  seq# x ()
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "seq#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),  // unit approximation
+                    ],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(arg_ty_chirho, unit_ty_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // Prelude-level `deepseq :: a -> b -> b`
+        // deepseq x y = x `seq` y
+        {
+            let a_chirho = TyChirho::VarChirho(rhasky_typing_chirho::ty_chirho::TyVarChirho(3410));
+            let b_chirho = TyChirho::VarChirho(rhasky_typing_chirho::ty_chirho::TyVarChirho(3411));
+            let prim_name_chirho = "deepseq";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
+            let y_chirho = self.fresh_binder_chirho("y", b_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: y_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "seq#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(y_chirho.id_chirho),
+                        ],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho, TyChirho::fun_chirho(b_chirho.clone(), b_chirho)),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // Prelude-level `force :: a -> a`
+        // force x = x `seq` x
+        {
+            let a_chirho = TyChirho::VarChirho(rhasky_typing_chirho::ty_chirho::TyVarChirho(3412));
+            let prim_name_chirho = "force";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "seq#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                    ],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+            });
+        }
+
+        // Prelude-level `evaluate :: a -> IO a`
+        // evaluate x = return x (force to WHNF, which is what STG evaluator does)
+        {
+            let a_chirho = TyChirho::VarChirho(rhasky_typing_chirho::ty_chirho::TyVarChirho(3413));
+            let prim_name_chirho = "evaluate";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
             });
         }
     }

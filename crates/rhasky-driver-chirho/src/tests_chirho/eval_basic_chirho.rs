@@ -5984,3 +5984,41 @@ main = sum (pascal 10)
 
     // ── Multi-equation list-pattern tests ───────────────────────────────
 
+    // ── deepseq / force / evaluate tests ─────────────────────────────────
+
+    #[test]
+    fn eval_deepseq_returns_second_chirho() {
+        // deepseq x y = x `seq` y → deepseq (1 + 2) 42 should evaluate to 42
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let (val_chirho, _machine_chirho) = eval_source_with_machine_chirho(
+            "module Test where\nmain = deepseq (1 + 2) 42\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("deepseq should evaluate");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn eval_force_returns_value_chirho() {
+        // force x = x `seq` x → force (2 + 3) should evaluate to 5
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let (val_chirho, _machine_chirho) = eval_source_with_machine_chirho(
+            "module Test where\nmain = force (2 + 3)\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("force should evaluate");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(5));
+    }
+
+    #[test]
+    fn eval_evaluate_returns_value_chirho() {
+        // evaluate x = return x → evaluate 42 in an IO context
+        use crate::eval_source_with_machine_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let (val_chirho, _machine_chirho) = eval_source_with_machine_chirho(
+            "module Test where\nmain = evaluate 42\n",
+            &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("evaluate should evaluate");
+        assert_eq!(val_chirho, rhasky_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+

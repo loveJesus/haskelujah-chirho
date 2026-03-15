@@ -137,6 +137,10 @@ pub enum PrimOpKindChirho {
     UndefinedChirho,
     /// Evaluate first arg to WHNF, return second: seq# :: a -> b -> b
     SeqChirho,
+    /// Force to WHNF and return in IO: evaluate :: a -> IO a
+    EvaluateChirho,
+    /// Force to NF and return: force :: NFData a => a -> a
+    ForceChirho,
     /// Convert an Int to its String representation: showInt# :: Int -> String
     ShowIntChirho,
     /// Convert a Bool to its String representation: showBool# :: Bool -> String

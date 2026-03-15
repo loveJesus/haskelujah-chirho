@@ -1051,6 +1051,28 @@ impl ClassEnvChirho {
             defaults_chirho: HashMap::new(),
         });
 
+        // NFData
+        let nfdata_var_chirho = TyVarChirho(9030);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "NFData".to_string(),
+            supers_chirho: vec![],
+            var_chirho: nfdata_var_chirho,
+            methods_chirho: HashMap::from([(
+                "rnf".to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![nfdata_var_chirho],
+                    preds_chirho: vec![],
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::VarChirho(nfdata_var_chirho),
+                        TyChirho::TupleChirho(vec![]),
+                    ),
+                },
+            )]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
         // Standard instances
         for ty_name_chirho in &["Int", "Char", "Bool"] {
             let ty_chirho = TyChirho::ConChirho(ty_name_chirho.to_string());
@@ -1134,6 +1156,16 @@ impl ClassEnvChirho {
         for ty_name_chirho in &["Int", "Double", "Bool"] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Read".to_string(),
+                head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
+
+        // NFData instances for primitive types
+        for ty_name_chirho in &["Int", "Char", "Bool", "Double"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "NFData".to_string(),
                 head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
                 extra_head_tys_chirho: vec![],
                 context_chirho: vec![],

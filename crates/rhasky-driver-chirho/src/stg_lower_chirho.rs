@@ -121,7 +121,7 @@ impl LowerCtxChirho {
             | "return" | "pure" | ">>=" | ">>"
             | "newIORef" | "readIORef" | "writeIORef" | "modifyIORef"
             | "newSTRef" | "readSTRef" | "writeSTRef" | "modifySTRef" | "runST"
-            | "error" | "undefined" | "seq"
+            | "error" | "undefined" | "seq" | "deepseq" | "evaluate" | "force"
             | "catch" | "throw" | "throwIO" | "try" | "bracket" | "finally" => Some(name_chirho.as_str()),
             _ => None,
         }
@@ -1729,7 +1729,9 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "**#" => PrimOpKindChirho::PowFloatChirho,
         "error" => PrimOpKindChirho::ErrorChirho,
         "undefined" => PrimOpKindChirho::UndefinedChirho,
-        "seq" => PrimOpKindChirho::SeqChirho,
+        "seq" | "deepseq" => PrimOpKindChirho::SeqChirho,
+        "evaluate" => PrimOpKindChirho::EvaluateChirho,
+        "force" | "force#" => PrimOpKindChirho::ForceChirho,
         "showMaybe#" => PrimOpKindChirho::ShowMaybeChirho,
         "showTuple2#" => PrimOpKindChirho::ShowTuple2Chirho,
         "showEither#" => PrimOpKindChirho::ShowEitherChirho,
