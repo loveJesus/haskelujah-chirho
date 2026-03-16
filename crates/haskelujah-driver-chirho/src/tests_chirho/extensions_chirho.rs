@@ -976,3 +976,27 @@ fn type_data_pragma_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "TypeData.hs", None).unwrap(), ValueChirho::IntChirho(42));
 }
+
+// ── GHC2021 meta-extension ─────────────────────────────────────────────
+
+#[test]
+fn ghc2021_meta_extension_chirho() {
+    // GHC2021 should expand to all its constituent extensions
+    let src_chirho = "\
+{-# LANGUAGE GHC2021 #-}
+module Test where
+data MyList a = Nil | Cons a (MyList a)
+main = case Cons 42 Nil of
+  Cons x _ -> x
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "GHC2021.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn ghc2024_meta_extension_chirho() {
+    let src_chirho = "{-# LANGUAGE GHC2024 #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "GHC2024.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}

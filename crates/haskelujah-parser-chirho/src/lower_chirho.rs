@@ -170,7 +170,14 @@ impl LowerCtxChirho {
                         for ext_chirho in rest_chirho.split(',') {
                             let ext_chirho = ext_chirho.trim();
                             if !ext_chirho.is_empty() {
-                                extensions_chirho.push(ext_chirho.to_string());
+                                // GHC2021 / GHC2024 meta-extensions expand to their constituent set
+                                if ext_chirho == "GHC2021" || ext_chirho == "GHC2024" {
+                                    for sub_chirho in ghc2021_extensions_chirho() {
+                                        extensions_chirho.push(sub_chirho.to_string());
+                                    }
+                                } else {
+                                    extensions_chirho.push(ext_chirho.to_string());
+                                }
                             }
                         }
                     }
@@ -7373,4 +7380,50 @@ class Describable a where
             _ => panic!("expected DataDeclChirho"),
         }
     }
+}
+
+/// Extensions enabled by GHC2021 (and GHC2024 which is a superset).
+/// Reference: https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/control.html#extension-GHC2021
+fn ghc2021_extensions_chirho() -> &'static [&'static str] {
+    &[
+        "BangPatterns",
+        "BinaryLiterals",
+        "ConstrainedClassMethods",
+        "ConstraintKinds",
+        "DeriveDataTypeable",
+        "DeriveFoldable",
+        "DeriveFunctor",
+        "DeriveGeneric",
+        "DeriveLift",
+        "DeriveTraversable",
+        "DoAndIfThenElse",
+        "EmptyCase",
+        "EmptyDataDecls",
+        "EmptyDataDeriving",
+        "ExistentialQuantification",
+        "ExplicitForAll",
+        "FlexibleContexts",
+        "FlexibleInstances",
+        "ForeignFunctionInterface",
+        "GADTSyntax",
+        "GeneralizedNewtypeDeriving",
+        "HexFloatLiterals",
+        "ImportQualifiedPost",
+        "InstanceSigs",
+        "KindSignatures",
+        "MultiParamTypeClasses",
+        "NamedFieldPuns",
+        "NamedWildCards",
+        "NumericUnderscores",
+        "PolyKinds",
+        "PostfixOperators",
+        "RankNTypes",
+        "ScopedTypeVariables",
+        "StandaloneDeriving",
+        "StandaloneKindSignatures",
+        "TupleSections",
+        "TypeApplications",
+        "TypeOperators",
+        "TypeSynonymInstances",
+    ]
 }
