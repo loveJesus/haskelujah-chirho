@@ -73,7 +73,7 @@ You can modify the following section
 
 ### Test Coverage
 
-**1836 tests passing**, 0 failures
+**1841 tests passing**, 0 failures
 
 ### Completed (Phase 1 + Phase 2)
 
@@ -102,7 +102,7 @@ _Phase 3 focuses on completing TH, making backends produce real executables, and
 7. ~~**RankNTypes**~~ — DONE (TyChirho::ForallChirho variant preserves forall in non-prenex positions; ast_type_to_ty_chirho produces ForallChirho for nested foralls; unification handles ForallChirho vs ForallChirho (alpha-rename) and ForallChirho vs concrete (SimpleSubsumption strip); bind_pat_chirho creates polymorphic schemes for ForallChirho-typed parameters; subsume_chirho for rank-N subsumption checking; 3 ty_chirho tests + 4 unify tests + 4 e2e tests; 1827 tests)
 8. ~~**ScopedTypeVariables**~~ — DONE (scoped_tyvars_chirho field on InferCtxChirho; populated from function type signature forall vars before body inference; ast_type_to_scheme_chirho seeds var_map with scoped vars so where-clause annotations reuse the same TyVarChirho; has_explicit_forall_chirho helper checks for explicit forall; scoped vars restored after each function body; 3 e2e tests; 1830 tests)
 9. **MultiParamTypeClasses improvements** — associated types, type family defaults
-10. **RecordWildCards** — `Foo{..}` pattern/expression syntax
+10. ~~**RecordWildCards**~~ — DONE (`Foo{..}` pattern/expression syntax: CST parser wraps `..` in FieldAssign nodes; lowerer detects DotDot inside FieldAssign children for expression records, sets `has_wildcard_chirho: true` and filters DotDot pseudo-fields; type checker `InferCtxChirho.con_field_names_chirho` maps constructor → ordered field names from RecordChirho data decls; expression wildcards: type checker iterates all constructor fields in order, explicit fields type-checked normally, missing fields looked up from scope as variable references; pattern wildcards: `bind_pat_chirho` binds remaining fields as fresh type variables in scope; desugarer `expand_record_wildcard_expr_chirho` fills missing fields from scope via `resolve_var_chirho`; `expand_record_wildcard_pat_chirho` expands to full field list with `VarChirho` patterns in constructor field order; 4 e2e tests: full pattern `MkPoint{..}`, partial pattern `MkPoint{xCoord=a,..}`, full expression `let xCoord=10; yCoord=20 in MkPoint{..}`, partial expression `MkPoint{xCoord=10,..}` with let-bound yCoord; 1841 tests)
 11. **ViewPatterns** — `f (view -> pattern)` in pattern position
 12. **PatternSynonyms** — user-defined pattern constructors
 13. **DerivingVia** — `deriving Show via (WrappedMonoid Sum)`

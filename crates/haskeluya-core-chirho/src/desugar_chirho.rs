@@ -52,6 +52,9 @@ pub struct DesugarCtxChirho {
     /// Constructor strictness: maps constructor name → list of field strictness annotations.
     /// Used to enforce strict fields by wrapping them in `case arg of { _ -> arg }`.
     con_strictness_chirho: HashMap<String, Vec<StrictnessChirho>>,
+    /// Record constructor field names: maps constructor name → ordered list of field names.
+    /// Used for RecordWildCards expansion (`Foo{..}` fills in missing fields).
+    con_field_names_chirho: HashMap<String, Vec<String>>,
 }
 
 impl DesugarCtxChirho {
@@ -63,6 +66,7 @@ impl DesugarCtxChirho {
             free_var_cache_chirho: HashMap::new(),
             extensions_chirho: Vec::new(),
             con_strictness_chirho: HashMap::new(),
+            con_field_names_chirho: HashMap::new(),
         }
     }
 
@@ -102,7 +106,7 @@ impl DesugarCtxChirho {
         self.scope_chirho.pop();
     }
 
-    /// Populate the constructor strictness map from a module's data declarations.
+    /// Populate constructor strictness and field name maps from data declarations.
     fn collect_con_strictness_chirho(&mut self, module_chirho: &ModuleChirho) {
         for decl_chirho in &module_chirho.decls_chirho {
             let constructors_chirho: &[ConDeclChirho] = match decl_chirho {
@@ -122,6 +126,7 @@ impl DesugarCtxChirho {
                         }
                     }
                     ConDeclChirho::RecordChirho { name_chirho, fields_chirho, .. } => {
+                        // Collect strictness
                         let strictness_chirho: Vec<StrictnessChirho> = fields_chirho
                             .iter()
                             .flat_map(|f_chirho| {
@@ -134,6 +139,17 @@ impl DesugarCtxChirho {
                                 strictness_chirho,
                             );
                         }
+                        // Collect field names for RecordWildCards expansion
+                        let field_names_chirho: Vec<String> = fields_chirho
+                            .iter()
+                            .flat_map(|f_chirho| {
+                                f_chirho.names_chirho.iter().map(|n_chirho| n_chirho.text_chirho().to_string())
+                            })
+                            .collect();
+                        self.con_field_names_chirho.insert(
+                            name_chirho.text_chirho().to_string(),
+                            field_names_chirho,
+                        );
                     }
                     ConDeclChirho::GadtChirho { .. } => {}
                 }
@@ -213,6 +229,97 @@ impl DesugarCtxChirho {
             }
         }
         CoreExprChirho::ConAppChirho { con_name_chirho, args_chirho }
+    }
+
+    /// Expand RecordWildCards in a record construction expression.
+    /// `Con { f1 = e1, .. }` → fills missing fields from scope variables.
+    /// Returns desugared CoreExprChirho args in constructor field order.
+    fn expand_record_wildcard_expr_chirho(
+        &mut self,
+        con_name_chirho: &str,
+        explicit_fields_chirho: &[haskeluya_ast_chirho::expr_chirho::FieldAssignChirho],
+    ) -> Vec<CoreExprChirho> {
+        let all_field_names_chirho = self.con_field_names_chirho.get(con_name_chirho).cloned();
+        if let Some(all_fields_chirho) = all_field_names_chirho {
+            let explicit_map_chirho: HashMap<String, &ExprChirho> = explicit_fields_chirho
+                .iter()
+                .map(|f_chirho| (f_chirho.name_chirho.text_chirho().to_string(), &f_chirho.value_chirho))
+                .collect();
+            all_fields_chirho
+                .iter()
+                .map(|field_name_chirho| {
+                    if let Some(expr_chirho) = explicit_map_chirho.get(field_name_chirho) {
+                        self.desugar_expr_chirho(expr_chirho)
+                    } else {
+                        // Fill from scope: variable with same name as the field
+                        let id_chirho = self.resolve_var_chirho(field_name_chirho);
+                        CoreExprChirho::VarChirho(id_chirho)
+                    }
+                })
+                .collect()
+        } else {
+            // Fallback: no field info, desugar explicit fields only
+            explicit_fields_chirho
+                .iter()
+                .map(|f_chirho| self.desugar_expr_chirho(&f_chirho.value_chirho))
+                .collect()
+        }
+    }
+
+    /// Expand a RecordWildCards pattern: fill in missing fields as variable patterns.
+    /// Returns `Some(expanded_pat)` if expansion was needed, `None` if no expansion.
+    fn expand_record_wildcard_pat_chirho(&self, pat_chirho: &PatChirho) -> Option<PatChirho> {
+        if let PatChirho::RecordChirho {
+            con_chirho,
+            fields_chirho,
+            has_wildcard_chirho: true,
+            span_chirho,
+        } = pat_chirho
+        {
+            let con_name_chirho = con_chirho.text_chirho();
+            if let Some(all_fields_chirho) = self.con_field_names_chirho.get(con_name_chirho) {
+                let explicit_names_chirho: HashSet<String> = fields_chirho
+                    .iter()
+                    .map(|f_chirho| f_chirho.name_chirho.text_chirho().to_string())
+                    .collect();
+                let mut expanded_fields_chirho = fields_chirho.clone();
+                for field_name_chirho in all_fields_chirho {
+                    if !explicit_names_chirho.contains(field_name_chirho) {
+                        // Create a Var pattern binding the field name as a variable
+                        let name_chirho = haskeluya_ast_chirho::name_chirho::NameChirho::RawChirho(
+                            haskeluya_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+                                field_name_chirho.to_string(),
+                                *span_chirho,
+                            ),
+                        );
+                        expanded_fields_chirho.push(
+                            haskeluya_ast_chirho::pat_chirho::PatFieldChirho {
+                                name_chirho: name_chirho.clone(),
+                                pattern_chirho: PatChirho::VarChirho(name_chirho),
+                                span_chirho: *span_chirho,
+                            },
+                        );
+                    }
+                }
+                // Reorder to match constructor field order
+                let mut ordered_fields_chirho = Vec::with_capacity(all_fields_chirho.len());
+                for field_name_chirho in all_fields_chirho {
+                    if let Some(f_chirho) = expanded_fields_chirho
+                        .iter()
+                        .find(|f_chirho| f_chirho.name_chirho.text_chirho() == field_name_chirho)
+                    {
+                        ordered_fields_chirho.push(f_chirho.clone());
+                    }
+                }
+                return Some(PatChirho::RecordChirho {
+                    con_chirho: con_chirho.clone(),
+                    fields_chirho: ordered_fields_chirho,
+                    has_wildcard_chirho: false,
+                    span_chirho: *span_chirho,
+                });
+            }
+        }
+        None
     }
 
     /// Look up or create a CoreId for a variable reference.
@@ -1421,6 +1528,7 @@ impl DesugarCtxChirho {
                 self.sub_pats_to_binders_chirho(args_chirho)
             }
             PatChirho::RecordChirho { fields_chirho, .. } => {
+                // By this point, wildcards have already been expanded
                 let sub_pats_chirho: Vec<&PatChirho> = fields_chirho
                     .iter()
                     .map(|f_chirho| &f_chirho.pattern_chirho)
@@ -2377,11 +2485,14 @@ impl DesugarCtxChirho {
                     .iter()
                     .map(|alt_chirho| {
                         self.push_scope_chirho();
-                        let con_chirho = self.pat_to_alt_con_chirho(&alt_chirho.pat_chirho);
-                        let binders_chirho = self.pat_to_binders_chirho(&alt_chirho.pat_chirho);
+                        // Expand RecordWildCards patterns before processing
+                        let expanded_pat_chirho = self.expand_record_wildcard_pat_chirho(&alt_chirho.pat_chirho);
+                        let pat_ref_chirho = expanded_pat_chirho.as_ref().unwrap_or(&alt_chirho.pat_chirho);
+                        let con_chirho = self.pat_to_alt_con_chirho(pat_ref_chirho);
+                        let binders_chirho = self.pat_to_binders_chirho(pat_ref_chirho);
                         // Pre-bind ALL nested pattern variables so the
                         // RHS can reference them during desugaring.
-                        self.prebind_all_pat_vars_chirho(&alt_chirho.pat_chirho);
+                        self.prebind_all_pat_vars_chirho(pat_ref_chirho);
                         let rhs_with_where_chirho = if alt_chirho.where_binds_chirho.is_empty() {
                             self.desugar_rhs_chirho(&alt_chirho.rhs_chirho)
                         } else {
@@ -2907,17 +3018,22 @@ impl DesugarCtxChirho {
             ExprChirho::RecordConChirho {
                 con_chirho,
                 fields_chirho,
+                has_wildcard_chirho,
                 ..
             } => {
                 // Con { f1 = e1, f2 = e2 } → ConApp "Con" [e1, e2]
-                let con_args_chirho: Vec<CoreExprChirho> = fields_chirho
-                    .iter()
-                    .map(|field_chirho| {
-                        self.desugar_expr_chirho(&field_chirho.value_chirho)
-                    })
-                    .collect();
+                // RecordWildCards: Con { f1 = e1, .. } → fills missing fields from scope
+                let con_name_chirho = con_chirho.text_chirho().to_string();
+                let con_args_chirho: Vec<CoreExprChirho> = if *has_wildcard_chirho {
+                    self.expand_record_wildcard_expr_chirho(&con_name_chirho, fields_chirho)
+                } else {
+                    fields_chirho
+                        .iter()
+                        .map(|field_chirho| self.desugar_expr_chirho(&field_chirho.value_chirho))
+                        .collect()
+                };
                 CoreExprChirho::ConAppChirho {
-                    con_name_chirho: con_chirho.text_chirho().to_string(),
+                    con_name_chirho,
                     args_chirho: con_args_chirho,
                 }
             }

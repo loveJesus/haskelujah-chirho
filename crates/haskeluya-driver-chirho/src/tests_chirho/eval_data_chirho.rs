@@ -1607,3 +1607,132 @@ main = case SB 42 of
         assert!(has_sb_chirho, "main binding should exist in Core IR");
     }
 
+    // ── RecordWildCards ──────────────────────────────────────────────
+
+    #[test]
+    fn eval_record_wildcards_pattern_chirho() {
+        // RecordWildCards in pattern: Foo{..} binds all fields as variables
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Point = MkPoint { xCoord :: Int, yCoord :: Int }
+main = case MkPoint { xCoord = 10, yCoord = 20 } of
+  MkPoint{..} -> xCoord + yCoord
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(30));
+            }
+            Err(e_chirho) => panic!("RecordWildCards pattern should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_record_wildcards_expr_chirho() {
+        // RecordWildCards in expression: Con{..} fills missing fields from let-bound scope
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Point = MkPoint { xCoord :: Int, yCoord :: Int }
+main = let xCoord = 10
+           yCoord = 20
+       in case MkPoint{..} of
+            MkPoint { xCoord = a, yCoord = b } -> a + b
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(30));
+            }
+            Err(e_chirho) => panic!("RecordWildCards expression should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_record_wildcards_partial_pattern_chirho() {
+        // RecordWildCards with some explicit fields: MkPoint{xCoord = a, ..}
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Point = MkPoint { xCoord :: Int, yCoord :: Int }
+main = case MkPoint { xCoord = 10, yCoord = 20 } of
+  MkPoint{xCoord = a, ..} -> a + yCoord
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(30));
+            }
+            Err(e_chirho) => panic!("RecordWildCards partial pattern should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_record_wildcards_partial_expr_chirho() {
+        // RecordWildCards in expression with some explicit fields: MkPoint{xCoord = 10, ..}
+        use crate::eval_source_chirho;
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Point = MkPoint { xCoord :: Int, yCoord :: Int }
+main = let yCoord = 32
+       in case MkPoint{xCoord = 10, ..} of
+            MkPoint{xCoord = a, yCoord = b} -> a + b
+";
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(42));
+            }
+            Err(e_chirho) => panic!("RecordWildCards partial expression should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn debug_record_wildcard_expr_ast_chirho() {
+        // Debug test: verify MkPoint{..} parses as RecordConChirho with has_wildcard_chirho=true
+        let src_chirho = "\
+module Test where
+data Point = MkPoint { xCoord :: Int, yCoord :: Int }
+f = MkPoint{..}
+";
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let fid_chirho = sm_chirho.add_file_chirho("test.hs", src_chirho);
+        let cst_chirho = haskeluya_parser_chirho::cst_parser_chirho::parse_to_cst_chirho(src_chirho, fid_chirho);
+        let module_chirho = haskeluya_parser_chirho::lower_chirho::lower_module_chirho(&cst_chirho, fid_chirho);
+        // Find the f declaration and check its RHS
+        use haskeluya_ast_chirho::decl_chirho::DeclChirho;
+        use haskeluya_ast_chirho::expr_chirho::{ExprChirho, RhsChirho};
+        for decl_chirho in &module_chirho.decls_chirho {
+            eprintln!("DECL: {:#?}", decl_chirho);
+        }
+        let found_wildcard_chirho = module_chirho.decls_chirho.iter().any(|decl_chirho| {
+            // Check FunBindChirho
+            if let DeclChirho::FunBindChirho { name_chirho, matches_chirho, .. } = decl_chirho {
+                if name_chirho.text_chirho() == "f" {
+                    for m_chirho in matches_chirho {
+                        if let RhsChirho::UnguardedChirho(expr_chirho) = &m_chirho.rhs_chirho {
+                            if let ExprChirho::RecordConChirho { has_wildcard_chirho, .. } = expr_chirho {
+                                return *has_wildcard_chirho;
+                            }
+                        }
+                    }
+                }
+            }
+            // Check PatBindChirho
+            if let DeclChirho::PatBindChirho { rhs_chirho, .. } = decl_chirho {
+                if let RhsChirho::UnguardedChirho(expr_chirho) = rhs_chirho {
+                    if let ExprChirho::RecordConChirho { has_wildcard_chirho, .. } = expr_chirho {
+                        return *has_wildcard_chirho;
+                    }
+                }
+            }
+            false
+        });
+        assert!(found_wildcard_chirho, "MkPoint{{..}} should parse as RecordConChirho with has_wildcard_chirho=true");
+    }
+

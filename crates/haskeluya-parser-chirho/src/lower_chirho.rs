@@ -2953,6 +2953,17 @@ impl LowerCtxChirho {
                                 if n_chirho.kind_chirho()
                                     == SyntaxKindChirho::FieldAssignChirho
                                 {
+                                    // Skip FieldAssign nodes that are just DotDot wildcards
+                                    let is_dotdot_chirho = n_chirho.children_chirho().iter().any(|gc_chirho| {
+                                        matches!(
+                                            gc_chirho,
+                                            GreenElementChirho::TokenChirho(t_chirho)
+                                                if t_chirho.kind_chirho() == TokenKindChirho::DotDotChirho
+                                        )
+                                    });
+                                    if is_dotdot_chirho {
+                                        return None;
+                                    }
                                     return Some(self.lower_field_assign_chirho(
                                         n_chirho,
                                         c_chirho.start_chirho,
@@ -2963,12 +2974,24 @@ impl LowerCtxChirho {
                         })
                         .collect();
                     // Detect `..` wildcard (RecordWildCards)
+                    // Check both direct token children and inside FieldAssign nodes
                     let has_wildcard_chirho = children_chirho.iter().any(|c_chirho| {
-                        matches!(
-                            c_chirho.element_chirho,
+                        match c_chirho.element_chirho {
                             GreenElementChirho::TokenChirho(tok_chirho)
-                                if tok_chirho.kind_chirho() == TokenKindChirho::DotDotChirho
-                        )
+                                if tok_chirho.kind_chirho() == TokenKindChirho::DotDotChirho => true,
+                            GreenElementChirho::NodeChirho(n_chirho)
+                                if n_chirho.kind_chirho() == SyntaxKindChirho::FieldAssignChirho =>
+                            {
+                                n_chirho.children_chirho().iter().any(|gc_chirho| {
+                                    matches!(
+                                        gc_chirho,
+                                        GreenElementChirho::TokenChirho(t_chirho)
+                                            if t_chirho.kind_chirho() == TokenKindChirho::DotDotChirho
+                                    )
+                                })
+                            }
+                            _ => false,
+                        }
                     });
                     ExprChirho::RecordConChirho {
                         con_chirho: name_chirho,
