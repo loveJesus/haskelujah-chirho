@@ -494,6 +494,22 @@ impl<'a> ExhaustCheckerChirho<'a> {
                     self.check_expr_chirho(&f_chirho.value_chirho);
                 }
             }
+            // TH splice/quote expressions — recurse into inner expressions
+            // but they contain no patterns to check for exhaustiveness.
+            ExprChirho::SpliceChirho { expr_chirho, .. }
+            | ExprChirho::TypedSpliceChirho { expr_chirho, .. }
+            | ExprChirho::QuoteExprChirho { expr_chirho, .. } => {
+                self.check_expr_chirho(expr_chirho);
+            }
+            ExprChirho::QuoteDeclChirho { decls_chirho, .. } => {
+                for d_chirho in decls_chirho {
+                    self.check_decl_chirho(d_chirho);
+                }
+            }
+            ExprChirho::QuoteTypeChirho { .. }
+            | ExprChirho::QuotePatChirho { .. } => {
+                // Type and pattern quotes contain no sub-expressions to check.
+            }
             // Leaves — no sub-expressions to check
             ExprChirho::VarChirho(_)
             | ExprChirho::ConChirho(_)

@@ -2841,6 +2841,24 @@ impl DesugarCtxChirho {
             ExprChirho::TypeAppChirho { expr_chirho: inner_chirho, .. } => {
                 self.desugar_expr_chirho(inner_chirho)
             }
+
+            // TH splice/quote expressions — should have been evaluated before desugaring.
+            ExprChirho::SpliceChirho { span_chirho, .. }
+            | ExprChirho::TypedSpliceChirho { span_chirho, .. } => {
+                panic!(
+                    "Template Haskell splice not evaluated before desugaring at {:?}",
+                    span_chirho
+                )
+            }
+            ExprChirho::QuoteExprChirho { span_chirho, .. }
+            | ExprChirho::QuoteDeclChirho { span_chirho, .. }
+            | ExprChirho::QuoteTypeChirho { span_chirho, .. }
+            | ExprChirho::QuotePatChirho { span_chirho, .. } => {
+                panic!(
+                    "Template Haskell quotation not evaluated before desugaring at {:?}",
+                    span_chirho
+                )
+            }
         }
     }
 

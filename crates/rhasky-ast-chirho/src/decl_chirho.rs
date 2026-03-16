@@ -179,6 +179,11 @@ pub enum DeclChirho {
         foreign_name_chirho: Option<String>,
         span_chirho: SpanChirho,
     },
+    /// Template Haskell splice at declaration level (`$(makeLenses ''Foo)`).
+    SpliceDeclChirho {
+        expr_chirho: crate::expr_chirho::ExprChirho,
+        span_chirho: SpanChirho,
+    },
 }
 
 /// A data constructor declaration.
@@ -251,7 +256,8 @@ impl DeclChirho {
             | Self::DefaultDeclChirho { span_chirho, .. }
             | Self::ForeignDeclChirho { span_chirho, .. }
             | Self::TypeFamilyDeclChirho { span_chirho, .. }
-            | Self::TypeFamilyInstanceDeclChirho { span_chirho, .. } => *span_chirho,
+            | Self::TypeFamilyInstanceDeclChirho { span_chirho, .. }
+            | Self::SpliceDeclChirho { span_chirho, .. } => *span_chirho,
         }
     }
 }

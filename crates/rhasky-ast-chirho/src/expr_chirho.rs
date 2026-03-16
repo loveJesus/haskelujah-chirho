@@ -131,6 +131,36 @@ pub enum ExprChirho {
         fields_chirho: Vec<FieldAssignChirho>,
         span_chirho: SpanChirho,
     },
+    /// Template Haskell splice expression (`$(expr)` or `$name`).
+    SpliceChirho {
+        expr_chirho: Box<ExprChirho>,
+        span_chirho: SpanChirho,
+    },
+    /// Template Haskell typed splice expression (`$$(expr)` or `$$name`).
+    TypedSpliceChirho {
+        expr_chirho: Box<ExprChirho>,
+        span_chirho: SpanChirho,
+    },
+    /// Template Haskell expression quotation (`[| expr |]` or `[e| expr |]`).
+    QuoteExprChirho {
+        expr_chirho: Box<ExprChirho>,
+        span_chirho: SpanChirho,
+    },
+    /// Template Haskell declaration quotation (`[d| decls |]`).
+    QuoteDeclChirho {
+        decls_chirho: Vec<crate::decl_chirho::DeclChirho>,
+        span_chirho: SpanChirho,
+    },
+    /// Template Haskell type quotation (`[t| type |]`).
+    QuoteTypeChirho {
+        ty_chirho: TypeChirho,
+        span_chirho: SpanChirho,
+    },
+    /// Template Haskell pattern quotation (`[p| pat |]`).
+    QuotePatChirho {
+        pat_chirho: PatChirho,
+        span_chirho: SpanChirho,
+    },
 }
 
 /// A field assignment in a record expression.
@@ -238,7 +268,13 @@ impl ExprChirho {
             | Self::AnnChirho { span_chirho, .. }
             | Self::ParenChirho { span_chirho, .. }
             | Self::RecordConChirho { span_chirho, .. }
-            | Self::RecordUpdateChirho { span_chirho, .. } => *span_chirho,
+            | Self::RecordUpdateChirho { span_chirho, .. }
+            | Self::SpliceChirho { span_chirho, .. }
+            | Self::TypedSpliceChirho { span_chirho, .. }
+            | Self::QuoteExprChirho { span_chirho, .. }
+            | Self::QuoteDeclChirho { span_chirho, .. }
+            | Self::QuoteTypeChirho { span_chirho, .. }
+            | Self::QuotePatChirho { span_chirho, .. } => *span_chirho,
         }
     }
 }

@@ -2224,6 +2224,10 @@ fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsC
             DeclChirho::TypeFamilyInstanceDeclChirho { .. } => {
                 // Type family instances don't introduce new names
             }
+            DeclChirho::SpliceDeclChirho { .. } => {
+                // TH splice declarations don't directly export names;
+                // they must be evaluated to generate concrete declarations first.
+            }
         }
     }
 

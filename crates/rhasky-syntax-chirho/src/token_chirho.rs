@@ -165,4 +165,26 @@ pub enum TokenKindChirho {
     DocCommentTriviaChirho,
     /// A `{-# ... #-}` pragma (LANGUAGE, OPTIONS, etc.)
     PragmaChirho,
+
+    // -- Template Haskell tokens --
+    /// The `$` splice operator (followed by identifier or parenthesized expr).
+    ThSpliceChirho,
+    /// The `$$` typed splice operator.
+    ThTypedSpliceChirho,
+    /// Opening `[|` for expression quotation.
+    ThOpenExpQuoteChirho,
+    /// Closing `|]` for quotation.
+    ThCloseQuoteChirho,
+    /// Opening `[d|` for declaration quotation.
+    ThOpenDecQuoteChirho,
+    /// Opening `[t|` for type quotation.
+    ThOpenTypeQuoteChirho,
+    /// Opening `[p|` for pattern quotation.
+    ThOpenPatQuoteChirho,
+    /// Opening `[e|` for expression quotation (explicit form).
+    ThOpenExpExplicitQuoteChirho,
+    /// Opening `[||` for typed expression quotation.
+    ThOpenTypedExpQuoteChirho,
+    /// Closing `||]` for typed expression quotation.
+    ThCloseTypedQuoteChirho,
 }

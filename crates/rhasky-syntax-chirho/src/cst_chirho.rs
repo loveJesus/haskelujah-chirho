@@ -201,6 +201,24 @@ pub enum SyntaxKindChirho {
     /// DataKinds promoted list type (`'[Int, Bool]`).
     PromotedListTypeChirho,
 
+    // -- Template Haskell --
+    /// A splice expression (`$(expr)` or `$name`).
+    SpliceExprChirho,
+    /// A typed splice expression (`$$(expr)` or `$$name`).
+    TypedSpliceExprChirho,
+    /// A top-level splice declaration (`$(expr)` at declaration level).
+    SpliceDeclChirho,
+    /// An expression quotation (`[| expr |]` or `[e| expr |]`).
+    QuoteExprChirho,
+    /// A declaration quotation (`[d| decls |]`).
+    QuoteDeclChirho,
+    /// A type quotation (`[t| type |]`).
+    QuoteTypeChirho,
+    /// A pattern quotation (`[p| pat |]`).
+    QuotePatChirho,
+    /// A typed expression quotation (`[|| expr ||]`).
+    TypedQuoteExprChirho,
+
     // -- Layout / trivia wrappers --
     /// A layout block (the body between virtual `{` and `}`).
     LayoutBlockChirho,
@@ -227,6 +245,7 @@ impl SyntaxKindChirho {
                 | Self::ImportDeclChirho
                 | Self::TypeFamilyDeclChirho
                 | Self::TypeFamilyInstanceDeclChirho
+                | Self::SpliceDeclChirho
         )
     }
 
@@ -257,6 +276,10 @@ impl SyntaxKindChirho {
                 | Self::RecordUpdateExprChirho
                 | Self::LiteralExprChirho
                 | Self::NameExprChirho
+                | Self::SpliceExprChirho
+                | Self::TypedSpliceExprChirho
+                | Self::QuoteExprChirho
+                | Self::TypedQuoteExprChirho
         )
     }
 
