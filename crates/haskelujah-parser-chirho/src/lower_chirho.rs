@@ -4886,7 +4886,9 @@ impl LowerCtxChirho {
                                     LitChirho::CharChirho(c_chirho, span_chirho),
                                 ));
                             }
-                            TokenKindChirho::VarIdChirho => {
+                            TokenKindChirho::VarIdChirho
+                            | TokenKindChirho::UnderscoreReservedIdChirho => {
+                                // UnderscoreReservedIdChirho: typed holes (_) in expression position
                                 value_chirho = Some(ExprChirho::VarChirho(
                                     NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
                                         tok_chirho.text_chirho().to_string(),

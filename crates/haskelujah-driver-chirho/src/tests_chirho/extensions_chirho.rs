@@ -491,6 +491,126 @@ fn magic_hash_lexer_con_chirho() {
 // ── TypeSynonymInstances ────────────────────────────────────────────────
 
 #[test]
+// ── TypedHoles ──────────────────────────────────────────────────────────
+
+#[test]
+fn typed_hole_compiles_chirho() {
+    // `_` in expression position should compile (as a typed hole warning)
+    // We just check that it doesn't error out at the type-checking stage
+    let src_chirho = "\
+module Test where
+f :: Int -> Int
+f = _
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    // This should succeed — the hole function is defined but never called
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TypedHole.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn typed_hole_named_compiles_chirho() {
+    // Named holes like `_foo` should also compile
+    let src_chirho = "\
+module Test where
+g :: Int -> Int -> Int
+g x y = _result
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NamedHole.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn typed_hole_warning_emitted_chirho() {
+    // The typed hole should produce a warning
+    let src_chirho = "\
+module Test where
+f :: Int -> Int
+f = _
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let warnings_chirho = frontend_warnings_chirho(src_chirho, &mut sm_chirho, "HoleWarn.hs");
+    let has_hole_warning_chirho = warnings_chirho
+        .iter()
+        .any(|w_chirho| {
+            let msg_chirho = format!("{:?}", w_chirho);
+            msg_chirho.contains("hole") || msg_chirho.contains("4200")
+        });
+    assert!(has_hole_warning_chirho, "should emit typed hole warning");
+}
+
+// ── Haskell2010 ─────────────────────────────────────────────────────────
+
+#[test]
+fn haskell2010_pragma_chirho() {
+    // {-# LANGUAGE Haskell2010 #-} should be accepted
+    let src_chirho = "\
+{-# LANGUAGE Haskell2010 #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Haskell2010.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+// ── ExplicitNamespaces ──────────────────────────────────────────────────
+
+#[test]
+fn explicit_namespaces_chirho() {
+    // ExplicitNamespaces pragma accepted
+    let src_chirho = "\
+{-# LANGUAGE ExplicitNamespaces #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "ExplicitNS.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+// ── ExplicitForAll ──────────────────────────────────────────────────────
+
+#[test]
+fn explicit_forall_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE ExplicitForAll #-}
+module Test where
+id' :: forall a. a -> a
+id' x = x
+main = id' 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "ExplicitForAll.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+// ── InstanceSigs ────────────────────────────────────────────────────────
+
+#[test]
+fn instance_sigs_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE InstanceSigs #-}
+module Test where
+class MyEq a where
+  myEq :: a -> a -> Bool
+instance MyEq Int where
+  myEq :: Int -> Int -> Bool
+  myEq x y = x == y
+main = if myEq (42 :: Int) (42 :: Int) then 1 else 0
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "InstanceSigs.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(1));
+}
+
+// ── TypeSynonymInstances ────────────────────────────────────────────────
+
+#[test]
 fn type_synonym_instances_chirho() {
     // TypeSynonymInstances pragma accepted; type synonym instance compiles
     let src_chirho = "\

@@ -2392,6 +2392,13 @@ impl<'src> ParserChirho<'src> {
                 self.bump_chirho();
                 self.builder_chirho.finish_node_chirho();
             }
+            // Typed holes: `_` in expression position (GHC's TypedHoles)
+            Some(RawTokenKindChirho::UnderscoreChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::NameExprChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
             Some(RawTokenKindChirho::LeftParenChirho) => {
                 self.parse_paren_expr_chirho();
             }
@@ -3363,6 +3370,8 @@ impl<'src> ParserChirho<'src> {
                 | Some(RawTokenKindChirho::ThOpenTypeQuoteChirho)
                 | Some(RawTokenKindChirho::ThOpenPatQuoteChirho)
                 | Some(RawTokenKindChirho::ThOpenTypedExpQuoteChirho)
+                // TypedHoles: `_` in expression position
+                | Some(RawTokenKindChirho::UnderscoreChirho)
         )
     }
 

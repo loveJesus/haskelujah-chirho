@@ -176,12 +176,22 @@ pub fn run_frontend_chirho(
         Vec::new()
     };
 
-    // Merge splice, deriving, exhaustiveness, orphan, and linearity warnings.
+    // Collect non-fatal warnings from type inference (e.g. typed holes W4200).
+    let infer_warnings_chirho: Vec<String> = infer_result_chirho
+        .diagnostics_chirho
+        .diagnostics_chirho()
+        .iter()
+        .filter(|d_chirho| !d_chirho.is_error_chirho())
+        .map(|d_chirho| d_chirho.to_string())
+        .collect();
+
+    // Merge splice, deriving, exhaustiveness, orphan, linearity, and type inference warnings.
     let mut warnings_chirho = splice_warnings_chirho;
     warnings_chirho.extend(deriving_warnings_chirho);
     warnings_chirho.extend(exhaust_warnings_chirho);
     warnings_chirho.extend(orphan_warning_strs_chirho);
     warnings_chirho.extend(linearity_warnings_chirho);
+    warnings_chirho.extend(infer_warnings_chirho);
 
     Ok(FrontendResultChirho {
         module_chirho,
