@@ -3380,6 +3380,12 @@ impl LowerCtxChirho {
                     .collect();
                 TypeChirho::PromotedListChirho { elements_chirho, span_chirho }
             }
+            SyntaxKindChirho::WildcardTypeChirho => {
+                // PartialTypeSignatures: `_` in type position lowers to a
+                // wildcard that the type inferencer will replace with a fresh
+                // unification variable (and optionally emit warning W4201).
+                TypeChirho::WildcardChirho { span_chirho }
+            }
             SyntaxKindChirho::InfixTypeChirho => {
                 // TypeOperators: `a :+: b` or `a `Either` b`
                 // Children: left-type, operator-token (or backtick-name-backtick), right-type
@@ -6050,6 +6056,7 @@ fn is_type_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::PromotedConTypeChirho
             | SyntaxKindChirho::PromotedListTypeChirho
             | SyntaxKindChirho::InfixTypeChirho
+            | SyntaxKindChirho::WildcardTypeChirho
     )
 }
 

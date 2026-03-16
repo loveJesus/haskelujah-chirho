@@ -210,6 +210,8 @@ pub enum SyntaxKindChirho {
     PromotedListTypeChirho,
     /// Infix type operator (`a :+: b`, `a `Either` b`).
     InfixTypeChirho,
+    /// PartialTypeSignatures wildcard type (`_`).
+    WildcardTypeChirho,
 
     // -- Template Haskell --
     /// A splice expression (`$(expr)` or `$name`).
@@ -334,6 +336,7 @@ impl SyntaxKindChirho {
                 | Self::PromotedConTypeChirho
                 | Self::PromotedListTypeChirho
                 | Self::InfixTypeChirho
+                | Self::WildcardTypeChirho
         )
     }
 }

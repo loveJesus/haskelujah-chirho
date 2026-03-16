@@ -593,6 +593,10 @@ impl KindInferCtxChirho {
                 }
                 KindChirho::StarChirho
             }
+            // PartialTypeSignatures: `_` is a wildcard that will be filled in
+            // during type inference. Kind-wise it is treated as * (a regular
+            // monotype position).
+            TypeChirho::WildcardChirho { .. } => KindChirho::StarChirho,
         }
     }
 

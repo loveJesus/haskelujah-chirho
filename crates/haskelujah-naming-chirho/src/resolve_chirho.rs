@@ -645,6 +645,8 @@ fn type_con_names_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirh
                 result_chirho.extend(type_con_names_chirho(elem_chirho));
             }
         }
+        // PartialTypeSignatures: `_` wildcard has no type constructor names.
+        TypeChirho::WildcardChirho { .. } => {}
     }
     result_chirho
 }

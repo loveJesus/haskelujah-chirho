@@ -76,6 +76,11 @@ pub enum TypeChirho {
         elements_chirho: Vec<TypeChirho>,
         span_chirho: SpanChirho,
     },
+    /// PartialTypeSignatures wildcard type (`_`). Lowered to a fresh
+    /// unification variable during type inference.
+    WildcardChirho {
+        span_chirho: SpanChirho,
+    },
 }
 
 /// A class constraint in a type context (e.g. `Eq a`, `Show (Maybe a)`).
@@ -99,7 +104,8 @@ impl TypeChirho {
             | Self::QualChirho { span_chirho, .. }
             | Self::ForallChirho { span_chirho, .. }
             | Self::PromotedConChirho { span_chirho, .. }
-            | Self::PromotedListChirho { span_chirho, .. } => *span_chirho,
+            | Self::PromotedListChirho { span_chirho, .. }
+            | Self::WildcardChirho { span_chirho } => *span_chirho,
         }
     }
 }

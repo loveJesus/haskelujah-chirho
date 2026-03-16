@@ -552,6 +552,19 @@ impl InferCtxChirho {
                     )
                 })
             }
+            // PartialTypeSignatures: `_` in a type signature is a wildcard that
+            // becomes a fresh unification variable. Emit warning W4201 so the
+            // programmer is informed of the inferred type position.
+            TypeChirho::WildcardChirho { span_chirho } => {
+                let fresh_ty_chirho = self.fresh_var_chirho();
+                let diag_chirho = DiagnosticChirho::warning_with_code_chirho(
+                    ErrorCodeChirho::warning_chirho(4201),
+                    "found wildcard `_` in type signature (PartialTypeSignatures)".to_string(),
+                    *span_chirho,
+                );
+                self.diagnostics_chirho.push_chirho(diag_chirho);
+                fresh_ty_chirho
+            }
         }
     }
 
@@ -2671,6 +2684,11 @@ fn ast_type_to_syn_rhs_chirho(
                     Box::new(acc_chirho),
                 )
             })
+        }
+        // PartialTypeSignatures: wildcard in a type synonym RHS is a fresh
+        // anonymous variable (synthesised as "_wildcard_chirho").
+        TypeChirho::WildcardChirho { .. } => {
+            TyChirho::ConChirho("_wildcard_chirho".to_string())
         }
     }
 }

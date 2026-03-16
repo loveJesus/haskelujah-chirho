@@ -797,3 +797,63 @@ main = 42
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NoStarIsType.hs", None);
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
+
+// ── PartialTypeSignatures ──────────────────────────────────────────────────
+
+#[test]
+fn partial_type_sig_basic_chirho() {
+    // Basic PartialTypeSignatures: `_` in return type position. The compiler
+    // should infer the wildcard as Int and evaluate correctly.
+    let src_chirho = "\
+{-# LANGUAGE PartialTypeSignatures #-}
+module Test where
+f :: _ -> Int
+f x = x + 1
+main = f 41
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PartialTypeSig.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn partial_type_sig_multiple_wildcards_chirho() {
+    // Multiple wildcards in one type signature — each `_` becomes an
+    // independent fresh unification variable.
+    let src_chirho = "\
+{-# LANGUAGE PartialTypeSignatures #-}
+module Test where
+add :: _ -> _ -> Int
+add x y = x + y
+main = add 20 22
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PartialTypeSigMulti.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn partial_type_sig_warning_emitted_chirho() {
+    // The compiler should emit warning W4201 for each wildcard found in a
+    // type signature when PartialTypeSignatures is active.
+    let src_chirho = "\
+{-# LANGUAGE PartialTypeSignatures #-}
+module Test where
+f :: _ -> Int
+f x = x + 1
+main = f 41
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let warnings_chirho =
+        frontend_warnings_chirho(src_chirho, &mut sm_chirho, "PartialTypeSigWarn.hs");
+    let has_wildcard_warning_chirho = warnings_chirho
+        .iter()
+        .any(|w_chirho| {
+            let msg_chirho = format!("{:?}", w_chirho);
+            msg_chirho.contains("4201") || msg_chirho.contains("wildcard")
+        });
+    assert!(
+        has_wildcard_warning_chirho,
+        "expected W4201 wildcard warning for `_` in type signature"
+    );
+}

@@ -102,6 +102,11 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
                 elements_chirho.iter().map(|e_chirho| ast_type_to_th_chirho(e_chirho)).collect(),
             )
         }
+        // PartialTypeSignatures: `_` wildcard becomes a fresh anonymous TH type
+        // variable named `_wildcard_chirho` at the TH level.
+        TypeChirho::WildcardChirho { .. } => {
+            ThTypeChirho::VarTChirho(ThNameChirho::mk_name_chirho("_wildcard_chirho"))
+        }
     }
 }
 

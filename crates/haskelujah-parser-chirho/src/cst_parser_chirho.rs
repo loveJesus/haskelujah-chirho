@@ -1608,6 +1608,13 @@ impl<'src> ParserChirho<'src> {
             Some(RawTokenKindChirho::TickChirho) => {
                 self.parse_promoted_type_chirho();
             }
+            // PartialTypeSignatures: `_` in type position is a wildcard type
+            Some(RawTokenKindChirho::UnderscoreChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::WildcardTypeChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
             _ => {
                 // Unexpected — wrap in error node
                 self.builder_chirho
@@ -3333,6 +3340,8 @@ impl<'src> ParserChirho<'src> {
                 | Some(RawTokenKindChirho::LeftParenChirho)
                 | Some(RawTokenKindChirho::LeftBracketChirho)
                 | Some(RawTokenKindChirho::TickChirho)
+                // PartialTypeSignatures: `_` as a wildcard type
+                | Some(RawTokenKindChirho::UnderscoreChirho)
         )
     }
 
