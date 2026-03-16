@@ -1479,6 +1479,7 @@ impl InferCtxChirho {
                 con_chirho,
                 fields_chirho,
                 span_chirho,
+                ..
             } => {
                 let con_text_chirho = con_chirho.text_chirho();
                 let scheme_opt_chirho = self.env_chirho.lookup_chirho(con_text_chirho).cloned();
@@ -8416,7 +8417,7 @@ mod tests_chirho {
                             dummy_name_chirho("v"),
                         )),
                         alts_chirho: vec![AltChirho {
-                            pat_chirho: PatChirho::RecordChirho {
+                            pat_chirho: PatChirho::RecordChirho { has_wildcard_chirho: false,
                                 con_chirho: dummy_name_chirho("Foo"),
                                 fields_chirho: vec![PatFieldChirho {
                                     name_chirho: dummy_name_chirho("bar"),

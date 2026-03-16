@@ -2951,9 +2951,18 @@ impl LowerCtxChirho {
                             None
                         })
                         .collect();
+                    // Detect `..` wildcard (RecordWildCards)
+                    let has_wildcard_chirho = children_chirho.iter().any(|c_chirho| {
+                        matches!(
+                            c_chirho.element_chirho,
+                            GreenElementChirho::TokenChirho(tok_chirho)
+                                if tok_chirho.kind_chirho() == TokenKindChirho::DotDotChirho
+                        )
+                    });
                     ExprChirho::RecordConChirho {
                         con_chirho: name_chirho,
                         fields_chirho,
+                        has_wildcard_chirho,
                         span_chirho,
                     }
                 } else if name_chirho
@@ -4686,9 +4695,21 @@ impl LowerCtxChirho {
                     });
                 }
 
+                // Detect `..` wildcard token (RecordWildCards)
+                let mut has_wildcard_chirho = false;
+                for child_chirho in &children_chirho {
+                    if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
+                        if tok_chirho.kind_chirho() == TokenKindChirho::DotDotChirho {
+                            has_wildcard_chirho = true;
+                            break;
+                        }
+                    }
+                }
+
                 PatChirho::RecordChirho {
                     con_chirho: con_name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
                     fields_chirho,
+                    has_wildcard_chirho,
                     span_chirho,
                 }
             }

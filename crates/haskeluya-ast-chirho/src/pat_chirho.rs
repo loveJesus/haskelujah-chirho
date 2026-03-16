@@ -66,10 +66,12 @@ pub enum PatChirho {
         right_chirho: Box<PatChirho>,
         span_chirho: SpanChirho,
     },
-    /// Record pattern (`Foo { bar = baz }`).
+    /// Record pattern (`Foo { bar = baz }` or `Foo { bar, .. }`).
     RecordChirho {
         con_chirho: NameChirho,
         fields_chirho: Vec<PatFieldChirho>,
+        /// Whether `..` was present (RecordWildCards).
+        has_wildcard_chirho: bool,
         span_chirho: SpanChirho,
     },
 }

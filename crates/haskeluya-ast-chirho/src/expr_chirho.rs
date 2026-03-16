@@ -119,10 +119,12 @@ pub enum ExprChirho {
         inner_chirho: Box<ExprChirho>,
         span_chirho: SpanChirho,
     },
-    /// Record construction (`Con { f1 = e1, f2 = e2 }`).
+    /// Record construction (`Con { f1 = e1, f2 = e2 }` or `Con { f1, .. }`).
     RecordConChirho {
         con_chirho: NameChirho,
         fields_chirho: Vec<FieldAssignChirho>,
+        /// Whether `..` was present (RecordWildCards).
+        has_wildcard_chirho: bool,
         span_chirho: SpanChirho,
     },
     /// Record update (`expr { f1 = e1 }`).

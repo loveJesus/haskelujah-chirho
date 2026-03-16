@@ -304,6 +304,7 @@ pub fn th_exp_to_ast_chirho(exp_chirho: &ThExpChirho) -> ExprChirho {
         },
         ThExpChirho::RecConEChirho(name_chirho, fields_chirho) => ExprChirho::RecordConChirho {
             con_chirho: th_name_to_ast_chirho(name_chirho),
+            has_wildcard_chirho: false,
             fields_chirho: fields_chirho
                 .iter()
                 .map(|f_chirho| FieldAssignChirho {

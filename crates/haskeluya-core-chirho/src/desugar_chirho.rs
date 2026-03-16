@@ -1458,9 +1458,7 @@ impl DesugarCtxChirho {
                     }
                 }
             }
-            PatChirho::RecordChirho {
-                fields_chirho, ..
-            } => {
+            PatChirho::RecordChirho { fields_chirho, .. } => {
                 for field_chirho in fields_chirho {
                     if Self::is_nested_con_pat_chirho(&field_chirho.pattern_chirho) {
                         self.prebind_nested_pat_vars_chirho(&field_chirho.pattern_chirho);
@@ -1524,9 +1522,7 @@ impl DesugarCtxChirho {
                     self.prebind_nested_pat_vars_chirho(elem_chirho);
                 }
             }
-            PatChirho::RecordChirho {
-                fields_chirho, ..
-            } => {
+            PatChirho::RecordChirho { fields_chirho, .. } => {
                 for field_chirho in fields_chirho {
                     self.prebind_nested_pat_vars_chirho(&field_chirho.pattern_chirho);
                 }
@@ -1595,9 +1591,7 @@ impl DesugarCtxChirho {
             PatChirho::TupleChirho {
                 elements_chirho, ..
             } => elements_chirho.iter().collect(),
-            PatChirho::RecordChirho {
-                fields_chirho, ..
-            } => fields_chirho.iter().map(|f_chirho| &f_chirho.pattern_chirho).collect(),
+            PatChirho::RecordChirho { fields_chirho, .. } => fields_chirho.iter().map(|f_chirho| &f_chirho.pattern_chirho).collect(),
             PatChirho::AsChirho { pattern_chirho, .. } => Self::outer_sub_pats_chirho(pattern_chirho),
             PatChirho::ParenChirho { inner_chirho, .. } => Self::outer_sub_pats_chirho(inner_chirho),
             PatChirho::BangChirho { inner_chirho, .. } => Self::outer_sub_pats_chirho(inner_chirho),
@@ -4191,7 +4185,7 @@ mod tests_chirho {
 
         let mut ctx_chirho = DesugarCtxChirho::new_chirho();
         // MkPoint { x = 1, y = 2 }
-        let expr_chirho = ExprChirho::RecordConChirho {
+        let expr_chirho = ExprChirho::RecordConChirho { has_wildcard_chirho: false,
             con_chirho: dummy_name_chirho("MkPoint"),
             fields_chirho: vec![
                 FieldAssignChirho {
@@ -4511,7 +4505,7 @@ mod tests_chirho {
         let expr_chirho = ExprChirho::CaseChirho {
             scrutinee_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("p"))),
             alts_chirho: vec![haskeluya_ast_chirho::expr_chirho::AltChirho {
-                pat_chirho: PatChirho::RecordChirho {
+                pat_chirho: PatChirho::RecordChirho { has_wildcard_chirho: false,
                     con_chirho: dummy_name_chirho("MkPoint"),
                     fields_chirho: vec![
                         PatFieldChirho {
