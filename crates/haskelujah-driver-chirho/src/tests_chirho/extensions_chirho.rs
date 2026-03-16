@@ -874,3 +874,89 @@ main = mdo
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Mdo.hs", None);
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
+
+// ── Quick-win extension pragmas (batch 3) ──────────────────────────────
+
+#[test]
+fn strict_extension_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE Strict #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "Strict.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn strict_data_extension_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE StrictData #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "StrictData.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn applicative_do_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE ApplicativeDo #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "ApplicativeDo.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn generalized_newtype_deriving_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE GeneralizedNewtypeDeriving #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "GND.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn derive_lift_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE DeriveLift #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "DeriveLift.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn safe_haskell_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE Safe #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "Safe.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn trustworthy_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE Trustworthy #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "Trustworthy.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn cpp_extension_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE CPP #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "CPP.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn template_haskell_quotes_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE TemplateHaskellQuotes #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "THQuotes.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn qualified_do_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE QualifiedDo #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "QualifiedDo.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn overloaded_record_update_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE OverloadedRecordUpdate #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "RecordUpdate.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn type_data_pragma_chirho() {
+    let src_chirho = "{-# LANGUAGE TypeData #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "TypeData.hs", None).unwrap(), ValueChirho::IntChirho(42));
+}
