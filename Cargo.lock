@@ -739,6 +739,7 @@ dependencies = [
  "rhasky-span-chirho",
  "rhasky-syntax-chirho",
  "rhasky-test-harness-chirho",
+ "rhasky-th-chirho",
  "rhasky-typing-chirho",
  "tempfile",
 ]

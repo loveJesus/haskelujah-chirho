@@ -6,6 +6,7 @@
 //! Build orchestration for the Rhasky compiler. Coordinates parsing, checking,
 //! and backend lowering across execution modes.
 
+pub mod splice_chirho;
 pub mod stg_lower_chirho;
 
 use std::path::{Path, PathBuf};
@@ -99,6 +100,15 @@ pub fn run_frontend_chirho(
     //   - The module already has an explicit `import Prelude`
     inject_prelude_import_chirho(&mut module_chirho);
 
+    // Phase 2.2: Template Haskell splice expansion
+    // Process SpliceDeclChirho entries before name resolution so that
+    // generated declarations participate in the normal compilation pipeline.
+    let splice_result_chirho = splice_chirho::expand_splices_chirho(
+        std::mem::take(&mut module_chirho.decls_chirho),
+    );
+    module_chirho.decls_chirho = splice_result_chirho.decls_chirho;
+    let splice_warnings_chirho = splice_result_chirho.warnings_chirho;
+
     // Phase 2.5: Deriving — generate instance declarations for `deriving` clauses
     let deriving_warnings_chirho =
         rhasky_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
@@ -155,8 +165,9 @@ pub fn run_frontend_chirho(
         .map(|d_chirho| d_chirho.to_string())
         .collect();
 
-    // Merge deriving, exhaustiveness, and orphan warnings.
-    let mut warnings_chirho = deriving_warnings_chirho;
+    // Merge splice, deriving, exhaustiveness, and orphan warnings.
+    let mut warnings_chirho = splice_warnings_chirho;
+    warnings_chirho.extend(deriving_warnings_chirho);
     warnings_chirho.extend(exhaust_warnings_chirho);
     warnings_chirho.extend(orphan_warning_strs_chirho);
 
