@@ -1956,6 +1956,87 @@ main = double myId 21
 
 
     #[test]
+    fn eval_scoped_type_variables_where_clause_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // ScopedTypeVariables: where-clause uses forall-bound 'a' from function sig
+        let src_chirho = "\
+module Test where
+f :: forall a. a -> a
+f x = y
+  where y :: a
+        y = x
+main = f 42
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(42));
+            }
+            Err(e_chirho) => panic!("scoped type variables (where) should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_scoped_type_variables_helper_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // ScopedTypeVariables: helper function in where-clause uses same 'a'
+        let src_chirho = "\
+module Test where
+double :: forall a. a -> (a, a)
+double x = (go x, go x)
+  where go :: a -> a
+        go v = v
+main = case double 42 of (a, b) -> a + b
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(84));
+            }
+            Err(e_chirho) => panic!("scoped type variables (helper) should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_scoped_type_variables_no_forall_fresh_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // Without explicit forall, 'a' in where-clause is a fresh variable
+        let src_chirho = "\
+module Test where
+f :: Int -> Int
+f x = go x
+  where go :: Int -> Int
+        go v = v
+main = f 42
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(42));
+            }
+            Err(e_chirho) => panic!("non-scoped type variables should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
     fn eval_gadt_syntax_chirho() {
         use crate::eval_source_chirho;
         let mut source_map_chirho = SourceMapChirho::new_chirho();

@@ -73,7 +73,7 @@ You can modify the following section
 
 ### Test Coverage
 
-**1827 tests passing**, 0 failures
+**1830 tests passing**, 0 failures
 
 ### Completed (Phase 1 + Phase 2)
 
@@ -100,7 +100,7 @@ _Phase 3 focuses on completing TH, making backends produce real executables, and
 
 6. ~~**GADTs**~~ — DONE (ConDeclChirho::GadtChirho preserves full type signature; parser recognizes `data Foo where Con :: Type` syntax; type inference, kind inference, exhaustiveness, naming, desugaring, TH all handle GadtChirho; 5 e2e tests)
 7. ~~**RankNTypes**~~ — DONE (TyChirho::ForallChirho variant preserves forall in non-prenex positions; ast_type_to_ty_chirho produces ForallChirho for nested foralls; unification handles ForallChirho vs ForallChirho (alpha-rename) and ForallChirho vs concrete (SimpleSubsumption strip); bind_pat_chirho creates polymorphic schemes for ForallChirho-typed parameters; subsume_chirho for rank-N subsumption checking; 3 ty_chirho tests + 4 unify tests + 4 e2e tests; 1827 tests)
-8. **ScopedTypeVariables** — lexically scoped type variables
+8. ~~**ScopedTypeVariables**~~ — DONE (scoped_tyvars_chirho field on InferCtxChirho; populated from function type signature forall vars before body inference; ast_type_to_scheme_chirho seeds var_map with scoped vars so where-clause annotations reuse the same TyVarChirho; has_explicit_forall_chirho helper checks for explicit forall; scoped vars restored after each function body; 3 e2e tests; 1830 tests)
 9. **MultiParamTypeClasses improvements** — associated types, type family defaults
 10. **RecordWildCards** — `Foo{..}` pattern/expression syntax
 11. **ViewPatterns** — `f (view -> pattern)` in pattern position

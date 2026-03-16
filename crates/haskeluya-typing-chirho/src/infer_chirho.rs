@@ -62,6 +62,10 @@ pub struct InferCtxChirho {
     /// Type family environment: family name → list of equations (lhs patterns, rhs type).
     /// Each equation is (param type patterns as TyChirho, result TyChirho).
     type_families_chirho: HashMap<String, Vec<(Vec<TyChirho>, TyChirho)>>,
+    /// ScopedTypeVariables: when inside a function body whose type signature has
+    /// `forall a b.`, maps those names to their TyVarChirho so that where-clause
+    /// type annotations and local signatures use the same type variables.
+    scoped_tyvars_chirho: HashMap<String, TyVarChirho>,
 }
 
 impl InferCtxChirho {
@@ -89,6 +93,7 @@ impl InferCtxChirho {
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             type_synonyms_chirho,
             type_families_chirho: HashMap::new(),
+            scoped_tyvars_chirho: HashMap::new(),
         }
     }
 
@@ -544,7 +549,10 @@ impl InferCtxChirho {
     /// Convert an AST `TypeChirho` to a `SchemeChirho` (with quantified variables
     /// and constraints extracted).
     pub fn ast_type_to_scheme_chirho(&mut self, ast_ty_chirho: &TypeChirho) -> SchemeChirho {
-        let mut var_map_chirho = HashMap::new();
+        // Seed var_map with scoped type variables so that where-clause annotations
+        // referring to the enclosing function's forall-bound vars reuse the same TyVarChirho.
+        let mut var_map_chirho: HashMap<String, TyVarChirho> =
+            self.scoped_tyvars_chirho.clone();
         let mut preds_chirho = Vec::new();
 
         // Extract constraints from QualChirho wrapping
@@ -606,6 +614,20 @@ impl InferCtxChirho {
                 (all_vars_chirho, inner_body_chirho)
             }
             other_chirho => (vec![], other_chirho),
+        }
+    }
+
+    /// Check whether an AST type has an explicit `forall` at the top level.
+    fn has_explicit_forall_chirho(ast_ty_chirho: &TypeChirho) -> bool {
+        match ast_ty_chirho {
+            TypeChirho::ForallChirho { .. } => true,
+            TypeChirho::QualChirho { body_chirho, .. } => {
+                Self::has_explicit_forall_chirho(body_chirho)
+            }
+            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                Self::has_explicit_forall_chirho(inner_chirho)
+            }
+            _ => false,
         }
     }
 
@@ -2204,6 +2226,19 @@ impl InferCtxChirho {
                     &pre_bindings_chirho[pre_idx_chirho];
                 pre_idx_chirho += 1;
 
+                // ScopedTypeVariables: if the function has a type signature with
+                // `forall`, extract the bound variable names→TyVarChirho mapping
+                // so that where-clause annotations inside the body use the same vars.
+                let prev_scoped_chirho = self.scoped_tyvars_chirho.clone();
+                if let Some(sig_ast_chirho) = type_sigs_chirho.get(binding_name_chirho) {
+                    let mut sig_var_map_chirho = HashMap::new();
+                    let _ = self.ast_type_to_ty_chirho(sig_ast_chirho, &mut sig_var_map_chirho);
+                    // Only populate scoped vars if the signature has an explicit forall
+                    if Self::has_explicit_forall_chirho(sig_ast_chirho) {
+                        self.scoped_tyvars_chirho = sig_var_map_chirho;
+                    }
+                }
+
                 let (s_chirho, inferred_ty_chirho) =
                     self.infer_matches_chirho(matches_chirho, *span_chirho);
                 subst_chirho = s_chirho.compose_chirho(&subst_chirho);
@@ -2255,6 +2290,9 @@ impl InferCtxChirho {
                         }
                     }
                 }
+
+                // Restore scoped type variables after this function body
+                self.scoped_tyvars_chirho = prev_scoped_chirho;
             }
         }
 
