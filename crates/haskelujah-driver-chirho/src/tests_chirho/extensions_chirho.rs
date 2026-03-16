@@ -1064,3 +1064,32 @@ fn desugar_th_splice_no_panic_chirho() {
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NoPanic.hs", None);
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
+
+// -- Phase 3 item 44: Layout rule — where closes do blocks --
+
+#[test]
+fn do_where_layout_basic_chirho() {
+    // `where` at same/less indentation as `do` block should close the do block
+    let src_chirho = "module Test where\nf = do\n  return a\n  where a = 42\nmain = f\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DoWhere.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn do_where_layout_less_indent_chirho() {
+    // `where` at less indentation than `do` body should also work
+    let src_chirho = "module Test where\nf = do\n  return a\n where a = 42\nmain = f\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DoWhere2.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn do_where_compiles_chirho() {
+    // Standard pattern: do with where clause
+    let src_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nf = do\n  return a\n  where a = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "DoWhereCmp.hs");
+    assert!(result_chirho.is_ok(), "do-where should compile: {:?}", result_chirho.err());
+}

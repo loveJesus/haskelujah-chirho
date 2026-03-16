@@ -230,6 +230,31 @@ impl<'src> LayoutRuleChirho<'src> {
                 }
             }
 
+            // Per GHC behavior: `where` closes any non-let implicit layout
+            // context at the same or deeper indentation. This ensures
+            // `do { stmt; where binds }` attaches `where` to the enclosing
+            // equation, not the `do` block.
+            if token_chirho.kind_chirho == RawTokenKindChirho::WhereChirho {
+                while let Some(LayoutContextChirho::ImplicitChirho(indent_chirho, is_let_chirho)) =
+                    context_stack_chirho.last()
+                {
+                    // Don't close let contexts (those are closed by `in`)
+                    // Don't close contexts that are already at a strictly lower
+                    // indentation than `where` (those are outer scopes).
+                    if *is_let_chirho || *indent_chirho < col_chirho {
+                        break;
+                    }
+                    // Close this do/of/case/where context
+                    let vspan_chirho =
+                        self.zero_span_at_chirho(token_chirho.span_chirho.start_chirho());
+                    output_chirho.push(RawTokenChirho {
+                        kind_chirho: RawTokenKindChirho::VirtualRightBraceChirho,
+                        span_chirho: vspan_chirho,
+                    });
+                    context_stack_chirho.pop();
+                }
+            }
+
             loop {
                 match context_stack_chirho.last() {
                     Some(LayoutContextChirho::ImplicitChirho(indent_chirho, _)) => {
