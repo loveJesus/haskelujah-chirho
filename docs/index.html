@@ -1,0 +1,385 @@
+<!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. (John 3:16) -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rhasky Chirho</title>
+    <meta
+      name="description"
+      content="Rhasky Chirho is a Haskell compiler in Rust with an end-to-end pipeline spanning syntax, typing, Core lowering, runtime evaluation, LLVM IR, and WebAssembly."
+    />
+    <meta name="theme-color" content="#f56a29" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="./favicon-chirho.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles-chirho.css" />
+  </head>
+  <body class="page-chirho">
+    <div class="noise-chirho" aria-hidden="true"></div>
+    <header class="site-header-chirho">
+      <div class="container-chirho site-header__inner-chirho">
+        <a class="brand-chirho" href="#top-chirho" aria-label="Rhasky Chirho home">
+          <span class="brand__mark-chirho" aria-hidden="true">λ</span>
+          <span class="brand__text-chirho">Rhasky Chirho</span>
+        </a>
+        <nav class="site-nav-chirho" aria-label="Primary">
+          <a href="#pipeline-chirho">Pipeline</a>
+          <a href="#workspace-chirho">Workspace</a>
+          <a href="#status-chirho">Status</a>
+          <a href="#roadmap-chirho">Roadmap</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="top-chirho">
+      <section class="hero-chirho">
+        <div class="container-chirho hero__grid-chirho">
+          <div class="hero__copy-chirho" data-reveal-chirho>
+            <p class="eyebrow-chirho">Haskell Compiler • Rust Implementation</p>
+            <h1>
+              Compile the shape of Haskell into something fast, explicit, and
+              portable.
+            </h1>
+            <p class="hero__lede-chirho">
+              Rhasky Chirho is an under-active-development compiler pipeline with
+              real parsing, naming, kind inference, type inference, Core
+              lowering, STG-style evaluation, LLVM IR emission, and WebAssembly
+              output.
+            </p>
+            <div class="hero__actions-chirho">
+              <a class="button-chirho button-chirho--solid" href="#status-chirho">
+                Project Status
+              </a>
+              <a class="button-chirho button-chirho--ghost" href="#workspace-chirho">
+                Explore The Crates
+              </a>
+            </div>
+            <ul class="badge-row-chirho" aria-label="Technology highlights">
+              <li>Rust</li>
+              <li>Haskell 2010+</li>
+              <li>STG Runtime</li>
+              <li>LLVM IR</li>
+              <li>WebAssembly</li>
+            </ul>
+          </div>
+
+          <div class="hero__panel-chirho" data-reveal-chirho>
+            <div class="terminal-chirho" role="img" aria-label="Compiler pipeline preview">
+              <div class="terminal__bar-chirho">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="terminal__body-chirho">
+                <div class="terminal__line-chirho">
+                  <span class="prompt-chirho">$</span>
+                  <span>rhasky-chirho build Demo.hs</span>
+                </div>
+                <div class="terminal__line-chirho">
+                  <span class="tag-chirho">01</span>
+                  <span>lex + layout</span>
+                </div>
+                <div class="terminal__line-chirho">
+                  <span class="tag-chirho">02</span>
+                  <span>cst parse -> ast lower</span>
+                </div>
+                <div class="terminal__line-chirho">
+                  <span class="tag-chirho">03</span>
+                  <span>name + kind + type inference</span>
+                </div>
+                <div class="terminal__line-chirho">
+                  <span class="tag-chirho">04</span>
+                  <span>desugar -> dictionaries -> core simplify</span>
+                </div>
+                <div class="terminal__line-chirho">
+                  <span class="tag-chirho">05</span>
+                  <span>stg eval | llvm ir | wasm</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="hero-metrics-chirho">
+              <article class="metric-card-chirho">
+                <p class="metric-card__label-chirho">Workspace Crates</p>
+                <p class="metric-card__value-chirho" data-counter-chirho="19">19</p>
+              </article>
+              <article class="metric-card-chirho">
+                <p class="metric-card__label-chirho">Rust LOC</p>
+                <p class="metric-card__value-chirho" data-counter-chirho="103066">
+                  103,066
+                </p>
+              </article>
+              <article class="metric-card-chirho">
+                <p class="metric-card__label-chirho">Static Tests</p>
+                <p class="metric-card__value-chirho" data-counter-chirho="1565">
+                  1,565
+                </p>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-chirho section-chirho--status" id="status-chirho">
+        <div class="container-chirho">
+          <div class="section-heading-chirho" data-reveal-chirho>
+            <p class="eyebrow-chirho">Current State</p>
+            <h2>Broad pipeline, green workspace, hardening phase.</h2>
+          </div>
+
+          <div class="status-grid-chirho">
+            <article class="status-card-chirho" data-reveal-chirho>
+              <p class="status-card__label-chirho">Milestone</p>
+              <h3>M1 In Progress</h3>
+              <p>
+                The foundations are not theoretical anymore. The repo is already
+                executing real end-to-end compiler work, and the remaining push
+                is quality, semantics, and integration depth.
+              </p>
+            </article>
+            <article class="status-card-chirho" data-reveal-chirho>
+              <p class="status-card__label-chirho">Verified</p>
+              <h3>Workspace Tests Pass</h3>
+              <p>
+                The project currently holds together across the workspace, which
+                matters more than any single flashy subsystem.
+              </p>
+            </article>
+            <article class="status-card-chirho" data-reveal-chirho>
+              <p class="status-card__label-chirho">What Already Works</p>
+              <h3>Compiler + Runtime</h3>
+              <p>
+                Parsing, lowering, typing, Core transforms, runtime evaluation,
+                LLVM IR, and Wasm are all present in the codebase today.
+              </p>
+            </article>
+            <article class="status-card-chirho" data-reveal-chirho>
+              <p class="status-card__label-chirho">Main Pressure</p>
+              <h3>Hardening And Decomposition</h3>
+              <p>
+                The next wins are parser robustness, warning propagation, cache
+                reuse, and shrinking the giant files that now carry too much
+                responsibility.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-chirho" id="pipeline-chirho">
+        <div class="container-chirho">
+          <div class="section-heading-chirho" data-reveal-chirho>
+            <p class="eyebrow-chirho">Pipeline</p>
+            <h2>One compiler story, phase by phase.</h2>
+          </div>
+
+          <ol class="pipeline-chirho">
+            <li class="pipeline-step-chirho" data-reveal-chirho>
+              <span class="pipeline-step__index-chirho">01</span>
+              <div>
+                <h3>Lex + Layout</h3>
+                <p>
+                  Lossless tokens, trivia, and virtual layout tokens for
+                  Haskell-style indentation.
+                </p>
+              </div>
+            </li>
+            <li class="pipeline-step-chirho" data-reveal-chirho>
+              <span class="pipeline-step__index-chirho">02</span>
+              <div>
+                <h3>CST Parse + AST Lower</h3>
+                <p>
+                  Recursive-descent parsing into a green tree, then lowering into
+                  compiler-friendly AST structures.
+                </p>
+              </div>
+            </li>
+            <li class="pipeline-step-chirho" data-reveal-chirho>
+              <span class="pipeline-step__index-chirho">03</span>
+              <div>
+                <h3>Naming + Module Interfaces</h3>
+                <p>
+                  Resolution across modules, imports, exports, qualified names,
+                  and interface-aware downstream compilation.
+                </p>
+              </div>
+            </li>
+            <li class="pipeline-step-chirho" data-reveal-chirho>
+              <span class="pipeline-step__index-chirho">04</span>
+              <div>
+                <h3>Kind + Type Inference</h3>
+                <p>
+                  HM-style type inference with class machinery, deriving support,
+                  and exhaustiveness diagnostics layered into the pipeline.
+                </p>
+              </div>
+            </li>
+            <li class="pipeline-step-chirho" data-reveal-chirho>
+              <span class="pipeline-step__index-chirho">05</span>
+              <div>
+                <h3>Core + Runtime Paths</h3>
+                <p>
+                  Core lowering, dictionary passing, simplification, STG-style
+                  runtime evaluation, and backend lowering into LLVM IR and Wasm.
+                </p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section-chirho section-chirho--workspace" id="workspace-chirho">
+        <div class="container-chirho">
+          <div class="section-heading-chirho" data-reveal-chirho>
+            <p class="eyebrow-chirho">Workspace</p>
+            <h2>Nineteen crates, each pulling on a different part of the compiler.</h2>
+          </div>
+
+          <div class="workspace-grid-chirho">
+            <article class="workspace-card-chirho" data-reveal-chirho>
+              <p class="workspace-card__label-chirho">Foundations</p>
+              <h3>Span, Diagnostics, Syntax</h3>
+              <ul>
+                <li>`rhasky-span-chirho`</li>
+                <li>`rhasky-diagnostics-chirho`</li>
+                <li>`rhasky-syntax-chirho`</li>
+                <li>`rhasky-test-harness-chirho`</li>
+              </ul>
+            </article>
+            <article class="workspace-card-chirho" data-reveal-chirho>
+              <p class="workspace-card__label-chirho">Frontend</p>
+              <h3>Parse, Lower, Resolve, Infer</h3>
+              <ul>
+                <li>`rhasky-parser-chirho`</li>
+                <li>`rhasky-ast-chirho`</li>
+                <li>`rhasky-naming-chirho`</li>
+                <li>`rhasky-typing-chirho`</li>
+              </ul>
+            </article>
+            <article class="workspace-card-chirho" data-reveal-chirho>
+              <p class="workspace-card__label-chirho">Middle + Driver</p>
+              <h3>Core, Runtime, Orchestration</h3>
+              <ul>
+                <li>`rhasky-core-chirho`</li>
+                <li>`rhasky-runtime-chirho`</li>
+                <li>`rhasky-driver-chirho`</li>
+                <li>`rhasky-incremental-chirho`</li>
+              </ul>
+            </article>
+            <article class="workspace-card-chirho" data-reveal-chirho>
+              <p class="workspace-card__label-chirho">Distribution</p>
+              <h3>Packages, CLI, Targets</h3>
+              <ul>
+                <li>`rhasky-package-chirho`</li>
+                <li>`rhasky-cli-chirho`</li>
+                <li>`rhasky-backend-llvm-chirho`</li>
+                <li>`rhasky-backend-wasm-chirho`</li>
+                <li>`rhasky-backend-cranelift-chirho`</li>
+                <li>`rhasky-backend-jvm-chirho`</li>
+                <li>`rhasky-backend-beam-chirho`</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-chirho section-chirho--contrast" id="highlights-chirho">
+        <div class="container-chirho highlights-shell-chirho">
+          <div class="highlights-copy-chirho" data-reveal-chirho>
+            <p class="eyebrow-chirho">Why It Matters</p>
+            <h2>Not a toy parser. A compiler architecture with room to grow.</h2>
+            <p>
+              The project is already past the stage where success means proving
+              the idea. Success now means making the existing architecture harder
+              to break, easier to evolve, and honest about what is stable versus
+              experimental.
+            </p>
+          </div>
+          <div class="highlight-list-chirho">
+            <article class="highlight-card-chirho" data-reveal-chirho>
+              <h3>What Is Strong</h3>
+              <p>
+                Phase boundaries are clearer, the driver has a shared frontend,
+                the runtime is real, and the workspace has a large passing test
+                corpus.
+              </p>
+            </article>
+            <article class="highlight-card-chirho" data-reveal-chirho>
+              <h3>What Still Bites</h3>
+              <p>
+                Parser malformed-input panics, warning results dropped by compile
+                APIs, unfinished incremental-result reuse, and giant files that
+                carry too much complexity.
+              </p>
+            </article>
+            <article class="highlight-card-chirho" data-reveal-chirho>
+              <h3>Where It Can Go</h3>
+              <p>
+                More real-world package coverage, stronger runtime contracts,
+                faster incremental builds, and clearer backend maturity tiers.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-chirho" id="roadmap-chirho">
+        <div class="container-chirho">
+          <div class="section-heading-chirho" data-reveal-chirho>
+            <p class="eyebrow-chirho">Roadmap</p>
+            <h2>Ship the hardening work without losing the architecture.</h2>
+          </div>
+
+          <div class="roadmap-grid-chirho">
+            <article class="roadmap-card-chirho" data-reveal-chirho>
+              <p class="roadmap-card__step-chirho">Now</p>
+              <h3>Finish M1 With Discipline</h3>
+              <p>
+                Remove parser panic paths, surface warnings everywhere they
+                matter, and close the artifact-cache loop.
+              </p>
+            </article>
+            <article class="roadmap-card-chirho" data-reveal-chirho>
+              <p class="roadmap-card__step-chirho">Next</p>
+              <h3>Broaden Compatibility</h3>
+              <p>
+                Expand module and package realism, keep pushing on typeclass and
+                runtime semantics, and harden the compiler against uglier inputs.
+              </p>
+            </article>
+            <article class="roadmap-card-chirho" data-reveal-chirho>
+              <p class="roadmap-card__step-chirho">Later</p>
+              <h3>Grow Targets Without Lying</h3>
+              <p>
+                Keep LLVM, Wasm, Cranelift, JVM, and BEAM separated by actual
+                maturity, not by wishful symmetry in the UI.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer-chirho">
+      <div class="container-chirho site-footer__inner-chirho">
+        <div>
+          <p class="site-footer__title-chirho">Rhasky Chirho</p>
+          <p class="site-footer__copy-chirho">
+            A Haskell compiler in Rust with an explicit pipeline and a real runtime.
+          </p>
+        </div>
+        <p class="site-footer__meta-chirho">
+          Static GitHub Pages site · refreshed for the current repository state ·
+          <span id="year-chirho">2026</span>
+        </p>
+      </div>
+    </footer>
+
+    <script src="./script-chirho.js"></script>
+  </body>
+</html>

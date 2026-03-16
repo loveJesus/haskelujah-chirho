@@ -1,0 +1,606 @@
+/* For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. (John 3:16) */
+
+:root {
+  --paper-chirho: #f6f0e4;
+  --paper-strong-chirho: #fffaf2;
+  --ink-chirho: #14212b;
+  --ink-soft-chirho: rgba(20, 33, 43, 0.72);
+  --orange-chirho: #f56a29;
+  --orange-deep-chirho: #c94f1b;
+  --teal-chirho: #0f8b8d;
+  --navy-chirho: #16324f;
+  --card-chirho: rgba(255, 250, 242, 0.75);
+  --border-chirho: rgba(20, 33, 43, 0.12);
+  --shadow-chirho: 0 24px 80px rgba(20, 33, 43, 0.12);
+  --radius-xl-chirho: 32px;
+  --radius-lg-chirho: 24px;
+  --radius-md-chirho: 18px;
+  --container-width-chirho: 1180px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top left, rgba(245, 106, 41, 0.18), transparent 28%),
+    radial-gradient(circle at 86% 12%, rgba(15, 139, 141, 0.16), transparent 24%),
+    linear-gradient(180deg, #fbf6ee 0%, #f4ecdf 100%);
+  color: var(--ink-chirho);
+  font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  line-height: 1.55;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+code,
+.terminal-chirho,
+.metric-card__value-chirho,
+.pipeline-step__index-chirho,
+.status-card__label-chirho,
+.workspace-card__label-chirho,
+.roadmap-card__step-chirho,
+.eyebrow-chirho,
+.site-footer__meta-chirho {
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+}
+
+.noise-chirho {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.14;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2)),
+    radial-gradient(circle at center, rgba(20, 33, 43, 0.1) 0.6px, transparent 0.8px);
+  background-size: auto, 18px 18px;
+  mix-blend-mode: multiply;
+}
+
+.container-chirho {
+  width: min(calc(100% - 2rem), var(--container-width-chirho));
+  margin: 0 auto;
+}
+
+.site-header-chirho {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(18px);
+  background: rgba(246, 240, 228, 0.76);
+  border-bottom: 1px solid rgba(20, 33, 43, 0.08);
+}
+
+.site-header__inner-chirho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 0;
+}
+
+.brand-chirho {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.brand__mark-chirho {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--orange-chirho), #ffb347);
+  color: #fffdf8;
+  box-shadow: 0 10px 25px rgba(245, 106, 41, 0.26);
+}
+
+.site-nav-chirho {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.site-nav-chirho a {
+  color: var(--ink-soft-chirho);
+  font-size: 0.95rem;
+}
+
+.site-nav-chirho a:hover,
+.site-nav-chirho a:focus-visible {
+  color: var(--ink-chirho);
+}
+
+.hero-chirho {
+  position: relative;
+  overflow: clip;
+  padding: 5rem 0 3rem;
+}
+
+.hero__grid-chirho {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 2rem;
+  align-items: center;
+}
+
+.hero__copy-chirho h1,
+.section-heading-chirho h2,
+.status-card-chirho h3,
+.workspace-card-chirho h3,
+.highlight-card-chirho h3,
+.roadmap-card-chirho h3,
+.pipeline-step-chirho h3 {
+  margin: 0;
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+}
+
+.hero__copy-chirho h1 {
+  max-width: 10ch;
+  font-size: clamp(3.3rem, 9vw, 7rem);
+}
+
+.hero__lede-chirho {
+  max-width: 58ch;
+  margin: 1.35rem 0 0;
+  color: var(--ink-soft-chirho);
+  font-size: 1.08rem;
+}
+
+.eyebrow-chirho {
+  margin: 0 0 1rem;
+  color: var(--orange-deep-chirho);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.75rem;
+}
+
+.hero__actions-chirho {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin-top: 2rem;
+}
+
+.button-chirho {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  padding: 0 1.2rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.button-chirho:hover,
+.button-chirho:focus-visible {
+  transform: translateY(-1px);
+}
+
+.button-chirho--solid {
+  background: var(--orange-chirho);
+  color: #fffaf2;
+  box-shadow: 0 12px 28px rgba(245, 106, 41, 0.28);
+}
+
+.button-chirho--solid:hover,
+.button-chirho--solid:focus-visible {
+  background: var(--orange-deep-chirho);
+}
+
+.button-chirho--ghost {
+  border-color: rgba(20, 33, 43, 0.14);
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.badge-row-chirho {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  padding: 0;
+  margin: 2rem 0 0;
+  list-style: none;
+}
+
+.badge-row-chirho li {
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(22, 50, 79, 0.08);
+  color: var(--navy-chirho);
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.hero__panel-chirho {
+  position: relative;
+}
+
+.terminal-chirho {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--radius-xl-chirho);
+  background:
+    linear-gradient(180deg, rgba(13, 25, 43, 0.98), rgba(24, 40, 62, 0.98)),
+    radial-gradient(circle at top right, rgba(15, 139, 141, 0.2), transparent 36%);
+  color: #edf4ff;
+  box-shadow: 0 34px 75px rgba(22, 50, 79, 0.24);
+}
+
+.terminal__bar-chirho {
+  display: flex;
+  gap: 0.4rem;
+  padding: 1rem 1rem 0;
+}
+
+.terminal__bar-chirho span {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.terminal__bar-chirho span:nth-child(1) {
+  background: #ff6b6b;
+}
+
+.terminal__bar-chirho span:nth-child(2) {
+  background: #ffd166;
+}
+
+.terminal__bar-chirho span:nth-child(3) {
+  background: #06d6a0;
+}
+
+.terminal__body-chirho {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.15rem 1.2rem 1.35rem;
+}
+
+.terminal__line-chirho {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  align-items: baseline;
+  font-size: 0.96rem;
+}
+
+.prompt-chirho {
+  color: #ffd166;
+}
+
+.tag-chirho {
+  color: #7cd7d8;
+}
+
+.hero-metrics-chirho {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.metric-card-chirho,
+.status-card-chirho,
+.workspace-card-chirho,
+.highlight-card-chirho,
+.roadmap-card-chirho {
+  border: 1px solid var(--border-chirho);
+  border-radius: var(--radius-lg-chirho);
+  background: var(--card-chirho);
+  box-shadow: var(--shadow-chirho);
+}
+
+.metric-card-chirho {
+  padding: 1rem;
+  background: rgba(255, 250, 242, 0.86);
+}
+
+.metric-card__label-chirho {
+  margin: 0;
+  color: var(--ink-soft-chirho);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.metric-card__value-chirho {
+  margin: 0.3rem 0 0;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 600;
+  color: var(--navy-chirho);
+}
+
+.section-chirho {
+  padding: 2.5rem 0 4.5rem;
+}
+
+.section-chirho--status {
+  padding-top: 1rem;
+}
+
+.section-heading-chirho {
+  display: grid;
+  gap: 0.8rem;
+  margin-bottom: 1.75rem;
+}
+
+.section-heading-chirho h2 {
+  max-width: 12ch;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+}
+
+.status-grid-chirho,
+.workspace-grid-chirho,
+.roadmap-grid-chirho {
+  display: grid;
+  gap: 1rem;
+}
+
+.status-grid-chirho {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.status-card-chirho,
+.workspace-card-chirho,
+.highlight-card-chirho,
+.roadmap-card-chirho {
+  padding: 1.35rem;
+}
+
+.status-card__label-chirho,
+.workspace-card__label-chirho,
+.roadmap-card__step-chirho {
+  margin: 0 0 0.6rem;
+  color: var(--orange-deep-chirho);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.74rem;
+}
+
+.status-card-chirho h3,
+.workspace-card-chirho h3,
+.highlight-card-chirho h3,
+.roadmap-card-chirho h3 {
+  font-size: 1.4rem;
+}
+
+.status-card-chirho p:last-child,
+.workspace-card-chirho p:last-child,
+.highlight-card-chirho p:last-child,
+.roadmap-card-chirho p:last-child {
+  margin-bottom: 0;
+  color: var(--ink-soft-chirho);
+}
+
+.pipeline-chirho {
+  display: grid;
+  gap: 1rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.pipeline-step-chirho {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 1.15rem;
+  padding: 1.2rem 1.25rem;
+  border-radius: var(--radius-lg-chirho);
+  border: 1px solid var(--border-chirho);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.82)),
+    linear-gradient(135deg, rgba(245, 106, 41, 0.05), rgba(15, 139, 141, 0.05));
+  box-shadow: var(--shadow-chirho);
+}
+
+.pipeline-step__index-chirho {
+  align-self: start;
+  color: var(--orange-deep-chirho);
+  font-size: 1.05rem;
+  letter-spacing: 0.14em;
+}
+
+.pipeline-step-chirho p {
+  margin: 0.55rem 0 0;
+  color: var(--ink-soft-chirho);
+}
+
+.workspace-grid-chirho {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.workspace-card-chirho ul {
+  margin: 1rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.workspace-card-chirho li + li {
+  margin-top: 0.35rem;
+}
+
+.section-chirho--contrast {
+  position: relative;
+}
+
+.highlights-shell-chirho {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 1rem;
+  padding: 1.1rem;
+  border-radius: calc(var(--radius-xl-chirho) + 8px);
+  background:
+    linear-gradient(135deg, rgba(22, 50, 79, 0.98), rgba(12, 37, 59, 0.97)),
+    radial-gradient(circle at top left, rgba(245, 106, 41, 0.2), transparent 26%);
+  color: #f3f7ff;
+  box-shadow: 0 36px 90px rgba(22, 50, 79, 0.2);
+}
+
+.highlights-copy-chirho {
+  padding: 1.4rem;
+}
+
+.highlights-copy-chirho p:last-child {
+  color: rgba(243, 247, 255, 0.74);
+}
+
+.highlight-list-chirho {
+  display: grid;
+  gap: 1rem;
+}
+
+.highlight-card-chirho {
+  background: rgba(243, 247, 255, 0.08);
+  border-color: rgba(243, 247, 255, 0.12);
+  box-shadow: none;
+}
+
+.highlight-card-chirho p {
+  color: rgba(243, 247, 255, 0.74);
+}
+
+.roadmap-grid-chirho {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.site-footer-chirho {
+  padding: 2.5rem 0 3rem;
+}
+
+.site-footer__inner-chirho {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-end;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(20, 33, 43, 0.1);
+}
+
+.site-footer__title-chirho {
+  margin: 0;
+  font-weight: 700;
+}
+
+.site-footer__copy-chirho {
+  margin: 0.35rem 0 0;
+  color: var(--ink-soft-chirho);
+}
+
+.site-footer__meta-chirho {
+  margin: 0;
+  color: var(--ink-soft-chirho);
+  text-align: right;
+  font-size: 0.86rem;
+}
+
+[data-reveal-chirho] {
+  opacity: 1;
+  transform: none;
+}
+
+[data-reveal-chirho].is-visible-chirho {
+  animation: reveal-float-chirho 720ms cubic-bezier(0.21, 1, 0.27, 1) both;
+}
+
+@keyframes reveal-float-chirho {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1100px) {
+  .hero__grid-chirho,
+  .highlights-shell-chirho,
+  .status-grid-chirho,
+  .workspace-grid-chirho,
+  .roadmap-grid-chirho {
+    grid-template-columns: 1fr;
+  }
+
+  .hero__copy-chirho h1 {
+    max-width: 12ch;
+  }
+}
+
+@media (max-width: 720px) {
+  .site-header__inner-chirho,
+  .site-footer__inner-chirho {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .site-nav-chirho {
+    justify-content: flex-start;
+  }
+
+  .hero-chirho {
+    padding-top: 4rem;
+  }
+
+  .hero-metrics-chirho {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-step-chirho {
+    grid-template-columns: 1fr;
+  }
+
+  .section-chirho {
+    padding-bottom: 3.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  [data-reveal-chirho] {
+    opacity: 1;
+    transform: none;
+    animation: none !important;
+  }
+}
