@@ -1891,3 +1891,47 @@ main = print (1_000 + 2_000)
         assert_eq!(m_chirho.io_output_chirho, "3000\n");
     }
 
+    // ── Enum succ/pred tests ────────────────────────────────────────────
+
+    #[test]
+    fn enum_succ_derived_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+module Test where
+data Color = Red | Green | Blue deriving (Show, Eq, Enum)
+main = print (succ Red)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("Enum succ failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "Green\n");
+    }
+
+    #[test]
+    fn enum_pred_derived_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+module Test where
+data Color = Red | Green | Blue deriving (Show, Eq, Enum)
+main = print (pred Blue)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("Enum pred failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "Green\n");
+    }
+
+    #[test]
+    fn enum_from_enum_derived_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+module Test where
+data Color = Red | Green | Blue deriving (Show, Eq, Enum)
+main = print (fromEnum Blue)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("Enum fromEnum failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "2\n");
+    }
+

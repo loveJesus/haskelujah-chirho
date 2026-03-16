@@ -890,6 +890,28 @@ impl ClassEnvChirho {
                         ),
                     },
                 ),
+                (
+                    "succ".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![enum_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(enum_var_chirho),
+                            TyChirho::VarChirho(enum_var_chirho),
+                        ),
+                    },
+                ),
+                (
+                    "pred".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![enum_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(enum_var_chirho),
+                            TyChirho::VarChirho(enum_var_chirho),
+                        ),
+                    },
+                ),
             ]),
             extra_vars_chirho: vec![],
             fundeps_chirho: vec![],

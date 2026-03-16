@@ -1074,11 +1074,86 @@ fn derive_enum_chirho(
         span_chirho: gen_span_chirho(),
     };
 
+    // succ: T -> T
+    //   succ Con0 = Con1; succ Con1 = Con2; ... succ ConN = error "succ: out of range"
+    let mut succ_matches_chirho: Vec<MatchArmChirho> = Vec::new();
+    for (idx_chirho, con_chirho) in constructors_chirho.iter().enumerate() {
+        if idx_chirho + 1 < constructors_chirho.len() {
+            succ_matches_chirho.push(MatchArmChirho {
+                pats_chirho: vec![con_pat_chirho(con_name_chirho(con_chirho), &[])],
+                rhs_chirho: RhsChirho::UnguardedChirho(con_expr_chirho(con_name_chirho(
+                    &constructors_chirho[idx_chirho + 1],
+                ))),
+                where_binds_chirho: vec![],
+                span_chirho: gen_span_chirho(),
+            });
+        }
+    }
+    // last constructor: error
+    if let Some(last_chirho) = constructors_chirho.last() {
+        succ_matches_chirho.push(MatchArmChirho {
+            pats_chirho: vec![con_pat_chirho(con_name_chirho(last_chirho), &[])],
+            rhs_chirho: RhsChirho::UnguardedChirho(app_chirho(
+                var_expr_chirho("error"),
+                ExprChirho::LitChirho(LitChirho::StringChirho(
+                    format!("{}.succ: out of range", type_name_chirho.text_chirho()),
+                    gen_span_chirho(),
+                )),
+            )),
+            where_binds_chirho: vec![],
+            span_chirho: gen_span_chirho(),
+        });
+    }
+    let succ_method_chirho = LocalBindChirho::FunBindChirho {
+        name_chirho: var_name_chirho("succ"),
+        matches_chirho: succ_matches_chirho,
+        span_chirho: gen_span_chirho(),
+    };
+
+    // pred: T -> T
+    //   pred Con0 = error "pred: out of range"; pred Con1 = Con0; ...
+    let mut pred_matches_chirho: Vec<MatchArmChirho> = Vec::new();
+    // first constructor: error
+    if let Some(first_chirho) = constructors_chirho.first() {
+        pred_matches_chirho.push(MatchArmChirho {
+            pats_chirho: vec![con_pat_chirho(con_name_chirho(first_chirho), &[])],
+            rhs_chirho: RhsChirho::UnguardedChirho(app_chirho(
+                var_expr_chirho("error"),
+                ExprChirho::LitChirho(LitChirho::StringChirho(
+                    format!("{}.pred: out of range", type_name_chirho.text_chirho()),
+                    gen_span_chirho(),
+                )),
+            )),
+            where_binds_chirho: vec![],
+            span_chirho: gen_span_chirho(),
+        });
+    }
+    for (idx_chirho, con_chirho) in constructors_chirho.iter().enumerate().skip(1) {
+        pred_matches_chirho.push(MatchArmChirho {
+            pats_chirho: vec![con_pat_chirho(con_name_chirho(con_chirho), &[])],
+            rhs_chirho: RhsChirho::UnguardedChirho(con_expr_chirho(con_name_chirho(
+                &constructors_chirho[idx_chirho - 1],
+            ))),
+            where_binds_chirho: vec![],
+            span_chirho: gen_span_chirho(),
+        });
+    }
+    let pred_method_chirho = LocalBindChirho::FunBindChirho {
+        name_chirho: var_name_chirho("pred"),
+        matches_chirho: pred_matches_chirho,
+        span_chirho: gen_span_chirho(),
+    };
+
     Ok(DeclChirho::InstanceDeclChirho {
         context_chirho: vec![],
         class_chirho: var_name_chirho("Enum"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
-        methods_chirho: vec![to_enum_method_chirho, from_enum_method_chirho],
+        methods_chirho: vec![
+            to_enum_method_chirho,
+            from_enum_method_chirho,
+            succ_method_chirho,
+            pred_method_chirho,
+        ],
         span_chirho: gen_span_chirho(),
     })
 }

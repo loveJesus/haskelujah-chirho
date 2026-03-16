@@ -7047,6 +7047,60 @@ impl DictPassCtxChirho {
             });
         }
 
+        // ── Enum Int: succ = (+1), pred = (-1) ──
+        {
+            let prim_name_chirho = "$prim_Enum_succ_Int";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", int_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "+#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+                    ],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(int_ty_chirho.clone(), int_ty_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+        {
+            let prim_name_chirho = "$prim_Enum_pred_Int";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", int_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "-#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+                    ],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(int_ty_chirho.clone(), int_ty_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
         // ── Enum Char: toEnum = chr-like, fromEnum = ord-like ──
         // For Char, toEnum and fromEnum are identity on the underlying Int representation
         {
