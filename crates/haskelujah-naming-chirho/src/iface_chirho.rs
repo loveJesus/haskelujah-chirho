@@ -2896,6 +2896,110 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // ── Text.Printf ──────────────────────────────────────────────────
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in [
+            "printf", "hPrintf", "PrintfArg", "HPrintfType", "PrintfType",
+            "formatString", "formatInt", "formatFloat", "formatChar",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in ["PrintfArg", "PrintfType", "HPrintfType"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Text.Printf".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // ── Text.Read / Text.Show ────────────────────────────────────────
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in [
+            "Read", "read", "reads", "readParen", "readPrec", "readMaybe",
+            "readEither", "lex", "ReadPrec", "ReadS",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in ["Read", "ReadPrec", "ReadS"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Text.Read".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+
+        let mut show_exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in [
+            "Show", "show", "showsPrec", "showString", "showParen", "ShowS",
+            "shows", "showChar", "showList",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            show_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in ["Show", "ShowS"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            show_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Text.Show".to_string(),
+            exports_chirho: show_exports_chirho,
+        });
+    }
+
+    // ── Data.Fixed ───────────────────────────────────────────────────
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in [
+            "Fixed", "HasResolution", "resolution", "Pico", "Nano", "Micro",
+            "Milli", "Centi", "Deci", "Uni", "E0", "E1", "E2", "E3",
+            "E6", "E9", "E12", "showFixed", "mod'", "div'", "divMod'",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in ["Fixed", "HasResolution", "Pico", "Nano", "Micro", "Milli", "Centi", "Deci", "Uni"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Fixed".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // ── Numeric / Numeric.Natural ────────────────────────────────────
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in [
+            "showInt", "showHex", "showOct", "readInt", "readHex", "readOct",
+            "readDec", "readFloat", "readSigned", "Numeric", "fromRat",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Numeric".to_string(),
+            exports_chirho,
+        });
+
+        let mut nat_exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_val_chirho("Natural");
+        nat_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Natural", &[]);
+        nat_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Numeric.Natural".to_string(),
+            exports_chirho: nat_exports_chirho,
+        });
+    }
+
     modules_chirho
 }
 
