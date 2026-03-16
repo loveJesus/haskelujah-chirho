@@ -2753,6 +2753,149 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // ── Type.Reflection ───────────────────────────────────────────────
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in [
+            "TypeRep", "SomeTypeRep", "Typeable", "typeRep", "typeRepFingerprint",
+            "rnfTypeRep", "eqTypeRep", "typeRepTyCon", "withTypeable", "pattern App",
+            "pattern Con", "pattern Fun", "typeOf", "someTypeRep", "someTypeRepTyCon",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in ["TypeRep", "SomeTypeRep", "Typeable", "TyCon", "Module", "Fingerprint"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Type.Reflection".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // ── Unsafe.Coerce ─────────────────────────────────────────────────
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_val_chirho("unsafeCoerce");
+        exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_val_chirho("unsafeCoerce#");
+        exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("UnsafeEquality", &["UnsafeRefl"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Unsafe.Coerce".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // ── GHC.ForeignPtr (additional exports) ───────────────────────────
+    // Already have Foreign.ForeignPtr, add GHC.ForeignPtr.Internal
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in ["ForeignPtr", "newForeignPtr", "withForeignPtr", "finalizeForeignPtr", "castForeignPtr", "plusForeignPtr"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("ForeignPtr", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.ForeignPtr.Internal".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // ── GHC.Fingerprint ──────────────────────────────────────────────
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in ["Fingerprint", "fingerprintData", "fingerprintString"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Fingerprint", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Fingerprint".to_string(),
+            exports_chirho,
+        });
+        // Also alias as GHC.Fingerprint.Type
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Fingerprint.Type".to_string(),
+            exports_chirho: {
+                let mut e_chirho = IfaceExportsChirho::default();
+                let (k_chirho, v_chirho) = mk_type_chirho("Fingerprint", &[]);
+                e_chirho.types_chirho.insert(k_chirho, v_chirho);
+                e_chirho
+            },
+        });
+    }
+
+    // ── GHC.Exception ────────────────────────────────────────────────
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in [
+            "SomeException", "Exception", "toException", "fromException",
+            "displayException", "throw", "throwIO", "ErrorCall",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in ["SomeException", "Exception", "ErrorCall"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Exception".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Exception.Type".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // ── GHC.IO.Exception ─────────────────────────────────────────────
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in [
+            "IOException", "IOError", "ioError", "userError",
+            "BlockedIndefinitelyOnMVar", "BlockedIndefinitelyOnSTM",
+            "AsyncException", "SomeAsyncException",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in ["IOException", "IOError", "AsyncException", "SomeAsyncException"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.IO.Exception".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // ── GHC.Arr ──────────────────────────────────────────────────────
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in [
+            "Array", "array", "listArray", "accumArray", "elems", "indices",
+            "assocs", "bounds", "(!)", "(//)", "accum", "ixmap", "range",
+            "index", "inRange", "rangeSize", "Ix",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in ["Array", "Ix"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Arr".to_string(),
+            exports_chirho,
+        });
+    }
+
     modules_chirho
 }
 

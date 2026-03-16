@@ -533,9 +533,14 @@ impl KindInferCtxChirho {
                 body_chirho,
                 span_chirho,
             } => {
-                // Bind each quantified variable with a fresh kind variable.
+                // Bind each quantified variable: use annotation if present,
+                // otherwise a fresh kind variable.
                 for v_chirho in vars_chirho {
-                    let k_chirho = self.fresh_kind_chirho();
+                    let k_chirho = if let Some(ann_chirho) = &v_chirho.kind_annotation_chirho {
+                        self.ast_kind_to_kind_ctx_chirho(ann_chirho)
+                    } else {
+                        self.fresh_kind_chirho()
+                    };
                     self.env_chirho.bind_chirho(v_chirho.text_chirho().to_string(), k_chirho);
                 }
                 let k_chirho = self.infer_type_kind_chirho(body_chirho);
@@ -554,15 +559,12 @@ impl KindInferCtxChirho {
                 span_chirho,
             } => {
                 // Kind-check each constraint in the context.
+                // NOTE: We do NOT force constraint arguments to kind *.
+                // Constraint arguments like `f` in `Functor f` have kind `* -> *`.
+                // We just infer their kinds and let unification propagate.
                 for constraint_chirho in context_chirho {
                     for arg_chirho in &constraint_chirho.args_chirho {
-                        let k_chirho = self.infer_type_kind_chirho(arg_chirho);
-                        self.unify_chirho(
-                            &k_chirho,
-                            &KindChirho::StarChirho,
-                            "constraint argument",
-                            constraint_chirho.span_chirho,
-                        );
+                        let _k_chirho = self.infer_type_kind_chirho(arg_chirho);
                     }
                 }
                 // The body must have kind *
@@ -904,16 +906,11 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                     type_vars_chirho,
                     *span_chirho,
                 );
-                // Kind-check superclass constraints: each argument must have kind *.
+                // Kind-check superclass constraints — do NOT force args to *,
+                // since constraint args like `f` in `Applicative f` may be `* -> *`.
                 for constraint_chirho in context_chirho {
                     for arg_chirho in &constraint_chirho.args_chirho {
-                        let k_chirho = ctx_chirho.infer_type_kind_chirho(arg_chirho);
-                        ctx_chirho.unify_chirho(
-                            &k_chirho,
-                            &KindChirho::StarChirho,
-                            "superclass constraint argument",
-                            constraint_chirho.span_chirho,
-                        );
+                        let _k_chirho = ctx_chirho.infer_type_kind_chirho(arg_chirho);
                     }
                 }
                 // Kind-check method type signatures.

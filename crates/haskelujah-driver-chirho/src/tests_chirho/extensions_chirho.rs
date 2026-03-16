@@ -1093,3 +1093,110 @@ fn do_where_compiles_chirho() {
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "DoWhereCmp.hs");
     assert!(result_chirho.is_ok(), "do-where should compile: {:?}", result_chirho.err());
 }
+
+// ── Kind inference: higher-kinded constraint arguments ─────────────────
+
+#[test]
+fn kind_hk_constraint_functor_chirho() {
+    // Functor f => ... should work — f :: * -> *, not *
+    let src_chirho = r#"
+module Test where
+class Functor f where
+  fmap :: (a -> b) -> f a -> f b
+
+data Box a = MkBox a
+
+instance Functor Box where
+  fmap g (MkBox x) = MkBox (g x)
+
+main = case fmap (+1) (MkBox 41) of MkBox n -> n
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "KindHK1.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn kind_hk_constraint_monad_chirho() {
+    // Monad m uses m :: * -> * in constraint context
+    let src_chirho = r#"
+{-# LANGUAGE NoImplicitPrelude #-}
+module Test where
+class Applicative f where
+  pure :: a -> f a
+class Applicative m => Monad m where
+  bind :: m a -> (a -> m b) -> m b
+data Id a = MkId a
+instance Applicative Id where
+  pure x = MkId x
+instance Monad Id where
+  bind (MkId x) f = f x
+main = case bind (MkId 40) (\x -> MkId (x + 2)) of MkId n -> n
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "KindHK2.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn kind_forall_annotated_vars_chirho() {
+    // forall (f :: * -> *). should work with kind annotations
+    let src_chirho = r#"
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+module Test where
+data Box a = MkBox a
+apply :: (forall a. a -> a) -> Int -> Int
+apply f x = f x
+main = apply (\x -> x) 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "KindForall.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+// ── Module interface: Type.Reflection ──────────────────────────────────
+
+#[test]
+fn import_type_reflection_chirho() {
+    let src_chirho = r#"
+{-# LANGUAGE NoImplicitPrelude #-}
+module Test where
+import Type.Reflection (TypeRep, Typeable)
+main = 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TypeRefl.hs");
+    assert!(result_chirho.is_ok(), "Type.Reflection import should work: {:?}", result_chirho.err());
+}
+
+// ── Module interface: Unsafe.Coerce ────────────────────────────────────
+
+#[test]
+fn import_unsafe_coerce_chirho() {
+    let src_chirho = r#"
+{-# LANGUAGE NoImplicitPrelude #-}
+module Test where
+import Unsafe.Coerce (unsafeCoerce)
+main = 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "UnsCoerce.hs");
+    assert!(result_chirho.is_ok(), "Unsafe.Coerce import should work: {:?}", result_chirho.err());
+}
+
+// ── Module interface: GHC.Exception ────────────────────────────────────
+
+#[test]
+fn import_ghc_exception_chirho() {
+    let src_chirho = r#"
+{-# LANGUAGE NoImplicitPrelude #-}
+module Test where
+import GHC.Exception (SomeException, throw)
+main = 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "GHCExc.hs");
+    assert!(result_chirho.is_ok(), "GHC.Exception import should work: {:?}", result_chirho.err());
+}
