@@ -131,9 +131,9 @@ pub fn ast_con_to_th_chirho(con_chirho: &ConDeclChirho) -> ThConChirho {
         } => {
             let bang_types_chirho: Vec<ThBangTypeChirho> = fields_chirho
                 .iter()
-                .map(|f_chirho| ThBangTypeChirho {
+                .map(|(_strictness_chirho, ty_chirho)| ThBangTypeChirho {
                     bang_chirho: ThBangChirho::default_bang_chirho(),
-                    ty_chirho: ast_type_to_th_chirho(f_chirho),
+                    ty_chirho: ast_type_to_th_chirho(ty_chirho),
                 })
                 .collect();
             ThConChirho::NormalCChirho(
@@ -407,11 +407,13 @@ mod tests_chirho {
                     FieldDeclChirho {
                         names_chirho: vec![mk_name_chirho("_name")],
                         ty_chirho: TypeChirho::ConChirho(mk_name_chirho("String")),
+                        strictness_chirho: haskeluya_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     FieldDeclChirho {
                         names_chirho: vec![mk_name_chirho("_age")],
                         ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
+                        strictness_chirho: haskeluya_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                 ],

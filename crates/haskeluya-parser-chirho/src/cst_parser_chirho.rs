@@ -595,10 +595,18 @@ impl<'src> ParserChirho<'src> {
                 self.parse_record_fields_chirho();
             } else {
                 // Ordinary constructor: parse atomic types as fields
-                while self.can_start_atype_chirho() {
+                // Handle strictness annotations: `!` before a field type
+                while self.can_start_atype_chirho() || self.at_strict_prefix_chirho() {
                     let before_chirho = self.pos_chirho;
-                    self.parse_atype_chirho();
-                    self.eat_trivia_chirho();
+                    // Consume `!` strictness annotation if present
+                    if self.at_strict_prefix_chirho() {
+                        self.bump_chirho(); // !
+                        self.eat_trivia_chirho();
+                    }
+                    if self.can_start_atype_chirho() {
+                        self.parse_atype_chirho();
+                        self.eat_trivia_chirho();
+                    }
                     if self.pos_chirho == before_chirho {
                         break;
                     }
@@ -2990,6 +2998,12 @@ impl<'src> ParserChirho<'src> {
                 | Some(RawTokenKindChirho::LeftBracketChirho)
                 | Some(RawTokenKindChirho::TickChirho)
         )
+    }
+
+    /// Is the current token a `!` strictness annotation prefix?
+    fn at_strict_prefix_chirho(&self) -> bool {
+        self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
+            && self.current_text_chirho() == "!"
     }
 
     /// Can the current token start an atomic expression?

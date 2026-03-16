@@ -2041,8 +2041,8 @@ impl InferCtxChirho {
                             } => {
                                 let field_tys_chirho: Vec<TyChirho> = fields_chirho
                                     .iter()
-                                    .map(|f_chirho| {
-                                        self.ast_type_to_ty_chirho(f_chirho, &mut tv_map_chirho)
+                                    .map(|(_s_chirho, ty_chirho)| {
+                                        self.ast_type_to_ty_chirho(ty_chirho, &mut tv_map_chirho)
                                     })
                                     .collect();
                                 let con_ty_chirho = TyChirho::fun_n_chirho(
@@ -8881,7 +8881,7 @@ mod tests_chirho {
                     type_vars_chirho: vec![],
                     constructor_chirho: ConDeclChirho::OrdinaryChirho {
                         name_chirho: dummy_name_chirho("MkAge"),
-                        fields_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
+                        fields_chirho: vec![(haskeluya_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho, TypeChirho::ConChirho(dummy_name_chirho("Int")))],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     deriving_chirho: vec![],

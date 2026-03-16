@@ -862,9 +862,10 @@ mod tests_chirho {
                     name_chirho: mk_name_chirho(cn_chirho),
                     fields_chirho: (0..arity_chirho)
                         .map(|_| {
-                            haskeluya_ast_chirho::ty_chirho::TypeChirho::ConChirho(
+                            (haskeluya_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                             haskeluya_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                                 mk_name_chirho("Int"),
-                            )
+                            ))
                         })
                         .collect(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1220,9 +1221,9 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructor_chirho: ConDeclChirho::OrdinaryChirho {
                     name_chirho: mk_name_chirho("Wrap"),
-                    fields_chirho: vec![haskeluya_ast_chirho::ty_chirho::TypeChirho::ConChirho(
+                    fields_chirho: vec![(haskeluya_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho, haskeluya_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                         mk_name_chirho("Int"),
-                    )],
+                    ))],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 deriving_chirho: vec![],

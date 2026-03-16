@@ -186,13 +186,24 @@ pub enum DeclChirho {
     },
 }
 
+/// Field strictness annotation for data constructor fields.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StrictnessChirho {
+    /// Default (lazy) field.
+    LazyChirho,
+    /// Strict field (`!Type`).
+    StrictChirho,
+    /// Strict and unpacked field (`{-# UNPACK #-} !Type`).
+    UnpackChirho,
+}
+
 /// A data constructor declaration.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConDeclChirho {
-    /// Ordinary constructor (`Con Type1 Type2`).
+    /// Ordinary constructor (`Con Type1 !Type2`).
     OrdinaryChirho {
         name_chirho: NameChirho,
-        fields_chirho: Vec<TypeChirho>,
+        fields_chirho: Vec<(StrictnessChirho, TypeChirho)>,
         span_chirho: SpanChirho,
     },
     /// Record constructor (`Con { field1 :: Type1, field2 :: Type2 }`).
@@ -211,11 +222,12 @@ pub enum ConDeclChirho {
     },
 }
 
-/// A record field declaration (`fieldName :: Type`).
+/// A record field declaration (`fieldName :: !Type`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldDeclChirho {
     pub names_chirho: Vec<NameChirho>,
     pub ty_chirho: TypeChirho,
+    pub strictness_chirho: StrictnessChirho,
     pub span_chirho: SpanChirho,
 }
 

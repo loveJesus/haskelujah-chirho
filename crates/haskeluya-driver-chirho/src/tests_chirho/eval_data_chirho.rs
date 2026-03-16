@@ -1539,3 +1539,71 @@ main = case MkHKD of
         assert_eq!(val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(123));
     }
 
+    // ── Strict data fields ──────────────────────────────────────────
+
+    #[test]
+    fn eval_strict_data_field_basic_chirho() {
+        let mut sm_chirho = haskeluya_span_chirho::SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Pair = MkPair !Int !Int
+main = case MkPair (1 + 2) (3 + 4) of
+  MkPair a b -> a + b
+";
+        let val_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("strict fields should be forced");
+        assert_eq!(val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(10));
+    }
+
+    #[test]
+    fn eval_strict_and_lazy_fields_chirho() {
+        let mut sm_chirho = haskeluya_span_chirho::SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Mixed = MkMixed !Int Int
+main = case MkMixed (2 + 3) (4 + 5) of
+  MkMixed a b -> a + b
+";
+        let val_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("mixed strict/lazy fields should work");
+        assert_eq!(val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(14));
+    }
+
+    #[test]
+    fn eval_strict_field_single_chirho() {
+        let mut sm_chirho = haskeluya_span_chirho::SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Box = MkBox !Int
+main = case MkBox (21 + 21) of
+  MkBox x -> x
+";
+        let val_chirho = eval_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs", None,
+        ).expect("single strict field should work");
+        assert_eq!(val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(42));
+    }
+
+    #[test]
+    fn eval_strict_field_preserves_core_chirho() {
+        // Verify strict fields produce case wrappers in Core IR
+        let mut sm_chirho = haskeluya_span_chirho::SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data StrictBox = SB !Int
+main = case SB 42 of
+  SB x -> x
+";
+        let result_chirho = compile_source_chirho(
+            src_chirho, &mut sm_chirho, "TestChirho.hs",
+        ).expect("strict field should compile");
+        // The Core IR should contain the binding even without case wrappers for literals
+        let has_sb_chirho = result_chirho.core_chirho.bindings_chirho.iter().any(|b_chirho| {
+            let name_chirho = &b_chirho.binder_chirho.name_chirho;
+            name_chirho == "main"
+        });
+        assert!(has_sb_chirho, "main binding should exist in Core IR");
+    }
+

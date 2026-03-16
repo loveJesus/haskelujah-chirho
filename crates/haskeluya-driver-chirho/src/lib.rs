@@ -382,8 +382,8 @@ fn build_newtype_info_chirho(
                 } => {
                     let underlying_chirho = fields_chirho
                         .first()
-                        .map(|f_chirho| {
-                            haskeluya_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(f_chirho)
+                        .map(|(_s_chirho, ty_chirho)| {
+                            haskeluya_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(ty_chirho)
                         })
                         .unwrap_or_else(|| "()".to_string());
                     (cn_chirho.text_chirho().to_string(), underlying_chirho)

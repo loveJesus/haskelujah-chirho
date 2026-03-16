@@ -10,7 +10,7 @@
 //! normal compilation pipeline.
 
 use haskeluya_ast_chirho::decl_chirho::{
-    ConDeclChirho, DeclChirho, FieldDeclChirho, TyVarChirho,
+    ConDeclChirho, DeclChirho, FieldDeclChirho, StrictnessChirho, TyVarChirho,
 };
 use haskeluya_ast_chirho::expr_chirho::{
     AltChirho, ExprChirho, FieldAssignChirho, LocalBindChirho, MatchArmChirho, RhsChirho,
@@ -568,7 +568,7 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
                 name_chirho: th_name_to_ast_chirho(name_chirho),
                 fields_chirho: bang_types_chirho
                     .iter()
-                    .map(|bt_chirho| th_type_to_ast_chirho(&bt_chirho.ty_chirho))
+                    .map(|bt_chirho| (StrictnessChirho::LazyChirho, th_type_to_ast_chirho(&bt_chirho.ty_chirho)))
                     .collect(),
                 span_chirho: TH_SPAN_CHIRHO,
             })
@@ -581,6 +581,7 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
                     .map(|vbt_chirho| FieldDeclChirho {
                         names_chirho: vec![th_name_to_ast_chirho(&vbt_chirho.name_chirho)],
                         ty_chirho: th_type_to_ast_chirho(&vbt_chirho.ty_chirho),
+                        strictness_chirho: StrictnessChirho::LazyChirho,
                         span_chirho: TH_SPAN_CHIRHO,
                     })
                     .collect(),

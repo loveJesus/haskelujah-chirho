@@ -73,7 +73,7 @@ You can modify the following section
 
 ### Test Coverage
 
-**1830 tests passing**, 0 failures
+**1836 tests passing**, 0 failures
 
 ### Completed (Phase 1 + Phase 2)
 
@@ -106,7 +106,7 @@ _Phase 3 focuses on completing TH, making backends produce real executables, and
 11. **ViewPatterns** — `f (view -> pattern)` in pattern position
 12. **PatternSynonyms** — user-defined pattern constructors
 13. **DerivingVia** — `deriving Show via (WrappedMonoid Sum)`
-14. **Strict data fields** — `data Foo = Bar !Int`, `{-# UNPACK #-}`
+14. ~~**Strict data fields**~~ — DONE (CST parser handles `!` before constructor field types via `at_strict_prefix_chirho`; `StrictnessChirho` enum with LazyChirho/StrictChirho/UnpackChirho variants; `ConDeclChirho::OrdinaryChirho.fields_chirho` as `Vec<(StrictnessChirho, TypeChirho)>`; `FieldDeclChirho.strictness_chirho` for record fields; desugarer collects `con_strictness_chirho` map from DataDeclChirho constructors; `enforce_strict_fields_chirho` wraps fully-applied strict constructor args in `let s = arg in case s of { _ -> ConApp(..., s, ...) }` to force WHNF before constructor application; 2 parser tests + 4 e2e tests; 1836 tests)
 15. **Template Haskell (full)** — typed splices, quasi-quoters, reify for all declaration forms, derive via TH
 
 #### D. Ecosystem & Tooling

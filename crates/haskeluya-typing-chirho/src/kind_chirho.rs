@@ -746,7 +746,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                             fields_chirho,
                             ..
                         } => {
-                            for field_ty_chirho in fields_chirho {
+                            for (_strictness_chirho, field_ty_chirho) in fields_chirho {
                                 let k_chirho = ctx_chirho.infer_type_kind_chirho(field_ty_chirho);
                                 ctx_chirho.unify_chirho(
                                     &k_chirho,
@@ -804,7 +804,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                         fields_chirho,
                         ..
                     } => {
-                        for field_ty_chirho in fields_chirho {
+                        for (_strictness_chirho, field_ty_chirho) in fields_chirho {
                             let k_chirho = ctx_chirho.infer_type_kind_chirho(field_ty_chirho);
                             ctx_chirho.unify_chirho(
                                 &k_chirho,
@@ -926,7 +926,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
-    use haskeluya_ast_chirho::decl_chirho::{ClassMethodChirho, ConDeclChirho, DeclChirho};
+    use haskeluya_ast_chirho::decl_chirho::{ClassMethodChirho, ConDeclChirho, DeclChirho, StrictnessChirho};
     use haskeluya_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
     use haskeluya_ast_chirho::ty_chirho::TypeChirho;
 
@@ -1170,9 +1170,9 @@ mod tests_chirho {
             type_vars_chirho: vec![mk_name_chirho("a").into()],
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("MkBox"),
-                fields_chirho: vec![TypeChirho::VarChirho(
+                fields_chirho: vec![(StrictnessChirho::LazyChirho, TypeChirho::VarChirho(
                     mk_name_chirho("a"),
-                )],
+                ))],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             deriving_chirho: vec![],
@@ -1199,8 +1199,8 @@ mod tests_chirho {
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("MkPair"),
                 fields_chirho: vec![
-                    TypeChirho::VarChirho(mk_name_chirho("a")),
-                    TypeChirho::VarChirho(mk_name_chirho("b")),
+                    (StrictnessChirho::LazyChirho, TypeChirho::VarChirho(mk_name_chirho("a"))),
+                    (StrictnessChirho::LazyChirho, TypeChirho::VarChirho(mk_name_chirho("b"))),
                 ],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
@@ -1228,11 +1228,11 @@ mod tests_chirho {
             type_vars_chirho: vec![mk_name_chirho("f").into(), mk_name_chirho("a").into()],
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("MkApp"),
-                fields_chirho: vec![TypeChirho::AppChirho {
+                fields_chirho: vec![(StrictnessChirho::LazyChirho, TypeChirho::AppChirho {
                     fun_chirho: Box::new(TypeChirho::VarChirho(mk_name_chirho("f"))),
                     arg_chirho: Box::new(TypeChirho::VarChirho(mk_name_chirho("a"))),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
-                }],
+                })],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             deriving_chirho: vec![],
@@ -1367,9 +1367,9 @@ mod tests_chirho {
             type_vars_chirho: vec![mk_name_chirho("a").into()],
             constructor_chirho: ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("Wrap"),
-                fields_chirho: vec![TypeChirho::VarChirho(
+                fields_chirho: vec![(StrictnessChirho::LazyChirho, TypeChirho::VarChirho(
                     mk_name_chirho("a"),
-                )],
+                ))],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             deriving_chirho: vec![],

@@ -1087,6 +1087,7 @@ mod tests_chirho {
                                 ty_chirho: haskeluya_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                                     dummy_name_chirho("String"),
                                 ),
+                                strictness_chirho: haskeluya_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                             },
                             FieldDeclChirho {
@@ -1094,6 +1095,7 @@ mod tests_chirho {
                                 ty_chirho: haskeluya_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                                     dummy_name_chirho("Int"),
                                 ),
+                                strictness_chirho: haskeluya_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                             },
                         ],
@@ -1216,6 +1218,7 @@ mod tests_chirho {
                         ty_chirho: haskeluya_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                             dummy_name_chirho("Int"),
                         ),
+                        strictness_chirho: haskeluya_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1349,7 +1352,7 @@ mod tests_chirho {
                     type_vars_chirho: vec![dummy_name_chirho("a").into()],
                     constructor_chirho: ConDeclChirho::OrdinaryChirho {
                         name_chirho: dummy_name_chirho("MkWrapper"),
-                        fields_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("a"))],
+                        fields_chirho: vec![(haskeluya_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho, TypeChirho::VarChirho(dummy_name_chirho("a")))],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     deriving_chirho: vec![],

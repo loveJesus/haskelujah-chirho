@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use haskeluya_ast_chirho::decl_chirho::{AstKindChirho, ClassMethodChirho, ConDeclChirho, DeclChirho, FieldDeclChirho, FixityChirho, ForeignDirectionChirho, TyVarChirho, TypeFamilyEquationChirho};
+use haskeluya_ast_chirho::decl_chirho::{AstKindChirho, ClassMethodChirho, ConDeclChirho, DeclChirho, FieldDeclChirho, FixityChirho, ForeignDirectionChirho, StrictnessChirho, TyVarChirho, TypeFamilyEquationChirho};
 use haskeluya_ast_chirho::expr_chirho::{
     AltChirho, ExprChirho, FieldAssignChirho, GuardedExprChirho, LocalBindChirho, MatchArmChirho,
     RhsChirho, StmtChirho,
@@ -1350,7 +1350,7 @@ impl LowerCtxChirho {
         let span_chirho =
             self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
         let mut name_chirho = None;
-        let mut fields_chirho = Vec::new();
+        let mut fields_chirho: Vec<(StrictnessChirho, TypeChirho)> = Vec::new();
         let mut has_record_chirho = false;
         let mut record_fields_chirho: Vec<FieldDeclChirho> = Vec::new();
 
@@ -1390,6 +1390,7 @@ impl LowerCtxChirho {
             }
         }
 
+        let mut pending_strict_chirho = false;
         for child_chirho in children_chirho.iter().skip(start_idx_chirho) {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
@@ -1399,6 +1400,10 @@ impl LowerCtxChirho {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                         name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
+                    } else if tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
+                        && tok_chirho.text_chirho() == "!"
+                    {
+                        pending_strict_chirho = true;
                     }
                 }
                 GreenElementChirho::NodeChirho(n_chirho) => {
@@ -1407,8 +1412,14 @@ impl LowerCtxChirho {
                         record_fields_chirho =
                             self.lower_record_fields_chirho(n_chirho, child_chirho.start_chirho);
                     } else if is_type_kind_chirho(n_chirho.kind_chirho()) {
-                        fields_chirho
-                            .push(self.lower_type_chirho(n_chirho, child_chirho.start_chirho));
+                        let strictness_chirho = if pending_strict_chirho {
+                            pending_strict_chirho = false;
+                            StrictnessChirho::StrictChirho
+                        } else {
+                            StrictnessChirho::LazyChirho
+                        };
+                        let ty_chirho = self.lower_type_chirho(n_chirho, child_chirho.start_chirho);
+                        fields_chirho.push((strictness_chirho, ty_chirho));
                     }
                 }
             }
@@ -4068,6 +4079,7 @@ impl LowerCtxChirho {
         FieldDeclChirho {
             names_chirho,
             ty_chirho: ty_chirho.unwrap_or_else(|| self.placeholder_type_chirho()),
+            strictness_chirho: StrictnessChirho::LazyChirho,
             span_chirho,
         }
     }
@@ -6513,5 +6525,52 @@ class Describable a where
             }),
             "should have SpliceDeclChirho"
         );
+    }
+
+    #[test]
+    fn lower_strict_data_fields_chirho() {
+        let module_chirho =
+            parse_and_lower_chirho("module M where\ndata Pair = MkPair !Int !Int\n");
+        assert_eq!(module_chirho.decls_chirho.len(), 1);
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho {
+                constructors_chirho, ..
+            } => {
+                assert_eq!(constructors_chirho.len(), 1);
+                match &constructors_chirho[0] {
+                    ConDeclChirho::OrdinaryChirho {
+                        name_chirho,
+                        fields_chirho,
+                        ..
+                    } => {
+                        assert_eq!(name_chirho.text_chirho(), "MkPair");
+                        assert_eq!(fields_chirho.len(), 2);
+                        assert_eq!(fields_chirho[0].0, StrictnessChirho::StrictChirho);
+                        assert_eq!(fields_chirho[1].0, StrictnessChirho::StrictChirho);
+                    }
+                    _ => panic!("expected OrdinaryChirho constructor"),
+                }
+            }
+            _ => panic!("expected DataDeclChirho"),
+        }
+    }
+
+    #[test]
+    fn lower_mixed_strict_lazy_fields_chirho() {
+        let module_chirho =
+            parse_and_lower_chirho("module M where\ndata Mixed = MkMixed !Int Int\n");
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho {
+                constructors_chirho, ..
+            } => match &constructors_chirho[0] {
+                ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
+                    assert_eq!(fields_chirho.len(), 2);
+                    assert_eq!(fields_chirho[0].0, StrictnessChirho::StrictChirho);
+                    assert_eq!(fields_chirho[1].0, StrictnessChirho::LazyChirho);
+                }
+                _ => panic!("expected OrdinaryChirho"),
+            },
+            _ => panic!("expected DataDeclChirho"),
+        }
     }
 }

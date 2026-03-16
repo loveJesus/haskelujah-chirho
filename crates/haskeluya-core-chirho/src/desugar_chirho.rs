@@ -11,7 +11,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use haskeluya_ast_chirho::decl_chirho::DeclChirho;
+use haskeluya_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, StrictnessChirho};
 use haskeluya_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho};
 use haskeluya_ast_chirho::lit_chirho::LitChirho;
 use haskeluya_ast_chirho::module_chirho::ModuleChirho;
@@ -49,6 +49,9 @@ pub struct DesugarCtxChirho {
     free_var_cache_chirho: HashMap<String, CoreIdChirho>,
     /// Active LANGUAGE extensions (e.g. "OverloadedStrings").
     extensions_chirho: Vec<String>,
+    /// Constructor strictness: maps constructor name → list of field strictness annotations.
+    /// Used to enforce strict fields by wrapping them in `case arg of { _ -> arg }`.
+    con_strictness_chirho: HashMap<String, Vec<StrictnessChirho>>,
 }
 
 impl DesugarCtxChirho {
@@ -59,6 +62,7 @@ impl DesugarCtxChirho {
             scope_chirho: vec![HashMap::new()],
             free_var_cache_chirho: HashMap::new(),
             extensions_chirho: Vec::new(),
+            con_strictness_chirho: HashMap::new(),
         }
     }
 
@@ -96,6 +100,119 @@ impl DesugarCtxChirho {
     /// Pop the innermost scope level.
     fn pop_scope_chirho(&mut self) {
         self.scope_chirho.pop();
+    }
+
+    /// Populate the constructor strictness map from a module's data declarations.
+    fn collect_con_strictness_chirho(&mut self, module_chirho: &ModuleChirho) {
+        for decl_chirho in &module_chirho.decls_chirho {
+            let constructors_chirho: &[ConDeclChirho] = match decl_chirho {
+                DeclChirho::DataDeclChirho { constructors_chirho, .. } => constructors_chirho,
+                _ => continue,
+            };
+            for con_chirho in constructors_chirho {
+                match con_chirho {
+                    ConDeclChirho::OrdinaryChirho { name_chirho, fields_chirho, .. } => {
+                        let strictness_chirho: Vec<StrictnessChirho> =
+                            fields_chirho.iter().map(|(s_chirho, _)| *s_chirho).collect();
+                        if strictness_chirho.iter().any(|s_chirho| *s_chirho != StrictnessChirho::LazyChirho) {
+                            self.con_strictness_chirho.insert(
+                                name_chirho.text_chirho().to_string(),
+                                strictness_chirho,
+                            );
+                        }
+                    }
+                    ConDeclChirho::RecordChirho { name_chirho, fields_chirho, .. } => {
+                        let strictness_chirho: Vec<StrictnessChirho> = fields_chirho
+                            .iter()
+                            .flat_map(|f_chirho| {
+                                std::iter::repeat_n(f_chirho.strictness_chirho, f_chirho.names_chirho.len())
+                            })
+                            .collect();
+                        if strictness_chirho.iter().any(|s_chirho| *s_chirho != StrictnessChirho::LazyChirho) {
+                            self.con_strictness_chirho.insert(
+                                name_chirho.text_chirho().to_string(),
+                                strictness_chirho,
+                            );
+                        }
+                    }
+                    ConDeclChirho::GadtChirho { .. } => {}
+                }
+            }
+        }
+    }
+
+    /// Force strict constructor arguments to WHNF by wrapping the ConApp
+    /// in nested `let s = arg in case s of { _ -> ... }` chains.
+    /// Uses `let` to bind the argument, then `case` to force it to WHNF.
+    /// The ConApp references the let-bound variable (which is forced by the case).
+    /// Returns the ConApp unchanged if no fields are strict or arity doesn't match.
+    fn enforce_strict_fields_chirho(
+        &mut self,
+        con_name_chirho: String,
+        args_chirho: Vec<CoreExprChirho>,
+    ) -> CoreExprChirho {
+        let strictness_chirho = self.con_strictness_chirho.get(&con_name_chirho).cloned();
+        if let Some(strictness_chirho) = strictness_chirho {
+            if strictness_chirho.len() == args_chirho.len() {
+                let mut con_args_chirho = Vec::with_capacity(args_chirho.len());
+                // Collect (let_binder, case_binder, arg_expr) for each strict field
+                let mut strict_bindings_chirho: Vec<(BinderChirho, BinderChirho, CoreExprChirho)> =
+                    Vec::new();
+                for (arg_chirho, s_chirho) in args_chirho.into_iter().zip(strictness_chirho.iter()) {
+                    if *s_chirho != StrictnessChirho::LazyChirho {
+                        let ty_chirho = TyChirho::VarChirho(
+                            haskeluya_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
+                        );
+                        let let_binder_chirho = self.fresh_binder_chirho(
+                            "_strict",
+                            ty_chirho.clone(),
+                            SpanChirho::DUMMY_CHIRHO,
+                        );
+                        let case_binder_chirho = self.fresh_binder_chirho(
+                            "_strict_eval",
+                            ty_chirho,
+                            SpanChirho::DUMMY_CHIRHO,
+                        );
+                        con_args_chirho.push(CoreExprChirho::VarChirho(let_binder_chirho.id_chirho));
+                        strict_bindings_chirho.push((let_binder_chirho, case_binder_chirho, arg_chirho));
+                    } else {
+                        con_args_chirho.push(arg_chirho);
+                    }
+                }
+                // Build: let s0 = arg0 in case s0 of { _ ->
+                //         let s1 = arg1 in case s1 of { _ ->
+                //           ConApp(name, [s0, s1]) } }
+                let mut result_chirho = CoreExprChirho::ConAppChirho {
+                    con_name_chirho,
+                    args_chirho: con_args_chirho,
+                };
+                for (let_binder_chirho, case_binder_chirho, arg_expr_chirho) in
+                    strict_bindings_chirho.into_iter().rev()
+                {
+                    // case let_var of { _ -> result }  — forces the let binding to WHNF
+                    result_chirho = CoreExprChirho::CaseChirho {
+                        scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
+                            let_binder_chirho.id_chirho,
+                        )),
+                        bind_chirho: case_binder_chirho.clone(),
+                        result_ty_chirho: case_binder_chirho.ty_chirho.clone(),
+                        alts_chirho: vec![CoreAltChirho {
+                            con_chirho: AltConChirho::DefaultChirho,
+                            binders_chirho: vec![],
+                            rhs_chirho: result_chirho,
+                        }],
+                    };
+                    // let s = arg_expr in ...
+                    result_chirho = CoreExprChirho::LetChirho {
+                        rec_chirho: false,
+                        binds_chirho: vec![(let_binder_chirho, arg_expr_chirho)],
+                        body_chirho: Box::new(result_chirho),
+                    };
+                }
+                return result_chirho;
+            }
+        }
+        CoreExprChirho::ConAppChirho { con_name_chirho, args_chirho }
     }
 
     /// Look up or create a CoreId for a variable reference.
@@ -257,6 +374,9 @@ impl DesugarCtxChirho {
 
     /// Desugar an entire AST module into a Core module with name map.
     pub fn desugar_module_chirho(&mut self, module_chirho: &ModuleChirho) -> DesugarOutputChirho {
+        // Pass -1: Collect constructor strictness annotations for strict field enforcement
+        self.collect_con_strictness_chirho(module_chirho);
+
         // Pass 0: Build map of class → (method_name → default MatchArms) from class declarations
         let mut class_defaults_chirho: HashMap<String, HashMap<String, Vec<MatchArmChirho>>> =
             HashMap::new();
@@ -1858,10 +1978,7 @@ impl DesugarCtxChirho {
                         mut args_chirho,
                     } => {
                         args_chirho.push(desugared_arg_chirho);
-                        CoreExprChirho::ConAppChirho {
-                            con_name_chirho,
-                            args_chirho,
-                        }
+                        self.enforce_strict_fields_chirho(con_name_chirho, args_chirho)
                     }
                     // Detect prefix application of binary primops:
                     // App(App(Var("div"), a), b) → PrimOp("div#", [a, b])
