@@ -961,24 +961,110 @@ impl DesugarCtxChirho {
                     });
                 }
                 DeclChirho::PatBindChirho {
+                    pat_chirho,
                     rhs_chirho,
                     span_chirho,
-                    ..
                 } => {
                     let core_rhs_chirho = self.desugar_rhs_chirho(rhs_chirho);
-                    let binder_chirho = self.fresh_binder_chirho(
-                        "_patbind",
-                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                            self.next_id_chirho,
-                        )),
-                        *span_chirho,
-                    );
-                    bindings_chirho.push(CoreBindingChirho {
-                        binder_chirho,
-                        rhs_chirho: core_rhs_chirho,
-                        is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
-                    });
+                    // Simple variable pattern: just create a direct binding
+                    if let PatChirho::VarChirho(name_chirho) = pat_chirho {
+                        let binder_chirho = self.fresh_binder_chirho(
+                            name_chirho.text_chirho(),
+                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                self.next_id_chirho,
+                            )),
+                            *span_chirho,
+                        );
+                        self.bind_in_scope_chirho(
+                            name_chirho.text_chirho(),
+                            binder_chirho.id_chirho,
+                        );
+                        bindings_chirho.push(CoreBindingChirho {
+                            binder_chirho,
+                            rhs_chirho: core_rhs_chirho,
+                            is_rec_chirho: false,
+                            inline_chirho: InlineAnnotationChirho::NoneChirho,
+                        });
+                    } else {
+                        // Complex pattern (constructor, tuple, etc.):
+                        // First bind the RHS to a temporary, then for each
+                        // bound variable create a case extraction binding.
+                        let rhs_binder_chirho = self.fresh_binder_chirho(
+                            "_patbind_rhs",
+                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                self.next_id_chirho,
+                            )),
+                            *span_chirho,
+                        );
+                        let rhs_id_chirho = rhs_binder_chirho.id_chirho;
+                        bindings_chirho.push(CoreBindingChirho {
+                            binder_chirho: rhs_binder_chirho,
+                            rhs_chirho: core_rhs_chirho,
+                            is_rec_chirho: false,
+                            inline_chirho: InlineAnnotationChirho::NoneChirho,
+                        });
+                        // Pre-bind pattern variables
+                        self.prebind_all_pat_vars_chirho(pat_chirho);
+                        let alt_binders_chirho = self.pat_to_binders_chirho(pat_chirho);
+                        for b_chirho in &alt_binders_chirho {
+                            self.bind_in_scope_chirho(
+                                &b_chirho.name_chirho,
+                                b_chirho.id_chirho,
+                            );
+                        }
+                        let alt_con_chirho = self.pat_to_alt_con_chirho(pat_chirho);
+                        // For each bound variable, create:
+                        //   varName = case _patbind_rhs of { Con b1 b2 .. -> bN }
+                        let names_chirho = haskelujah_typing_chirho::linearity_chirho::pat_bound_names_chirho(pat_chirho);
+                        for var_name_chirho in &names_chirho {
+                            let var_binder_chirho = self.fresh_binder_chirho(
+                                var_name_chirho,
+                                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                    self.next_id_chirho,
+                                )),
+                                *span_chirho,
+                            );
+                            self.bind_in_scope_chirho(
+                                var_name_chirho,
+                                var_binder_chirho.id_chirho,
+                            );
+                            // Find which alt binder corresponds to this variable name
+                            let target_id_chirho = alt_binders_chirho.iter()
+                                .find(|b_chirho| b_chirho.name_chirho == *var_name_chirho)
+                                .map(|b_chirho| b_chirho.id_chirho);
+                            let body_chirho = if let Some(tid_chirho) = target_id_chirho {
+                                CoreExprChirho::VarChirho(tid_chirho)
+                            } else {
+                                // Fallback — shouldn't happen
+                                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))
+                            };
+                            let case_binder_chirho = self.fresh_binder_chirho(
+                                "_patscrut",
+                                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                    self.next_id_chirho,
+                                )),
+                                *span_chirho,
+                            );
+                            let case_expr_chirho = CoreExprChirho::CaseChirho {
+                                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(rhs_id_chirho)),
+                                bind_chirho: case_binder_chirho,
+                                result_ty_chirho: TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                    self.next_id_chirho,
+                                )),
+                                alts_chirho: vec![CoreAltChirho {
+                                    con_chirho: alt_con_chirho.clone(),
+                                    binders_chirho: alt_binders_chirho.clone(),
+                                    rhs_chirho: body_chirho,
+                                }],
+                            };
+                            bindings_chirho.push(CoreBindingChirho {
+                                binder_chirho: var_binder_chirho,
+                                rhs_chirho: case_expr_chirho,
+                                is_rec_chirho: false,
+                                inline_chirho: InlineAnnotationChirho::NoneChirho,
+                            });
+                        }
+                    }
                 }
                 DeclChirho::InstanceDeclChirho {
                     class_chirho,

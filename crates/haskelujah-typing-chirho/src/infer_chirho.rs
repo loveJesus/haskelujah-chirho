@@ -2463,6 +2463,23 @@ impl InferCtxChirho {
                 );
                 pre_bindings_chirho.push((binding_name_chirho, pre_ty_chirho, *span_chirho));
             }
+            // Also pre-bind variables from top-level pattern bindings
+            if let DeclChirho::PatBindChirho {
+                pat_chirho,
+                span_chirho,
+                ..
+            } = decl_chirho
+            {
+                let names_chirho = crate::linearity_chirho::pat_bound_names_chirho(pat_chirho);
+                for name_chirho in names_chirho {
+                    let pre_ty_chirho = self.fresh_var_chirho();
+                    self.env_chirho.bind_chirho(
+                        name_chirho.clone(),
+                        SchemeChirho::mono_chirho(pre_ty_chirho.clone()),
+                    );
+                    pre_bindings_chirho.push((name_chirho, pre_ty_chirho, *span_chirho));
+                }
+            }
         }
 
         // Phase 3b: Infer each function body against its pre-bound type.
@@ -2547,6 +2564,41 @@ impl InferCtxChirho {
 
                 // Restore scoped type variables after this function body
                 self.scoped_tyvars_chirho = prev_scoped_chirho;
+            }
+            // Handle top-level pattern bindings: `MkBox val = MkBox 42`
+            if let DeclChirho::PatBindChirho {
+                pat_chirho,
+                rhs_chirho,
+                span_chirho: _,
+            } = decl_chirho
+            {
+                // Infer the RHS type
+                let rhs_expr_chirho = match rhs_chirho {
+                    RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+                    RhsChirho::GuardedChirho(arms_chirho) => {
+                        if let Some(ge_chirho) = arms_chirho.first() {
+                            &ge_chirho.body_chirho
+                        } else {
+                            continue;
+                        }
+                    }
+                };
+                let (s1_chirho, rhs_ty_chirho) = self.infer_expr_chirho(rhs_expr_chirho);
+                subst_chirho = s1_chirho.compose_chirho(&subst_chirho);
+                self.apply_subst_all_chirho(&s1_chirho);
+
+                // Bind pattern variables with the RHS type
+                self.bind_pat_chirho(pat_chirho, &rhs_ty_chirho);
+
+                // Generalize each bound name
+                let names_chirho = crate::linearity_chirho::pat_bound_names_chirho(pat_chirho);
+                for name_chirho in &names_chirho {
+                    if let Some(scheme_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
+                        let resolved_chirho = subst_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho);
+                        let gen_chirho = self.generalize_chirho(&resolved_chirho);
+                        self.env_chirho.bind_chirho(name_chirho.clone(), gen_chirho);
+                    }
+                }
             }
         }
 

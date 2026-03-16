@@ -896,6 +896,9 @@ impl LowerCtxChirho {
             SyntaxKindChirho::StandaloneDerivingDeclChirho => {
                 Some(self.lower_standalone_deriving_chirho(node_chirho, base_chirho, span_chirho))
             }
+            SyntaxKindChirho::PatBindChirho => {
+                Some(self.lower_pat_bind_decl_chirho(node_chirho, base_chirho, span_chirho))
+            }
             _ => None,
         }
     }
@@ -1000,6 +1003,64 @@ impl LowerCtxChirho {
         };
 
         LocalBindChirho::PatBindChirho {
+            pat_chirho: pat_final_chirho,
+            rhs_chirho: rhs_final_chirho,
+            span_chirho,
+        }
+    }
+
+    /// Lower a top-level `PatBindChirho` CST node into a `DeclChirho::PatBindChirho`.
+    /// Structure: pattern = rhs
+    fn lower_pat_bind_decl_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        span_chirho: SpanChirho,
+    ) -> DeclChirho {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let mut pat_chirho = None;
+        let mut rhs_expr_chirho = None;
+        let mut past_eq_chirho = false;
+
+        for child_chirho in &children_chirho {
+            match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(tok_chirho)
+                    if tok_chirho.kind_chirho() == TokenKindChirho::EqualsChirho =>
+                {
+                    past_eq_chirho = true;
+                }
+                GreenElementChirho::NodeChirho(n_chirho) if !past_eq_chirho => {
+                    if pat_chirho.is_none() {
+                        pat_chirho = Some(self.lower_pat_chirho(
+                            n_chirho,
+                            child_chirho.start_chirho,
+                        ));
+                    }
+                }
+                GreenElementChirho::NodeChirho(n_chirho) if past_eq_chirho => {
+                    if rhs_expr_chirho.is_none() {
+                        if is_expr_kind_chirho(n_chirho.kind_chirho()) {
+                            rhs_expr_chirho = Some(self.lower_expr_chirho(
+                                n_chirho,
+                                child_chirho.start_chirho,
+                            ));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let pat_final_chirho =
+            pat_chirho.unwrap_or(PatChirho::WildcardChirho(span_chirho));
+        let rhs_final_chirho = match rhs_expr_chirho {
+            Some(expr_chirho) => RhsChirho::UnguardedChirho(expr_chirho),
+            None => RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
+                LitChirho::IntChirho(0, span_chirho),
+            )),
+        };
+
+        DeclChirho::PatBindChirho {
             pat_chirho: pat_final_chirho,
             rhs_chirho: rhs_final_chirho,
             span_chirho,

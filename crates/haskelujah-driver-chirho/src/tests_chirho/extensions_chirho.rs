@@ -1351,3 +1351,45 @@ main = 42
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NewtypeInst.hs", None);
     assert!(result_chirho.is_ok(), "newtype instance decl should compile: {:?}", result_chirho.err());
 }
+
+#[test]
+fn let_constructor_pattern_bind_chirho() {
+    // let Just x = Just 42 in x  should evaluate to 42
+    let src_chirho = r#"
+module Test where
+data MyBox = MkBox Int
+main = let MkBox x = MkBox 42 in x
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "LetConPat.hs", None);
+    assert!(result_chirho.is_ok(), "let constructor pat bind should work: {:?}", result_chirho.err());
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn let_tuple_constructor_pattern_bind_chirho() {
+    // let (a, b) = (10, 32) in a + b  should evaluate to 42
+    let src_chirho = r#"
+module Test where
+main = let (a, b) = (10, 32) in a + b
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "LetTuplePat.hs", None);
+    assert!(result_chirho.is_ok(), "let tuple pat bind should work: {:?}", result_chirho.err());
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn toplevel_constructor_pattern_bind_chirho() {
+    // Top-level: MkBox val = MkBox 42; main = val
+    let src_chirho = r#"
+module Test where
+data MyBox = MkBox Int
+MkBox val = MkBox 42
+main = val
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TopConPat.hs", None);
+    assert!(result_chirho.is_ok(), "top-level constructor pat bind should work: {:?}", result_chirho.err());
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}

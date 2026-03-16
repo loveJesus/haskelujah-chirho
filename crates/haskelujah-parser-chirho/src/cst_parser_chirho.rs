@@ -1276,6 +1276,11 @@ impl<'src> ParserChirho<'src> {
                     RawTokenKindChirho::VarSymChirho | RawTokenKindChirho::ConSymChirho
                 )
             }
+            // Constructor at the start of a binding: `Just x = ...`,
+            // `A x = ...` — this is a constructor pattern binding, not a
+            // function definition.  Type sigs (`A :: Type`) are already
+            // caught by `is_type_sig_chirho` which runs first.
+            Some(RawTokenKindChirho::ConIdChirho) => true,
             // Wildcard, list pattern, or literal — always a pattern binding.
             Some(RawTokenKindChirho::UnderscoreChirho)
             | Some(RawTokenKindChirho::LeftBracketChirho)
