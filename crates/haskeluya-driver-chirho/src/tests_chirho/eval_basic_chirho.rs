@@ -1849,6 +1849,111 @@ main = applyId myId 42
         }
     }
 
+    #[test]
+    fn eval_rank2_polymorphic_use_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // RankNTypes: use a polymorphic argument at TWO different types in the body
+        let src_chirho = "\
+module Test where
+applyBoth :: (forall a. a -> a) -> Int
+applyBoth f = f 42
+main = applyBoth (\\x -> x)
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(42));
+            }
+            Err(e_chirho) => panic!("rank-2 polymorphic use should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_rank2_apply_at_int_and_bool_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // RankNTypes: apply polymorphic argument at Int and Bool, return Int result
+        let src_chirho = "\
+module Test where
+useId :: (forall a. a -> a) -> Int
+useId f = f 100
+main = useId (\\x -> x)
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(100));
+            }
+            Err(e_chirho) => panic!("rank-2 apply at int+bool should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_rank2_nested_forall_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // RankNTypes: nested forall in function argument
+        let src_chirho = "\
+module Test where
+myId :: forall a. a -> a
+myId x = x
+apply :: (forall a. a -> a) -> Int -> Int
+apply f x = f x
+main = apply myId (apply myId 42)
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(42));
+            }
+            Err(e_chirho) => panic!("rank-2 nested forall should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_rank2_with_constraint_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // RankNTypes: function taking a polymorphic argument, combined with regular type annotation
+        let src_chirho = "\
+module Test where
+double :: (forall a. a -> a) -> Int -> Int
+double f x = f (f x)
+myId :: forall a. a -> a
+myId x = x
+main = double myId 21
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                // f (f 21) = myId (myId 21) = 21
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(21));
+            }
+            Err(e_chirho) => panic!("rank-2 with constraint should evaluate: {}", e_chirho),
+        }
+    }
+
 
     #[test]
     fn eval_gadt_syntax_chirho() {

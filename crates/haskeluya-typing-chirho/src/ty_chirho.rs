@@ -46,6 +46,14 @@ pub enum TyChirho {
     /// A universally quantified variable bound by a `forall`. Distinguished
     /// from `VarChirho` (which is a unification variable).
     ForallVarChirho(String),
+
+    /// A universally quantified type for rank-N polymorphism.
+    /// `forall a. a -> a` = ForallChirho { vars: [tv0], body: Fun(Var(tv0), Var(tv0)) }
+    /// Preserves forall structure in non-prenex positions, enabling higher-rank types.
+    ForallChirho {
+        vars_chirho: Vec<TyVarChirho>,
+        body_chirho: Box<TyChirho>,
+    },
 }
 
 impl TyChirho {
@@ -131,6 +139,16 @@ impl TyChirho {
             TyChirho::ListChirho(inner_chirho) => {
                 inner_chirho.collect_free_vars_chirho(out_chirho);
             }
+            TyChirho::ForallChirho { vars_chirho, body_chirho } => {
+                // Collect free vars from body, excluding those bound by the forall
+                let mut body_fvs_chirho = Vec::new();
+                body_chirho.collect_free_vars_chirho(&mut body_fvs_chirho);
+                for fv_chirho in body_fvs_chirho {
+                    if !vars_chirho.contains(&fv_chirho) {
+                        out_chirho.push(fv_chirho);
+                    }
+                }
+            }
         }
     }
 }
@@ -158,6 +176,13 @@ impl fmt::Display for TyChirho {
                 write!(f_chirho, ")")
             }
             TyChirho::ListChirho(inner_chirho) => write!(f_chirho, "[{inner_chirho}]"),
+            TyChirho::ForallChirho { vars_chirho, body_chirho } => {
+                write!(f_chirho, "(forall")?;
+                for v_chirho in vars_chirho {
+                    write!(f_chirho, " {v_chirho}")?;
+                }
+                write!(f_chirho, ". {body_chirho})")
+            }
         }
     }
 }
@@ -304,5 +329,46 @@ mod tests_chirho {
             ),
         };
         assert_eq!(scheme_chirho.to_string(), "forall t0 t1. (t0 -> t1)");
+    }
+
+    #[test]
+    fn forall_ty_display_chirho() {
+        let ty_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![TyVarChirho(0)],
+            body_chirho: Box::new(TyChirho::fun_chirho(
+                TyChirho::VarChirho(TyVarChirho(0)),
+                TyChirho::VarChirho(TyVarChirho(0)),
+            )),
+        };
+        assert_eq!(ty_chirho.to_string(), "(forall t0. (t0 -> t0))");
+    }
+
+    #[test]
+    fn forall_ty_free_vars_exclude_bound_chirho() {
+        let a_chirho = TyVarChirho(0);
+        let b_chirho = TyVarChirho(1);
+        // forall a. (a -> b) — b is free, a is bound
+        let ty_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![a_chirho],
+            body_chirho: Box::new(TyChirho::fun_chirho(
+                TyChirho::VarChirho(a_chirho),
+                TyChirho::VarChirho(b_chirho),
+            )),
+        };
+        assert_eq!(ty_chirho.free_vars_chirho(), vec![b_chirho]);
+    }
+
+    #[test]
+    fn forall_ty_no_free_vars_chirho() {
+        let a_chirho = TyVarChirho(0);
+        // forall a. a -> a — no free vars
+        let ty_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![a_chirho],
+            body_chirho: Box::new(TyChirho::fun_chirho(
+                TyChirho::VarChirho(a_chirho),
+                TyChirho::VarChirho(a_chirho),
+            )),
+        };
+        assert!(ty_chirho.free_vars_chirho().is_empty());
     }
 }

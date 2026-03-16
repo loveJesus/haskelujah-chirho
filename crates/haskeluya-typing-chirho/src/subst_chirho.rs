@@ -120,6 +120,17 @@ impl SubstChirho {
             TyChirho::ListChirho(inner_chirho) => {
                 TyChirho::ListChirho(Box::new(self.apply_ty_chirho(inner_chirho)))
             }
+            TyChirho::ForallChirho { vars_chirho, body_chirho } => {
+                // Don't substitute bound variables — restrict the substitution
+                let mut restricted_chirho = self.clone();
+                for v_chirho in vars_chirho {
+                    restricted_chirho.map_chirho.remove(v_chirho);
+                }
+                TyChirho::ForallChirho {
+                    vars_chirho: vars_chirho.clone(),
+                    body_chirho: Box::new(restricted_chirho.apply_ty_chirho(body_chirho)),
+                }
+            }
         }
     }
 

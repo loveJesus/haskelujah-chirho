@@ -117,12 +117,108 @@ pub fn unify_chirho(
             Ok(SubstChirho::empty_chirho())
         }
 
+        // ForallChirho: alpha-rename bound vars and unify bodies
+        (
+            TyChirho::ForallChirho { vars_chirho: v1_chirho, body_chirho: b1_chirho },
+            TyChirho::ForallChirho { vars_chirho: v2_chirho, body_chirho: b2_chirho },
+        ) if v1_chirho.len() == v2_chirho.len() => {
+            // Alpha-rename: substitute v2's bound vars with v1's in b2
+            let mut rename_chirho = SubstChirho::empty_chirho();
+            for (v1_item_chirho, v2_item_chirho) in v1_chirho.iter().zip(v2_chirho.iter()) {
+                rename_chirho.insert_chirho(
+                    *v2_item_chirho,
+                    TyChirho::VarChirho(*v1_item_chirho),
+                );
+            }
+            let b2_renamed_chirho = rename_chirho.apply_ty_chirho(b2_chirho);
+            unify_chirho(b1_chirho, &b2_renamed_chirho, span_chirho)
+        }
+
+        // ForallChirho vs concrete type: strip the forall wrapper and unify the body.
+        // The bound vars become free TyVarChirho and participate in unification normally.
+        // This is consistent with GHC 9.0+ SimpleSubsumption.
+        (TyChirho::ForallChirho { body_chirho, .. }, other_chirho)
+            if !matches!(other_chirho, TyChirho::VarChirho(_)) =>
+        {
+            unify_chirho(body_chirho, other_chirho, span_chirho)
+        }
+        (other_chirho, TyChirho::ForallChirho { body_chirho, .. })
+            if !matches!(other_chirho, TyChirho::VarChirho(_)) =>
+        {
+            unify_chirho(other_chirho, body_chirho, span_chirho)
+        }
+
         // Everything else is a mismatch
         _ => Err(UnifyErrorChirho::MismatchChirho {
             expected_chirho: ty1_chirho.clone(),
             actual_chirho: ty2_chirho.clone(),
             span_chirho,
         }),
+    }
+}
+
+/// Subsumption check: is `actual` at least as polymorphic as `expected`?
+///
+/// Used for higher-rank type checking in function application: when the
+/// expected argument type is `forall a. ...`, the actual argument must be
+/// polymorphic enough to satisfy it.
+///
+/// Rules:
+/// - If expected is ForallChirho: instantiate expected's vars with fresh vars,
+///   check actual ≤ instantiated_expected. This is sound for the common rank-2
+///   case where both sides have matching forall structure.
+/// - If actual is ForallChirho: instantiate actual's vars with fresh vars,
+///   then unify with expected.
+/// - Otherwise: plain unification.
+pub fn subsume_chirho(
+    actual_chirho: &TyChirho,
+    expected_chirho: &TyChirho,
+    next_var_chirho: &mut u32,
+    span_chirho: SpanChirho,
+) -> Result<SubstChirho, UnifyErrorChirho> {
+    match (actual_chirho, expected_chirho) {
+        // Both ForallChirho: alpha-rename and unify bodies (same as unify)
+        (
+            TyChirho::ForallChirho { vars_chirho: va_chirho, body_chirho: ba_chirho },
+            TyChirho::ForallChirho { vars_chirho: ve_chirho, body_chirho: be_chirho },
+        ) if va_chirho.len() == ve_chirho.len() => {
+            let mut rename_chirho = SubstChirho::empty_chirho();
+            for (va_item_chirho, ve_item_chirho) in va_chirho.iter().zip(ve_chirho.iter()) {
+                rename_chirho.insert_chirho(
+                    *ve_item_chirho,
+                    TyChirho::VarChirho(*va_item_chirho),
+                );
+            }
+            let be_renamed_chirho = rename_chirho.apply_ty_chirho(be_chirho);
+            unify_chirho(ba_chirho, &be_renamed_chirho, span_chirho)
+        }
+
+        // Actual is ForallChirho: instantiate and check against expected
+        (TyChirho::ForallChirho { vars_chirho, body_chirho }, _) => {
+            let mut inst_chirho = SubstChirho::empty_chirho();
+            for v_chirho in vars_chirho {
+                let fresh_chirho = TyVarChirho(*next_var_chirho);
+                *next_var_chirho += 1;
+                inst_chirho.insert_chirho(*v_chirho, TyChirho::VarChirho(fresh_chirho));
+            }
+            let inst_actual_chirho = inst_chirho.apply_ty_chirho(body_chirho);
+            subsume_chirho(&inst_actual_chirho, expected_chirho, next_var_chirho, span_chirho)
+        }
+
+        // Expected is ForallChirho: instantiate and check actual against body
+        (_, TyChirho::ForallChirho { vars_chirho, body_chirho }) => {
+            let mut inst_chirho = SubstChirho::empty_chirho();
+            for v_chirho in vars_chirho {
+                let fresh_chirho = TyVarChirho(*next_var_chirho);
+                *next_var_chirho += 1;
+                inst_chirho.insert_chirho(*v_chirho, TyChirho::VarChirho(fresh_chirho));
+            }
+            let inst_expected_chirho = inst_chirho.apply_ty_chirho(body_chirho);
+            subsume_chirho(actual_chirho, &inst_expected_chirho, next_var_chirho, span_chirho)
+        }
+
+        // Neither has ForallChirho: plain unification
+        _ => unify_chirho(actual_chirho, expected_chirho, span_chirho),
     }
 }
 
@@ -282,5 +378,89 @@ mod tests_chirho {
             s_chirho.apply_ty_chirho(&TyChirho::VarChirho(a_chirho)),
             TyChirho::int_chirho()
         );
+    }
+
+    #[test]
+    fn unify_forall_same_structure_chirho() {
+        // forall t0. t0 -> t0 ~ forall t1. t1 -> t1 (alpha-equivalent)
+        let fa_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![TyVarChirho(0)],
+            body_chirho: Box::new(TyChirho::fun_chirho(
+                TyChirho::VarChirho(TyVarChirho(0)),
+                TyChirho::VarChirho(TyVarChirho(0)),
+            )),
+        };
+        let fb_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![TyVarChirho(1)],
+            body_chirho: Box::new(TyChirho::fun_chirho(
+                TyChirho::VarChirho(TyVarChirho(1)),
+                TyChirho::VarChirho(TyVarChirho(1)),
+            )),
+        };
+        let s_chirho = unify_chirho(&fa_chirho, &fb_chirho, SpanChirho::DUMMY_CHIRHO).unwrap();
+        assert!(s_chirho.is_empty_chirho());
+    }
+
+    #[test]
+    fn unify_forall_with_concrete_fun_chirho() {
+        // forall t0. t0 -> t0 ~ Int -> Int (strip forall, unify body)
+        let forall_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![TyVarChirho(0)],
+            body_chirho: Box::new(TyChirho::fun_chirho(
+                TyChirho::VarChirho(TyVarChirho(0)),
+                TyChirho::VarChirho(TyVarChirho(0)),
+            )),
+        };
+        let concrete_chirho = TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho());
+        let s_chirho = unify_chirho(&forall_chirho, &concrete_chirho, SpanChirho::DUMMY_CHIRHO).unwrap();
+        assert_eq!(
+            s_chirho.apply_ty_chirho(&TyChirho::VarChirho(TyVarChirho(0))),
+            TyChirho::int_chirho()
+        );
+    }
+
+    #[test]
+    fn unify_forall_with_var_chirho() {
+        // forall t0. t0 -> t0 ~ t5 (binds t5 to the forall type)
+        let forall_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![TyVarChirho(0)],
+            body_chirho: Box::new(TyChirho::fun_chirho(
+                TyChirho::VarChirho(TyVarChirho(0)),
+                TyChirho::VarChirho(TyVarChirho(0)),
+            )),
+        };
+        let var_chirho = TyChirho::VarChirho(TyVarChirho(5));
+        let s_chirho = unify_chirho(&var_chirho, &forall_chirho, SpanChirho::DUMMY_CHIRHO).unwrap();
+        assert_eq!(
+            s_chirho.apply_ty_chirho(&TyChirho::VarChirho(TyVarChirho(5))),
+            forall_chirho
+        );
+    }
+
+    #[test]
+    fn subsume_forall_with_forall_chirho() {
+        // forall t0. t0 -> t0 subsumes forall t1. t1 -> t1
+        let fa_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![TyVarChirho(0)],
+            body_chirho: Box::new(TyChirho::fun_chirho(
+                TyChirho::VarChirho(TyVarChirho(0)),
+                TyChirho::VarChirho(TyVarChirho(0)),
+            )),
+        };
+        let fb_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![TyVarChirho(1)],
+            body_chirho: Box::new(TyChirho::fun_chirho(
+                TyChirho::VarChirho(TyVarChirho(1)),
+                TyChirho::VarChirho(TyVarChirho(1)),
+            )),
+        };
+        let mut next_var_chirho = 10u32;
+        let result_chirho = subsume_chirho(
+            &fa_chirho,
+            &fb_chirho,
+            &mut next_var_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+        );
+        assert!(result_chirho.is_ok());
     }
 }

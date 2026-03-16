@@ -503,13 +503,20 @@ impl InferCtxChirho {
                 body_chirho,
                 ..
             } => {
-                // Register forall-bound variables as fresh type vars
+                // Register forall-bound variables as fresh type vars and produce
+                // TyChirho::ForallChirho to preserve higher-rank type structure.
+                let mut bound_vars_chirho = Vec::new();
                 for v_chirho in vars_chirho {
                     let tv_chirho = TyVarChirho(self.next_var_chirho);
                     self.next_var_chirho += 1;
                     var_map_chirho.insert(v_chirho.text_chirho().to_string(), tv_chirho);
+                    bound_vars_chirho.push(tv_chirho);
                 }
-                self.ast_type_to_ty_chirho(body_chirho, var_map_chirho)
+                let body_ty_chirho = self.ast_type_to_ty_chirho(body_chirho, var_map_chirho);
+                TyChirho::ForallChirho {
+                    vars_chirho: bound_vars_chirho,
+                    body_chirho: Box::new(body_ty_chirho),
+                }
             }
             // DataKinds: promoted constructor is a type-level constant
             TypeChirho::PromotedConChirho { name_chirho, .. } => {
@@ -560,12 +567,45 @@ impl InferCtxChirho {
             })
             .collect();
 
-        let vars_chirho: Vec<TyVarChirho> = var_map_chirho.values().copied().collect();
+        // Peel off the outermost ForallChirho produced by ast_type_to_ty_chirho.
+        // The vars in a top-level ForallChirho become scheme vars; nested ForallChirho
+        // (inside function args) are preserved for rank-N polymorphism.
+        let (outer_forall_vars_chirho, inner_ty_chirho) = Self::peel_forall_chirho(ty_chirho);
+
+        // Only quantify over vars that are free in the resulting type.
+        // Vars bound by inner ForallChirho are NOT free and should not be in scheme vars.
+        let free_in_ty_chirho = inner_ty_chirho.free_vars_chirho();
+        let vars_chirho: Vec<TyVarChirho> = if !outer_forall_vars_chirho.is_empty() {
+            // Top-level forall: use those vars as the scheme vars
+            outer_forall_vars_chirho
+        } else {
+            // No explicit forall: quantify over all free vars from var_map
+            var_map_chirho
+                .values()
+                .copied()
+                .filter(|v_chirho| free_in_ty_chirho.contains(v_chirho))
+                .collect()
+        };
 
         SchemeChirho {
             vars_chirho,
             preds_chirho: scheme_preds_chirho,
-            ty_chirho,
+            ty_chirho: inner_ty_chirho,
+        }
+    }
+
+    /// Peel off the outermost ForallChirho from a TyChirho, collecting bound vars.
+    /// Returns (outer_vars, body). If no ForallChirho at top, returns (empty, original).
+    fn peel_forall_chirho(ty_chirho: TyChirho) -> (Vec<TyVarChirho>, TyChirho) {
+        match ty_chirho {
+            TyChirho::ForallChirho { vars_chirho, body_chirho } => {
+                let (mut inner_vars_chirho, inner_body_chirho) =
+                    Self::peel_forall_chirho(*body_chirho);
+                let mut all_vars_chirho = vars_chirho;
+                all_vars_chirho.append(&mut inner_vars_chirho);
+                (all_vars_chirho, inner_body_chirho)
+            }
+            other_chirho => (vec![], other_chirho),
         }
     }
 
@@ -1561,9 +1601,19 @@ impl InferCtxChirho {
     fn bind_pat_chirho(&mut self, pat_chirho: &PatChirho, ty_chirho: &TyChirho) {
         match pat_chirho {
             PatChirho::VarChirho(name_chirho) => {
+                // For higher-rank types: if the type is ForallChirho, bind as a
+                // polymorphic scheme so each use gets a fresh instantiation.
+                let scheme_chirho = match ty_chirho {
+                    TyChirho::ForallChirho { vars_chirho, body_chirho } => SchemeChirho {
+                        vars_chirho: vars_chirho.clone(),
+                        preds_chirho: vec![],
+                        ty_chirho: (**body_chirho).clone(),
+                    },
+                    _ => SchemeChirho::mono_chirho(ty_chirho.clone()),
+                };
                 self.env_chirho.bind_chirho(
                     name_chirho.text_chirho().to_string(),
-                    SchemeChirho::mono_chirho(ty_chirho.clone()),
+                    scheme_chirho,
                 );
             }
             PatChirho::WildcardChirho { .. } => {
