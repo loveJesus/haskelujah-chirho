@@ -1847,3 +1847,47 @@ main = print (f 50)
         assert_eq!(m_chirho.io_output_chirho, "2\n");
     }
 
+    // ── NumericUnderscores tests ─────────────────────────────────────────
+
+    #[test]
+    fn numeric_underscores_int_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE NumericUnderscores #-}
+module Test where
+main = print 1_000_000
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("NumericUnderscores int failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "1000000\n");
+    }
+
+    #[test]
+    fn numeric_underscores_hex_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE NumericUnderscores #-}
+module Test where
+main = print 0xFF_FF
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("NumericUnderscores hex failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "65535\n");
+    }
+
+    #[test]
+    fn numeric_underscores_arithmetic_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE NumericUnderscores #-}
+module Test where
+main = print (1_000 + 2_000)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("NumericUnderscores arith failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "3000\n");
+    }
+

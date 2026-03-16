@@ -54,6 +54,9 @@ struct LowerCtxChirho {
 /// Parse an integer literal that may have a hex (0x/0X), octal (0o/0O),
 /// or binary (0b/0B) prefix.
 fn parse_integer_literal_chirho(text_chirho: &str) -> i64 {
+    // Strip NumericUnderscores
+    let clean_chirho: String = text_chirho.chars().filter(|c_chirho| *c_chirho != '_').collect();
+    let text_chirho = &clean_chirho;
     if let Some(hex_chirho) = text_chirho
         .strip_prefix("0x")
         .or_else(|| text_chirho.strip_prefix("0X"))
@@ -4477,8 +4480,12 @@ impl LowerCtxChirho {
                                 ));
                             }
                             TokenKindChirho::FloatLiteralChirho => {
-                                let f_chirho = tok_chirho
+                                let clean_chirho: String = tok_chirho
                                     .text_chirho()
+                                    .chars()
+                                    .filter(|c_chirho| *c_chirho != '_')
+                                    .collect();
+                                let f_chirho = clean_chirho
                                     .parse::<f64>()
                                     .unwrap_or(0.0);
                                 value_chirho = Some(ExprChirho::LitChirho(
@@ -4663,8 +4670,9 @@ impl LowerCtxChirho {
                         return LitChirho::IntChirho(val_chirho, span_chirho);
                     }
                     TokenKindChirho::FloatLiteralChirho => {
+                        let clean_chirho: String = tok_chirho.text_chirho().chars().filter(|c_chirho| *c_chirho != '_').collect();
                         let val_chirho =
-                            tok_chirho.text_chirho().parse::<f64>().unwrap_or(0.0);
+                            clean_chirho.parse::<f64>().unwrap_or(0.0);
                         return LitChirho::FloatChirho(val_chirho, span_chirho);
                     }
                     TokenKindChirho::CharLiteralChirho => {

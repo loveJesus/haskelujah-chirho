@@ -725,7 +725,8 @@ impl<'src> LexerChirho<'src> {
                 b'x' | b'X' => {
                     self.pos_chirho += 2;
                     while self.pos_chirho < self.bytes_chirho.len()
-                        && self.bytes_chirho[self.pos_chirho].is_ascii_hexdigit()
+                        && (self.bytes_chirho[self.pos_chirho].is_ascii_hexdigit()
+                            || self.bytes_chirho[self.pos_chirho] == b'_')
                     {
                         self.pos_chirho += 1;
                     }
@@ -737,7 +738,7 @@ impl<'src> LexerChirho<'src> {
                 b'o' | b'O' => {
                     self.pos_chirho += 2;
                     while self.pos_chirho < self.bytes_chirho.len()
-                        && matches!(self.bytes_chirho[self.pos_chirho], b'0'..=b'7')
+                        && matches!(self.bytes_chirho[self.pos_chirho], b'0'..=b'7' | b'_')
                     {
                         self.pos_chirho += 1;
                     }
@@ -749,7 +750,7 @@ impl<'src> LexerChirho<'src> {
                 b'b' | b'B' => {
                     self.pos_chirho += 2;
                     while self.pos_chirho < self.bytes_chirho.len()
-                        && matches!(self.bytes_chirho[self.pos_chirho], b'0' | b'1')
+                        && matches!(self.bytes_chirho[self.pos_chirho], b'0' | b'1' | b'_')
                     {
                         self.pos_chirho += 1;
                     }
@@ -762,9 +763,10 @@ impl<'src> LexerChirho<'src> {
             }
         }
 
-        // Decimal digits
+        // Decimal digits (with NumericUnderscores support)
         while self.pos_chirho < self.bytes_chirho.len()
-            && self.bytes_chirho[self.pos_chirho].is_ascii_digit()
+            && (self.bytes_chirho[self.pos_chirho].is_ascii_digit()
+                || self.bytes_chirho[self.pos_chirho] == b'_')
         {
             self.pos_chirho += 1;
         }
@@ -778,7 +780,8 @@ impl<'src> LexerChirho<'src> {
             is_float_chirho = true;
             self.pos_chirho += 1; // skip .
             while self.pos_chirho < self.bytes_chirho.len()
-                && self.bytes_chirho[self.pos_chirho].is_ascii_digit()
+                && (self.bytes_chirho[self.pos_chirho].is_ascii_digit()
+                    || self.bytes_chirho[self.pos_chirho] == b'_')
             {
                 self.pos_chirho += 1;
             }
@@ -796,7 +799,8 @@ impl<'src> LexerChirho<'src> {
                 self.pos_chirho += 1;
             }
             while self.pos_chirho < self.bytes_chirho.len()
-                && self.bytes_chirho[self.pos_chirho].is_ascii_digit()
+                && (self.bytes_chirho[self.pos_chirho].is_ascii_digit()
+                    || self.bytes_chirho[self.pos_chirho] == b'_')
             {
                 self.pos_chirho += 1;
             }
@@ -1024,6 +1028,23 @@ mod tests_chirho {
             vec![
                 RawTokenKindChirho::FloatLitChirho,
                 RawTokenKindChirho::FloatLitChirho,
+                RawTokenKindChirho::FloatLitChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_numeric_underscores_chirho() {
+        // NumericUnderscores: underscores in decimal, hex, octal, binary, float
+        let kinds_chirho = non_trivia_kinds_chirho("1_000_000 0xFF_FF 0o7_7 0b10_10 3.14_15");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::IntLitChirho,
+                RawTokenKindChirho::IntLitChirho,
+                RawTokenKindChirho::IntLitChirho,
+                RawTokenKindChirho::IntLitChirho,
                 RawTokenKindChirho::FloatLitChirho,
                 RawTokenKindChirho::EofChirho,
             ]
