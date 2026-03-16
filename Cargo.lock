@@ -812,6 +812,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rhasky-th-chirho"
+version = "0.1.0"
+dependencies = [
+ "rhasky-ast-chirho",
+ "rhasky-diagnostics-chirho",
+ "rhasky-span-chirho",
+]
+
+[[package]]
 name = "rhasky-typing-chirho"
 version = "0.1.0"
 dependencies = [
