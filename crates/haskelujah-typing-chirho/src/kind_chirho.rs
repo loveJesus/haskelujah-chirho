@@ -330,6 +330,8 @@ struct KindInferCtxChirho {
     subst_chirho: KindSubstChirho,
     next_var_chirho: u32,
     diagnostics_chirho: DiagnosticBundleChirho,
+    /// Cache for PolyKinds: maps source-level kind variable names to allocated KindVarChirho.
+    kind_var_cache_chirho: std::collections::HashMap<String, KindVarChirho>,
 }
 
 /// Error codes for kind diagnostics.
@@ -343,6 +345,7 @@ impl KindInferCtxChirho {
             subst_chirho: KindSubstChirho::empty_chirho(),
             next_var_chirho: 0,
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
+            kind_var_cache_chirho: std::collections::HashMap::new(),
         }
     }
 
@@ -354,6 +357,28 @@ impl KindInferCtxChirho {
 
     fn fresh_kind_chirho(&mut self) -> KindChirho {
         KindChirho::VarChirho(self.fresh_var_chirho())
+    }
+
+    /// Convert AST kind to internal kind, allocating fresh kind vars for PolyKinds.
+    /// Same kind variable name maps to the same KindVarChirho within a declaration.
+    fn ast_kind_to_kind_ctx_chirho(&mut self, ast_chirho: &AstKindChirho) -> KindChirho {
+        match ast_chirho {
+            AstKindChirho::StarChirho => KindChirho::StarChirho,
+            AstKindChirho::ArrowChirho(a_chirho, b_chirho) => KindChirho::arrow_chirho(
+                self.ast_kind_to_kind_ctx_chirho(a_chirho),
+                self.ast_kind_to_kind_ctx_chirho(b_chirho),
+            ),
+            AstKindChirho::ConstraintChirho => KindChirho::ConstraintChirho,
+            AstKindChirho::VarChirho(name_chirho) => {
+                if let Some(&var_chirho) = self.kind_var_cache_chirho.get(name_chirho) {
+                    KindChirho::VarChirho(var_chirho)
+                } else {
+                    let var_chirho = self.fresh_var_chirho();
+                    self.kind_var_cache_chirho.insert(name_chirho.clone(), var_chirho);
+                    KindChirho::VarChirho(var_chirho)
+                }
+            }
+        }
     }
 
     /// Unify two kinds and accumulate the substitution.
@@ -583,7 +608,7 @@ impl KindInferCtxChirho {
         let mut param_kinds_chirho = Vec::new();
         for tv_chirho in type_vars_chirho {
             let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
-                ast_kind_to_kind_chirho(ann_chirho)
+                self.ast_kind_to_kind_ctx_chirho(ann_chirho)
             } else {
                 self.fresh_kind_chirho()
             };
@@ -616,7 +641,7 @@ impl KindInferCtxChirho {
         let mut param_kinds_chirho = Vec::new();
         for tv_chirho in type_vars_chirho {
             let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
-                ast_kind_to_kind_chirho(ann_chirho)
+                self.ast_kind_to_kind_ctx_chirho(ann_chirho)
             } else {
                 self.fresh_kind_chirho()
             };
@@ -649,7 +674,7 @@ impl KindInferCtxChirho {
         let mut param_kinds_chirho = Vec::new();
         for tv_chirho in type_vars_chirho {
             let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
-                ast_kind_to_kind_chirho(ann_chirho)
+                self.ast_kind_to_kind_ctx_chirho(ann_chirho)
             } else {
                 self.fresh_kind_chirho()
             };
@@ -684,6 +709,8 @@ impl KindInferCtxChirho {
 }
 
 /// Convert an AST-level kind annotation to the internal [`KindChirho`] representation.
+/// Convert an AST kind to internal KindChirho.
+/// Kind variables (PolyKinds) are mapped to fresh kind vars via the context.
 fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
     match ast_chirho {
         AstKindChirho::StarChirho => KindChirho::StarChirho,
@@ -692,6 +719,8 @@ fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
             ast_kind_to_kind_chirho(b_chirho),
         ),
         AstKindChirho::ConstraintChirho => KindChirho::ConstraintChirho,
+        // PolyKinds: kind variables default to * when used outside a context
+        AstKindChirho::VarChirho(_) => KindChirho::StarChirho,
     }
 }
 
@@ -1427,5 +1456,31 @@ mod tests_chirho {
             KindChirho::ConstraintChirho,
         );
         assert_eq!(ast_kind_to_kind_chirho(&ast_chirho), expected_chirho);
+    }
+
+    #[test]
+    fn ast_kind_var_defaults_to_star_chirho() {
+        // PolyKinds: standalone ast_kind_to_kind_chirho defaults kind vars to *
+        let ast_chirho = AstKindChirho::VarChirho("k".to_string());
+        assert_eq!(ast_kind_to_kind_chirho(&ast_chirho), KindChirho::StarChirho);
+    }
+
+    #[test]
+    fn kind_var_cache_reuses_same_var_chirho() {
+        // PolyKinds: context-aware conversion maps same name to same kind var
+        let env_chirho = KindEnvChirho::new_chirho();
+        let mut ctx_chirho = KindInferCtxChirho::new_chirho(env_chirho);
+        let k1_chirho = ctx_chirho.ast_kind_to_kind_ctx_chirho(
+            &AstKindChirho::VarChirho("k".to_string()),
+        );
+        let k2_chirho = ctx_chirho.ast_kind_to_kind_ctx_chirho(
+            &AstKindChirho::VarChirho("k".to_string()),
+        );
+        assert_eq!(k1_chirho, k2_chirho);
+        // Different name gets different var
+        let j_chirho = ctx_chirho.ast_kind_to_kind_ctx_chirho(
+            &AstKindChirho::VarChirho("j".to_string()),
+        );
+        assert_ne!(k1_chirho, j_chirho);
     }
 }

@@ -628,3 +628,172 @@ main = 42
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TypeSynInst.hs", None);
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
+
+// ── PolyKinds ──────────────────────────────────────────────────────────
+
+#[test]
+fn polykinds_pragma_accepted_chirho() {
+    // PolyKinds pragma should be accepted and program compiles
+    let src_chirho = "\
+{-# LANGUAGE PolyKinds #-}
+module Test where
+data Proxy a = MkProxy
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PolyKinds1.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn polykinds_kind_variable_annotation_chirho() {
+    // PolyKinds with kind variable annotation: data Proxy (a :: k) = MkProxy
+    let src_chirho = "\
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE KindSignatures #-}
+module Test where
+data Proxy (a :: k) = MkProxy
+x = MkProxy
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PolyKinds2.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn polykinds_with_kind_arrow_chirho() {
+    // PolyKinds with higher-kinded kind variable: (f :: k -> Type)
+    let src_chirho = "\
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE KindSignatures #-}
+module Test where
+data HKD (f :: k -> *) = MkHKD
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PolyKinds3.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+// ── Quick-win extension pragmas (batch 2) ──────────────────────────────
+
+#[test]
+fn unboxed_tuples_pragma_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE UnboxedTuples #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "UnboxedTuples.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn unboxed_sums_pragma_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE UnboxedSums #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "UnboxedSums.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn implicit_params_pragma_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE ImplicitParams #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "ImplicitParams.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn multi_param_type_classes_pragma_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE MultiParamTypeClasses #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "MPTC.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn functional_dependencies_pragma_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE FunctionalDependencies #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "FunDeps.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn type_abstractions_pragma_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE TypeAbstractions #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TypeAbstractions.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn overloaded_record_dot_pragma_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE OverloadedRecordDot #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "RecordDot.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn no_field_selectors_pragma_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE NoFieldSelectors #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NoFieldSel.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn duplicate_record_fields_pragma_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE DuplicateRecordFields #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DupRecFields.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn no_star_is_type_pragma_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE NoStarIsType #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NoStarIsType.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}

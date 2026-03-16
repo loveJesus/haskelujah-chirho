@@ -23,6 +23,8 @@ pub enum AstKindChirho {
     ArrowChirho(Box<AstKindChirho>, Box<AstKindChirho>),
     /// `Constraint` — the kind of typeclass constraints (ConstraintKinds).
     ConstraintChirho,
+    /// Kind variable (PolyKinds): `k` in `(a :: k)`.
+    VarChirho(String),
 }
 
 /// One equation in a closed type family:

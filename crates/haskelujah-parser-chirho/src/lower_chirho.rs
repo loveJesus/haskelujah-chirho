@@ -5757,6 +5757,10 @@ impl LowerCtxChirho {
                 {
                     Some((AstKindChirho::ConstraintChirho, pos_chirho + 1))
                 }
+                // Kind variable (PolyKinds): lowercase identifier like `k` in `(a :: k)`
+                else if t_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
+                    Some((AstKindChirho::VarChirho(t_chirho.text_chirho().to_string()), pos_chirho + 1))
+                }
                 // Parenthesized kind: `(kind)`
                 else if t_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
                     let (inner_chirho, after_chirho) =
