@@ -7,6 +7,7 @@ use haskeluya_span_chirho::SpanChirho;
 
 use crate::decl_chirho::DeclChirho;
 use crate::name_chirho::NameChirho;
+use crate::ty_chirho::TypeChirho;
 
 /// Inline pragma annotation for a binding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,6 +40,9 @@ pub struct ModuleChirho {
     pub specialize_pragmas_chirho: std::collections::HashMap<String, Vec<String>>,
     /// Foreign export declarations extracted from `foreign export ccall ...` decls.
     pub foreign_exports_chirho: Vec<(String, String, String)>,
+    /// DerivingVia entries: `(type_name, class_name, via_type)`.
+    /// Populated from `deriving (Class) via ViaType` clauses on data/newtype decls.
+    pub deriving_via_chirho: Vec<(NameChirho, NameChirho, TypeChirho)>,
     /// Span covering the entire module.
     pub span_chirho: SpanChirho,
 }
@@ -124,6 +128,7 @@ mod tests_chirho {
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         assert_eq!(module_chirho.name_chirho.text_chirho(), "Main");

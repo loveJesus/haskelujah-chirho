@@ -345,6 +345,9 @@ impl LowerCtxChirho {
             })
             .collect();
 
+        // Extract DerivingVia entries from data/newtype decls
+        let deriving_via_chirho = self.extract_deriving_via_chirho(root_chirho, start_chirho);
+
         ModuleChirho {
             name_chirho: module_name_chirho,
             exports_chirho,
@@ -354,6 +357,7 @@ impl LowerCtxChirho {
             inline_pragmas_chirho,
             specialize_pragmas_chirho,
             foreign_exports_chirho,
+            deriving_via_chirho,
             span_chirho: self.span_chirho(start_chirho, end_chirho),
         }
     }
@@ -1505,8 +1509,46 @@ impl LowerCtxChirho {
     ) -> Vec<NameChirho> {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut names_chirho = Vec::new();
+        let mut saw_via_chirho = false;
         for child_chirho in &children_chirho {
             if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
+                // If we see "via", these classes belong to DerivingVia, not regular deriving
+                if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
+                    && tok_chirho.text_chirho() == "via"
+                {
+                    saw_via_chirho = true;
+                    continue;
+                }
+                if !saw_via_chirho && tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho {
+                    let s_chirho =
+                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                    names_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
+                }
+            }
+        }
+        // If `via` was present, these classes are handled by DerivingVia, not regular deriving
+        if saw_via_chirho {
+            names_chirho.clear();
+        }
+        names_chirho
+    }
+
+    /// Extract class names before "via" from a `deriving (Class) via Type` clause.
+    /// Unlike `lower_deriving_chirho`, this returns the classes even when via is present.
+    fn lower_deriving_via_classes_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> Vec<NameChirho> {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let mut names_chirho = Vec::new();
+        for child_chirho in &children_chirho {
+            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
+                if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
+                    && tok_chirho.text_chirho() == "via"
+                {
+                    break; // Stop at "via", but keep collected names
+                }
                 if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho {
                     let s_chirho =
                         self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
@@ -1515,6 +1557,113 @@ impl LowerCtxChirho {
             }
         }
         names_chirho
+    }
+
+    /// Extract the via type from a `deriving (Class) via Type` clause.
+    /// Returns `Some(via_type)` if a `via` keyword is present, `None` otherwise.
+    fn lower_deriving_via_type_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> Option<TypeChirho> {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let mut saw_via_chirho = false;
+        for child_chirho in &children_chirho {
+            match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(tok_chirho) => {
+                    if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
+                        && tok_chirho.text_chirho() == "via"
+                    {
+                        saw_via_chirho = true;
+                    } else if saw_via_chirho
+                        && tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                    {
+                        let s_chirho =
+                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                        let name_chirho = self.name_from_token_chirho(tok_chirho, s_chirho);
+                        return Some(TypeChirho::ConChirho(name_chirho));
+                    }
+                }
+                GreenElementChirho::NodeChirho(n_chirho) => {
+                    if saw_via_chirho {
+                        return Some(
+                            self.lower_type_chirho(n_chirho, child_chirho.start_chirho),
+                        );
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Walk the green tree to extract `deriving (Class) via Type` entries.
+    /// Returns `(type_name, class_name, via_type)` triples.
+    fn extract_deriving_via_chirho(
+        &self,
+        root_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> Vec<(NameChirho, NameChirho, TypeChirho)> {
+        let mut result_chirho = Vec::new();
+        let children_chirho = self.semantic_children_chirho(root_chirho, base_chirho);
+        for child_chirho in &children_chirho {
+            if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
+                let kind_chirho = n_chirho.kind_chirho();
+                if kind_chirho == SyntaxKindChirho::DataDeclChirho
+                    || kind_chirho == SyntaxKindChirho::NewtypeDeclChirho
+                {
+                    // Extract the type name and any deriving-via clauses
+                    let sub_children_chirho =
+                        self.semantic_children_chirho(n_chirho, child_chirho.start_chirho);
+                    let mut type_name_chirho: Option<NameChirho> = None;
+                    for sc_chirho in &sub_children_chirho {
+                        match sc_chirho.element_chirho {
+                            GreenElementChirho::TokenChirho(tok_chirho) => {
+                                if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                                    && type_name_chirho.is_none()
+                                {
+                                    let s_chirho = self.span_chirho(
+                                        sc_chirho.start_chirho,
+                                        sc_chirho.end_chirho,
+                                    );
+                                    type_name_chirho = Some(
+                                        self.name_from_token_chirho(tok_chirho, s_chirho),
+                                    );
+                                }
+                            }
+                            GreenElementChirho::NodeChirho(sub_n_chirho) => {
+                                if sub_n_chirho.kind_chirho()
+                                    == SyntaxKindChirho::DerivingClauseChirho
+                                {
+                                    if let Some(via_type_chirho) =
+                                        self.lower_deriving_via_type_chirho(
+                                            sub_n_chirho,
+                                            sc_chirho.start_chirho,
+                                        )
+                                    {
+                                        if let Some(ref tn_chirho) = type_name_chirho {
+                                            // Extract class names before "via" directly
+                                            let class_names_chirho =
+                                                self.lower_deriving_via_classes_chirho(
+                                                    sub_n_chirho,
+                                                    sc_chirho.start_chirho,
+                                                );
+                                            for cn_chirho in class_names_chirho {
+                                                result_chirho.push((
+                                                    tn_chirho.clone(),
+                                                    cn_chirho,
+                                                    via_type_chirho.clone(),
+                                                ));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        result_chirho
     }
 
     fn lower_newtype_decl_chirho(

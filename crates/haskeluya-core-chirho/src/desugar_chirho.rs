@@ -4533,6 +4533,7 @@ mod tests_chirho {
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -4649,6 +4650,7 @@ mod tests_chirho {
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -4862,6 +4864,7 @@ mod tests_chirho {
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
@@ -5334,6 +5337,7 @@ mod tests_chirho {
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);
@@ -5446,6 +5450,7 @@ mod tests_chirho {
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);
@@ -5552,6 +5557,7 @@ mod tests_chirho {
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let output_chirho = desugar_module_chirho(&module_chirho);

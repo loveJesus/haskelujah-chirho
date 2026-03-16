@@ -1845,5 +1845,71 @@ main = print (showIt True)
         assert_eq!(m_chirho.io_output_chirho, "42\n");
     }
 
+    // ── DerivingVia tests ──────────────────────────────────────────────
+
+    #[test]
+    fn deriving_via_show_newtype_chirho() {
+        // DerivingVia: `newtype Age = MkAge Int deriving (Show) via Int`
+        // show (MkAge 42) should give "42" (via Int's Show), not "MkAge 42"
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE DerivingVia #-}
+module Test where
+newtype Age = MkAge Int deriving (Show) via Int
+main = putStrLn (show (MkAge 42))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DerivingVia Show failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn deriving_via_eq_newtype_chirho() {
+        // DerivingVia: `newtype Age = MkAge Int deriving (Eq) via Int`
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE DerivingVia #-}
+module Test where
+newtype Age = MkAge Int deriving (Eq) via Int
+main = if MkAge 10 == MkAge 10 then putStrLn "equal" else putStrLn "not equal"
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DerivingVia Eq failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "equal\n");
+    }
+
+    #[test]
+    fn deriving_via_num_newtype_chirho() {
+        // DerivingVia: `newtype Age = MkAge Int deriving (Num) via Int`
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE DerivingVia #-}
+module Test where
+newtype Age = MkAge Int deriving (Num) via Int
+getAge (MkAge x) = x
+main = print (getAge (MkAge 20 + MkAge 22))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DerivingVia Num failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn deriving_via_ast_present_chirho() {
+        // Verify that DerivingVia entries are extracted into the module AST
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE DerivingVia #-}
+module Test where
+newtype Wrapper = MkWrap Int deriving (Show) via Int
+main = 0
+"#;
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs");
+        assert!(result_chirho.is_ok(), "DerivingVia should compile: {:?}", result_chirho.err());
+    }
+
     // ── Algorithmic tests: stress-testing compiler capabilities ───────
 

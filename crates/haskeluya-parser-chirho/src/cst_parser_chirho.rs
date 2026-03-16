@@ -735,6 +735,16 @@ impl<'src> ParserChirho<'src> {
             self.bump_chirho();
         }
 
+        // DerivingVia: `deriving (Class) via Type`
+        // Check for `via` keyword after the class list.
+        self.eat_trivia_chirho();
+        if self.at_varid_text_chirho("via") {
+            self.bump_chirho(); // consume "via"
+            self.eat_trivia_chirho();
+            // Parse the via type (could be a ConId, or parenthesized, etc.)
+            self.parse_atype_chirho();
+        }
+
         self.builder_chirho.finish_node_chirho();
     }
 
