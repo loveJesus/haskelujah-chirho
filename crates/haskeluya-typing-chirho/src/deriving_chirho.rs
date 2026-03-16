@@ -2393,7 +2393,7 @@ mod tests_chirho {
                 ..
             } => {
                 assert_eq!(class_chirho.text_chirho(), "Enum");
-                assert_eq!(methods_chirho.len(), 2); // toEnum, fromEnum
+                assert_eq!(methods_chirho.len(), 4); // toEnum, fromEnum, succ, pred
 
                 // toEnum should have 4 constructor matches + 1 catch-all = 5
                 if let LocalBindChirho::FunBindChirho {

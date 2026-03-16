@@ -1935,3 +1935,47 @@ main = print (fromEnum Blue)
         assert_eq!(m_chirho.io_output_chirho, "2\n");
     }
 
+    // ── TupleSections tests ─────────────────────────────────────────────
+
+    #[test]
+    fn tuple_section_left_gap_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE TupleSections #-}
+module Test where
+main = print ((,1) 42)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("TupleSections left gap failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "(42,1)\n");
+    }
+
+    #[test]
+    fn tuple_section_right_gap_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE TupleSections #-}
+module Test where
+main = print ((1,) 99)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("TupleSections right gap failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "(1,99)\n");
+    }
+
+    #[test]
+    fn tuple_section_map_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE TupleSections #-}
+module Test where
+main = print (map (,True) [1,2,3])
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("TupleSections map failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "[(1,True),(2,True),(3,True)]\n");
+    }
+

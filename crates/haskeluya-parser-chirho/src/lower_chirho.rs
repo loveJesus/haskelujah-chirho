@@ -3943,8 +3943,93 @@ impl LowerCtxChirho {
                     }
                 }
 
-                // Normal parenthesized expr or tuple
-                if expr_nodes_chirho.len() == 1 {
+                // Normal parenthesized expr or tuple, or TupleSections
+                // Count commas to detect tuple section gaps
+                let comma_count_chirho = children_chirho
+                    .iter()
+                    .filter(|c_chirho| {
+                        matches!(
+                            c_chirho.element_chirho,
+                            GreenElementChirho::TokenChirho(t_chirho)
+                                if t_chirho.kind_chirho() == TokenKindChirho::CommaChirho
+                        )
+                    })
+                    .count();
+
+                let arity_chirho = if comma_count_chirho > 0 {
+                    comma_count_chirho + 1
+                } else {
+                    0
+                };
+
+                // TupleSections: if there are commas and fewer expr nodes than
+                // positions, there are gaps → desugar to lambda
+                if arity_chirho > 0 && expr_nodes_chirho.len() < arity_chirho {
+                    // Build Vec<Option<ExprChirho>> by walking children
+                    let mut slots_chirho: Vec<Option<ExprChirho>> = Vec::new();
+                    let mut expr_idx_chirho = 0usize;
+                    let mut at_start_chirho = true;
+                    for child_chirho in &children_chirho {
+                        match child_chirho.element_chirho {
+                            GreenElementChirho::TokenChirho(tok_chirho) => {
+                                let k_chirho = tok_chirho.kind_chirho();
+                                if k_chirho == TokenKindChirho::CommaChirho {
+                                    if at_start_chirho {
+                                        // Gap before first comma
+                                        slots_chirho.push(None);
+                                    }
+                                    at_start_chirho = true;
+                                }
+                            }
+                            GreenElementChirho::NodeChirho(n_chirho) => {
+                                if is_expr_kind_chirho(n_chirho.kind_chirho())
+                                    && expr_idx_chirho < expr_nodes_chirho.len()
+                                {
+                                    slots_chirho.push(Some(
+                                        self.lower_expr_from_child_chirho(
+                                            expr_nodes_chirho[expr_idx_chirho],
+                                        ),
+                                    ));
+                                    expr_idx_chirho += 1;
+                                    at_start_chirho = false;
+                                }
+                            }
+                        }
+                    }
+                    // If last position is a gap (trailing comma)
+                    if at_start_chirho && comma_count_chirho > 0 {
+                        slots_chirho.push(None);
+                    }
+
+                    // Generate lambda: \$ts_0 $ts_1 ... -> (e0_or_$ts, e1_or_$ts, ...)
+                    let mut gap_idx_chirho = 0usize;
+                    let mut params_chirho: Vec<PatChirho> = Vec::new();
+                    let mut elements_chirho: Vec<ExprChirho> = Vec::new();
+                    for slot_chirho in &slots_chirho {
+                        match slot_chirho {
+                            Some(expr_chirho) => {
+                                elements_chirho.push(expr_chirho.clone());
+                            }
+                            None => {
+                                let name_chirho = format!("$ts_{}", gap_idx_chirho);
+                                let n_chirho = NameChirho::RawChirho(
+                                    RawNameChirho::unqualified_chirho(&name_chirho, span_chirho),
+                                );
+                                params_chirho.push(PatChirho::VarChirho(n_chirho.clone()));
+                                elements_chirho.push(ExprChirho::VarChirho(n_chirho));
+                                gap_idx_chirho += 1;
+                            }
+                        }
+                    }
+                    ExprChirho::LamChirho {
+                        pats_chirho: params_chirho,
+                        body_chirho: Box::new(ExprChirho::TupleChirho {
+                            elements_chirho,
+                            span_chirho,
+                        }),
+                        span_chirho,
+                    }
+                } else if expr_nodes_chirho.len() == 1 && comma_count_chirho == 0 {
                     let inner_chirho = self.lower_expr_from_child_chirho(expr_nodes_chirho[0]);
                     ExprChirho::ParenChirho {
                         inner_chirho: Box::new(inner_chirho),

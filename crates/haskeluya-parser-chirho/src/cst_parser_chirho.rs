@@ -2382,46 +2382,50 @@ impl<'src> ParserChirho<'src> {
             return;
         }
 
-        // Could be a right section: (expr op) or just (expr) or (expr, expr, ...)
-        self.parse_expr_chirho();
-        self.eat_trivia_chirho();
+        // TupleSections: if current token is a comma, first position is a gap
+        if !self.at_chirho(RawTokenKindChirho::CommaChirho) {
+            // Could be a right section: (expr op) or just (expr) or (expr, expr, ...)
+            self.parse_expr_chirho();
+            self.eat_trivia_chirho();
 
-        // Check for right section: after expr, we have op followed by ')'
-        let is_right_op_chirho = matches!(
-            self.current_kind_chirho(),
-            Some(RawTokenKindChirho::VarSymChirho)
-                | Some(RawTokenKindChirho::ConSymChirho)
-        );
-        if is_right_op_chirho {
-            // Look ahead past operator + trivia for ')'
-            let mut look_chirho = self.pos_chirho + 1;
-            while look_chirho < self.tokens_chirho.len()
-                && self.tokens_chirho[look_chirho].kind_chirho.is_trivia_chirho()
-            {
-                look_chirho += 1;
-            }
-            let is_right_section_chirho = look_chirho < self.tokens_chirho.len()
-                && self.tokens_chirho[look_chirho].kind_chirho
-                    == RawTokenKindChirho::RightParenChirho;
-
-            if is_right_section_chirho {
-                // Right section: emit the operator token; lowerer detects it
-                self.bump_chirho(); // the operator
-                self.eat_trivia_chirho();
-                if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
-                    self.bump_chirho();
+            // Check for right section: after expr, we have op followed by ')'
+            let is_right_op_chirho = matches!(
+                self.current_kind_chirho(),
+                Some(RawTokenKindChirho::VarSymChirho)
+                    | Some(RawTokenKindChirho::ConSymChirho)
+            );
+            if is_right_op_chirho {
+                // Look ahead past operator + trivia for ')'
+                let mut look_chirho = self.pos_chirho + 1;
+                while look_chirho < self.tokens_chirho.len()
+                    && self.tokens_chirho[look_chirho].kind_chirho.is_trivia_chirho()
+                {
+                    look_chirho += 1;
                 }
-                self.builder_chirho.finish_node_chirho();
-                return;
+                let is_right_section_chirho = look_chirho < self.tokens_chirho.len()
+                    && self.tokens_chirho[look_chirho].kind_chirho
+                        == RawTokenKindChirho::RightParenChirho;
+
+                if is_right_section_chirho {
+                    // Right section: emit the operator token; lowerer detects it
+                    self.bump_chirho(); // the operator
+                    self.eat_trivia_chirho();
+                    if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                        self.bump_chirho();
+                    }
+                    self.builder_chirho.finish_node_chirho();
+                    return;
+                }
             }
         }
 
         if self.at_chirho(RawTokenKindChirho::CommaChirho) {
-            // Tuple
+            // Tuple (possibly with sections/gaps)
             while self.at_chirho(RawTokenKindChirho::CommaChirho) {
                 self.bump_chirho(); // ,
                 self.eat_trivia_chirho();
                 if !self.at_chirho(RawTokenKindChirho::RightParenChirho)
+                    && !self.at_chirho(RawTokenKindChirho::CommaChirho)
                     && !self.at_eof_chirho()
                 {
                     self.parse_expr_chirho();
