@@ -1231,3 +1231,77 @@ main = 42
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "GHCExc.hs");
     assert!(result_chirho.is_ok(), "GHC.Exception import should work: {:?}", result_chirho.err());
 }
+
+// ── Type family reduction in type inference ────────────────────────────
+
+#[test]
+fn type_family_reduction_in_sig_chirho() {
+    // Type family `F` with instance `F Int = Bool`, then a function
+    // with declared return type `F Int` that returns `True`.
+    // Without type family reduction, this would fail with E0205
+    // (type signature mismatch) because `F Int` wouldn't reduce to `Bool`.
+    let src_chirho = r#"
+{-# LANGUAGE TypeFamilies #-}
+module Test where
+
+type family F a
+type instance F Int = Bool
+
+myVal :: F Int
+myVal = True
+
+main = myVal
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    // Compiles without E0205 — type family reduction resolves F Int = Bool
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TFRedSig.hs");
+    assert!(result_chirho.is_ok(), "Type family reduction in sig should compile: {:?}", result_chirho.err());
+}
+
+#[test]
+fn type_family_reduction_function_sig_chirho() {
+    // Function with type family in result type
+    let src_chirho = r#"
+{-# LANGUAGE TypeFamilies #-}
+module Test where
+
+type family ResultOf a
+type instance ResultOf Int = Int
+
+addOne :: Int -> ResultOf Int
+addOne x = x + 1
+
+main = addOne 41
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TFRedFn.hs", None);
+    match &result_chirho {
+        Ok(val_chirho) => {
+            let s_chirho = format!("{}", val_chirho);
+            assert!(s_chirho.contains("42"), "Expected 42, got: {}", s_chirho);
+        }
+        Err(e_chirho) => panic!("Type family in function sig should compile: {}", e_chirho),
+    }
+}
+
+#[test]
+fn type_family_closed_reduction_chirho() {
+    // Closed type family with multiple equations
+    let src_chirho = r#"
+{-# LANGUAGE TypeFamilies #-}
+module Test where
+
+type family IsInt a where
+  IsInt Int = Bool
+  IsInt a   = Bool
+
+checkInt :: IsInt Int
+checkInt = True
+
+main = checkInt
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    // Compiles without E0205 — closed type family reduces IsInt Int = Bool
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TFClosed.hs");
+    assert!(result_chirho.is_ok(), "Closed type family reduction should compile: {:?}", result_chirho.err());
+}

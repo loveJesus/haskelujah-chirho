@@ -247,6 +247,86 @@ impl InferCtxChirho {
         }
     }
 
+    /// Reduce type family applications in a `TyChirho`. Walks the type and
+    /// replaces saturated type family applications with their reduced form.
+    /// For example, `F Int` where `type instance F Int = Bool` becomes `Bool`.
+    pub fn reduce_type_families_in_ty_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
+        self.reduce_families_chirho(ty_chirho, 0)
+    }
+
+    fn reduce_families_chirho(&self, ty_chirho: &TyChirho, depth_chirho: usize) -> TyChirho {
+        if depth_chirho > 100 || self.type_families_chirho.is_empty() {
+            return ty_chirho.clone();
+        }
+        match ty_chirho {
+            TyChirho::ConChirho(name_chirho) => {
+                // Nullary type family (no arguments)
+                if let Some(reduced_chirho) = self.reduce_type_family_chirho(name_chirho, &[]) {
+                    return self.reduce_families_chirho(&reduced_chirho, depth_chirho + 1);
+                }
+                ty_chirho.clone()
+            }
+            TyChirho::AppChirho(_, _) => {
+                // Collect spine and check if head is a type family
+                let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
+                if let TyChirho::ConChirho(name_chirho) = &head_chirho {
+                    // Recursively reduce arguments first
+                    let reduced_args_chirho: Vec<TyChirho> = args_chirho
+                        .iter()
+                        .map(|a_chirho| self.reduce_families_chirho(a_chirho, depth_chirho + 1))
+                        .collect();
+                    if let Some(result_chirho) =
+                        self.reduce_type_family_chirho(name_chirho, &reduced_args_chirho)
+                    {
+                        return self.reduce_families_chirho(&result_chirho, depth_chirho + 1);
+                    }
+                    // Not a family — rebuild with reduced args
+                    let mut result_chirho = head_chirho.clone();
+                    for a_chirho in &reduced_args_chirho {
+                        result_chirho =
+                            TyChirho::AppChirho(Box::new(result_chirho), Box::new(a_chirho.clone()));
+                    }
+                    return result_chirho;
+                }
+                // Head is not a Con — just reduce sub-parts
+                let ef_chirho = self.reduce_families_chirho(
+                    match ty_chirho {
+                        TyChirho::AppChirho(f, _) => f,
+                        _ => unreachable!(),
+                    },
+                    depth_chirho,
+                );
+                let ea_chirho = self.reduce_families_chirho(
+                    match ty_chirho {
+                        TyChirho::AppChirho(_, a) => a,
+                        _ => unreachable!(),
+                    },
+                    depth_chirho,
+                );
+                TyChirho::AppChirho(Box::new(ef_chirho), Box::new(ea_chirho))
+            }
+            TyChirho::FunChirho(a_chirho, b_chirho, m_chirho) => TyChirho::FunChirho(
+                Box::new(self.reduce_families_chirho(a_chirho, depth_chirho)),
+                Box::new(self.reduce_families_chirho(b_chirho, depth_chirho)),
+                *m_chirho,
+            ),
+            TyChirho::ListChirho(el_chirho) => TyChirho::ListChirho(
+                Box::new(self.reduce_families_chirho(el_chirho, depth_chirho)),
+            ),
+            TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
+                elems_chirho
+                    .iter()
+                    .map(|e_chirho| self.reduce_families_chirho(e_chirho, depth_chirho))
+                    .collect(),
+            ),
+            TyChirho::ForallChirho { vars_chirho, body_chirho } => TyChirho::ForallChirho {
+                vars_chirho: vars_chirho.clone(),
+                body_chirho: Box::new(self.reduce_families_chirho(body_chirho, depth_chirho)),
+            },
+            _ => ty_chirho.clone(),
+        }
+    }
+
     /// Generate a fresh unification variable.
     pub fn fresh_var_chirho(&mut self) -> TyChirho {
         let var_chirho = TyVarChirho(self.next_var_chirho);
@@ -472,7 +552,9 @@ impl InferCtxChirho {
                 let a_chirho = self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho);
                 let raw_chirho = TyChirho::AppChirho(Box::new(f_chirho), Box::new(a_chirho));
                 // Expand parameterised type synonyms (e.g. Pair Int → (Int, Int))
-                self.expand_type_synonyms_chirho(&raw_chirho)
+                let expanded_chirho = self.expand_type_synonyms_chirho(&raw_chirho);
+                // Reduce type family applications (e.g. F Int → Bool)
+                self.reduce_type_families_in_ty_chirho(&expanded_chirho)
             }
             TypeChirho::FunChirho {
                 arg_chirho,
@@ -1090,8 +1172,10 @@ impl InferCtxChirho {
                             // Check against local type signature if present
                             if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
                                 let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                                let sig_ty_chirho = self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
+                                let sig_ty_raw_chirho = self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
+                                let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
                                 let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
+                                let inferred_sub_chirho = self.reduce_type_families_in_ty_chirho(&inferred_sub_chirho);
                                 match unify_chirho(&inferred_sub_chirho, &sig_ty_chirho, *span_chirho) {
                                     Ok(sig_s_chirho) => {
                                         subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
@@ -1274,8 +1358,10 @@ impl InferCtxChirho {
                                 // Check against where-clause type signature if present
                                 if let Some(sig_ast_chirho) = wb_sigs_chirho.get(&name_str_chirho) {
                                     let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                                    let sig_ty_chirho = self.instantiate_chirho(&sig_scheme_chirho, *wb_span_chirho);
+                                    let sig_ty_raw_chirho = self.instantiate_chirho(&sig_scheme_chirho, *wb_span_chirho);
+                                    let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
                                     let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&wt_chirho);
+                                    let inferred_sub_chirho = self.reduce_type_families_in_ty_chirho(&inferred_sub_chirho);
                                     match unify_chirho(&inferred_sub_chirho, &sig_ty_chirho, *wb_span_chirho) {
                                         Ok(sig_s_chirho) => {
                                             subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
@@ -1984,8 +2070,10 @@ impl InferCtxChirho {
                         // Check against where-clause type signature if present
                         if let Some(sig_ast_chirho) = wb_sigs_chirho.get(&name_str_chirho) {
                             let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                            let sig_ty_chirho = self.instantiate_chirho(&sig_scheme_chirho, *wb_span_chirho);
+                            let sig_ty_raw_chirho = self.instantiate_chirho(&sig_scheme_chirho, *wb_span_chirho);
+                            let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
                             let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&wt_chirho);
+                            let inferred_sub_chirho = self.reduce_type_families_in_ty_chirho(&inferred_sub_chirho);
                             match unify_chirho(&inferred_sub_chirho, &sig_ty_chirho, *wb_span_chirho) {
                                 Ok(sig_s_chirho) => {
                                     subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
@@ -2432,8 +2520,10 @@ impl InferCtxChirho {
                 // Phase 3c: Check against type signature if one exists
                 if let Some(sig_ast_chirho) = type_sigs_chirho.get(binding_name_chirho) {
                     let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                    let sig_ty_chirho = self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
+                    let sig_ty_raw_chirho = self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
+                    let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
                     let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
+                    let inferred_sub_chirho = self.reduce_type_families_in_ty_chirho(&inferred_sub_chirho);
                     match unify_chirho(&inferred_sub_chirho, &sig_ty_chirho, *span_chirho) {
                         Ok(sig_s_chirho) => {
                             subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);

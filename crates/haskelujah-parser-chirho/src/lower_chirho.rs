@@ -2006,10 +2006,19 @@ impl LowerCtxChirho {
                         let s_chirho = self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                         if kind_chirho == TokenKindChirho::ConIdChirho && family_name_chirho.is_none() {
                             family_name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
+                        } else if family_name_chirho.is_some()
+                            && (kind_chirho == TokenKindChirho::ConIdChirho
+                                || kind_chirho == TokenKindChirho::VarIdChirho)
+                        {
+                            // LHS type pattern token: ConId (e.g. Int, Bool) or
+                            // VarId (type variable e.g. a, b)
+                            let name_chirho = self.name_from_token_chirho(tok_chirho, s_chirho);
+                            if kind_chirho == TokenKindChirho::ConIdChirho {
+                                lhs_types_chirho.push(TypeChirho::ConChirho(name_chirho));
+                            } else {
+                                lhs_types_chirho.push(TypeChirho::VarChirho(name_chirho));
+                            }
                         }
-                        // Remaining tokens on LHS are pattern types — we'd need
-                        // type node parsing for these. For now, simple ConId/VarId
-                        // patterns are handled through the flat token stream.
                     }
                 }
                 GreenElementChirho::NodeChirho(n_chirho) => {
