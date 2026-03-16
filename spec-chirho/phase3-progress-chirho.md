@@ -51,3 +51,9 @@
 41. **Library type schemes expansion** — 15+ type schemes: realToFrac, fromIntegral, toInteger, toRational, errorWithoutStackTrace, div/mod/quot/rem, divMod/quotRem, IORef, STRef; fixes additional GHC typecheck failures; 4 e2e tests
 42. **Transformers module interfaces** — 7 synthetic module interfaces: Control.Monad.Trans.Identity, .State/.Lazy/.Strict, .Reader, .Writer/.Lazy/.Strict, .Except, .Maybe; 2 e2e tests
 43. **Desugarer robustness** — Fix pat_idx out-of-bounds panic in all-default case optimization; replace TH splice/quote panics with dummy literals; eliminates crashes on GHC test files; 1 e2e test
+44. **Library type schemes batch 2** — realToFrac, fromIntegral, toInteger, toRational, errorWithoutStackTrace, div/mod/quot/rem, divMod/quotRem, IORef, STRef type schemes; 4 e2e tests
+45. **Layout rule: where-closes-do** — `where` now correctly closes all non-let implicit layout contexts (do/of/case) at any indentation, matching GHC behavior; fixes do-where interaction at same, lesser, and deeper indentation; 4 e2e tests
+46. **Kind inference: higher-kinded constraints** — Constraint arguments no longer forced to kind `*`; `Functor f`, `Monad m` etc. correctly infer `f :: * -> *`; forall-bound type variables respect kind annotations; fixes many E0300 kind mismatch errors; 3 e2e tests
+47. **Module interfaces batch 3** — Type.Reflection, Unsafe.Coerce, GHC.Exception, GHC.Exception.Type, GHC.IO.Exception, GHC.Arr, GHC.Fingerprint, GHC.ForeignPtr.Internal; 3 e2e tests
+48. **Unicode non-breaking space** — Lexer correctly breaks identifiers at Unicode whitespace (U+00A0 etc.) instead of including them in identifier tokens; `unicode_ident_continue_len_chirho` for proper multi-byte boundary detection; 1 e2e test
+49. **OPTIONS_GHC -X extensions** — `{-# OPTIONS_GHC -XFoo #-}` syntax now extracts extensions just like `{-# LANGUAGE Foo #-}`; 1 e2e test
