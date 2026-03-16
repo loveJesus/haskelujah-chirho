@@ -1393,3 +1393,32 @@ main = val
     assert!(result_chirho.is_ok(), "top-level constructor pat bind should work: {:?}", result_chirho.err());
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
+
+#[test]
+fn where_clause_constructor_pattern_bind_chirho() {
+    // where MkBox val = MkBox 42
+    let src_chirho = r#"
+module Test where
+data MyBox = MkBox Int
+main = val
+  where MkBox val = MkBox 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "WhereConPat.hs", None);
+    assert!(result_chirho.is_ok(), "where constructor pat bind should work: {:?}", result_chirho.err());
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn where_clause_tuple_pattern_bind_chirho() {
+    // where (x, y) = (10, 32)
+    let src_chirho = r#"
+module Test where
+main = x + y
+  where (x, y) = (10, 32)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "WhereTuplePat.hs", None);
+    assert!(result_chirho.is_ok(), "where tuple pat bind should work: {:?}", result_chirho.err());
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}

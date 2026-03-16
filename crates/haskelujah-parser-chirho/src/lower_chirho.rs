@@ -1308,6 +1308,15 @@ impl LowerCtxChirho {
                             });
                         }
                     }
+                } else if n_chirho.kind_chirho() == SyntaxKindChirho::PatBindChirho {
+                    let child_span_chirho =
+                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                    let pb_chirho = self.lower_pat_bind_local_chirho(
+                        n_chirho,
+                        child_chirho.start_chirho,
+                        child_span_chirho,
+                    );
+                    binds_chirho.push(pb_chirho);
                 } else if n_chirho.kind_chirho() == SyntaxKindChirho::TypeSigDeclChirho {
                     let child_span_chirho =
                         self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);

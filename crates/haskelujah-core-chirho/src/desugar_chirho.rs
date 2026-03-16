@@ -1718,27 +1718,170 @@ impl DesugarCtxChirho {
 
         self.push_scope_chirho();
 
-        // Pass 1: Pre-bind all where-clause names so body and
-        // mutual references resolve to the fresh Let binders.
-        let pre_binders_chirho = self.prebind_where_names_chirho(&arm_chirho.where_binds_chirho);
+        // Separate fun-binds from complex pat-binds (same as let handling)
+        let mut fun_bind_indices_chirho: Vec<usize> = Vec::new();
+        let mut pat_bind_indices_chirho: Vec<usize> = Vec::new();
+        for (idx_chirho, bind_chirho) in arm_chirho.where_binds_chirho.iter().enumerate() {
+            match bind_chirho {
+                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho { .. } => {
+                    fun_bind_indices_chirho.push(idx_chirho);
+                }
+                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                    pat_chirho, ..
+                } => {
+                    if matches!(pat_chirho, PatChirho::VarChirho(_)) {
+                        fun_bind_indices_chirho.push(idx_chirho);
+                    } else {
+                        pat_bind_indices_chirho.push(idx_chirho);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Pre-bind pattern variables from complex pattern bindings
+        let mut pat_binders_map_chirho: std::collections::HashMap<usize, Vec<BinderChirho>> =
+            std::collections::HashMap::new();
+        for &idx_chirho in &pat_bind_indices_chirho {
+            if let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                pat_chirho, ..
+            } = &arm_chirho.where_binds_chirho[idx_chirho]
+            {
+                self.prebind_all_pat_vars_chirho(pat_chirho);
+                let top_binders_chirho = self.pat_to_binders_chirho(pat_chirho);
+                for b_chirho in &top_binders_chirho {
+                    self.bind_in_scope_chirho(&b_chirho.name_chirho, b_chirho.id_chirho);
+                }
+                pat_binders_map_chirho.insert(idx_chirho, top_binders_chirho);
+            }
+        }
+
+        // Pre-bind fun-bind names
+        let pre_binders_chirho = self.prebind_where_names_chirho_filtered(
+            &arm_chirho.where_binds_chirho,
+            &fun_bind_indices_chirho,
+        );
 
         // Desugar body *after* where names are in scope.
         let body_core_chirho = self.desugar_rhs_chirho(&arm_chirho.rhs_chirho);
 
-        // Pass 2: Desugar where-clause RHSes.
+        // Desugar fun-bind RHSes
         let core_binds_chirho = self.desugar_where_rhs_chirho(
             &arm_chirho.where_binds_chirho,
             pre_binders_chirho,
         );
 
-        let rec_chirho = Self::is_recursive_binds_chirho(&core_binds_chirho);
-        let result_chirho = CoreExprChirho::LetChirho {
-            rec_chirho,
-            binds_chirho: core_binds_chirho,
-            body_chirho: Box::new(body_core_chirho),
+        // Wrap body in case expressions for complex pattern bindings
+        let mut result_body_chirho = body_core_chirho;
+        for &idx_chirho in pat_bind_indices_chirho.iter().rev() {
+            if let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                pat_chirho,
+                rhs_chirho,
+                ..
+            } = &arm_chirho.where_binds_chirho[idx_chirho]
+            {
+                let core_scrut_chirho = self.desugar_rhs_chirho(rhs_chirho);
+                let con_chirho = self.pat_to_alt_con_chirho(pat_chirho);
+                let binders_chirho = pat_binders_map_chirho
+                    .remove(&idx_chirho)
+                    .unwrap_or_default();
+                let rhs_nested_chirho = self.wrap_nested_cases_chirho(
+                    result_body_chirho,
+                    &binders_chirho,
+                    pat_chirho,
+                );
+                let wild_chirho = self.fresh_binder_chirho(
+                    "_patscrut",
+                    TyChirho::VarChirho(
+                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
+                    ),
+                    SpanChirho::DUMMY_CHIRHO,
+                );
+                result_body_chirho = CoreExprChirho::CaseChirho {
+                    scrutinee_chirho: Box::new(core_scrut_chirho),
+                    bind_chirho: wild_chirho,
+                    result_ty_chirho: TyChirho::VarChirho(
+                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
+                    ),
+                    alts_chirho: vec![CoreAltChirho {
+                        con_chirho,
+                        binders_chirho,
+                        rhs_chirho: rhs_nested_chirho,
+                    }],
+                };
+            }
+        }
+
+        // Wrap in let if there are fun-binds
+        let result_chirho = if core_binds_chirho.is_empty() {
+            result_body_chirho
+        } else {
+            let rec_chirho = Self::is_recursive_binds_chirho(&core_binds_chirho);
+            CoreExprChirho::LetChirho {
+                rec_chirho,
+                binds_chirho: core_binds_chirho,
+                body_chirho: Box::new(result_body_chirho),
+            }
         };
         self.pop_scope_chirho();
         result_chirho
+    }
+
+    /// Pre-bind where-clause names for specific indices (fun-binds only).
+    fn prebind_where_names_chirho_filtered(
+        &mut self,
+        where_binds_chirho: &[haskelujah_ast_chirho::expr_chirho::LocalBindChirho],
+        indices_chirho: &[usize],
+    ) -> Vec<(usize, BinderChirho)> {
+        let mut pre_binders_chirho: Vec<(usize, BinderChirho)> = Vec::new();
+        for &idx_chirho in indices_chirho {
+            let bind_chirho = &where_binds_chirho[idx_chirho];
+            match bind_chirho {
+                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                    name_chirho,
+                    span_chirho,
+                    ..
+                } => {
+                    let binder_chirho = self.fresh_binder_chirho(
+                        name_chirho.text_chirho(),
+                        TyChirho::VarChirho(
+                            haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                self.next_id_chirho,
+                            ),
+                        ),
+                        *span_chirho,
+                    );
+                    self.bind_in_scope_chirho(
+                        name_chirho.text_chirho(),
+                        binder_chirho.id_chirho,
+                    );
+                    pre_binders_chirho.push((idx_chirho, binder_chirho));
+                }
+                // Simple var PatBindChirho treated as fun bind
+                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                    pat_chirho: PatChirho::VarChirho(name_chirho),
+                    span_chirho,
+                    ..
+                } => {
+                    let binder_chirho = self.fresh_binder_chirho(
+                        name_chirho.text_chirho(),
+                        TyChirho::VarChirho(
+                            haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                self.next_id_chirho,
+                            ),
+                        ),
+                        *span_chirho,
+                    );
+                    self.bind_in_scope_chirho(
+                        name_chirho.text_chirho(),
+                        binder_chirho.id_chirho,
+                    );
+                    pre_binders_chirho.push((idx_chirho, binder_chirho));
+                }
+                _ => {}
+            }
+        }
+        pre_binders_chirho
     }
 
     /// Pre-bind all where-clause names in the current scope so that both
