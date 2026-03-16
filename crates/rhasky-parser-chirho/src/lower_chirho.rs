@@ -824,6 +824,9 @@ impl LowerCtxChirho {
             SyntaxKindChirho::ForeignDeclChirho => {
                 Some(self.lower_foreign_decl_chirho(node_chirho, base_chirho, span_chirho))
             }
+            SyntaxKindChirho::SpliceDeclChirho => {
+                Some(self.lower_splice_decl_chirho(node_chirho, base_chirho, span_chirho))
+            }
             _ => None,
         }
     }
@@ -2590,6 +2593,31 @@ impl LowerCtxChirho {
         }
     }
 
+    /// Lower a Template Haskell splice declaration: `$(expr)` or `$name` at top level.
+    fn lower_splice_decl_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        span_chirho: SpanChirho,
+    ) -> DeclChirho {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let expr_chirho = children_chirho
+            .iter()
+            .find_map(|c_chirho| {
+                if let GreenElementChirho::NodeChirho(n_chirho) = c_chirho.element_chirho {
+                    Some(self.lower_expr_chirho(n_chirho, c_chirho.start_chirho))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| self.placeholder_expr_chirho());
+
+        DeclChirho::SpliceDeclChirho {
+            expr_chirho,
+            span_chirho,
+        }
+    }
+
     /// Build a type from the children after `::` in a foreign declaration.
     fn lower_foreign_type_chirho(
         &self,
@@ -3832,6 +3860,140 @@ impl LowerCtxChirho {
                         base_expr_chirho.unwrap_or_else(|| self.placeholder_expr_chirho()),
                     ),
                     fields_chirho,
+                    span_chirho,
+                }
+            }
+            // Template Haskell splice expression: $name or $(expr)
+            SyntaxKindChirho::SpliceExprChirho => {
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                // Find the first expression child (either a NameExprChirho for $name
+                // or the parsed expression for $(expr))
+                let inner_chirho = children_chirho
+                    .iter()
+                    .find_map(|c_chirho| {
+                        if let GreenElementChirho::NodeChirho(n_chirho) = c_chirho.element_chirho {
+                            Some(self.lower_expr_chirho(n_chirho, c_chirho.start_chirho))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| self.placeholder_expr_chirho());
+                ExprChirho::SpliceChirho {
+                    expr_chirho: Box::new(inner_chirho),
+                    span_chirho,
+                }
+            }
+            // Template Haskell typed splice expression: $$name or $$(expr)
+            SyntaxKindChirho::TypedSpliceExprChirho => {
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let inner_chirho = children_chirho
+                    .iter()
+                    .find_map(|c_chirho| {
+                        if let GreenElementChirho::NodeChirho(n_chirho) = c_chirho.element_chirho {
+                            Some(self.lower_expr_chirho(n_chirho, c_chirho.start_chirho))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| self.placeholder_expr_chirho());
+                ExprChirho::TypedSpliceChirho {
+                    expr_chirho: Box::new(inner_chirho),
+                    span_chirho,
+                }
+            }
+            // Template Haskell expression quotation: [| expr |] or [e| expr |]
+            SyntaxKindChirho::QuoteExprChirho => {
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let inner_chirho = children_chirho
+                    .iter()
+                    .find_map(|c_chirho| {
+                        if let GreenElementChirho::NodeChirho(n_chirho) = c_chirho.element_chirho {
+                            Some(self.lower_expr_chirho(n_chirho, c_chirho.start_chirho))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| self.placeholder_expr_chirho());
+                ExprChirho::QuoteExprChirho {
+                    expr_chirho: Box::new(inner_chirho),
+                    span_chirho,
+                }
+            }
+            // Template Haskell declaration quotation: [d| decls |]
+            SyntaxKindChirho::QuoteDeclChirho => {
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let decls_chirho: Vec<DeclChirho> = children_chirho
+                    .iter()
+                    .filter_map(|c_chirho| {
+                        if let GreenElementChirho::NodeChirho(n_chirho) = c_chirho.element_chirho {
+                            self.lower_decl_chirho(n_chirho, c_chirho.start_chirho)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                ExprChirho::QuoteDeclChirho {
+                    decls_chirho,
+                    span_chirho,
+                }
+            }
+            // Template Haskell type quotation: [t| type |]
+            SyntaxKindChirho::QuoteTypeChirho => {
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let ty_chirho = children_chirho
+                    .iter()
+                    .find_map(|c_chirho| {
+                        if let GreenElementChirho::NodeChirho(n_chirho) = c_chirho.element_chirho {
+                            if n_chirho.kind_chirho().is_type_chirho() {
+                                return Some(
+                                    self.lower_type_chirho(n_chirho, c_chirho.start_chirho),
+                                );
+                            }
+                        }
+                        None
+                    })
+                    .unwrap_or_else(|| self.placeholder_type_chirho());
+                ExprChirho::QuoteTypeChirho {
+                    ty_chirho,
+                    span_chirho,
+                }
+            }
+            // Template Haskell pattern quotation: [p| pat |]
+            SyntaxKindChirho::QuotePatChirho => {
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let pat_chirho = children_chirho
+                    .iter()
+                    .find_map(|c_chirho| {
+                        if let GreenElementChirho::NodeChirho(n_chirho) = c_chirho.element_chirho {
+                            if is_pat_kind_chirho(n_chirho.kind_chirho()) {
+                                return Some(
+                                    self.lower_pat_chirho(n_chirho, c_chirho.start_chirho),
+                                );
+                            }
+                        }
+                        None
+                    })
+                    .unwrap_or_else(|| PatChirho::WildcardChirho(span_chirho));
+                ExprChirho::QuotePatChirho {
+                    pat_chirho,
+                    span_chirho,
+                }
+            }
+            // Template Haskell typed expression quotation: [|| expr ||]
+            SyntaxKindChirho::TypedQuoteExprChirho => {
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let inner_chirho = children_chirho
+                    .iter()
+                    .find_map(|c_chirho| {
+                        if let GreenElementChirho::NodeChirho(n_chirho) = c_chirho.element_chirho {
+                            Some(self.lower_expr_chirho(n_chirho, c_chirho.start_chirho))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| self.placeholder_expr_chirho());
+                ExprChirho::QuoteExprChirho {
+                    expr_chirho: Box::new(inner_chirho),
                     span_chirho,
                 }
             }
@@ -5113,6 +5275,13 @@ fn is_expr_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::RecordUpdateExprChirho
             | SyntaxKindChirho::LiteralExprChirho
             | SyntaxKindChirho::NameExprChirho
+            | SyntaxKindChirho::SpliceExprChirho
+            | SyntaxKindChirho::TypedSpliceExprChirho
+            | SyntaxKindChirho::QuoteExprChirho
+            | SyntaxKindChirho::QuoteDeclChirho
+            | SyntaxKindChirho::QuoteTypeChirho
+            | SyntaxKindChirho::QuotePatChirho
+            | SyntaxKindChirho::TypedQuoteExprChirho
     )
 }
 
@@ -6166,5 +6335,182 @@ class Describable a where
             }
             _ => unreachable!(),
         }
+    }
+
+    // -------------------------------------------------------------------
+    // Template Haskell lowering tests
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn lower_th_splice_name_chirho() {
+        // $name lowers to ExprChirho::SpliceChirho
+        let module_chirho = parse_and_lower_chirho("module M where\nx = $foo\n");
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "x")
+        });
+        assert!(decl_chirho.is_some(), "should have FunBind for x");
+        if let DeclChirho::FunBindChirho { matches_chirho, .. } = decl_chirho.unwrap() {
+            let rhs_chirho = &matches_chirho[0].rhs_chirho;
+            if let RhsChirho::UnguardedChirho(expr_chirho) = rhs_chirho {
+                assert!(
+                    matches!(expr_chirho, ExprChirho::SpliceChirho { .. }),
+                    "RHS should be SpliceChirho, got {:?}",
+                    expr_chirho
+                );
+            } else {
+                panic!("expected unguarded RHS");
+            }
+        }
+    }
+
+    #[test]
+    fn lower_th_splice_parens_chirho() {
+        // $(expr) lowers to ExprChirho::SpliceChirho wrapping the inner expression
+        let module_chirho =
+            parse_and_lower_chirho("module M where\nx = $(makeLenses foo)\n");
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "x")
+        });
+        assert!(decl_chirho.is_some(), "should have FunBind for x");
+        if let DeclChirho::FunBindChirho { matches_chirho, .. } = decl_chirho.unwrap() {
+            let rhs_chirho = &matches_chirho[0].rhs_chirho;
+            if let RhsChirho::UnguardedChirho(expr_chirho) = rhs_chirho {
+                assert!(
+                    matches!(expr_chirho, ExprChirho::SpliceChirho { .. }),
+                    "RHS should be SpliceChirho for $(makeLenses foo), got {:?}",
+                    expr_chirho
+                );
+            } else {
+                panic!("expected unguarded RHS");
+            }
+        }
+    }
+
+    #[test]
+    fn lower_th_splice_decl_chirho() {
+        // Top-level $(expr) lowers to DeclChirho::SpliceDeclChirho
+        let module_chirho =
+            parse_and_lower_chirho("module M where\n$(makeLenses foo)\n");
+        assert!(
+            module_chirho.decls_chirho.iter().any(|d_chirho| {
+                matches!(d_chirho, DeclChirho::SpliceDeclChirho { .. })
+            }),
+            "should have SpliceDeclChirho for top-level $(makeLenses foo): {:?}",
+            module_chirho.decls_chirho
+        );
+    }
+
+    #[test]
+    fn lower_th_quote_expr_chirho() {
+        // [| expr |] lowers to ExprChirho::QuoteExprChirho
+        let module_chirho = parse_and_lower_chirho("module M where\nx = [| foo |]\n");
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "x")
+        });
+        assert!(decl_chirho.is_some(), "should have FunBind for x");
+        if let DeclChirho::FunBindChirho { matches_chirho, .. } = decl_chirho.unwrap() {
+            let rhs_chirho = &matches_chirho[0].rhs_chirho;
+            if let RhsChirho::UnguardedChirho(expr_chirho) = rhs_chirho {
+                assert!(
+                    matches!(expr_chirho, ExprChirho::QuoteExprChirho { .. }),
+                    "RHS should be QuoteExprChirho for [| foo |], got {:?}",
+                    expr_chirho
+                );
+            } else {
+                panic!("expected unguarded RHS");
+            }
+        }
+    }
+
+    #[test]
+    fn lower_th_typed_splice_chirho() {
+        // $$name lowers to ExprChirho::TypedSpliceChirho
+        let module_chirho = parse_and_lower_chirho("module M where\nx = $$bar\n");
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "x")
+        });
+        assert!(decl_chirho.is_some(), "should have FunBind for x");
+        if let DeclChirho::FunBindChirho { matches_chirho, .. } = decl_chirho.unwrap() {
+            let rhs_chirho = &matches_chirho[0].rhs_chirho;
+            if let RhsChirho::UnguardedChirho(expr_chirho) = rhs_chirho {
+                assert!(
+                    matches!(expr_chirho, ExprChirho::TypedSpliceChirho { .. }),
+                    "RHS should be TypedSpliceChirho for $$bar, got {:?}",
+                    expr_chirho
+                );
+            } else {
+                panic!("expected unguarded RHS");
+            }
+        }
+    }
+
+    #[test]
+    fn lower_th_quote_type_chirho() {
+        // [t| type |] lowers to ExprChirho::QuoteTypeChirho
+        let module_chirho = parse_and_lower_chirho("module M where\nx = [t| Int |]\n");
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "x")
+        });
+        assert!(decl_chirho.is_some(), "should have FunBind for x");
+        if let DeclChirho::FunBindChirho { matches_chirho, .. } = decl_chirho.unwrap() {
+            let rhs_chirho = &matches_chirho[0].rhs_chirho;
+            if let RhsChirho::UnguardedChirho(expr_chirho) = rhs_chirho {
+                assert!(
+                    matches!(expr_chirho, ExprChirho::QuoteTypeChirho { .. }),
+                    "RHS should be QuoteTypeChirho for [t| Int |], got {:?}",
+                    expr_chirho
+                );
+            } else {
+                panic!("expected unguarded RHS");
+            }
+        }
+    }
+
+    #[test]
+    fn lower_th_quote_pat_chirho() {
+        // [p| pat |] lowers to ExprChirho::QuotePatChirho
+        let module_chirho = parse_and_lower_chirho("module M where\nx = [p| y |]\n");
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "x")
+        });
+        assert!(decl_chirho.is_some(), "should have FunBind for x");
+        if let DeclChirho::FunBindChirho { matches_chirho, .. } = decl_chirho.unwrap() {
+            let rhs_chirho = &matches_chirho[0].rhs_chirho;
+            if let RhsChirho::UnguardedChirho(expr_chirho) = rhs_chirho {
+                assert!(
+                    matches!(expr_chirho, ExprChirho::QuotePatChirho { .. }),
+                    "RHS should be QuotePatChirho for [p| y |], got {:?}",
+                    expr_chirho
+                );
+            } else {
+                panic!("expected unguarded RHS");
+            }
+        }
+    }
+
+    #[test]
+    fn lower_th_splice_decl_make_lenses_chirho() {
+        // $(makeLenses ''Foo) at top level after a data declaration
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\ndata Foo = Foo\n$(makeLenses foo)\n",
+        );
+        assert!(
+            module_chirho.decls_chirho.iter().any(|d_chirho| {
+                matches!(d_chirho, DeclChirho::DataDeclChirho { .. })
+            }),
+            "should have DataDecl"
+        );
+        assert!(
+            module_chirho.decls_chirho.iter().any(|d_chirho| {
+                matches!(d_chirho, DeclChirho::SpliceDeclChirho { .. })
+            }),
+            "should have SpliceDeclChirho"
+        );
     }
 }

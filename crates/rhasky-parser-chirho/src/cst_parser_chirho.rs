@@ -341,6 +341,8 @@ impl<'src> ParserChirho<'src> {
             | Some(RawTokenKindChirho::InfixrChirho) => self.parse_fixity_decl_chirho(),
             Some(RawTokenKindChirho::DefaultChirho) => self.parse_default_decl_chirho(),
             Some(RawTokenKindChirho::ForeignChirho) => self.parse_foreign_decl_chirho(),
+            // Template Haskell splice at top level: $(expr) or $name
+            Some(RawTokenKindChirho::ThSpliceChirho) => self.parse_splice_decl_chirho(),
             _ => self.parse_value_decl_chirho(),
         }
     }
@@ -2146,6 +2148,35 @@ impl<'src> ParserChirho<'src> {
             Some(RawTokenKindChirho::LetChirho) => {
                 self.parse_let_expr_chirho();
             }
+            // Template Haskell splice: $name or $(expr)
+            Some(RawTokenKindChirho::ThSpliceChirho) => {
+                self.parse_splice_expr_chirho();
+            }
+            // Template Haskell typed splice: $$name or $$(expr)
+            Some(RawTokenKindChirho::ThTypedSpliceChirho) => {
+                self.parse_typed_splice_expr_chirho();
+            }
+            // Template Haskell expression quotation: [| expr |] or [e| expr |]
+            Some(RawTokenKindChirho::ThOpenExpQuoteChirho)
+            | Some(RawTokenKindChirho::ThOpenExpExplicitQuoteChirho) => {
+                self.parse_quote_expr_chirho();
+            }
+            // Template Haskell declaration quotation: [d| decls |]
+            Some(RawTokenKindChirho::ThOpenDecQuoteChirho) => {
+                self.parse_quote_decl_chirho();
+            }
+            // Template Haskell type quotation: [t| type |]
+            Some(RawTokenKindChirho::ThOpenTypeQuoteChirho) => {
+                self.parse_quote_type_chirho();
+            }
+            // Template Haskell pattern quotation: [p| pat |]
+            Some(RawTokenKindChirho::ThOpenPatQuoteChirho) => {
+                self.parse_quote_pat_chirho();
+            }
+            // Template Haskell typed expression quotation: [|| expr ||]
+            Some(RawTokenKindChirho::ThOpenTypedExpQuoteChirho) => {
+                self.parse_typed_quote_expr_chirho();
+            }
             _ => {
                 // Unexpected token — wrap in error
                 self.builder_chirho
@@ -2733,6 +2764,218 @@ impl<'src> ParserChirho<'src> {
     }
 
     // -----------------------------------------------------------------------
+    // Template Haskell — splice and quotation parsing
+    // -----------------------------------------------------------------------
+
+    /// Parse a splice expression: `$name` or `$(expr)`.
+    /// The lexer has already produced a `ThSpliceChirho` token for the `$`.
+    /// What follows is either a variable name or a parenthesized expression.
+    fn parse_splice_expr_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::SpliceExprChirho);
+        self.bump_chirho(); // consume ThSpliceChirho ($)
+        self.eat_trivia_chirho();
+
+        // Either $name (VarId) or $(expr)
+        if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+            // $(expr) — parse the parenthesized expression
+            self.bump_chirho(); // (
+            self.eat_trivia_chirho();
+            self.parse_expr_chirho();
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho(); // )
+            }
+        } else if self.at_chirho(RawTokenKindChirho::VarIdChirho)
+            || self.at_chirho(RawTokenKindChirho::ConIdChirho)
+            || self.at_chirho(RawTokenKindChirho::QualifiedIdChirho)
+        {
+            // $name — just consume the identifier
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::NameExprChirho);
+            self.bump_chirho();
+            self.builder_chirho.finish_node_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a typed splice expression: `$$name` or `$$(expr)`.
+    fn parse_typed_splice_expr_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::TypedSpliceExprChirho);
+        self.bump_chirho(); // consume ThTypedSpliceChirho ($$)
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+            self.bump_chirho(); // (
+            self.eat_trivia_chirho();
+            self.parse_expr_chirho();
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho(); // )
+            }
+        } else if self.at_chirho(RawTokenKindChirho::VarIdChirho)
+            || self.at_chirho(RawTokenKindChirho::ConIdChirho)
+            || self.at_chirho(RawTokenKindChirho::QualifiedIdChirho)
+        {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::NameExprChirho);
+            self.bump_chirho();
+            self.builder_chirho.finish_node_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a top-level splice declaration: `$(expr)` or `$name` at declaration level.
+    fn parse_splice_decl_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::SpliceDeclChirho);
+        self.bump_chirho(); // consume ThSpliceChirho ($)
+        self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+            self.bump_chirho(); // (
+            self.eat_trivia_chirho();
+            self.parse_expr_chirho();
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho(); // )
+            }
+        } else if self.at_chirho(RawTokenKindChirho::VarIdChirho)
+            || self.at_chirho(RawTokenKindChirho::ConIdChirho)
+            || self.at_chirho(RawTokenKindChirho::QualifiedIdChirho)
+        {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::NameExprChirho);
+            self.bump_chirho();
+            self.builder_chirho.finish_node_chirho();
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse an expression quotation: `[| expr |]` or `[e| expr |]`.
+    fn parse_quote_expr_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::QuoteExprChirho);
+        self.bump_chirho(); // consume ThOpenExpQuoteChirho or ThOpenExpExplicitQuoteChirho
+        self.eat_trivia_chirho();
+
+        // Parse the inner expression until |]
+        if !self.at_chirho(RawTokenKindChirho::ThCloseQuoteChirho) && !self.at_eof_chirho() {
+            self.parse_expr_chirho();
+            self.eat_trivia_chirho();
+        }
+
+        if self.at_chirho(RawTokenKindChirho::ThCloseQuoteChirho) {
+            self.bump_chirho(); // consume |]
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a declaration quotation: `[d| decls |]`.
+    fn parse_quote_decl_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::QuoteDeclChirho);
+        self.bump_chirho(); // consume ThOpenDecQuoteChirho
+        self.eat_trivia_chirho();
+
+        // Parse declarations inside the quote until |]
+        while !self.at_chirho(RawTokenKindChirho::ThCloseQuoteChirho) && !self.at_eof_chirho() {
+            let before_chirho = self.pos_chirho;
+            self.eat_trivia_chirho();
+            // Skip layout separators
+            if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
+                || self.at_chirho(RawTokenKindChirho::SemicolonChirho)
+            {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+                if self.pos_chirho == before_chirho {
+                    break;
+                }
+                continue;
+            }
+            if self.at_chirho(RawTokenKindChirho::ThCloseQuoteChirho) || self.at_eof_chirho() {
+                break;
+            }
+            self.parse_decl_chirho();
+            self.eat_trivia_chirho();
+            if self.pos_chirho == before_chirho {
+                break;
+            }
+        }
+
+        if self.at_chirho(RawTokenKindChirho::ThCloseQuoteChirho) {
+            self.bump_chirho(); // consume |]
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a type quotation: `[t| type |]`.
+    fn parse_quote_type_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::QuoteTypeChirho);
+        self.bump_chirho(); // consume ThOpenTypeQuoteChirho
+        self.eat_trivia_chirho();
+
+        // Parse the inner type until |]
+        if !self.at_chirho(RawTokenKindChirho::ThCloseQuoteChirho) && !self.at_eof_chirho() {
+            self.parse_type_chirho();
+            self.eat_trivia_chirho();
+        }
+
+        if self.at_chirho(RawTokenKindChirho::ThCloseQuoteChirho) {
+            self.bump_chirho(); // consume |]
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a pattern quotation: `[p| pat |]`.
+    fn parse_quote_pat_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::QuotePatChirho);
+        self.bump_chirho(); // consume ThOpenPatQuoteChirho
+        self.eat_trivia_chirho();
+
+        // Parse the inner pattern until |]
+        if !self.at_chirho(RawTokenKindChirho::ThCloseQuoteChirho) && !self.at_eof_chirho() {
+            self.parse_pat_chirho();
+            self.eat_trivia_chirho();
+        }
+
+        if self.at_chirho(RawTokenKindChirho::ThCloseQuoteChirho) {
+            self.bump_chirho(); // consume |]
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a typed expression quotation: `[|| expr ||]`.
+    fn parse_typed_quote_expr_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::TypedQuoteExprChirho);
+        self.bump_chirho(); // consume ThOpenTypedExpQuoteChirho
+        self.eat_trivia_chirho();
+
+        // Parse the inner expression until ||]
+        if !self.at_chirho(RawTokenKindChirho::ThCloseTypedQuoteChirho) && !self.at_eof_chirho() {
+            self.parse_expr_chirho();
+            self.eat_trivia_chirho();
+        }
+
+        if self.at_chirho(RawTokenKindChirho::ThCloseTypedQuoteChirho) {
+            self.bump_chirho(); // consume ||]
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    // -----------------------------------------------------------------------
     // Predicates — what can start various constructs
     // -----------------------------------------------------------------------
 
@@ -2768,6 +3011,15 @@ impl<'src> ParserChirho<'src> {
                 | Some(RawTokenKindChirho::CaseChirho)
                 | Some(RawTokenKindChirho::IfChirho)
                 | Some(RawTokenKindChirho::LetChirho)
+                // Template Haskell splice and quotation forms
+                | Some(RawTokenKindChirho::ThSpliceChirho)
+                | Some(RawTokenKindChirho::ThTypedSpliceChirho)
+                | Some(RawTokenKindChirho::ThOpenExpQuoteChirho)
+                | Some(RawTokenKindChirho::ThOpenExpExplicitQuoteChirho)
+                | Some(RawTokenKindChirho::ThOpenDecQuoteChirho)
+                | Some(RawTokenKindChirho::ThOpenTypeQuoteChirho)
+                | Some(RawTokenKindChirho::ThOpenPatQuoteChirho)
+                | Some(RawTokenKindChirho::ThOpenTypedExpQuoteChirho)
         )
     }
 
@@ -3322,6 +3574,144 @@ mod tests_chirho {
             kinds_chirho.contains(&SyntaxKindChirho::TypeFamilyInstanceDeclChirho),
             "should have TypeFamilyInstanceDecl: {:?}",
             kinds_chirho
+        );
+    }
+
+    // -------------------------------------------------------------------
+    // Template Haskell parsing tests
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn parse_th_splice_name_expr_chirho() {
+        // $name as expression inside a binding
+        let source_chirho = "module M where\nx = $foo\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::SpliceExprChirho),
+            "should have SpliceExpr for $foo: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_th_splice_parens_expr_chirho() {
+        // $(expr) as expression inside a binding
+        let source_chirho = "module M where\nx = $(makeLenses foo)\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::SpliceExprChirho),
+            "should have SpliceExpr for $(makeLenses foo): {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_th_typed_splice_expr_chirho() {
+        // $$name as expression
+        let source_chirho = "module M where\nx = $$foo\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::TypedSpliceExprChirho),
+            "should have TypedSpliceExpr for $$foo: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_th_splice_decl_chirho() {
+        // $(expr) at top level parsed as SpliceDeclChirho
+        let source_chirho = "module M where\n$(makeLenses foo)\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::SpliceDeclChirho),
+            "should have SpliceDecl for top-level $(makeLenses foo): {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_th_expr_quote_chirho() {
+        // [| expr |] expression quotation
+        let source_chirho = "module M where\nx = [| foo |]\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::QuoteExprChirho),
+            "should have QuoteExpr for [| foo |]: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_th_decl_quote_chirho() {
+        // [d| decls |] declaration quotation
+        let source_chirho = "module M where\nx = [d| y = 1 |]\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::QuoteDeclChirho),
+            "should have QuoteDecl for [d| y = 1 |]: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_th_type_quote_chirho() {
+        // [t| type |] type quotation
+        let source_chirho = "module M where\nx = [t| Int |]\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::QuoteTypeChirho),
+            "should have QuoteType for [t| Int |]: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_th_pat_quote_chirho() {
+        // [p| pat |] pattern quotation
+        let source_chirho = "module M where\nx = [p| y |]\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::QuotePatChirho),
+            "should have QuotePat for [p| y |]: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_th_splice_decl_make_lenses_chirho() {
+        // $(makeLenses ''Foo) — typical TH usage at top level
+        let source_chirho = "module M where\ndata Foo = Foo\n$(makeLenses ''Foo)\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::DataDeclChirho),
+            "should have DataDecl: {:?}",
+            kinds_chirho
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::SpliceDeclChirho),
+            "should have SpliceDecl for $(makeLenses ''Foo): {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_th_text_len_matches_chirho() {
+        // Green tree text length must match source length for TH sources
+        let source_chirho = "module M where\nx = $foo\n";
+        let root_chirho = parse_chirho(source_chirho);
+        assert_eq!(
+            root_chirho.text_len_chirho(),
+            source_chirho.len(),
+            "TH green tree text length should match source length"
         );
     }
 }
