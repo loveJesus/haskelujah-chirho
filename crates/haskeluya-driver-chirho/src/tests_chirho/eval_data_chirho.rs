@@ -2103,3 +2103,72 @@ main = print (Map.mapSize (Map.mapInsert 1 "a" Map.mapEmpty))
         assert_eq!(m_chirho.io_output_chirho, "1\n");
     }
 
+    // ── DerivingStrategies tests ────────────────────────────────────────
+
+    #[test]
+    fn deriving_strategies_stock_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE DerivingStrategies #-}
+module Test where
+data Color = Red | Green | Blue
+  deriving stock (Show, Eq)
+main = print (Red == Green)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DerivingStrategies stock failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "False\n");
+    }
+
+    #[test]
+    fn deriving_strategies_stock_newtype_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE DerivingStrategies #-}
+module Test where
+newtype Age = MkAge Int
+  deriving stock (Show, Eq)
+main = print (MkAge 42)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DerivingStrategies stock newtype failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    // ── PackageImports test ─────────────────────────────────────────────
+
+    #[test]
+    fn package_imports_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE PackageImports #-}
+module Test where
+import "base" Data.List
+main = putStrLn "works"
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("PackageImports failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "works\n");
+    }
+
+    // ── RoleAnnotations test ────────────────────────────────────────────
+
+    #[test]
+    fn role_annotations_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE RoleAnnotations #-}
+module Test where
+data MyTag = TagA | TagB deriving Show
+type role MyTag nominal
+main = print TagA
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("RoleAnnotations failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "TagA\n");
+    }
+

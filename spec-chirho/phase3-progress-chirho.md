@@ -25,3 +25,6 @@
 15. **DeriveAnyClass** — `{-# LANGUAGE DeriveAnyClass #-}`: unknown class names in deriving clauses generate empty instance declarations relying on default methods; derive_anyclass_chirho produces InstanceDeclChirho with empty methods; 1 e2e test
 16. **UnicodeSyntax** — `→` `←` `∷` `⇒` `∀` `λ` as alternatives to `->` `<-` `::` `=>` `forall` `\`; lexer recognizes Unicode codepoints and maps to existing token kinds; 3 e2e tests (arrows+double-colon, lambda, fat-arrow constraint)
 17. **ImportQualifiedPost** — `import Data.Map qualified as Map` syntax; parser accepts `qualified` after module name in import declarations; lowerer already handles position-agnostic `qualified` token; 1 e2e test
+18. **DerivingStrategies** — `deriving stock (Show)`, `deriving newtype (Num)`, `deriving anyclass (MyClass)` strategy keywords; parser skips `stock`/`newtype`/`anyclass` VarId before class list in deriving clauses; 2 e2e tests
+19. **PackageImports** — `import "base" Data.List` syntax; parser skips package string literal before module name in import declarations; 1 e2e test
+20. **RoleAnnotations** — `type role T nominal phantom` syntax; parser consumes `type role` declarations as skipped type-sig nodes; 1 e2e test

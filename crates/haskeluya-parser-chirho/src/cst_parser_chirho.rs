@@ -372,6 +372,12 @@ impl<'src> ParserChirho<'src> {
             self.eat_trivia_chirho();
         }
 
+        // PackageImports: skip package name string literal (e.g. "base")
+        if self.at_chirho(RawTokenKindChirho::StringLitChirho) {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+        }
+
         // Module name
         if self.at_chirho(RawTokenKindChirho::ConIdChirho)
             || self.at_chirho(RawTokenKindChirho::QualifiedIdChirho)
@@ -719,6 +725,15 @@ impl<'src> ParserChirho<'src> {
         self.expect_chirho(RawTokenKindChirho::DerivingChirho);
         self.eat_trivia_chirho();
 
+        // DerivingStrategies: consume optional strategy keyword
+        if self.at_varid_text_chirho("stock")
+            || self.at_varid_text_chirho("newtype")
+            || self.at_varid_text_chirho("anyclass")
+        {
+            self.bump_chirho(); // strategy keyword
+            self.eat_trivia_chirho();
+        }
+
         // deriving (Show, Eq) or deriving Show
         if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
             self.bump_chirho();
@@ -781,6 +796,14 @@ impl<'src> ParserChirho<'src> {
         match next_text_chirho {
             "family" => self.parse_type_family_decl_chirho(),
             "instance" => self.parse_type_family_instance_decl_chirho(),
+            "role" => {
+                // RoleAnnotations: `type role T nominal phantom representational`
+                // Just consume the entire declaration
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::TypeSigDeclChirho);
+                self.eat_until_decl_end_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
             _ => self.parse_type_alias_decl_chirho(),
         }
     }
