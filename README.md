@@ -1,16 +1,16 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 -->
 
-# Haskeluya
+# Haskelujah
 
 > *"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."* — John 3:16
 
-Haskeluya is a Haskell compiler written in Rust. It targets practical compatibility with real-world Haskell (GHC semantics, Cabal packages, Hackage libraries) through a typed, modular pipeline with first-class WebAssembly support and multiple native code generation backends.
+Haskelujah is a Haskell compiler written in Rust. It targets practical compatibility with real-world Haskell (GHC semantics, Cabal packages, Hackage libraries) through a typed, modular pipeline with first-class WebAssembly support and multiple native code generation backends.
 
 ## Status
 
 | Metric | Value |
 |---|---|
-| Tests | **1,816 passing**, 0 failures |
+| Tests | **1,883 passing**, 0 failures |
 | Workspace | 21 crates |
 | Codebase | ~100,000 lines of Rust |
 | Rust edition | 2024 (rustc 1.93.0+) |
@@ -55,11 +55,11 @@ Haskeluya is a Haskell compiler written in Rust. It targets practical compatibil
 
 ## Compiler Pipeline
 
-The compiler runs a 12-phase pipeline, wired end-to-end in `haskeluya-driver-chirho`:
+The compiler runs a 12-phase pipeline, wired end-to-end in `haskelujah-driver-chirho`:
 
 ```
 Haskell source
-  1. Lex              — haskeluya-syntax-chirho tokenizer
+  1. Lex              — haskelujah-syntax-chirho tokenizer
   2. Layout           — layout rule insertion (braces/semicolons)
   3. CST Parse        — lossless green-tree concrete syntax tree
   4. AST Lower        — abstract syntax tree from CST
@@ -88,35 +88,35 @@ cargo build --workspace
 cargo test --workspace
 
 # Run driver/runtime integration tests
-cargo test -p haskeluya-driver-chirho
+cargo test -p haskelujah-driver-chirho
 
 # Run parser golden tests
-cargo test -p haskeluya-parser-chirho --test golden_parse_chirho
+cargo test -p haskelujah-parser-chirho --test golden_parse_chirho
 ```
 
 ### CLI Usage
 
 ```bash
 # Type-check a Haskell source file
-haskeluya check MyModule.hs
+haskelujah check MyModule.hs
 
 # Evaluate via the STG interpreter
-haskeluya run MyModule.hs
+haskelujah run MyModule.hs
 
 # Compile to a native executable (via LLVM)
-haskeluya compile MyModule.hs -o main
+haskelujah compile MyModule.hs -o main
 
 # Compile to WebAssembly
-haskeluya compile MyModule.hs --wasm -o out.wasm
+haskelujah compile MyModule.hs --wasm -o out.wasm
 
 # Compile via Cranelift
-haskeluya compile MyModule.hs --cranelift -o main
+haskelujah compile MyModule.hs --cranelift -o main
 
 # Build a multi-module project
-haskeluya build my-project/
+haskelujah build my-project/
 
 # Start the REPL
-haskeluya repl
+haskelujah repl
 ```
 
 **REPL commands:** `:type <expr>`, `:info <name>`, `:load <file>`, `:reload`, `:let <decl>`, `:clear`, `:{`/`:}` (multi-line), `:quit`

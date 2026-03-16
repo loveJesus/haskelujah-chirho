@@ -1,6 +1,6 @@
 <!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. — John 3:16 -->
 
-# Haskeluya Phase 2 Archive — Completed Priorities
+# Haskelujah Phase 2 Archive — Completed Priorities
 
 **Phase 2 span**: 2026-03-14 → 2026-03-15
 **Final state**: 1801 tests passing, 20 crates

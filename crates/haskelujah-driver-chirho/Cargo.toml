@@ -1,0 +1,33 @@
+# For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
+
+[package]
+name = "haskelujah-driver-chirho"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+haskelujah-ast-chirho = { path = "../haskelujah-ast-chirho" }
+haskelujah-backend-llvm-chirho = { path = "../haskelujah-backend-llvm-chirho" }
+haskelujah-core-chirho = { path = "../haskelujah-core-chirho" }
+haskelujah-backend-wasm-chirho = { path = "../haskelujah-backend-wasm-chirho" }
+haskelujah-backend-cranelift-chirho = { path = "../haskelujah-backend-cranelift-chirho" }
+haskelujah-diagnostics-chirho = { path = "../haskelujah-diagnostics-chirho" }
+haskelujah-naming-chirho = { path = "../haskelujah-naming-chirho" }
+haskelujah-parser-chirho = { path = "../haskelujah-parser-chirho" }
+haskelujah-runtime-chirho = { path = "../haskelujah-runtime-chirho" }
+haskelujah-span-chirho = { path = "../haskelujah-span-chirho" }
+haskelujah-syntax-chirho = { path = "../haskelujah-syntax-chirho" }
+haskelujah-typing-chirho = { path = "../haskelujah-typing-chirho" }
+haskelujah-th-chirho = { path = "../haskelujah-th-chirho" }
+haskelujah-incremental-chirho = { path = "../haskelujah-incremental-chirho" }
+haskelujah-package-chirho = { path = "../haskelujah-package-chirho" }
+
+[dev-dependencies]
+tempfile = "3"
+proptest = "1"
+haskelujah-test-harness-chirho = { path = "../haskelujah-test-harness-chirho" }

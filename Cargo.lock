@@ -351,136 +351,136 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 
 [[package]]
-name = "haskeluya-ast-chirho"
+name = "haskelujah-ast-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-span-chirho",
+ "haskelujah-span-chirho",
 ]
 
 [[package]]
-name = "haskeluya-backend-beam-chirho"
+name = "haskelujah-backend-beam-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-core-chirho",
- "haskeluya-span-chirho",
- "haskeluya-typing-chirho",
+ "haskelujah-core-chirho",
+ "haskelujah-span-chirho",
+ "haskelujah-typing-chirho",
 ]
 
 [[package]]
-name = "haskeluya-backend-cranelift-chirho"
+name = "haskelujah-backend-cranelift-chirho"
 version = "0.1.0"
 dependencies = [
  "cranelift-codegen",
  "cranelift-frontend",
  "cranelift-module",
  "cranelift-object",
- "haskeluya-core-chirho",
- "haskeluya-span-chirho",
- "haskeluya-typing-chirho",
+ "haskelujah-core-chirho",
+ "haskelujah-span-chirho",
+ "haskelujah-typing-chirho",
  "target-lexicon",
 ]
 
 [[package]]
-name = "haskeluya-backend-jvm-chirho"
+name = "haskelujah-backend-jvm-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-core-chirho",
- "haskeluya-span-chirho",
- "haskeluya-typing-chirho",
+ "haskelujah-core-chirho",
+ "haskelujah-span-chirho",
+ "haskelujah-typing-chirho",
 ]
 
 [[package]]
-name = "haskeluya-backend-llvm-chirho"
+name = "haskelujah-backend-llvm-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-core-chirho",
- "haskeluya-span-chirho",
- "haskeluya-typing-chirho",
+ "haskelujah-core-chirho",
+ "haskelujah-span-chirho",
+ "haskelujah-typing-chirho",
 ]
 
 [[package]]
-name = "haskeluya-backend-wasm-chirho"
+name = "haskelujah-backend-wasm-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-core-chirho",
- "haskeluya-span-chirho",
- "haskeluya-typing-chirho",
+ "haskelujah-core-chirho",
+ "haskelujah-span-chirho",
+ "haskelujah-typing-chirho",
 ]
 
 [[package]]
-name = "haskeluya-cli-chirho"
+name = "haskelujah-cli-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-ast-chirho",
- "haskeluya-backend-cranelift-chirho",
- "haskeluya-backend-llvm-chirho",
- "haskeluya-backend-wasm-chirho",
- "haskeluya-core-chirho",
- "haskeluya-driver-chirho",
- "haskeluya-naming-chirho",
- "haskeluya-package-chirho",
- "haskeluya-runtime-chirho",
- "haskeluya-span-chirho",
- "haskeluya-syntax-chirho",
- "haskeluya-typing-chirho",
+ "haskelujah-ast-chirho",
+ "haskelujah-backend-cranelift-chirho",
+ "haskelujah-backend-llvm-chirho",
+ "haskelujah-backend-wasm-chirho",
+ "haskelujah-core-chirho",
+ "haskelujah-driver-chirho",
+ "haskelujah-naming-chirho",
+ "haskelujah-package-chirho",
+ "haskelujah-runtime-chirho",
+ "haskelujah-span-chirho",
+ "haskelujah-syntax-chirho",
+ "haskelujah-typing-chirho",
 ]
 
 [[package]]
-name = "haskeluya-core-chirho"
+name = "haskelujah-core-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-ast-chirho",
- "haskeluya-span-chirho",
- "haskeluya-typing-chirho",
+ "haskelujah-ast-chirho",
+ "haskelujah-span-chirho",
+ "haskelujah-typing-chirho",
  "proptest",
 ]
 
 [[package]]
-name = "haskeluya-diagnostics-chirho"
+name = "haskelujah-diagnostics-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-span-chirho",
+ "haskelujah-span-chirho",
 ]
 
 [[package]]
-name = "haskeluya-driver-chirho"
+name = "haskelujah-driver-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-ast-chirho",
- "haskeluya-backend-cranelift-chirho",
- "haskeluya-backend-llvm-chirho",
- "haskeluya-backend-wasm-chirho",
- "haskeluya-core-chirho",
- "haskeluya-diagnostics-chirho",
- "haskeluya-incremental-chirho",
- "haskeluya-naming-chirho",
- "haskeluya-package-chirho",
- "haskeluya-parser-chirho",
- "haskeluya-runtime-chirho",
- "haskeluya-span-chirho",
- "haskeluya-syntax-chirho",
- "haskeluya-test-harness-chirho",
- "haskeluya-th-chirho",
- "haskeluya-typing-chirho",
+ "haskelujah-ast-chirho",
+ "haskelujah-backend-cranelift-chirho",
+ "haskelujah-backend-llvm-chirho",
+ "haskelujah-backend-wasm-chirho",
+ "haskelujah-core-chirho",
+ "haskelujah-diagnostics-chirho",
+ "haskelujah-incremental-chirho",
+ "haskelujah-naming-chirho",
+ "haskelujah-package-chirho",
+ "haskelujah-parser-chirho",
+ "haskelujah-runtime-chirho",
+ "haskelujah-span-chirho",
+ "haskelujah-syntax-chirho",
+ "haskelujah-test-harness-chirho",
+ "haskelujah-th-chirho",
+ "haskelujah-typing-chirho",
  "proptest",
  "tempfile",
 ]
 
 [[package]]
-name = "haskeluya-incremental-chirho"
+name = "haskelujah-incremental-chirho"
 version = "0.1.0"
 
 [[package]]
-name = "haskeluya-naming-chirho"
+name = "haskelujah-naming-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-ast-chirho",
- "haskeluya-diagnostics-chirho",
- "haskeluya-span-chirho",
+ "haskelujah-ast-chirho",
+ "haskelujah-diagnostics-chirho",
+ "haskelujah-span-chirho",
 ]
 
 [[package]]
-name = "haskeluya-package-chirho"
+name = "haskelujah-package-chirho"
 version = "0.1.0"
 dependencies = [
  "flate2",
@@ -490,66 +490,66 @@ dependencies = [
 ]
 
 [[package]]
-name = "haskeluya-parser-chirho"
+name = "haskelujah-parser-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-ast-chirho",
- "haskeluya-diagnostics-chirho",
- "haskeluya-span-chirho",
- "haskeluya-syntax-chirho",
- "haskeluya-test-harness-chirho",
+ "haskelujah-ast-chirho",
+ "haskelujah-diagnostics-chirho",
+ "haskelujah-span-chirho",
+ "haskelujah-syntax-chirho",
+ "haskelujah-test-harness-chirho",
  "proptest",
 ]
 
 [[package]]
-name = "haskeluya-rts-chirho"
+name = "haskelujah-rts-chirho"
 version = "0.1.0"
 
 [[package]]
-name = "haskeluya-runtime-chirho"
+name = "haskelujah-runtime-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-rts-chirho",
+ "haskelujah-rts-chirho",
 ]
 
 [[package]]
-name = "haskeluya-span-chirho"
+name = "haskelujah-span-chirho"
 version = "0.1.0"
 
 [[package]]
-name = "haskeluya-syntax-chirho"
+name = "haskelujah-syntax-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-span-chirho",
+ "haskelujah-span-chirho",
 ]
 
 [[package]]
-name = "haskeluya-test-harness-chirho"
+name = "haskelujah-test-harness-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-diagnostics-chirho",
- "haskeluya-driver-chirho",
- "haskeluya-runtime-chirho",
- "haskeluya-span-chirho",
+ "haskelujah-diagnostics-chirho",
+ "haskelujah-driver-chirho",
+ "haskelujah-runtime-chirho",
+ "haskelujah-span-chirho",
  "tempfile",
 ]
 
 [[package]]
-name = "haskeluya-th-chirho"
+name = "haskelujah-th-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-ast-chirho",
- "haskeluya-diagnostics-chirho",
- "haskeluya-span-chirho",
+ "haskelujah-ast-chirho",
+ "haskelujah-diagnostics-chirho",
+ "haskelujah-span-chirho",
 ]
 
 [[package]]
-name = "haskeluya-typing-chirho"
+name = "haskelujah-typing-chirho"
 version = "0.1.0"
 dependencies = [
- "haskeluya-ast-chirho",
- "haskeluya-diagnostics-chirho",
- "haskeluya-span-chirho",
+ "haskelujah-ast-chirho",
+ "haskelujah-diagnostics-chirho",
+ "haskelujah-span-chirho",
 ]
 
 [[package]]

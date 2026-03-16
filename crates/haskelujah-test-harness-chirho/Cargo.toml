@@ -1,0 +1,18 @@
+# For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
+
+[package]
+name = "haskelujah-test-harness-chirho"
+description = "Golden tests, compatibility suites, and property-test utilities for the Haskelujah compiler"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+haskelujah-span-chirho = { path = "../haskelujah-span-chirho" }
+haskelujah-diagnostics-chirho = { path = "../haskelujah-diagnostics-chirho" }
+haskelujah-driver-chirho = { path = "../haskelujah-driver-chirho" }
+haskelujah-runtime-chirho = { path = "../haskelujah-runtime-chirho" }
+
+[dev-dependencies]
+tempfile = "3"

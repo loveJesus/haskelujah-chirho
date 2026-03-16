@@ -1,6 +1,6 @@
 <!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. — John 3:16 -->
 
-# Haskeluya Phase 3 Progress — Completed Items
+# Haskelujah Phase 3 Progress — Completed Items
 
 **Phase 3 start**: 2026-03-15
 
@@ -29,3 +29,4 @@
 19. **PackageImports** — `import "base" Data.List` syntax; parser skips package string literal before module name in import declarations; 1 e2e test
 20. **RoleAnnotations** — `type role T nominal phantom` syntax; parser consumes `type role` declarations as skipped type-sig nodes; 1 e2e test
 21. **DeriveDataTypeable** — `deriving (Typeable)` / `deriving (Data)` / `deriving (Lift)` / `deriving (NFData)` generate empty instance declarations; avoids unsupported-class warning for these well-known classes; 1 e2e test
+22. **AssociatedTypeFamilies** — `type FamilyName a` inside class declarations; `type FamilyName ConcreteType = ResultType` inside instance declarations; AST `AssocTypeFamilyChirho` and `AssocTfInstanceChirho` types; class lowerer extracts TypeFamilyDeclChirho and TypeAliasDeclChirho from where-blocks; instance lowerer extracts type family instances; type checker registers associated families as open type families during class processing, registers instance equations during instance processing; 3 e2e tests

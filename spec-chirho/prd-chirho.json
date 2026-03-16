@@ -1,7 +1,7 @@
 {
   "_comment_john_3_16_chirho": "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. (John 3:16)",
   "meta_chirho": {
-    "project_chirho": "Haskeluya Chirho",
+    "project_chirho": "Haskelujah Chirho",
     "tagline_chirho": "A production-grade Haskell compiler implemented in Rust",
     "prd_version_chirho": "1.1.0",
     "compiler_version_chirho": "0.1.0-pre",
@@ -61,7 +61,7 @@
         "target_milestone_chirho": "M8+"
       }
     ],
-    "mechanism_chirho": "Rust feature flags in haskeluya-runtime-chirho and haskeluya-driver-chirho. CLI: haskeluya build --profile nostd-chirho. Cabal-level: haskeluya-profile: nostd-chirho in .cabal files."
+    "mechanism_chirho": "Rust feature flags in haskelujah-runtime-chirho and haskelujah-driver-chirho. CLI: haskelujah build --profile nostd-chirho. Cabal-level: haskelujah-profile: nostd-chirho in .cabal files."
   },
 
   "success_criteria_chirho": [
@@ -133,7 +133,7 @@
     {
       "id_chirho": "AD-009",
       "title_chirho": "Base library strategy",
-      "decision_chirho": "Ship minimal haskeluya-base-chirho reimplementing core Prelude and primitives, expand incrementally",
+      "decision_chirho": "Ship minimal haskelujah-base-chirho reimplementing core Prelude and primitives, expand incrementally",
       "status_chirho": "decided",
       "rationale_chirho": "GHC base uses GHC-specific primops impractical to replicate. Clean reimplementation gives full control"
     },
@@ -142,7 +142,7 @@
       "title_chirho": "Interface file format",
       "decision_chirho": "Custom binary format for serialized module signatures; not GHC .hi compatible",
       "status_chirho": "decided",
-      "rationale_chirho": "GHC .hi is tightly coupled to GHC internals. Custom format designed for Haskeluya type representation and incremental compilation"
+      "rationale_chirho": "GHC .hi is tightly coupled to GHC internals. Custom format designed for Haskelujah type representation and incremental compilation"
     },
     {
       "id_chirho": "AD-011",
@@ -234,135 +234,135 @@
 
   "crate_graph_chirho": [
     {
-      "name_chirho": "haskeluya-span-chirho",
+      "name_chirho": "haskelujah-span-chirho",
       "purpose_chirho": "Source offsets, file IDs, byte-offset spans, span arithmetic",
       "depends_on_chirho": [],
       "milestone_chirho": "M0",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-diagnostics-chirho",
+      "name_chirho": "haskelujah-diagnostics-chirho",
       "purpose_chirho": "Structured diagnostics with spans, error codes, labels, fix suggestions",
-      "depends_on_chirho": ["haskeluya-span-chirho"],
+      "depends_on_chirho": ["haskelujah-span-chirho"],
       "milestone_chirho": "M0",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-syntax-chirho",
+      "name_chirho": "haskelujah-syntax-chirho",
       "purpose_chirho": "Token kinds, trivia, red-green syntax node kinds, CST node wrappers, lexer, layout rule",
-      "depends_on_chirho": ["haskeluya-span-chirho"],
+      "depends_on_chirho": ["haskelujah-span-chirho"],
       "milestone_chirho": "M0-M1",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-parser-chirho",
+      "name_chirho": "haskelujah-parser-chirho",
       "purpose_chirho": "Recursive-descent CST parser with error recovery and green tree builder",
-      "depends_on_chirho": ["haskeluya-syntax-chirho", "haskeluya-diagnostics-chirho", "haskeluya-span-chirho"],
+      "depends_on_chirho": ["haskelujah-syntax-chirho", "haskelujah-diagnostics-chirho", "haskelujah-span-chirho"],
       "milestone_chirho": "M1",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-ast-chirho",
+      "name_chirho": "haskelujah-ast-chirho",
       "purpose_chirho": "Abstract syntax tree types and CST-to-AST lowering; typed wrappers over the CST green tree",
-      "depends_on_chirho": ["haskeluya-syntax-chirho", "haskeluya-span-chirho"],
+      "depends_on_chirho": ["haskelujah-syntax-chirho", "haskelujah-span-chirho"],
       "milestone_chirho": "M1",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-naming-chirho",
+      "name_chirho": "haskelujah-naming-chirho",
       "purpose_chirho": "Name resolution, scope analysis, module interfaces (ModuleIfaceChirho), import/export resolution, qualified name support, multi-module import handling",
-      "depends_on_chirho": ["haskeluya-ast-chirho", "haskeluya-span-chirho", "haskeluya-diagnostics-chirho"],
+      "depends_on_chirho": ["haskelujah-ast-chirho", "haskelujah-span-chirho", "haskelujah-diagnostics-chirho"],
       "milestone_chirho": "M1",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-typing-chirho",
+      "name_chirho": "haskelujah-typing-chirho",
       "purpose_chirho": "HM type inference (Algorithm W), unification, substitution, type schemes, typeclass infrastructure (ClassEnvChirho, instance resolution, context reduction), kind inference, pattern exhaustiveness checking, typeclass deriving (Eq, Ord, Show)",
-      "depends_on_chirho": ["haskeluya-ast-chirho", "haskeluya-naming-chirho", "haskeluya-span-chirho", "haskeluya-diagnostics-chirho"],
+      "depends_on_chirho": ["haskelujah-ast-chirho", "haskelujah-naming-chirho", "haskelujah-span-chirho", "haskelujah-diagnostics-chirho"],
       "milestone_chirho": "M1",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-core-chirho",
+      "name_chirho": "haskelujah-core-chirho",
       "purpose_chirho": "System FC-style Core IR, AST-to-Core desugaring, dictionary-passing transform, Core-to-Core simplifier (beta reduction, dead code elimination, constant folding), pretty-printer",
-      "depends_on_chirho": ["haskeluya-ast-chirho", "haskeluya-typing-chirho", "haskeluya-span-chirho"],
+      "depends_on_chirho": ["haskelujah-ast-chirho", "haskelujah-typing-chirho", "haskelujah-span-chirho"],
       "milestone_chirho": "M1",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-runtime-chirho",
+      "name_chirho": "haskelujah-runtime-chirho",
       "purpose_chirho": "STG runtime: value types, heap, evaluation stack, primitive ops, STG machine (MachineChirho), mark-sweep GC (GcStateChirho), FFI (ForeignTableChirho), IO capture",
       "depends_on_chirho": [],
       "milestone_chirho": "M0-M1",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-backend-llvm-chirho",
+      "name_chirho": "haskelujah-backend-llvm-chirho",
       "purpose_chirho": "Core IR to textual LLVM IR codegen; PrimOp-to-native-instruction lowering",
-      "depends_on_chirho": ["haskeluya-core-chirho", "haskeluya-runtime-chirho"],
+      "depends_on_chirho": ["haskelujah-core-chirho", "haskelujah-runtime-chirho"],
       "milestone_chirho": "M1",
       "status_chirho": "in-progress"
     },
     {
-      "name_chirho": "haskeluya-backend-wasm-chirho",
+      "name_chirho": "haskelujah-backend-wasm-chirho",
       "purpose_chirho": "Core IR to binary WebAssembly codegen; PrimOp-to-wasm-opcode lowering",
-      "depends_on_chirho": ["haskeluya-core-chirho", "haskeluya-runtime-chirho"],
+      "depends_on_chirho": ["haskelujah-core-chirho", "haskelujah-runtime-chirho"],
       "milestone_chirho": "M1",
       "status_chirho": "in-progress"
     },
     {
-      "name_chirho": "haskeluya-backend-cranelift-chirho",
+      "name_chirho": "haskelujah-backend-cranelift-chirho",
       "purpose_chirho": "Core IR to Cranelift IR codegen; fast debug/JIT builds without LLVM dependency; uses cranelift-codegen, cranelift-frontend, cranelift-module, cranelift-object",
-      "depends_on_chirho": ["haskeluya-core-chirho", "haskeluya-span-chirho", "haskeluya-typing-chirho"],
+      "depends_on_chirho": ["haskelujah-core-chirho", "haskelujah-span-chirho", "haskelujah-typing-chirho"],
       "milestone_chirho": "M4",
       "status_chirho": "scaffold"
     },
     {
-      "name_chirho": "haskeluya-backend-jvm-chirho",
+      "name_chirho": "haskelujah-backend-jvm-chirho",
       "purpose_chirho": "Core IR to JVM bytecode codegen; enables JVM interop, Android targets, and Scala/Kotlin/Clojure ecosystem access",
-      "depends_on_chirho": ["haskeluya-core-chirho", "haskeluya-span-chirho", "haskeluya-typing-chirho"],
+      "depends_on_chirho": ["haskelujah-core-chirho", "haskelujah-span-chirho", "haskelujah-typing-chirho"],
       "milestone_chirho": "M6",
       "status_chirho": "scaffold"
     },
     {
-      "name_chirho": "haskeluya-backend-beam-chirho",
+      "name_chirho": "haskelujah-backend-beam-chirho",
       "purpose_chirho": "Core IR to BEAM bytecode codegen; enables Erlang/Elixir ecosystem interop and OTP concurrency primitives",
-      "depends_on_chirho": ["haskeluya-core-chirho", "haskeluya-span-chirho", "haskeluya-typing-chirho"],
+      "depends_on_chirho": ["haskelujah-core-chirho", "haskelujah-span-chirho", "haskelujah-typing-chirho"],
       "milestone_chirho": "M6",
       "status_chirho": "scaffold"
     },
     {
-      "name_chirho": "haskeluya-incremental-chirho",
+      "name_chirho": "haskelujah-incremental-chirho",
       "purpose_chirho": "Incremental compilation: fingerprinting, dependency graph, artifact caching, recompilation avoidance",
-      "depends_on_chirho": ["haskeluya-diagnostics-chirho", "haskeluya-span-chirho"],
+      "depends_on_chirho": ["haskelujah-diagnostics-chirho", "haskelujah-span-chirho"],
       "milestone_chirho": "M1",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-package-chirho",
+      "name_chirho": "haskelujah-package-chirho",
       "purpose_chirho": "Cabal file parsing, version constraints, Hackage URL construction, dependency resolver",
-      "depends_on_chirho": ["haskeluya-diagnostics-chirho"],
+      "depends_on_chirho": ["haskelujah-diagnostics-chirho"],
       "milestone_chirho": "M1-M5",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-driver-chirho",
+      "name_chirho": "haskelujah-driver-chirho",
       "purpose_chirho": "Pipeline orchestration (CompileResultChirho), multi-module compilation, STG lowering, eval_source_chirho, mode dispatch",
       "depends_on_chirho": ["all"],
       "milestone_chirho": "M0+",
       "status_chirho": "complete"
     },
     {
-      "name_chirho": "haskeluya-cli-chirho",
+      "name_chirho": "haskelujah-cli-chirho",
       "purpose_chirho": "Command-line interface for check, build, script, repl",
-      "depends_on_chirho": ["haskeluya-driver-chirho"],
+      "depends_on_chirho": ["haskelujah-driver-chirho"],
       "milestone_chirho": "M0+",
       "status_chirho": "scaffold"
     },
     {
-      "name_chirho": "haskeluya-test-harness-chirho",
+      "name_chirho": "haskelujah-test-harness-chirho",
       "purpose_chirho": "Golden test utilities (assert/bless), compatibility suites, property-test utilities",
-      "depends_on_chirho": ["haskeluya-driver-chirho"],
+      "depends_on_chirho": ["haskelujah-driver-chirho"],
       "milestone_chirho": "M0",
       "status_chirho": "complete"
     }
@@ -375,8 +375,8 @@
       "status_chirho": "complete",
       "acceptance_criteria_chirho": [
         "Workspace crate graph matches architecture spec",
-        "haskeluya-span-chirho provides file IDs, byte offsets, and span types",
-        "haskeluya-diagnostics-chirho uses real spans with error codes and labeled secondary spans",
+        "haskelujah-span-chirho provides file IDs, byte offsets, and span types",
+        "haskelujah-diagnostics-chirho uses real spans with error codes and labeled secondary spans",
         "Golden-test and property-test infrastructure exists",
         "Git repository initialized on main_chirho with gh_chirho remote",
         "progress-chirho.sqlite tracking active"
@@ -523,7 +523,7 @@
   },
 
   "base_library_strategy_chirho": {
-    "approach_chirho": "Ship minimal haskeluya-base-chirho package",
+    "approach_chirho": "Ship minimal haskelujah-base-chirho package",
     "initial_scope_chirho": [
       "Prelude (standard functions, type classes, basic IO)",
       "Data.List, Data.Maybe, Data.Either, Data.Tuple",
@@ -559,7 +559,7 @@
       "id_chirho": "R-002",
       "title_chirho": "Base library bootstrap",
       "severity_chirho": "high",
-      "mitigation_chirho": "Write haskeluya-base-chirho incrementally. Use interpreter (M3) to test before native codegen"
+      "mitigation_chirho": "Write haskelujah-base-chirho incrementally. Use interpreter (M3) to test before native codegen"
     },
     {
       "id_chirho": "R-003",
@@ -649,7 +649,7 @@
     },
     {
       "id_chirho": "OQ-003",
-      "question_chirho": "Should haskeluya-base-chirho support rewrite rules from the start?",
+      "question_chirho": "Should haskelujah-base-chirho support rewrite rules from the start?",
       "thinking_chirho": "Yes, in the simplifier (M3). Rewrite rules are heavily used in base for list fusion and are critical for performance of idiomatic Haskell."
     },
     {
@@ -659,8 +659,8 @@
     },
     {
       "id_chirho": "OQ-005",
-      "question_chirho": "Should Haskeluya consume GHC-compiled packages?",
-      "thinking_chirho": "No. GHC .hi format is unstable and deeply coupled to GHC internals. Only Haskeluya-compiled packages for the foreseeable future."
+      "question_chirho": "Should Haskelujah consume GHC-compiled packages?",
+      "thinking_chirho": "No. GHC .hi format is unstable and deeply coupled to GHC internals. Only Haskelujah-compiled packages for the foreseeable future."
     },
     {
       "id_chirho": "OQ-006",

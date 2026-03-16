@@ -9,9 +9,9 @@ Bootstrap the Rust workspace, span infrastructure, diagnostics foundation, and t
 Acceptance criteria:
 
 - workspace crate graph matches the architecture spec closely enough to evolve without a rewrite
-- `haskeluya-span-chirho` provides file IDs, byte offsets, and span types
-- `haskeluya-diagnostics-chirho` uses real spans, supports error codes and labeled secondary spans
-- golden-test and property-test infrastructure exists in `haskeluya-test-harness-chirho`
+- `haskelujah-span-chirho` provides file IDs, byte offsets, and span types
+- `haskelujah-diagnostics-chirho` uses real spans, supports error codes and labeled secondary spans
+- golden-test and property-test infrastructure exists in `haskelujah-test-harness-chirho`
 - Git repository initialized on `main_chirho` with `gh_chirho` remote
 - `progress-chirho.sqlite` tracking active
 
@@ -82,7 +82,7 @@ Acceptance criteria:
 - build plans handling conditional sections and platform-specific code
 - compile selected real-world libraries with tracked compatibility gaps
 - consume interface files across package boundaries
-- `haskeluya-base-chirho` covers enough of Prelude and common modules for real packages
+- `haskelujah-base-chirho` covers enough of Prelude and common modules for real packages
 
 ## Milestone Chirho 6 — WebAssembly Backend
 

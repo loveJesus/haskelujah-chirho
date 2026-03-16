@@ -107,7 +107,7 @@ Linear-memory GC implemented within Wasm's linear memory space:
 
 ### Abstraction
 
-GC operations abstracted behind a trait boundary in `haskeluya-runtime-chirho` so that native and Wasm backends provide different implementations without changing the STG lowering or thunk evaluation protocol.
+GC operations abstracted behind a trait boundary in `haskelujah-runtime-chirho` so that native and Wasm backends provide different implementations without changing the STG lowering or thunk evaluation protocol.
 
 ### Early Requirements
 
