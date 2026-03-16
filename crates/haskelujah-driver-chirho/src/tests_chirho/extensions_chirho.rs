@@ -878,6 +878,22 @@ main = mdo
 // ── Quick-win extension pragmas (batch 3) ──────────────────────────────
 
 #[test]
+fn standalone_kind_sig_with_data_chirho() {
+    // StandaloneKindSignatures: `type T :: *` preceding a data decl
+    let src_chirho = "\
+{-# LANGUAGE StandaloneKindSignatures #-}
+module Test where
+type MyList :: * -> *
+data MyList a = Nil | Cons a (MyList a)
+main = case Cons 1 (Cons 2 Nil) of
+  Cons x _ -> x
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "StandaloneKind2.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(1));
+}
+
+#[test]
 fn strict_extension_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE Strict #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();

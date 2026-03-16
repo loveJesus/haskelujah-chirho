@@ -805,7 +805,42 @@ impl<'src> ParserChirho<'src> {
                 self.eat_until_decl_end_chirho();
                 self.builder_chirho.finish_node_chirho();
             }
-            _ => self.parse_type_alias_decl_chirho(),
+            _ => {
+                // StandaloneKindSignatures: `type T :: Kind`
+                // Detect pattern: `type ConId ::` (no `=` before `::`)
+                // by scanning ahead for `::` before `=` or decl boundary.
+                let mut scan_chirho = look_chirho;
+                let mut is_kind_sig_chirho = false;
+                // Skip past the name token (ConId) to check for ::
+                if scan_chirho < self.tokens_chirho.len() {
+                    scan_chirho += 1; // past ConId
+                    while scan_chirho < self.tokens_chirho.len()
+                        && matches!(
+                            self.tokens_chirho[scan_chirho].kind_chirho,
+                            RawTokenKindChirho::WhitespaceChirho
+                                | RawTokenKindChirho::LineCommentChirho
+                                | RawTokenKindChirho::BlockCommentChirho
+                        )
+                    {
+                        scan_chirho += 1;
+                    }
+                    if scan_chirho < self.tokens_chirho.len()
+                        && self.tokens_chirho[scan_chirho].kind_chirho
+                            == RawTokenKindChirho::ColonColonChirho
+                    {
+                        is_kind_sig_chirho = true;
+                    }
+                }
+                if is_kind_sig_chirho {
+                    // Standalone kind signature — consume as TypeSigDecl (skipped)
+                    self.builder_chirho
+                        .start_node_chirho(SyntaxKindChirho::TypeSigDeclChirho);
+                    self.eat_until_decl_end_chirho();
+                    self.builder_chirho.finish_node_chirho();
+                } else {
+                    self.parse_type_alias_decl_chirho();
+                }
+            }
         }
     }
 
