@@ -181,7 +181,20 @@ impl LowerCtxChirho {
                             }
                         }
                     }
-                    // OPTIONS, etc. — silently ignore for now
+                    // {-# OPTIONS_GHC -XFoo -XBar #-} → extract extensions
+                    if let Some(rest_chirho) = inner_chirho
+                        .strip_prefix("OPTIONS_GHC")
+                        .or_else(|| inner_chirho.strip_prefix("OPTIONS"))
+                    {
+                        for word_chirho in rest_chirho.split_whitespace() {
+                            if let Some(ext_chirho) = word_chirho.strip_prefix("-X") {
+                                if !ext_chirho.is_empty() {
+                                    extensions_chirho.push(ext_chirho.to_string());
+                                }
+                            }
+                        }
+                    }
+                    // Other OPTIONS, etc. — silently ignore for now
                     // INLINE/NOINLINE/INLINABLE pragmas are extracted separately
                 }
             }

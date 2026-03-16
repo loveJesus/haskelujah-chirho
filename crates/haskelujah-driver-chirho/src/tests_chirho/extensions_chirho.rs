@@ -1165,6 +1165,28 @@ main = apply (\x -> x) 42
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
+// ── Non-breaking space as whitespace ───────────────────────────────────
+
+#[test]
+fn non_breaking_space_whitespace_chirho() {
+    // U+00A0 (non-breaking space) between tokens should be treated as whitespace
+    let src_chirho = "module\u{00A0}Test\u{00A0}where\nf\u{00A0}=\u{00A0}42\nmain = f\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NBS.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+// ── OPTIONS_GHC -X extension extraction ───────────────────────────────
+
+#[test]
+fn options_ghc_x_extension_chirho() {
+    // {-# OPTIONS_GHC -XRecursiveDo #-} should enable RecursiveDo extension
+    let src_chirho = "{-# OPTIONS_GHC -XNoImplicitPrelude #-}\nmodule Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "OptsGHC.hs");
+    assert!(result_chirho.is_ok(), "OPTIONS_GHC -X should work: {:?}", result_chirho.err());
+}
+
 // ── Module interface: Type.Reflection ──────────────────────────────────
 
 #[test]

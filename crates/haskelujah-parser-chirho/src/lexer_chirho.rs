@@ -486,11 +486,21 @@ impl<'src> LexerChirho<'src> {
                     if ch_chirho.is_alphabetic() || ch_chirho == '\u{FEFF}' {
                         // Unicode identifier or BOM — treat as ident start
                         self.pos_chirho += ch_chirho.len_utf8();
-                        // Continue eating ident chars
-                        while self.pos_chirho < self.bytes_chirho.len()
-                            && is_ident_char_chirho(self.bytes_chirho[self.pos_chirho])
-                        {
-                            self.pos_chirho += 1;
+                        // Continue eating ident chars (properly decode non-ASCII)
+                        while self.pos_chirho < self.bytes_chirho.len() {
+                            let b_chirho = self.bytes_chirho[self.pos_chirho];
+                            if b_chirho.is_ascii_alphanumeric() || b_chirho == b'_' || b_chirho == b'\'' {
+                                self.pos_chirho += 1;
+                            } else if b_chirho > 0x7F {
+                                let len_chirho = unicode_ident_continue_len_chirho(self.source_chirho, self.pos_chirho);
+                                if len_chirho > 0 {
+                                    self.pos_chirho += len_chirho;
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
                         }
                         // Determine if it's lower or upper
                         if ch_chirho.is_uppercase() {
@@ -899,10 +909,21 @@ impl<'src> LexerChirho<'src> {
     }
 
     fn lex_lower_ident_chirho(&mut self, start_chirho: usize) -> RawTokenChirho {
-        while self.pos_chirho < self.bytes_chirho.len()
-            && is_ident_char_chirho(self.bytes_chirho[self.pos_chirho])
-        {
-            self.pos_chirho += 1;
+        while self.pos_chirho < self.bytes_chirho.len() {
+            let b_chirho = self.bytes_chirho[self.pos_chirho];
+            if b_chirho.is_ascii_alphanumeric() || b_chirho == b'_' || b_chirho == b'\'' {
+                self.pos_chirho += 1;
+            } else if b_chirho > 0x7F {
+                // Non-ASCII: decode to check if it's an identifier char (not whitespace)
+                let len_chirho = unicode_ident_continue_len_chirho(self.source_chirho, self.pos_chirho);
+                if len_chirho > 0 {
+                    self.pos_chirho += len_chirho;
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
         }
 
         // MagicHash: consume trailing # (e.g. foo#, bar##)
@@ -923,10 +944,20 @@ impl<'src> LexerChirho<'src> {
     }
 
     fn lex_upper_ident_chirho(&mut self, start_chirho: usize) -> RawTokenChirho {
-        while self.pos_chirho < self.bytes_chirho.len()
-            && is_ident_char_chirho(self.bytes_chirho[self.pos_chirho])
-        {
-            self.pos_chirho += 1;
+        while self.pos_chirho < self.bytes_chirho.len() {
+            let b_chirho = self.bytes_chirho[self.pos_chirho];
+            if b_chirho.is_ascii_alphanumeric() || b_chirho == b'_' || b_chirho == b'\'' {
+                self.pos_chirho += 1;
+            } else if b_chirho > 0x7F {
+                let len_chirho = unicode_ident_continue_len_chirho(self.source_chirho, self.pos_chirho);
+                if len_chirho > 0 {
+                    self.pos_chirho += len_chirho;
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
         }
 
         // Check for qualified name: Foo.Bar.baz or Foo.Bar.+
@@ -1029,6 +1060,21 @@ fn is_ident_char_chirho(byte_chirho: u8) -> bool {
         || byte_chirho == b'_'
         || byte_chirho == b'\''
         || byte_chirho > 0x7F // Non-ASCII bytes (part of multi-byte UTF-8 chars)
+}
+
+/// Check if the bytes at `pos` form a valid Unicode identifier continuation
+/// character. Returns the byte length of the character if it is, 0 otherwise.
+/// This properly handles Unicode whitespace like non-breaking space (U+00A0)
+/// which should NOT be included in identifiers.
+fn unicode_ident_continue_len_chirho(source_chirho: &str, pos_chirho: usize) -> usize {
+    if let Some(rest_chirho) = source_chirho.get(pos_chirho..) {
+        if let Some(ch_chirho) = rest_chirho.chars().next() {
+            if ch_chirho.is_alphanumeric() || ch_chirho == '_' || ch_chirho == '\'' {
+                return ch_chirho.len_utf8();
+            }
+        }
+    }
+    0
 }
 
 /// Look up a keyword kind from text, returning `None` for identifiers.
