@@ -466,6 +466,32 @@ impl<'src> ParserChirho<'src> {
     // -----------------------------------------------------------------------
 
     fn parse_data_decl_chirho(&mut self) {
+        // Check for `data family` or `data instance` by peeking ahead
+        let mut look_chirho = self.pos_chirho + 1;
+        while look_chirho < self.tokens_chirho.len()
+            && matches!(
+                self.tokens_chirho[look_chirho].kind_chirho,
+                RawTokenKindChirho::WhitespaceChirho
+                    | RawTokenKindChirho::LineCommentChirho
+                    | RawTokenKindChirho::BlockCommentChirho
+            )
+        {
+            look_chirho += 1;
+        }
+        let next_text_chirho = if look_chirho < self.tokens_chirho.len() {
+            self.token_text_chirho(&self.tokens_chirho[look_chirho])
+        } else {
+            ""
+        };
+        if next_text_chirho == "family" || next_text_chirho == "instance" {
+            // data family / data instance — parse as a type-sig-like skipped decl
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::DataDeclChirho);
+            self.eat_until_decl_end_chirho();
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::DataDeclChirho);
 
@@ -960,6 +986,29 @@ impl<'src> ParserChirho<'src> {
     // -----------------------------------------------------------------------
 
     fn parse_newtype_decl_chirho(&mut self) {
+        // Check for `newtype instance` — data family instance with newtype
+        let mut look_chirho = self.pos_chirho + 1;
+        while look_chirho < self.tokens_chirho.len()
+            && matches!(
+                self.tokens_chirho[look_chirho].kind_chirho,
+                RawTokenKindChirho::WhitespaceChirho
+                    | RawTokenKindChirho::LineCommentChirho
+                    | RawTokenKindChirho::BlockCommentChirho
+            )
+        {
+            look_chirho += 1;
+        }
+        if look_chirho < self.tokens_chirho.len()
+            && self.token_text_chirho(&self.tokens_chirho[look_chirho]) == "instance"
+        {
+            // newtype instance — parse as a skipped decl
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::NewtypeDeclChirho);
+            self.eat_until_decl_end_chirho();
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::NewtypeDeclChirho);
 

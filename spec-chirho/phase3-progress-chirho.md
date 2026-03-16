@@ -57,3 +57,4 @@
 47. **Module interfaces batch 3** — Type.Reflection, Unsafe.Coerce, GHC.Exception, GHC.Exception.Type, GHC.IO.Exception, GHC.Arr, GHC.Fingerprint, GHC.ForeignPtr.Internal; 3 e2e tests
 48. **Unicode non-breaking space** — Lexer correctly breaks identifiers at Unicode whitespace (U+00A0 etc.) instead of including them in identifier tokens; `unicode_ident_continue_len_chirho` for proper multi-byte boundary detection; 1 e2e test
 49. **OPTIONS_GHC -X extensions** — `{-# OPTIONS_GHC -XFoo #-}` syntax now extracts extensions just like `{-# LANGUAGE Foo #-}`; 1 e2e test
+50. **Type family reduction in inference** — `reduce_type_families_in_ty_chirho` walker reduces type family applications throughout TyChirho; wired into `ast_type_to_ty_chirho` AppChirho case and all 4 signature-check paths; fixed `lower_type_family_instance_decl_chirho` LHS token capture (ConId/VarId tokens after family name were silently dropped); 3 e2e tests

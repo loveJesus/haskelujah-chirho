@@ -1305,3 +1305,49 @@ main = checkInt
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TFClosed.hs");
     assert!(result_chirho.is_ok(), "Closed type family reduction should compile: {:?}", result_chirho.err());
 }
+
+// ── Data families ──────────────────────────────────────────────────────
+
+#[test]
+fn data_family_decl_compiles_chirho() {
+    // data family declaration should parse and compile without error
+    let src_chirho = r#"
+{-# LANGUAGE TypeFamilies #-}
+module Test where
+data family XList a
+main = 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DataFam.hs", None);
+    assert!(result_chirho.is_ok(), "data family decl should compile: {:?}", result_chirho.err());
+}
+
+#[test]
+fn data_instance_decl_compiles_chirho() {
+    // data instance should parse and compile without error
+    let src_chirho = r#"
+{-# LANGUAGE TypeFamilies #-}
+module Test where
+data family XList a
+data instance XList Int = XListInt [Int]
+main = 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DataInst.hs", None);
+    assert!(result_chirho.is_ok(), "data instance decl should compile: {:?}", result_chirho.err());
+}
+
+#[test]
+fn newtype_instance_decl_compiles_chirho() {
+    // newtype instance should parse and compile without error
+    let src_chirho = r#"
+{-# LANGUAGE TypeFamilies #-}
+module Test where
+data family Wrapper a
+newtype instance Wrapper Int = WrapInt Int
+main = 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NewtypeInst.hs", None);
+    assert!(result_chirho.is_ok(), "newtype instance decl should compile: {:?}", result_chirho.err());
+}

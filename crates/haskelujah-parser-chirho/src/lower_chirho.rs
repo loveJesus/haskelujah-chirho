@@ -126,6 +126,26 @@ impl LowerCtxChirho {
         result_chirho
     }
 
+    /// Check if a CST node contains a specific keyword/identifier text
+    /// among its first few non-trivia tokens (after the leading keyword).
+    fn node_has_keyword_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        keyword_chirho: &str,
+    ) -> bool {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        // Check the first few non-trivia children for the keyword
+        for child_chirho in children_chirho.iter().take(5) {
+            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
+                if tok_chirho.text_chirho() == keyword_chirho {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     /// Get the first token text matching a given kind from a node's children.
     #[allow(dead_code)]
     fn first_token_text_chirho(
@@ -826,10 +846,22 @@ impl LowerCtxChirho {
                 Some(self.lower_fun_bind_chirho(node_chirho, base_chirho, span_chirho))
             }
             SyntaxKindChirho::DataDeclChirho => {
-                Some(self.lower_data_decl_chirho(node_chirho, base_chirho, span_chirho))
+                // Skip `data family` and `data instance` declarations
+                if self.node_has_keyword_chirho(node_chirho, base_chirho, "family")
+                    || self.node_has_keyword_chirho(node_chirho, base_chirho, "instance")
+                {
+                    None
+                } else {
+                    Some(self.lower_data_decl_chirho(node_chirho, base_chirho, span_chirho))
+                }
             }
             SyntaxKindChirho::NewtypeDeclChirho => {
-                Some(self.lower_newtype_decl_chirho(node_chirho, base_chirho, span_chirho))
+                // Skip `newtype instance` declarations
+                if self.node_has_keyword_chirho(node_chirho, base_chirho, "instance") {
+                    None
+                } else {
+                    Some(self.lower_newtype_decl_chirho(node_chirho, base_chirho, span_chirho))
+                }
             }
             SyntaxKindChirho::TypeAliasDeclChirho => {
                 Some(self.lower_type_alias_decl_chirho(node_chirho, base_chirho, span_chirho))
