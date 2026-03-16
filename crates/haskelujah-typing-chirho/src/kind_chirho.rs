@@ -713,8 +713,9 @@ impl KindInferCtxChirho {
 }
 
 /// Convert an AST-level kind annotation to the internal [`KindChirho`] representation.
-/// Convert an AST kind to internal KindChirho.
-/// Kind variables (PolyKinds) are mapped to fresh kind vars via the context.
+/// Kind variables (PolyKinds) default to `*` in this standalone version;
+/// use `ast_kind_to_kind_ctx_chirho` for proper kind variable allocation.
+#[cfg(test)]
 fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
     match ast_chirho {
         AstKindChirho::StarChirho => KindChirho::StarChirho,

@@ -857,3 +857,20 @@ main = f 41
         "expected W4201 wildcard warning for `_` in type signature"
     );
 }
+
+// ── RecursiveDo (mdo) ──────────────────────────────────────────────────
+
+#[test]
+fn mdo_parses_as_do_chirho() {
+    // mdo keyword should be treated as do (RecursiveDo)
+    let src_chirho = "\
+{-# LANGUAGE RecursiveDo #-}
+module Test where
+main = mdo
+  let x = 42
+  return x
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Mdo.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}

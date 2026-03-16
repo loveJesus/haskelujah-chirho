@@ -1039,7 +1039,7 @@ fn keyword_kind_chirho(text_chirho: &str) -> Option<RawTokenKindChirho> {
         "data" => Some(RawTokenKindChirho::DataChirho),
         "default" => Some(RawTokenKindChirho::DefaultChirho),
         "deriving" => Some(RawTokenKindChirho::DerivingChirho),
-        "do" => Some(RawTokenKindChirho::DoChirho),
+        "do" | "mdo" => Some(RawTokenKindChirho::DoChirho),
         "else" => Some(RawTokenKindChirho::ElseChirho),
         "foreign" => Some(RawTokenKindChirho::ForeignChirho),
         "if" => Some(RawTokenKindChirho::IfChirho),
