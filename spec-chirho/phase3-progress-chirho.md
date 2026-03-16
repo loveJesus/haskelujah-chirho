@@ -47,3 +47,7 @@
 37. **RecursiveDo (mdo)** — `mdo` keyword lexes as `DoChirho` token, parsed as regular do-block; 1 e2e test
 38. **Quick-win extensions batch 3** — Strict, StrictData, ApplicativeDo, GeneralizedNewtypeDeriving, DeriveLift, Safe, Trustworthy, CPP, TemplateHaskellQuotes, QualifiedDo, OverloadedRecordUpdate, TypeData; 12 e2e tests
 39. **StandaloneKindSignatures (proper)** — Parser detects `type ConId ::` pattern and parses as TypeSigDeclChirho (skipped) instead of broken type alias; 2 e2e tests
+40. **GHC2021/GHC2024 meta-extensions** — `{-# LANGUAGE GHC2021 #-}` and `{-# LANGUAGE GHC2024 #-}` expand to 38 constituent extensions (BangPatterns, DataKinds, DeriveDataTypeable, DeriveFunctor, etc.); `ghc2021_extensions_chirho()` function; 2 e2e tests
+41. **Library type schemes expansion** — 15+ type schemes: realToFrac, fromIntegral, toInteger, toRational, errorWithoutStackTrace, div/mod/quot/rem, divMod/quotRem, IORef, STRef; fixes additional GHC typecheck failures; 4 e2e tests
+42. **Transformers module interfaces** — 7 synthetic module interfaces: Control.Monad.Trans.Identity, .State/.Lazy/.Strict, .Reader, .Writer/.Lazy/.Strict, .Except, .Maybe; 2 e2e tests
+43. **Desugarer robustness** — Fix pat_idx out-of-bounds panic in all-default case optimization; replace TH splice/quote panics with dummy literals; eliminates crashes on GHC test files; 1 e2e test
