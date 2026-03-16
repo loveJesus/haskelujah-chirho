@@ -1506,6 +1506,46 @@ impl<'src> ParserChirho<'src> {
             self.parse_type_chirho(); // right-recursive
             self.builder_chirho.finish_node_chirho();
         }
+        // TypeOperators: check for infix operator in type position (e.g. `a :+: b`)
+        // VarSym or ConSym that isn't a special symbol like %, !, ~, @
+        if (self.at_chirho(RawTokenKindChirho::VarSymChirho)
+            || self.at_chirho(RawTokenKindChirho::ConSymChirho))
+            && !matches!(self.current_text_chirho(), "%" | "!" | "~" | "@" | "|")
+        {
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::InfixTypeChirho,
+            );
+            self.bump_chirho(); // operator
+            self.eat_trivia_chirho();
+            self.parse_type_chirho(); // right operand
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+        // Backtick infix type constructors: a `Either` b
+        if self.at_chirho(RawTokenKindChirho::BacktickChirho) {
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::InfixTypeChirho,
+            );
+            self.bump_chirho(); // `
+            self.eat_trivia_chirho();
+            // Consume the type constructor name
+            if self.at_chirho(RawTokenKindChirho::ConIdChirho)
+                || self.at_chirho(RawTokenKindChirho::VarIdChirho)
+                || self.at_chirho(RawTokenKindChirho::QualifiedIdChirho)
+            {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+            if self.at_chirho(RawTokenKindChirho::BacktickChirho) {
+                self.bump_chirho(); // closing `
+                self.eat_trivia_chirho();
+            }
+            self.parse_type_chirho(); // right operand
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
         // Otherwise, just the btype stands as-is (no wrapping needed).
     }
 

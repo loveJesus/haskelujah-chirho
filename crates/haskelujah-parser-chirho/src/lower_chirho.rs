@@ -1770,9 +1770,12 @@ impl LowerCtxChirho {
                     } else if saw_type_chirho && !saw_equals_chirho {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                        if (tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho)
                             && name_chirho.is_none()
                         {
+                            // TypeOperators: operator names (:+:, +, etc.) as type alias name
                             name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
                         } else if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
                             type_vars_chirho
@@ -3223,10 +3226,31 @@ impl LowerCtxChirho {
                         span_chirho,
                     }
                 } else {
-                    // Unit type ()
-                    TypeChirho::TupleChirho {
-                        elements_chirho: vec![],
-                        span_chirho,
+                    // Check for operator-as-type-constructor: (:+:), (->), (+), etc.
+                    let op_token_chirho = children_chirho.iter().find_map(|c_chirho| {
+                        if let GreenElementChirho::TokenChirho(tok_chirho) = c_chirho.element_chirho {
+                            let k_chirho = tok_chirho.kind_chirho();
+                            if k_chirho == TokenKindChirho::VarSymChirho
+                                || k_chirho == TokenKindChirho::ConSymChirho
+                                || k_chirho == TokenKindChirho::RightArrowChirho
+                            {
+                                let s_chirho = self.span_chirho(
+                                    c_chirho.start_chirho,
+                                    c_chirho.end_chirho,
+                                );
+                                return Some(self.name_from_token_chirho(tok_chirho, s_chirho));
+                            }
+                        }
+                        None
+                    });
+                    if let Some(op_name_chirho) = op_token_chirho {
+                        TypeChirho::ConChirho(op_name_chirho)
+                    } else {
+                        // Unit type ()
+                        TypeChirho::TupleChirho {
+                            elements_chirho: vec![],
+                            span_chirho,
+                        }
                     }
                 }
             }
@@ -3351,6 +3375,62 @@ impl LowerCtxChirho {
                     .map(|tc_chirho| self.lower_type_from_child_chirho(tc_chirho))
                     .collect();
                 TypeChirho::PromotedListChirho { elements_chirho, span_chirho }
+            }
+            SyntaxKindChirho::InfixTypeChirho => {
+                // TypeOperators: `a :+: b` or `a `Either` b`
+                // Children: left-type, operator-token (or backtick-name-backtick), right-type
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let type_nodes_chirho: Vec<_> = children_chirho
+                    .iter()
+                    .filter(|c_chirho| {
+                        matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(n_chirho)
+                            if is_type_kind_chirho(n_chirho.kind_chirho()))
+                    })
+                    .collect();
+                // Extract the operator name from tokens
+                let op_name_chirho = children_chirho.iter().find_map(|c_chirho| {
+                    if let GreenElementChirho::TokenChirho(tok_chirho) = c_chirho.element_chirho {
+                        let k_chirho = tok_chirho.kind_chirho();
+                        if k_chirho == TokenKindChirho::VarSymChirho
+                            || k_chirho == TokenKindChirho::ConSymChirho
+                            || k_chirho == TokenKindChirho::ConIdChirho
+                            || k_chirho == TokenKindChirho::VarIdChirho
+                        {
+                            let txt_chirho = tok_chirho.text_chirho();
+                            if txt_chirho != "`" {
+                                let s_chirho = self.span_chirho(
+                                    c_chirho.start_chirho,
+                                    c_chirho.end_chirho,
+                                );
+                                return Some(self.name_from_token_chirho(tok_chirho, s_chirho));
+                            }
+                        }
+                    }
+                    None
+                });
+                if type_nodes_chirho.len() >= 2 {
+                    let left_chirho = self.lower_type_from_child_chirho(type_nodes_chirho[0]);
+                    let right_chirho = self.lower_type_from_child_chirho(
+                        type_nodes_chirho[type_nodes_chirho.len() - 1],
+                    );
+                    let op_ty_chirho = if let Some(name_chirho) = op_name_chirho {
+                        TypeChirho::ConChirho(name_chirho)
+                    } else {
+                        self.placeholder_type_chirho()
+                    };
+                    // Desugar: `a Op b` → `Op a b` = App(App(Op, a), b)
+                    TypeChirho::AppChirho {
+                        fun_chirho: Box::new(TypeChirho::AppChirho {
+                            fun_chirho: Box::new(op_ty_chirho),
+                            arg_chirho: Box::new(left_chirho),
+                            span_chirho,
+                        }),
+                        arg_chirho: Box::new(right_chirho),
+                        span_chirho,
+                    }
+                } else {
+                    self.placeholder_type_chirho()
+                }
             }
             _ => {
                 // Fallback: try to extract a name
@@ -5956,6 +6036,7 @@ fn is_type_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::ContextChirho
             | SyntaxKindChirho::PromotedConTypeChirho
             | SyntaxKindChirho::PromotedListTypeChirho
+            | SyntaxKindChirho::InfixTypeChirho
     )
 }
 

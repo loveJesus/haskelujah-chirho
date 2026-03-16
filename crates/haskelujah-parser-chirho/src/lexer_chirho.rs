@@ -752,8 +752,45 @@ impl<'src> LexerChirho<'src> {
                     {
                         self.pos_chirho += 1;
                     }
+                    // HexFloatLiterals: 0xHH.HHpEE or 0xHHpEE
+                    let mut is_hex_float_chirho = false;
+                    if self.pos_chirho < self.bytes_chirho.len()
+                        && self.bytes_chirho[self.pos_chirho] == b'.'
+                        && self.peek_at_chirho(1).is_some_and(|b_chirho| b_chirho.is_ascii_hexdigit())
+                    {
+                        is_hex_float_chirho = true;
+                        self.pos_chirho += 1; // skip .
+                        while self.pos_chirho < self.bytes_chirho.len()
+                            && (self.bytes_chirho[self.pos_chirho].is_ascii_hexdigit()
+                                || self.bytes_chirho[self.pos_chirho] == b'_')
+                        {
+                            self.pos_chirho += 1;
+                        }
+                    }
+                    // Exponent part: p or P followed by optional sign and decimal digits
+                    if self.pos_chirho < self.bytes_chirho.len()
+                        && matches!(self.bytes_chirho[self.pos_chirho], b'p' | b'P')
+                    {
+                        is_hex_float_chirho = true;
+                        self.pos_chirho += 1;
+                        if self.pos_chirho < self.bytes_chirho.len()
+                            && matches!(self.bytes_chirho[self.pos_chirho], b'+' | b'-')
+                        {
+                            self.pos_chirho += 1;
+                        }
+                        while self.pos_chirho < self.bytes_chirho.len()
+                            && (self.bytes_chirho[self.pos_chirho].is_ascii_digit()
+                                || self.bytes_chirho[self.pos_chirho] == b'_')
+                        {
+                            self.pos_chirho += 1;
+                        }
+                    }
                     return self.make_token_chirho(
-                        RawTokenKindChirho::IntLitChirho,
+                        if is_hex_float_chirho {
+                            RawTokenKindChirho::FloatLitChirho
+                        } else {
+                            RawTokenKindChirho::IntLitChirho
+                        },
                         start_chirho,
                     );
                 }

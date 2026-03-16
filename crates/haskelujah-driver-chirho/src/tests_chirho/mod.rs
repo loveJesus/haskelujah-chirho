@@ -23,3 +23,4 @@ pub mod report_chirho;
 pub mod roundtrip_chirho;
 pub mod splice_chirho;
 pub mod linear_chirho;
+pub mod extensions_chirho;

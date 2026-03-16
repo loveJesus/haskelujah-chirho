@@ -208,6 +208,8 @@ pub enum SyntaxKindChirho {
     PromotedConTypeChirho,
     /// DataKinds promoted list type (`'[Int, Bool]`).
     PromotedListTypeChirho,
+    /// Infix type operator (`a :+: b`, `a `Either` b`).
+    InfixTypeChirho,
 
     // -- Template Haskell --
     /// A splice expression (`$(expr)` or `$name`).
@@ -331,6 +333,7 @@ impl SyntaxKindChirho {
                 | Self::KindAnnotTypeChirho
                 | Self::PromotedConTypeChirho
                 | Self::PromotedListTypeChirho
+                | Self::InfixTypeChirho
         )
     }
 }
