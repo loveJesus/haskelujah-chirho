@@ -178,6 +178,15 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
                                 Err(msg_chirho) => warnings_chirho.push(msg_chirho),
                             }
                         }
+                        // DeriveDataTypeable / DeriveGeneric: empty instance for known classes
+                        "Typeable" | "Data" | "Lift" | "NFData" => {
+                            instances_chirho.push(derive_anyclass_chirho(
+                                name_chirho,
+                                type_vars_chirho,
+                                class_chirho,
+                                *span_chirho,
+                            ));
+                        }
                         other_chirho => {
                             if module_chirho.extensions_chirho.iter().any(|e_chirho| e_chirho == "DeriveAnyClass") {
                                 // DeriveAnyClass: generate empty instance relying on defaults
@@ -511,6 +520,9 @@ fn derive_class_for_data_chirho(
                 Ok(inst_chirho) => instances_chirho.push(inst_chirho),
                 Err(msg_chirho) => warnings_chirho.push(msg_chirho),
             }
+        }
+        "Typeable" | "Data" | "Lift" | "NFData" => {
+            // Generate empty instance for these well-known classes
         }
         other_chirho => {
             warnings_chirho.push(format!(

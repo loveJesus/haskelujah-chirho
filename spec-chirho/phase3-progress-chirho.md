@@ -28,3 +28,4 @@
 18. **DerivingStrategies** — `deriving stock (Show)`, `deriving newtype (Num)`, `deriving anyclass (MyClass)` strategy keywords; parser skips `stock`/`newtype`/`anyclass` VarId before class list in deriving clauses; 2 e2e tests
 19. **PackageImports** — `import "base" Data.List` syntax; parser skips package string literal before module name in import declarations; 1 e2e test
 20. **RoleAnnotations** — `type role T nominal phantom` syntax; parser consumes `type role` declarations as skipped type-sig nodes; 1 e2e test
+21. **DeriveDataTypeable** — `deriving (Typeable)` / `deriving (Data)` / `deriving (Lift)` / `deriving (NFData)` generate empty instance declarations; avoids unsupported-class warning for these well-known classes; 1 e2e test

@@ -2172,3 +2172,20 @@ main = print TagA
         assert_eq!(m_chirho.io_output_chirho, "TagA\n");
     }
 
+    // ── DeriveDataTypeable test ─────────────────────────────────────────
+
+    #[test]
+    fn derive_data_typeable_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE DeriveDataTypeable #-}
+module Test where
+data Color = Red | Green | Blue deriving (Show, Eq, Typeable)
+main = print Green
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DeriveDataTypeable failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "Green\n");
+    }
+
