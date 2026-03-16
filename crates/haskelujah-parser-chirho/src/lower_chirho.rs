@@ -54,8 +54,12 @@ struct LowerCtxChirho {
 /// Parse an integer literal that may have a hex (0x/0X), octal (0o/0O),
 /// or binary (0b/0B) prefix.
 fn parse_integer_literal_chirho(text_chirho: &str) -> i64 {
-    // Strip NumericUnderscores
-    let clean_chirho: String = text_chirho.chars().filter(|c_chirho| *c_chirho != '_').collect();
+    // Strip MagicHash trailing # and NumericUnderscores
+    let clean_chirho: String = text_chirho
+        .trim_end_matches('#')
+        .chars()
+        .filter(|c_chirho| *c_chirho != '_')
+        .collect();
     let text_chirho = &clean_chirho;
     if let Some(hex_chirho) = text_chirho
         .strip_prefix("0x")
@@ -2896,7 +2900,7 @@ impl LowerCtxChirho {
                     TokenKindChirho::StringLiteralChirho
                         if phase_chirho == 2 || phase_chirho == 3 =>
                     {
-                        let raw_chirho = text_chirho;
+                        let raw_chirho = text_chirho.trim_end_matches('#');
                         let trimmed_chirho = raw_chirho
                             .strip_prefix('"')
                             .unwrap_or(raw_chirho)
@@ -4841,7 +4845,8 @@ impl LowerCtxChirho {
                                 ));
                             }
                             TokenKindChirho::StringLiteralChirho => {
-                                let raw_chirho = tok_chirho.text_chirho();
+                                // MagicHash: strip trailing # (e.g. "hello"#)
+                                let raw_chirho = tok_chirho.text_chirho().trim_end_matches('#');
                                 let s_chirho = if raw_chirho.starts_with('"')
                                     && raw_chirho.ends_with('"')
                                 {
@@ -4856,6 +4861,7 @@ impl LowerCtxChirho {
                             TokenKindChirho::FloatLiteralChirho => {
                                 let clean_chirho: String = tok_chirho
                                     .text_chirho()
+                                    .trim_end_matches('#')
                                     .chars()
                                     .filter(|c_chirho| *c_chirho != '_')
                                     .collect();
@@ -4867,7 +4873,7 @@ impl LowerCtxChirho {
                                 ));
                             }
                             TokenKindChirho::CharLiteralChirho => {
-                                let raw_chirho = tok_chirho.text_chirho();
+                                let raw_chirho = tok_chirho.text_chirho().trim_end_matches('#');
                                 let c_chirho = if raw_chirho.starts_with('\'')
                                     && raw_chirho.ends_with('\'')
                                     && raw_chirho.len() >= 3
@@ -5044,19 +5050,20 @@ impl LowerCtxChirho {
                         return LitChirho::IntChirho(val_chirho, span_chirho);
                     }
                     TokenKindChirho::FloatLiteralChirho => {
-                        let clean_chirho: String = tok_chirho.text_chirho().chars().filter(|c_chirho| *c_chirho != '_').collect();
+                        let clean_chirho: String = tok_chirho.text_chirho().trim_end_matches('#').chars().filter(|c_chirho| *c_chirho != '_').collect();
                         let val_chirho =
                             clean_chirho.parse::<f64>().unwrap_or(0.0);
                         return LitChirho::FloatChirho(val_chirho, span_chirho);
                     }
                     TokenKindChirho::CharLiteralChirho => {
-                        let text_chirho = tok_chirho.text_chirho();
+                        let text_chirho = tok_chirho.text_chirho().trim_end_matches('#');
                         let inner_chirho = text_chirho.trim_matches('\'');
                         let ch_chirho = unescape_char_chirho(inner_chirho);
                         return LitChirho::CharChirho(ch_chirho, span_chirho);
                     }
                     TokenKindChirho::StringLiteralChirho => {
-                        let text_chirho = tok_chirho.text_chirho();
+                        // MagicHash: strip trailing # before quote extraction
+                        let text_chirho = tok_chirho.text_chirho().trim_end_matches('#');
                         let raw_chirho = text_chirho
                             .strip_prefix('"')
                             .and_then(|s_chirho| s_chirho.strip_suffix('"'))

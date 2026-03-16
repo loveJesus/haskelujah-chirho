@@ -414,6 +414,83 @@ main = f 20 22
 // ── TypeSynonymInstances ────────────────────────────────────────────────
 
 #[test]
+// ── MagicHash ───────────────────────────────────────────────────────────
+
+#[test]
+fn magic_hash_ident_chirho() {
+    // Identifiers ending in # should parse fine
+    let src_chirho = "\
+{-# LANGUAGE MagicHash #-}
+module Test where
+foo# = 42
+main = foo#
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "MagicHash.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn magic_hash_type_chirho() {
+    // Type names ending in # should parse fine
+    let src_chirho = "\
+{-# LANGUAGE MagicHash #-}
+module Test where
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "MagicType.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn magic_hash_int_literal_chirho() {
+    // Integer literal with # suffix: 42# treated as 42
+    let src_chirho = "\
+{-# LANGUAGE MagicHash #-}
+module Test where
+main = 42#
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "MagicInt.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn magic_hash_lexer_ident_chirho() {
+    // Verify lexer produces VarId for foo#
+    use haskelujah_parser_chirho::lexer_chirho::LexerChirho;
+    let fid_chirho = haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO;
+    let mut lexer_chirho = LexerChirho::new_chirho("foo# bar#", fid_chirho);
+    let tokens_chirho = lexer_chirho.lex_all_chirho();
+    let var_count_chirho = tokens_chirho
+        .iter()
+        .filter(|t_chirho| {
+            t_chirho.kind_chirho == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::VarIdChirho
+        })
+        .count();
+    assert_eq!(var_count_chirho, 2, "foo# and bar# should lex as VarId");
+}
+
+#[test]
+fn magic_hash_lexer_con_chirho() {
+    // Verify lexer produces ConId for Int#
+    use haskelujah_parser_chirho::lexer_chirho::LexerChirho;
+    let fid_chirho = haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO;
+    let mut lexer_chirho = LexerChirho::new_chirho("Int# Char##", fid_chirho);
+    let tokens_chirho = lexer_chirho.lex_all_chirho();
+    let con_count_chirho = tokens_chirho
+        .iter()
+        .filter(|t_chirho| {
+            t_chirho.kind_chirho == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::ConIdChirho
+        })
+        .count();
+    assert_eq!(con_count_chirho, 2, "Int# and Char## should lex as ConId");
+}
+
+// ── TypeSynonymInstances ────────────────────────────────────────────────
+
+#[test]
 fn type_synonym_instances_chirho() {
     // TypeSynonymInstances pragma accepted; type synonym instance compiles
     let src_chirho = "\

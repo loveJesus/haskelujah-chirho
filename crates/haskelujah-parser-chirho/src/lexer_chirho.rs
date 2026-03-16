@@ -542,6 +542,19 @@ impl<'src> LexerChirho<'src> {
             .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
     }
 
+    /// MagicHash: consume one or more trailing `#` characters.
+    /// In GHC, `MagicHash` allows `#` at the end of identifiers and literals
+    /// (e.g. `Int#`, `foo#`, `42#`, `"hello"#`, `3.14##`).
+    /// We always accept this in the lexer since `#` is syntactically unambiguous
+    /// at these positions — it cannot appear in standard Haskell here.
+    fn consume_magic_hash_chirho(&mut self) {
+        while self.pos_chirho < self.bytes_chirho.len()
+            && self.bytes_chirho[self.pos_chirho] == b'#'
+        {
+            self.pos_chirho += 1;
+        }
+    }
+
     fn make_token_chirho(
         &self,
         kind_chirho: RawTokenKindChirho,
@@ -656,6 +669,8 @@ impl<'src> LexerChirho<'src> {
             match self.bytes_chirho[self.pos_chirho] {
                 b'"' => {
                     self.pos_chirho += 1;
+                    // MagicHash: consume trailing # (e.g. "hello"#)
+                    self.consume_magic_hash_chirho();
                     return self.make_token_chirho(
                         RawTokenKindChirho::StringLitChirho,
                         start_chirho,
@@ -732,6 +747,8 @@ impl<'src> LexerChirho<'src> {
             && self.bytes_chirho[self.pos_chirho] == b'\''
         {
             self.pos_chirho += 1;
+            // MagicHash: consume trailing # (e.g. 'a'#)
+            self.consume_magic_hash_chirho();
             self.make_token_chirho(RawTokenKindChirho::CharLitChirho, start_chirho)
         } else {
             // Not a char literal — might be a tick used for promoted types
@@ -785,6 +802,8 @@ impl<'src> LexerChirho<'src> {
                             self.pos_chirho += 1;
                         }
                     }
+                    // MagicHash: consume trailing # on hex literals
+                    self.consume_magic_hash_chirho();
                     return self.make_token_chirho(
                         if is_hex_float_chirho {
                             RawTokenKindChirho::FloatLitChirho
@@ -801,6 +820,8 @@ impl<'src> LexerChirho<'src> {
                     {
                         self.pos_chirho += 1;
                     }
+                    // MagicHash: consume trailing # on octal literals
+                    self.consume_magic_hash_chirho();
                     return self.make_token_chirho(
                         RawTokenKindChirho::IntLitChirho,
                         start_chirho,
@@ -813,6 +834,8 @@ impl<'src> LexerChirho<'src> {
                     {
                         self.pos_chirho += 1;
                     }
+                    // MagicHash: consume trailing # on binary literals
+                    self.consume_magic_hash_chirho();
                     return self.make_token_chirho(
                         RawTokenKindChirho::IntLitChirho,
                         start_chirho,
@@ -870,6 +893,8 @@ impl<'src> LexerChirho<'src> {
         } else {
             RawTokenKindChirho::IntLitChirho
         };
+        // MagicHash: consume trailing # (e.g. 42#, 3.14##)
+        self.consume_magic_hash_chirho();
         self.make_token_chirho(kind_chirho, start_chirho)
     }
 
@@ -879,6 +904,9 @@ impl<'src> LexerChirho<'src> {
         {
             self.pos_chirho += 1;
         }
+
+        // MagicHash: consume trailing # (e.g. foo#, bar##)
+        self.consume_magic_hash_chirho();
 
         let text_chirho = self.source_chirho
             .get(start_chirho..self.pos_chirho)
@@ -934,12 +962,16 @@ impl<'src> LexerChirho<'src> {
                     self.pos_chirho += 1;
                 }
             }
+            // MagicHash: consume trailing # on qualified names
+            self.consume_magic_hash_chirho();
             return self.make_token_chirho(
                 RawTokenKindChirho::QualifiedIdChirho,
                 start_chirho,
             );
         }
 
+        // MagicHash: consume trailing # (e.g. Int#, MutableArray##)
+        self.consume_magic_hash_chirho();
         self.make_token_chirho(RawTokenKindChirho::ConIdChirho, start_chirho)
     }
 
