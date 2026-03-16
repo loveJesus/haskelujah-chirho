@@ -89,6 +89,7 @@ pub enum RawTokenKindChirho {
     PipeChirho,         // |
     LeftArrowChirho,    // <-
     RightArrowChirho,   // ->
+    LinearArrowChirho,  // ⊸  (LinearTypes)
     FatArrowChirho,     // =>
     AtChirho,           // @
     TildeChirho,        // ~
@@ -463,6 +464,7 @@ impl<'src> LexerChirho<'src> {
                             '⇒' => (Some(RawTokenKindChirho::FatArrowChirho), ch_pre_chirho.len_utf8()),
                             '∀' => (Some(RawTokenKindChirho::ForallChirho), ch_pre_chirho.len_utf8()),
                             'λ' => (Some(RawTokenKindChirho::BackslashChirho), ch_pre_chirho.len_utf8()),
+                            '⊸' => (Some(RawTokenKindChirho::LinearArrowChirho), ch_pre_chirho.len_utf8()),
                             _ => (None, 0),
                         };
                         if let Some(kind_chirho) = kind_opt_chirho {

@@ -17,7 +17,7 @@ use haskelujah_ast_chirho::expr_chirho::MatchArmChirho;
 use std::fmt;
 
 use crate::subst_chirho::SubstChirho;
-use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
+use crate::ty_chirho::{MultChirho, SchemeChirho, TyChirho, TyVarChirho};
 
 /// A class predicate: `ClassName Type`, e.g. `Eq Int`, `Show a`.
 /// For multi-parameter type classes: `Convert Int String`.
@@ -608,7 +608,7 @@ impl ClassEnvChirho {
                             Box::new(TyChirho::FunChirho(
                                 Box::new(TyChirho::VarChirho(functor_a_chirho)),
                                 Box::new(TyChirho::VarChirho(functor_b_chirho)),
-                            )),
+                             MultChirho::ManyChirho,)),
                             Box::new(TyChirho::FunChirho(
                                 Box::new(TyChirho::AppChirho(
                                     Box::new(TyChirho::VarChirho(f_var_chirho)),
@@ -618,8 +618,8 @@ impl ClassEnvChirho {
                                     Box::new(TyChirho::VarChirho(f_var_chirho)),
                                     Box::new(TyChirho::VarChirho(functor_b_chirho)),
                                 )),
-                            )),
-                        ),
+                             MultChirho::ManyChirho,)),
+                         MultChirho::ManyChirho,),
                     },
                 ),
             ]),
@@ -651,7 +651,7 @@ impl ClassEnvChirho {
                                 Box::new(TyChirho::VarChirho(app_var_chirho)),
                                 Box::new(TyChirho::VarChirho(app_a_chirho)),
                             )),
-                        ),
+                         MultChirho::ManyChirho,),
                     },
                 ),
                 // (<*>) :: f (a -> b) -> f a -> f b
@@ -666,7 +666,7 @@ impl ClassEnvChirho {
                                 Box::new(TyChirho::FunChirho(
                                     Box::new(TyChirho::VarChirho(app_a_chirho)),
                                     Box::new(TyChirho::VarChirho(app_b_chirho)),
-                                )),
+                                 MultChirho::ManyChirho,)),
                             )),
                             Box::new(TyChirho::FunChirho(
                                 Box::new(TyChirho::AppChirho(
@@ -677,8 +677,8 @@ impl ClassEnvChirho {
                                     Box::new(TyChirho::VarChirho(app_var_chirho)),
                                     Box::new(TyChirho::VarChirho(app_b_chirho)),
                                 )),
-                            )),
-                        ),
+                             MultChirho::ManyChirho,)),
+                         MultChirho::ManyChirho,),
                     },
                 ),
             ]),
@@ -716,13 +716,13 @@ impl ClassEnvChirho {
                                         Box::new(TyChirho::VarChirho(m_var_chirho)),
                                         Box::new(TyChirho::VarChirho(monad_b_chirho)),
                                     )),
-                                )),
+                                 MultChirho::ManyChirho,)),
                                 Box::new(TyChirho::AppChirho(
                                     Box::new(TyChirho::VarChirho(m_var_chirho)),
                                     Box::new(TyChirho::VarChirho(monad_b_chirho)),
                                 )),
-                            )),
-                        ),
+                             MultChirho::ManyChirho,)),
+                         MultChirho::ManyChirho,),
                     },
                 ),
                 // (>>) :: m a -> m b -> m b
@@ -745,8 +745,8 @@ impl ClassEnvChirho {
                                     Box::new(TyChirho::VarChirho(m_var_chirho)),
                                     Box::new(TyChirho::VarChirho(monad_b_chirho)),
                                 )),
-                            )),
-                        ),
+                             MultChirho::ManyChirho,)),
+                         MultChirho::ManyChirho,),
                     },
                 ),
             ]),
@@ -774,15 +774,15 @@ impl ClassEnvChirho {
                             Box::new(TyChirho::FunChirho(
                                 Box::new(TyChirho::VarChirho(foldable_a_chirho)),
                                 Box::new(TyChirho::VarChirho(foldable_m_chirho)),
-                            )),
+                             MultChirho::ManyChirho,)),
                             Box::new(TyChirho::FunChirho(
                                 Box::new(TyChirho::AppChirho(
                                     Box::new(TyChirho::VarChirho(foldable_t_chirho)),
                                     Box::new(TyChirho::VarChirho(foldable_a_chirho)),
                                 )),
                                 Box::new(TyChirho::VarChirho(foldable_m_chirho)),
-                            )),
-                        ),
+                             MultChirho::ManyChirho,)),
+                         MultChirho::ManyChirho,),
                     },
                 ),
             ]),
@@ -814,7 +814,7 @@ impl ClassEnvChirho {
                                     Box::new(TyChirho::VarChirho(trav_f_chirho)),
                                     Box::new(TyChirho::VarChirho(trav_b_chirho)),
                                 )),
-                            )),
+                             MultChirho::ManyChirho,)),
                             Box::new(TyChirho::FunChirho(
                                 Box::new(TyChirho::AppChirho(
                                     Box::new(TyChirho::VarChirho(trav_t_chirho)),
@@ -827,8 +827,8 @@ impl ClassEnvChirho {
                                         Box::new(TyChirho::VarChirho(trav_b_chirho)),
                                     )),
                                 )),
-                            )),
-                        ),
+                             MultChirho::ManyChirho,)),
+                         MultChirho::ManyChirho,),
                     },
                 ),
             ]),
@@ -1606,7 +1606,7 @@ impl ClassEnvChirho {
                     ty_chirho: TyChirho::FunChirho(
                         Box::new(mt_ma_chirho.clone()),
                         Box::new(mt_tma_chirho.clone()),
-                    ),
+                     MultChirho::ManyChirho,),
                 },
             )]),
             extra_vars_chirho: vec![],
@@ -1628,7 +1628,7 @@ impl ClassEnvChirho {
                     ty_chirho: TyChirho::FunChirho(
                         Box::new(TyChirho::string_chirho()),
                         Box::new(TyChirho::VarChirho(is_string_var_chirho)),
-                    ),
+                     MultChirho::ManyChirho,),
                 },
             )]),
             extra_vars_chirho: vec![],
@@ -1663,7 +1663,7 @@ impl ClassEnvChirho {
                                 TyChirho::VarChirho(is_list_item_var_chirho),
                             ))),
                             Box::new(TyChirho::VarChirho(is_list_var_chirho)),
-                        ),
+                         MultChirho::ManyChirho,),
                     },
                 ),
                 (
@@ -1676,7 +1676,7 @@ impl ClassEnvChirho {
                             Box::new(TyChirho::ListChirho(Box::new(
                                 TyChirho::VarChirho(is_list_item_var_chirho),
                             ))),
-                        ),
+                         MultChirho::ManyChirho,),
                     },
                 ),
             ]),
@@ -1716,7 +1716,7 @@ impl ClassEnvChirho {
                         ty_chirho: TyChirho::FunChirho(
                             Box::new(TyChirho::VarChirho(generic_var_chirho)),
                             Box::new(TyChirho::VarChirho(generic_rep_chirho)),
-                        ),
+                         MultChirho::ManyChirho,),
                     },
                 ),
                 (
@@ -1727,7 +1727,7 @@ impl ClassEnvChirho {
                         ty_chirho: TyChirho::FunChirho(
                             Box::new(TyChirho::VarChirho(generic_rep_chirho)),
                             Box::new(TyChirho::VarChirho(generic_var_chirho)),
-                        ),
+                         MultChirho::ManyChirho,),
                     },
                 ),
             ]),
@@ -1755,8 +1755,8 @@ fn match_ty_chirho(pattern_chirho: &TyChirho, target_chirho: &TyChirho) -> Optio
         }
 
         (
-            TyChirho::FunChirho(pa_chirho, pb_chirho),
-            TyChirho::FunChirho(ta_chirho, tb_chirho),
+            TyChirho::FunChirho(pa_chirho, pb_chirho, _),
+            TyChirho::FunChirho(ta_chirho, tb_chirho, _),
         ) => {
             let s1_chirho = match_ty_chirho(pa_chirho, ta_chirho)?;
             let s2_chirho = match_ty_chirho(pb_chirho, tb_chirho)?;

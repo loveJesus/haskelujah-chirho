@@ -69,7 +69,7 @@ pub fn unify_chirho(
         (ty_chirho, TyChirho::VarChirho(v_chirho)) => bind_var_chirho(*v_chirho, ty_chirho, span_chirho),
 
         // Function types
-        (TyChirho::FunChirho(a1_chirho, b1_chirho), TyChirho::FunChirho(a2_chirho, b2_chirho)) => {
+        (TyChirho::FunChirho(a1_chirho, b1_chirho, _), TyChirho::FunChirho(a2_chirho, b2_chirho, _)) => {
             let s1_chirho = unify_chirho(a1_chirho, a2_chirho, span_chirho)?;
             let b1_sub_chirho = s1_chirho.apply_ty_chirho(b1_chirho);
             let b2_sub_chirho = s1_chirho.apply_ty_chirho(b2_chirho);

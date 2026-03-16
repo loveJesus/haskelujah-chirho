@@ -453,6 +453,7 @@ impl KindInferCtxChirho {
                 arg_chirho,
                 result_chirho,
                 span_chirho,
+                ..
             } => {
                 let k_a_chirho = self.infer_type_kind_chirho(arg_chirho);
                 let k_b_chirho = self.infer_type_kind_chirho(result_chirho);
@@ -955,6 +956,7 @@ mod tests_chirho {
     fn mk_fun_chirho(arg_chirho: TypeChirho, result_chirho: TypeChirho) -> TypeChirho {
         TypeChirho::FunChirho {
             arg_chirho: Box::new(arg_chirho),
+            mult_chirho: None,
             result_chirho: Box::new(result_chirho),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }

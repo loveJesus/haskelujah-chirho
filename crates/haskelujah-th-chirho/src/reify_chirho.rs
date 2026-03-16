@@ -473,6 +473,7 @@ mod tests_chirho {
     fn ast_type_conversion_chirho() {
         let ty_chirho = TypeChirho::FunChirho {
             arg_chirho: Box::new(TypeChirho::ConChirho(mk_name_chirho("Int"))),
+            mult_chirho: None,
             result_chirho: Box::new(TypeChirho::ConChirho(mk_name_chirho("Bool"))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };

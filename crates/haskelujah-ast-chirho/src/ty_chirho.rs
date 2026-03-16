@@ -8,6 +8,17 @@ use haskelujah_span_chirho::SpanChirho;
 use crate::decl_chirho::TyVarChirho;
 use crate::name_chirho::NameChirho;
 
+/// Multiplicity annotation for LinearTypes (`a %1 -> b`, `a %Many -> b`).
+#[derive(Debug, Clone, PartialEq)]
+pub enum MultiplicityChirho {
+    /// Linear: exactly one use (`%1` or `⊸`).
+    OneChirho,
+    /// Unrestricted: any number of uses (`%Many` or plain `->` without annotation).
+    ManyChirho,
+    /// Multiplicity variable (`%m`): polymorphic over linearity.
+    MultVarChirho(NameChirho),
+}
+
 /// A Haskell type expression.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeChirho {
@@ -21,9 +32,10 @@ pub enum TypeChirho {
         arg_chirho: Box<TypeChirho>,
         span_chirho: SpanChirho,
     },
-    /// Function type (`a -> b`).
+    /// Function type (`a -> b`, `a %1 -> b`, `a ⊸ b`).
     FunChirho {
         arg_chirho: Box<TypeChirho>,
+        mult_chirho: Option<MultiplicityChirho>,
         result_chirho: Box<TypeChirho>,
         span_chirho: SpanChirho,
     },

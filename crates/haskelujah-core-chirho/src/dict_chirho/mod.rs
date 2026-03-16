@@ -189,7 +189,7 @@ impl DictPassCtxChirho {
         // Collect argument types from the function chain a -> b -> c -> r
         fn collect_arg_tys_chirho(ty_chirho: &TyChirho) -> Vec<&TyChirho> {
             match ty_chirho {
-                TyChirho::FunChirho(arg_chirho, res_chirho) => {
+                TyChirho::FunChirho(arg_chirho, res_chirho, _) => {
                     let mut args_chirho = vec![arg_chirho.as_ref()];
                     args_chirho.extend(collect_arg_tys_chirho(res_chirho));
                     args_chirho
@@ -201,7 +201,7 @@ impl DictPassCtxChirho {
         fn ty_contains_var_chirho(ty_chirho: &TyChirho, tv_chirho: TyVarChirho) -> bool {
             match ty_chirho {
                 TyChirho::VarChirho(v_chirho) => *v_chirho == tv_chirho,
-                TyChirho::FunChirho(a_chirho, b_chirho) => {
+                TyChirho::FunChirho(a_chirho, b_chirho, _) => {
                     ty_contains_var_chirho(a_chirho, tv_chirho)
                         || ty_contains_var_chirho(b_chirho, tv_chirho)
                 }
@@ -760,7 +760,7 @@ mod tests_chirho {
         // Binder type should be: $Dict_Num -> (t0 -> t0)
         assert!(matches!(
             result_chirho.binder_chirho.ty_chirho,
-            TyChirho::FunChirho(_, _)
+            TyChirho::FunChirho(_, _, _)
         ));
     }
 

@@ -22,3 +22,4 @@ pub mod diff_chirho;
 pub mod report_chirho;
 pub mod roundtrip_chirho;
 pub mod splice_chirho;
+pub mod linear_chirho;

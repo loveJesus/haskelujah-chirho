@@ -107,9 +107,10 @@ impl SubstChirho {
                 Box::new(self.apply_ty_chirho(f_chirho)),
                 Box::new(self.apply_ty_chirho(a_chirho)),
             ),
-            TyChirho::FunChirho(a_chirho, b_chirho) => TyChirho::FunChirho(
+            TyChirho::FunChirho(a_chirho, b_chirho, m_chirho) => TyChirho::FunChirho(
                 Box::new(self.apply_ty_chirho(a_chirho)),
                 Box::new(self.apply_ty_chirho(b_chirho)),
+                *m_chirho,
             ),
             TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
                 elems_chirho

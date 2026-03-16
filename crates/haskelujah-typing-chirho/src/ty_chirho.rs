@@ -9,6 +9,30 @@
 
 use std::fmt;
 
+/// Multiplicity for LinearTypes: tracks whether a function arrow is linear or unrestricted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MultChirho {
+    /// Unrestricted: argument can be used any number of times (default `->`)
+    ManyChirho,
+    /// Linear: argument must be used exactly once (`%1 ->` or `⊸`)
+    OneChirho,
+}
+
+impl Default for MultChirho {
+    fn default() -> Self {
+        Self::ManyChirho
+    }
+}
+
+impl fmt::Display for MultChirho {
+    fn fmt(&self, f_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MultChirho::ManyChirho => Ok(()),
+            MultChirho::OneChirho => write!(f_chirho, "%1 "),
+        }
+    }
+}
+
 /// A unique identifier for a type variable introduced during inference.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TyVarChirho(pub u32);
@@ -32,9 +56,10 @@ pub enum TyChirho {
     /// Type application (`Maybe Int` = App(Con("Maybe"), Con("Int"))`).
     AppChirho(Box<TyChirho>, Box<TyChirho>),
 
-    /// Function type (`a -> b`). Syntactically sugar for `App(App(Con("->"), a), b)`,
-    /// but kept explicit for readability and fast matching.
-    FunChirho(Box<TyChirho>, Box<TyChirho>),
+    /// Function type (`a -> b` or `a %1 -> b`). Syntactically sugar for
+    /// `App(App(Con("->"), a), b)`, but kept explicit for readability and fast matching.
+    /// Third field is the multiplicity (Many = unrestricted, One = linear).
+    FunChirho(Box<TyChirho>, Box<TyChirho>, MultChirho),
 
     /// Tuple type (`(a, b)` = App(App(Con("(,)"), a), b)` etc.).
     /// Represented explicitly for convenience; arity is `elements.len()`.
@@ -95,9 +120,19 @@ impl TyChirho {
         )
     }
 
-    /// Build a function type `a -> b`.
+    /// Build a function type `a -> b` (unrestricted).
     pub fn fun_chirho(arg_chirho: TyChirho, result_chirho: TyChirho) -> Self {
-        Self::FunChirho(Box::new(arg_chirho), Box::new(result_chirho))
+        Self::FunChirho(Box::new(arg_chirho), Box::new(result_chirho), MultChirho::ManyChirho)
+    }
+
+    /// Build a linear function type `a %1 -> b`.
+    pub fn linear_fun_chirho(arg_chirho: TyChirho, result_chirho: TyChirho) -> Self {
+        Self::FunChirho(Box::new(arg_chirho), Box::new(result_chirho), MultChirho::OneChirho)
+    }
+
+    /// Build a function type with explicit multiplicity.
+    pub fn fun_with_mult_chirho(arg_chirho: TyChirho, result_chirho: TyChirho, mult_chirho: MultChirho) -> Self {
+        Self::FunChirho(Box::new(arg_chirho), Box::new(result_chirho), mult_chirho)
     }
 
     /// Build a multi-argument function type `a -> b -> c -> ... -> result`.
@@ -127,7 +162,7 @@ impl TyChirho {
                 f_chirho.collect_free_vars_chirho(out_chirho);
                 a_chirho.collect_free_vars_chirho(out_chirho);
             }
-            TyChirho::FunChirho(a_chirho, b_chirho) => {
+            TyChirho::FunChirho(a_chirho, b_chirho, _) => {
                 a_chirho.collect_free_vars_chirho(out_chirho);
                 b_chirho.collect_free_vars_chirho(out_chirho);
             }
@@ -162,8 +197,11 @@ impl fmt::Display for TyChirho {
             TyChirho::AppChirho(fun_chirho, arg_chirho) => {
                 write!(f_chirho, "({fun_chirho} {arg_chirho})")
             }
-            TyChirho::FunChirho(a_chirho, b_chirho) => {
-                write!(f_chirho, "({a_chirho} -> {b_chirho})")
+            TyChirho::FunChirho(a_chirho, b_chirho, mult_chirho) => {
+                match mult_chirho {
+                    MultChirho::OneChirho => write!(f_chirho, "({a_chirho} %1 -> {b_chirho})"),
+                    MultChirho::ManyChirho => write!(f_chirho, "({a_chirho} -> {b_chirho})"),
+                }
             }
             TyChirho::TupleChirho(elems_chirho) => {
                 write!(f_chirho, "(")?;

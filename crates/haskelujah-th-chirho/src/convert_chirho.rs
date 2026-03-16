@@ -600,6 +600,7 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
             for bt_chirho in bang_types_chirho.iter().rev() {
                 full_ty_chirho = TypeChirho::FunChirho {
                     arg_chirho: Box::new(th_type_to_ast_chirho(&bt_chirho.ty_chirho)),
+                    mult_chirho: None,
                     result_chirho: Box::new(full_ty_chirho),
                     span_chirho: TH_SPAN_CHIRHO,
                 };

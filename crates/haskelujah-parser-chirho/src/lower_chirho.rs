@@ -3091,6 +3091,7 @@ impl LowerCtxChirho {
             while let Some(arg_chirho) = types_chirho.pop() {
                 result_chirho = TypeChirho::FunChirho {
                     arg_chirho: Box::new(arg_chirho),
+                    mult_chirho: None,
                     result_chirho: Box::new(result_chirho),
                     span_chirho,
                 };
@@ -3133,6 +3134,25 @@ impl LowerCtxChirho {
                         matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(n_chirho) if is_type_kind_chirho(n_chirho.kind_chirho()))
                     })
                     .collect();
+
+                // Detect multiplicity: look for ⊸ or %1/%Many/%m tokens
+                let mut mult_chirho: Option<haskelujah_ast_chirho::ty_chirho::MultiplicityChirho> = None;
+                for child_chirho in &children_chirho {
+                    if let GreenElementChirho::TokenChirho(tok_chirho) = &child_chirho.element_chirho {
+                        let txt_chirho = tok_chirho.text_chirho();
+                        if tok_chirho.kind_chirho() == TokenKindChirho::LinearArrowChirho {
+                            // ⊸ = linear
+                            mult_chirho = Some(haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::OneChirho);
+                        } else if txt_chirho == "1" {
+                            // %1 = linear
+                            mult_chirho = Some(haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::OneChirho);
+                        } else if txt_chirho == "Many" {
+                            // %Many = unrestricted
+                            mult_chirho = Some(haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::ManyChirho);
+                        }
+                    }
+                }
+
                 if type_nodes_chirho.len() >= 2 {
                     let arg_chirho = self.lower_type_from_child_chirho(type_nodes_chirho[0]);
                     let result_chirho = self.lower_type_from_child_chirho(
@@ -3140,6 +3160,7 @@ impl LowerCtxChirho {
                     );
                     TypeChirho::FunChirho {
                         arg_chirho: Box::new(arg_chirho),
+                        mult_chirho,
                         result_chirho: Box::new(result_chirho),
                         span_chirho,
                     }

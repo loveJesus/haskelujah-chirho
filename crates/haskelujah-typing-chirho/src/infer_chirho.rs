@@ -20,7 +20,7 @@ use haskelujah_span_chirho::SpanChirho;
 use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredChirho};
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
-use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
+use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
 
 /// Error code range for type inference diagnostics.
@@ -230,10 +230,10 @@ impl InferCtxChirho {
                 let ea_chirho = self.expand_syn_chirho(arg_chirho, depth_chirho);
                 TyChirho::AppChirho(Box::new(ef_chirho), Box::new(ea_chirho))
             }
-            TyChirho::FunChirho(a_chirho, b_chirho) => TyChirho::FunChirho(
+            TyChirho::FunChirho(a_chirho, b_chirho, _) => TyChirho::FunChirho(
                 Box::new(self.expand_syn_chirho(a_chirho, depth_chirho)),
                 Box::new(self.expand_syn_chirho(b_chirho, depth_chirho)),
-            ),
+             MultChirho::ManyChirho,),
             TyChirho::ListChirho(el_chirho) => TyChirho::ListChirho(
                 Box::new(self.expand_syn_chirho(el_chirho, depth_chirho)),
             ),
@@ -476,12 +476,17 @@ impl InferCtxChirho {
             }
             TypeChirho::FunChirho {
                 arg_chirho,
+                mult_chirho,
                 result_chirho,
                 ..
             } => {
                 let a_chirho = self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho);
                 let r_chirho = self.ast_type_to_ty_chirho(result_chirho, var_map_chirho);
-                TyChirho::FunChirho(Box::new(a_chirho), Box::new(r_chirho))
+                let m_chirho = match mult_chirho {
+                    Some(haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::OneChirho) => MultChirho::OneChirho,
+                    _ => MultChirho::ManyChirho,
+                };
+                TyChirho::FunChirho(Box::new(a_chirho), Box::new(r_chirho), m_chirho)
             }
             TypeChirho::TupleChirho {
                 elements_chirho, ..
@@ -1603,7 +1608,7 @@ impl InferCtxChirho {
                                     let expected_chirho = TyChirho::FunChirho(
                                         Box::new(field_ty_chirho),
                                         Box::new(result_ty_chirho.clone()),
-                                    );
+                                     MultChirho::ManyChirho,);
                                     match unify_chirho(&con_ty_chirho, &expected_chirho, *span_chirho) {
                                         Ok(s2_chirho) => {
                                             self.apply_subst_all_chirho(&s2_chirho);
@@ -1629,7 +1634,7 @@ impl InferCtxChirho {
                                     let expected_chirho = TyChirho::FunChirho(
                                         Box::new(field_ty_chirho),
                                         Box::new(result_ty_chirho.clone()),
-                                    );
+                                     MultChirho::ManyChirho,);
                                     match unify_chirho(&con_ty_chirho, &expected_chirho, *span_chirho) {
                                         Ok(s2_chirho) => {
                                             self.apply_subst_all_chirho(&s2_chirho);
@@ -1656,7 +1661,7 @@ impl InferCtxChirho {
                                 let expected_chirho = TyChirho::FunChirho(
                                     Box::new(field_ty_chirho),
                                     Box::new(result_ty_chirho.clone()),
-                                );
+                                 MultChirho::ManyChirho,);
                                 match unify_chirho(&con_ty_chirho, &expected_chirho, *span_chirho) {
                                     Ok(s2_chirho) => {
                                         self.apply_subst_all_chirho(&s2_chirho);
@@ -2217,7 +2222,7 @@ impl InferCtxChirho {
                                         let accessor_ty_chirho = TyChirho::FunChirho(
                                             Box::new(result_ty_chirho.clone()),
                                             Box::new(field_tys_chirho[i_chirho].clone()),
-                                        );
+                                         MultChirho::ManyChirho,);
                                         let accessor_scheme_chirho =
                                             self.generalize_chirho(&accessor_ty_chirho);
                                         self.env_chirho.bind_chirho(
@@ -2596,12 +2601,20 @@ fn ast_type_to_syn_rhs_chirho(
         ),
         TypeChirho::FunChirho {
             arg_chirho,
+            mult_chirho,
             result_chirho,
             ..
-        } => TyChirho::FunChirho(
-            Box::new(ast_type_to_syn_rhs_chirho(arg_chirho, params_chirho)),
-            Box::new(ast_type_to_syn_rhs_chirho(result_chirho, params_chirho)),
-        ),
+        } => {
+            let m_chirho = match mult_chirho {
+                Some(haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::OneChirho) => MultChirho::OneChirho,
+                _ => MultChirho::ManyChirho,
+            };
+            TyChirho::FunChirho(
+                Box::new(ast_type_to_syn_rhs_chirho(arg_chirho, params_chirho)),
+                Box::new(ast_type_to_syn_rhs_chirho(result_chirho, params_chirho)),
+                m_chirho,
+            )
+        }
         TypeChirho::TupleChirho {
             elements_chirho, ..
         } => TyChirho::TupleChirho(
@@ -2681,10 +2694,10 @@ fn subst_named_var_chirho(
             Box::new(subst_named_var_chirho(f_chirho, name_chirho, replacement_chirho)),
             Box::new(subst_named_var_chirho(a_chirho, name_chirho, replacement_chirho)),
         ),
-        TyChirho::FunChirho(a_chirho, b_chirho) => TyChirho::FunChirho(
+        TyChirho::FunChirho(a_chirho, b_chirho, _) => TyChirho::FunChirho(
             Box::new(subst_named_var_chirho(a_chirho, name_chirho, replacement_chirho)),
             Box::new(subst_named_var_chirho(b_chirho, name_chirho, replacement_chirho)),
-        ),
+         MultChirho::ManyChirho,),
         TyChirho::ListChirho(el_chirho) => TyChirho::ListChirho(
             Box::new(subst_named_var_chirho(el_chirho, name_chirho, replacement_chirho)),
         ),
@@ -6570,7 +6583,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     Box::new(TyChirho::FunChirho(
                         Box::new(TyChirho::VarChirho(fmap_a_chirho)),
                         Box::new(TyChirho::VarChirho(fmap_b_chirho)),
-                    )),
+                     MultChirho::ManyChirho,)),
                     Box::new(TyChirho::FunChirho(
                         Box::new(TyChirho::AppChirho(
                             Box::new(TyChirho::VarChirho(fmap_f_chirho)),
@@ -6580,8 +6593,8 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                             Box::new(TyChirho::VarChirho(fmap_f_chirho)),
                             Box::new(TyChirho::VarChirho(fmap_b_chirho)),
                         )),
-                    )),
-                ),
+                     MultChirho::ManyChirho,)),
+                 MultChirho::ManyChirho,),
             },
         );
     }
@@ -6600,15 +6613,15 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     Box::new(TyChirho::FunChirho(
                         Box::new(TyChirho::VarChirho(fold_a_chirho)),
                         Box::new(TyChirho::VarChirho(fold_m_chirho)),
-                    )),
+                     MultChirho::ManyChirho,)),
                     Box::new(TyChirho::FunChirho(
                         Box::new(TyChirho::AppChirho(
                             Box::new(TyChirho::VarChirho(fold_t_chirho)),
                             Box::new(TyChirho::VarChirho(fold_a_chirho)),
                         )),
                         Box::new(TyChirho::VarChirho(fold_m_chirho)),
-                    )),
-                ),
+                     MultChirho::ManyChirho,)),
+                 MultChirho::ManyChirho,),
             },
         );
     }
@@ -6631,7 +6644,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                             Box::new(TyChirho::VarChirho(trav_f_chirho)),
                             Box::new(TyChirho::VarChirho(trav_b_chirho)),
                         )),
-                    )),
+                     MultChirho::ManyChirho,)),
                     Box::new(TyChirho::FunChirho(
                         Box::new(TyChirho::AppChirho(
                             Box::new(TyChirho::VarChirho(trav_t_chirho)),
@@ -6644,8 +6657,8 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                                 Box::new(TyChirho::VarChirho(trav_b_chirho)),
                             )),
                         )),
-                    )),
-                ),
+                     MultChirho::ManyChirho,)),
+                 MultChirho::ManyChirho,),
             },
         );
     }
@@ -8050,8 +8063,8 @@ fn match_type_pattern_chirho(
                 false
             }
         }
-        TyChirho::FunChirho(a_chirho, r_chirho) => {
-            if let TyChirho::FunChirho(aa_chirho, ar_chirho) = arg_chirho {
+        TyChirho::FunChirho(a_chirho, r_chirho, _) => {
+            if let TyChirho::FunChirho(aa_chirho, ar_chirho, _) = arg_chirho {
                 match_type_pattern_chirho(a_chirho, aa_chirho, bindings_chirho)
                     && match_type_pattern_chirho(r_chirho, ar_chirho, bindings_chirho)
             } else {
@@ -8081,10 +8094,10 @@ fn substitute_type_vars_chirho(
             Box::new(substitute_type_vars_chirho(f_chirho, bindings_chirho)),
             Box::new(substitute_type_vars_chirho(a_chirho, bindings_chirho)),
         ),
-        TyChirho::FunChirho(a_chirho, r_chirho) => TyChirho::FunChirho(
+        TyChirho::FunChirho(a_chirho, r_chirho, _) => TyChirho::FunChirho(
             Box::new(substitute_type_vars_chirho(a_chirho, bindings_chirho)),
             Box::new(substitute_type_vars_chirho(r_chirho, bindings_chirho)),
-        ),
+         MultChirho::ManyChirho,),
         TyChirho::ListChirho(inner_chirho) => TyChirho::ListChirho(Box::new(
             substitute_type_vars_chirho(inner_chirho, bindings_chirho),
         )),
@@ -8144,7 +8157,7 @@ mod tests_chirho {
 
         // Should be `a -> a` for some variable a
         match &final_ty_chirho {
-            TyChirho::FunChirho(arg_chirho, result_chirho) => {
+            TyChirho::FunChirho(arg_chirho, result_chirho, _) => {
                 assert_eq!(arg_chirho, result_chirho, "identity should have a -> a");
             }
             other_chirho => panic!("expected function type, got {other_chirho}"),
@@ -8251,7 +8264,7 @@ mod tests_chirho {
             .lookup_chirho("f")
             .expect("f should be in environment");
         match &f_scheme_chirho.ty_chirho {
-            TyChirho::FunChirho(arg_chirho, result_chirho) => {
+            TyChirho::FunChirho(arg_chirho, result_chirho, _) => {
                 assert_eq!(
                     arg_chirho, result_chirho,
                     "f should have type a -> a"
@@ -8750,7 +8763,7 @@ mod tests_chirho {
             .expect("isNegOneChirho should be in environment");
         // isNegOneChirho :: a -> Int (parameter type stays polymorphic)
         // Just verify it's a function returning Int
-        if let TyChirho::FunChirho(_, ref ret_chirho) = scheme_chirho.ty_chirho {
+        if let TyChirho::FunChirho(_, ref ret_chirho, _) = scheme_chirho.ty_chirho {
             assert_eq!(**ret_chirho, TyChirho::int_chirho());
         } else {
             panic!("expected function type, got: {}", scheme_chirho.ty_chirho);
@@ -8779,8 +8792,10 @@ mod tests_chirho {
                     name_chirho: dummy_name_chirho("myEqChirho"),
                     ty_chirho: TypeChirho::FunChirho {
                         arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        mult_chirho: None,
                         result_chirho: Box::new(TypeChirho::FunChirho {
                             arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                            mult_chirho: None,
                             result_chirho: Box::new(TypeChirho::ConChirho(
                                 dummy_name_chirho("Bool"),
                             )),
@@ -8845,8 +8860,10 @@ mod tests_chirho {
                     name_chirho: dummy_name_chirho("myCompareChirho"),
                     ty_chirho: TypeChirho::FunChirho {
                         arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        mult_chirho: None,
                         result_chirho: Box::new(TypeChirho::FunChirho {
                             arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                            mult_chirho: None,
                             result_chirho: Box::new(TypeChirho::ConChirho(
                                 dummy_name_chirho("Ordering"),
                             )),
@@ -8934,6 +8951,7 @@ mod tests_chirho {
                     name_chirho: dummy_name_chirho("idChirho"),
                     ty_chirho: TypeChirho::FunChirho {
                         arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        mult_chirho: None,
                         result_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
@@ -8981,6 +8999,7 @@ mod tests_chirho {
                     name_chirho: dummy_name_chirho("badChirho"),
                     ty_chirho: TypeChirho::FunChirho {
                         arg_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Int"))),
+                        mult_chirho: None,
                         result_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Int"))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
@@ -9076,7 +9095,7 @@ mod tests_chirho {
             .lookup_chirho("MkAge")
             .expect("MkAge should be in env");
         // MkAge :: a -> Age (field gets fresh var since we don't resolve AST types yet)
-        if let TyChirho::FunChirho(_, ref ret_chirho) = mk_age_chirho.ty_chirho {
+        if let TyChirho::FunChirho(_, ref ret_chirho, _) = mk_age_chirho.ty_chirho {
             assert_eq!(**ret_chirho, TyChirho::ConChirho("Age".to_string()));
         } else {
             panic!("MkAge should be a function type, got: {}", mk_age_chirho);
@@ -9102,6 +9121,7 @@ mod tests_chirho {
         // Convert `a -> Int`
         let ast_ty_chirho = TypeChirho::FunChirho {
             arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+            mult_chirho: None,
             result_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Int"))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -9109,7 +9129,7 @@ mod tests_chirho {
         let ty_chirho = ctx_chirho.ast_type_to_ty_chirho(&ast_ty_chirho, &mut var_map_chirho);
 
         // Should be FunChirho(VarChirho(_), ConChirho("Int"))
-        if let TyChirho::FunChirho(ref arg_chirho, ref ret_chirho) = ty_chirho {
+        if let TyChirho::FunChirho(ref arg_chirho, ref ret_chirho, _) = ty_chirho {
             assert!(matches!(**arg_chirho, TyChirho::VarChirho(_)));
             assert_eq!(**ret_chirho, TyChirho::int_chirho());
         } else {
@@ -9122,7 +9142,7 @@ mod tests_chirho {
                 &TypeChirho::VarChirho(dummy_name_chirho("a")),
                 &mut var_map_chirho,
             );
-        if let (TyChirho::FunChirho(arg_chirho, _), TyChirho::VarChirho(v2_chirho)) =
+        if let (TyChirho::FunChirho(arg_chirho, _, _), TyChirho::VarChirho(v2_chirho)) =
             (&ty_chirho, &a2_chirho)
         {
             if let TyChirho::VarChirho(v1_chirho) = &**arg_chirho {

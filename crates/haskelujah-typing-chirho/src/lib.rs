@@ -13,6 +13,7 @@ pub mod env_chirho;
 pub mod exhaust_chirho;
 pub mod infer_chirho;
 pub mod kind_chirho;
+pub mod linearity_chirho;
 pub mod subst_chirho;
 pub mod ty_chirho;
 pub mod unify_chirho;
@@ -23,4 +24,4 @@ pub use exhaust_chirho::{check_module_exhaustiveness_chirho, ExhaustResultChirho
 pub use infer_chirho::infer_module_chirho;
 pub use infer_chirho::infer_module_with_imports_chirho;
 pub use kind_chirho::{infer_module_kinds_chirho, KindChirho, KindEnvChirho, KindResultChirho};
-pub use ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
+pub use ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};

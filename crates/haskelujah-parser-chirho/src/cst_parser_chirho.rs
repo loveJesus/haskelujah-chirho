@@ -99,6 +99,7 @@ fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho, text_chirho: &str) -> T
         RawTokenKindChirho::PipeChirho => TokenKindChirho::PipeChirho,
         RawTokenKindChirho::LeftArrowChirho => TokenKindChirho::LeftArrowChirho,
         RawTokenKindChirho::RightArrowChirho => TokenKindChirho::RightArrowChirho,
+        RawTokenKindChirho::LinearArrowChirho => TokenKindChirho::LinearArrowChirho,
         RawTokenKindChirho::FatArrowChirho => TokenKindChirho::DoubleArrowChirho,
         RawTokenKindChirho::AtChirho => TokenKindChirho::AtSignChirho,
         RawTokenKindChirho::TildeChirho => TokenKindChirho::TildeChirho,
@@ -1451,6 +1452,45 @@ impl<'src> ParserChirho<'src> {
             self.bump_chirho(); // =>
             self.eat_trivia_chirho();
             self.parse_type_chirho(); // the actual type
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        // Check for ⊸ (linear arrow — LinearTypes)
+        if self.at_chirho(RawTokenKindChirho::LinearArrowChirho) {
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::FunTypeChirho,
+            );
+            self.bump_chirho(); // ⊸
+            self.eat_trivia_chirho();
+            self.parse_type_chirho(); // right-recursive
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        // Check for %1 -> or %Many -> or %m -> (multiplicity annotation — LinearTypes)
+        if self.at_varsym_chirho("%") {
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::FunTypeChirho,
+            );
+            self.bump_chirho(); // %
+            self.eat_trivia_chirho();
+            // Consume multiplicity: integer 1, conid Many/One, or varid (poly)
+            if self.at_chirho(RawTokenKindChirho::IntLitChirho)
+                || self.at_chirho(RawTokenKindChirho::ConIdChirho)
+                || self.at_chirho(RawTokenKindChirho::VarIdChirho)
+            {
+                self.bump_chirho(); // multiplicity token
+                self.eat_trivia_chirho();
+            }
+            // Expect ->
+            if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
+                self.bump_chirho(); // ->
+                self.eat_trivia_chirho();
+            }
+            self.parse_type_chirho(); // right-recursive
             self.builder_chirho.finish_node_chirho();
             return;
         }
@@ -3372,6 +3412,14 @@ impl<'src> ParserChirho<'src> {
     /// Check if current token is a VarId with specific text.
     fn at_varid_text_chirho(&self, text_chirho: &str) -> bool {
         if !self.at_chirho(RawTokenKindChirho::VarIdChirho) {
+            return false;
+        }
+        self.current_text_chirho() == text_chirho
+    }
+
+    /// Check if the current token is a VarSym with the given text.
+    fn at_varsym_chirho(&self, text_chirho: &str) -> bool {
+        if !self.at_chirho(RawTokenKindChirho::VarSymChirho) {
             return false;
         }
         self.current_text_chirho() == text_chirho

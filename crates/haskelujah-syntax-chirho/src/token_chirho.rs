@@ -147,6 +147,8 @@ pub enum TokenKindChirho {
     DoubleArrowChirho,
     /// The `'` tick for DataKinds promoted constructors/types.
     TickChirho,
+    /// The `⊸` linear arrow (LinearTypes: `a ⊸ b` = `a %1 -> b`).
+    LinearArrowChirho,
 
     /// A virtual `{` inserted by the layout rule.
     VirtualLeftBraceChirho,
