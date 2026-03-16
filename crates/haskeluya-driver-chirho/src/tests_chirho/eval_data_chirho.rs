@@ -1736,3 +1736,114 @@ f = MkPoint{..}
         assert!(found_wildcard_chirho, "MkPoint{{..}} should parse as RecordConChirho with has_wildcard_chirho=true");
     }
 
+    // ── NamedFieldPuns tests ──────────────────────────────────────────
+
+    #[test]
+    fn named_field_puns_pattern_chirho() {
+        // NamedFieldPuns in pattern position: `MkPoint{x, y}` = `MkPoint{x=x, y=y}`
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE NamedFieldPuns #-}
+module Test where
+data Point = MkPoint { x :: Int, y :: Int }
+sumPoint (MkPoint{x, y}) = x + y
+main = print (sumPoint (MkPoint{x = 10, y = 32}))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("NamedFieldPuns pattern failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn named_field_puns_expr_chirho() {
+        // NamedFieldPuns in expression position: `MkPoint{x, y}` = `MkPoint{x=x, y=y}`
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE NamedFieldPuns #-}
+module Test where
+data Point = MkPoint { x :: Int, y :: Int }
+getX (MkPoint{x = val}) = val
+main = let x = 10
+           y = 32
+       in print (getX (MkPoint{x, y}))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("NamedFieldPuns expr failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "10\n");
+    }
+
+    #[test]
+    fn named_field_puns_mixed_chirho() {
+        // Mix of punned and explicit fields
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE NamedFieldPuns #-}
+module Test where
+data Pair = MkPair { fst :: Int, snd :: Int }
+addPair (MkPair{fst, snd = b}) = fst + b
+main = print (addPair (MkPair{fst = 20, snd = 22}))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("NamedFieldPuns mixed failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    // ── MultiWayIf tests ────────────────────────────────────────────────
+
+    #[test]
+    fn multi_way_if_basic_chirho() {
+        // Basic multi-way if with otherwise, hitting last branch
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE MultiWayIf #-}
+module Test where
+classify x = if | x > 100   -> 1
+                | x > 10    -> 2
+                | otherwise  -> 3
+main = print (classify 5)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("MultiWayIf basic failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "3\n");
+    }
+
+    #[test]
+    fn multi_way_if_first_branch_chirho() {
+        // Multi-way if hitting the first branch
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE MultiWayIf #-}
+module Test where
+f x = if | x > 100  -> 1
+         | x > 10   -> 2
+         | otherwise -> 3
+main = print (f 200)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("MultiWayIf first branch failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "1\n");
+    }
+
+    #[test]
+    fn multi_way_if_middle_branch_chirho() {
+        // Multi-way if hitting the middle branch
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE MultiWayIf #-}
+module Test where
+f x = if | x > 100  -> 1
+         | x > 10   -> 2
+         | otherwise -> 3
+main = print (f 50)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("MultiWayIf middle branch failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "2\n");
+    }
+

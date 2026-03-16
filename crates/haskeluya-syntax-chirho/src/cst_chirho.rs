@@ -104,6 +104,8 @@ pub enum SyntaxKindChirho {
     LetExprChirho,
     /// If expression (`if c then t else f`).
     IfExprChirho,
+    /// Multi-way if expression (`if | g1 -> e1 | g2 -> e2`) — MultiWayIf extension.
+    MultiWayIfExprChirho,
     /// Case expression (`case e of { alts }`).
     CaseExprChirho,
     /// A single case alternative.
@@ -265,6 +267,7 @@ impl SyntaxKindChirho {
                 | Self::LambdaCaseExprChirho
                 | Self::LetExprChirho
                 | Self::IfExprChirho
+                | Self::MultiWayIfExprChirho
                 | Self::CaseExprChirho
                 | Self::DoExprChirho
                 | Self::ParenExprChirho

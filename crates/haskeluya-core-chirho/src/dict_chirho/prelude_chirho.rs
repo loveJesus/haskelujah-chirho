@@ -44,6 +44,17 @@ impl DictPassCtxChirho {
                     }
                 }),
             ),
+            // otherwise :: Bool  (otherwise = True)
+            (
+                "otherwise",
+                bool_ty_chirho.clone(),
+                Box::new(|_ctx_chirho: &mut Self| {
+                    CoreExprChirho::ConAppChirho {
+                        con_name_chirho: "True".to_string(),
+                        args_chirho: vec![],
+                    }
+                }),
+            ),
             // id :: a -> a
             (
                 "id",

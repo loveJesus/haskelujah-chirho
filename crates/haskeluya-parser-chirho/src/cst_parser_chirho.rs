@@ -1841,7 +1841,41 @@ impl<'src> ParserChirho<'src> {
     }
 
     /// Parse an if expression: if expr then expr else expr
+    /// Also handles MultiWayIf: if | g1 -> e1 | g2 -> e2
     fn parse_if_expr_chirho(&mut self) {
+        // Peek: if the token after `if` (skipping trivia) is `|`, parse as multi-way if
+        if self.peek_after_if_is_pipe_chirho() {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::MultiWayIfExprChirho);
+            self.bump_chirho(); // if
+            self.eat_trivia_chirho();
+            // Parse guards: | cond -> expr
+            while self.at_chirho(RawTokenKindChirho::PipeChirho)
+                || self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
+            {
+                if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    continue;
+                }
+                self.bump_chirho(); // |
+                self.eat_trivia_chirho();
+                // Parse guard condition
+                self.parse_expr_chirho();
+                self.eat_trivia_chirho();
+                // Expect ->
+                if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                }
+                // Parse result expression
+                self.parse_expr_chirho();
+                self.eat_trivia_chirho();
+            }
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::IfExprChirho);
 
@@ -1865,6 +1899,26 @@ impl<'src> ParserChirho<'src> {
         }
 
         self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Check if `if` is followed by `|` (multi-way if).
+    fn peek_after_if_is_pipe_chirho(&self) -> bool {
+        // Current token should be `if`. Look at the next non-trivia token.
+        let mut i_chirho = self.pos_chirho + 1;
+        while i_chirho < self.tokens_chirho.len() {
+            let kind_chirho = self.tokens_chirho[i_chirho].kind_chirho;
+            if kind_chirho == RawTokenKindChirho::WhitespaceChirho
+                || kind_chirho == RawTokenKindChirho::LineCommentChirho
+                || kind_chirho == RawTokenKindChirho::BlockCommentChirho
+                || kind_chirho == RawTokenKindChirho::VirtualLeftBraceChirho
+                || kind_chirho == RawTokenKindChirho::VirtualSemicolonChirho
+            {
+                i_chirho += 1;
+                continue;
+            }
+            return kind_chirho == RawTokenKindChirho::PipeChirho;
+        }
+        false
     }
 
     /// Parse a case expression: case expr of { alts }

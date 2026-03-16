@@ -340,7 +340,7 @@ fn derive_via_chirho(
     module_chirho: &ModuleChirho,
     type_name_chirho: &NameChirho,
     class_name_chirho: &NameChirho,
-    via_type_chirho: &TypeChirho,
+    _via_type_chirho: &TypeChirho,
 ) -> DeclChirho {
     // Find the constructor name for this newtype/data type
     let con_name_str_chirho = find_first_con_name_chirho(module_chirho, type_name_chirho)

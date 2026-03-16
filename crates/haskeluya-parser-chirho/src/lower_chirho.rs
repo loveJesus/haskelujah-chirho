@@ -3506,6 +3506,79 @@ impl LowerCtxChirho {
                     span_chirho,
                 }
             }
+            // MultiWayIf: if | g1 -> e1 | g2 -> e2  →  nested IfChirho
+            SyntaxKindChirho::MultiWayIfExprChirho => {
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                // Collect (guard, result) pairs from tokens/nodes after `if`
+                let mut guards_chirho: Vec<(ExprChirho, ExprChirho)> = Vec::new();
+                let mut expr_buf_chirho: Vec<ExprChirho> = Vec::new();
+                for child_chirho in &children_chirho {
+                    match child_chirho.element_chirho {
+                        GreenElementChirho::TokenChirho(tok_chirho) => {
+                            let kind_chirho = tok_chirho.kind_chirho();
+                            if kind_chirho == TokenKindChirho::PipeChirho {
+                                // Flush previous pair if we have 2 exprs
+                                if expr_buf_chirho.len() >= 2 {
+                                    let result_chirho = expr_buf_chirho.pop().unwrap();
+                                    let guard_chirho = expr_buf_chirho.pop().unwrap();
+                                    guards_chirho.push((guard_chirho, result_chirho));
+                                }
+                                expr_buf_chirho.clear();
+                            }
+                            // skip if, ->, whitespace, etc.
+                        }
+                        GreenElementChirho::NodeChirho(n_chirho) => {
+                            if is_expr_kind_chirho(n_chirho.kind_chirho()) {
+                                expr_buf_chirho.push(
+                                    self.lower_expr_chirho(n_chirho, child_chirho.start_chirho),
+                                );
+                            }
+                        }
+                    }
+                }
+                // Flush last pair
+                if expr_buf_chirho.len() >= 2 {
+                    let result_chirho = expr_buf_chirho.pop().unwrap();
+                    let guard_chirho = expr_buf_chirho.pop().unwrap();
+                    guards_chirho.push((guard_chirho, result_chirho));
+                }
+
+                // Build nested if-then-else from end
+                if guards_chirho.is_empty() {
+                    self.placeholder_expr_chirho()
+                } else {
+                    // Start with the last guard pair; use error as else for non-exhaustive
+                    let (last_guard_chirho, last_result_chirho) = guards_chirho.pop().unwrap();
+                    let mut acc_chirho = ExprChirho::IfChirho {
+                        cond_chirho: Box::new(last_guard_chirho),
+                        then_chirho: Box::new(last_result_chirho),
+                        else_chirho: Box::new(ExprChirho::AppChirho {
+                            fun_chirho: Box::new(ExprChirho::VarChirho(
+                                NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                                    "error", span_chirho,
+                                )),
+                            )),
+                            arg_chirho: Box::new(ExprChirho::LitChirho(
+                                LitChirho::StringChirho(
+                                    "Non-exhaustive guards in multi-way if".into(),
+                                    span_chirho,
+                                ),
+                            )),
+                            span_chirho,
+                        }),
+                        span_chirho,
+                    };
+                    for (guard_chirho, result_chirho) in guards_chirho.into_iter().rev() {
+                        acc_chirho = ExprChirho::IfChirho {
+                            cond_chirho: Box::new(guard_chirho),
+                            then_chirho: Box::new(result_chirho),
+                            else_chirho: Box::new(acc_chirho),
+                            span_chirho,
+                        };
+                    }
+                    acc_chirho
+                }
+            }
             SyntaxKindChirho::CaseExprChirho => {
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
                 let mut scrutinee_chirho = None;
@@ -4456,11 +4529,20 @@ impl LowerCtxChirho {
             }
         }
 
+        // NamedFieldPuns: if no `=` was found, the value is a variable with the
+        // same name as the field, e.g. `Con { x }` means `Con { x = x }`
+        let final_value_chirho = value_chirho.unwrap_or_else(|| {
+            if let Some(ref fname_chirho) = field_name_chirho {
+                ExprChirho::VarChirho(fname_chirho.clone())
+            } else {
+                self.placeholder_expr_chirho()
+            }
+        });
+
         FieldAssignChirho {
             name_chirho: field_name_chirho
                 .unwrap_or_else(|| NameChirho::RawChirho(RawNameChirho::unqualified_chirho("_".to_string(), span_chirho))),
-            value_chirho: value_chirho
-                .unwrap_or_else(|| self.placeholder_expr_chirho()),
+            value_chirho: final_value_chirho,
             span_chirho,
         }
     }
@@ -5585,6 +5667,7 @@ fn is_expr_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::LambdaCaseExprChirho
             | SyntaxKindChirho::LetExprChirho
             | SyntaxKindChirho::IfExprChirho
+            | SyntaxKindChirho::MultiWayIfExprChirho
             | SyntaxKindChirho::CaseExprChirho
             | SyntaxKindChirho::DoExprChirho
             | SyntaxKindChirho::ParenExprChirho
