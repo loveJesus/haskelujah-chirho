@@ -831,6 +831,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                 );
             }
             DeclChirho::ClassDeclChirho {
+                context_chirho,
                 name_chirho,
                 type_vars_chirho,
                 methods_chirho,
@@ -842,6 +843,18 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                     type_vars_chirho,
                     *span_chirho,
                 );
+                // Kind-check superclass constraints: each argument must have kind *.
+                for constraint_chirho in context_chirho {
+                    for arg_chirho in &constraint_chirho.args_chirho {
+                        let k_chirho = ctx_chirho.infer_type_kind_chirho(arg_chirho);
+                        ctx_chirho.unify_chirho(
+                            &k_chirho,
+                            &KindChirho::StarChirho,
+                            "superclass constraint argument",
+                            constraint_chirho.span_chirho,
+                        );
+                    }
+                }
                 // Kind-check method type signatures.
                 for method_chirho in methods_chirho {
                     let k_chirho = ctx_chirho.infer_type_kind_chirho(&method_chirho.ty_chirho);

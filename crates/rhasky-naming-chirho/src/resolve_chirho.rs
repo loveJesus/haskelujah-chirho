@@ -22,7 +22,7 @@ use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 /// Error codes for name resolution diagnostics.
 const UNDEFINED_VALUE_CODE_CHIRHO: u16 = 100;
 const UNDEFINED_TYPE_CODE_CHIRHO: u16 = 101;
-// Module code 102 available for future use (was UNKNOWN_MODULE — now a warning).
+const UNKNOWN_MODULE_CODE_CHIRHO: u16 = 102;
 
 /// Result of name resolution.
 pub struct ResolveResultChirho {
@@ -257,10 +257,11 @@ fn resolve_imports_chirho(
             Some(i_chirho) => i_chirho,
             None => {
                 diagnostics_chirho.push_chirho(
-                    DiagnosticChirho::warning_chirho(
+                    DiagnosticChirho::error_chirho(
                         format!("could not find module `{module_name_chirho}`"),
                         import_chirho.span_chirho,
                     )
+                    .with_code_chirho(ErrorCodeChirho::error_chirho(UNKNOWN_MODULE_CODE_CHIRHO))
                     .with_note_chirho("the module may not have been compiled yet"),
                 );
                 continue;
@@ -1006,7 +1007,7 @@ mod tests_chirho {
     }
 
     #[test]
-    fn unknown_module_reports_warning_chirho() {
+    fn unknown_module_reports_error_chirho() {
         let module_chirho = mk_module_chirho(
             vec![],
             vec![ImportDeclChirho {
@@ -1021,9 +1022,8 @@ mod tests_chirho {
         let result_chirho =
             resolve_module_with_imports_chirho(&module_chirho, &[]);
 
-        // Unknown module import is a warning, not an error
-        assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
-        assert!(result_chirho.diagnostics_chirho.warning_count_chirho() > 0);
+        // Unknown module import is an error
+        assert!(result_chirho.diagnostics_chirho.has_errors_chirho());
         let msg_chirho = format!("{}", result_chirho.diagnostics_chirho);
         assert!(msg_chirho.contains("Nonexistent"));
     }

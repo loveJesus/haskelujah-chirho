@@ -223,6 +223,22 @@ impl DiagnosticChirho {
         }
     }
 
+    /// Create a warning diagnostic with a code and primary span.
+    pub fn warning_with_code_chirho(
+        code_chirho: ErrorCodeChirho,
+        message_chirho: impl Into<String>,
+        span_chirho: SpanChirho,
+    ) -> Self {
+        Self {
+            severity_chirho: SeverityChirho::WarningChirho,
+            code_chirho: Some(code_chirho),
+            message_chirho: message_chirho.into(),
+            labels_chirho: vec![LabelChirho::primary_bare_chirho(span_chirho)],
+            notes_chirho: Vec::new(),
+            suggestions_chirho: Vec::new(),
+        }
+    }
+
     /// Create an error with no span (for file-level errors like "cannot read file").
     pub fn error_no_span_chirho(message_chirho: impl Into<String>) -> Self {
         Self {

@@ -1860,11 +1860,16 @@ impl LowerCtxChirho {
         span_chirho: SpanChirho,
     ) -> DeclChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-        let mut name_chirho = None;
-        let mut type_vars_chirho = Vec::new();
         let mut saw_class_chirho = false;
         let mut saw_where_chirho = false;
+        let mut saw_fat_arrow_chirho = false;
         let mut saw_pipe_chirho = false;
+
+        // Two-pass approach: collect tokens before and after `=>`.
+        // Before `=>` = superclass context, after `=>` = class head (name + type vars).
+        // If no `=>`, all tokens form the class head directly.
+        let mut pre_arrow_tokens_chirho: Vec<(&GreenTokenChirho, SpanChirho, usize)> = Vec::new();
+        let mut post_arrow_tokens_chirho: Vec<(&GreenTokenChirho, SpanChirho, usize)> = Vec::new();
 
         // Fundep parsing state: after `|`, collect `a b -> c d, e -> f`
         let mut fundeps_chirho: Vec<(Vec<String>, Vec<String>)> = Vec::new();
@@ -1880,6 +1885,12 @@ impl LowerCtxChirho {
                     saw_class_chirho = true;
                 } else if tok_chirho.kind_chirho() == TokenKindChirho::WhereKeywordChirho {
                     saw_where_chirho = true;
+                } else if tok_chirho.kind_chirho() == TokenKindChirho::DoubleArrowChirho
+                    && saw_class_chirho
+                    && !saw_where_chirho
+                    && !saw_pipe_chirho
+                {
+                    saw_fat_arrow_chirho = true;
                 } else if tok_chirho.kind_chirho() == TokenKindChirho::PipeChirho
                     && saw_class_chirho
                     && !saw_where_chirho
@@ -1914,23 +1925,10 @@ impl LowerCtxChirho {
                 } else if saw_class_chirho && !saw_where_chirho {
                     let s_chirho =
                         self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                    if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
-                        && name_chirho.is_none()
-                    {
-                        name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
-                    } else if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
-                        type_vars_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho).into());
-                    } else if tok_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
-                        if let Some((tv_chirho, skip_chirho)) =
-                            self.try_parse_kind_annotated_tyvar_chirho(
-                                &children_chirho,
-                                idx_chirho,
-                            )
-                        {
-                            type_vars_chirho.push(tv_chirho);
-                            idx_chirho += skip_chirho;
-                            continue;
-                        }
+                    if saw_fat_arrow_chirho {
+                        post_arrow_tokens_chirho.push((tok_chirho, s_chirho, idx_chirho));
+                    } else {
+                        pre_arrow_tokens_chirho.push((tok_chirho, s_chirho, idx_chirho));
                     }
                 }
             }
@@ -1940,6 +1938,44 @@ impl LowerCtxChirho {
         // Flush last fundep if any
         if !fundep_from_chirho.is_empty() || !fundep_to_chirho.is_empty() {
             fundeps_chirho.push((fundep_from_chirho, fundep_to_chirho));
+        }
+
+        // Build superclass context from pre-arrow tokens (if `=>` was present).
+        let context_chirho = if saw_fat_arrow_chirho {
+            let ctx_tokens_chirho: Vec<(&GreenTokenChirho, SpanChirho)> = pre_arrow_tokens_chirho
+                .iter()
+                .map(|(t_chirho, s_chirho, _)| (*t_chirho, *s_chirho))
+                .collect();
+            self.build_instance_context_chirho(&ctx_tokens_chirho)
+        } else {
+            vec![]
+        };
+
+        // The head tokens are after `=>` if present, otherwise all pre-arrow tokens.
+        let head_tokens_chirho = if saw_fat_arrow_chirho {
+            &post_arrow_tokens_chirho
+        } else {
+            &pre_arrow_tokens_chirho
+        };
+
+        // Extract class name and type variables from head tokens.
+        let mut name_chirho = None;
+        let mut type_vars_chirho = Vec::new();
+        for (tok_chirho, s_chirho, tok_idx_chirho) in head_tokens_chirho {
+            if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho && name_chirho.is_none() {
+                name_chirho = Some(self.name_from_token_chirho(tok_chirho, *s_chirho));
+            } else if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
+                type_vars_chirho.push(self.name_from_token_chirho(tok_chirho, *s_chirho).into());
+            } else if tok_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
+                if let Some((tv_chirho, _skip_chirho)) =
+                    self.try_parse_kind_annotated_tyvar_chirho(
+                        &children_chirho,
+                        *tok_idx_chirho,
+                    )
+                {
+                    type_vars_chirho.push(tv_chirho);
+                }
+            }
         }
 
         // Extract method signatures (and default implementations) from the
@@ -2040,7 +2076,7 @@ impl LowerCtxChirho {
             .collect();
 
         DeclChirho::ClassDeclChirho {
-            context_chirho: vec![],
+            context_chirho,
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             type_vars_chirho,
             methods_chirho,

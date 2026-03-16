@@ -127,25 +127,20 @@ use rhasky_syntax_chirho::SourceFileChirho;
 
 
     #[test]
-    fn exhaustiveness_check_rejects_incomplete_case_chirho() {
+    fn exhaustiveness_check_warns_incomplete_case_chirho() {
         use crate::compile_source_chirho;
         let mut source_map_chirho = SourceMapChirho::new_chirho();
         // data Color = Red | Green | Blue — case only covers Red
+        // Non-exhaustive patterns are warnings, not errors (matches GHC behavior)
         let result_chirho = compile_source_chirho(
             "module Test where\ndata Color = Red | Green | Blue\nf x = case x of\n  Red -> 1\n",
             &mut source_map_chirho,
             "TestChirho.hs",
         );
         assert!(
-            result_chirho.is_err(),
-            "incomplete case should fail exhaustiveness check"
-        );
-        let err_chirho = result_chirho.unwrap_err();
-        assert!(err_chirho.has_errors_chirho());
-        let msg_chirho = format!("{}", err_chirho);
-        assert!(
-            msg_chirho.contains("Green") || msg_chirho.contains("Blue"),
-            "error should mention missing constructors"
+            result_chirho.is_ok(),
+            "incomplete case should succeed with warnings: {:?}",
+            result_chirho.err()
         );
     }
 

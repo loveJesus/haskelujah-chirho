@@ -659,8 +659,8 @@ impl<'a> ExhaustCheckerChirho<'a> {
         // non-exhaustive (we can't enumerate all possible literals).
         if !seen_lits_chirho.is_empty() && seen_cons_chirho.is_empty() {
             self.diags_chirho.push_chirho(
-                DiagnosticChirho::error_with_code_chirho(
-                    ErrorCodeChirho::error_chirho(NON_EXHAUSTIVE_CODE_CHIRHO),
+                DiagnosticChirho::warning_with_code_chirho(
+                    ErrorCodeChirho::warning_chirho(NON_EXHAUSTIVE_CODE_CHIRHO),
                     format!(
                         "non-exhaustive patterns in `{site_name_chirho}`: \
                          literal patterns require a wildcard or variable \
@@ -691,8 +691,8 @@ impl<'a> ExhaustCheckerChirho<'a> {
                 if !missing_chirho.is_empty() {
                     let missing_list_chirho = missing_chirho.join(", ");
                     self.diags_chirho.push_chirho(
-                        DiagnosticChirho::error_with_code_chirho(
-                            ErrorCodeChirho::error_chirho(NON_EXHAUSTIVE_CODE_CHIRHO),
+                        DiagnosticChirho::warning_with_code_chirho(
+                            ErrorCodeChirho::warning_chirho(NON_EXHAUSTIVE_CODE_CHIRHO),
                             format!(
                                 "non-exhaustive patterns in `{site_name_chirho}`: \
                                  missing constructor(s): {missing_list_chirho}"
@@ -1030,13 +1030,14 @@ mod tests_chirho {
             ),
         ]);
         let result_chirho = check_module_exhaustiveness_chirho(&module_chirho);
-        assert!(result_chirho.diagnostics_chirho.has_errors_chirho());
+        // Non-exhaustive patterns are warnings, not errors (matches GHC behavior)
+        assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
         let diags_chirho = result_chirho.diagnostics_chirho.diagnostics_chirho();
         assert_eq!(diags_chirho.len(), 1);
         assert!(diags_chirho[0].message_chirho.contains("Blue"));
         assert_eq!(
             diags_chirho[0].code_chirho,
-            Some(ErrorCodeChirho::error_chirho(400))
+            Some(ErrorCodeChirho::warning_chirho(400))
         );
     }
 
@@ -1047,7 +1048,9 @@ mod tests_chirho {
             vec![mk_con_pat_chirho("True")],
         )]);
         let result_chirho = check_module_exhaustiveness_chirho(&module_chirho);
-        assert!(result_chirho.diagnostics_chirho.has_errors_chirho());
+        // Non-exhaustive patterns are warnings, not errors
+        assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
+        assert!(result_chirho.diagnostics_chirho.warning_count_chirho() > 0);
         let msg_chirho = &result_chirho.diagnostics_chirho.diagnostics_chirho()[0].message_chirho;
         assert!(msg_chirho.contains("False"));
     }
@@ -1059,7 +1062,9 @@ mod tests_chirho {
             vec![mk_lit_pat_chirho(1), mk_lit_pat_chirho(2)],
         )]);
         let result_chirho = check_module_exhaustiveness_chirho(&module_chirho);
-        assert!(result_chirho.diagnostics_chirho.has_errors_chirho());
+        // Non-exhaustive patterns are warnings, not errors
+        assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
+        assert!(result_chirho.diagnostics_chirho.warning_count_chirho() > 0);
         let msg_chirho = &result_chirho.diagnostics_chirho.diagnostics_chirho()[0].message_chirho;
         assert!(msg_chirho.contains("literal"));
     }
@@ -1148,7 +1153,9 @@ mod tests_chirho {
             mk_fun_decl_chirho("f", vec![vec![mk_con_pat_chirho("A")]]),
         ]);
         let result_chirho = check_module_exhaustiveness_chirho(&module_chirho);
-        assert!(result_chirho.diagnostics_chirho.has_errors_chirho());
+        // Non-exhaustive patterns are warnings, not errors
+        assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
+        assert!(result_chirho.diagnostics_chirho.warning_count_chirho() > 0);
         let msg_chirho = &result_chirho.diagnostics_chirho.diagnostics_chirho()[0].message_chirho;
         assert!(msg_chirho.contains("B"));
     }
@@ -1273,7 +1280,9 @@ mod tests_chirho {
             vec![mk_con_pat_chirho("Just")],
         )]);
         let result_chirho = check_module_exhaustiveness_chirho(&module_chirho);
-        assert!(result_chirho.diagnostics_chirho.has_errors_chirho());
+        // Non-exhaustive patterns are warnings, not errors
+        assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
+        assert!(result_chirho.diagnostics_chirho.warning_count_chirho() > 0);
         assert!(
             result_chirho.diagnostics_chirho.diagnostics_chirho()[0]
                 .message_chirho
