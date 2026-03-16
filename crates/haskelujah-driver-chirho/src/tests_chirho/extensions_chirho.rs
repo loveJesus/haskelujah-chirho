@@ -1094,6 +1094,15 @@ fn do_where_compiles_chirho() {
     assert!(result_chirho.is_ok(), "do-where should compile: {:?}", result_chirho.err());
 }
 
+#[test]
+fn do_where_deeper_indent_chirho() {
+    // `where` at DEEPER indent than do body should still close do block
+    let src_chirho = "module Test where\nl3 = do\n  return a\n   where\n   a = 42\nmain = l3\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DoWhere3.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
 // ── Kind inference: higher-kinded constraint arguments ─────────────────
 
 #[test]

@@ -230,18 +230,18 @@ impl<'src> LayoutRuleChirho<'src> {
                 }
             }
 
-            // Per GHC behavior: `where` closes any non-let implicit layout
-            // context at the same or deeper indentation. This ensures
-            // `do { stmt; where binds }` attaches `where` to the enclosing
-            // equation, not the `do` block.
+            // Per GHC behavior: `where` closes ALL non-let implicit layout
+            // contexts (do/of/case) regardless of indentation. The `where`
+            // keyword always attaches to the enclosing equation, never to a
+            // do or case block. We preserve let-contexts (closed by `in`)
+            // and stop at the module-level context (indent ≤ 1).
             if token_chirho.kind_chirho == RawTokenKindChirho::WhereChirho {
                 while let Some(LayoutContextChirho::ImplicitChirho(indent_chirho, is_let_chirho)) =
                     context_stack_chirho.last()
                 {
                     // Don't close let contexts (those are closed by `in`)
-                    // Don't close contexts that are already at a strictly lower
-                    // indentation than `where` (those are outer scopes).
-                    if *is_let_chirho || *indent_chirho < col_chirho {
+                    // Don't close the outermost module-level context (indent ≤ 1)
+                    if *is_let_chirho || *indent_chirho <= 1 {
                         break;
                     }
                     // Close this do/of/case/where context
