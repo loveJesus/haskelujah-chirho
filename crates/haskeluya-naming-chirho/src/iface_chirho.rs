@@ -2228,6 +2228,20 @@ fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsC
                 // TH splice declarations don't directly export names;
                 // they must be evaluated to generate concrete declarations first.
             }
+            DeclChirho::PatSynDeclChirho {
+                name_chirho,
+                span_chirho,
+                ..
+            } => {
+                let syn_name_chirho = name_chirho.text_chirho().to_string();
+                exports_chirho.values_chirho.insert(
+                    syn_name_chirho.clone(),
+                    IfaceValueChirho {
+                        name_chirho: syn_name_chirho,
+                        span_chirho: *span_chirho,
+                    },
+                );
+            }
         }
     }
 

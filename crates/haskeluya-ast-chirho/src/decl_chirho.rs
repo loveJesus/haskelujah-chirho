@@ -179,10 +179,34 @@ pub enum DeclChirho {
         foreign_name_chirho: Option<String>,
         span_chirho: SpanChirho,
     },
+    /// Pattern synonym declaration.
+    PatSynDeclChirho {
+        name_chirho: NameChirho,
+        /// Pattern variables bound by this synonym.
+        args_chirho: Vec<NameChirho>,
+        /// Directionality (unidirectional, implicitly/explicitly bidirectional).
+        dir_chirho: PatSynDirChirho,
+        /// The pattern this synonym expands to in pattern position.
+        pat_chirho: PatChirho,
+        span_chirho: SpanChirho,
+    },
     /// Template Haskell splice at declaration level (`$(makeLenses ''Foo)`).
     SpliceDeclChirho {
         expr_chirho: crate::expr_chirho::ExprChirho,
         span_chirho: SpanChirho,
+    },
+}
+
+/// Directionality of a pattern synonym.
+#[derive(Debug, Clone, PartialEq)]
+pub enum PatSynDirChirho {
+    /// `pattern P x = pat` — usable as both pattern and expression.
+    ImplBidirChirho,
+    /// `pattern P x <- pat` — usable only in pattern position.
+    UnidirChirho,
+    /// `pattern P x <- pat where P x = expr` — separate match and builder.
+    ExplBidirChirho {
+        builder_binds_chirho: Vec<LocalBindChirho>,
     },
 }
 
@@ -275,6 +299,7 @@ impl DeclChirho {
             | Self::FixityDeclChirho { span_chirho, .. }
             | Self::DefaultDeclChirho { span_chirho, .. }
             | Self::ForeignDeclChirho { span_chirho, .. }
+            | Self::PatSynDeclChirho { span_chirho, .. }
             | Self::TypeFamilyDeclChirho { span_chirho, .. }
             | Self::TypeFamilyInstanceDeclChirho { span_chirho, .. }
             | Self::SpliceDeclChirho { span_chirho, .. } => *span_chirho,

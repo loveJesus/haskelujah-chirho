@@ -343,7 +343,14 @@ impl<'src> ParserChirho<'src> {
             Some(RawTokenKindChirho::ForeignChirho) => self.parse_foreign_decl_chirho(),
             // Template Haskell splice at top level: $(expr) or $name
             Some(RawTokenKindChirho::ThSpliceChirho) => self.parse_splice_decl_chirho(),
-            _ => self.parse_value_decl_chirho(),
+            _ => {
+                // `pattern ConName ...` → pattern synonym declaration
+                if self.at_varid_text_chirho("pattern") && self.peek_next_is_conid_chirho() {
+                    self.parse_pat_syn_decl_chirho();
+                } else {
+                    self.parse_value_decl_chirho();
+                }
+            }
         }
     }
 
@@ -977,6 +984,50 @@ impl<'src> ParserChirho<'src> {
     }
 
     /// Parse: foreign (import|export) callconv [safety] [string] name :: type
+    /// Parse a pattern synonym declaration:
+    /// `pattern ConName args = pat`   (implicitly bidirectional)
+    /// `pattern ConName args <- pat`  (unidirectional)
+    /// `pattern ConName args <- pat where ConName args = expr`  (explicitly bidirectional)
+    fn parse_pat_syn_decl_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::PatSynDeclChirho);
+
+        self.bump_chirho(); // "pattern" (VarId)
+        self.eat_trivia_chirho();
+
+        // Pattern synonym name (ConId)
+        if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
+            self.bump_chirho();
+        }
+        self.eat_trivia_chirho();
+
+        // Pattern variables (VarIds before = or <-)
+        while self.at_chirho(RawTokenKindChirho::VarIdChirho)
+            && !self.at_varid_text_chirho("where")
+        {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+        }
+
+        // Direction: = (implicitly bidirectional) or <- (unidirectional/explicitly bidirectional)
+        if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+            self.bump_chirho(); // =
+            self.eat_trivia_chirho();
+            self.parse_pat_chirho();
+        } else if self.at_chirho(RawTokenKindChirho::LeftArrowChirho) {
+            self.bump_chirho(); // <-
+            self.eat_trivia_chirho();
+            self.parse_pat_chirho();
+            // Check for explicitly bidirectional where clause
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::WhereChirho) {
+                self.parse_where_block_chirho();
+            }
+        }
+
+        self.builder_chirho.finish_node_chirho();
+    }
+
     fn parse_foreign_decl_chirho(&mut self) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::ForeignDeclChirho);
@@ -1568,6 +1619,21 @@ impl<'src> ParserChirho<'src> {
                 self.builder_chirho.finish_node_chirho();
             }
         }
+    }
+
+    /// Check if the next non-trivia token after current is a ConId.
+    /// Used to distinguish `pattern ConName ...` from a variable named `pattern`.
+    fn peek_next_is_conid_chirho(&self) -> bool {
+        let mut i_chirho = self.pos_chirho + 1;
+        while i_chirho < self.tokens_chirho.len() {
+            let kind_chirho = self.tokens_chirho[i_chirho].kind_chirho;
+            if kind_chirho.is_trivia_chirho() {
+                i_chirho += 1;
+                continue;
+            }
+            return kind_chirho == RawTokenKindChirho::ConIdChirho;
+        }
+        false
     }
 
     /// Peek at the token kind after the current tick, skipping trivia.

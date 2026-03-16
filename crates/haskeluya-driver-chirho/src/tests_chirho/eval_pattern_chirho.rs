@@ -1075,6 +1075,63 @@ main = putStrLn (show (fromJust2 (Just 42)))
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Pattern Synonyms ({-# LANGUAGE PatternSynonyms #-})
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn eval_pattern_synonym_unidir_head_chirho() {
+        // Unidirectional pattern synonym: `pattern Head x <- (x:_)`
+        let src_chirho = concat!(
+            "{-# LANGUAGE PatternSynonyms #-}\n",
+            "module Main where\n",
+            "pattern Head x <- (x:_)\n",
+            "first (Head x) = x\n",
+            "main = first [42, 99, 0]\n",
+        );
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Main.hs", None);
+        match result_chirho {
+            Ok(haskeluya_runtime_chirho::ValueChirho::IntChirho(42)) => {}
+            Ok(val_chirho) => panic!("pat syn unidir Head: expected 42, got {:?}", val_chirho),
+            Err(e_chirho) => panic!("pat syn unidir Head: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_pattern_synonym_bidir_pair_chirho() {
+        // Bidirectional pattern synonym: `pattern Pair a b = (a, b)`
+        // Used in both pattern and expression position.
+        let src_chirho = concat!(
+            "{-# LANGUAGE PatternSynonyms #-}\n",
+            "module Main where\n",
+            "pattern Pair a b = (a, b)\n",
+            "addPair (Pair a b) = a + b\n",
+            "main = addPair (Pair 19 23)\n",
+        );
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Main.hs", None);
+        match result_chirho {
+            Ok(haskeluya_runtime_chirho::ValueChirho::IntChirho(42)) => {}
+            Ok(val_chirho) => panic!("pat syn bidir Pair: expected 42, got {:?}", val_chirho),
+            Err(e_chirho) => panic!("pat syn bidir Pair: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_pattern_synonym_ast_present_chirho() {
+        // Verify pattern synonym declaration appears in AST.
+        let src_chirho = concat!(
+            "{-# LANGUAGE PatternSynonyms #-}\n",
+            "module Main where\n",
+            "pattern Head x <- (x:_)\n",
+            "main = 1\n",
+        );
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
+        assert!(result_chirho.is_ok(), "compilation should succeed");
+    }
+
     // John 3:16 - For God so loved the world, that he gave his only begotten Son,
     // that whosoever believeth in him should not perish, but have everlasting life.
 

@@ -232,6 +232,16 @@ pub fn resolve_module_with_imports_chirho(
                     }
                 }
             }
+            haskeluya_ast_chirho::decl_chirho::DeclChirho::PatSynDeclChirho {
+                name_chirho, ..
+            } => {
+                // Pattern synonyms are constructor-like in the value namespace
+                bind_name_chirho(
+                    &mut env_chirho,
+                    name_chirho,
+                    NamespaceChirho::ValueChirho,
+                );
+            }
             _ => {}
         }
     }

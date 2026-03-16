@@ -824,6 +824,9 @@ impl LowerCtxChirho {
             SyntaxKindChirho::ForeignDeclChirho => {
                 Some(self.lower_foreign_decl_chirho(node_chirho, base_chirho, span_chirho))
             }
+            SyntaxKindChirho::PatSynDeclChirho => {
+                Some(self.lower_pat_syn_decl_chirho(node_chirho, base_chirho, span_chirho))
+            }
             SyntaxKindChirho::SpliceDeclChirho => {
                 Some(self.lower_splice_decl_chirho(node_chirho, base_chirho, span_chirho))
             }
@@ -2474,6 +2477,97 @@ impl LowerCtxChirho {
     ///
     /// Expected token sequence (all trivia already filtered):
     ///   foreign  import|export  callconv  [safety]  ["c_name"]  hsName  ::  type...
+    fn lower_pat_syn_decl_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        span_chirho: SpanChirho,
+    ) -> DeclChirho {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+
+        let mut name_chirho: Option<NameChirho> = None;
+        let mut args_chirho: Vec<NameChirho> = Vec::new();
+        let mut saw_keyword_chirho = false;
+        let mut saw_sep_chirho = false;
+        let mut is_equals_chirho = false;
+        let mut pat_chirho: Option<PatChirho> = None;
+        let mut has_where_chirho = false;
+
+        for child_chirho in &children_chirho {
+            match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(tok_chirho) => {
+                    let kind_chirho = tok_chirho.kind_chirho();
+                    if kind_chirho == TokenKindChirho::VarIdChirho && !saw_keyword_chirho {
+                        // "pattern" keyword — skip
+                        saw_keyword_chirho = true;
+                    } else if kind_chirho == TokenKindChirho::ConIdChirho && name_chirho.is_none() {
+                        // Pattern synonym name
+                        let tok_span_chirho = self.span_chirho(
+                            child_chirho.start_chirho,
+                            child_chirho.start_chirho + tok_chirho.text_len_chirho(),
+                        );
+                        name_chirho = Some(self.name_from_text_chirho(
+                            tok_chirho.text_chirho(),
+                            tok_span_chirho,
+                        ));
+                    } else if kind_chirho == TokenKindChirho::VarIdChirho
+                        && !saw_sep_chirho
+                        && name_chirho.is_some()
+                    {
+                        // Pattern variable
+                        let tok_span_chirho = self.span_chirho(
+                            child_chirho.start_chirho,
+                            child_chirho.start_chirho + tok_chirho.text_len_chirho(),
+                        );
+                        args_chirho.push(self.name_from_text_chirho(
+                            tok_chirho.text_chirho(),
+                            tok_span_chirho,
+                        ));
+                    } else if kind_chirho == TokenKindChirho::EqualsChirho && !saw_sep_chirho {
+                        saw_sep_chirho = true;
+                        is_equals_chirho = true;
+                    } else if kind_chirho == TokenKindChirho::LeftArrowChirho && !saw_sep_chirho {
+                        saw_sep_chirho = true;
+                        is_equals_chirho = false;
+                    } else if kind_chirho == TokenKindChirho::WhereKeywordChirho {
+                        has_where_chirho = true;
+                    }
+                }
+                GreenElementChirho::NodeChirho(n_chirho) => {
+                    if saw_sep_chirho && pat_chirho.is_none() && !has_where_chirho {
+                        // First node after separator is the pattern
+                        if is_pat_kind_chirho(n_chirho.kind_chirho()) {
+                            pat_chirho = Some(self.lower_pat_chirho(n_chirho, child_chirho.start_chirho));
+                        } else {
+                            // Might be an expression node — try to interpret as pattern
+                            pat_chirho = Some(self.lower_pat_chirho(n_chirho, child_chirho.start_chirho));
+                        }
+                    }
+                }
+            }
+        }
+
+        let dir_chirho = if is_equals_chirho {
+            haskeluya_ast_chirho::decl_chirho::PatSynDirChirho::ImplBidirChirho
+        } else if has_where_chirho {
+            // Explicitly bidirectional — where clause bindings
+            // For now, store empty; full support would parse the where block
+            haskeluya_ast_chirho::decl_chirho::PatSynDirChirho::ExplBidirChirho {
+                builder_binds_chirho: vec![],
+            }
+        } else {
+            haskeluya_ast_chirho::decl_chirho::PatSynDirChirho::UnidirChirho
+        };
+
+        DeclChirho::PatSynDeclChirho {
+            name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
+            args_chirho,
+            dir_chirho,
+            pat_chirho: pat_chirho.unwrap_or(PatChirho::WildcardChirho(span_chirho)),
+            span_chirho,
+        }
+    }
+
     fn lower_foreign_decl_chirho(
         &self,
         node_chirho: &GreenNodeChirho,

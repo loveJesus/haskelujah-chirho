@@ -11,7 +11,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use haskeluya_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, StrictnessChirho};
+use haskeluya_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, PatSynDirChirho, StrictnessChirho};
 use haskeluya_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho};
 use haskeluya_ast_chirho::lit_chirho::LitChirho;
 use haskeluya_ast_chirho::module_chirho::ModuleChirho;
@@ -35,6 +35,17 @@ pub struct DesugarOutputChirho {
     pub names_chirho: HashMap<CoreIdChirho, String>,
 }
 
+/// A registered pattern synonym definition used during desugaring.
+#[derive(Debug, Clone)]
+struct PatSynDefChirho {
+    /// Formal parameter names of the synonym (`pattern P x y <- ...` → `["x", "y"]`).
+    args_chirho: Vec<String>,
+    /// The expansion pattern.
+    pat_chirho: PatChirho,
+    /// Directionality (implicit bidir, unidir, explicit bidir).
+    dir_chirho: PatSynDirChirho,
+}
+
 /// The desugaring context — generates fresh Core IDs.
 pub struct DesugarCtxChirho {
     next_id_chirho: u32,
@@ -55,6 +66,8 @@ pub struct DesugarCtxChirho {
     /// Record constructor field names: maps constructor name → ordered list of field names.
     /// Used for RecordWildCards expansion (`Foo{..}` fills in missing fields).
     con_field_names_chirho: HashMap<String, Vec<String>>,
+    /// Pattern synonym definitions: maps synonym name → definition.
+    pat_syns_chirho: HashMap<String, PatSynDefChirho>,
 }
 
 impl DesugarCtxChirho {
@@ -67,6 +80,7 @@ impl DesugarCtxChirho {
             extensions_chirho: Vec::new(),
             con_strictness_chirho: HashMap::new(),
             con_field_names_chirho: HashMap::new(),
+            pat_syns_chirho: HashMap::new(),
         }
     }
 
@@ -154,6 +168,239 @@ impl DesugarCtxChirho {
                     ConDeclChirho::GadtChirho { .. } => {}
                 }
             }
+        }
+    }
+
+    /// Collect pattern synonym declarations into `pat_syns_chirho`.
+    fn collect_pat_syns_chirho(&mut self, module_chirho: &ModuleChirho) {
+        for decl_chirho in &module_chirho.decls_chirho {
+            if let DeclChirho::PatSynDeclChirho {
+                name_chirho,
+                args_chirho,
+                dir_chirho,
+                pat_chirho,
+                ..
+            } = decl_chirho
+            {
+                let def_chirho = PatSynDefChirho {
+                    args_chirho: args_chirho
+                        .iter()
+                        .map(|a_chirho| a_chirho.text_chirho().to_string())
+                        .collect(),
+                    pat_chirho: pat_chirho.clone(),
+                    dir_chirho: dir_chirho.clone(),
+                };
+                self.pat_syns_chirho
+                    .insert(name_chirho.text_chirho().to_string(), def_chirho);
+            }
+        }
+    }
+
+    /// If `pat_chirho` is a `ConChirho` whose name is a pattern synonym, expand
+    /// it by substituting the actual arguments into the synonym's expansion
+    /// pattern. Returns `Some(expanded)` if expanded, `None` otherwise.
+    fn expand_pat_syn_chirho(&self, pat_chirho: &PatChirho) -> Option<PatChirho> {
+        if let PatChirho::ConChirho {
+            con_chirho,
+            args_chirho,
+            span_chirho,
+        } = pat_chirho
+        {
+            let name_chirho = con_chirho.text_chirho();
+            if let Some(def_chirho) = self.pat_syns_chirho.get(name_chirho) {
+                // Build substitution: formal param name → actual sub-pattern
+                let mut subst_chirho: HashMap<String, PatChirho> = HashMap::new();
+                for (formal_chirho, actual_chirho) in
+                    def_chirho.args_chirho.iter().zip(args_chirho.iter())
+                {
+                    subst_chirho.insert(formal_chirho.clone(), actual_chirho.clone());
+                }
+                // For any remaining formals without actuals, bind to wildcard
+                for formal_chirho in def_chirho.args_chirho.iter().skip(args_chirho.len()) {
+                    subst_chirho.insert(
+                        formal_chirho.clone(),
+                        PatChirho::WildcardChirho(*span_chirho),
+                    );
+                }
+                return Some(Self::substitute_pat_chirho(
+                    &def_chirho.pat_chirho,
+                    &subst_chirho,
+                ));
+            }
+        }
+        None
+    }
+
+    /// Recursively substitute variables in a pattern according to `subst_chirho`.
+    /// A `VarChirho(name)` that appears in subst is replaced by the mapped pattern.
+    fn substitute_pat_chirho(
+        pat_chirho: &PatChirho,
+        subst_chirho: &HashMap<String, PatChirho>,
+    ) -> PatChirho {
+        match pat_chirho {
+            PatChirho::VarChirho(name_chirho) => {
+                if let Some(replacement_chirho) = subst_chirho.get(name_chirho.text_chirho()) {
+                    replacement_chirho.clone()
+                } else {
+                    pat_chirho.clone()
+                }
+            }
+            PatChirho::ConChirho {
+                con_chirho,
+                args_chirho,
+                span_chirho,
+            } => PatChirho::ConChirho {
+                con_chirho: con_chirho.clone(),
+                args_chirho: args_chirho
+                    .iter()
+                    .map(|a_chirho| Self::substitute_pat_chirho(a_chirho, subst_chirho))
+                    .collect(),
+                span_chirho: *span_chirho,
+            },
+            PatChirho::InfixConChirho {
+                left_chirho,
+                op_chirho,
+                right_chirho,
+                span_chirho,
+            } => PatChirho::InfixConChirho {
+                left_chirho: Box::new(Self::substitute_pat_chirho(
+                    left_chirho,
+                    subst_chirho,
+                )),
+                op_chirho: op_chirho.clone(),
+                right_chirho: Box::new(Self::substitute_pat_chirho(
+                    right_chirho,
+                    subst_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
+            PatChirho::TupleChirho {
+                elements_chirho,
+                span_chirho,
+            } => PatChirho::TupleChirho {
+                elements_chirho: elements_chirho
+                    .iter()
+                    .map(|e_chirho| Self::substitute_pat_chirho(e_chirho, subst_chirho))
+                    .collect(),
+                span_chirho: *span_chirho,
+            },
+            PatChirho::ListChirho {
+                elements_chirho,
+                span_chirho,
+            } => PatChirho::ListChirho {
+                elements_chirho: elements_chirho
+                    .iter()
+                    .map(|e_chirho| Self::substitute_pat_chirho(e_chirho, subst_chirho))
+                    .collect(),
+                span_chirho: *span_chirho,
+            },
+            PatChirho::AsChirho {
+                name_chirho,
+                pattern_chirho,
+                span_chirho,
+            } => PatChirho::AsChirho {
+                name_chirho: name_chirho.clone(),
+                pattern_chirho: Box::new(Self::substitute_pat_chirho(
+                    pattern_chirho,
+                    subst_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
+            PatChirho::ParenChirho {
+                inner_chirho,
+                span_chirho,
+            } => PatChirho::ParenChirho {
+                inner_chirho: Box::new(Self::substitute_pat_chirho(
+                    inner_chirho,
+                    subst_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
+            PatChirho::BangChirho {
+                inner_chirho,
+                span_chirho,
+            } => PatChirho::BangChirho {
+                inner_chirho: Box::new(Self::substitute_pat_chirho(
+                    inner_chirho,
+                    subst_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
+            // Wildcard, Lit, Neg — no variables to substitute
+            _ => pat_chirho.clone(),
+        }
+    }
+
+    /// Convert a pattern synonym's expansion pattern into a Core expression
+    /// for use in expression position (bidirectional synonym builder).
+    /// `subst_chirho` maps formal parameter names to their CoreIdChirho binders.
+    fn pat_to_builder_expr_chirho(
+        &mut self,
+        pat_chirho: &PatChirho,
+        subst_chirho: &HashMap<String, CoreIdChirho>,
+    ) -> CoreExprChirho {
+        match pat_chirho {
+            PatChirho::VarChirho(name_chirho) => {
+                if let Some(id_chirho) = subst_chirho.get(name_chirho.text_chirho()) {
+                    CoreExprChirho::VarChirho(*id_chirho)
+                } else {
+                    let id_chirho = self.resolve_var_chirho(name_chirho.text_chirho());
+                    CoreExprChirho::VarChirho(id_chirho)
+                }
+            }
+            PatChirho::ConChirho {
+                con_chirho,
+                args_chirho,
+                ..
+            } => {
+                let core_args_chirho: Vec<CoreExprChirho> = args_chirho
+                    .iter()
+                    .map(|a_chirho| self.pat_to_builder_expr_chirho(a_chirho, subst_chirho))
+                    .collect();
+                CoreExprChirho::ConAppChirho {
+                    con_name_chirho: con_chirho.text_chirho().to_string(),
+                    args_chirho: core_args_chirho,
+                }
+            }
+            PatChirho::InfixConChirho {
+                left_chirho,
+                op_chirho,
+                right_chirho,
+                ..
+            } => {
+                let left_expr_chirho =
+                    self.pat_to_builder_expr_chirho(left_chirho, subst_chirho);
+                let right_expr_chirho =
+                    self.pat_to_builder_expr_chirho(right_chirho, subst_chirho);
+                CoreExprChirho::ConAppChirho {
+                    con_name_chirho: op_chirho.text_chirho().to_string(),
+                    args_chirho: vec![left_expr_chirho, right_expr_chirho],
+                }
+            }
+            PatChirho::TupleChirho {
+                elements_chirho, ..
+            } => {
+                let tuple_name_chirho = format!("$tuple{}", elements_chirho.len());
+                let core_args_chirho: Vec<CoreExprChirho> = elements_chirho
+                    .iter()
+                    .map(|e_chirho| self.pat_to_builder_expr_chirho(e_chirho, subst_chirho))
+                    .collect();
+                CoreExprChirho::ConAppChirho {
+                    con_name_chirho: tuple_name_chirho,
+                    args_chirho: core_args_chirho,
+                }
+            }
+            PatChirho::LitChirho(lit_chirho) => {
+                CoreExprChirho::LitChirho(self.desugar_lit_chirho(lit_chirho))
+            }
+            PatChirho::WildcardChirho(_) => {
+                // Wildcard in builder position — produce a unit-like placeholder.
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))
+            }
+            PatChirho::ParenChirho { inner_chirho, .. } => {
+                self.pat_to_builder_expr_chirho(inner_chirho, subst_chirho)
+            }
+            _ => CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
         }
     }
 
@@ -483,6 +730,9 @@ impl DesugarCtxChirho {
     pub fn desugar_module_chirho(&mut self, module_chirho: &ModuleChirho) -> DesugarOutputChirho {
         // Pass -1: Collect constructor strictness annotations for strict field enforcement
         self.collect_con_strictness_chirho(module_chirho);
+
+        // Pass -0.5: Collect pattern synonym definitions for expansion during desugaring
+        self.collect_pat_syns_chirho(module_chirho);
 
         // Pass 0: Build map of class → (method_name → default MatchArms) from class declarations
         let mut class_defaults_chirho: HashMap<String, HashMap<String, Vec<MatchArmChirho>>> =
@@ -1479,6 +1729,10 @@ impl DesugarCtxChirho {
 
     /// Convert a pattern to a Core alt constructor.
     fn pat_to_alt_con_chirho(&mut self, pat_chirho: &PatChirho) -> AltConChirho {
+        // Expand pattern synonyms before dispatching.
+        if let Some(expanded_chirho) = self.expand_pat_syn_chirho(pat_chirho) {
+            return self.pat_to_alt_con_chirho(&expanded_chirho);
+        }
         match pat_chirho {
             PatChirho::ConChirho { con_chirho, .. } => {
                 AltConChirho::DataConChirho(con_chirho.text_chirho().to_string())
@@ -1546,6 +1800,10 @@ impl DesugarCtxChirho {
     /// For `(a, b)` (TupleChirho) → binders `[a, b]`
     /// For `x@Con a b` (AsChirho) → binder `x` + inner binders
     fn pat_to_binders_chirho(&mut self, pat_chirho: &PatChirho) -> Vec<BinderChirho> {
+        // Expand pattern synonyms before extracting binders.
+        if let Some(expanded_chirho) = self.expand_pat_syn_chirho(pat_chirho) {
+            return self.pat_to_binders_chirho(&expanded_chirho);
+        }
         match pat_chirho {
             PatChirho::ConChirho { args_chirho, .. } => {
                 self.sub_pats_to_binders_chirho(args_chirho)
@@ -1675,6 +1933,11 @@ impl DesugarCtxChirho {
     /// nested constructor sub-patterns) so that the RHS can reference them.
     /// Does NOT create binders; just binds names to pre-allocated IDs.
     fn prebind_all_pat_vars_chirho(&mut self, pat_chirho: &PatChirho) {
+        // Expand pattern synonyms before pre-binding.
+        if let Some(expanded_chirho) = self.expand_pat_syn_chirho(pat_chirho) {
+            self.prebind_all_pat_vars_chirho(&expanded_chirho);
+            return;
+        }
         // Only recurse into sub-patterns that are nested constructor patterns.
         // Simple VarChirho/WildcardChirho/LitChirho at the immediate child
         // level are already handled by `pat_to_binders_chirho`.
@@ -2197,8 +2460,42 @@ impl DesugarCtxChirho {
                 CoreExprChirho::VarChirho(id_chirho)
             }
             ExprChirho::ConChirho(name_chirho) => {
+                let con_text_chirho = name_chirho.text_chirho();
+                // Bidirectional pattern synonyms can be used as expressions.
+                if let Some(def_chirho) = self.pat_syns_chirho.get(con_text_chirho).cloned() {
+                    if matches!(def_chirho.dir_chirho, PatSynDirChirho::ImplBidirChirho) {
+                        // Build: \arg0 arg1 ... -> <expansion_as_expr>
+                        let mut param_binders_chirho = Vec::new();
+                        let mut subst_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
+                        for formal_chirho in &def_chirho.args_chirho {
+                            let binder_chirho = self.fresh_binder_chirho(
+                                formal_chirho,
+                                TyChirho::VarChirho(
+                                    haskeluya_typing_chirho::ty_chirho::TyVarChirho(
+                                        self.next_id_chirho,
+                                    ),
+                                ),
+                                SpanChirho::DUMMY_CHIRHO,
+                            );
+                            subst_chirho
+                                .insert(formal_chirho.clone(), binder_chirho.id_chirho);
+                            param_binders_chirho.push(binder_chirho);
+                        }
+                        let body_chirho =
+                            self.pat_to_builder_expr_chirho(&def_chirho.pat_chirho, &subst_chirho);
+                        // Wrap body in lambdas (right to left).
+                        let mut result_chirho = body_chirho;
+                        for binder_chirho in param_binders_chirho.into_iter().rev() {
+                            result_chirho = CoreExprChirho::LamChirho {
+                                binder_chirho,
+                                body_chirho: Box::new(result_chirho),
+                            };
+                        }
+                        return result_chirho;
+                    }
+                }
                 CoreExprChirho::ConAppChirho {
-                    con_name_chirho: name_chirho.text_chirho().to_string(),
+                    con_name_chirho: con_text_chirho.to_string(),
                     args_chirho: vec![],
                 }
             }

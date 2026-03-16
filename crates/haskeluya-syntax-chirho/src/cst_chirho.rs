@@ -68,6 +68,8 @@ pub enum SyntaxKindChirho {
     DefaultDeclChirho,
     /// `foreign import ccall ...` declaration.
     ForeignDeclChirho,
+    /// Pattern synonym declaration (`pattern Head x <- x:_`).
+    PatSynDeclChirho,
     /// Fixity declaration (`infixl 6 +!`).
     FixityDeclChirho,
 
@@ -240,6 +242,7 @@ impl SyntaxKindChirho {
                 | Self::InstanceDeclChirho
                 | Self::DefaultDeclChirho
                 | Self::ForeignDeclChirho
+                | Self::PatSynDeclChirho
                 | Self::FixityDeclChirho
                 | Self::TypeSigDeclChirho
                 | Self::FunBindChirho
