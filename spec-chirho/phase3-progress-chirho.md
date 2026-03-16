@@ -15,3 +15,4 @@
 5. **ViewPatterns** — `(expr -> pat)` syntax; ViewPatChirho CST node; desugaring via let-binding (VarChirho inner) or case (constructor inner); 3 e2e tests
 6. **PatternSynonyms** — `pattern Name args = pat` (bidirectional) / `pattern Name args <- pat` (unidirectional); PatSynDefChirho collection, expand_pat_syn_chirho substitution, pat_to_builder_expr_chirho for expression position; 3 e2e tests
 7. **Strict data fields** — `!` before constructor fields; StrictnessChirho enum; enforce_strict_fields_chirho wraps args in case for WHNF; 2 parser + 4 e2e tests
+8. **DerivingVia** — `deriving (Class) via ViaType` on newtypes; parser consumes `via Type` in deriving clauses; lowerer extracts deriving_via entries with separate class/via extraction; derive_via_chirho generates methods that unwrap newtype and delegate (Show/Eq/Ord/Num); 4 e2e tests

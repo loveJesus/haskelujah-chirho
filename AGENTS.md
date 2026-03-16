@@ -35,19 +35,18 @@ lex → layout → CST parse → AST lower → name resolve → kind infer → t
 
 ### Test Coverage
 
-**1847 tests passing**, 0 failures
+**1851 tests passing**, 0 failures
 
 ### Completed
 
 - Phase 1: 128 priorities ([spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md))
 - Phase 2: 62 priorities ([spec-chirho/phase2-archive-chirho.md](spec-chirho/phase2-archive-chirho.md))
-- Phase 3 done so far: GADTs, RankNTypes, ScopedTypeVariables, RecordWildCards, ViewPatterns, PatternSynonyms, strict data fields ([spec-chirho/phase3-progress-chirho.md](spec-chirho/phase3-progress-chirho.md))
+- Phase 3 done so far: GADTs, RankNTypes, ScopedTypeVariables, RecordWildCards, ViewPatterns, PatternSynonyms, strict data fields, DerivingVia ([spec-chirho/phase3-progress-chirho.md](spec-chirho/phase3-progress-chirho.md))
 
 ### Phase 3 — Active Priorities
 
 #### In Progress
 1. **Template Haskell completion** — splice eval with makeLenses done; remaining: STG bridge for user-written TH
-2. **DerivingVia** — `deriving Show via ViaType`
 
 #### Backend Maturity
 3. **Backend closures & heap** — closure allocation, thunk entry/update, heap for LLVM/Wasm/Cranelift
