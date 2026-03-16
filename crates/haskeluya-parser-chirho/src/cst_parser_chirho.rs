@@ -380,6 +380,12 @@ impl<'src> ParserChirho<'src> {
         }
         self.eat_trivia_chirho();
 
+        // ImportQualifiedPost: "qualified" after module name
+        if self.at_varid_text_chirho("qualified") {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+        }
+
         // Optional "as Alias"
         if self.at_varid_text_chirho("as") {
             self.bump_chirho();

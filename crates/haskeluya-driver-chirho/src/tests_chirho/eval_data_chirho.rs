@@ -2053,3 +2053,53 @@ main = print (Red == Green)
         assert_eq!(m_chirho.io_output_chirho, "False\n");
     }
 
+    // ── UnicodeSyntax tests ─────────────────────────────────────────────
+
+    #[test]
+    fn unicode_syntax_arrows_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "{-# LANGUAGE UnicodeSyntax #-}\nmodule Test where\nid2 \u{2237} a \u{2192} a\nid2 x = x\nmain = print (id2 42)\n";
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("UnicodeSyntax arrows failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn unicode_syntax_lambda_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "module Test where\nmain = print ((\u{03BB}x -> x + 1) 41)\n";
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("UnicodeSyntax lambda failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    #[test]
+    fn unicode_syntax_fat_arrow_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // Test ⇒ for class constraints
+        let src_chirho = "{-# LANGUAGE UnicodeSyntax #-}\nmodule Test where\nshowIt \u{2237} Show a \u{21D2} a \u{2192} String\nshowIt x = show x\nmain = putStrLn (showIt 42)\n";
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("UnicodeSyntax fat arrow failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "42\n");
+    }
+
+    // ── ImportQualifiedPost test ────────────────────────────────────────
+
+    #[test]
+    fn import_qualified_post_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE ImportQualifiedPost #-}
+module Test where
+import Data.Map qualified as Map
+main = print (Map.mapSize (Map.mapInsert 1 "a" Map.mapEmpty))
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("ImportQualifiedPost failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "1\n");
+    }
+

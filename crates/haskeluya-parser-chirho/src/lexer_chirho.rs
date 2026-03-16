@@ -452,6 +452,26 @@ impl<'src> LexerChirho<'src> {
 
             // Non-ASCII bytes — could be Unicode identifiers, BOM, etc.
             _ if byte_chirho > 0x7F => {
+                // UnicodeSyntax: recognize Unicode alternatives for Haskell punctuation
+                let rest_chirho_pre = self.source_chirho.get(self.pos_chirho..);
+                if let Some(rest_pre_chirho) = rest_chirho_pre {
+                    if let Some(ch_pre_chirho) = rest_pre_chirho.chars().next() {
+                        let (kind_opt_chirho, len_chirho) = match ch_pre_chirho {
+                            '→' => (Some(RawTokenKindChirho::RightArrowChirho), ch_pre_chirho.len_utf8()),
+                            '←' => (Some(RawTokenKindChirho::LeftArrowChirho), ch_pre_chirho.len_utf8()),
+                            '∷' => (Some(RawTokenKindChirho::ColonColonChirho), ch_pre_chirho.len_utf8()),
+                            '⇒' => (Some(RawTokenKindChirho::FatArrowChirho), ch_pre_chirho.len_utf8()),
+                            '∀' => (Some(RawTokenKindChirho::ForallChirho), ch_pre_chirho.len_utf8()),
+                            'λ' => (Some(RawTokenKindChirho::BackslashChirho), ch_pre_chirho.len_utf8()),
+                            _ => (None, 0),
+                        };
+                        if let Some(kind_chirho) = kind_opt_chirho {
+                            self.pos_chirho += len_chirho;
+                            return self.make_token_chirho(kind_chirho, start_chirho);
+                        }
+                    }
+                }
+
                 // Decode the UTF-8 character to advance by the right number of bytes
                 let rest_chirho = match self.source_chirho.get(self.pos_chirho..) {
                     Some(s_chirho) => s_chirho,
