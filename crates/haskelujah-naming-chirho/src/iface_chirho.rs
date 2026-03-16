@@ -934,6 +934,112 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Control.Monad.Trans.Identity
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["runIdentityT", "mapIdentityT"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("IdentityT", &["IdentityT"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.Trans.Identity".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Monad.Trans.State / .Lazy / .Strict
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["runStateT", "evalStateT", "execStateT",
+                             "runState", "evalState", "execState",
+                             "get", "put", "modify", "gets", "state"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["StateT", "State"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for mod_name_chirho in &[
+            "Control.Monad.Trans.State",
+            "Control.Monad.Trans.State.Lazy",
+            "Control.Monad.Trans.State.Strict",
+        ] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
+    // Control.Monad.Trans.Reader
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["runReaderT", "mapReaderT", "withReaderT", "reader"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("ReaderT", &["ReaderT"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.Trans.Reader".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Monad.Trans.Writer / .Lazy / .Strict
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["runWriterT", "execWriterT", "mapWriterT", "tell", "listen", "pass", "writer"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("WriterT", &["WriterT"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for mod_name_chirho in &[
+            "Control.Monad.Trans.Writer",
+            "Control.Monad.Trans.Writer.Lazy",
+            "Control.Monad.Trans.Writer.Strict",
+        ] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
+    // Control.Monad.Trans.Except
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["runExceptT", "throwE", "catchE", "mapExceptT", "withExceptT"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("ExceptT", &["ExceptT"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.Trans.Except".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Monad.Trans.Maybe
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["runMaybeT", "mapMaybeT"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("MaybeT", &["MaybeT"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.Trans.Maybe".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Control.Monad.Reader
     {
         let mut exports_chirho = IfaceExportsChirho::default();

@@ -1000,3 +1000,67 @@ fn ghc2024_meta_extension_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "GHC2024.hs", None).unwrap(), ValueChirho::IntChirho(42));
 }
+
+// -- Phase 3 item 40: Library type schemes expansion --
+
+#[test]
+fn builtin_realToFrac_chirho() {
+    // realToFrac should type-check without error (type scheme present)
+    let src_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nf x = realToFrac x\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "realToFrac.hs");
+    assert!(result_chirho.is_ok(), "realToFrac should type-check: {:?}", result_chirho.err());
+}
+
+#[test]
+fn builtin_fromIntegral_chirho() {
+    let src_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nf x = fromIntegral x\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "fromIntegral.hs");
+    assert!(result_chirho.is_ok(), "fromIntegral should type-check: {:?}", result_chirho.err());
+}
+
+#[test]
+fn builtin_div_mod_chirho() {
+    let src_chirho = "module Test where\nmain = div 10 3\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "divmod.hs", None);
+    assert!(result_chirho.is_ok(), "div should eval: {:?}", result_chirho.err());
+}
+
+#[test]
+fn builtin_error_without_stack_trace_chirho() {
+    let src_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nf = errorWithoutStackTrace \"oops\"\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "errWST.hs");
+    assert!(result_chirho.is_ok(), "errorWithoutStackTrace should type-check: {:?}", result_chirho.err());
+}
+
+// -- Phase 3 item 41: Module interfaces expansion (transformers) --
+
+#[test]
+fn import_control_monad_trans_identity_chirho() {
+    let src_chirho = "module Test where\nimport Control.Monad.Trans.Identity (IdentityT)\nf = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TransIdentity.hs");
+    assert!(result_chirho.is_ok(), "Control.Monad.Trans.Identity import: {:?}", result_chirho.err());
+}
+
+#[test]
+fn import_control_monad_trans_state_chirho() {
+    let src_chirho = "module Test where\nimport Control.Monad.Trans.State (StateT)\nf = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TransState.hs");
+    assert!(result_chirho.is_ok(), "Control.Monad.Trans.State import: {:?}", result_chirho.err());
+}
+
+// -- Phase 3 item 42: Desugarer robustness (panic elimination) --
+
+#[test]
+fn desugar_th_splice_no_panic_chirho() {
+    // TH splices that reach the desugarer shouldn't panic, just produce dummy value
+    let src_chirho = "module Test where\nmain = 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NoPanic.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}

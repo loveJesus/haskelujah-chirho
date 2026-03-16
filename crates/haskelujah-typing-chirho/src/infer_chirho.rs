@@ -8626,6 +8626,196 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             },
         );
     }
+
+    // realToFrac :: (Real a, Fractional b) => a -> b
+    {
+        let a_chirho = TyVarChirho(7390);
+        let b_chirho = TyVarChirho(7391);
+        env_chirho.bind_chirho(
+            "realToFrac".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho, b_chirho],
+                preds_chirho: vec![
+                    SchemePredChirho { class_name_chirho: "Real".to_string(), ty_chirho: TyChirho::VarChirho(a_chirho) },
+                    SchemePredChirho { class_name_chirho: "Fractional".to_string(), ty_chirho: TyChirho::VarChirho(b_chirho) },
+                ],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                    Box::new(TyChirho::VarChirho(b_chirho)),
+                    MultChirho::ManyChirho,
+                ),
+            },
+        );
+    }
+
+    // fromIntegral :: (Integral a, Num b) => a -> b
+    {
+        let a_chirho = TyVarChirho(7392);
+        let b_chirho = TyVarChirho(7393);
+        env_chirho.bind_chirho(
+            "fromIntegral".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho, b_chirho],
+                preds_chirho: vec![
+                    SchemePredChirho { class_name_chirho: "Integral".to_string(), ty_chirho: TyChirho::VarChirho(a_chirho) },
+                    SchemePredChirho { class_name_chirho: "Num".to_string(), ty_chirho: TyChirho::VarChirho(b_chirho) },
+                ],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                    Box::new(TyChirho::VarChirho(b_chirho)),
+                    MultChirho::ManyChirho,
+                ),
+            },
+        );
+    }
+
+    // toInteger :: Integral a => a -> Integer
+    {
+        let a_chirho = TyVarChirho(7394);
+        env_chirho.bind_chirho(
+            "toInteger".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho],
+                preds_chirho: vec![
+                    SchemePredChirho { class_name_chirho: "Integral".to_string(), ty_chirho: TyChirho::VarChirho(a_chirho) },
+                ],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                    Box::new(TyChirho::ConChirho("Integer".to_string())),
+                    MultChirho::ManyChirho,
+                ),
+            },
+        );
+    }
+
+    // toRational :: Real a => a -> Rational
+    {
+        let a_chirho = TyVarChirho(7395);
+        env_chirho.bind_chirho(
+            "toRational".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho],
+                preds_chirho: vec![
+                    SchemePredChirho { class_name_chirho: "Real".to_string(), ty_chirho: TyChirho::VarChirho(a_chirho) },
+                ],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                    Box::new(TyChirho::ConChirho("Rational".to_string())),
+                    MultChirho::ManyChirho,
+                ),
+            },
+        );
+    }
+
+    // sequence/sequence_/mapM/mapM_ — already defined with list-specific types earlier in seed_builtins
+
+    // error :: forall a. [Char] -> a (already exists, but ensure errorWithoutStackTrace too)
+    {
+        let a_chirho = TyVarChirho(7410);
+        env_chirho.bind_chirho(
+            "errorWithoutStackTrace".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::ListChirho(Box::new(TyChirho::char_chirho()))),
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                    MultChirho::ManyChirho,
+                ),
+            },
+        );
+    }
+
+    // Data.Coerce: coerce :: Coercible a b => a -> b
+    // (already have coerce :: a -> b, add with Coercible constraint)
+
+    // Integral class methods: div, mod, divMod, quot, rem, quotRem
+    for (name_chirho, _) in &[
+        ("div", ()), ("mod", ()), ("quot", ()), ("rem", ()),
+    ] {
+        let a_chirho = TyVarChirho(7411);
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho],
+                preds_chirho: vec![
+                    SchemePredChirho { class_name_chirho: "Integral".to_string(), ty_chirho: TyChirho::VarChirho(a_chirho) },
+                ],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                    Box::new(TyChirho::FunChirho(
+                        Box::new(TyChirho::VarChirho(a_chirho)),
+                        Box::new(TyChirho::VarChirho(a_chirho)),
+                        MultChirho::ManyChirho,
+                    )),
+                    MultChirho::ManyChirho,
+                ),
+            },
+        );
+    }
+
+    // divMod, quotRem :: Integral a => a -> a -> (a, a)
+    for name_chirho in &["divMod", "quotRem"] {
+        let a_chirho = TyVarChirho(7412);
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho],
+                preds_chirho: vec![
+                    SchemePredChirho { class_name_chirho: "Integral".to_string(), ty_chirho: TyChirho::VarChirho(a_chirho) },
+                ],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                    Box::new(TyChirho::FunChirho(
+                        Box::new(TyChirho::VarChirho(a_chirho)),
+                        Box::new(TyChirho::TupleChirho(vec![
+                            TyChirho::VarChirho(a_chirho),
+                            TyChirho::VarChirho(a_chirho),
+                        ])),
+                        MultChirho::ManyChirho,
+                    )),
+                    MultChirho::ManyChirho,
+                ),
+            },
+        );
+    }
+
+    // Data.IORef (already covered in runtime, ensure newIORef/readIORef/writeIORef/modifyIORef types)
+    // IORef a constructor
+    {
+        let a_chirho = TyVarChirho(7413);
+        env_chirho.bind_chirho(
+            "IORef".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("IORef".to_string())),
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                ),
+            },
+        );
+    }
+
+    // Data.STRef: STRef s a
+    {
+        let s_chirho = TyVarChirho(7414);
+        let a_chirho = TyVarChirho(7415);
+        env_chirho.bind_chirho(
+            "STRef".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![s_chirho, a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("STRef".to_string())),
+                        Box::new(TyChirho::VarChirho(s_chirho)),
+                    )),
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                ),
+            },
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
