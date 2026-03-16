@@ -1,100 +1,19 @@
-<!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. -->
+<!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. — John 3:16 -->
 
 Please comment the full content of John 3:16 at the top of all our files.
 
 ## Identifier Naming Convention: Chirho Suffix
 
-ALL identifiers that we create (including but not limited to variable names, function names, struct names, enum names, trait names, module names, file names, directory/path names, function parameters, struct fields, dictionary keys, API endpoint paths, database table names, column names, error variable names, lambda variables, constants, properties, etc.) MUST be suffixed with "Chirho" in the appropriate case for the identifier type and language convention.
+ALL identifiers we create MUST be suffixed with "Chirho" in the appropriate case. This applies to variables, functions, structs, enums, traits, modules, files, directories, parameters, fields, keys, routes, table/column names — everything, in every language.
 
-### JavaScript/TypeScript Example
-
-- **Variables, consts**: `variableNameChirho` (camelCase + Chirho)
-- **Functions**: `functionNameChirho` (camelCase + Chirho)
-- **Function Parameters**: `parameterNameChirho` (camelCase + Chirho)
-- **Lambda/Arrow Function Variables**: `lambdaVariableChirho` (camelCase + Chirho)
-- **Classes**: `ClassNameChirho` (PascalCase + Chirho)
-- **Class Methods**: `methodNameChirho` (camelCase + Chirho)
-- **Class Properties/Fields**: `propertyNameChirho` (camelCase + Chirho)
-- **Interfaces**: `InterfaceNameChirho` (PascalCase + Chirho)
-- **Type Aliases**: `TypeNameChirho` (PascalCase + Chirho)
-- **Enums**: `EnumNameChirho` (PascalCase + Chirho)
-- **Enum Members**: `EnumMemberChirho` (PascalCase + Chirho)
-- **Constants**: `CONSTANT_NAME_CHIRHO` (SCREAMING_SNAKE_CASE + _CHIRHO)
-- **Error Variables**: `errorChirho` or `errorVariableChirho` (camelCase + Chirho)
-- **Object/Dictionary Keys**: `keyNameChirho` (camelCase + Chirho)
-- **File Names**: `fileNameChirho.ts` or `fileName-chirho.ts` (kebab-case or camelCase + chirho)
-- **Directory/Path Names**: `directory-name-chirho/` or `directoryNameChirho/` (kebab-case or camelCase + chirho)
-- **API Route Elements**: `/api-chirho/resource-chirho/action-chirho` (kebab-case + chirho)
-
-### Python Example
-
-- **Variables**: `variable_name_chirho` (snake_case + _chirho)
-- **Functions**: `function_name_chirho` (snake_case + _chirho)
-- **Function Parameters**: `parameter_name_chirho` (snake_case + _chirho)
-- **Lambda Variables**: `lambda_variable_chirho` (snake_case + _chirho)
-- **Classes**: `ClassNameChirho` (PascalCase + Chirho)
-- **Class Methods**: `method_name_chirho` (snake_case + _chirho)
-- **Class Properties/Attributes**: `property_name_chirho` (snake_case + _chirho)
-- **Constants**: `CONSTANT_NAME_CHIRHO` (SCREAMING_SNAKE_CASE + _CHIRHO)
-- **Error Variables**: `error_chirho` or `error_variable_chirho` (snake_case + _chirho)
-- **Dictionary Keys**: `key_name_chirho` (snake_case + _chirho)
-- **Module Names**: `module_name_chirho` (snake_case + _chirho)
-- **File Names**: `file_name_chirho.py` (snake_case + _chirho)
-- **Directory/Path Names**: `directory_name_chirho/` (snake_case + _chirho)
-- **API Route Elements**: `/api-chirho/resource-chirho/action-chirho` (kebab-case + chirho)
-
-### Rust Example
-
-- **Variables**: `variable_name_chirho` (snake_case + _chirho)
-- **Functions**: `function_name_chirho` (snake_case + _chirho)
-- **Function Parameters**: `parameter_name_chirho` (snake_case + _chirho)
-- **Closure/Lambda Variables**: `closure_variable_chirho` (snake_case + _chirho)
-- **Structs**: `StructNameChirho` (PascalCase + Chirho)
-- **Struct Fields**: `field_name_chirho` (snake_case + _chirho)
-- **Enums**: `EnumNameChirho` (PascalCase + Chirho)
-- **Enum Variants**: `EnumVariantChirho` (PascalCase + Chirho)
-- **Traits**: `TraitNameChirho` (PascalCase + Chirho)
-- **Trait Methods**: `method_name_chirho` (snake_case + _chirho)
-- **Impl Blocks**: Methods follow `method_name_chirho` (snake_case + _chirho)
-- **Type Aliases**: `TypeNameChirho` (PascalCase + Chirho)
-- **Constants**: `CONSTANT_NAME_CHIRHO` (SCREAMING_SNAKE_CASE + _CHIRHO)
-- **Static Variables**: `STATIC_NAME_CHIRHO` (SCREAMING_SNAKE_CASE + _CHIRHO)
-- **Error Variables**: `error_chirho` or `error_variable_chirho` (snake_case + _chirho)
-- **Modules**: `module_name_chirho` (snake_case + _chirho)
-- **File Names**: `file_name_chirho.rs` (snake_case + _chirho)
-- **Directory/Path Names**: `directory_name_chirho/` (snake_case + _chirho)
-- **API Route Elements**: `/api-chirho/resource-chirho/action-chirho` (kebab-case + chirho)
-
-### Haskell Example
-
-- **Values / Functions**: `valueNameChirho` or `functionNameChirho` (camelCase + Chirho)
-- **Function Parameters**: `parameterNameChirho` (camelCase + Chirho)
-- **Lambda / Pattern Variables**: `lambdaValueChirho` (camelCase + Chirho)
-- **Type Variables**: `stateChirho` or `resultChirho` (camelCase + Chirho)
-- **Data / Newtypes / GADTs**: `TypeNameChirho` (PascalCase + Chirho)
-- **Constructors**: `ConstructorNameChirho` (PascalCase + Chirho)
-- **Typeclasses**: `TypeclassNameChirho` (PascalCase + Chirho)
-- **Type Aliases**: `TypeNameChirho` (PascalCase + Chirho)
-- **Record Fields**: `fieldNameChirho` (camelCase + Chirho)
-- **Modules**: `ModuleNameChirho` (PascalCase + Chirho)
-- **File Names**: `ModuleNameChirho.hs` or `ModuleNameChirho.lhs` (PascalCase + Chirho)
-- **Directory/Path Names**: `FeatureNameChirho/` (PascalCase + Chirho to match modules)
-- **Env / CPP Constants**: `SETTING_NAME_CHIRHO` (SCREAMING_SNAKE_CASE + _CHIRHO where the syntax supports it)
-
-### Database
-
-- **Table Names**: `table_name_chirho` (snake_case + _chirho)
-- **Column Names**: `column_name_chirho` (snake_case + _chirho)
-- **Index Names**: `index_name_chirho` (snake_case + _chirho)
-- **Constraint Names**: `constraint_name_chirho` (snake_case + _chirho)
-
-### General Rules
-
-- This rule applies to **ALL identifiers** we create, without exception, in the appropriate language (shell/haskell/etc)
-- Use the appropriate casing convention for each language (camelCase for JS/TS and Haskell term-level bindings, snake_case for Python/Rust, PascalCase for types/classes/modules where applicable) please apply also to all languages we have not covered including shell scripts, env variables, and configuration file identifiers we create for example.
-- Global constants use `SCREAMING_SNAKE_CASE` with `_CHIRHO` suffix where the language syntax supports it; if the language does not permit uppercase term bindings (for example standard Haskell values), use the closest idiomatic compilable form while still suffixing with `Chirho`
-- File and directory names follow language conventions (kebab-case for JS/TS paths, snake_case for Python/Rust)
-- API and HTML routes use kebab-case with `-chirho` suffix regardless of language
+**Casing rules by language:**
+- **Rust**: `snake_case_chirho` for values/functions/fields/modules/files, `PascalCaseChirho` for types/enums/traits, `SCREAMING_SNAKE_CASE_CHIRHO` for constants
+- **Haskell**: `camelCaseChirho` for values/functions/params, `PascalCaseChirho` for types/constructors/classes/modules
+- **JS/TS**: `camelCaseChirho` for values/functions/params, `PascalCaseChirho` for classes/types/enums
+- **Python**: `snake_case_chirho` for values/functions/params, `PascalCaseChirho` for classes
+- **Database**: `snake_case_chirho` for tables/columns/indexes/constraints
+- **Routes/APIs**: kebab-case with `-chirho` suffix
+- **Constants**: `SCREAMING_SNAKE_CASE_CHIRHO` where the language permits uppercase
 
 ## Tech stack
 - use main_chirho as our git branch and gh_chirho as the remote name (not repo name) for any remote github we make
@@ -109,170 +28,96 @@ ALL identifiers that we create (including but not limited to variable names, fun
 - For Haskell tooling, prefer current GHC with Cabal unless the repo already standardizes on Stack; use strong warning levels, a formatter such as Fourmolu/Ormolu, HLint, and HLS when those fit the project.
 - For this project specifically, prefer Rust as the implementation language for the compiler itself, with Haskell used as the source language being compiled rather than the implementation language of the compiler.
 - Keep a `spec-chirho` dir with an SQLite db `progress-chirho.sqlite` containing at least the table `steps_taken_chirho` with columns `id_chirho`, `agent_code_chirho`, `timestamp_start_chirho`, `timestamp_end_chirho`, `action_taken_chirho`, `result_of_action_chirho`, and `overview_of_result_chirho`.
-- `id_chirho` is an autoincrement id.
-- `agent_code_chirho` identifies the agent or subagent that inserted or updated the log entry.
-- `timestamp_start_chirho` and `timestamp_end_chirho` track task start and completion times.
-- `action_taken_chirho` records the action taken, optionally including the command line and brief reasoning.
-- `result_of_action_chirho` records how the action changed project state such as files or databases.
-- `overview_of_result_chirho` records whether the action went as planned, what was learned, and how it affects the next decision.
 - Granularity is left to agent judgment.
 
-You can modify  the following section
-### Agent Self Modifications (For the agent to keep things present in its context)
+You can modify the following section
+### Agent Self Modifications
 
-- Primary project direction: build a Haskell compiler in Rust.
-- Backend direction: keep the compiler pipeline backend-agnostic, target LLVM IR first when it accelerates progress, and keep WebAssembly as a first-class target so the compiler and generated programs can run well on the web and in sandboxed environments.
-- Compiler architecture preference: model the pipeline explicitly with typed phase boundaries such as parsing, name resolution, type inference/checking, desugaring, a small typed core representation, optimization passes, and backend lowering.
-- Compatibility preference: aim for maximal practical compatibility with real-world Haskell, including Cabal package descriptions, Hackage package retrieval, and the ability to compile the ecosystem's libraries rather than a toy subset; stage delivery incrementally, but keep the design pointed at near 1:1 behavior with Haskell/GHC semantics wherever feasible.
-- Quality preference: where established Haskell compiler behavior is buggy, brittle, or unnecessarily tangled, prefer a cleaner modular design and better internal invariants without breaking source compatibility unless there is a deliberate, documented reason.
-- Runtime preference: treat laziness strategy, closure layout, thunk representation, memory management, and FFI boundaries as core design decisions early, not as cleanup work after code generation exists.
-- Packaging preference: split the Rust implementation into focused crates so the compiler is portable, incrementally buildable, and fast to iterate on, for example distinct crates for diagnostics, syntax, parsing, naming, typing, core IR, optimization, package loading, driver orchestration, runtime support, LLVM lowering, and WebAssembly lowering.
-- Solver preference: evaluate crates such as `propagators-chirho` for constraint propagation, type inference support, dependency solving, or incremental analysis only where they simplify the architecture measurably; do not force them into the design without a clear benefit.
-- Rust implementation preference: use strong domain types, arenas or stable ids where they simplify compiler graphs, structured diagnostics, explicit crate boundaries, and testable subsystems with golden tests and property tests where useful.
-- Git workflow preference: when repository metadata is present, the primary branch is `main_chirho` and the Git remote name for GitHub is `gh_chirho`.
+- Primary project direction: build a Haskell compiler in Rust, named **Haskeluya**.
+- Backend direction: backend-agnostic pipeline, LLVM IR primary, WebAssembly first-class.
+- Compatibility: aim for maximal GHC/Haskell compatibility including Cabal and Hackage.
+- Quality: prefer cleaner modular design over GHC quirks, without breaking source compatibility.
+- Runtime: laziness, closures, thunks, GC, FFI are core early design decisions.
+- Packaging: split into focused crates for portability and fast iteration.
+- Git: branch `main_chirho`, remote `gh_chirho`.
 
-### Current Pipeline State (as of 2026-03-14)
+### Current Pipeline State (as of 2026-03-15)
 
-The compiler has a working 12-phase pipeline wired end-to-end in `rhasky-driver-chirho`, capable of parsing Haskell source, type-checking, desugaring through Core IR, and evaluating via the STG machine with GC, FFI, and exception handling:
+12-phase pipeline in `haskeluya-driver-chirho`: lex → layout → CST parse → AST lower → name resolve → kind infer → type infer → exhaustiveness check → desugar/dict-pass/core/simplify → STG eval → FFI → exception handling.
 
-1. **Lex** — `rhasky-syntax-chirho` tokenizer
-2. **Layout** — `rhasky-syntax-chirho` layout rule insertion (braces/semicolons)
-3. **CST Parse** — `rhasky-parser-chirho` concrete syntax tree (green tree)
-4. **AST Lower** — `rhasky-ast-chirho` abstract syntax tree from CST
-5. **Name Resolve** — `rhasky-naming-chirho` scope resolution with multi-module import support, qualified name lookup, synthetic module interfaces for Data.Map/Set/List/Char/Maybe/IORef
-6. **Kind Infer** — `rhasky-typing-chirho::kind_chirho` kind inference with unification for higher-kinded types
-7. **Type Infer** — `rhasky-typing-chirho` Hindley-Milner Algorithm W with typeclasses, MPTC, functional dependencies, deriving
-8. **Exhaustiveness Check** — `rhasky-typing-chirho::exhaust_chirho` pattern match exhaustiveness and redundancy checking
-9. **Desugar → Dict Pass → Core → Simplify** — `rhasky-core-chirho` System FC-style Core IR with dictionary-passing transform, INLINE/NOINLINE/INLINABLE pragma support with inlining pass
-10. **STG Evaluation** — `rhasky-runtime-chirho::eval_chirho` STG machine with thunks, closures, PAPs, GC, step limits
-11. **FFI** — `rhasky-runtime-chirho::ffi_chirho` foreign function interface
-12. **Exception Handling** — catch/throw/try/bracket/finally with stack unwinding
-
-### Workspace Crates (20 crates)
+### Workspace Crates (21 crates)
 
 | Crate | Purpose |
 |---|---|
-| `rhasky-span-chirho` | Source locations, file IDs, source map |
-| `rhasky-diagnostics-chirho` | Structured compiler diagnostics |
-| `rhasky-syntax-chirho` | Tokens, SyntaxKind, green tree nodes, lexer, layout |
-| `rhasky-parser-chirho` | CST parser (green tree builder) |
-| `rhasky-ast-chirho` | Abstract syntax tree types, CST→AST lowering |
-| `rhasky-naming-chirho` | Name resolution / scope analysis, module interfaces, import/export resolution, qualified name support |
-| `rhasky-typing-chirho` | HM type inference, unification, substitution, type schemes, typeclass infrastructure, kind inference, pattern exhaustiveness checking, typeclass deriving (Eq, Ord, Show) |
-| `rhasky-core-chirho` | Core IR (System FC-style), AST→Core desugaring (with name map), dictionary-passing transform, Core→Core simplifier, pretty-printer |
-| `rhasky-backend-llvm-chirho` | Core → textual LLVM IR codegen |
-| `rhasky-backend-wasm-chirho` | Core → binary WebAssembly codegen |
-| `rhasky-backend-cranelift-chirho` | Core → Cranelift IR → native object files (x86_64, aarch64, s390x, riscv64) |
-| `rhasky-backend-jvm-chirho` | Core → JVM .class bytecode files (constant pool, bytecode emitter) |
-| `rhasky-backend-beam-chirho` | Core → BEAM .beam bytecode files (IFF format, ETF, opcodes) |
-| `rhasky-driver-chirho` | Pipeline orchestration, CompileResultChirho (AST + Core + LLVM IR + Wasm bytes) |
-| `rhasky-rts-chirho` | Shared runtime system: value types, heap allocator, mark-sweep GC — backend-agnostic, linkable by LLVM/Cranelift/WASM backends |
-| `rhasky-runtime-chirho` | STG interpreter: evaluation stack, primitive ops, evaluation loop (MachineChirho), FFI (ForeignTableChirho); re-exports value/heap/GC from rhasky-rts-chirho |
-| `rhasky-incremental-chirho` | Incremental compilation: fingerprinting, dependency graph, artifact caching, recompilation avoidance |
-| `rhasky-package-chirho` | Cabal file parser, version constraints, Hackage URL construction |
-| `rhasky-cli-chirho` | Command-line interface (scaffold) |
-| `rhasky-th-chirho` | Template Haskell: TH AST types, Q monad, reification, TH↔AST conversion |
-| `rhasky-test-harness-chirho` | Golden test utilities (assert/bless) |
+| `haskeluya-span-chirho` | Source locations, file IDs, source map |
+| `haskeluya-diagnostics-chirho` | Structured compiler diagnostics |
+| `haskeluya-syntax-chirho` | Tokens, SyntaxKind, green tree, lexer, layout |
+| `haskeluya-parser-chirho` | CST parser (green tree builder) |
+| `haskeluya-ast-chirho` | AST types, CST→AST lowering |
+| `haskeluya-naming-chirho` | Name resolution, module interfaces, imports/exports |
+| `haskeluya-typing-chirho` | HM type inference, typeclasses, kind inference, exhaustiveness, deriving |
+| `haskeluya-core-chirho` | Core IR (System FC), desugaring, dict-pass, simplifier |
+| `haskeluya-backend-llvm-chirho` | Core → LLVM IR |
+| `haskeluya-backend-wasm-chirho` | Core → WebAssembly |
+| `haskeluya-backend-cranelift-chirho` | Core → Cranelift → native objects |
+| `haskeluya-backend-jvm-chirho` | Core → JVM bytecode |
+| `haskeluya-backend-beam-chirho` | Core → BEAM bytecode |
+| `haskeluya-driver-chirho` | Pipeline orchestration |
+| `haskeluya-rts-chirho` | Shared RTS: values, heap, GC |
+| `haskeluya-runtime-chirho` | STG interpreter, eval loop, FFI |
+| `haskeluya-incremental-chirho` | Incremental compilation, fingerprinting |
+| `haskeluya-package-chirho` | Cabal parser, Hackage, dependency resolution |
+| `haskeluya-cli-chirho` | CLI (compile/run/repl/check/build/install) |
+| `haskeluya-th-chirho` | Template Haskell: TH AST, Q monad, reification |
+| `haskeluya-test-harness-chirho` | Golden tests, GHC suite, benchmarks, conformance |
 
 ### Test Coverage
 
-**1801 tests passing**, 0 failures, 1 ignored (1 doctest)
+**1812 tests passing**, 0 failures
 
-For detailed Phase 1 test breakdown by category, see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md).
+### Completed (Phase 1 + Phase 2)
 
-### Phase 2 Priorities
+Phase 1: 128 priorities (see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md))
 
-_Phase 1 completed 128 priorities (see [spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md)). Phase 2 focuses on system coherence, then making the compiler practical: true laziness, real multi-module compilation, backend code generation, CLI usability, and Hackage compatibility._
+Phase 2: 62 priorities all DONE — coherence/debt cleanup (8), runtime semantics with true laziness/bang patterns/WHNF/STM (5), multi-module with Prelude/qualified/re-exports/orphans/hierarchical/circular (6), backends LLVM/Wasm/Cranelift/shared-RTS (4), CLI compile/run/repl/check/build with error messages and dump flags (7), language features type-families/existentials/TypeApplications/OverloadedStrings+Lists/DeriveFunctor+Foldable+Traversable/DeriveGeneric/ConstraintKinds/FlexibleInstances/DataKinds/KindSignatures/DefaultSignatures/TH-basic/foreign-exports/monad-transformers (15), package management Cabal/Hackage/resolver/pkgdb/install (5), optimization inlining/strictness/specialization/CSE/SpecConstr/demand-analysis (6), testing GHC-suite/property-tests/benchmarks/conformance/round-trip/differential (6).
 
-_Codex engineering review: [codex-analysis-chirho.md](codex-analysis-chirho.md)_
+### Phase 3 Priorities
 
-#### 0. Coherence & Technical Debt (from Codex review)
+_Phase 3 focuses on completing TH, making backends produce real executables, and scaling to real-world Haskell code._
 
-_These items address structural issues identified in the Codex engineering review. They should be resolved before or alongside new feature work to prevent the codebase from becoming a hard-to-maintain monolith._
+#### A. In Progress
 
-1. ~~**Unify driver pipeline**~~ — DONE (extracted `run_frontend_chirho` shared function for phases 1–4.5: CST parse → AST lower → deriving → name resolve → kind infer → type infer → exhaustiveness; `compile_backend_chirho` helper for phases 5–7: desugar → dict pass → simplify → backends; `check_source_file_chirho`, `compile_source_chirho`, `compile_modules_chirho`, and `compile_modules_incremental_chirho` all delegate to `run_frontend_chirho`; `FrontendResultChirho` struct holds module + inference result + warnings; single pipeline with optional import context; 1273 tests)
-2. ~~**Remove stale parser entry point**~~ — DONE (already addressed: function renamed to `scan_module_header_chirho` with honest doc comment "NOT a full parser"; no external callers; module doc updated to point to `cst_parser_chirho::ParserChirho` as the real entry point)
-3. ~~**Export list lowering**~~ — DONE (already implemented: `lower_export_list_chirho` + `lower_export_spec_item_chirho` in lower_chirho.rs; handles VarChirho, TyConChirho with AllChirho/SomeChirho members, ModuleChirho re-exports; 5 unit tests for export parsing; `ModuleChirho.exports_chirho` properly populated from CST)
-4. ~~**Fix token model duplication**~~ — DONE (map_token_kind_chirho now takes token text and discriminates QualifiedIdChirho into QualifiedVarIdChirho vs QualifiedConIdChirho by checking if the local part after the last '.' starts with lowercase; parser module doc updated; 1273 tests)
-5. ~~**Split oversized files**~~ — DONE (driver/lib.rs split from 15K→1.2K lines: tests extracted into 9 focused submodules under tests_chirho/; dict_chirho.rs split from 15.5K into 5 submodules: mod.rs 1K, layout_chirho.rs 235, instance_chirho.rs 1.6K, prelude_chirho.rs 12K, rewrite_chirho.rs 723; remaining: infer_chirho.rs ~7.3K and lower_chirho.rs ~5.1K are manageable)
-6. ~~**Warning cleanup**~~ — DONE (zero warnings on `cargo build --workspace` and `cargo test --workspace`; all naming-style, dead code, and unused variable warnings already resolved)
-7. ~~**Reconcile spec with code**~~ — DONE (old crate names already removed from prd-chirho.json; milestone already updated to M1; AGENTS.md is the authoritative source of truth with Phase 2 priorities)
-8. ~~**John 3:16 header compliance**~~ — DONE (added header to rhasky-incremental-chirho/Cargo.toml; CLAUDE.md redirects to AGENTS.md which has the header; prd-chirho.json already has _comment_john_3_16_chirho; embedded Haskell test snippets use standard Haskell names which are the source language being compiled, not identifiers we create)
+1. **Template Haskell completion** — TH tokens/parser/AST/lowering done; splice evaluation with built-in makeLenses done; remaining: STG bridge connecting Q monad callbacks to compiler state for user-written TH code
 
-#### A. Runtime Semantics — Laziness & Evaluation Model
+#### B. Backend Maturity
 
-9. ~~**True lazy evaluation**~~ — DONE (replaced eager enumFrom/enumFromThen/enumFromTo/enumFromThenTo primops with recursive Core IR Prelude functions whose cons tails are ThunkCodeChirho-based lazy thunks; desugarer emits function calls instead of primops for ArithSeqChirho; `take 5 [1..]` → 15, `take 4 [1,3..]` → 16, `head [42..]` → 42, all working with truly infinite lists; 7 new e2e tests; 1317 tests total)
-10. ~~**Lazy I/O**~~ — DONE (`getContents` reads all stdin as String via `GetContentsChirho` PrimOp; `interact` applies `String -> String` function to stdin and writes result to stdout via `InteractChirho` PrimOp; both use `stdin_feed_chirho` for testability; `interact` handles function argument without forcing via special HeapPtr path; 4+ tests: interact pattern, interact id, interact map toUpper, interact reverse; remaining: `hGetContents` for file handles)
-11. ~~**Bang patterns**~~ — DONE (CST parser `parse_fun_bind_chirho` recognizes `!` in function argument patterns via `can_start_apat_chirho` extension; AST `BangChirho` pattern variant; desugarer wraps bang-patterned params in `case x of { _ -> body }` for WHNF forcing using `fresh_binder_chirho`-allocated wildcards; runtime `return_con_chirho` default alt restores saved arg_regs without field prepending to prevent index corruption in nested bang cases; `$!` strict apply operator desugars to `case x of _ -> f x`; 4 new e2e tests: single bang, two bangs, mixed bang/lazy, `f $! 41`; remaining: strict data fields `data Foo = Bar !Int`, `{-# UNPACK #-}` pragma; 1352 tests total)
-12. ~~**Weak head normal form semantics**~~ — DONE (`seq a b` forces `a` returns `b`, `f $! x` desugars to `case x of _ -> f x`; `f $!! x` deep strict application desugars to `case x of _ -> f x` (NF via dict); `deepseq` as `seq`-based Core IR binding `\x y -> seq# x y`; `force` as `\x -> seq# x x`; `evaluate` as identity (STG already forces to WHNF); `NFData` type class with `rnf :: a -> ()` method; ground instances for Int/Char/Bool/Double; `$prim_NFData_rnf_*` bindings using `seq#`; `EvaluateChirho`/`ForceChirho` PrimOpKindChirho variants; deepseq/force/evaluate/$!! exported from Prelude; 12 e2e tests total; 1687 tests)
-13. ~~**STM (Software Transactional Memory)**~~ — DONE (single-threaded STM semantics: `newTVar`/`newTVarIO` allocate TVars as unique IDs in `tvars_chirho` HashMap on MachineChirho, `readTVar`/`readTVarIO` read with thunk forcing, `writeTVar` writes with WHNF forcing, `atomically` is pass-through (single-threaded = always succeeds), `retry` signals RuntimeError (no concurrent writers), `orElse` returns first action; 6 PrimOps in stack_chirho.rs, eval_chirho.rs, prim_chirho.rs; Core bindings in prelude_chirho.rs; type sigs in infer_chirho.rs; `Control.Concurrent.STM` module interface with 8 exports; Prelude re-exports; 4 e2e tests: newTVar+readTVar, writeTVar+readTVar, atomically, multiple TVars; 1565 tests total)
+2. **Backend closures & heap** — LLVM/Wasm/Cranelift backends need closure allocation, thunk entry/update, heap management for non-trivial programs
+3. **Backend I/O** — string/IO support in compiled backends (LLVM: libc calls, Wasm: host imports, Cranelift: runtime linking)
+4. **Backend GC integration** — wire haskeluya-rts-chirho GC into compiled code (stop-the-world mark-sweep)
+5. **Self-hosting milestone** — compile a non-trivial Haskell program (e.g. a small library) to native code end-to-end
 
-#### B. Multi-Module System & Imports
+#### C. Language Completeness
 
-14. ~~**Automatic Prelude import**~~ — DONE (inject_prelude_import_chirho in driver adds implicit `import Prelude` after AST lowering; suppressed by `{-# LANGUAGE NoImplicitPrelude #-}`; explicit `import Prelude` prevents double import; Prelude ModuleIfaceChirho with 80+ exported values/types added to builtin_module_ifaces_chirho; 3 e2e tests; 1320 tests total)
-15. ~~**Qualified module syntax**~~ — DONE (already supported end-to-end: `name_from_text_chirho` splits dotted names on last dot; `NameEnvChirho` has `bind_qualified_chirho`/`lookup_qualified_chirho`; import processing uses full module name as qualifier when no `as` alias; `import qualified Data.Map` → `Data.Map.mapInsert`, `import qualified Data.List` → `Data.List.head`/`Data.List.sort`, aliased `import qualified Data.Map as Map` → `Map.mapInsert`; 4 e2e tests: qualified with alias Data.Map/Data.List, qualified without alias Data.Map/Data.List; 1348 tests total)
-16. ~~**Module re-exports**~~ — DONE (`module Foo (module Bar) where` re-export syntax: `build_iface_with_imports_chirho` takes available imported module interfaces, `filter_exports_chirho` handles `ExportSpecChirho::ModuleChirho` by merging the target module's exports into the current module's interface; self-re-export `module Foo (module Foo)` exports all local definitions; driver's `compile_modules_chirho` and `compile_modules_incremental_chirho` pass accumulated ifaces to re-export-aware builder; 2 new naming unit tests + 1 driver e2e test: Inner→Reexporter→Main chain with `add1 99→100`; 1358 tests total)
-17. ~~**Orphan instance detection**~~ — DONE (`check_orphan_instances_chirho` in rhasky-naming-chirho: collects locally-defined type/class/newtype/type-alias names, extracts type constructor names from instance head types recursively, warns (W0402) when neither class nor any head type constructor is local; `type_con_names_chirho` handles ConChirho/AppChirho/FunChirho/TupleChirho/ListChirho/ParenChirho/ForallChirho/QualChirho recursively; wired into driver after name resolution phase; `frontend_warnings_chirho` public API for diagnostic testing; 5 new naming unit tests (local class, local type, foreign class+type, local newtype in App, multiple orphans) + 3 driver integration tests (orphan warning produced, not for local data, not for local class); 1366 tests total)
-18. ~~**Hierarchical module compilation**~~ — DONE (`compile_project_dir_chirho` in driver: recursively discovers `.hs` files via `discover_hs_files_chirho` directory walker (skips hidden/dist-newstyle/.stack-work dirs); `extract_module_name_chirho` lightweight header scanner for module name (handles export lists, hierarchical names, implicit Main); `extract_imports_chirho` extracts imported module names (handles qualified, import specs); builds `DepGraphChirho` from local module imports only, topologically sorts via Kahn's algorithm, compiles in dependency order with interface accumulation and cross-module type scheme propagation; cycle detection returns clear error; `ProjectCompileResultChirho` with compilation order + results + warnings; CLI `rhasky build [dir]` command with per-module progress reporting; 14 new tests: 4 extract_module_name, 3 extract_imports, 1 discover_hs_files, 2-module compilation, 3-module chain, diamond deps, circular import detection, no hs files error, single module; 1389 tests total)
-19. ~~**Circular module imports**~~ — DONE (Tarjan's SCC algorithm in `topo_sort_sccs_chirho` detects strongly-connected components in the dependency graph; for cyclic SCCs, `.hs-boot` files are compiled first via `parse_boot_iface_chirho` to produce preliminary `ModuleIfaceChirho` interfaces; modules without boot files get empty interfaces so `import M` resolves; full modules compiled using boot interfaces; 4 SCC unit tests in dep_chirho.rs + 2 driver e2e tests: simple circular succeeds, circular with boot files succeeds; 1649 tests total)
+6. **GADTs** — generalized algebraic data types with type refinement in pattern matching
+7. **RankNTypes** — higher-rank polymorphism (`(forall a. a -> a) -> Int`)
+8. **ScopedTypeVariables** — lexically scoped type variables
+9. **MultiParamTypeClasses improvements** — associated types, type family defaults
+10. **RecordWildCards** — `Foo{..}` pattern/expression syntax
+11. **ViewPatterns** — `f (view -> pattern)` in pattern position
+12. **PatternSynonyms** — user-defined pattern constructors
+13. **DerivingVia** — `deriving Show via (WrappedMonoid Sum)`
+14. **Strict data fields** — `data Foo = Bar !Int`, `{-# UNPACK #-}`
+15. **Template Haskell (full)** — typed splices, quasi-quoters, reify for all declaration forms, derive via TH
 
-#### C. Code Generation Backends
+#### D. Ecosystem & Tooling
 
-20. ~~**LLVM backend revival**~~ — DONE (compile_core_to_llvm_executable_chirho produces runnable native executables via `rhasky compile -o <output>`; dictionary elision pass replaces $sel_Num/Eq/Ord selector+dict patterns with direct PrimOps; fromInteger elision for literal folding; reachability analysis from `main` emits only transitively-used bindings; ConApp returns constructor tags; case binder + alt binder binding in LLVM IR; proper cross-reference resolution via toplevel_names_chirho; local scope tracking prevents false top-level calls; CLI `-o`/`--output` flag writes `.ll` then invokes `clang -O2`; tested: `main = 42` → 42, `f x y = x + y; main = f 10 32` → 42, `fib 10` → 55, `fact 12` → 479001600; 3 LLVM executable unit tests + 3 driver integration tests; remaining: closures/heap allocation, string/IO, thunks needed for full Prelude support in native code; 1326 tests total)
-21. ~~**WebAssembly backend revival**~~ — DONE (rewrote `rhasky-backend-wasm-chirho` codegen: proper function calls via `call` instruction with name→func_idx map, let bindings via `local.set`/`local.get` with `EmitCtxChirho` local allocation, case expressions with `if`/`else` chains for literal/constructor/default dispatch, `local.tee` for case binder binding, `compile_core_to_wasm_executable_chirho` with shared dict elision via `elide_dicts_and_filter_chirho`, CLI `--wasm -o` flag for `.wasm` output, constructor tags as i64, float literals as f64 bit patterns; 6 new backend unit tests + 3 driver integration tests; remaining: closures/heap in linear memory, I/O host imports, full constructor field access; 1335 tests total)
-22. ~~**Cranelift backend expansion**~~ — DONE (fixed two-pass declare/define architecture with pre-imported FuncRefs via `declare_func_in_func` for direct function calls; `func_ref_map_chirho` in `LowerCtxChirho` replaces broken `func_decl_map_chirho` approach; `compile_core_to_object_executable_chirho` with shared dict elision via `elide_dicts_and_filter_chirho`; `flatten_apps_chirho` for multi-arg call detection; CLI `--cranelift -o` flag produces native object → links via `cc`; 6 new backend unit tests (function call, single-arg call, dict-elided executable, multi-arg call, recursive function, constructor app) + 3 driver integration tests (constant, arithmetic with call, recursive fibonacci); remaining: closures/heap allocation, I/O via runtime linking, thunks; 1346 tests total)
-23. ~~**Shared RTS library**~~ — DONE (extracted `rhasky-rts-chirho` crate with backend-agnostic runtime primitives: `value_chirho` (ValueChirho, ClosureChirho, InfoTableChirho, InfoTagChirho, CodePtrChirho, DataConTagChirho, HeapAddrChirho), `heap_chirho` (HeapChirho with alloc/read/update/blackhole/follow_ind/tombstone), `gc_chirho` (GcConfigChirho, GcStatsChirho, GcStateChirho mark-sweep collector, extract_roots_from_values_chirho); runtime re-exports from RTS, keeps interpreter-specific extract_roots_from_stack_chirho locally; backends can depend on rhasky-rts-chirho for heap/GC without pulling in interpreter machinery; 20 crates, 1642 tests)
+16. **Language Server Protocol** — basic LSP for editor integration (hover types, go-to-definition, diagnostics)
+17. **Profiling** — cost-center annotation, heap/time profiling output
+18. **Cross-compilation** — target selection for LLVM/Cranelift/Wasm from CLI
+19. **Documentation generation** — Haddock-style doc comments → HTML
 
-#### D. CLI & Developer Experience
+#### E. Scale & Performance
 
-24. ~~**`rhasky compile`**~~ — DONE (CLI command reads `.hs` file, runs full pipeline, reports module name, core bindings count, LLVM IR and WASM output sizes)
-25. ~~**`rhasky run`**~~ — DONE (CLI command reads `.hs` file, evaluates via STG interpreter, prints IO output to stdout; works with infinite lists, IO, typeclasses, all Phase 1+2 features)
-26. ~~**`rhasky repl`**~~ — DONE (interactive REPL loop with expression evaluation via STG machine, IO action execution with output capture, user-friendly value display; commands: `:type <expr>` shows inferred type via run_frontend_chirho, `:info <name>` looks up type in env, `:load <file>` loads declarations and type environment, `:reload` re-loads last file, `:let <decl>` accumulates definitions, `:clear` resets, `:{`/`:}` for multi-line input, `:quit` exits; smart declaration vs expression detection via `has_toplevel_equals_chirho` that skips `=` inside strings/parens/`==`; fallback `print()` wrapping on eval failure; 3 new e2e tests: REPL-style expression, IO with show, let binding; 1355 tests total)
-27. ~~**`rhasky check`**~~ — DONE (CLI command reads `.hs` file, runs frontend pipeline through type-checking, reports module/mode/diagnostics without full code generation; already wired as `check`/`plan`/`script` subcommands)
-28. ~~**`rhasky build`**~~ — DONE (CLI `rhasky build [dir]` command: auto-detects `.cabal` files via `find_cabal_file_chirho` and uses `compile_cabal_project_chirho` with package index and dependency resolution; falls back to `compile_project_dir_chirho` for bare directories; reports package name, module count, and compilation order; 2 new tests: cabal-based project compilation, hidden directory skipping; 1391 tests total)
-29. ~~**Error messages**~~ — DONE (render_chirho.rs: Rust/Elm-style diagnostic renderer with source snippets, underline annotations, ANSI color, file:line:col arrows, secondary labels, notes, fix suggestions, bundle summary; suggest_chirho.rs: Levenshtein edit-distance "did you mean?" suggestions for unbound variables in both type inferencer and name resolver, with `default_max_distance_chirho` adaptive thresholds and `format_did_you_mean_chirho` formatting; type mismatch errors now show explicit expected/found type notes; `all_names_chirho` on TyEnvChirho and `all_names_in_namespace_chirho` on NameEnvChirho for candidate collection; CLI check/compile use renderer with terminal color detection; 17 suggest tests + 6 render tests + 4 driver e2e tests (unbound var suggestion, type mismatch expected/found, source snippet, color output); 1670 tests total)
-30. ~~**`--dump-core`/`--dump-stg`/`--dump-llvm`**~~ — DONE (CLI flags print Core IR via pretty_module_chirho, STG code table entries via Debug, and LLVM IR text to stderr; work with both `run` and `compile` subcommands; proper flag parsing separated from positional args; help text with usage examples)
-
-#### E. Language Features — Remaining GHC Haskell
-
-31. ~~**Type families**~~ — DONE (open and closed type families: CST parser `parse_type_family_decl_chirho`/`parse_type_family_instance_decl_chirho`; AST `TypeFamilyDeclChirho`/`TypeFamilyInstanceDeclChirho` variants with `TypeFamilyEquationChirho`; lowering handles LHS type patterns and RHS type nodes in equations; name resolution registers family names in type namespace; type checker has `type_families_chirho` HashMap with `register_type_family_chirho`/`register_type_family_instance_chirho`/`reduce_type_family_chirho` for equation-based pattern matching and substitution; interface exports type family names; 7 parser/lowering tests, 3 typing unit tests, 3 driver e2e tests; remaining: associated type families in classes, type family interaction with type inference/unification; 1536 tests total)
-32. ~~**ExistentialQuantification**~~ — DONE (parser `parse_con_decl_chirho` recognizes `forall` keyword before constructor declarations, skips type variables until dot, handles optional class context before `=>`; CST→AST lowerer `lower_con_decl_chirho` detects `ForallKeywordChirho` at start of ConDecl, scans past `DoubleArrowChirho` or `VarSymChirho` (dot) to find the actual constructor name; works with and without context; existential values can be constructed and pattern-matched; 3 new tests: existential with context parses, existential without context parses, existential constructor eval `MkBox 42 → 42`; 1394 tests total)
-33. ~~**TypeApplications** — `read @Int "42"`, `show @Bool True`~~ — DONE (CST parser recognizes `@Type` after expressions via `parse_fexp_chirho`; `TypeAppExprChirho` CST node; AST `TypeAppChirho` variant; CST→AST lowering extracts expression and type children; type inference unifies type argument with inferred type to constrain polymorphic instantiation; desugarer erases type application; 6 e2e tests: `id @Int 42`, `show @Bool True`, `f @Int 41`, `apply @Int (\n -> n+8) 34`, constraining polymorphic `myId @Int`, compound `@[Int]`; 1644 tests total)
-34. ~~**OverloadedStrings** — `IsString` type class; string literals desugar to `fromString`~~ — DONE
-35. ~~**OverloadedLists** — `IsList` type class; list literals desugar to `fromList`~~ — DONE (IsList class with `fromList`/`toList` methods; `IsList [a]` identity instance; `{-# LANGUAGE OverloadedLists #-}` desugars list literals through `fromList` in desugar_chirho.rs; `fromList`/`toList` Core IR bindings as identity functions in prelude; dict pass handles IsList with `id#` primop; 6 e2e tests total: identity sum, length, head, no-extension control; 1507 tests total)
-36. ~~**DeriveFunctor/DeriveFoldable/DeriveTraversable** — auto-derive Functor/Foldable/Traversable~~ — DONE (derive_functor_chirho generates `fmap` with field-level type analysis: direct var → `f x`, nested var → `fmap f x`, no var → passthrough; derive_foldable_chirho generates `foldMap` combining with `<>`; derive_traversable_chirho generates `traverse` with `<$>`/`<*>` applicative style; `type_is_var_chirho` for span-insensitive type comparison; Foldable/Traversable class declarations in class_chirho.rs; `fmap` now polymorphic `Functor f => (a -> b) -> f a -> f b`; foldMap/traverse type signatures in prelude; 5 unit tests + 2 e2e tests (simple Box fmap, multi-field Tagged fmap); 1412 tests total)
-37. ~~**DeriveGeneric**~~ — DONE (`Generic` type class registered in class environment with `from :: a -> rep` and `to :: rep -> a` methods; `derive_generic_chirho` function generates sum-of-products representation: nullary constructors → `()`, single field → identity, multi-field → tuples, multiple constructors → right-nested `Either Left/Right`; both `from` and `to` methods generated with proper pattern matching; works for data types and newtypes; dispatched in `derive_instances_chirho` for both data and newtype; 4 new unit tests: enum/product/single-nullary/newtype; 1561 tests total)
-38. ~~**ConstraintKinds** — constraints as first-class kinds~~ — DONE (`Constraint` variant in AstKindChirho; kind atom parser recognizes `Constraint` keyword; `ast_kind_to_kind_chirho` maps to KindChirho::ConstraintChirho; supports `(c :: Constraint)` and `(c :: * -> Constraint)` kind annotations; constraint type aliases `type Printable a = Show a` usable as constraints; 2 lowering tests + 2 kind inference tests + 3 driver e2e tests; 1581 tests total)
-39. ~~**FlexibleInstances/FlexibleContexts** — relax Haskell 98 instance/context restrictions~~ — DONE (no Haskell 98 restrictions enforced; all instance heads and contexts already flexible)
-40. ~~**DataKinds** — promote data constructors to type-level~~ — DONE (lexer Tick token disambiguates `'True` promoted constructors from `'A'` char literals; CST PromotedConTypeChirho/PromotedListTypeChirho nodes; AST PromotedConChirho/PromotedListChirho type variants; kind inference assigns `*` to promoted constructors; type inference encodes promoted lists as type-level cons/nil; `can_start_atype_chirho` includes TickChirho for type application parsing; 5 e2e tests + 4 lexer tests; 1574 tests total)
-41. ~~**KindSignatures**~~ — DONE (AST `TyVarChirho` struct with `name_chirho: NameChirho` + `kind_annotation_chirho: Option<AstKindChirho>`; `AstKindChirho` enum with `StarChirho` and `ArrowChirho`; `TyVarChirho` implements `Deref<Target=NameChirho>` and `From<NameChirho>` for minimal disruption; `type_vars_chirho` changed from `Vec<NameChirho>` to `Vec<TyVarChirho>` in DataDeclChirho, NewtypeDeclChirho, TypeAliasDeclChirho, ClassDeclChirho, ForallChirho; parser lowerer recognizes `(varId :: kind)` pattern in flat token stream with `try_parse_kind_annotated_tyvar_chirho`; kind parser handles `*`, `Type`, `* -> *`, nested `(* -> *) -> *`; kind inference uses annotations as constraints instead of fresh variables via `ast_kind_to_kind_chirho` converter; 5 parser unit tests + 5 driver e2e tests; 1437 tests total)
-42. ~~**DefaultSignatures**~~ — DONE (`default methodName :: ConstrainedType` syntax parsed in class bodies via `try_extract_default_sig_chirho`; detects `default VarId :: ...` pattern in DefaultDeclChirho CST nodes, distinguishing from `default (Int, Double)` declarations; stores raw type text on `ClassMethodChirho.default_sig_chirho: Option<String>`; class body where-clause scanning handles both direct DefaultDecl children and nested WhereClause children; default method implementations already work end-to-end with instance method fallback; 2 parser unit tests (default sig present, absent) + 3 e2e driver tests (basic eval with default, override eval, AST verification); 1460 tests total)
-43. ~~**Template Haskell (basic)**~~ — IN PROGRESS: TH AST types (rhasky-th-chirho crate with th_ast_chirho, q_monad_chirho, reify_chirho, convert_chirho), lexer tokens ($, $$, [|, |], [d|, [t|, [p|, [e|), CST parser (splices + quotes), AST lowering; remaining: driver splice evaluation integration, STG bridge for Q operations
-44. ~~**Foreign exports**~~ — DONE (`foreign export ccall` parsed end-to-end: parser lowerer extracts `ForeignDeclChirho` with `ExportChirho` direction into `ModuleChirho.foreign_exports_chirho` tuples (haskell_name, c_name, calling_conv); `ForeignExportChirho` struct in Core IR; desugarer propagates exports from AST to `CoreModuleChirho.foreign_exports_chirho`; simplifier and dict pass preserve exports through pipeline; LLVM backend emits C-linkage wrapper functions `define i64 @<c_name>() { call @<haskell_fn> }` for each export; WASM backend emits additional export entries mapping foreign names to function indices; custom C names via `foreign export ccall "c_name" hsName :: Type`; 4 e2e tests: export reaches Core, custom C name, LLVM wrapper emitted, eval still works; 1687 tests total)
-45. ~~**Monad transformers** — StateT, ReaderT, WriterT, ExceptT, MaybeT evaluation through STG machine~~ — DONE (StateT: get/put/modify/bindStateT/returnStateT/evalState/execState/runState/runStateT with 5 e2e tests; ReaderT: constructor/runReaderT/runReader/ask/local/bindReaderT/returnReaderT with 4 e2e tests; ExceptT: constructor/runExceptT/throwE/returnExceptT/bindExceptT/catchE with 5 e2e tests; MaybeT: constructor/runMaybeT/returnMaybeT/bindMaybeT with 3 e2e tests; WriterT: constructor/runWriterT/runWriter/tell/returnWriterT/bindWriterT/execWriterT/execWriter with 3 e2e tests; all transformers use Core IR newtype-erasion with case dispatch; type signatures in infer_chirho.rs; names exported from Prelude; 1498 tests total)
-
-#### F. Package Management & Hackage
-
-46. ~~**Cabal file parsing (full)** — complete `.cabal` spec: conditionals, flags, common stanzas, source-repository, custom setup~~ — DONE (flag stanzas with default/manual/description; source-repository stanzas with type/location/tag/branch/subdir; benchmark stanzas parallel to test-suite; common stanzas with `import:` field for shared build settings; custom-setup stanza; condition expression parser for `flag()`/`os()`/`arch()`/`impl()` with `&&`/`||`/`!` operators; `eval_condition_chirho` resolver; `merge_build_info_chirho` + `apply_imports_chirho` for common stanza import resolution; 15 new tests; 1598 tests total)
-47. ~~**Hackage package download**~~ — DONE (HTTP download via ureq v3 + tar.gz extraction via flate2/tar: `download_tarball_chirho`, `download_cabal_file_chirho`, `fetch_cabal_desc_chirho` for HTTP fetching; `extract_tarball_chirho`, `extract_cabal_from_tarball_chirho`, `list_tarball_files_chirho` for archive extraction; `fetch_package_chirho` full pipeline: download → extract → find .cabal → parse; `create_test_tarball_chirho` for offline testing; `HackageErrorChirho` error type with HTTP/IO/NoCabal/InvalidArchive variants; 5 offline tests; 1615 tests total)
-48. ~~**Dependency resolution** — solve version constraints across transitive dependency graph; conflict resolution; use `rhasky-package-chirho` resolver~~ — DONE (already implemented in resolve_chirho.rs: SolverChirho with DFS backtracking, newest-first version preference, constraint accumulation from multiple dependents, cycle detection via in_progress_chirho set, conflict detection for incompatible version requirements, topological sort for build order, builtin package skipping; PackageIndexChirho + BuildPlanChirho + BuildStepChirho types; 13 tests: single package, constraints, transitive deps, diamond deps, shared deps with different constraints, not found, no satisfying version, cycle, conflict, builtins, mixed builtins, no deps, newest satisfying)
-49. ~~**Package database** — installed package registry; track compiled modules and their interface files~~ — DONE (pkgdb_chirho module: InstalledPkgDbChirho with register/unregister/lookup/lookup_version/find_module/iface_path/list_packages/total_versions; InstalledPkgChirho + InstalledModuleChirho types with name, version, modules, depends, install_dir; text serialization/deserialization with roundtrip; newest-first ordering; reinstall-replaces semantics; install_dir_for_chirho path computation; 12 new tests; 1610 tests total)
-50. ~~**cabal-install compatibility**~~ — DONE (`rhasky install <package> <version>` CLI command: downloads tarball from Hackage via `download_tarball_chirho`, extracts via `extract_tarball_chirho`, finds and parses `.cabal` file, resolves dependencies against package index, discovers and compiles modules via `compile_modules_chirho`, registers in `InstalledPkgDbChirho` with exposed modules and interface paths; driver `install_package_chirho` function orchestrates the full pipeline; `find_cabal_in_dir_chirho` utility; package database persisted to `.rhasky-packages-chirho/pkgdb-chirho.txt`; 7 new install tests; 1622 tests total)
-
-#### G. Optimization
-
-51. ~~**Inlining**~~ — DONE (`{-# INLINE f #-}`, `{-# NOINLINE f #-}`, `{-# INLINABLE f #-}` pragmas parsed from source, stored on `ModuleChirho.inline_pragmas_chirho`, propagated to `CoreBindingChirho.inline_chirho` during desugaring; `InlineAnnotationChirho` enum (Always/Never/Inlinable/None); Core simplifier inlining pass: INLINE always inlines regardless of size, NOINLINE never inlines, INLINABLE inlines small non-recursive bindings (threshold=10 AST nodes), no-annotation auto-inlines trivial expressions (Var/Lit only); `expr_size_chirho` AST node counter; `build_inline_env_chirho` + `inline_expr_chirho` with proper shadow handling; 15 new tests: 8 simplifier unit tests, 1 pragma parsing test, 4 e2e tests, 2 size tests; 1427 tests total)
-52. ~~**Strictness analysis**~~ — DONE (demand analysis with `DemandChirho::LazyChirho`/`StrictChirho` classification; `analyze_demand_chirho` peels leading lambdas; `is_used_strictly_chirho` detects case scrutinee, primop arg, function position, and through nested lambdas; `worker_wrapper_chirho` splits strict-arg functions into wrapper (case-forces strict args) + `$w`-prefixed worker (marked INLINE); skips recursive, NOINLINE, `$w`/`$spec_` bindings; gated by `enable_worker_wrapper_chirho` config flag (off by default for STG, on for backends); 7 unit tests; 1543 tests total)
-53. ~~**Specialization**~~ — DONE (`{-# SPECIALIZE f :: Type #-}` and `{-# SPECIALISE f :: Type #-}` pragmas parsed from source via `extract_specialize_pragmas_chirho`; stored on `ModuleChirho.specialize_pragmas_chirho` and propagated to `CoreModuleChirho.specialize_pragmas_chirho`; `specialize_bindings_chirho` Core-to-Core pass in simplifier Phase 4 clones binding RHS for each specialization, creates `$spec_f_N` named bindings marked `InlineAnnotationChirho::AlwaysChirho` for aggressive optimization; handles multiple specializations per function and nonexistent targets gracefully; 4 parser unit tests (basic, British spelling, multiple, absent) + 4 simplifier unit tests (creates copy, multiple types, nonexistent, preserves RHS) + 4 e2e driver tests (basic eval, Core binding created, SPECIALISE spelling, multiple specs); 1455 tests total)
-54. ~~**Common subexpression elimination**~~ — DONE (two-level CSE pass: top-level binding deduplication via `cse_top_level_chirho` identifies non-recursive bindings with identical non-trivial RHS and redirects duplicates to canonical binding; intra-expression CSE via `cse_expr_chirho` deduplicates identical RHS within `let` blocks and rewrites body references; respects INLINE/INLINABLE annotations — never deduplicates annotated bindings; recursive bindings skipped; `apply_cse_redirects_chirho` rewrites variable references throughout expression tree; integrated as Phase 3 in simplify_module_chirho iteration loop; 6 new unit tests: top-level duplicate/no-dup/recursive-skip, let-binding dup/different-rhs/redirect-in-body; 1443 tests total)
-55. ~~**Constructor specialization**~~ — DONE (SpecConstr pass for recursive functions: `find_call_patterns_chirho` detects case scrutinee matching a lambda parameter where recursive calls pass alt binders; `collect_apps_chirho` flattens application chains; `has_recursive_call_with_alt_binder_chirho` checks all subexpression forms including PrimOp/ConApp/App/Let/Case/Lam; creates `$sc_f_<Con>` specialized copies that take constructor fields directly; skips non-recursive, NOINLINE, and already-specialized bindings; gated by `enable_spec_constr_chirho` config flag; 5 unit tests: pattern detection, copy creation, skip non-recursive, skip NOINLINE, no pattern found; 1557 tests total)
-56. ~~**Demand analysis**~~ — DONE (usage counting with `UsageChirho::AbsentChirho`/`UsedOnceChirho`/`UsedManyChirho`; `count_var_occurrences_chirho` with proper shadowing for let/case/lambda; `analyze_usage_chirho` peels leading lambdas and looks through nested lambdas; `dead_arg_elimination_chirho` removes absent parameters from function lambda chains; skips recursive, NOINLINE, `$w`/`$spec_`/`$dae_` bindings; gated by `enable_dead_arg_elim_chirho` config flag; 9 unit tests: absent/once/many usage, multi-arg mixed, shadowed let, dead arg removal/preservation/skip-noinline/middle-arg; 1552 tests total)
-
-#### H. Testing & Conformance
-
-57. ~~**GHC test suite integration**~~ — DONE (ghc_suite_chirho module in rhasky-test-harness-chirho: GhcTestCaseChirho/GhcTestResultChirho/GhcSuiteResultChirho types; three test kinds: Compile/CompileAndRun/CompileFail; curated test runner with `-- TEST:`/`-- EXPECT_OUTPUT:` metadata comments; full GHC testsuite `.T` file parser via `parse_dot_t_file_chirho` extracting test names and kinds; `discover_ghc_full_suite_chirho` recursive directory walker for `.T` + `.hs` file pairs; `load_expected_stdout_chirho` for `.stdout` reference files; `run_ghc_test_chirho`/`run_ghc_suite_chirho` with pass_rate_chirho tracking; 20 curated tests in ghc-tests-chirho/ covering types/patterns/let-where/ADTs/HOFs/typeclasses/guards/if-then-else/type-errors/lambdas/do-notation/case/infinite-lists/newtypes/list-comp/strings/fibonacci/deriving/sections/type-aliases; 20/20 pass rate; ghc_bulk_chirho.rs integration test walks ~2684 .hs files from full GHC testsuite across parser/typecheck/rename/layout/module categories — 1487/2684 (55.4%) pass through full compile pipeline; per-category: parser/should_compile 94/158 (59.5%), typecheck/should_compile 551/938 (58.7%), rename/should_compile 243/300 (81.0%), module 224/279 (80.3%); 24 synthetic module interfaces covering Data.Kind, GHC.Exts, GHC.Types, Control.Monad, Data.Proxy, Data.Coerce, etc.; BlockArguments extension enabled; 1759 tests total)
-58. ~~**Property-based testing**~~ — DONE (proptest crate: 19 property tests covering parser robustness (arbitrary-input crash-freedom with catch_unwind, Haskell-fragment fuzz), simplifier semantic preservation (arithmetic identity), runtime evaluator (int literal identity, addition, multiplication, let-binding identity, if-true/if-false branching, lambda application, subtraction identity, step-limit termination, nested-let depth, Num typeclass consistency, abs idempotence, negate involution, signum*abs law, eq reflexivity, lt ordering match); property tests discovered real parser bug: GreenBuilder checkpoint stack depth mismatch on malformed input; 1681 tests total)
-59. ~~**Benchmark suite**~~ — DONE (nofib-style benchmark infrastructure in `rhasky-test-harness-chirho::bench_chirho`: `BenchDefChirho` definitions, `BenchResultChirho` with per-phase timing (frontend/core/eval), `BenchSuiteResultChirho` with summary table and correct-count; `nofib_benchmarks_chirho()` returns 10 curated benchmarks across 2 categories: imaginary (nfib, tak, fib, ack, factorial) and spectral (sumList, gcd, collatz, power, isPrime); `run_benchmark_chirho` and `run_nofib_suite_chirho` runners with compile-and-eval callback; 8 harness unit tests + 11 driver integration tests (1 per benchmark + suite-level correctness); all 10 benchmarks produce correct results; 1706 tests total)
-60. ~~**Haskell Report conformance tracker**~~ — DONE (ConformanceTrackerChirho in rhasky-test-harness-chirho with StatusChirho enum, ReportSectionChirho struct, 39 sections mapped from Report chapters 2–8; count_by_status_chirho, pass_rate_chirho, summary_table_chirho methods; haskell_2010_conformance_chirho() factory; 7 harness unit tests + 10 driver integration tests with spot-check compilation of DONE sections; 1723 tests total)
-61. ~~**Backend round-trip smoke tests**~~ — DONE (8 test programs × 3 backends: STG baseline verification, LLVM IR structural checks, Wasm magic/version validation, Cranelift ELF/Mach-O/COFF header checks; cross-backend consistency test verifies all backends produce non-empty output; test cases: constant, arithmetic, conditional, let_binding, case_expr, recursive, nested_let, multi_arg; `ROUNDTRIP_CASES_CHIRHO` array-driven design; 1728 tests total)
-62. ~~**Differential testing against GHC**~~ — DONE (25 differential test cases across 4 categories: syntax (7: operator sections, backtick, nested comments, where, negation, multiline string), types (6: monomorphism restriction, polymorphic let, annotations, show dispatch, newtype, type error rejection), semantics (6: lazy if, seq, case default, guards, list comprehension, where scoping), edge (6: shadowing, tuples, as-patterns, wildcards, empty sum, composition); `DiffTestCaseChirho` with pre-recorded GHC 9.8 reference answers; `CompileOutcomeChirho` enum; `run_diff_suite_chirho` runner; 25/25 (100%) Rhasky-GHC agreement; 10 harness unit tests + 6 driver integration tests; 1744 tests total)
+20. **Parallel compilation** — compile independent modules concurrently
+21. **Incremental type checking** — recheck only changed modules and dependents
+22. **Large module handling** — ensure parser/checker scale to 10K+ line modules

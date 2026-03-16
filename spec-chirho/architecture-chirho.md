@@ -45,34 +45,34 @@ This design supports:
 - REPL and IDE integration (incremental reparsing of changed regions)
 - typed AST wrappers that provide convenient access patterns over the untyped CST
 
-The `rhasky-ast-chirho` crate should provide typed wrappers that project structured views over CST nodes without copying.
+The `haskeluya-ast-chirho` crate should provide typed wrappers that project structured views over CST nodes without copying.
 
 ## Preferred Rust Workspace Layout
 
 The compiler should be split into focused crates with clear ownership:
 
-- `rhasky-span-chirho`: source offsets, file ids, and spans
-- `rhasky-diagnostics-chirho`: structured diagnostics, notes, labels, and rendering
-- `rhasky-syntax-chirho`: tokens, trivia, and syntax node kinds
-- `rhasky-parser-chirho`: parser and error recovery
-- `rhasky-ast-chirho`: typed AST wrappers over syntax structures
-- `rhasky-hir-chirho`: resolved module-level representation
-- `rhasky-namer-chirho`: name resolution, imports, exports, and package visibility
-- `rhasky-types-chirho`: kinds, types, substitutions, predicates, and typeclass data
-- `rhasky-typecheck-chirho`: inference, checking, instance resolution, and evidence
-- `rhasky-core-chirho`: small typed core representation
-- `rhasky-simplify-chirho`: optimizer passes and normalization
-- `rhasky-stg-chirho`: runtime-oriented intermediate form for laziness and closure conversion
-- `rhasky-runtime-chirho`: runtime services shared by script, REPL, and compiled programs
-- `rhasky-backend-llvm-chirho`: LLVM lowering and native-oriented code generation
-- `rhasky-backend-wasm-chirho`: WebAssembly lowering and runtime integration
-- `rhasky-package-db-chirho`: Cabal parsing, package database logic, and Hackage index access
-- `rhasky-driver-chirho`: orchestration, incremental cache policy, and build planning
-- `rhasky-cli-chirho`: command-line interface
-- `rhasky-repl-chirho`: interactive loop, session state, and incremental evaluation
-- `rhasky-test-harness-chirho`: golden tests, compatibility suites, and property-test utilities
+- `haskeluya-span-chirho`: source offsets, file ids, and spans
+- `haskeluya-diagnostics-chirho`: structured diagnostics, notes, labels, and rendering
+- `haskeluya-syntax-chirho`: tokens, trivia, and syntax node kinds
+- `haskeluya-parser-chirho`: parser and error recovery
+- `haskeluya-ast-chirho`: typed AST wrappers over syntax structures
+- `haskeluya-hir-chirho`: resolved module-level representation
+- `haskeluya-namer-chirho`: name resolution, imports, exports, and package visibility
+- `haskeluya-types-chirho`: kinds, types, substitutions, predicates, and typeclass data
+- `haskeluya-typecheck-chirho`: inference, checking, instance resolution, and evidence
+- `haskeluya-core-chirho`: small typed core representation
+- `haskeluya-simplify-chirho`: optimizer passes and normalization
+- `haskeluya-stg-chirho`: runtime-oriented intermediate form for laziness and closure conversion
+- `haskeluya-runtime-chirho`: runtime services shared by script, REPL, and compiled programs
+- `haskeluya-backend-llvm-chirho`: LLVM lowering and native-oriented code generation
+- `haskeluya-backend-wasm-chirho`: WebAssembly lowering and runtime integration
+- `haskeluya-package-db-chirho`: Cabal parsing, package database logic, and Hackage index access
+- `haskeluya-driver-chirho`: orchestration, incremental cache policy, and build planning
+- `haskeluya-cli-chirho`: command-line interface
+- `haskeluya-repl-chirho`: interactive loop, session state, and incremental evaluation
+- `haskeluya-test-harness-chirho`: golden tests, compatibility suites, and property-test utilities
 
-Some crates (e.g. `rhasky-simplify-chirho`, `rhasky-stg-chirho`) may start as modules within their parent crate and split out when they grow large enough to justify independent compilation.
+Some crates (e.g. `haskeluya-simplify-chirho`, `haskeluya-stg-chirho`) may start as modules within their parent crate and split out when they grow large enough to justify independent compilation.
 
 ## Crate Boundary Rules
 
@@ -93,7 +93,7 @@ Some crates (e.g. `rhasky-simplify-chirho`, `rhasky-stg-chirho`) may start as mo
 
 The diagnostics system should support:
 
-- **Byte-offset spans** via `rhasky-span-chirho`, not line numbers alone. Spans reference a file ID and a byte range.
+- **Byte-offset spans** via `haskeluya-span-chirho`, not line numbers alone. Spans reference a file ID and a byte range.
 - **Error codes** for machine-readable classification (e.g. `E0001` for parse errors, `E0100` for name resolution, `E0200` for type errors). Codes enable documentation, filtering, and IDE quick-fix lookup.
 - **Primary span** identifying the main location of the problem.
 - **Secondary labeled spans** pointing to related locations (e.g. "first defined here", "expected because of this annotation").
@@ -128,7 +128,7 @@ Separate compilation requires serialized module signatures. The interface file f
 - fixity declarations and warning annotations
 - a fingerprint/hash for incremental invalidation
 
-The format should be a custom binary representation designed for Rhasky's type system, not GHC's `.hi` format. GHC's interface files are tightly coupled to GHC internals and unstable across versions.
+The format should be a custom binary representation designed for Haskeluya's type system, not GHC's `.hi` format. GHC's interface files are tightly coupled to GHC internals and unstable across versions.
 
 Interface files should be versioned so that stale artifacts from an older compiler version are detected and rejected cleanly.
 

@@ -1,0 +1,16 @@
+# For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
+
+[package]
+name = "haskeluya-naming-chirho"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+haskeluya-ast-chirho = { path = "../haskeluya-ast-chirho" }
+haskeluya-diagnostics-chirho = { path = "../haskeluya-diagnostics-chirho" }
+haskeluya-span-chirho = { path = "../haskeluya-span-chirho" }

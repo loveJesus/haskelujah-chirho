@@ -51,11 +51,11 @@ RHasky Chirho is a Haskell compiler written in Rust. It targets practical compat
 
 ## Compiler Pipeline
 
-The compiler runs a 12-phase pipeline, wired end-to-end in `rhasky-driver-chirho`:
+The compiler runs a 12-phase pipeline, wired end-to-end in `haskeluya-driver-chirho`:
 
 ```
 Haskell source
-  1. Lex              — rhasky-syntax-chirho tokenizer
+  1. Lex              — haskeluya-syntax-chirho tokenizer
   2. Layout           — layout rule insertion (braces/semicolons)
   3. CST Parse        — lossless green-tree concrete syntax tree
   4. AST Lower        — abstract syntax tree from CST
@@ -77,45 +77,45 @@ The driver exposes a shared frontend runner (`run_frontend_chirho`), so check, c
 
 | Crate | Purpose |
 |---|---|
-| `rhasky-span-chirho` | Source locations, file IDs, source maps, span arithmetic |
-| `rhasky-diagnostics-chirho` | Structured diagnostics with codes, labels, suggestions, ANSI color rendering |
-| `rhasky-syntax-chirho` | Token kinds, syntax kinds, green tree data structures, lexer, layout |
-| `rhasky-test-harness-chirho` | Golden test helpers and snapshot utilities |
+| `haskeluya-span-chirho` | Source locations, file IDs, source maps, span arithmetic |
+| `haskeluya-diagnostics-chirho` | Structured diagnostics with codes, labels, suggestions, ANSI color rendering |
+| `haskeluya-syntax-chirho` | Token kinds, syntax kinds, green tree data structures, lexer, layout |
+| `haskeluya-test-harness-chirho` | Golden test helpers and snapshot utilities |
 
 ### Frontend
 
 | Crate | Purpose |
 |---|---|
-| `rhasky-parser-chirho` | CST parser (green tree builder), golden tests, property tests |
-| `rhasky-ast-chirho` | AST data types and CST-to-AST lowering |
-| `rhasky-naming-chirho` | Scopes, imports, module interfaces, qualified names, orphan-instance warnings |
-| `rhasky-typing-chirho` | Kind inference, HM type inference, typeclasses, deriving, exhaustiveness checking |
+| `haskeluya-parser-chirho` | CST parser (green tree builder), golden tests, property tests |
+| `haskeluya-ast-chirho` | AST data types and CST-to-AST lowering |
+| `haskeluya-naming-chirho` | Scopes, imports, module interfaces, qualified names, orphan-instance warnings |
+| `haskeluya-typing-chirho` | Kind inference, HM type inference, typeclasses, deriving, exhaustiveness checking |
 
 ### Middle End and Runtime
 
 | Crate | Purpose |
 |---|---|
-| `rhasky-core-chirho` | Core IR (System FC-style), desugaring, dictionary passing, simplification, pretty-printing |
-| `rhasky-runtime-chirho` | STG machine: heap, stack, values, primops, GC, evaluator, FFI, exception handling |
-| `rhasky-driver-chirho` | Pipeline orchestration, shared frontend, compilation coordination |
+| `haskeluya-core-chirho` | Core IR (System FC-style), desugaring, dictionary passing, simplification, pretty-printing |
+| `haskeluya-runtime-chirho` | STG machine: heap, stack, values, primops, GC, evaluator, FFI, exception handling |
+| `haskeluya-driver-chirho` | Pipeline orchestration, shared frontend, compilation coordination |
 
 ### Backends
 
 | Crate | Purpose |
 |---|---|
-| `rhasky-backend-llvm-chirho` | Core to textual LLVM IR, native executable path |
-| `rhasky-backend-wasm-chirho` | Core to binary WebAssembly |
-| `rhasky-backend-cranelift-chirho` | Native backend via Cranelift (x86_64, aarch64, s390x, riscv64) |
-| `rhasky-backend-jvm-chirho` | JVM .class bytecode (experimental) |
-| `rhasky-backend-beam-chirho` | BEAM .beam bytecode (experimental) |
+| `haskeluya-backend-llvm-chirho` | Core to textual LLVM IR, native executable path |
+| `haskeluya-backend-wasm-chirho` | Core to binary WebAssembly |
+| `haskeluya-backend-cranelift-chirho` | Native backend via Cranelift (x86_64, aarch64, s390x, riscv64) |
+| `haskeluya-backend-jvm-chirho` | JVM .class bytecode (experimental) |
+| `haskeluya-backend-beam-chirho` | BEAM .beam bytecode (experimental) |
 
 ### Packaging and Tooling
 
 | Crate | Purpose |
 |---|---|
-| `rhasky-package-chirho` | Cabal file parsing, version constraints, Hackage URL construction |
-| `rhasky-incremental-chirho` | Fingerprinting, dependency graph, artifact caching, recompilation avoidance |
-| `rhasky-cli-chirho` | Command-line interface and REPL |
+| `haskeluya-package-chirho` | Cabal file parsing, version constraints, Hackage URL construction |
+| `haskeluya-incremental-chirho` | Fingerprinting, dependency graph, artifact caching, recompilation avoidance |
+| `haskeluya-cli-chirho` | Command-line interface and REPL |
 
 ## Getting Started
 
@@ -132,35 +132,35 @@ cargo build --workspace
 cargo test --workspace
 
 # Run driver/runtime integration tests
-cargo test -p rhasky-driver-chirho
+cargo test -p haskeluya-driver-chirho
 
 # Run parser golden tests
-cargo test -p rhasky-parser-chirho --test golden_parse_chirho
+cargo test -p haskeluya-parser-chirho --test golden_parse_chirho
 ```
 
 ### CLI Usage
 
 ```bash
 # Type-check a Haskell source file
-cargo run -p rhasky-cli-chirho -- check examples-chirho/MainChirho.hs
+cargo run -p haskeluya-cli-chirho -- check examples-chirho/MainChirho.hs
 
 # Evaluate via the STG interpreter
-cargo run -p rhasky-cli-chirho -- run examples-chirho/MainChirho.hs
+cargo run -p haskeluya-cli-chirho -- run examples-chirho/MainChirho.hs
 
 # Compile to a native executable (via LLVM)
-cargo run -p rhasky-cli-chirho -- compile examples-chirho/MainChirho.hs -o main-chirho
+cargo run -p haskeluya-cli-chirho -- compile examples-chirho/MainChirho.hs -o main-chirho
 
 # Compile to WebAssembly
-cargo run -p rhasky-cli-chirho -- compile examples-chirho/MainChirho.hs --wasm -o out-chirho.wasm
+cargo run -p haskeluya-cli-chirho -- compile examples-chirho/MainChirho.hs --wasm -o out-chirho.wasm
 
 # Compile via Cranelift
-cargo run -p rhasky-cli-chirho -- compile examples-chirho/MainChirho.hs --cranelift -o main-chirho
+cargo run -p haskeluya-cli-chirho -- compile examples-chirho/MainChirho.hs --cranelift -o main-chirho
 
 # Build a multi-module project
-cargo run -p rhasky-cli-chirho -- build examples-chirho/project-chirho
+cargo run -p haskeluya-cli-chirho -- build examples-chirho/project-chirho
 
 # Start the REPL
-cargo run -p rhasky-cli-chirho -- repl
+cargo run -p haskeluya-cli-chirho -- repl
 ```
 
 **REPL commands:** `:type <expr>`, `:info <name>`, `:load <file>`, `:reload`, `:let <decl>`, `:clear`, `:{`/`:}` (multi-line), `:quit`

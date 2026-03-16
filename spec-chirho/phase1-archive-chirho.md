@@ -1,6 +1,6 @@
 <!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. -->
 
-# Rhasky Phase 1 Archive — Completed Priorities & Test Coverage
+# Haskeluya Phase 1 Archive — Completed Priorities & Test Coverage
 
 **Phase 1 span**: 2026-03-12 → 2026-03-14
 **Final state**: 1273 tests passing, 19 crates, ~84,500 lines of Rust
@@ -166,25 +166,25 @@
 
 | Crate | Purpose |
 |---|---|
-| `rhasky-span-chirho` | Source locations, file IDs, source map |
-| `rhasky-diagnostics-chirho` | Structured compiler diagnostics |
-| `rhasky-syntax-chirho` | Tokens, SyntaxKind, green tree nodes, lexer, layout |
-| `rhasky-parser-chirho` | CST parser (green tree builder) |
-| `rhasky-ast-chirho` | Abstract syntax tree types, CST→AST lowering |
-| `rhasky-naming-chirho` | Name resolution / scope analysis, module interfaces |
-| `rhasky-typing-chirho` | HM type inference, unification, kind inference, exhaustiveness, deriving |
-| `rhasky-core-chirho` | Core IR, AST→Core desugaring, dict-passing transform, simplifier |
-| `rhasky-backend-llvm-chirho` | Core → textual LLVM IR codegen |
-| `rhasky-backend-wasm-chirho` | Core → binary WebAssembly codegen |
-| `rhasky-backend-cranelift-chirho` | Core → Cranelift IR → native object files |
-| `rhasky-backend-jvm-chirho` | Core → JVM .class bytecode files |
-| `rhasky-backend-beam-chirho` | Core → BEAM .beam bytecode files |
-| `rhasky-driver-chirho` | Pipeline orchestration, CompileResultChirho |
-| `rhasky-runtime-chirho` | STG runtime: values, heap, eval loop, GC, FFI, exceptions |
-| `rhasky-incremental-chirho` | Incremental compilation: fingerprinting, dep graph, caching |
-| `rhasky-package-chirho` | Cabal file parser, version constraints, Hackage URLs |
-| `rhasky-cli-chirho` | Command-line interface (scaffold) |
-| `rhasky-test-harness-chirho` | Golden test utilities |
+| `haskeluya-span-chirho` | Source locations, file IDs, source map |
+| `haskeluya-diagnostics-chirho` | Structured compiler diagnostics |
+| `haskeluya-syntax-chirho` | Tokens, SyntaxKind, green tree nodes, lexer, layout |
+| `haskeluya-parser-chirho` | CST parser (green tree builder) |
+| `haskeluya-ast-chirho` | Abstract syntax tree types, CST→AST lowering |
+| `haskeluya-naming-chirho` | Name resolution / scope analysis, module interfaces |
+| `haskeluya-typing-chirho` | HM type inference, unification, kind inference, exhaustiveness, deriving |
+| `haskeluya-core-chirho` | Core IR, AST→Core desugaring, dict-passing transform, simplifier |
+| `haskeluya-backend-llvm-chirho` | Core → textual LLVM IR codegen |
+| `haskeluya-backend-wasm-chirho` | Core → binary WebAssembly codegen |
+| `haskeluya-backend-cranelift-chirho` | Core → Cranelift IR → native object files |
+| `haskeluya-backend-jvm-chirho` | Core → JVM .class bytecode files |
+| `haskeluya-backend-beam-chirho` | Core → BEAM .beam bytecode files |
+| `haskeluya-driver-chirho` | Pipeline orchestration, CompileResultChirho |
+| `haskeluya-runtime-chirho` | STG runtime: values, heap, eval loop, GC, FFI, exceptions |
+| `haskeluya-incremental-chirho` | Incremental compilation: fingerprinting, dep graph, caching |
+| `haskeluya-package-chirho` | Cabal file parser, version constraints, Hackage URLs |
+| `haskeluya-cli-chirho` | Command-line interface (scaffold) |
+| `haskeluya-test-harness-chirho` | Golden test utilities |
 
 ---
 

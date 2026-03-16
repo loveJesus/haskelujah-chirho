@@ -4,7 +4,7 @@
 
 This directory contains test files extracted from the
 [GHC compiler test suite](https://gitlab.haskell.org/ghc/ghc) for use as
-verification inputs for the rhasky-chirho Haskell compiler.
+verification inputs for the haskeluya-chirho Haskell compiler.
 
 ## Contents
 

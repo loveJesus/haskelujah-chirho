@@ -1,0 +1,11 @@
+# For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
+
+[package]
+name = "haskeluya-rts-chirho"
+description = "Shared runtime system for the Haskeluya Haskell compiler — value types, heap, GC"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]

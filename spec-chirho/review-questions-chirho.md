@@ -23,21 +23,21 @@ These are the highest-value questions for external review, with current resoluti
 - What is the cleanest path to Cabal package compatibility without coupling the driver too tightly to one packaging workflow?
 - Which package metadata edge cases should be considered mandatory in the first serious compatibility milestone?
 
-**Resolution:** The `rhasky-package-db-chirho` crate should parse Cabal files independently of the driver, exposing a package metadata API that the driver, script runner, and REPL all consume. This keeps packaging logic reusable. For the first compatibility milestone (M2), mandatory edge cases are: conditional sections (`if flag(...)` / `if os(...)` / `if impl(ghc)`), common stanzas, multiple `library` sections, and `build-depends` version ranges. Package flags with defaults should work. `custom-setup` and `configure`-style builds can be deferred.
+**Resolution:** The `haskeluya-package-db-chirho` crate should parse Cabal files independently of the driver, exposing a package metadata API that the driver, script runner, and REPL all consume. This keeps packaging logic reusable. For the first compatibility milestone (M2), mandatory edge cases are: conditional sections (`if flag(...)` / `if os(...)` / `if impl(ghc)`), common stanzas, multiple `library` sections, and `build-depends` version ranges. Package flags with defaults should work. `custom-setup` and `configure`-style builds can be deferred.
 
 ## Runtime
 
 - What memory management strategy best balances native performance, Wasm portability, and scripting/REPL latency?
 - Where should the boundary live between shared runtime logic and backend-specific runtime glue?
 
-**Resolution:** Copying generational GC for native (proven by GHC for lazy languages with high allocation rates). Linear-memory GC for Wasm (more portable than the evolving Wasm GC proposal). The GC interface should be abstracted behind a trait in `rhasky-runtime-chirho` so that both backends implement the same allocation/collection API with different underlying strategies. Shared runtime logic includes: thunk evaluation protocol, exception handling, module initialization, and blackhole detection. Backend-specific glue includes: memory layout, stack management, and calling conventions.
+**Resolution:** Copying generational GC for native (proven by GHC for lazy languages with high allocation rates). Linear-memory GC for Wasm (more portable than the evolving Wasm GC proposal). The GC interface should be abstracted behind a trait in `haskeluya-runtime-chirho` so that both backends implement the same allocation/collection API with different underlying strategies. Shared runtime logic includes: thunk evaluation protocol, exception handling, module initialization, and blackhole detection. Backend-specific glue includes: memory layout, stack management, and calling conventions.
 
 ## Rust Workspace
 
 - Is the proposed crate split too fine, too coarse, or about right for compiler build times and modularity?
 - Which crates should be kept dependency-light from the start to preserve compilation speed?
 
-**Resolution:** The split is about right for the target architecture. Some crates (`rhasky-simplify-chirho`, `rhasky-stg-chirho`) should start as modules within their parent crate and split out when they grow large enough to justify the boundary. Crates that must stay dependency-light: `rhasky-span-chirho` (zero external deps), `rhasky-syntax-chirho` (only span), `rhasky-diagnostics-chirho` (only span). The `rhasky-parser-chirho` crate should avoid pulling in heavy dependencies that would slow down the most frequently recompiled code during development.
+**Resolution:** The split is about right for the target architecture. Some crates (`haskeluya-simplify-chirho`, `haskeluya-stg-chirho`) should start as modules within their parent crate and split out when they grow large enough to justify the boundary. Crates that must stay dependency-light: `haskeluya-span-chirho` (zero external deps), `haskeluya-syntax-chirho` (only span), `haskeluya-diagnostics-chirho` (only span). The `haskeluya-parser-chirho` crate should avoid pulling in heavy dependencies that would slow down the most frequently recompiled code during development.
 
 ## Solver Design
 

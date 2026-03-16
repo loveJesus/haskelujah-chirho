@@ -4,8 +4,8 @@
 
 ## Files Created
 
-- `crates/rhasky-parser-chirho/tests/golden_parse_chirho.rs`
-- `crates/rhasky-driver-chirho/tests/typing_integration_chirho.rs`
+- `crates/haskeluya-parser-chirho/tests/golden_parse_chirho.rs`
+- `crates/haskeluya-driver-chirho/tests/typing_integration_chirho.rs`
 - `test-data-chirho/golden-parse-chirho/type_sig_chirho.expected`
 - `test-data-chirho/golden-parse-chirho/data_decl_chirho.expected`
 - `test-data-chirho/golden-parse-chirho/fun_bind_chirho.expected`
@@ -30,13 +30,13 @@ Added a new parser integration test that:
 Command run to generate goldens:
 
 ```text
-BLESS_CHIRHO=1 cargo test -p rhasky-parser-chirho --test golden_parse_chirho
+BLESS_CHIRHO=1 cargo test -p haskeluya-parser-chirho --test golden_parse_chirho
 ```
 
 Verification command:
 
 ```text
-cargo test -p rhasky-parser-chirho --test golden_parse_chirho
+cargo test -p haskeluya-parser-chirho --test golden_parse_chirho
 ```
 
 Result:
@@ -69,7 +69,7 @@ Note:
 Verification command:
 
 ```text
-cargo test -p rhasky-driver-chirho
+cargo test -p haskeluya-driver-chirho
 ```
 
 Result:
@@ -77,14 +77,14 @@ Result:
 ```text
 unittests src/lib.rs: 3 passed; 0 failed
 tests/typing_integration_chirho.rs: 8 passed; 0 failed
-doc-tests rhasky_driver_chirho: 0 passed; 0 failed
+doc-tests haskeluya_driver_chirho: 0 passed; 0 failed
 ```
 
 Observed warning during the driver test run:
 
 ```text
 warning: method `first_token_text_chirho` is never used
-  --> crates/rhasky-parser-chirho/src/lower_chirho.rs:94:8
+  --> crates/haskeluya-parser-chirho/src/lower_chirho.rs:94:8
 ```
 
 No existing files were modified for these two tasks.

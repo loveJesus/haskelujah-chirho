@@ -351,6 +351,208 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 
 [[package]]
+name = "haskeluya-ast-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-span-chirho",
+]
+
+[[package]]
+name = "haskeluya-backend-beam-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-core-chirho",
+ "haskeluya-span-chirho",
+ "haskeluya-typing-chirho",
+]
+
+[[package]]
+name = "haskeluya-backend-cranelift-chirho"
+version = "0.1.0"
+dependencies = [
+ "cranelift-codegen",
+ "cranelift-frontend",
+ "cranelift-module",
+ "cranelift-object",
+ "haskeluya-core-chirho",
+ "haskeluya-span-chirho",
+ "haskeluya-typing-chirho",
+ "target-lexicon",
+]
+
+[[package]]
+name = "haskeluya-backend-jvm-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-core-chirho",
+ "haskeluya-span-chirho",
+ "haskeluya-typing-chirho",
+]
+
+[[package]]
+name = "haskeluya-backend-llvm-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-core-chirho",
+ "haskeluya-span-chirho",
+ "haskeluya-typing-chirho",
+]
+
+[[package]]
+name = "haskeluya-backend-wasm-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-core-chirho",
+ "haskeluya-span-chirho",
+ "haskeluya-typing-chirho",
+]
+
+[[package]]
+name = "haskeluya-cli-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-ast-chirho",
+ "haskeluya-backend-cranelift-chirho",
+ "haskeluya-backend-llvm-chirho",
+ "haskeluya-backend-wasm-chirho",
+ "haskeluya-core-chirho",
+ "haskeluya-driver-chirho",
+ "haskeluya-naming-chirho",
+ "haskeluya-package-chirho",
+ "haskeluya-runtime-chirho",
+ "haskeluya-span-chirho",
+ "haskeluya-syntax-chirho",
+ "haskeluya-typing-chirho",
+]
+
+[[package]]
+name = "haskeluya-core-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-ast-chirho",
+ "haskeluya-span-chirho",
+ "haskeluya-typing-chirho",
+ "proptest",
+]
+
+[[package]]
+name = "haskeluya-diagnostics-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-span-chirho",
+]
+
+[[package]]
+name = "haskeluya-driver-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-ast-chirho",
+ "haskeluya-backend-cranelift-chirho",
+ "haskeluya-backend-llvm-chirho",
+ "haskeluya-backend-wasm-chirho",
+ "haskeluya-core-chirho",
+ "haskeluya-diagnostics-chirho",
+ "haskeluya-incremental-chirho",
+ "haskeluya-naming-chirho",
+ "haskeluya-package-chirho",
+ "haskeluya-parser-chirho",
+ "haskeluya-runtime-chirho",
+ "haskeluya-span-chirho",
+ "haskeluya-syntax-chirho",
+ "haskeluya-test-harness-chirho",
+ "haskeluya-th-chirho",
+ "haskeluya-typing-chirho",
+ "proptest",
+ "tempfile",
+]
+
+[[package]]
+name = "haskeluya-incremental-chirho"
+version = "0.1.0"
+
+[[package]]
+name = "haskeluya-naming-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-ast-chirho",
+ "haskeluya-diagnostics-chirho",
+ "haskeluya-span-chirho",
+]
+
+[[package]]
+name = "haskeluya-package-chirho"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "tar",
+ "tempfile",
+ "ureq",
+]
+
+[[package]]
+name = "haskeluya-parser-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-ast-chirho",
+ "haskeluya-diagnostics-chirho",
+ "haskeluya-span-chirho",
+ "haskeluya-syntax-chirho",
+ "haskeluya-test-harness-chirho",
+ "proptest",
+]
+
+[[package]]
+name = "haskeluya-rts-chirho"
+version = "0.1.0"
+
+[[package]]
+name = "haskeluya-runtime-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-rts-chirho",
+]
+
+[[package]]
+name = "haskeluya-span-chirho"
+version = "0.1.0"
+
+[[package]]
+name = "haskeluya-syntax-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-span-chirho",
+]
+
+[[package]]
+name = "haskeluya-test-harness-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-diagnostics-chirho",
+ "haskeluya-driver-chirho",
+ "haskeluya-runtime-chirho",
+ "haskeluya-span-chirho",
+ "tempfile",
+]
+
+[[package]]
+name = "haskeluya-th-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-ast-chirho",
+ "haskeluya-diagnostics-chirho",
+ "haskeluya-span-chirho",
+]
+
+[[package]]
+name = "haskeluya-typing-chirho"
+version = "0.1.0"
+dependencies = [
+ "haskeluya-ast-chirho",
+ "haskeluya-diagnostics-chirho",
+ "haskeluya-span-chirho",
+]
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -627,208 +829,6 @@ name = "regex-syntax"
 version = "0.8.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
-
-[[package]]
-name = "rhasky-ast-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-span-chirho",
-]
-
-[[package]]
-name = "rhasky-backend-beam-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-core-chirho",
- "rhasky-span-chirho",
- "rhasky-typing-chirho",
-]
-
-[[package]]
-name = "rhasky-backend-cranelift-chirho"
-version = "0.1.0"
-dependencies = [
- "cranelift-codegen",
- "cranelift-frontend",
- "cranelift-module",
- "cranelift-object",
- "rhasky-core-chirho",
- "rhasky-span-chirho",
- "rhasky-typing-chirho",
- "target-lexicon",
-]
-
-[[package]]
-name = "rhasky-backend-jvm-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-core-chirho",
- "rhasky-span-chirho",
- "rhasky-typing-chirho",
-]
-
-[[package]]
-name = "rhasky-backend-llvm-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-core-chirho",
- "rhasky-span-chirho",
- "rhasky-typing-chirho",
-]
-
-[[package]]
-name = "rhasky-backend-wasm-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-core-chirho",
- "rhasky-span-chirho",
- "rhasky-typing-chirho",
-]
-
-[[package]]
-name = "rhasky-cli-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-ast-chirho",
- "rhasky-backend-cranelift-chirho",
- "rhasky-backend-llvm-chirho",
- "rhasky-backend-wasm-chirho",
- "rhasky-core-chirho",
- "rhasky-driver-chirho",
- "rhasky-naming-chirho",
- "rhasky-package-chirho",
- "rhasky-runtime-chirho",
- "rhasky-span-chirho",
- "rhasky-syntax-chirho",
- "rhasky-typing-chirho",
-]
-
-[[package]]
-name = "rhasky-core-chirho"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "rhasky-ast-chirho",
- "rhasky-span-chirho",
- "rhasky-typing-chirho",
-]
-
-[[package]]
-name = "rhasky-diagnostics-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-span-chirho",
-]
-
-[[package]]
-name = "rhasky-driver-chirho"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "rhasky-ast-chirho",
- "rhasky-backend-cranelift-chirho",
- "rhasky-backend-llvm-chirho",
- "rhasky-backend-wasm-chirho",
- "rhasky-core-chirho",
- "rhasky-diagnostics-chirho",
- "rhasky-incremental-chirho",
- "rhasky-naming-chirho",
- "rhasky-package-chirho",
- "rhasky-parser-chirho",
- "rhasky-runtime-chirho",
- "rhasky-span-chirho",
- "rhasky-syntax-chirho",
- "rhasky-test-harness-chirho",
- "rhasky-th-chirho",
- "rhasky-typing-chirho",
- "tempfile",
-]
-
-[[package]]
-name = "rhasky-incremental-chirho"
-version = "0.1.0"
-
-[[package]]
-name = "rhasky-naming-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-ast-chirho",
- "rhasky-diagnostics-chirho",
- "rhasky-span-chirho",
-]
-
-[[package]]
-name = "rhasky-package-chirho"
-version = "0.1.0"
-dependencies = [
- "flate2",
- "tar",
- "tempfile",
- "ureq",
-]
-
-[[package]]
-name = "rhasky-parser-chirho"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "rhasky-ast-chirho",
- "rhasky-diagnostics-chirho",
- "rhasky-span-chirho",
- "rhasky-syntax-chirho",
- "rhasky-test-harness-chirho",
-]
-
-[[package]]
-name = "rhasky-rts-chirho"
-version = "0.1.0"
-
-[[package]]
-name = "rhasky-runtime-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-rts-chirho",
-]
-
-[[package]]
-name = "rhasky-span-chirho"
-version = "0.1.0"
-
-[[package]]
-name = "rhasky-syntax-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-span-chirho",
-]
-
-[[package]]
-name = "rhasky-test-harness-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-diagnostics-chirho",
- "rhasky-driver-chirho",
- "rhasky-runtime-chirho",
- "rhasky-span-chirho",
- "tempfile",
-]
-
-[[package]]
-name = "rhasky-th-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-ast-chirho",
- "rhasky-diagnostics-chirho",
- "rhasky-span-chirho",
-]
-
-[[package]]
-name = "rhasky-typing-chirho"
-version = "0.1.0"
-dependencies = [
- "rhasky-ast-chirho",
- "rhasky-diagnostics-chirho",
- "rhasky-span-chirho",
-]
 
 [[package]]
 name = "ring"

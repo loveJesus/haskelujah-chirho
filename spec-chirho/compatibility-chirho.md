@@ -98,7 +98,7 @@ Extensions move tiers only when a concrete ecosystem need is demonstrated, not b
 
 ## Base Library Strategy
 
-The project must ship its own base library (`rhasky-base-chirho`) because GHC's `base` is tightly coupled to GHC-specific primitive operations (MagicHash, unboxed types, GHC.Prim) that are impractical to replicate in early milestones.
+The project must ship its own base library (`haskeluya-base-chirho`) because GHC's `base` is tightly coupled to GHC-specific primitive operations (MagicHash, unboxed types, GHC.Prim) that are impractical to replicate in early milestones.
 
 ### Initial Scope
 
@@ -116,7 +116,7 @@ Add modules as package compatibility demands. When a real package fails to compi
 
 ### Primitive Operations
 
-Define a small set of compiler-known primitive operations (arithmetic, IO, array access, etc.) that the base library calls into. These primops are the interface between Haskell code and the Rhasky runtime. They should be documented, versioned, and stable enough that base library code does not break across compiler updates.
+Define a small set of compiler-known primitive operations (arithmetic, IO, array access, etc.) that the base library calls into. These primops are the interface between Haskell code and the Haskeluya runtime. They should be documented, versioned, and stable enough that base library code does not break across compiler updates.
 
 ## C Foreign Function Interface Strategy
 

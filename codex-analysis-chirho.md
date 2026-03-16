@@ -1,6 +1,6 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. (John 3:16) -->
 
-# Rhasky Chirho Codebase Analysis
+# Haskeluya Chirho Codebase Analysis
 
 ## Current Snapshot
 
@@ -46,8 +46,8 @@ The current analysis was refreshed from the local repository state using:
 - `sqlite3 spec-chirho/progress-chirho.sqlite 'select count(*) from steps_taken_chirho;'`
 - direct inspection of:
   - `spec-chirho/prd-chirho.json`
-  - `crates/rhasky-driver-chirho/src/lib.rs`
-  - `crates/rhasky-parser-chirho/src/proptest_chirho.rs`
+  - `crates/haskeluya-driver-chirho/src/lib.rs`
+  - `crates/haskeluya-parser-chirho/src/proptest_chirho.rs`
 
 ## What Is Clearly Better Now
 
@@ -59,7 +59,7 @@ That changes the overall posture of the project. A compiler codebase with this m
 
 ### 2. The driver has a real shared frontend entrypoint
 
-`rhasky-driver-chirho` now uses `run_frontend_chirho` as a common phase boundary for:
+`haskeluya-driver-chirho` now uses `run_frontend_chirho` as a common phase boundary for:
 
 - parsing
 - AST lowering
@@ -134,7 +134,7 @@ The progress database exists and is being used. The test corpus is large. The PR
 
 This remains the sharpest correctness concern.
 
-`crates/rhasky-parser-chirho/src/proptest_chirho.rs` still explicitly documents and uses `catch_unwind` around arbitrary malformed input because the parser can panic on certain bad token streams due to builder/checkpoint mismatches.
+`crates/haskeluya-parser-chirho/src/proptest_chirho.rs` still explicitly documents and uses `catch_unwind` around arbitrary malformed input because the parser can panic on certain bad token streams due to builder/checkpoint mismatches.
 
 That means the project currently has two parser quality levels:
 
@@ -181,12 +181,12 @@ That is acceptable if described honestly. It becomes a problem only if tooling o
 
 Current outliers include:
 
-- `rhasky-core-chirho/src/dict_chirho/prelude_chirho.rs` at 14,042 lines
-- `rhasky-typing-chirho/src/infer_chirho.rs` at 8,945 lines
-- `rhasky-driver-chirho/src/tests_chirho/eval_basic_chirho.rs` at 6,054 lines
-- `rhasky-parser-chirho/src/lower_chirho.rs` at 5,976 lines
-- `rhasky-runtime-chirho/src/eval_chirho.rs` at 4,902 lines
-- `rhasky-core-chirho/src/desugar_chirho.rs` at 4,790 lines
+- `haskeluya-core-chirho/src/dict_chirho/prelude_chirho.rs` at 14,042 lines
+- `haskeluya-typing-chirho/src/infer_chirho.rs` at 8,945 lines
+- `haskeluya-driver-chirho/src/tests_chirho/eval_basic_chirho.rs` at 6,054 lines
+- `haskeluya-parser-chirho/src/lower_chirho.rs` at 5,976 lines
+- `haskeluya-runtime-chirho/src/eval_chirho.rs` at 4,902 lines
+- `haskeluya-core-chirho/src/desugar_chirho.rs` at 4,790 lines
 
 Large files are not automatically bad. In a compiler, though, they correlate strongly with:
 
@@ -322,7 +322,7 @@ What keeps `M1` from feeling finished is mostly hardening and coherence:
 
 ## Bottom Line
 
-Rhasky Chirho is in a much stronger state than an older snapshot would suggest.
+Haskeluya Chirho is in a much stronger state than an older snapshot would suggest.
 
 The workspace is green. The pipeline is real. The architecture is increasingly coherent. The codebase already contains enough compiler, runtime, and tooling substance to justify calling it a serious under-development Haskell compiler in Rust.
 

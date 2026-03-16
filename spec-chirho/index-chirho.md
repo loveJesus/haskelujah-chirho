@@ -1,10 +1,10 @@
 <!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. -->
 
-# Rhasky Chirho Spec Index
+# Haskeluya Chirho Spec Index
 
 ## Mission
 
-Rhasky Chirho is a Rust implementation of a Haskell compiler and runtime with three first-class execution modes:
+Haskeluya Chirho is a Rust implementation of a Haskell compiler and runtime with three first-class execution modes:
 
 - batch compilation for executables and libraries
 - script execution with fast startup
