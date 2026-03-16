@@ -281,6 +281,22 @@ pub struct CompileResultChirho {
     pub newtype_cons_chirho: std::collections::HashSet<String>,
 }
 
+/// Extract the first argument type from a GADT type signature.
+/// Peels through forall and qualified types, then returns the first `arg` from
+/// `arg -> result`.  Returns `None` for non-function types (nullary GADT ctors).
+fn extract_first_fun_arg_chirho(
+    ty_chirho: &haskeluya_ast_chirho::ty_chirho::TypeChirho,
+) -> Option<haskeluya_ast_chirho::ty_chirho::TypeChirho> {
+    use haskeluya_ast_chirho::ty_chirho::TypeChirho;
+    match ty_chirho {
+        TypeChirho::FunChirho { arg_chirho, .. } => Some((**arg_chirho).clone()),
+        TypeChirho::ForallChirho { body_chirho, .. } => extract_first_fun_arg_chirho(body_chirho),
+        TypeChirho::QualChirho { body_chirho, .. } => extract_first_fun_arg_chirho(body_chirho),
+        TypeChirho::ParenChirho { inner_chirho, .. } => extract_first_fun_arg_chirho(inner_chirho),
+        _ => None,
+    }
+}
+
 /// Build a mapping from data constructor names to their parent type name.
 /// Used by the dictionary-passing transform to select the correct instance
 /// dictionary when a class method is applied to a constructor value.
@@ -304,6 +320,10 @@ fn build_con_type_map_chirho(module_chirho: &ModuleChirho) -> std::collections::
                         name_chirho: cn_chirho,
                         ..
                     } => cn_chirho.text_chirho().to_string(),
+                    haskeluya_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
+                        name_chirho: cn_chirho,
+                        ..
+                    } => cn_chirho.text_chirho().to_string(),
                 };
                 map_chirho.insert(con_name_chirho, type_name_chirho.clone());
             }
@@ -324,6 +344,10 @@ fn build_con_type_map_chirho(module_chirho: &ModuleChirho) -> std::collections::
                     ..
                 } => cn_chirho.text_chirho().to_string(),
                 haskeluya_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
+                    name_chirho: cn_chirho,
+                    ..
+                } => cn_chirho.text_chirho().to_string(),
+                haskeluya_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
                     name_chirho: cn_chirho,
                     ..
                 } => cn_chirho.text_chirho().to_string(),
@@ -373,6 +397,20 @@ fn build_newtype_info_chirho(
                         .first()
                         .map(|fd_chirho| {
                             haskeluya_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&fd_chirho.ty_chirho)
+                        })
+                        .unwrap_or_else(|| "()".to_string());
+                    (cn_chirho.text_chirho().to_string(), underlying_chirho)
+                }
+                haskeluya_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
+                    name_chirho: cn_chirho,
+                    ty_chirho,
+                    ..
+                } => {
+                    // Extract the first argument type from the GADT type signature.
+                    // E.g. `forall a. Ctx => Int -> T a` → underlying is `Int`.
+                    let underlying_chirho = extract_first_fun_arg_chirho(ty_chirho)
+                        .map(|arg_ty_chirho| {
+                            haskeluya_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&arg_ty_chirho)
                         })
                         .unwrap_or_else(|| "()".to_string());
                     (cn_chirho.text_chirho().to_string(), underlying_chirho)

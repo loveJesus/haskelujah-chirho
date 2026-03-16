@@ -1431,8 +1431,8 @@ impl LowerCtxChirho {
     }
 
     /// Lower a GADT constructor `Con :: forall a. Ctx => Arg -> ... -> T a`
-    /// to a `ConDeclChirho::OrdinaryChirho` by extracting argument types from
-    /// the function type signature (dropping the return type).
+    /// to a `ConDeclChirho::GadtChirho` preserving the full type signature
+    /// for type refinement in pattern matching.
     fn lower_gadt_con_decl_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -1468,41 +1468,21 @@ impl LowerCtxChirho {
             }
         }
 
-        // Extract argument types from function type: A -> B -> T a → [A, B]
-        let mut arg_types_chirho = Vec::new();
-        if let Some(ty_chirho) = sig_type_chirho {
-            Self::extract_fun_args_chirho(&ty_chirho, &mut arg_types_chirho);
-        }
-
-        ConDeclChirho::OrdinaryChirho {
-            name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
-            fields_chirho: arg_types_chirho,
-            span_chirho,
-        }
-    }
-
-    /// Extract argument types from a function type, discarding the final return type.
-    /// `A -> B -> C` → `[A, B]` (C is the return type)
-    fn extract_fun_args_chirho(ty_chirho: &TypeChirho, out_chirho: &mut Vec<TypeChirho>) {
-        match ty_chirho {
-            TypeChirho::FunChirho {
-                arg_chirho,
-                result_chirho,
-                ..
-            } => {
-                out_chirho.push((**arg_chirho).clone());
-                Self::extract_fun_args_chirho(result_chirho, out_chirho);
-            }
-            TypeChirho::ForallChirho { body_chirho, .. } => {
-                Self::extract_fun_args_chirho(body_chirho, out_chirho);
-            }
-            TypeChirho::QualChirho { body_chirho, .. } => {
-                Self::extract_fun_args_chirho(body_chirho, out_chirho);
-            }
-            // The final non-function type is the return type — discard it
-            _ => {}
+        let con_name_chirho = name_chirho.unwrap_or_else(|| self.dummy_name_chirho());
+        match sig_type_chirho {
+            Some(ty_chirho) => ConDeclChirho::GadtChirho {
+                name_chirho: con_name_chirho,
+                ty_chirho,
+                span_chirho,
+            },
+            None => ConDeclChirho::OrdinaryChirho {
+                name_chirho: con_name_chirho,
+                fields_chirho: Vec::new(),
+                span_chirho,
+            },
         }
     }
+
 
     fn lower_deriving_chirho(
         &self,

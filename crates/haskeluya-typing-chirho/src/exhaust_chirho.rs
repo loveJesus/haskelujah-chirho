@@ -18,6 +18,7 @@
 use std::collections::{HashMap, HashSet};
 
 use haskeluya_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+use haskeluya_ast_chirho::ty_chirho::TypeChirho;
 use haskeluya_ast_chirho::expr_chirho::{
     AltChirho, ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho, StmtChirho,
 };
@@ -240,6 +241,16 @@ impl TypeConEnvChirho {
     }
 }
 
+/// Count function arguments in a GADT type signature for arity computation.
+fn extract_gadt_arity_chirho(ty_chirho: &TypeChirho) -> usize {
+    match ty_chirho {
+        TypeChirho::FunChirho { result_chirho, .. } => 1 + extract_gadt_arity_chirho(result_chirho),
+        TypeChirho::ForallChirho { body_chirho, .. } => extract_gadt_arity_chirho(body_chirho),
+        TypeChirho::QualChirho { body_chirho, .. } => extract_gadt_arity_chirho(body_chirho),
+        _ => 0, // Return type — not an argument
+    }
+}
+
 fn con_decl_to_info_chirho(decl_chirho: &ConDeclChirho) -> ConInfoChirho {
     match decl_chirho {
         ConDeclChirho::OrdinaryChirho {
@@ -260,6 +271,14 @@ fn con_decl_to_info_chirho(decl_chirho: &ConDeclChirho) -> ConInfoChirho {
                 .iter()
                 .map(|f_chirho| f_chirho.names_chirho.len())
                 .sum(),
+        },
+        ConDeclChirho::GadtChirho {
+            name_chirho,
+            ty_chirho,
+            ..
+        } => ConInfoChirho {
+            name_chirho: name_chirho.text_chirho().to_string(),
+            arity_chirho: extract_gadt_arity_chirho(ty_chirho),
         },
     }
 }

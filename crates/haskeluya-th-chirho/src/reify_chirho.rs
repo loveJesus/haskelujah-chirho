@@ -161,6 +161,71 @@ pub fn ast_con_to_th_chirho(con_chirho: &ConDeclChirho) -> ThConChirho {
                 var_bang_types_chirho,
             )
         }
+        ConDeclChirho::GadtChirho {
+            name_chirho,
+            ty_chirho,
+            ..
+        } => {
+            // Extract argument types and return type from the GADT type signature.
+            let mut arg_types_chirho: Vec<TypeChirho> = Vec::new();
+            extract_gadt_fun_args_chirho(ty_chirho, &mut arg_types_chirho);
+            let ret_ty_chirho = extract_gadt_return_type_chirho(ty_chirho);
+            let bang_types_chirho: Vec<ThBangTypeChirho> = arg_types_chirho
+                .iter()
+                .map(|arg_chirho| ThBangTypeChirho {
+                    bang_chirho: ThBangChirho::default_bang_chirho(),
+                    ty_chirho: ast_type_to_th_chirho(arg_chirho),
+                })
+                .collect();
+            ThConChirho::GadtCChirho(
+                vec![ThNameChirho::mk_name_chirho(name_chirho.text_chirho())],
+                bang_types_chirho,
+                Box::new(ast_type_to_th_chirho(&ret_ty_chirho)),
+            )
+        }
+    }
+}
+
+/// Extract argument types from a GADT function type chain, peeling forall/qual.
+fn extract_gadt_fun_args_chirho(ty_chirho: &TypeChirho, out_chirho: &mut Vec<TypeChirho>) {
+    match ty_chirho {
+        TypeChirho::FunChirho {
+            arg_chirho,
+            result_chirho,
+            ..
+        } => {
+            out_chirho.push((**arg_chirho).clone());
+            extract_gadt_fun_args_chirho(result_chirho, out_chirho);
+        }
+        TypeChirho::ForallChirho { body_chirho, .. } => {
+            extract_gadt_fun_args_chirho(body_chirho, out_chirho);
+        }
+        TypeChirho::QualChirho { body_chirho, .. } => {
+            extract_gadt_fun_args_chirho(body_chirho, out_chirho);
+        }
+        TypeChirho::ParenChirho { inner_chirho, .. } => {
+            extract_gadt_fun_args_chirho(inner_chirho, out_chirho);
+        }
+        _ => {} // Return type — not an argument
+    }
+}
+
+/// Extract the final return type from a GADT function type chain.
+fn extract_gadt_return_type_chirho(ty_chirho: &TypeChirho) -> TypeChirho {
+    match ty_chirho {
+        TypeChirho::FunChirho { result_chirho, .. } => {
+            extract_gadt_return_type_chirho(result_chirho)
+        }
+        TypeChirho::ForallChirho { body_chirho, .. } => {
+            extract_gadt_return_type_chirho(body_chirho)
+        }
+        TypeChirho::QualChirho { body_chirho, .. } => {
+            extract_gadt_return_type_chirho(body_chirho)
+        }
+        TypeChirho::ParenChirho { inner_chirho, .. } => {
+            extract_gadt_return_type_chirho(inner_chirho)
+        }
+        other_chirho => other_chirho.clone(),
     }
 }
 

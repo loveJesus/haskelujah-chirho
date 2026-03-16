@@ -73,6 +73,10 @@ pub fn resolve_module_with_imports_chirho(
                         haskeluya_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                             name_chirho,
                             ..
+                        }
+                        | haskeluya_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
+                            name_chirho,
+                            ..
                         } => {
                             bind_name_chirho(
                                 &mut env_chirho,
@@ -112,6 +116,10 @@ pub fn resolve_module_with_imports_chirho(
                 bind_name_chirho(&mut env_chirho, name_chirho, NamespaceChirho::TypeChirho);
                 match constructor_chirho {
                     haskeluya_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
+                        name_chirho: con_name_chirho,
+                        ..
+                    }
+                    | haskeluya_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
                         name_chirho: con_name_chirho,
                         ..
                     } => {

@@ -586,7 +586,28 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
                 span_chirho: TH_SPAN_CHIRHO,
             })
         }
-        _ => None, // GADT/Infix constructors not yet supported
+        ThConChirho::GadtCChirho(names_chirho, bang_types_chirho, ret_ty_chirho) => {
+            // Use the first name for the GADT constructor.
+            let con_name_chirho = names_chirho
+                .first()
+                .map(|n_chirho| th_name_to_ast_chirho(n_chirho))
+                .unwrap_or_else(|| mk_ast_name_chirho("__UNKNOWN_GADT__"));
+            // Build the full type: arg1 -> arg2 -> ... -> ret_ty
+            let mut full_ty_chirho = th_type_to_ast_chirho(ret_ty_chirho);
+            for bt_chirho in bang_types_chirho.iter().rev() {
+                full_ty_chirho = TypeChirho::FunChirho {
+                    arg_chirho: Box::new(th_type_to_ast_chirho(&bt_chirho.ty_chirho)),
+                    result_chirho: Box::new(full_ty_chirho),
+                    span_chirho: TH_SPAN_CHIRHO,
+                };
+            }
+            Some(ConDeclChirho::GadtChirho {
+                name_chirho: con_name_chirho,
+                ty_chirho: full_ty_chirho,
+                span_chirho: TH_SPAN_CHIRHO,
+            })
+        }
+        _ => None, // Infix/RecGadtC constructors not yet supported
     }
 }
 

@@ -2023,6 +2023,21 @@ impl InferCtxChirho {
                                     }
                                 }
                             }
+                            haskeluya_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
+                                name_chirho,
+                                ty_chirho,
+                                ..
+                            } => {
+                                // Convert the full GADT type signature to TyChirho.
+                                // The return type comes from the signature itself,
+                                // NOT from the auto-constructed `T a b c`.
+                                let con_ty_chirho = self.ast_type_to_ty_chirho(ty_chirho, &mut tv_map_chirho);
+                                let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
+                                self.env_chirho.bind_chirho(
+                                    name_chirho.text_chirho().to_string(),
+                                    gen_scheme_chirho,
+                                );
+                            }
                         }
                     }
                 }
@@ -2073,6 +2088,22 @@ impl InferCtxChirho {
                             let con_ty_chirho = TyChirho::fun_n_chirho(
                                 field_tys_chirho,
                                 result_ty_chirho,
+                            );
+                            let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
+                            self.env_chirho.bind_chirho(
+                                con_name_chirho.text_chirho().to_string(),
+                                gen_scheme_chirho,
+                            );
+                        }
+                        haskeluya_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
+                            name_chirho: con_name_chirho,
+                            ty_chirho,
+                            ..
+                        } => {
+                            // Newtype GADT: convert the full type signature.
+                            let con_ty_chirho = self.ast_type_to_ty_chirho(
+                                ty_chirho,
+                                &mut std::collections::HashMap::new(),
                             );
                             let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
                             self.env_chirho.bind_chirho(

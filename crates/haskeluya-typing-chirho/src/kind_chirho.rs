@@ -770,6 +770,19 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                                 );
                             }
                         }
+                        haskeluya_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
+                            ty_chirho,
+                            ..
+                        } => {
+                            // Kind-check the full GADT type signature.
+                            let k_chirho = ctx_chirho.infer_type_kind_chirho(ty_chirho);
+                            ctx_chirho.unify_chirho(
+                                &k_chirho,
+                                &KindChirho::StarChirho,
+                                "GADT constructor type",
+                                *span_chirho,
+                            );
+                        }
                     }
                 }
             }
@@ -814,6 +827,19 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                                 *span_chirho,
                             );
                         }
+                    }
+                    haskeluya_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
+                        ty_chirho,
+                        ..
+                    } => {
+                        // Kind-check the full GADT type signature.
+                        let k_chirho = ctx_chirho.infer_type_kind_chirho(ty_chirho);
+                        ctx_chirho.unify_chirho(
+                            &k_chirho,
+                            &KindChirho::StarChirho,
+                            "newtype GADT constructor type",
+                            *span_chirho,
+                        );
                     }
                 }
             }

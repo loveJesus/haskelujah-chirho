@@ -2378,7 +2378,8 @@ fn filter_exports_chirho(
 fn con_decl_name_chirho(decl_chirho: &ConDeclChirho) -> &str {
     match decl_chirho {
         ConDeclChirho::OrdinaryChirho { name_chirho, .. }
-        | ConDeclChirho::RecordChirho { name_chirho, .. } => name_chirho.text_chirho(),
+        | ConDeclChirho::RecordChirho { name_chirho, .. }
+        | ConDeclChirho::GadtChirho { name_chirho, .. } => name_chirho.text_chirho(),
     }
 }
 

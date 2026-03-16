@@ -1881,6 +1881,129 @@ main = eval (Add (Lit 10) (Lit 32))
 
 
     #[test]
+    fn eval_gadt_multiple_constructors_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // GADT with multiple constructors and pattern matching
+        let src_chirho = "\
+module Test where
+data Shape where
+  Circle :: Int -> Shape
+  Rect :: Int -> Int -> Shape
+area s = case s of
+  Circle r -> r * r * 3
+  Rect w h -> w * h
+main = area (Circle 5) + area (Rect 3 4)
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                // Circle 5 → 5*5*3=75, Rect 3 4 → 3*4=12, total=87
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(87));
+            }
+            Err(e_chirho) => panic!("GADT multiple constructors should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_gadt_nullary_constructor_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // GADT with nullary constructor
+        let src_chirho = "\
+module Test where
+data Token where
+  EOF :: Token
+  Num :: Int -> Token
+val t = case t of
+  EOF -> 0
+  Num n -> n
+main = val (Num 42) + val EOF
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(42));
+            }
+            Err(e_chirho) => panic!("GADT nullary constructor should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_gadt_ast_preserves_return_type_chirho() {
+        // Verify that GADT constructors produce ConDeclChirho::GadtChirho in the AST
+        use crate::compile_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Expr where
+  Lit :: Int -> Expr
+  Add :: Expr -> Expr -> Expr
+main = 0
+";
+        let result_chirho = compile_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+        );
+        let cr_chirho = result_chirho.expect("should compile");
+        // Check that the AST has GADT constructors
+        let data_decl_chirho = cr_chirho.module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, haskeluya_ast_chirho::decl_chirho::DeclChirho::DataDeclChirho { name_chirho, .. } if name_chirho.text_chirho() == "Expr")
+        });
+        assert!(data_decl_chirho.is_some(), "should have Expr data decl");
+        if let haskeluya_ast_chirho::decl_chirho::DeclChirho::DataDeclChirho { constructors_chirho, .. } = data_decl_chirho.unwrap() {
+            assert_eq!(constructors_chirho.len(), 2);
+            assert!(matches!(&constructors_chirho[0], haskeluya_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho { name_chirho, .. } if name_chirho.text_chirho() == "Lit"));
+            assert!(matches!(&constructors_chirho[1], haskeluya_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho { name_chirho, .. } if name_chirho.text_chirho() == "Add"));
+        } else {
+            panic!("expected DataDeclChirho");
+        }
+    }
+
+    #[test]
+    fn eval_gadt_nested_pattern_match_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // GADT with nested pattern matching
+        let src_chirho = "\
+module Test where
+data Expr where
+  Lit :: Int -> Expr
+  Neg :: Expr -> Expr
+  Add :: Expr -> Expr -> Expr
+eval e = case e of
+  Lit n -> n
+  Neg x -> 0 - eval x
+  Add a b -> eval a + eval b
+main = eval (Add (Neg (Lit 8)) (Lit 50))
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                // Neg(Lit 8) → -8, Lit 50 → 50, Add → 42
+                assert_eq!(*val_chirho, haskeluya_runtime_chirho::ValueChirho::IntChirho(42));
+            }
+            Err(e_chirho) => panic!("GADT nested pattern match should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
     fn eval_mptc_chirho() {
         use crate::eval_source_chirho;
         let mut source_map_chirho = SourceMapChirho::new_chirho();

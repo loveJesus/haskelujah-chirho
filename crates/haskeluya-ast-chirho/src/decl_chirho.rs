@@ -201,6 +201,14 @@ pub enum ConDeclChirho {
         fields_chirho: Vec<FieldDeclChirho>,
         span_chirho: SpanChirho,
     },
+    /// GADT constructor (`Con :: forall a. Ctx => Arg -> ... -> T Int a`).
+    /// Preserves the full type signature including return type for type refinement.
+    GadtChirho {
+        name_chirho: NameChirho,
+        /// The full type signature after `::`.
+        ty_chirho: TypeChirho,
+        span_chirho: SpanChirho,
+    },
 }
 
 /// A record field declaration (`fieldName :: Type`).
