@@ -117,6 +117,18 @@ fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho, text_chirho: &str) -> T
         RawTokenKindChirho::VirtualRightBraceChirho => TokenKindChirho::VirtualRightBraceChirho,
         RawTokenKindChirho::VirtualSemicolonChirho => TokenKindChirho::VirtualSemicolonChirho,
 
+        // Template Haskell
+        RawTokenKindChirho::ThSpliceChirho => TokenKindChirho::ThSpliceChirho,
+        RawTokenKindChirho::ThTypedSpliceChirho => TokenKindChirho::ThTypedSpliceChirho,
+        RawTokenKindChirho::ThOpenExpQuoteChirho => TokenKindChirho::ThOpenExpQuoteChirho,
+        RawTokenKindChirho::ThCloseQuoteChirho => TokenKindChirho::ThCloseQuoteChirho,
+        RawTokenKindChirho::ThOpenDecQuoteChirho => TokenKindChirho::ThOpenDecQuoteChirho,
+        RawTokenKindChirho::ThOpenTypeQuoteChirho => TokenKindChirho::ThOpenTypeQuoteChirho,
+        RawTokenKindChirho::ThOpenPatQuoteChirho => TokenKindChirho::ThOpenPatQuoteChirho,
+        RawTokenKindChirho::ThOpenExpExplicitQuoteChirho => TokenKindChirho::ThOpenExpExplicitQuoteChirho,
+        RawTokenKindChirho::ThOpenTypedExpQuoteChirho => TokenKindChirho::ThOpenTypedExpQuoteChirho,
+        RawTokenKindChirho::ThCloseTypedQuoteChirho => TokenKindChirho::ThCloseTypedQuoteChirho,
+
         // Special
         RawTokenKindChirho::EofChirho => TokenKindChirho::VarIdChirho, // placeholder, EOF is handled separately
         RawTokenKindChirho::ErrorChirho => TokenKindChirho::VarIdChirho, // error tokens

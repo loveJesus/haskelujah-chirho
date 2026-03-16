@@ -110,6 +110,28 @@ pub enum RawTokenKindChirho {
     /// A `'` tick used for DataKinds promoted constructors (`'True`, `'Just`, `'[]`).
     TickChirho,
 
+    // -- Template Haskell --
+    /// The `$` splice operator.
+    ThSpliceChirho,
+    /// The `$$` typed splice operator.
+    ThTypedSpliceChirho,
+    /// Opening `[|` for expression quotation.
+    ThOpenExpQuoteChirho,
+    /// Closing `|]` for quotation.
+    ThCloseQuoteChirho,
+    /// Opening `[d|` for declaration quotation.
+    ThOpenDecQuoteChirho,
+    /// Opening `[t|` for type quotation.
+    ThOpenTypeQuoteChirho,
+    /// Opening `[p|` for pattern quotation.
+    ThOpenPatQuoteChirho,
+    /// Opening `[e|` for expression quotation (explicit).
+    ThOpenExpExplicitQuoteChirho,
+    /// Opening `[||` for typed expression quotation.
+    ThOpenTypedExpQuoteChirho,
+    /// Closing `||]` for typed expression quotation.
+    ThCloseTypedQuoteChirho,
+
     // -- Special --
     EofChirho,
     ErrorChirho,
@@ -266,8 +288,35 @@ impl<'src> LexerChirho<'src> {
                 self.make_token_chirho(RawTokenKindChirho::RightParenChirho, start_chirho)
             }
             b'[' => {
-                self.pos_chirho += 1;
-                self.make_token_chirho(RawTokenKindChirho::LeftBracketChirho, start_chirho)
+                // Template Haskell quotation brackets
+                if self.peek_at_chirho(1) == Some(b'|') && self.peek_at_chirho(2) == Some(b'|') {
+                    // [|| — typed expression quote
+                    self.pos_chirho += 3;
+                    self.make_token_chirho(RawTokenKindChirho::ThOpenTypedExpQuoteChirho, start_chirho)
+                } else if self.peek_at_chirho(1) == Some(b'|') {
+                    // [| — expression quote
+                    self.pos_chirho += 2;
+                    self.make_token_chirho(RawTokenKindChirho::ThOpenExpQuoteChirho, start_chirho)
+                } else if self.peek_at_chirho(1) == Some(b'd') && self.peek_at_chirho(2) == Some(b'|') {
+                    // [d| — declaration quote
+                    self.pos_chirho += 3;
+                    self.make_token_chirho(RawTokenKindChirho::ThOpenDecQuoteChirho, start_chirho)
+                } else if self.peek_at_chirho(1) == Some(b't') && self.peek_at_chirho(2) == Some(b'|') {
+                    // [t| — type quote
+                    self.pos_chirho += 3;
+                    self.make_token_chirho(RawTokenKindChirho::ThOpenTypeQuoteChirho, start_chirho)
+                } else if self.peek_at_chirho(1) == Some(b'p') && self.peek_at_chirho(2) == Some(b'|') {
+                    // [p| — pattern quote
+                    self.pos_chirho += 3;
+                    self.make_token_chirho(RawTokenKindChirho::ThOpenPatQuoteChirho, start_chirho)
+                } else if self.peek_at_chirho(1) == Some(b'e') && self.peek_at_chirho(2) == Some(b'|') {
+                    // [e| — explicit expression quote
+                    self.pos_chirho += 3;
+                    self.make_token_chirho(RawTokenKindChirho::ThOpenExpExplicitQuoteChirho, start_chirho)
+                } else {
+                    self.pos_chirho += 1;
+                    self.make_token_chirho(RawTokenKindChirho::LeftBracketChirho, start_chirho)
+                }
             }
             b']' => {
                 self.pos_chirho += 1;
@@ -340,7 +389,16 @@ impl<'src> LexerChirho<'src> {
                 self.make_token_chirho(RawTokenKindChirho::BackslashChirho, start_chirho)
             }
             b'|' => {
-                if self.peek_at_chirho(1).is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho)) {
+                // Template Haskell closing quotes
+                if self.peek_at_chirho(1) == Some(b'|') && self.peek_at_chirho(2) == Some(b']') {
+                    // ||] — typed expression quote close
+                    self.pos_chirho += 3;
+                    self.make_token_chirho(RawTokenKindChirho::ThCloseTypedQuoteChirho, start_chirho)
+                } else if self.peek_at_chirho(1) == Some(b']') {
+                    // |] — quote close
+                    self.pos_chirho += 2;
+                    self.make_token_chirho(RawTokenKindChirho::ThCloseQuoteChirho, start_chirho)
+                } else if self.peek_at_chirho(1).is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho)) {
                     self.lex_operator_chirho(start_chirho)
                 } else {
                     self.pos_chirho += 1;
@@ -362,6 +420,31 @@ impl<'src> LexerChirho<'src> {
             b'~' => {
                 self.pos_chirho += 1;
                 self.make_token_chirho(RawTokenKindChirho::TildeChirho, start_chirho)
+            }
+
+            // Template Haskell splice: $ or $$
+            // $ is a TH splice only when immediately followed by an identifier or '('
+            // $$ is a typed splice only when immediately followed by an identifier or '('
+            // Otherwise $ is a normal operator (e.g. `f $ x`)
+            b'$' => {
+                let next_chirho = self.peek_at_chirho(1);
+                if next_chirho == Some(b'$') {
+                    let after_chirho = self.peek_at_chirho(2);
+                    if after_chirho.is_some_and(|b_chirho| b_chirho.is_ascii_alphabetic() || b_chirho == b'_' || b_chirho == b'(') {
+                        // $$(name) or $$name — typed splice
+                        self.pos_chirho += 2;
+                        self.make_token_chirho(RawTokenKindChirho::ThTypedSpliceChirho, start_chirho)
+                    } else {
+                        self.lex_operator_chirho(start_chirho)
+                    }
+                } else if next_chirho.is_some_and(|b_chirho| b_chirho.is_ascii_alphabetic() || b_chirho == b'_' || b_chirho == b'(') {
+                    // $(expr) or $name — splice
+                    self.pos_chirho += 1;
+                    self.make_token_chirho(RawTokenKindChirho::ThSpliceChirho, start_chirho)
+                } else {
+                    // Standalone $ operator or part of longer operator ($>, etc.)
+                    self.lex_operator_chirho(start_chirho)
+                }
             }
 
             // Any other symbol character
@@ -1173,5 +1256,106 @@ mod tests_chirho {
             .text_chirho(source_chirho)
             .unwrap();
         assert_eq!(text_chirho, "module");
+    }
+
+    #[test]
+    fn lex_th_splice_chirho() {
+        // $foo should be ThSplice + VarId
+        let kinds_chirho = non_trivia_kinds_chirho("$foo");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::ThSpliceChirho,
+                RawTokenKindChirho::VarIdChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_th_splice_parens_chirho() {
+        // $(expr) should be ThSplice + ( ...
+        let kinds_chirho = non_trivia_kinds_chirho("$(foo)");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::ThSpliceChirho,
+                RawTokenKindChirho::LeftParenChirho,
+                RawTokenKindChirho::VarIdChirho,
+                RawTokenKindChirho::RightParenChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_dollar_operator_chirho() {
+        // f $ x — dollar is an operator, not a splice
+        let kinds_chirho = non_trivia_kinds_chirho("f $ x");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::VarIdChirho,
+                RawTokenKindChirho::VarSymChirho,
+                RawTokenKindChirho::VarIdChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_th_typed_splice_chirho() {
+        // $$foo should be ThTypedSplice + VarId
+        let kinds_chirho = non_trivia_kinds_chirho("$$foo");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::ThTypedSpliceChirho,
+                RawTokenKindChirho::VarIdChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_th_expression_quote_chirho() {
+        // [| expr |] should produce open/close quote tokens
+        let kinds_chirho = non_trivia_kinds_chirho("[| foo |]");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::ThOpenExpQuoteChirho,
+                RawTokenKindChirho::VarIdChirho,
+                RawTokenKindChirho::ThCloseQuoteChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_th_dec_quote_chirho() {
+        // [d| ... |]
+        let kinds_chirho = non_trivia_kinds_chirho("[d| x = 1 |]");
+        assert_eq!(kinds_chirho[0], RawTokenKindChirho::ThOpenDecQuoteChirho);
+        assert_eq!(kinds_chirho[kinds_chirho.len() - 2], RawTokenKindChirho::ThCloseQuoteChirho);
+    }
+
+    #[test]
+    fn lex_th_type_quote_chirho() {
+        let kinds_chirho = non_trivia_kinds_chirho("[t| Int -> Bool |]");
+        assert_eq!(kinds_chirho[0], RawTokenKindChirho::ThOpenTypeQuoteChirho);
+    }
+
+    #[test]
+    fn lex_th_pat_quote_chirho() {
+        let kinds_chirho = non_trivia_kinds_chirho("[p| (x, y) |]");
+        assert_eq!(kinds_chirho[0], RawTokenKindChirho::ThOpenPatQuoteChirho);
+    }
+
+    #[test]
+    fn lex_normal_list_unaffected_chirho() {
+        // [1, 2, 3] should not be affected by TH quote lexing
+        let kinds_chirho = non_trivia_kinds_chirho("[1, 2, 3]");
+        assert_eq!(kinds_chirho[0], RawTokenKindChirho::LeftBracketChirho);
     }
 }
