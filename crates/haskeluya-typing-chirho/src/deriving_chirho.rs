@@ -179,11 +179,21 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
                             }
                         }
                         other_chirho => {
-                            warnings_chirho.push(format!(
-                                "deriving {} not yet supported for {}",
-                                other_chirho,
-                                name_chirho.text_chirho()
-                            ));
+                            if module_chirho.extensions_chirho.iter().any(|e_chirho| e_chirho == "DeriveAnyClass") {
+                                // DeriveAnyClass: generate empty instance relying on defaults
+                                instances_chirho.push(derive_anyclass_chirho(
+                                    name_chirho,
+                                    type_vars_chirho,
+                                    class_chirho,
+                                    *span_chirho,
+                                ));
+                            } else {
+                                warnings_chirho.push(format!(
+                                    "deriving {} not yet supported for {}",
+                                    other_chirho,
+                                    name_chirho.text_chirho()
+                                ));
+                            }
                         }
                     }
                 }
@@ -327,9 +337,208 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
         ));
     }
 
+    // Process standalone deriving declarations: `deriving instance Show Foo`
+    for decl_chirho in &module_chirho.decls_chirho {
+        if let DeclChirho::StandaloneDerivingDeclChirho {
+            class_chirho,
+            types_chirho,
+            span_chirho,
+            ..
+        } = decl_chirho
+        {
+            // Find the first type argument (the target type name)
+            let type_name_chirho = types_chirho.first().and_then(|t_chirho| match t_chirho {
+                TypeChirho::ConChirho(n_chirho) => Some(n_chirho.text_chirho()),
+                _ => None,
+            });
+
+            if let Some(target_chirho) = type_name_chirho {
+                // Find matching data/newtype decl
+                let found_chirho = derive_standalone_for_type_chirho(
+                    module_chirho,
+                    class_chirho,
+                    &target_chirho,
+                    *span_chirho,
+                    &mut instances_chirho,
+                    &mut warnings_chirho,
+                );
+                if !found_chirho {
+                    warnings_chirho.push(format!(
+                        "standalone deriving: type {} not found in module",
+                        target_chirho
+                    ));
+                }
+            }
+        }
+    }
+
     DerivingResultChirho {
         instances_chirho,
         warnings_chirho,
+    }
+}
+
+/// Process a standalone deriving declaration by finding the target data/newtype
+/// in the module and deriving the requested class for it.
+fn derive_standalone_for_type_chirho(
+    module_chirho: &ModuleChirho,
+    class_chirho: &NameChirho,
+    target_chirho: &str,
+    span_chirho: SpanChirho,
+    instances_chirho: &mut Vec<DeclChirho>,
+    warnings_chirho: &mut Vec<String>,
+) -> bool {
+    let class_text_chirho = class_chirho.text_chirho();
+
+    for decl_chirho in &module_chirho.decls_chirho {
+        match decl_chirho {
+            DeclChirho::DataDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                constructors_chirho,
+                ..
+            } if name_chirho.text_chirho() == target_chirho => {
+                derive_class_for_data_chirho(
+                    &class_text_chirho,
+                    name_chirho,
+                    type_vars_chirho,
+                    constructors_chirho,
+                    span_chirho,
+                    instances_chirho,
+                    warnings_chirho,
+                );
+                return true;
+            }
+            DeclChirho::NewtypeDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                constructor_chirho,
+                ..
+            } if name_chirho.text_chirho() == target_chirho => {
+                let cons_chirho = vec![constructor_chirho.clone()];
+                derive_class_for_data_chirho(
+                    &class_text_chirho,
+                    name_chirho,
+                    type_vars_chirho,
+                    &cons_chirho,
+                    span_chirho,
+                    instances_chirho,
+                    warnings_chirho,
+                );
+                return true;
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
+/// Derive a specific class for a data type (shared by inline deriving and standalone).
+fn derive_class_for_data_chirho(
+    class_text_chirho: &str,
+    name_chirho: &NameChirho,
+    type_vars_chirho: &[TyVarChirho],
+    constructors_chirho: &[ConDeclChirho],
+    span_chirho: SpanChirho,
+    instances_chirho: &mut Vec<DeclChirho>,
+    warnings_chirho: &mut Vec<String>,
+) {
+    match class_text_chirho {
+        "Eq" => {
+            instances_chirho.push(derive_eq_chirho(
+                name_chirho, type_vars_chirho, constructors_chirho, span_chirho,
+            ));
+        }
+        "Ord" => {
+            instances_chirho.push(derive_ord_chirho(
+                name_chirho, type_vars_chirho, constructors_chirho, span_chirho,
+            ));
+        }
+        "Show" => {
+            instances_chirho.push(derive_show_chirho(
+                name_chirho, type_vars_chirho, constructors_chirho, span_chirho,
+            ));
+        }
+        "Read" => {
+            instances_chirho.push(derive_read_chirho(
+                name_chirho, type_vars_chirho, constructors_chirho, span_chirho,
+            ));
+        }
+        "Enum" => {
+            match derive_enum_chirho(
+                name_chirho, type_vars_chirho, constructors_chirho, span_chirho,
+            ) {
+                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+            }
+        }
+        "Bounded" => {
+            match derive_bounded_chirho(
+                name_chirho, type_vars_chirho, constructors_chirho, span_chirho,
+            ) {
+                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+            }
+        }
+        "Functor" => {
+            match derive_functor_chirho(
+                name_chirho, type_vars_chirho, constructors_chirho, span_chirho,
+            ) {
+                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+            }
+        }
+        "Foldable" => {
+            match derive_foldable_chirho(
+                name_chirho, type_vars_chirho, constructors_chirho, span_chirho,
+            ) {
+                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+            }
+        }
+        "Traversable" => {
+            match derive_traversable_chirho(
+                name_chirho, type_vars_chirho, constructors_chirho, span_chirho,
+            ) {
+                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+            }
+        }
+        "Generic" => {
+            match derive_generic_chirho(
+                name_chirho, type_vars_chirho, constructors_chirho, span_chirho,
+            ) {
+                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
+                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
+            }
+        }
+        other_chirho => {
+            warnings_chirho.push(format!(
+                "standalone deriving {} not yet supported for {}",
+                other_chirho,
+                name_chirho.text_chirho()
+            ));
+        }
+    }
+}
+
+/// Generate a DeriveAnyClass instance: empty methods list relying on defaults.
+fn derive_anyclass_chirho(
+    type_name_chirho: &NameChirho,
+    type_vars_chirho: &[TyVarChirho],
+    class_name_chirho: &NameChirho,
+    span_chirho: SpanChirho,
+) -> DeclChirho {
+    let mut types_chirho = vec![TypeChirho::ConChirho(type_name_chirho.clone())];
+    for tv_chirho in type_vars_chirho {
+        types_chirho.push(TypeChirho::VarChirho(tv_chirho.name_chirho.clone()));
+    }
+    DeclChirho::InstanceDeclChirho {
+        context_chirho: vec![],
+        class_chirho: class_name_chirho.clone(),
+        types_chirho,
+        methods_chirho: vec![], // rely on default methods
+        span_chirho,
     }
 }
 

@@ -2228,6 +2228,9 @@ fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsC
                 // TH splice declarations don't directly export names;
                 // they must be evaluated to generate concrete declarations first.
             }
+            DeclChirho::StandaloneDerivingDeclChirho { .. } => {
+                // Standalone deriving is handled by the deriving pass, not exports.
+            }
             DeclChirho::PatSynDeclChirho {
                 name_chirho,
                 span_chirho,

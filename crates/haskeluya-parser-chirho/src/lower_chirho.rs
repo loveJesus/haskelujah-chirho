@@ -837,6 +837,9 @@ impl LowerCtxChirho {
             SyntaxKindChirho::SpliceDeclChirho => {
                 Some(self.lower_splice_decl_chirho(node_chirho, base_chirho, span_chirho))
             }
+            SyntaxKindChirho::StandaloneDerivingDeclChirho => {
+                Some(self.lower_standalone_deriving_chirho(node_chirho, base_chirho, span_chirho))
+            }
             _ => None,
         }
     }
@@ -2851,6 +2854,92 @@ impl LowerCtxChirho {
 
         DeclChirho::SpliceDeclChirho {
             expr_chirho,
+            span_chirho,
+        }
+    }
+
+    /// Lower `deriving instance [context =>] ClassName Type1 Type2...`
+    fn lower_standalone_deriving_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        span_chirho: SpanChirho,
+    ) -> DeclChirho {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+
+        let mut saw_instance_chirho = false;
+        let mut saw_fat_arrow_chirho = false;
+
+        let mut pre_arrow_tokens_chirho: Vec<(&GreenTokenChirho, SpanChirho)> = Vec::new();
+        let mut post_arrow_tokens_chirho: Vec<(&GreenTokenChirho, SpanChirho)> = Vec::new();
+
+        for child_chirho in &children_chirho {
+            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
+                let kind_chirho = tok_chirho.kind_chirho();
+                if kind_chirho == TokenKindChirho::DerivingKeywordChirho {
+                    continue;
+                }
+                if kind_chirho == TokenKindChirho::InstanceKeywordChirho {
+                    saw_instance_chirho = true;
+                    continue;
+                }
+                if kind_chirho == TokenKindChirho::DoubleArrowChirho {
+                    saw_fat_arrow_chirho = true;
+                    continue;
+                }
+                if saw_instance_chirho {
+                    let s_chirho = self
+                        .span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                    if saw_fat_arrow_chirho {
+                        post_arrow_tokens_chirho.push((tok_chirho, s_chirho));
+                    } else {
+                        pre_arrow_tokens_chirho.push((tok_chirho, s_chirho));
+                    }
+                }
+            }
+        }
+
+        let head_tokens_chirho = if saw_fat_arrow_chirho {
+            &post_arrow_tokens_chirho
+        } else {
+            &pre_arrow_tokens_chirho
+        };
+
+        let context_chirho = if saw_fat_arrow_chirho {
+            self.build_instance_context_chirho(&pre_arrow_tokens_chirho)
+        } else {
+            vec![]
+        };
+
+        let mut class_chirho = None;
+        let mut types_chirho = Vec::new();
+
+        for (tok_chirho, s_chirho) in head_tokens_chirho {
+            match tok_chirho.kind_chirho() {
+                TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
+                    if class_chirho.is_none() {
+                        class_chirho = Some(self.name_from_token_chirho(tok_chirho, *s_chirho));
+                    } else {
+                        types_chirho.push(TypeChirho::ConChirho(
+                            self.name_from_token_chirho(tok_chirho, *s_chirho),
+                        ));
+                    }
+                }
+                TokenKindChirho::VarIdChirho => {
+                    types_chirho.push(TypeChirho::VarChirho(
+                        self.name_from_token_chirho(tok_chirho, *s_chirho),
+                    ));
+                }
+                _ => {}
+            }
+        }
+
+        DeclChirho::StandaloneDerivingDeclChirho {
+            context_chirho,
+            class_chirho: class_chirho.unwrap_or_else(|| {
+                NameChirho::RawChirho(RawNameChirho::unqualified_chirho("Unknown", span_chirho))
+            }),
+            types_chirho,
             span_chirho,
         }
     }

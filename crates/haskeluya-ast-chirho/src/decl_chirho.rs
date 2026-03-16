@@ -195,6 +195,13 @@ pub enum DeclChirho {
         expr_chirho: crate::expr_chirho::ExprChirho,
         span_chirho: SpanChirho,
     },
+    /// Standalone deriving declaration (`deriving instance Show Foo`).
+    StandaloneDerivingDeclChirho {
+        context_chirho: Vec<ConstraintChirho>,
+        class_chirho: NameChirho,
+        types_chirho: Vec<TypeChirho>,
+        span_chirho: SpanChirho,
+    },
 }
 
 /// Directionality of a pattern synonym.
@@ -302,7 +309,8 @@ impl DeclChirho {
             | Self::PatSynDeclChirho { span_chirho, .. }
             | Self::TypeFamilyDeclChirho { span_chirho, .. }
             | Self::TypeFamilyInstanceDeclChirho { span_chirho, .. }
-            | Self::SpliceDeclChirho { span_chirho, .. } => *span_chirho,
+            | Self::SpliceDeclChirho { span_chirho, .. }
+            | Self::StandaloneDerivingDeclChirho { span_chirho, .. } => *span_chirho,
         }
     }
 }

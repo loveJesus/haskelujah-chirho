@@ -1979,3 +1979,77 @@ main = print (map (,True) [1,2,3])
         assert_eq!(m_chirho.io_output_chirho, "[(1,True),(2,True),(3,True)]\n");
     }
 
+    // ── StandaloneDeriving tests ────────────────────────────────────────
+
+    #[test]
+    fn standalone_deriving_show_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE StandaloneDeriving #-}
+module Test where
+data Color = Red | Green | Blue
+deriving instance Show Color
+main = print Green
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("StandaloneDeriving Show failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "Green\n");
+    }
+
+    #[test]
+    fn standalone_deriving_eq_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE StandaloneDeriving #-}
+module Test where
+data Color = Red | Green | Blue
+deriving instance Eq Color
+deriving instance Show Color
+main = print (Red == Red)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("StandaloneDeriving Eq failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "True\n");
+    }
+
+    #[test]
+    fn standalone_deriving_ord_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = r#"
+{-# LANGUAGE StandaloneDeriving #-}
+module Test where
+data Color = Red | Green | Blue
+deriving instance Eq Color
+deriving instance Ord Color
+deriving instance Show Color
+main = print (compare Red Blue)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("StandaloneDeriving Ord failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "LT\n");
+    }
+
+    // ── DeriveAnyClass test ─────────────────────────────────────────────
+
+    #[test]
+    fn derive_anyclass_chirho() {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        // DeriveAnyClass generates an empty instance relying on default methods.
+        // Use with a class that has a default: class MyClass a where myMethod :: a -> Int; myMethod _ = 42
+        // For now just verify the extension doesn't cause a parse/compile error
+        // and that standard classes still work alongside it.
+        let src_chirho = r#"
+{-# LANGUAGE DeriveAnyClass #-}
+module Test where
+data Color = Red | Green | Blue deriving (Show, Eq)
+main = print (Red == Green)
+"#;
+        let (_val_chirho, m_chirho) =
+            eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+                .unwrap_or_else(|e_chirho| panic!("DeriveAnyClass failed: {}", e_chirho));
+        assert_eq!(m_chirho.io_output_chirho, "False\n");
+    }
+

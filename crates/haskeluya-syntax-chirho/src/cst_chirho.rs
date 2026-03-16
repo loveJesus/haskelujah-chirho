@@ -64,6 +64,8 @@ pub enum SyntaxKindChirho {
     InstanceDeclChirho,
     /// `deriving (Class1, Class2)` clause.
     DerivingClauseChirho,
+    /// `deriving instance Show Foo` — standalone deriving declaration.
+    StandaloneDerivingDeclChirho,
     /// `default (Type1, Type2)` declaration.
     DefaultDeclChirho,
     /// `foreign import ccall ...` declaration.

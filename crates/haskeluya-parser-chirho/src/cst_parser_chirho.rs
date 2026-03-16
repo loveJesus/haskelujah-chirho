@@ -340,6 +340,7 @@ impl<'src> ParserChirho<'src> {
             | Some(RawTokenKindChirho::InfixlChirho)
             | Some(RawTokenKindChirho::InfixrChirho) => self.parse_fixity_decl_chirho(),
             Some(RawTokenKindChirho::DefaultChirho) => self.parse_default_decl_chirho(),
+            Some(RawTokenKindChirho::DerivingChirho) => self.parse_standalone_deriving_chirho(),
             Some(RawTokenKindChirho::ForeignChirho) => self.parse_foreign_decl_chirho(),
             // Template Haskell splice at top level: $(expr) or $name
             Some(RawTokenKindChirho::ThSpliceChirho) => self.parse_splice_decl_chirho(),
@@ -981,6 +982,24 @@ impl<'src> ParserChirho<'src> {
 
         self.eat_until_decl_end_chirho();
 
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse: `deriving instance [context =>] ClassName Type`
+    fn parse_standalone_deriving_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::StandaloneDerivingDeclChirho);
+        self.bump_chirho(); // deriving
+        self.eat_trivia_chirho();
+
+        // Expect "instance"
+        if self.at_chirho(RawTokenKindChirho::InstanceChirho) {
+            self.bump_chirho(); // instance
+            self.eat_trivia_chirho();
+        }
+
+        // Consume the rest of the declaration (context => Class Type)
+        self.eat_until_decl_end_chirho();
         self.builder_chirho.finish_node_chirho();
     }
 
