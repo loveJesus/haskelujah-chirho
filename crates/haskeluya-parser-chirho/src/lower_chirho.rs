@@ -4748,6 +4748,53 @@ impl LowerCtxChirho {
                     span_chirho,
                 }
             }
+            SyntaxKindChirho::ViewPatChirho => {
+                // CST: ViewPat = expr '->' pat  (inside parens)
+                // The parser already validated the arrow; children in order:
+                // node(expr), token(->), node(pat)
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let mut expr_chirho = None;
+                let mut pat_inner_chirho = None;
+                let mut saw_arrow_chirho = false;
+
+                for child_chirho in &children_chirho {
+                    match child_chirho.element_chirho {
+                        GreenElementChirho::TokenChirho(tok_chirho) => {
+                            if tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
+                                || tok_chirho.kind_chirho() == TokenKindChirho::RightArrowChirho
+                            {
+                                // In a ViewPatChirho node, any arrow-like token is the view arrow
+                                saw_arrow_chirho = true;
+                            }
+                        }
+                        GreenElementChirho::NodeChirho(n_chirho) => {
+                            if saw_arrow_chirho && pat_inner_chirho.is_none()
+                                && is_pat_kind_chirho(n_chirho.kind_chirho())
+                            {
+                                pat_inner_chirho = Some(
+                                    self.lower_pat_chirho(n_chirho, child_chirho.start_chirho),
+                                );
+                            } else if !saw_arrow_chirho && expr_chirho.is_none() {
+                                // The expression part before ->
+                                expr_chirho = Some(
+                                    self.lower_expr_chirho(n_chirho, child_chirho.start_chirho),
+                                );
+                            }
+                        }
+                    }
+                }
+
+                PatChirho::ViewChirho {
+                    expr_chirho: Box::new(
+                        expr_chirho.unwrap_or(ExprChirho::VarChirho(self.dummy_name_chirho())),
+                    ),
+                    pat_chirho: Box::new(
+                        pat_inner_chirho
+                            .unwrap_or(PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO)),
+                    ),
+                    span_chirho,
+                }
+            }
             _ => {
                 // Fallback: try as variable pattern
                 let name_chirho = self.extract_name_from_node_chirho(node_chirho, base_chirho);
@@ -5337,6 +5384,7 @@ fn is_pat_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::BangPatChirho
             | SyntaxKindChirho::RecordPatChirho
             | SyntaxKindChirho::InfixConPatChirho
+            | SyntaxKindChirho::ViewPatChirho
     )
 }
 

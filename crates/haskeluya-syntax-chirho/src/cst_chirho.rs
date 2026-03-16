@@ -172,6 +172,8 @@ pub enum SyntaxKindChirho {
     RecordPatChirho,
     /// Infix constructor pattern (`p1 :+: p2`).
     InfixConPatChirho,
+    /// View pattern (`expr -> pat`), requires ViewPatterns extension.
+    ViewPatChirho,
 
     // -- Types --
     /// Function type (`a -> b`).
@@ -300,6 +302,7 @@ impl SyntaxKindChirho {
                 | Self::BangPatChirho
                 | Self::RecordPatChirho
                 | Self::InfixConPatChirho
+                | Self::ViewPatChirho
         )
     }
 

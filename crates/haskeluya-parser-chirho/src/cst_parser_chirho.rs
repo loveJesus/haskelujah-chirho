@@ -2671,8 +2671,37 @@ impl<'src> ParserChirho<'src> {
         }
     }
 
-    /// Parse parenthesized or tuple pattern.
+    /// Parse parenthesized, tuple, or view pattern.
+    /// View pattern: `(expr -> pat)` requires ViewPatterns extension.
     fn parse_paren_pat_chirho(&mut self) {
+        // Check if this is a view pattern: scan ahead for `->` at depth 0
+        let is_view_chirho = self.scan_for_view_arrow_chirho();
+        if is_view_chirho {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::ViewPatChirho);
+            self.bump_chirho(); // (
+            self.eat_trivia_chirho();
+            // Parse the view expression (everything up to `->`)
+            self.parse_expr_chirho();
+            self.eat_trivia_chirho();
+            // Consume the `->` (may be RightArrowChirho or VarSymChirho)
+            if self.current_kind_chirho() == Some(RawTokenKindChirho::RightArrowChirho)
+                || (self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
+                    && self.current_text_chirho() == "->")
+            {
+                self.bump_chirho(); // ->
+            }
+            self.eat_trivia_chirho();
+            // Parse the result pattern
+            self.parse_pat_chirho();
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho();
+            }
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::ParenPatChirho);
 
@@ -2706,6 +2735,44 @@ impl<'src> ParserChirho<'src> {
         }
 
         self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Scan ahead from the current position to see if this is a view pattern `(expr -> pat)`.
+    /// Returns true if we find a `->` at parenthesis depth 0 inside the outer parens.
+    fn scan_for_view_arrow_chirho(&self) -> bool {
+        if self.current_kind_chirho() != Some(RawTokenKindChirho::LeftParenChirho) {
+            return false;
+        }
+        let mut pos_chirho = self.pos_chirho + 1;
+        let mut depth_chirho: i32 = 1;
+        while pos_chirho < self.tokens_chirho.len() {
+            let tok_chirho = &self.tokens_chirho[pos_chirho];
+            match tok_chirho.kind_chirho {
+                RawTokenKindChirho::LeftParenChirho
+                | RawTokenKindChirho::LeftBracketChirho => {
+                    depth_chirho += 1;
+                }
+                RawTokenKindChirho::RightParenChirho
+                | RawTokenKindChirho::RightBracketChirho => {
+                    depth_chirho -= 1;
+                    if depth_chirho == 0 {
+                        return false; // reached closing paren without finding ->
+                    }
+                }
+                RawTokenKindChirho::RightArrowChirho if depth_chirho == 1 => {
+                    return true;
+                }
+                RawTokenKindChirho::VarSymChirho if depth_chirho == 1 => {
+                    let text_chirho = self.token_text_chirho(tok_chirho);
+                    if text_chirho == "->" {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+            pos_chirho += 1;
+        }
+        false
     }
 
     /// Parse list pattern.

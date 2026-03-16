@@ -74,6 +74,12 @@ pub enum PatChirho {
         has_wildcard_chirho: bool,
         span_chirho: SpanChirho,
     },
+    /// View pattern (`expr -> pat`), requires ViewPatterns extension.
+    ViewChirho {
+        expr_chirho: Box<super::expr_chirho::ExprChirho>,
+        pat_chirho: Box<PatChirho>,
+        span_chirho: SpanChirho,
+    },
 }
 
 /// A field in a record pattern (`field = pat`).
@@ -99,7 +105,8 @@ impl PatChirho {
             | Self::LazyChirho { span_chirho, .. }
             | Self::BangChirho { span_chirho, .. }
             | Self::InfixConChirho { span_chirho, .. }
-            | Self::RecordChirho { span_chirho, .. } => *span_chirho,
+            | Self::RecordChirho { span_chirho, .. }
+            | Self::ViewChirho { span_chirho, .. } => *span_chirho,
         }
     }
 }

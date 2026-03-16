@@ -1806,6 +1806,12 @@ impl InferCtxChirho {
             PatChirho::LazyChirho { inner_chirho, .. } | PatChirho::BangChirho { inner_chirho, .. } => {
                 self.bind_pat_chirho(inner_chirho, ty_chirho);
             }
+            PatChirho::ViewChirho { pat_chirho: inner_pat_chirho, .. } => {
+                // View pattern (expr -> pat): bind the result pattern's variables.
+                // The result of applying the view expression has a fresh type.
+                let result_ty_chirho = self.fresh_var_chirho();
+                self.bind_pat_chirho(inner_pat_chirho, &result_ty_chirho);
+            }
         }
     }
 

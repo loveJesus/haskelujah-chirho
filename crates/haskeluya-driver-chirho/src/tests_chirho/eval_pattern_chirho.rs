@@ -1009,6 +1009,72 @@ main = putStrLn (show (fromJust2 (Just 42)))
         }
     }
 
+    // -----------------------------------------------------------------------
+    // ViewPatterns tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn eval_view_pattern_basic_chirho() {
+        // ViewPatterns: f (double -> n) = n  should apply double to the arg
+        // double 21 = 42, so f 21 = 42
+        let src_chirho = concat!(
+            "{-# LANGUAGE ViewPatterns #-}\n",
+            "module Main where\n",
+            "double x = x + x\n",
+            "f (double -> n) = n\n",
+            "main = f 21\n",
+        );
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Main.hs", None);
+        match result_chirho {
+            Ok(haskeluya_runtime_chirho::ValueChirho::IntChirho(42)) => {}
+            Ok(val_chirho) => panic!("view pattern basic: expected 42, got {:?}", val_chirho),
+            Err(e_chirho) => panic!("view pattern basic: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_view_pattern_with_constructor_chirho() {
+        // ViewPatterns with constructor matching in the result pattern
+        // getFirst (Just x) = x; getFirst Nothing = 0
+        // f (getFirst -> x) = x + 1
+        let src_chirho = concat!(
+            "{-# LANGUAGE ViewPatterns #-}\n",
+            "module Main where\n",
+            "data MyMaybe = MyNothing | MyJust Int\n",
+            "getVal MyNothing = 0\n",
+            "getVal (MyJust x) = x\n",
+            "f (getVal -> n) = n + 1\n",
+            "main = f (MyJust 41)\n",
+        );
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Main.hs", None);
+        match result_chirho {
+            Ok(haskeluya_runtime_chirho::ValueChirho::IntChirho(42)) => {}
+            Ok(val_chirho) => panic!("view pattern with constructor: expected 42, got {:?}", val_chirho),
+            Err(e_chirho) => panic!("view pattern with constructor: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_view_pattern_lambda_chirho() {
+        // ViewPatterns with a lambda as the view expression
+        let src_chirho = concat!(
+            "{-# LANGUAGE ViewPatterns #-}\n",
+            "module Main where\n",
+            "double x = x * 2\n",
+            "f (double -> n) = n\n",
+            "main = f 21\n",
+        );
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "Main.hs", None);
+        match result_chirho {
+            Ok(haskeluya_runtime_chirho::ValueChirho::IntChirho(42)) => {}
+            Ok(val_chirho) => panic!("view pattern lambda: expected 42, got {:?}", val_chirho),
+            Err(e_chirho) => panic!("view pattern lambda: {}", e_chirho),
+        }
+    }
+
     // John 3:16 - For God so loved the world, that he gave his only begotten Son,
     // that whosoever believeth in him should not perish, but have everlasting life.
 

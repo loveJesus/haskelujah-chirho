@@ -1243,23 +1243,37 @@ impl DesugarCtxChirho {
                 .iter()
                 .flat_map(|(_, arms_chirho)| arms_chirho.iter().copied())
                 .collect();
-            // Bind any VarChirho pattern at this column to the scrutinee
+            // Bind any VarChirho pattern at this column to the scrutinee,
+            // or pre-bind inner variables for ViewChirho patterns.
             if let Some(first_arm_chirho) = all_arms_chirho.first() {
-                if let PatChirho::VarChirho(n_chirho) = &first_arm_chirho.pats_chirho[pat_idx_chirho] {
-                    self.bind_in_scope_chirho(n_chirho.text_chirho(), scrut_id_chirho);
+                match &first_arm_chirho.pats_chirho[pat_idx_chirho] {
+                    PatChirho::VarChirho(n_chirho) => {
+                        self.bind_in_scope_chirho(n_chirho.text_chirho(), scrut_id_chirho);
+                    }
+                    PatChirho::ViewChirho { pat_chirho: inner_pat_chirho, .. } => {
+                        // Pre-bind inner pattern vars so the RHS can reference them.
+                        self.prebind_nested_pat_vars_chirho(inner_pat_chirho);
+                    }
+                    _ => {}
                 }
             }
-            if pat_idx_chirho + 1 >= arity_chirho {
-                return self.desugar_arm_rhs_chirho(all_arms_chirho[0]);
+            let result_chirho = if pat_idx_chirho + 1 >= arity_chirho {
+                self.desugar_arm_rhs_chirho(all_arms_chirho[0])
             } else {
                 let sub_arms_chirho: Vec<MatchArmChirho> =
                     all_arms_chirho.iter().map(|a_chirho| (*a_chirho).clone()).collect();
-                return self.compile_multi_pattern_case_chirho(
+                self.compile_multi_pattern_case_chirho(
                     &sub_arms_chirho,
                     param_binders_chirho,
                     pat_idx_chirho + 1,
-                );
+                )
+            };
+            // Wrap with view pattern desugaring if applicable
+            if let Some(first_arm_chirho) = all_arms_chirho.first() {
+                let pat_chirho = &first_arm_chirho.pats_chirho[pat_idx_chirho];
+                return self.wrap_view_pat_chirho(result_chirho, pat_chirho, scrut_id_chirho);
             }
+            return result_chirho;
         }
 
         let alts_chirho: Vec<CoreAltChirho> = groups_chirho
@@ -1323,8 +1337,14 @@ impl DesugarCtxChirho {
                     pat_ref_chirho,
                 );
                 // Wrap with as-pattern let-bindings if applicable.
-                let rhs_final_chirho = self.wrap_as_bindings_chirho(
+                let rhs_as_chirho = self.wrap_as_bindings_chirho(
                     rhs_nested_chirho,
+                    pat_ref_chirho,
+                    scrut_id_chirho,
+                );
+                // Wrap with view pattern desugaring if applicable.
+                let rhs_final_chirho = self.wrap_view_pat_chirho(
+                    rhs_as_chirho,
                     pat_ref_chirho,
                     scrut_id_chirho,
                 );
@@ -1511,6 +1531,9 @@ impl DesugarCtxChirho {
             PatChirho::LazyChirho { .. } => AltConChirho::DefaultChirho,
             PatChirho::WildcardChirho(_) => AltConChirho::DefaultChirho,
             PatChirho::VarChirho(_) => AltConChirho::DefaultChirho,
+            // View pattern: at the outer level, always matches (DefaultChirho).
+            // The actual view application + inner match is handled by wrapping the RHS.
+            PatChirho::ViewChirho { .. } => AltConChirho::DefaultChirho,
         }
     }
 
@@ -1709,6 +1732,12 @@ impl DesugarCtxChirho {
             | PatChirho::LazyChirho { inner_chirho, .. } => {
                 self.prebind_all_pat_vars_chirho(inner_chirho);
             }
+            PatChirho::ViewChirho { pat_chirho, .. } => {
+                // View pattern inner variables act like nested pattern
+                // variables — they need explicit binding (VarChirho is a
+                // no-op in prebind_all, but prebind_nested handles it).
+                self.prebind_nested_pat_vars_chirho(pat_chirho);
+            }
         }
     }
 
@@ -1785,6 +1814,9 @@ impl DesugarCtxChirho {
                 for elem_chirho in elements_chirho {
                     self.prebind_nested_pat_vars_chirho(elem_chirho);
                 }
+            }
+            PatChirho::ViewChirho { pat_chirho, .. } => {
+                self.prebind_nested_pat_vars_chirho(pat_chirho);
             }
         }
     }
@@ -1927,6 +1959,140 @@ impl DesugarCtxChirho {
             }
             PatChirho::ParenChirho { inner_chirho, .. } => {
                 self.wrap_as_bindings_chirho(rhs_chirho, inner_chirho, scrutinee_id_chirho)
+            }
+            _ => rhs_chirho,
+        }
+    }
+
+    /// Wrap `rhs_chirho` with `case (view_expr scrutinee) of { inner_pat -> rhs }`
+    /// when the pattern is a ViewChirho. This desugars view patterns.
+    ///
+    /// For VarChirho inner patterns, the variable becomes the case binder
+    /// (reusing pre-bound IDs from scope). For constructor inner patterns,
+    /// they become the alt constructor with its binders.
+    fn wrap_view_pat_chirho(
+        &mut self,
+        rhs_chirho: CoreExprChirho,
+        pat_chirho: &PatChirho,
+        scrutinee_id_chirho: CoreIdChirho,
+    ) -> CoreExprChirho {
+        match pat_chirho {
+            PatChirho::ViewChirho { expr_chirho, pat_chirho: inner_pat_chirho, .. } => {
+                // Desugar the view expression
+                let view_expr_chirho = self.desugar_expr_chirho(expr_chirho);
+                // Apply view expression to the scrutinee: (view_expr scrutinee)
+                let applied_chirho = CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(view_expr_chirho),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(scrutinee_id_chirho)),
+                };
+
+                match inner_pat_chirho.as_ref() {
+                    // Simple variable: `(expr -> n)` desugars to
+                    // `let n = (expr scrutinee) in rhs`
+                    // Using let rather than case because the STG lowerer
+                    // does not bind case binders. The let creates a thunk
+                    // that is forced when `n` is used in the RHS.
+                    PatChirho::VarChirho(name_chirho) => {
+                        let binder_chirho = if let Some(id_chirho) =
+                            self.lookup_scope_chirho(name_chirho.text_chirho())
+                        {
+                            // Reuse pre-bound ID so RHS references match
+                            BinderChirho {
+                                id_chirho,
+                                name_chirho: name_chirho.text_chirho().to_string(),
+                                ty_chirho: TyChirho::VarChirho(
+                                    haskeluya_typing_chirho::ty_chirho::TyVarChirho(
+                                        self.next_id_chirho,
+                                    ),
+                                ),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }
+                        } else {
+                            // Fallback: create fresh and bind
+                            let fresh_chirho = self.fresh_binder_chirho(
+                                name_chirho.text_chirho(),
+                                TyChirho::VarChirho(
+                                    haskeluya_typing_chirho::ty_chirho::TyVarChirho(
+                                        self.next_id_chirho,
+                                    ),
+                                ),
+                                SpanChirho::DUMMY_CHIRHO,
+                            );
+                            self.bind_in_scope_chirho(
+                                name_chirho.text_chirho(),
+                                fresh_chirho.id_chirho,
+                            );
+                            fresh_chirho
+                        };
+                        CoreExprChirho::LetChirho {
+                            rec_chirho: false,
+                            binds_chirho: vec![(binder_chirho, applied_chirho)],
+                            body_chirho: Box::new(rhs_chirho),
+                        }
+                    }
+                    // Wildcard: `(expr -> _)` — just sequence, result unused
+                    PatChirho::WildcardChirho(_) => {
+                        let case_binder_chirho = self.fresh_binder_chirho(
+                            "_view_scrut",
+                            TyChirho::VarChirho(
+                                haskeluya_typing_chirho::ty_chirho::TyVarChirho(
+                                    self.next_id_chirho,
+                                ),
+                            ),
+                            SpanChirho::DUMMY_CHIRHO,
+                        );
+                        CoreExprChirho::CaseChirho {
+                            scrutinee_chirho: Box::new(applied_chirho),
+                            bind_chirho: case_binder_chirho,
+                            result_ty_chirho: TyChirho::VarChirho(
+                                haskeluya_typing_chirho::ty_chirho::TyVarChirho(
+                                    self.next_id_chirho,
+                                ),
+                            ),
+                            alts_chirho: vec![CoreAltChirho {
+                                con_chirho: AltConChirho::DefaultChirho,
+                                binders_chirho: vec![],
+                                rhs_chirho,
+                            }],
+                        }
+                    }
+                    // Constructor or other complex pattern:
+                    // `(expr -> Just n)` desugars to
+                    // `case (expr scrutinee) of { Just n -> rhs }`
+                    _ => {
+                        let inner_con_chirho =
+                            self.pat_to_alt_con_chirho(inner_pat_chirho);
+                        // Reuse pre-bound binder IDs from scope
+                        let inner_binders_chirho =
+                            self.nested_pat_to_binders_chirho(inner_pat_chirho);
+                        let case_binder_chirho = self.fresh_binder_chirho(
+                            "_view_scrut",
+                            TyChirho::VarChirho(
+                                haskeluya_typing_chirho::ty_chirho::TyVarChirho(
+                                    self.next_id_chirho,
+                                ),
+                            ),
+                            SpanChirho::DUMMY_CHIRHO,
+                        );
+                        CoreExprChirho::CaseChirho {
+                            scrutinee_chirho: Box::new(applied_chirho),
+                            bind_chirho: case_binder_chirho,
+                            result_ty_chirho: TyChirho::VarChirho(
+                                haskeluya_typing_chirho::ty_chirho::TyVarChirho(
+                                    self.next_id_chirho,
+                                ),
+                            ),
+                            alts_chirho: vec![CoreAltChirho {
+                                con_chirho: inner_con_chirho,
+                                binders_chirho: inner_binders_chirho,
+                                rhs_chirho,
+                            }],
+                        }
+                    }
+                }
+            }
+            PatChirho::ParenChirho { inner_chirho, .. } => {
+                self.wrap_view_pat_chirho(rhs_chirho, inner_chirho, scrutinee_id_chirho)
             }
             _ => rhs_chirho,
         }
@@ -2523,8 +2689,14 @@ impl DesugarCtxChirho {
                         );
                         // Wrap RHS with let-bindings for any as-pattern
                         // names: `xs@pat` binds `xs` to the scrutinee.
-                        let rhs_final_chirho = self.wrap_as_bindings_chirho(
+                        let rhs_as_chirho = self.wrap_as_bindings_chirho(
                             rhs_nested_chirho,
+                            &alt_chirho.pat_chirho,
+                            wild_chirho.id_chirho,
+                        );
+                        // Wrap with view pattern desugaring if applicable.
+                        let rhs_final_chirho = self.wrap_view_pat_chirho(
+                            rhs_as_chirho,
                             &alt_chirho.pat_chirho,
                             wild_chirho.id_chirho,
                         );
