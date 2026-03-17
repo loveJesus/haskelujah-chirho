@@ -1123,20 +1123,27 @@ impl InferCtxChirho {
                     }
                 }
 
-                // Pre-bind function names with fresh types (letrec)
+                // Pre-bind function and pattern-binding names with fresh types (letrec)
                 let mut pre_let_tys_chirho: Vec<(String, TyChirho)> = Vec::new();
                 for bind_chirho in binds_chirho {
-                    if let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
-                        name_chirho, ..
-                    } = bind_chirho
-                    {
-                        let fresh_ty_chirho = self.fresh_var_chirho();
-                        let name_str_chirho = name_chirho.text_chirho().to_string();
-                        self.env_chirho.bind_chirho(
-                            name_str_chirho.clone(),
-                            SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
-                        );
-                        pre_let_tys_chirho.push((name_str_chirho, fresh_ty_chirho));
+                    match bind_chirho {
+                        haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                            name_chirho, ..
+                        } => {
+                            let fresh_ty_chirho = self.fresh_var_chirho();
+                            let name_str_chirho = name_chirho.text_chirho().to_string();
+                            self.env_chirho.bind_chirho(
+                                name_str_chirho.clone(),
+                                SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
+                            );
+                            pre_let_tys_chirho.push((name_str_chirho, fresh_ty_chirho));
+                        }
+                        haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                            pat_chirho, ..
+                        } => {
+                            self.pre_bind_pat_vars_chirho(pat_chirho);
+                        }
+                        _ => {}
                     }
                 }
 
@@ -1307,21 +1314,28 @@ impl InferCtxChirho {
                         }
                     }
 
-                    // Pre-bind where-clause function names with fresh
-                    // types so recursive references resolve (letrec).
+                    // Pre-bind where-clause function and pattern-binding names
+                    // with fresh types so recursive references resolve (letrec).
                     let mut pre_wb_tys_chirho: Vec<(String, TyChirho)> = Vec::new();
                     for wb_chirho in &alt_chirho.where_binds_chirho {
-                        if let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
-                            name_chirho, ..
-                        } = wb_chirho
-                        {
-                            let fresh_ty_chirho = self.fresh_var_chirho();
-                            let name_str_chirho = name_chirho.text_chirho().to_string();
-                            self.env_chirho.bind_chirho(
-                                name_str_chirho.clone(),
-                                SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
-                            );
-                            pre_wb_tys_chirho.push((name_str_chirho, fresh_ty_chirho));
+                        match wb_chirho {
+                            haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                                name_chirho, ..
+                            } => {
+                                let fresh_ty_chirho = self.fresh_var_chirho();
+                                let name_str_chirho = name_chirho.text_chirho().to_string();
+                                self.env_chirho.bind_chirho(
+                                    name_str_chirho.clone(),
+                                    SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
+                                );
+                                pre_wb_tys_chirho.push((name_str_chirho, fresh_ty_chirho));
+                            }
+                            haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                                pat_chirho, ..
+                            } => {
+                                self.pre_bind_pat_vars_chirho(pat_chirho);
+                            }
+                            _ => {}
                         }
                     }
 
@@ -1960,6 +1974,64 @@ impl InferCtxChirho {
         }
     }
 
+    /// Pre-bind all variable names in a pattern with fresh type variables.
+    /// This enables mutually recursive `where`/`let` pattern bindings
+    /// (letrec semantics), e.g. `(x,y) = (y+1, x+2)`.
+    fn pre_bind_pat_vars_chirho(&mut self, pat_chirho: &PatChirho) {
+        match pat_chirho {
+            PatChirho::VarChirho(name_chirho) => {
+                let fresh_chirho = self.fresh_var_chirho();
+                self.env_chirho.bind_chirho(
+                    name_chirho.text_chirho().to_string(),
+                    SchemeChirho::mono_chirho(fresh_chirho),
+                );
+            }
+            PatChirho::TupleChirho { elements_chirho, .. } => {
+                for elem_chirho in elements_chirho {
+                    self.pre_bind_pat_vars_chirho(elem_chirho);
+                }
+            }
+            PatChirho::AsChirho { name_chirho, pattern_chirho, .. } => {
+                let fresh_chirho = self.fresh_var_chirho();
+                self.env_chirho.bind_chirho(
+                    name_chirho.text_chirho().to_string(),
+                    SchemeChirho::mono_chirho(fresh_chirho),
+                );
+                self.pre_bind_pat_vars_chirho(pattern_chirho);
+            }
+            PatChirho::ConChirho { args_chirho, .. } => {
+                for arg_chirho in args_chirho {
+                    self.pre_bind_pat_vars_chirho(arg_chirho);
+                }
+            }
+            PatChirho::InfixConChirho { left_chirho, right_chirho, .. } => {
+                self.pre_bind_pat_vars_chirho(left_chirho);
+                self.pre_bind_pat_vars_chirho(right_chirho);
+            }
+            PatChirho::ListChirho { elements_chirho, .. } => {
+                for elem_chirho in elements_chirho {
+                    self.pre_bind_pat_vars_chirho(elem_chirho);
+                }
+            }
+            PatChirho::ParenChirho { inner_chirho, .. }
+            | PatChirho::LazyChirho { inner_chirho, .. }
+            | PatChirho::BangChirho { inner_chirho, .. } => {
+                self.pre_bind_pat_vars_chirho(inner_chirho);
+            }
+            PatChirho::RecordChirho { fields_chirho, .. } => {
+                for field_chirho in fields_chirho {
+                    self.pre_bind_pat_vars_chirho(&field_chirho.pattern_chirho);
+                }
+            }
+            PatChirho::ViewChirho { pat_chirho: inner_chirho, .. }
+            | PatChirho::TypeAnnotChirho { pat_chirho: inner_chirho, .. } => {
+                self.pre_bind_pat_vars_chirho(inner_chirho);
+            }
+            // Wildcards, literals, negated literals: no bindings
+            _ => {}
+        }
+    }
+
     // -----------------------------------------------------------------------
     // RHS and match arm inference
     // -----------------------------------------------------------------------
@@ -2025,21 +2097,28 @@ impl InferCtxChirho {
                 }
             }
 
-            // Pre-bind where-clause function names with fresh types
-            // so that recursive references resolve (letrec semantics).
+            // Pre-bind where-clause function and pattern-binding names
+            // with fresh types so recursive references resolve (letrec semantics).
             let mut pre_wb_tys_chirho: Vec<(String, TyChirho)> = Vec::new();
             for wb_chirho in &match_arm_chirho.where_binds_chirho {
-                if let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
-                    name_chirho, ..
-                } = wb_chirho
-                {
-                    let fresh_ty_chirho = self.fresh_var_chirho();
-                    let name_str_chirho = name_chirho.text_chirho().to_string();
-                    self.env_chirho.bind_chirho(
-                        name_str_chirho.clone(),
-                        SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
-                    );
-                    pre_wb_tys_chirho.push((name_str_chirho, fresh_ty_chirho));
+                match wb_chirho {
+                    haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                        name_chirho, ..
+                    } => {
+                        let fresh_ty_chirho = self.fresh_var_chirho();
+                        let name_str_chirho = name_chirho.text_chirho().to_string();
+                        self.env_chirho.bind_chirho(
+                            name_str_chirho.clone(),
+                            SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
+                        );
+                        pre_wb_tys_chirho.push((name_str_chirho, fresh_ty_chirho));
+                    }
+                    haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                        pat_chirho, ..
+                    } => {
+                        self.pre_bind_pat_vars_chirho(pat_chirho);
+                    }
+                    _ => {}
                 }
             }
 
