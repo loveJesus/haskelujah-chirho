@@ -2658,3 +2658,229 @@ main = print "generics ok"
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceGenerics.hs", None);
     assert!(result_chirho.is_ok(), "GHC.Generics import failed: {:?}", result_chirho.err());
 }
+
+// ── Module Interfaces Batch 5b ────────────────────────────────────────────
+
+#[test]
+fn iface_debug_trace_chirho() {
+    let src_chirho = r#"
+module IfaceTrace where
+import Debug.Trace (trace, traceShow)
+
+main :: IO ()
+main = print "trace ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceTrace.hs", None);
+    assert!(result_chirho.is_ok(), "Debug.Trace import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_bits_chirho() {
+    let src_chirho = r#"
+module IfaceBits where
+import Data.Bits (Bits, (.&.), (.|.), xor, complement, shiftL, shiftR)
+
+main :: IO ()
+main = print "bits ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceBits.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Bits import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_ratio_chirho() {
+    let src_chirho = r#"
+module IfaceRatio where
+import Data.Ratio (Ratio, Rational, numerator, denominator)
+
+main :: IO ()
+main = print "ratio ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceRatio.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Ratio import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_complex_chirho() {
+    let src_chirho = r#"
+module IfaceComplex where
+import Data.Complex (Complex, realPart, imagPart, magnitude)
+
+main :: IO ()
+main = print "complex ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceComplex.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Complex import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_system_exit_chirho() {
+    let src_chirho = r#"
+module IfaceExit where
+import System.Exit (ExitCode(..), exitSuccess, exitFailure)
+
+main :: IO ()
+main = print "exit ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceExit.hs", None);
+    assert!(result_chirho.is_ok(), "System.Exit import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_dynamic_chirho() {
+    let src_chirho = r#"
+module IfaceDynamic where
+import Data.Dynamic (Dynamic, toDyn, fromDyn)
+
+main :: IO ()
+main = print "dynamic ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDynamic.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Dynamic import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_control_deepseq_chirho() {
+    let src_chirho = r#"
+module IfaceDeepSeq where
+import Control.DeepSeq (NFData, deepseq, rnf, force)
+
+main :: IO ()
+main = print "deepseq ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDeepSeq.hs", None);
+    assert!(result_chirho.is_ok(), "Control.DeepSeq import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_intmap_chirho() {
+    let src_chirho = r#"
+module IfaceIntMap where
+import Data.IntMap (IntMap, empty, singleton, insert, lookup)
+
+main :: IO ()
+main = print "intmap ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceIntMap.hs", None);
+    assert!(result_chirho.is_ok(), "Data.IntMap import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_sequence_chirho() {
+    let src_chirho = r#"
+module IfaceSeq where
+import Data.Sequence (Seq, empty, singleton)
+
+main :: IO ()
+main = print "sequence ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceSeq.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Sequence import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_ghc_num_chirho() {
+    let src_chirho = r#"
+module IfaceGhcNum where
+import GHC.Num (Num, subtract, fromInteger)
+
+main :: IO ()
+main = print "ghcnum ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceGhcNum.hs", None);
+    assert!(result_chirho.is_ok(), "GHC.Num import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_ghc_real_chirho() {
+    let src_chirho = r#"
+module IfaceGhcReal where
+import GHC.Real (Integral, toInteger, fromIntegral, quot, rem, div, mod)
+
+main :: IO ()
+main = print "ghcreal ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceGhcReal.hs", None);
+    assert!(result_chirho.is_ok(), "GHC.Real import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_ghc_float_chirho() {
+    let src_chirho = r#"
+module IfaceGhcFloat where
+import GHC.Float (Float, Double, floatDigits, isNaN, isInfinite)
+
+main :: IO ()
+main = print "ghcfloat ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceGhcFloat.hs", None);
+    assert!(result_chirho.is_ok(), "GHC.Float import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_ghc_enum_chirho() {
+    let src_chirho = r#"
+module IfaceGhcEnum where
+import GHC.Enum (Enum, Bounded, succ, pred, toEnum, fromEnum, minBound, maxBound)
+
+main :: IO ()
+main = print "ghcenum ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceGhcEnum.hs", None);
+    assert!(result_chirho.is_ok(), "GHC.Enum import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_char_expanded_chirho() {
+    let src_chirho = r#"
+module IfaceCharExpanded where
+import Data.Char (isLetter, isPrint, isAscii, toTitle)
+
+main :: IO ()
+main = print "char expanded ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceCharExpanded.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Char expanded import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_ghc_prim_expanded_chirho() {
+    let src_chirho = r#"
+module IfacePrimExpanded where
+import GHC.Prim (dataToTag#, tagToEnum#, reallyUnsafePtrEquality#)
+
+main :: IO ()
+main = print "prim expanded ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfacePrimExpanded.hs", None);
+    assert!(result_chirho.is_ok(), "GHC.Prim expanded import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_ghc_records_chirho() {
+    let src_chirho = r#"
+module IfaceRecords where
+import GHC.Records (HasField, getField)
+
+main :: IO ()
+main = print "records ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceRecords.hs", None);
+    assert!(result_chirho.is_ok(), "GHC.Records import failed: {:?}", result_chirho.err());
+}

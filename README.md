@@ -10,7 +10,7 @@ Haskelujah is a Haskell compiler written in Rust. It targets practical compatibi
 
 | Metric | Value |
 |---|---|
-| Tests | **2,063 passing**, 0 failures |
+| Tests | **2,079 passing**, 0 failures |
 | Workspace | 21 crates |
 | Codebase | ~129,000 lines of Rust |
 | Rust edition | 2024 (rustc 1.93.0+) |
@@ -39,7 +39,7 @@ Haskelujah is a Haskell compiler written in Rust. It targets practical compatibi
 - Incremental compilation with fingerprinting and artifact caching
 - SCC-based binding group analysis for correct polymorphic generalization
 - 40+ GHC extensions: LambdaCase, RecordWildCards, ViewPatterns, PatternSynonyms, DerivingVia, DerivingStrategies, TupleSections, MagicHash, TypedHoles, PartialTypeSignatures, GHC2021/GHC2024, and more
-- 90+ synthetic module interfaces for common Haskell libraries
+- 110+ synthetic module interfaces for common Haskell libraries
 
 **Optimization passes:**
 - Inlining (INLINE/NOINLINE/INLINABLE pragmas)
