@@ -110,6 +110,60 @@ pub fn unify_chirho(
             unify_chirho(a_chirho, b_chirho, span_chirho)
         }
 
+        // List normalization: App(Con("[]"), a) ≡ List(a)
+        // The list type constructor `[]` applied to a type `a` must unify with `[a]`.
+        (TyChirho::AppChirho(f_chirho, a1_chirho), TyChirho::ListChirho(a2_chirho))
+            if matches!(f_chirho.as_ref(), TyChirho::ConChirho(n) if n == "[]") =>
+        {
+            unify_chirho(a1_chirho, a2_chirho, span_chirho)
+        }
+        (TyChirho::ListChirho(a1_chirho), TyChirho::AppChirho(f_chirho, a2_chirho))
+            if matches!(f_chirho.as_ref(), TyChirho::ConChirho(n) if n == "[]") =>
+        {
+            unify_chirho(a1_chirho, a2_chirho, span_chirho)
+        }
+
+        // Tuple normalization: App(App(Con("(,)"), a), b) ≡ Tuple([a, b])
+        // and higher arities: App(...App(Con("(,,)"), a)..., c) ≡ Tuple([a, b, c])
+        (TyChirho::AppChirho(..), TyChirho::TupleChirho(elems_chirho)) => {
+            if let Some(app_elems_chirho) = collect_tuple_app_chirho(ty1_chirho) {
+                if app_elems_chirho.len() == elems_chirho.len() {
+                    let mut subst_chirho = SubstChirho::empty_chirho();
+                    for (e1_chirho, e2_chirho) in app_elems_chirho.iter().zip(elems_chirho.iter()) {
+                        let e1_sub_chirho = subst_chirho.apply_ty_chirho(e1_chirho);
+                        let e2_sub_chirho = subst_chirho.apply_ty_chirho(e2_chirho);
+                        let s_chirho = unify_chirho(&e1_sub_chirho, &e2_sub_chirho, span_chirho)?;
+                        subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+                    }
+                    return Ok(subst_chirho);
+                }
+            }
+            Err(UnifyErrorChirho::MismatchChirho {
+                expected_chirho: ty1_chirho.clone(),
+                actual_chirho: ty2_chirho.clone(),
+                span_chirho,
+            })
+        }
+        (TyChirho::TupleChirho(elems_chirho), TyChirho::AppChirho(..)) => {
+            if let Some(app_elems_chirho) = collect_tuple_app_chirho(ty2_chirho) {
+                if app_elems_chirho.len() == elems_chirho.len() {
+                    let mut subst_chirho = SubstChirho::empty_chirho();
+                    for (e1_chirho, e2_chirho) in elems_chirho.iter().zip(app_elems_chirho.iter()) {
+                        let e1_sub_chirho = subst_chirho.apply_ty_chirho(e1_chirho);
+                        let e2_sub_chirho = subst_chirho.apply_ty_chirho(e2_chirho);
+                        let s_chirho = unify_chirho(&e1_sub_chirho, &e2_sub_chirho, span_chirho)?;
+                        subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+                    }
+                    return Ok(subst_chirho);
+                }
+            }
+            Err(UnifyErrorChirho::MismatchChirho {
+                expected_chirho: ty1_chirho.clone(),
+                actual_chirho: ty2_chirho.clone(),
+                span_chirho,
+            })
+        }
+
         // ForallVar: two identical forall-bound variables
         (TyChirho::ForallVarChirho(a_chirho), TyChirho::ForallVarChirho(b_chirho))
             if a_chirho == b_chirho =>
@@ -154,6 +208,43 @@ pub fn unify_chirho(
             actual_chirho: ty2_chirho.clone(),
             span_chirho,
         }),
+    }
+}
+
+/// Check if a type is a fully-applied tuple constructor, e.g.
+/// `App(App(Con("(,)"), a), b)` → `Some([a, b])`.
+/// Returns `None` if the type is not a tuple constructor application.
+fn collect_tuple_app_chirho(ty_chirho: &TyChirho) -> Option<Vec<TyChirho>> {
+    /// Walk the spine of applications to find the tuple constructor head.
+    fn go_chirho(ty_chirho: &TyChirho, args_chirho: &mut Vec<TyChirho>) -> Option<usize> {
+        match ty_chirho {
+            TyChirho::ConChirho(name_chirho) => {
+                // Check if name is a tuple constructor: "(,)", "(,,)", "(,,,)", etc.
+                let n_chirho = name_chirho.as_str();
+                if n_chirho.starts_with('(') && n_chirho.ends_with(')') {
+                    let inner_chirho = &n_chirho[1..n_chirho.len() - 1];
+                    if !inner_chirho.is_empty() && inner_chirho.chars().all(|c| c == ',') {
+                        return Some(inner_chirho.len() + 1); // n commas = n+1 elements
+                    }
+                }
+                None
+            }
+            TyChirho::AppChirho(f_chirho, a_chirho) => {
+                args_chirho.push(a_chirho.as_ref().clone());
+                go_chirho(f_chirho, args_chirho)
+            }
+            _ => None,
+        }
+    }
+
+    let mut args_chirho = Vec::new();
+    let arity_chirho = go_chirho(ty_chirho, &mut args_chirho)?;
+    // Args were collected in reverse order (outermost first)
+    args_chirho.reverse();
+    if args_chirho.len() == arity_chirho {
+        Some(args_chirho)
+    } else {
+        None // Partially applied tuple constructor — don't normalize
     }
 }
 
