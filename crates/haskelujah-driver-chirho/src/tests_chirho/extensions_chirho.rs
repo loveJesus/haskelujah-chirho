@@ -1811,3 +1811,104 @@ main = print (f 41)
         result_chirho.err()
     );
 }
+
+/// Module interfaces: Data.Type.Equality
+#[test]
+fn import_data_type_equality_chirho() {
+    let src_chirho = r#"module Test where
+import Data.Type.Equality (testEquality, castWith)
+main = print 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "DataTypeEq.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Type.Equality import should compile: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// Module interfaces: Control.Applicative
+#[test]
+fn import_control_applicative_chirho() {
+    let src_chirho = r#"module Test where
+import Control.Applicative
+f :: ZipList Int -> Int
+f _ = 42
+main = print 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "CtrlApp.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Control.Applicative import should compile: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// Module interfaces: Data.Functor.Identity
+#[test]
+fn import_data_functor_identity_chirho() {
+    let src_chirho = r#"module Test where
+import Data.Functor.Identity
+f :: Identity Int -> Int
+f (Identity x) = x
+main = print (f (Identity 42))
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "FunId.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Functor.Identity import should compile: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// Module interfaces: GHC.Base
+#[test]
+fn import_ghc_base_chirho() {
+    let src_chirho = r#"module Test where
+import GHC.Base (id, const, flip)
+f = id 42
+main = print f
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "GHCBase.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.Base import should compile: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// Module interfaces: Data.Foldable
+#[test]
+fn import_data_foldable_chirho() {
+    let src_chirho = r#"module Test where
+import Data.Foldable (toList, fold)
+main = print 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Foldable.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Foldable import should compile: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// Module interfaces: Data.IORef
+#[test]
+fn import_data_ioref_chirho() {
+    let src_chirho = r#"module Test where
+import Data.IORef
+main = print 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "IORef.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Data.IORef import should compile: {:?}",
+        result_chirho.err()
+    );
+}
