@@ -10,11 +10,14 @@ Haskelujah is a Haskell compiler written in Rust. It targets practical compatibi
 
 | Metric | Value |
 |---|---|
-| Tests | **2,083 passing**, 0 failures |
-| Workspace | 21 crates |
-| Codebase | ~129,000 lines of Rust |
+| Tests | **2,085 passing**, 0 failures |
+| Workspace | 21 crates, 129 Rust source files |
+| Codebase | ~131,000 lines of Rust |
+| Module interfaces | 110+ synthetic Haskell modules |
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |
+
+> Run `bash spec-chirho/stats-chirho.sh` for live stats from the repo.
 
 ## Features
 
@@ -50,12 +53,15 @@ Haskelujah is a Haskell compiler written in Rust. It targets practical compatibi
 - Demand analysis and dead argument elimination
 - Core simplification
 
-**Backends:**
-- LLVM IR (native executables via clang)
-- WebAssembly (binary .wasm output)
-- Cranelift (native object files: x86_64, aarch64, s390x, riscv64)
-- JVM bytecode (.class files) -- experimental
-- BEAM bytecode (.beam files) -- experimental
+**Backend Maturity:**
+
+| Backend | Maturity | Output | Notes |
+|---|---|---|---|
+| LLVM | **Beta** | Native executables via clang | Primary compilation target |
+| WebAssembly | **Beta** | Binary `.wasm` files | First-class target |
+| Cranelift | Experimental | Native objects (x86_64, aarch64, s390x, riscv64) | Fast compile times |
+| JVM | Research | `.class` bytecode | Scaffold only |
+| BEAM | Research | `.beam` bytecode | Scaffold only |
 
 ## Compiler Pipeline
 

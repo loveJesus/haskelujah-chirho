@@ -22,6 +22,7 @@ The design target is maximal practical compatibility with real-world Haskell and
 - [review-questions-chirho.md](./review-questions-chirho.md): review prompts with resolutions
 - [prior-art-chirho.md](./prior-art-chirho.md): lessons from Eta, GRIN, UHC, PureScript, and other projects
 - [prd-chirho.json](./prd-chirho.json): machine-readable product requirements document for iteration
+- [audit-prd-chirho.md](./audit-prd-chirho.md): code-audit PRD for the current live workspace, gaps, and next hard requirements
 
 ## Hard Requirements
 
@@ -43,4 +44,3 @@ The design target is maximal practical compatibility with real-world Haskell and
 - Strong diagnostics and reproducible builds.
 - Runtime design decided early enough to support laziness, scripting, and REPL use cases.
 - Incremental compilation and caching where it reduces edit-run latency.
-

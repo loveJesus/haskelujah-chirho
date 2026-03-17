@@ -21,6 +21,7 @@ use haskelujah_span_chirho::SourceMapChirho;
 
 /// Result of attempting to compile a single file.
 #[derive(Debug)]
+#[allow(dead_code)]
 struct BulkResultChirho {
     path_chirho: PathBuf,
     category_chirho: String,

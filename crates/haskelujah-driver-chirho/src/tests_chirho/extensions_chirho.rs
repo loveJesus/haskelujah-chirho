@@ -414,7 +414,6 @@ main = f 20 22
 
 // ── TypeSynonymInstances ────────────────────────────────────────────────
 
-#[test]
 // ── MagicHash ───────────────────────────────────────────────────────────
 
 #[test]
@@ -491,7 +490,6 @@ fn magic_hash_lexer_con_chirho() {
 
 // ── TypeSynonymInstances ────────────────────────────────────────────────
 
-#[test]
 // ── TypedHoles ──────────────────────────────────────────────────────────
 
 #[test]
@@ -1005,7 +1003,7 @@ fn ghc2024_meta_extension_chirho() {
 // -- Phase 3 item 40: Library type schemes expansion --
 
 #[test]
-fn builtin_realToFrac_chirho() {
+fn builtin_real_to_frac_chirho() {
     // realToFrac should type-check without error (type scheme present)
     let src_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nf x = realToFrac x\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
@@ -1014,7 +1012,7 @@ fn builtin_realToFrac_chirho() {
 }
 
 #[test]
-fn builtin_fromIntegral_chirho() {
+fn builtin_from_integral_chirho() {
     let src_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nf x = fromIntegral x\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "fromIntegral.hs");
