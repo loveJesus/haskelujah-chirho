@@ -2558,3 +2558,82 @@ main = convert True
         }
     }
 
+    #[test]
+    fn eval_polymorphic_return_io_default_chirho() {
+        // return is now Monad m => a -> m a; when m is ambiguous, defaults to IO
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = do
+  let x = 42
+  return x
+";
+        let result_chirho =
+            eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(
+                    *val_chirho,
+                    haskelujah_runtime_chirho::ValueChirho::IntChirho(42)
+                );
+            }
+            Err(e_chirho) => panic!("polymorphic return with IO default should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_monad_constraint_return_compiles_chirho() {
+        // Monad m => a -> m a type signature should compile without errors
+        use crate::compile_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+wrap :: Monad m => a -> m a
+wrap x = return x
+";
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs");
+        assert!(result_chirho.is_ok(), "Monad m => a -> m a with return should compile: {:?}", result_chirho.err());
+    }
+
+    #[test]
+    fn eval_monad_constraint_return_nothing_chirho() {
+        // f :: Monad m => m (Maybe a) — polymorphic monad with return
+        // When f is used at top level, m defaults to IO
+        use crate::compile_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+data Maybe a = Nothing | Just a
+f :: Monad m => m Int
+f = return 42
+";
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs");
+        assert!(result_chirho.is_ok(), "Monad m => m Int with return should compile: {:?}", result_chirho.err());
+    }
+
+    #[test]
+    fn eval_functor_applicative_monad_io_instances_chirho() {
+        // Verify Functor IO, Applicative IO, Monad IO instances resolve
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = do
+  return 42
+";
+        let result_chirho =
+            eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(
+                    *val_chirho,
+                    haskelujah_runtime_chirho::ValueChirho::IntChirho(42)
+                );
+            }
+            Err(e_chirho) => panic!("IO monad instance should resolve: {}", e_chirho),
+        }
+    }
+

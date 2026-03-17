@@ -1604,6 +1604,46 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
+        // instance Functor IO
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Functor".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("IO".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // instance Applicative IO
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Applicative".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("IO".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // instance Monad IO
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Monad".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("IO".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // instance Applicative []
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Applicative".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("[]".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // instance Monad []
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Monad".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("[]".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
         // ── Semigroup / Monoid ──
 
         // Semigroup (no superclass)

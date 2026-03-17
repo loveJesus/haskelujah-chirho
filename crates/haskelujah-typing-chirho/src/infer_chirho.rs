@@ -424,6 +424,62 @@ impl InferCtxChirho {
             .map(|(p_chirho, _)| p_chirho)
             .collect();
 
+        // IO defaulting: when a predicate is Monad/Applicative/Functor on a
+        // bare type variable with no other non-IO-defaultable constraints,
+        // default the variable to IO (like GHC's ExtendedDefaultRules).
+        // This ensures `f = return 42` gets type `IO Int` rather than
+        // `forall m. Monad m => m Int`, avoiding dictionary abstraction.
+        let io_defaultable_chirho: &[&str] = &[
+            "Monad", "Applicative", "Functor", "MonadIO", "MonadFail",
+        ];
+        let mut io_default_subst_chirho = SubstChirho::empty_chirho();
+        // Group predicates by type variable
+        let mut var_pred_classes_chirho: std::collections::HashMap<TyVarChirho, Vec<&str>> =
+            std::collections::HashMap::new();
+        for pred_chirho in &scheme_preds_chirho {
+            if let TyChirho::VarChirho(v_chirho) = &pred_chirho.ty_chirho {
+                var_pred_classes_chirho
+                    .entry(*v_chirho)
+                    .or_default()
+                    .push(&pred_chirho.class_name_chirho);
+            }
+        }
+        for (var_chirho, classes_chirho) in &var_pred_classes_chirho {
+            let all_io_chirho = classes_chirho
+                .iter()
+                .all(|c_chirho| io_defaultable_chirho.contains(c_chirho));
+            if all_io_chirho && !classes_chirho.is_empty() {
+                io_default_subst_chirho.insert_chirho(
+                    *var_chirho,
+                    TyChirho::ConChirho("IO".to_string()),
+                );
+            }
+        }
+        if !io_default_subst_chirho.is_empty_chirho() {
+            // Apply IO defaulting: substitute in the type, remove defaulted
+            // vars, and remove satisfied predicates.
+            let defaulted_ty_chirho = io_default_subst_chirho.apply_ty_chirho(ty_chirho);
+            let defaulted_vars_chirho: Vec<TyVarChirho> = vars_chirho
+                .into_iter()
+                .filter(|v_chirho| !io_default_subst_chirho.lookup_chirho(v_chirho).is_some())
+                .collect();
+            let defaulted_preds_chirho: Vec<SchemePredChirho> = scheme_preds_chirho
+                .into_iter()
+                .filter(|p_chirho| {
+                    if let TyChirho::VarChirho(v_chirho) = &p_chirho.ty_chirho {
+                        !io_default_subst_chirho.lookup_chirho(v_chirho).is_some()
+                    } else {
+                        true
+                    }
+                })
+                .collect();
+            return SchemeChirho {
+                vars_chirho: defaulted_vars_chirho,
+                preds_chirho: defaulted_preds_chirho,
+                ty_chirho: defaulted_ty_chirho,
+            };
+        }
+
         SchemeChirho {
             vars_chirho,
             preds_chirho: scheme_preds_chirho,
@@ -2841,7 +2897,21 @@ impl InferCtxChirho {
 
         // Phase 2: compute defaults for ambiguous type variables
         let mut default_subst_chirho = SubstChirho::empty_chirho();
+        let io_defaultable_classes_chirho: &[&str] = &[
+            "Monad", "Applicative", "Functor", "MonadIO", "MonadFail",
+        ];
         for (var_chirho, classes_chirho) in &var_classes_chirho {
+            // Check if all constraints are IO-defaultable (Monad/Applicative/Functor)
+            let all_io_defaultable_chirho = classes_chirho.iter().all(|c_chirho| {
+                io_defaultable_classes_chirho.contains(&c_chirho.as_str())
+            });
+            if all_io_defaultable_chirho && !classes_chirho.is_empty() {
+                default_subst_chirho.insert_chirho(
+                    *var_chirho,
+                    TyChirho::ConChirho("IO".to_string()),
+                );
+                continue;
+            }
             // All constraints on this var must be defaultable classes
             let all_defaultable_chirho = classes_chirho.iter().all(|c_chirho| {
                 defaultable_classes_chirho.contains(&c_chirho.as_str())
@@ -3658,16 +3728,57 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
-    // pure :: forall a. a -> a (simplified — no Applicative class yet)
-    let pure_v_chirho = TyVarChirho(1500);
+    // pure :: forall f a. Applicative f => a -> f a
+    let pure_f_chirho = TyVarChirho(1500);
+    let pure_a_chirho = TyVarChirho(1501);
     env_chirho.bind_chirho(
         "pure".to_string(),
         SchemeChirho {
-            vars_chirho: vec![pure_v_chirho],
-            preds_chirho: vec![],
+            vars_chirho: vec![pure_f_chirho, pure_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Applicative".to_string(),
+                ty_chirho: TyChirho::VarChirho(pure_f_chirho),
+            }],
             ty_chirho: TyChirho::fun_chirho(
-                TyChirho::VarChirho(pure_v_chirho),
-                TyChirho::VarChirho(pure_v_chirho),
+                TyChirho::VarChirho(pure_a_chirho),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(pure_f_chirho)),
+                    Box::new(TyChirho::VarChirho(pure_a_chirho)),
+                ),
+            ),
+        },
+    );
+
+    // (<*>) :: forall f a b. Applicative f => f (a -> b) -> f a -> f b
+    let ap_f_chirho = TyVarChirho(1502);
+    let ap_a_chirho = TyVarChirho(1503);
+    let ap_b_chirho = TyVarChirho(1504);
+    env_chirho.bind_chirho(
+        "<*>".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![ap_f_chirho, ap_a_chirho, ap_b_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Applicative".to_string(),
+                ty_chirho: TyChirho::VarChirho(ap_f_chirho),
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(ap_f_chirho)),
+                        Box::new(TyChirho::fun_chirho(
+                            TyChirho::VarChirho(ap_a_chirho),
+                            TyChirho::VarChirho(ap_b_chirho),
+                        )),
+                    ),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(ap_f_chirho)),
+                        Box::new(TyChirho::VarChirho(ap_a_chirho)),
+                    ),
+                ],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(ap_f_chirho)),
+                    Box::new(TyChirho::VarChirho(ap_b_chirho)),
+                ),
             ),
         },
     );
@@ -4361,55 +4472,88 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // return :: forall a. a -> IO a
-    let return_v_chirho = TyVarChirho(1700);
+    // return :: forall m a. Monad m => a -> m a
+    let return_m_chirho = TyVarChirho(1700);
+    let return_a_chirho = TyVarChirho(1701);
     env_chirho.bind_chirho(
         "return".to_string(),
         SchemeChirho {
-            vars_chirho: vec![return_v_chirho],
-            preds_chirho: vec![],
+            vars_chirho: vec![return_m_chirho, return_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Monad".to_string(),
+                ty_chirho: TyChirho::VarChirho(return_m_chirho),
+            }],
             ty_chirho: TyChirho::fun_chirho(
-                TyChirho::VarChirho(return_v_chirho),
-                TyChirho::io_chirho(TyChirho::VarChirho(return_v_chirho)),
+                TyChirho::VarChirho(return_a_chirho),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(return_m_chirho)),
+                    Box::new(TyChirho::VarChirho(return_a_chirho)),
+                ),
             ),
         },
     );
 
-    // (>>=) :: forall a b. IO a -> (a -> IO b) -> IO b
-    let bind_a_chirho = TyVarChirho(1800);
-    let bind_b_chirho = TyVarChirho(1801);
+    // (>>=) :: forall m a b. Monad m => m a -> (a -> m b) -> m b
+    let bind_m_chirho = TyVarChirho(1800);
+    let bind_a_chirho = TyVarChirho(1801);
+    let bind_b_chirho = TyVarChirho(1802);
     env_chirho.bind_chirho(
         ">>=".to_string(),
         SchemeChirho {
-            vars_chirho: vec![bind_a_chirho, bind_b_chirho],
-            preds_chirho: vec![],
+            vars_chirho: vec![bind_m_chirho, bind_a_chirho, bind_b_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Monad".to_string(),
+                ty_chirho: TyChirho::VarChirho(bind_m_chirho),
+            }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
-                    TyChirho::io_chirho(TyChirho::VarChirho(bind_a_chirho)),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(bind_m_chirho)),
+                        Box::new(TyChirho::VarChirho(bind_a_chirho)),
+                    ),
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(bind_a_chirho),
-                        TyChirho::io_chirho(TyChirho::VarChirho(bind_b_chirho)),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(bind_m_chirho)),
+                            Box::new(TyChirho::VarChirho(bind_b_chirho)),
+                        ),
                     ),
                 ],
-                TyChirho::io_chirho(TyChirho::VarChirho(bind_b_chirho)),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(bind_m_chirho)),
+                    Box::new(TyChirho::VarChirho(bind_b_chirho)),
+                ),
             ),
         },
     );
 
-    // (>>) :: forall a b. IO a -> IO b -> IO b
-    let then_a_chirho = TyVarChirho(1900);
-    let then_b_chirho = TyVarChirho(1901);
+    // (>>) :: forall m a b. Monad m => m a -> m b -> m b
+    let then_m_chirho = TyVarChirho(1900);
+    let then_a_chirho = TyVarChirho(1901);
+    let then_b_chirho = TyVarChirho(1902);
     env_chirho.bind_chirho(
         ">>".to_string(),
         SchemeChirho {
-            vars_chirho: vec![then_a_chirho, then_b_chirho],
-            preds_chirho: vec![],
+            vars_chirho: vec![then_m_chirho, then_a_chirho, then_b_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Monad".to_string(),
+                ty_chirho: TyChirho::VarChirho(then_m_chirho),
+            }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
-                    TyChirho::io_chirho(TyChirho::VarChirho(then_a_chirho)),
-                    TyChirho::io_chirho(TyChirho::VarChirho(then_b_chirho)),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(then_m_chirho)),
+                        Box::new(TyChirho::VarChirho(then_a_chirho)),
+                    ),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(then_m_chirho)),
+                        Box::new(TyChirho::VarChirho(then_b_chirho)),
+                    ),
                 ],
-                TyChirho::io_chirho(TyChirho::VarChirho(then_b_chirho)),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(then_m_chirho)),
+                    Box::new(TyChirho::VarChirho(then_b_chirho)),
+                ),
             ),
         },
     );
@@ -7165,7 +7309,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             "fmap".to_string(),
             SchemeChirho {
                 vars_chirho: vec![fmap_f_chirho, fmap_a_chirho, fmap_b_chirho],
-                preds_chirho: vec![],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Functor".to_string(),
+                    ty_chirho: TyChirho::VarChirho(fmap_f_chirho),
+                }],
                 ty_chirho: TyChirho::FunChirho(
                     Box::new(TyChirho::FunChirho(
                         Box::new(TyChirho::VarChirho(fmap_a_chirho)),
