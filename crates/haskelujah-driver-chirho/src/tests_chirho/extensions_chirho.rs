@@ -1422,3 +1422,19 @@ main = x + y
     assert!(result_chirho.is_ok(), "where tuple pat bind should work: {:?}", result_chirho.err());
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
+
+#[test]
+fn where_clause_mixed_fun_and_pat_bind_chirho() {
+    // Mix of function bindings and pattern bindings in where clause
+    let src_chirho = r#"
+module Test where
+main = f x + y
+  where
+    f n = n * 2
+    (x, y) = (10, 22)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "WhereMixed.hs", None);
+    assert!(result_chirho.is_ok(), "mixed where bindings should work: {:?}", result_chirho.err());
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
