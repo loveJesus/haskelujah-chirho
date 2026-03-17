@@ -285,6 +285,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "Functor", "Applicative", "Monad", "MonadFail", "Semigroup", "Monoid",
             "Foldable", "Traversable",
             "Coercible",
+            "Word", "Integral", "Fractional", "Floating", "Real", "RealFrac", "RealFloat",
+            "IOMode",
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -353,6 +355,38 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "on", "fix",
             // Numeric
             "realToFrac",
+            // Missing standard Prelude functions
+            "asTypeOf", "seq", "($)", "(.)", "(++)", "(&&)", "(||)",
+            "(==)", "(/=)", "(<)", "(>)", "(<=)", "(>=)",
+            "(+)", "(-)", "(*)", "(/)",
+            "(**)", "logBase", "sqrt", "exp", "log",
+            "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+            "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+            "pi", "negate",
+            "mapM", "sequence", "fail",
+            "showsPrec", "showString", "showChar", "showParen", "shows",
+            "readsPrec", "readParen", "reads", "lex",
+            "break", "splitAt", "cycle", "repeat", "replicate",
+            "and", "or", "enumFrom", "enumFromThen", "enumFromTo", "enumFromThenTo",
+            "toRational", "fromRational", "recip",
+            "divMod", "quotRem",
+            "userError", "ioError",
+            "until",
+            "subtract",
+            "gcd", "lcm", "rem",
+            "(^)", "(^^)",
+            "properFraction", "significand", "exponent", "floatRadix", "floatDigits",
+            "decodeFloat", "encodeFloat", "scaleFloat",
+            "isNaN", "isInfinite", "isDenormalized", "isNegativeZero", "isIEEE",
+            "readLn", "readIO",
+            "appendFile",
+            "IOMode",
+            "Word",
+            "mempty", "mappend", "mconcat", "<>",
+            "pure", "<*>", "*>", "<*",
+            ">>", ">>=", "=<<",
+            "foldr1", "foldl1", "foldl'", "scanl1", "scanr", "scanr1",
+            "catch", "throwIO",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);

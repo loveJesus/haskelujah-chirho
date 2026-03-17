@@ -2884,3 +2884,63 @@ main = print "records ok"
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceRecords.hs", None);
     assert!(result_chirho.is_ok(), "GHC.Records import failed: {:?}", result_chirho.err());
 }
+
+// ── Prelude expansion tests ───────────────────────────────────────────────
+
+#[test]
+fn prelude_as_type_of_chirho() {
+    let src_chirho = r#"
+module PreludeAsTypeOf where
+
+val :: Int
+val = 42 `asTypeOf` (undefined :: Int)
+
+main :: IO ()
+main = print val
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PreludeAsTypeOf.hs", None);
+    assert!(result_chirho.is_ok(), "asTypeOf failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn prelude_math_functions_chirho() {
+    let src_chirho = r#"
+module PreludeMath where
+
+main :: IO ()
+main = do
+  print (sqrt 4.0)
+  print (divMod 17 5)
+  print (splitAt 2 [1,2,3,4])
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PreludeMath.hs", None);
+    assert!(result_chirho.is_ok(), "Prelude math failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn prelude_list_expanded_chirho() {
+    let src_chirho = r#"
+module PreludeListExp where
+
+main :: IO ()
+main = do
+  print (splitAt 3 [1,2,3,4,5])
+  print (break (> 3) [1,2,3,4,5])
+  print (cycle [1,2,3] !! 7)
+  print (replicate 3 'x')
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PreludeListExp.hs", None);
+    assert!(result_chirho.is_ok(), "Prelude list expanded failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn prelude_export_count_chirho() {
+    let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let prelude_chirho = ifaces_chirho.iter().find(|m_chirho| m_chirho.name_chirho == "Prelude").unwrap();
+    // Prelude should have substantial exports after expansion
+    assert!(prelude_chirho.exports_chirho.values_chirho.len() > 200, "Prelude should have 200+ value exports");
+    assert!(prelude_chirho.exports_chirho.types_chirho.len() > 30, "Prelude should have 30+ type exports");
+}
