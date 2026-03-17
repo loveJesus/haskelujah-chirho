@@ -2405,6 +2405,17 @@ impl InferCtxChirho {
                             fields_chirho,
                             ..
                         } => {
+                            // Store field names for RecordWildCards expansion
+                            let field_names_chirho: Vec<String> = fields_chirho
+                                .iter()
+                                .flat_map(|fd_chirho| {
+                                    fd_chirho.names_chirho.iter().map(|n_chirho| n_chirho.text_chirho().to_string())
+                                })
+                                .collect();
+                            self.con_field_names_chirho.insert(
+                                con_name_chirho.text_chirho().to_string(),
+                                field_names_chirho,
+                            );
                             let field_tys_chirho: Vec<TyChirho> = fields_chirho
                                 .iter()
                                 .flat_map(|fd_chirho| {
@@ -2417,14 +2428,30 @@ impl InferCtxChirho {
                                 })
                                 .collect();
                             let con_ty_chirho = TyChirho::fun_n_chirho(
-                                field_tys_chirho,
-                                result_ty_chirho,
+                                field_tys_chirho.clone(),
+                                result_ty_chirho.clone(),
                             );
                             let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
                             self.env_chirho.bind_chirho(
                                 con_name_chirho.text_chirho().to_string(),
                                 gen_scheme_chirho,
                             );
+                            // Bind field accessor functions: fieldName :: T -> FieldType
+                            for (i_chirho, fd_chirho) in fields_chirho.iter().enumerate() {
+                                for fname_chirho in &fd_chirho.names_chirho {
+                                    let accessor_ty_chirho = TyChirho::FunChirho(
+                                        Box::new(result_ty_chirho.clone()),
+                                        Box::new(field_tys_chirho[i_chirho].clone()),
+                                        MultChirho::ManyChirho,
+                                    );
+                                    let accessor_scheme_chirho =
+                                        self.generalize_chirho(&accessor_ty_chirho);
+                                    self.env_chirho.bind_chirho(
+                                        fname_chirho.text_chirho().to_string(),
+                                        accessor_scheme_chirho,
+                                    );
+                                }
+                            }
                         }
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
                             name_chirho: con_name_chirho,

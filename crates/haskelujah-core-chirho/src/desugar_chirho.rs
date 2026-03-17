@@ -861,6 +861,9 @@ impl DesugarCtxChirho {
                 DeclChirho::DataDeclChirho {
                     constructors_chirho, ..
                 } => constructors_chirho.as_slice(),
+                DeclChirho::NewtypeDeclChirho {
+                    constructor_chirho, ..
+                } => std::slice::from_ref(constructor_chirho),
                 _ => continue,
             };
             for con_chirho in constructors_chirho {
@@ -1192,11 +1195,15 @@ impl DesugarCtxChirho {
         // For data T = Con { f1 :: T1, f2 :: T2 }, generates:
         //   f1 = \r -> case r of { Con x _ -> x }
         //   f2 = \r -> case r of { Con _ x -> x }
+        // Also handles newtype T = Con { f :: T1 } (single-field accessor).
         for decl_chirho in &module_chirho.decls_chirho {
             let constructors_chirho = match decl_chirho {
                 DeclChirho::DataDeclChirho {
                     constructors_chirho, ..
                 } => constructors_chirho.as_slice(),
+                DeclChirho::NewtypeDeclChirho {
+                    constructor_chirho, ..
+                } => std::slice::from_ref(constructor_chirho),
                 _ => continue,
             };
             for con_chirho in constructors_chirho {

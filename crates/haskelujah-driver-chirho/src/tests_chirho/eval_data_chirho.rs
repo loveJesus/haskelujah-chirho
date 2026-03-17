@@ -178,6 +178,55 @@ main = xCoord p + yCoord p
         }
     }
 
+    #[test]
+    fn eval_newtype_record_field_accessor_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // Newtype record field accessor: getAge used as a function
+        let src_chirho = "\
+module Test where
+newtype Age = MkAge { getAge :: Int }
+myAge = MkAge 25
+main = getAge myAge
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskelujah_runtime_chirho::ValueChirho::IntChirho(25));
+            }
+            Err(e_chirho) => panic!("newtype record field accessor should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_newtype_runidentity_pattern_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // Pattern: newtype Identity a = Identity { runIdentity :: a }
+        let src_chirho = "\
+module Test where
+newtype Identity a = Identity { runIdentity :: a }
+wrapped = Identity 42
+main = runIdentity wrapped
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(*val_chirho, haskelujah_runtime_chirho::ValueChirho::IntChirho(42));
+            }
+            Err(e_chirho) => panic!("newtype runIdentity accessor should evaluate: {}", e_chirho),
+        }
+    }
 
     #[test]
     fn eval_record_pattern_match_chirho() {
