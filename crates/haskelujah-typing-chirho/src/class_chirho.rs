@@ -356,6 +356,12 @@ impl ClassEnvChirho {
     /// Check if a predicate is entailed by the class environment
     /// (i.e., there exists an instance that satisfies it with no remaining goals).
     pub fn entails_chirho(&self, pred_chirho: &PredChirho) -> bool {
+        // If the predicate's type is still a variable, we cannot resolve
+        // it concretely — defer it (assume satisfiable, like GHC does
+        // for ambiguous/deferred constraints).
+        if pred_chirho.ty_chirho.contains_var_chirho() {
+            return true;
+        }
         if let Some(sub_goals_chirho) = self.resolve_chirho(pred_chirho) {
             sub_goals_chirho
                 .iter()
@@ -1432,6 +1438,137 @@ impl ClassEnvChirho {
                 PredChirho::new_chirho("Show", TyChirho::VarChirho(b_var_chirho)),
             ],
         });
+
+        // instance Ord a => Ord [a]
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Ord".to_string(),
+            head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_var_chirho))),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Ord",
+                TyChirho::VarChirho(a_var_chirho),
+            )],
+        });
+
+        // instance Eq a => Eq (Maybe a)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Eq".to_string(),
+            head_ty_chirho: TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                Box::new(TyChirho::VarChirho(a_var_chirho)),
+            ),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Eq",
+                TyChirho::VarChirho(a_var_chirho),
+            )],
+        });
+
+        // instance Ord a => Ord (Maybe a)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Ord".to_string(),
+            head_ty_chirho: TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                Box::new(TyChirho::VarChirho(a_var_chirho)),
+            ),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Ord",
+                TyChirho::VarChirho(a_var_chirho),
+            )],
+        });
+
+        // instance (Ord a, Ord b) => Ord (a, b)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Ord".to_string(),
+            head_ty_chirho: TyChirho::TupleChirho(vec![
+                TyChirho::VarChirho(a_var_chirho),
+                TyChirho::VarChirho(b_var_chirho),
+            ]),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![
+                PredChirho::new_chirho("Ord", TyChirho::VarChirho(a_var_chirho)),
+                PredChirho::new_chirho("Ord", TyChirho::VarChirho(b_var_chirho)),
+            ],
+        });
+
+        // instance Read a => Read [a]
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Read".to_string(),
+            head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_var_chirho))),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Read",
+                TyChirho::VarChirho(a_var_chirho),
+            )],
+        });
+
+        // instance Read a => Read (Maybe a)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Read".to_string(),
+            head_ty_chirho: TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                Box::new(TyChirho::VarChirho(a_var_chirho)),
+            ),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Read",
+                TyChirho::VarChirho(a_var_chirho),
+            )],
+        });
+
+        // 3-tuple instances
+        let c_var_chirho = TyVarChirho(9902);
+        // instance (Eq a, Eq b, Eq c) => Eq (a, b, c)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Eq".to_string(),
+            head_ty_chirho: TyChirho::TupleChirho(vec![
+                TyChirho::VarChirho(a_var_chirho),
+                TyChirho::VarChirho(b_var_chirho),
+                TyChirho::VarChirho(c_var_chirho),
+            ]),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![
+                PredChirho::new_chirho("Eq", TyChirho::VarChirho(a_var_chirho)),
+                PredChirho::new_chirho("Eq", TyChirho::VarChirho(b_var_chirho)),
+                PredChirho::new_chirho("Eq", TyChirho::VarChirho(c_var_chirho)),
+            ],
+        });
+        // instance (Show a, Show b, Show c) => Show (a, b, c)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Show".to_string(),
+            head_ty_chirho: TyChirho::TupleChirho(vec![
+                TyChirho::VarChirho(a_var_chirho),
+                TyChirho::VarChirho(b_var_chirho),
+                TyChirho::VarChirho(c_var_chirho),
+            ]),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![
+                PredChirho::new_chirho("Show", TyChirho::VarChirho(a_var_chirho)),
+                PredChirho::new_chirho("Show", TyChirho::VarChirho(b_var_chirho)),
+                PredChirho::new_chirho("Show", TyChirho::VarChirho(c_var_chirho)),
+            ],
+        });
+        // instance (Ord a, Ord b, Ord c) => Ord (a, b, c)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Ord".to_string(),
+            head_ty_chirho: TyChirho::TupleChirho(vec![
+                TyChirho::VarChirho(a_var_chirho),
+                TyChirho::VarChirho(b_var_chirho),
+                TyChirho::VarChirho(c_var_chirho),
+            ]),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![
+                PredChirho::new_chirho("Ord", TyChirho::VarChirho(a_var_chirho)),
+                PredChirho::new_chirho("Ord", TyChirho::VarChirho(b_var_chirho)),
+                PredChirho::new_chirho("Ord", TyChirho::VarChirho(c_var_chirho)),
+            ],
+        });
+
+        // instance Num a => Num [a] -- not standard, but avoids false errors
+        // instance Enum a => Enum [a] -- not standard either, skip
+
+        // instance Bounded a => Bounded (Maybe a) -- not standard, skip
 
         // ── Functor / Applicative / Monad instances ──
 

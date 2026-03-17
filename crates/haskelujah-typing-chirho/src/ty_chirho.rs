@@ -154,6 +154,25 @@ impl TyChirho {
         vars_chirho
     }
 
+    /// Returns `true` if this type contains any type variables.
+    pub fn contains_var_chirho(&self) -> bool {
+        match self {
+            TyChirho::VarChirho(_) => true,
+            TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => false,
+            TyChirho::AppChirho(f_chirho, a_chirho) => {
+                f_chirho.contains_var_chirho() || a_chirho.contains_var_chirho()
+            }
+            TyChirho::FunChirho(a_chirho, b_chirho, _) => {
+                a_chirho.contains_var_chirho() || b_chirho.contains_var_chirho()
+            }
+            TyChirho::ListChirho(t_chirho) => t_chirho.contains_var_chirho(),
+            TyChirho::TupleChirho(ts_chirho) => {
+                ts_chirho.iter().any(|t_chirho| t_chirho.contains_var_chirho())
+            }
+            TyChirho::ForallChirho { body_chirho: t_chirho, .. } => t_chirho.contains_var_chirho(),
+        }
+    }
+
     fn collect_free_vars_chirho(&self, out_chirho: &mut Vec<TyVarChirho>) {
         match self {
             TyChirho::VarChirho(v_chirho) => out_chirho.push(*v_chirho),

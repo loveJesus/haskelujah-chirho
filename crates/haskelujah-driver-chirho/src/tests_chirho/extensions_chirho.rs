@@ -1521,3 +1521,114 @@ isOdd n = isEven (n - 1)
             .unwrap_or_else(|e_chirho| panic!("SCC mutual recursion should work: {}", e_chirho));
     assert_eq!(m_chirho.io_output_chirho, "True\n");
 }
+
+// ── Parametric instance resolution tests ──
+
+/// `Show [a]` parametric instance: `show [True, False]` should type-check
+/// and produce the right output.
+#[test]
+fn parametric_show_list_bool_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"module Test where
+main = putStrLn (show [True, False, True])
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let (_val_chirho, m_chirho) =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "ShowListBool.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("Show [Bool] should work: {}", e_chirho));
+    assert!(
+        m_chirho.io_output_chirho.contains("[True"),
+        "expected list show output, got: {}",
+        m_chirho.io_output_chirho
+    );
+}
+
+/// `Eq (Maybe a)` parametric instance: `Just 1 == Just 1` should type-check.
+#[test]
+fn parametric_eq_maybe_chirho() {
+    let src_chirho = r#"module Test where
+main = print (Just 1 == Just 1)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "EqMaybe.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Eq (Maybe Int) should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// `Show (Maybe a)` parametric instance: `show (Just 42)` should type-check.
+#[test]
+fn parametric_show_maybe_chirho() {
+    let src_chirho = r#"module Test where
+main = putStrLn (show (Just 42))
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ShowMaybe.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Show (Maybe Int) should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// `Show (a, b)` parametric instance: `show (1, True)` should type-check.
+#[test]
+fn parametric_show_tuple_chirho() {
+    let src_chirho = r#"module Test where
+main = putStrLn (show (1, True))
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ShowTuple.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Show (Int, Bool) should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// `Eq [a]` parametric instance: `[1,2] == [1,2]` should type-check.
+#[test]
+fn parametric_eq_list_chirho() {
+    let src_chirho = r#"module Test where
+main = print ([1,2,3] == [1,2,3])
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "EqList.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Eq [Int] should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// `Ord [a]` parametric instance: `compare [1] [2]` should type-check.
+#[test]
+fn parametric_ord_list_chirho() {
+    let src_chirho = r#"module Test where
+main = print (compare [1] [2])
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "OrdList.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Ord [Int] should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// 3-tuple instances: `(1, True, 'a') == (1, True, 'a')` should type-check.
+#[test]
+fn parametric_eq_triple_chirho() {
+    let src_chirho = r#"module Test where
+main = print ((1, True, 'a') == (1, True, 'a'))
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "EqTriple.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Eq (Int, Bool, Char) should type-check: {:?}",
+        result_chirho.err()
+    );
+}
