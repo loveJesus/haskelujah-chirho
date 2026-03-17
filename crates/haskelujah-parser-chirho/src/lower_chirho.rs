@@ -4898,6 +4898,10 @@ impl LowerCtxChirho {
 
     /// Lower a `FieldDeclChirho` CST node to an AST `FieldDeclChirho`.
     /// CST structure: VarIdChirho [, VarIdChirho]* :: TypeChirho
+    ///
+    /// The CST parser produces flat tokens for field types (no structured
+    /// type subnodes), so we reconstruct the type from the flat sequence
+    /// after `::` using `type_from_flat_children_chirho`.
     fn lower_field_decl_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -4909,6 +4913,8 @@ impl LowerCtxChirho {
         let mut names_chirho = Vec::new();
         let mut ty_chirho: Option<TypeChirho> = None;
         let mut saw_double_colon_chirho = false;
+        let mut type_children_chirho: Vec<&ChildChirho> = Vec::new();
+        let mut pending_strict_chirho = false;
 
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
@@ -4921,33 +4927,361 @@ impl LowerCtxChirho {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                         names_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
-                    } else if saw_double_colon_chirho
-                        && tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
-                        && ty_chirho.is_none()
-                    {
-                        let s_chirho =
-                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        ty_chirho = Some(TypeChirho::ConChirho(
-                            self.name_from_token_chirho(tok_chirho, s_chirho),
-                        ));
+                    } else if saw_double_colon_chirho {
+                        // Detect `!` strictness annotations on field types
+                        if tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
+                            && tok_chirho.text_chirho() == "!"
+                        {
+                            pending_strict_chirho = true;
+                        } else {
+                            type_children_chirho.push(child_chirho);
+                        }
                     }
                 }
                 GreenElementChirho::NodeChirho(n_chirho) => {
-                    if saw_double_colon_chirho && ty_chirho.is_none() {
-                        ty_chirho = Some(
-                            self.lower_type_chirho(n_chirho, child_chirho.start_chirho),
-                        );
+                    if saw_double_colon_chirho {
+                        if ty_chirho.is_none() && is_type_kind_chirho(n_chirho.kind_chirho()) {
+                            // Structured type node — use it directly
+                            ty_chirho = Some(
+                                self.lower_type_chirho(n_chirho, child_chirho.start_chirho),
+                            );
+                        } else {
+                            type_children_chirho.push(child_chirho);
+                        }
                     }
                 }
             }
         }
 
+        // If no structured type node was found, reconstruct from flat tokens
+        if ty_chirho.is_none() && !type_children_chirho.is_empty() {
+            ty_chirho = Some(self.type_from_flat_children_chirho(
+                &type_children_chirho,
+                span_chirho,
+            ));
+        }
+
+        let strictness_chirho = if pending_strict_chirho {
+            StrictnessChirho::StrictChirho
+        } else {
+            StrictnessChirho::LazyChirho
+        };
+
         FieldDeclChirho {
             names_chirho,
             ty_chirho: ty_chirho.unwrap_or_else(|| self.placeholder_type_chirho()),
-            strictness_chirho: StrictnessChirho::LazyChirho,
+            strictness_chirho,
             span_chirho,
         }
+    }
+
+    /// Reconstruct a `TypeChirho` from a flat sequence of tokens/nodes.
+    /// Handles the common patterns found in record field declarations:
+    ///   - `ConId` → ConChirho
+    ///   - `VarId` → VarChirho
+    ///   - `(types)` → parenthesized / tuple
+    ///   - `[type]` → list
+    ///   - `a -> b` → function
+    ///   - `f a b` → application chain
+    ///   - `forall a. type` → forall
+    fn type_from_flat_children_chirho(
+        &self,
+        children_chirho: &[&ChildChirho],
+        fallback_span_chirho: SpanChirho,
+    ) -> TypeChirho {
+        if children_chirho.is_empty() {
+            return self.placeholder_type_chirho();
+        }
+
+        // Split on top-level `->` (function type)
+        let arrow_idx_chirho = self.find_top_level_arrow_chirho(children_chirho);
+        if let Some(idx_chirho) = arrow_idx_chirho {
+            let lhs_chirho = &children_chirho[..idx_chirho];
+            let rhs_chirho = &children_chirho[idx_chirho + 1..];
+            let arg_chirho = self.type_from_flat_children_chirho(lhs_chirho, fallback_span_chirho);
+            let result_chirho =
+                self.type_from_flat_children_chirho(rhs_chirho, fallback_span_chirho);
+            return TypeChirho::FunChirho {
+                arg_chirho: Box::new(arg_chirho),
+                mult_chirho: None,
+                result_chirho: Box::new(result_chirho),
+                span_chirho: fallback_span_chirho,
+            };
+        }
+
+        // Split on top-level `=>` (qualified type with context)
+        let double_arrow_idx_chirho =
+            self.find_top_level_token_chirho(children_chirho, TokenKindChirho::DoubleArrowChirho);
+        if let Some(idx_chirho) = double_arrow_idx_chirho {
+            // Context before `=>` — skip it and parse just the result type
+            let rhs_chirho = &children_chirho[idx_chirho + 1..];
+            return self.type_from_flat_children_chirho(rhs_chirho, fallback_span_chirho);
+        }
+
+        // Handle `forall`
+        if let Some(GreenElementChirho::TokenChirho(tok_chirho)) =
+            children_chirho.first().map(|c_chirho| c_chirho.element_chirho)
+        {
+            if tok_chirho.kind_chirho() == TokenKindChirho::ForallKeywordChirho {
+                // Find the `.` (VarSym ".")
+                let dot_idx_chirho = children_chirho.iter().position(|c_chirho| {
+                    if let GreenElementChirho::TokenChirho(t_chirho) = c_chirho.element_chirho {
+                        t_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
+                            && t_chirho.text_chirho() == "."
+                    } else {
+                        false
+                    }
+                });
+                if let Some(di_chirho) = dot_idx_chirho {
+                    // Collect type vars between forall and dot
+                    let mut vars_chirho: Vec<haskelujah_ast_chirho::decl_chirho::TyVarChirho> =
+                        Vec::new();
+                    for c_chirho in &children_chirho[1..di_chirho] {
+                        if let GreenElementChirho::TokenChirho(t_chirho) = c_chirho.element_chirho {
+                            if t_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
+                                let s_chirho = self.span_chirho(
+                                    c_chirho.start_chirho,
+                                    c_chirho.end_chirho,
+                                );
+                                vars_chirho.push(
+                                    haskelujah_ast_chirho::decl_chirho::TyVarChirho::plain_chirho(
+                                        self.name_from_token_chirho(t_chirho, s_chirho),
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                    let body_chirho = self.type_from_flat_children_chirho(
+                        &children_chirho[di_chirho + 1..],
+                        fallback_span_chirho,
+                    );
+                    return TypeChirho::ForallChirho {
+                        vars_chirho,
+                        body_chirho: Box::new(body_chirho),
+                        span_chirho: fallback_span_chirho,
+                    };
+                }
+            }
+        }
+
+        // Build application chain from atom types
+        let atoms_chirho = self.collect_type_atoms_chirho(children_chirho, fallback_span_chirho);
+        if atoms_chirho.is_empty() {
+            return self.placeholder_type_chirho();
+        }
+        let mut result_chirho = atoms_chirho[0].clone();
+        for atom_chirho in &atoms_chirho[1..] {
+            result_chirho = TypeChirho::AppChirho {
+                fun_chirho: Box::new(result_chirho),
+                arg_chirho: Box::new(atom_chirho.clone()),
+                span_chirho: fallback_span_chirho,
+            };
+        }
+        result_chirho
+    }
+
+    /// Find a top-level `->` token (not inside parens/brackets).
+    fn find_top_level_arrow_chirho(&self, children_chirho: &[&ChildChirho]) -> Option<usize> {
+        self.find_top_level_token_chirho(children_chirho, TokenKindChirho::RightArrowChirho)
+    }
+
+    /// Find a top-level token of a specific kind (not inside parens/brackets).
+    fn find_top_level_token_chirho(
+        &self,
+        children_chirho: &[&ChildChirho],
+        kind_chirho: TokenKindChirho,
+    ) -> Option<usize> {
+        let mut depth_chirho = 0i32;
+        for (i_chirho, c_chirho) in children_chirho.iter().enumerate() {
+            if let GreenElementChirho::TokenChirho(tok_chirho) = c_chirho.element_chirho {
+                match tok_chirho.kind_chirho() {
+                    TokenKindChirho::LeftParenChirho | TokenKindChirho::LeftBracketChirho => {
+                        depth_chirho += 1;
+                    }
+                    TokenKindChirho::RightParenChirho | TokenKindChirho::RightBracketChirho => {
+                        depth_chirho -= 1;
+                    }
+                    k_chirho if k_chirho == kind_chirho && depth_chirho == 0 => {
+                        return Some(i_chirho);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        None
+    }
+
+    /// Parse atomic types from a flat token/node sequence.
+    fn collect_type_atoms_chirho(
+        &self,
+        children_chirho: &[&ChildChirho],
+        fallback_span_chirho: SpanChirho,
+    ) -> Vec<TypeChirho> {
+        let mut atoms_chirho = Vec::new();
+        let mut i_chirho = 0;
+        while i_chirho < children_chirho.len() {
+            let child_chirho = children_chirho[i_chirho];
+            match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(tok_chirho) => {
+                    let s_chirho = self.span_chirho(
+                        child_chirho.start_chirho,
+                        child_chirho.end_chirho,
+                    );
+                    match tok_chirho.kind_chirho() {
+                        TokenKindChirho::VarIdChirho => {
+                            atoms_chirho.push(TypeChirho::VarChirho(
+                                self.name_from_token_chirho(tok_chirho, s_chirho),
+                            ));
+                        }
+                        TokenKindChirho::ConIdChirho
+                        | TokenKindChirho::QualifiedConIdChirho => {
+                            atoms_chirho.push(TypeChirho::ConChirho(
+                                self.name_from_token_chirho(tok_chirho, s_chirho),
+                            ));
+                        }
+                        TokenKindChirho::LeftParenChirho => {
+                            // Collect everything until matching RightParen
+                            let start_chirho = i_chirho;
+                            let mut depth_chirho = 1i32;
+                            i_chirho += 1;
+                            while i_chirho < children_chirho.len() && depth_chirho > 0 {
+                                if let GreenElementChirho::TokenChirho(t_chirho) =
+                                    children_chirho[i_chirho].element_chirho
+                                {
+                                    if t_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
+                                        depth_chirho += 1;
+                                    } else if t_chirho.kind_chirho()
+                                        == TokenKindChirho::RightParenChirho
+                                    {
+                                        depth_chirho -= 1;
+                                    }
+                                }
+                                if depth_chirho > 0 {
+                                    i_chirho += 1;
+                                }
+                            }
+                            // Inner children: start+1 .. i_chirho (exclusive of parens)
+                            let inner_chirho: Vec<&ChildChirho> = children_chirho
+                                [start_chirho + 1..i_chirho]
+                                .to_vec();
+                            // Check for tuple (top-level commas)
+                            let comma_positions_chirho: Vec<usize> = {
+                                let mut positions_chirho = Vec::new();
+                                let mut d_chirho = 0i32;
+                                for (j_chirho, c_chirho) in inner_chirho.iter().enumerate() {
+                                    if let GreenElementChirho::TokenChirho(t_chirho) =
+                                        c_chirho.element_chirho
+                                    {
+                                        match t_chirho.kind_chirho() {
+                                            TokenKindChirho::LeftParenChirho
+                                            | TokenKindChirho::LeftBracketChirho => {
+                                                d_chirho += 1;
+                                            }
+                                            TokenKindChirho::RightParenChirho
+                                            | TokenKindChirho::RightBracketChirho => {
+                                                d_chirho -= 1;
+                                            }
+                                            TokenKindChirho::CommaChirho if d_chirho == 0 => {
+                                                positions_chirho.push(j_chirho);
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                                positions_chirho
+                            };
+                            if !comma_positions_chirho.is_empty() {
+                                // Tuple type
+                                let mut elements_chirho = Vec::new();
+                                let mut start_j_chirho = 0;
+                                for &comma_j_chirho in &comma_positions_chirho {
+                                    let segment_chirho: Vec<&ChildChirho> =
+                                        inner_chirho[start_j_chirho..comma_j_chirho].to_vec();
+                                    elements_chirho.push(self.type_from_flat_children_chirho(
+                                        &segment_chirho,
+                                        fallback_span_chirho,
+                                    ));
+                                    start_j_chirho = comma_j_chirho + 1;
+                                }
+                                // Last segment after final comma
+                                let last_chirho: Vec<&ChildChirho> =
+                                    inner_chirho[start_j_chirho..].to_vec();
+                                elements_chirho.push(self.type_from_flat_children_chirho(
+                                    &last_chirho,
+                                    fallback_span_chirho,
+                                ));
+                                atoms_chirho.push(TypeChirho::TupleChirho {
+                                    elements_chirho,
+                                    span_chirho: fallback_span_chirho,
+                                });
+                            } else if inner_chirho.is_empty() {
+                                // Unit type ()
+                                atoms_chirho.push(TypeChirho::TupleChirho {
+                                    elements_chirho: vec![],
+                                    span_chirho: fallback_span_chirho,
+                                });
+                            } else {
+                                // Parenthesized type
+                                atoms_chirho.push(TypeChirho::ParenChirho {
+                                    inner_chirho: Box::new(
+                                        self.type_from_flat_children_chirho(
+                                            &inner_chirho,
+                                            fallback_span_chirho,
+                                        ),
+                                    ),
+                                    span_chirho: fallback_span_chirho,
+                                });
+                            }
+                            // Skip past the closing paren
+                            i_chirho += 1;
+                            continue;
+                        }
+                        TokenKindChirho::LeftBracketChirho => {
+                            // List type [a]
+                            i_chirho += 1;
+                            let mut inner_chirho: Vec<&ChildChirho> = Vec::new();
+                            while i_chirho < children_chirho.len() {
+                                if let GreenElementChirho::TokenChirho(t_chirho) =
+                                    children_chirho[i_chirho].element_chirho
+                                {
+                                    if t_chirho.kind_chirho()
+                                        == TokenKindChirho::RightBracketChirho
+                                    {
+                                        break;
+                                    }
+                                }
+                                inner_chirho.push(children_chirho[i_chirho]);
+                                i_chirho += 1;
+                            }
+                            let elem_ty_chirho = self.type_from_flat_children_chirho(
+                                &inner_chirho,
+                                fallback_span_chirho,
+                            );
+                            atoms_chirho.push(TypeChirho::ListChirho {
+                                element_chirho: Box::new(elem_ty_chirho),
+                                span_chirho: fallback_span_chirho,
+                            });
+                            i_chirho += 1; // skip ]
+                            continue;
+                        }
+                        // Ignore commas at top level (handled by caller)
+                        TokenKindChirho::CommaChirho => {}
+                        // Skip other tokens (arrows, etc.)
+                        _ => {}
+                    }
+                }
+                GreenElementChirho::NodeChirho(n_chirho) => {
+                    // Structured type node — lower it directly
+                    if is_type_kind_chirho(n_chirho.kind_chirho()) {
+                        atoms_chirho.push(
+                            self.lower_type_chirho(n_chirho, child_chirho.start_chirho),
+                        );
+                    }
+                }
+            }
+            i_chirho += 1;
+        }
+        atoms_chirho
     }
 
     /// Lower a `FieldAssignChirho` CST node to an AST `FieldAssignChirho`.

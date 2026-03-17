@@ -1679,3 +1679,86 @@ main = print (f 3 4)
             .expect("should eval");
     assert_eq!(m_chirho.io_output_chirho.trim(), "25", "f 3 4 = 9 + 16 = 25");
 }
+
+/// Record field types with type variables: `data Box f = MkBox { unBox :: f Int }`
+/// Regression: VarId tokens after `::` in record fields were silently dropped,
+/// causing kind mismatch errors (E0300) on fields like `field :: m (Maybe a)`.
+#[test]
+fn record_field_type_var_chirho() {
+    let src_chirho = r#"module Test where
+data Wrapper f = MkWrapper { unwrap :: f Int }
+main = print 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "RecFieldVar.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Record field with type variable should compile: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// Record field with application: `field :: Maybe a`
+#[test]
+fn record_field_app_type_chirho() {
+    let src_chirho = r#"module Test where
+data Box a = MkBox { getValue :: Maybe a }
+main = print 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "RecFieldApp.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Record field Maybe a should compile: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// Record field with function type: `field :: a -> b`
+#[test]
+fn record_field_fun_type_chirho() {
+    let src_chirho = r#"module Test where
+data Fun a b = MkFun { runFun :: a -> b }
+main = print 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "RecFieldFun.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Record field a -> b should compile: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// Record field with list type: `field :: [a]`
+#[test]
+fn record_field_list_type_chirho() {
+    let src_chirho = r#"module Test where
+data Container a = MkContainer { items :: [a] }
+main = print 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "RecFieldList.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Record field [a] should compile: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// MaybeT-style newtype with higher-kinded record field:
+/// `newtype MaybeT m a = MaybeT { runMaybeT :: m (Maybe a) }`
+#[test]
+fn record_field_higher_kinded_chirho() {
+    let src_chirho = r#"module Test where
+newtype MaybeT m a = MaybeT { runMaybeT :: m (Maybe a) }
+main = print 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "RecFieldHK.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Higher-kinded record field m (Maybe a) should compile: {:?}",
+        result_chirho.err()
+    );
+}
