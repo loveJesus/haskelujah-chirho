@@ -2442,15 +2442,25 @@ impl InferCtxChirho {
             }
         }
 
-        // Phase 3: Infer function bindings (with mutual recursion support)
+        // Phase 3: Infer function bindings using SCC-based binding groups
+        // for proper let-polymorphism (forward references, mutual recursion).
         //
         // Phase 3a: Pre-bind ALL top-level function names with fresh type
-        // variables so that mutual recursion works — every function can
-        // reference every other function.
-        let mut pre_bindings_chirho: Vec<(String, TyChirho, SpanChirho)> = Vec::new();
+        // variables so every function can reference every other function.
+        // Phase 3b: Process groups in SCC topological order so that leaf
+        // functions get generalized first, and functions that depend on
+        // them see their polymorphic types.
+
+        // 3a: Collect FunBindChirho declarations and pre-bind ALL of them
+        let mut fun_names_chirho: Vec<String> = Vec::new();
+        let mut fun_matches_refs_chirho: Vec<&[MatchArmChirho]> = Vec::new();
+        let mut fun_spans_chirho: Vec<SpanChirho> = Vec::new();
+        let mut fun_pre_tys_chirho: Vec<TyChirho> = Vec::new();
+
         for decl_chirho in &module_chirho.decls_chirho {
             if let DeclChirho::FunBindChirho {
                 name_chirho,
+                matches_chirho,
                 span_chirho,
                 ..
             } = decl_chirho
@@ -2461,12 +2471,18 @@ impl InferCtxChirho {
                     binding_name_chirho.clone(),
                     SchemeChirho::mono_chirho(pre_ty_chirho.clone()),
                 );
-                pre_bindings_chirho.push((binding_name_chirho, pre_ty_chirho, *span_chirho));
+                fun_names_chirho.push(binding_name_chirho);
+                fun_matches_refs_chirho.push(matches_chirho.as_slice());
+                fun_spans_chirho.push(*span_chirho);
+                fun_pre_tys_chirho.push(pre_ty_chirho);
             }
-            // Also pre-bind variables from top-level pattern bindings
+        }
+
+        // Also pre-bind PatBindChirho variables
+        for decl_chirho in &module_chirho.decls_chirho {
             if let DeclChirho::PatBindChirho {
                 pat_chirho,
-                span_chirho,
+                span_chirho: _,
                 ..
             } = decl_chirho
             {
@@ -2475,47 +2491,48 @@ impl InferCtxChirho {
                     let pre_ty_chirho = self.fresh_var_chirho();
                     self.env_chirho.bind_chirho(
                         name_chirho.clone(),
-                        SchemeChirho::mono_chirho(pre_ty_chirho.clone()),
+                        SchemeChirho::mono_chirho(pre_ty_chirho),
                     );
-                    pre_bindings_chirho.push((name_chirho, pre_ty_chirho, *span_chirho));
                 }
             }
         }
 
-        // Phase 3b: Infer each function body against its pre-bound type.
-        let mut pre_idx_chirho = 0;
-        for decl_chirho in &module_chirho.decls_chirho {
-            if let DeclChirho::FunBindChirho {
-                matches_chirho,
-                span_chirho,
-                ..
-            } = decl_chirho
-            {
-                let (binding_name_chirho, pre_ty_chirho, _) =
-                    &pre_bindings_chirho[pre_idx_chirho];
-                pre_idx_chirho += 1;
+        // Compute SCC binding groups (topological order: leaves first)
+        let fun_decls_for_scc_chirho: Vec<(usize, &[MatchArmChirho])> =
+            fun_matches_refs_chirho
+                .iter()
+                .enumerate()
+                .map(|(i_chirho, m_chirho)| (i_chirho, *m_chirho))
+                .collect();
+        let groups_chirho = binding_groups_chirho(&fun_names_chirho, &fun_decls_for_scc_chirho);
 
-                // ScopedTypeVariables: if the function has a type signature with
-                // `forall`, extract the bound variable names→TyVarChirho mapping
-                // so that where-clause annotations inside the body use the same vars.
+        // 3b: Process each SCC group: infer → generalize
+        for group_chirho in &groups_chirho {
+            // Infer each function body in the group
+            let mut group_inferred_chirho: Vec<(usize, String, TyChirho, SpanChirho)> = Vec::new();
+            for &fi_chirho in group_chirho {
+                let binding_name_chirho = &fun_names_chirho[fi_chirho];
+                let pre_ty_chirho = &fun_pre_tys_chirho[fi_chirho];
+                let span_chirho = fun_spans_chirho[fi_chirho];
+
+                // ScopedTypeVariables
                 let prev_scoped_chirho = self.scoped_tyvars_chirho.clone();
                 if let Some(sig_ast_chirho) = type_sigs_chirho.get(binding_name_chirho) {
                     let mut sig_var_map_chirho = HashMap::new();
                     let _ = self.ast_type_to_ty_chirho(sig_ast_chirho, &mut sig_var_map_chirho);
-                    // Only populate scoped vars if the signature has an explicit forall
                     if Self::has_explicit_forall_chirho(sig_ast_chirho) {
                         self.scoped_tyvars_chirho = sig_var_map_chirho;
                     }
                 }
 
                 let (s_chirho, inferred_ty_chirho) =
-                    self.infer_matches_chirho(matches_chirho, *span_chirho);
+                    self.infer_matches_chirho(fun_matches_refs_chirho[fi_chirho], span_chirho);
                 subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                 self.apply_subst_all_chirho(&s_chirho);
 
                 // Unify pre-bound type with inferred type
                 let pre_sub_chirho = subst_chirho.apply_ty_chirho(pre_ty_chirho);
-                match unify_chirho(&pre_sub_chirho, &inferred_ty_chirho, *span_chirho) {
+                match unify_chirho(&pre_sub_chirho, &inferred_ty_chirho, span_chirho) {
                     Ok(su_chirho) => {
                         subst_chirho = su_chirho.compose_chirho(&subst_chirho);
                         self.apply_subst_all_chirho(&su_chirho);
@@ -2525,11 +2542,23 @@ impl InferCtxChirho {
                     }
                 }
 
-                // Remove the mono pre-binding before generalizing
+                group_inferred_chirho.push((
+                    fi_chirho,
+                    binding_name_chirho.clone(),
+                    inferred_ty_chirho,
+                    span_chirho,
+                ));
+
+                // Restore scoped type variables
+                self.scoped_tyvars_chirho = prev_scoped_chirho;
+            }
+
+            // Generalize all functions in the group together
+            for (_, binding_name_chirho, inferred_ty_chirho, span_chirho) in &group_inferred_chirho
+            {
                 self.env_chirho.remove_chirho(binding_name_chirho);
 
-                // Generalize and rebind
-                let final_ty_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
+                let final_ty_chirho = subst_chirho.apply_ty_chirho(inferred_ty_chirho);
                 let gen_chirho = self.generalize_chirho(&final_ty_chirho);
                 self.env_chirho
                     .bind_chirho(binding_name_chirho.clone(), gen_chirho);
@@ -2537,10 +2566,13 @@ impl InferCtxChirho {
                 // Phase 3c: Check against type signature if one exists
                 if let Some(sig_ast_chirho) = type_sigs_chirho.get(binding_name_chirho) {
                     let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                    let sig_ty_raw_chirho = self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
-                    let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
-                    let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
-                    let inferred_sub_chirho = self.reduce_type_families_in_ty_chirho(&inferred_sub_chirho);
+                    let sig_ty_raw_chirho =
+                        self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
+                    let sig_ty_chirho =
+                        self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
+                    let inferred_sub_chirho = subst_chirho.apply_ty_chirho(inferred_ty_chirho);
+                    let inferred_sub_chirho =
+                        self.reduce_type_families_in_ty_chirho(&inferred_sub_chirho);
                     match unify_chirho(&inferred_sub_chirho, &sig_ty_chirho, *span_chirho) {
                         Ok(sig_s_chirho) => {
                             subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
@@ -2561,18 +2593,17 @@ impl InferCtxChirho {
                         }
                     }
                 }
-
-                // Restore scoped type variables after this function body
-                self.scoped_tyvars_chirho = prev_scoped_chirho;
             }
-            // Handle top-level pattern bindings: `MkBox val = MkBox 42`
+        }
+
+        // Phase 3d: Handle top-level pattern bindings
+        for decl_chirho in &module_chirho.decls_chirho {
             if let DeclChirho::PatBindChirho {
                 pat_chirho,
                 rhs_chirho,
                 span_chirho: _,
             } = decl_chirho
             {
-                // Infer the RHS type
                 let rhs_expr_chirho = match rhs_chirho {
                     RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
                     RhsChirho::GuardedChirho(arms_chirho) => {
@@ -2587,14 +2618,13 @@ impl InferCtxChirho {
                 subst_chirho = s1_chirho.compose_chirho(&subst_chirho);
                 self.apply_subst_all_chirho(&s1_chirho);
 
-                // Bind pattern variables with the RHS type
                 self.bind_pat_chirho(pat_chirho, &rhs_ty_chirho);
 
-                // Generalize each bound name
                 let names_chirho = crate::linearity_chirho::pat_bound_names_chirho(pat_chirho);
                 for name_chirho in &names_chirho {
                     if let Some(scheme_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
-                        let resolved_chirho = subst_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho);
+                        let resolved_chirho =
+                            subst_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho);
                         let gen_chirho = self.generalize_chirho(&resolved_chirho);
                         self.env_chirho.bind_chirho(name_chirho.clone(), gen_chirho);
                     }
@@ -2833,6 +2863,202 @@ fn ast_type_to_syn_rhs_chirho(
             TyChirho::ConChirho("_wildcard_chirho".to_string())
         }
     }
+}
+
+/// Collect variable references from an expression (shallow walk).
+fn collect_expr_refs_chirho(
+    expr_chirho: &haskelujah_ast_chirho::expr_chirho::ExprChirho,
+    refs_chirho: &mut std::collections::HashSet<String>,
+) {
+    use haskelujah_ast_chirho::expr_chirho::ExprChirho;
+    match expr_chirho {
+        ExprChirho::VarChirho(name_chirho) => {
+            refs_chirho.insert(name_chirho.text_chirho().to_string());
+        }
+        ExprChirho::AppChirho { fun_chirho, arg_chirho, .. } => {
+            collect_expr_refs_chirho(fun_chirho, refs_chirho);
+            collect_expr_refs_chirho(arg_chirho, refs_chirho);
+        }
+        ExprChirho::LamChirho { body_chirho, .. } => {
+            collect_expr_refs_chirho(body_chirho, refs_chirho);
+        }
+        ExprChirho::LetChirho { binds_chirho, body_chirho, .. } => {
+            for bind_chirho in binds_chirho {
+                collect_local_bind_refs_chirho(bind_chirho, refs_chirho);
+            }
+            collect_expr_refs_chirho(body_chirho, refs_chirho);
+        }
+        ExprChirho::IfChirho { cond_chirho, then_chirho, else_chirho, .. } => {
+            collect_expr_refs_chirho(cond_chirho, refs_chirho);
+            collect_expr_refs_chirho(then_chirho, refs_chirho);
+            collect_expr_refs_chirho(else_chirho, refs_chirho);
+        }
+        ExprChirho::CaseChirho { scrutinee_chirho, alts_chirho, .. } => {
+            collect_expr_refs_chirho(scrutinee_chirho, refs_chirho);
+            for alt_chirho in alts_chirho {
+                collect_rhs_refs_chirho(&alt_chirho.rhs_chirho, refs_chirho);
+            }
+        }
+        ExprChirho::DoChirho { stmts_chirho, .. } => {
+            for stmt_chirho in stmts_chirho {
+                use haskelujah_ast_chirho::expr_chirho::StmtChirho;
+                match stmt_chirho {
+                    StmtChirho::ExprChirho(e_chirho) => collect_expr_refs_chirho(e_chirho, refs_chirho),
+                    StmtChirho::BindChirho { expr_chirho, .. } => collect_expr_refs_chirho(expr_chirho, refs_chirho),
+                    StmtChirho::LetChirho { binds_chirho, .. } => {
+                        for b_chirho in binds_chirho {
+                            collect_local_bind_refs_chirho(b_chirho, refs_chirho);
+                        }
+                    }
+                }
+            }
+        }
+        ExprChirho::InfixChirho { left_chirho, op_chirho, right_chirho, .. } => {
+            collect_expr_refs_chirho(left_chirho, refs_chirho);
+            refs_chirho.insert(op_chirho.text_chirho().to_string());
+            collect_expr_refs_chirho(right_chirho, refs_chirho);
+        }
+        ExprChirho::NegChirho { expr_chirho, .. } => collect_expr_refs_chirho(expr_chirho, refs_chirho),
+        ExprChirho::TupleChirho { elements_chirho, .. } => {
+            for e_chirho in elements_chirho {
+                collect_expr_refs_chirho(e_chirho, refs_chirho);
+            }
+        }
+        ExprChirho::ListChirho { elements_chirho, .. } => {
+            for e_chirho in elements_chirho {
+                collect_expr_refs_chirho(e_chirho, refs_chirho);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn collect_local_bind_refs_chirho(
+    bind_chirho: &haskelujah_ast_chirho::expr_chirho::LocalBindChirho,
+    refs_chirho: &mut std::collections::HashSet<String>,
+) {
+    match bind_chirho {
+        haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+            matches_chirho, ..
+        } => {
+            for arm_chirho in matches_chirho {
+                collect_rhs_refs_chirho(&arm_chirho.rhs_chirho, refs_chirho);
+            }
+        }
+        haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+            rhs_chirho, ..
+        } => {
+            collect_rhs_refs_chirho(rhs_chirho, refs_chirho);
+        }
+        _ => {}
+    }
+}
+
+fn collect_rhs_refs_chirho(
+    rhs_chirho: &haskelujah_ast_chirho::expr_chirho::RhsChirho,
+    refs_chirho: &mut std::collections::HashSet<String>,
+) {
+    use haskelujah_ast_chirho::expr_chirho::RhsChirho;
+    match rhs_chirho {
+        RhsChirho::UnguardedChirho(expr_chirho) => collect_expr_refs_chirho(expr_chirho, refs_chirho),
+        RhsChirho::GuardedChirho(arms_chirho) => {
+            for ge_chirho in arms_chirho {
+                collect_expr_refs_chirho(&ge_chirho.guard_chirho, refs_chirho);
+                collect_expr_refs_chirho(&ge_chirho.body_chirho, refs_chirho);
+            }
+        }
+    }
+}
+
+/// Compute binding groups for top-level functions using SCC analysis.
+/// Returns groups in topological order (leaf dependencies first).
+fn binding_groups_chirho(
+    fun_names_chirho: &[String],
+    fun_decls_chirho: &[(usize, &[haskelujah_ast_chirho::expr_chirho::MatchArmChirho])],
+) -> Vec<Vec<usize>> {
+    let name_set_chirho: std::collections::HashSet<&str> = fun_names_chirho.iter().map(|s| s.as_str()).collect();
+    let name_to_idx_chirho: std::collections::HashMap<&str, usize> = fun_names_chirho.iter().enumerate().map(|(i, s)| (s.as_str(), i)).collect();
+
+    // Build adjacency list
+    let n_chirho = fun_names_chirho.len();
+    let mut adj_chirho: Vec<Vec<usize>> = vec![Vec::new(); n_chirho];
+    for (i_chirho, (_, matches_chirho)) in fun_decls_chirho.iter().enumerate() {
+        let mut refs_chirho = std::collections::HashSet::new();
+        for arm_chirho in *matches_chirho {
+            collect_rhs_refs_chirho(&arm_chirho.rhs_chirho, &mut refs_chirho);
+            for wb_chirho in &arm_chirho.where_binds_chirho {
+                collect_local_bind_refs_chirho(wb_chirho, &mut refs_chirho);
+            }
+        }
+        for ref_name_chirho in &refs_chirho {
+            if name_set_chirho.contains(ref_name_chirho.as_str()) && ref_name_chirho != &fun_names_chirho[i_chirho] {
+                if let Some(&j_chirho) = name_to_idx_chirho.get(ref_name_chirho.as_str()) {
+                    adj_chirho[i_chirho].push(j_chirho);
+                }
+            }
+        }
+    }
+
+    // Tarjan's SCC
+    let mut index_chirho = 0usize;
+    let mut stack_chirho: Vec<usize> = Vec::new();
+    let mut on_stack_chirho = vec![false; n_chirho];
+    let mut indices_chirho: Vec<Option<usize>> = vec![None; n_chirho];
+    let mut lowlinks_chirho = vec![0usize; n_chirho];
+    let mut sccs_chirho: Vec<Vec<usize>> = Vec::new();
+
+    fn strongconnect_chirho(
+        v_chirho: usize,
+        adj_chirho: &[Vec<usize>],
+        index_chirho: &mut usize,
+        stack_chirho: &mut Vec<usize>,
+        on_stack_chirho: &mut [bool],
+        indices_chirho: &mut [Option<usize>],
+        lowlinks_chirho: &mut [usize],
+        sccs_chirho: &mut Vec<Vec<usize>>,
+    ) {
+        indices_chirho[v_chirho] = Some(*index_chirho);
+        lowlinks_chirho[v_chirho] = *index_chirho;
+        *index_chirho += 1;
+        stack_chirho.push(v_chirho);
+        on_stack_chirho[v_chirho] = true;
+
+        for &w_chirho in &adj_chirho[v_chirho] {
+            if indices_chirho[w_chirho].is_none() {
+                strongconnect_chirho(
+                    w_chirho, adj_chirho, index_chirho, stack_chirho,
+                    on_stack_chirho, indices_chirho, lowlinks_chirho, sccs_chirho,
+                );
+                lowlinks_chirho[v_chirho] = lowlinks_chirho[v_chirho].min(lowlinks_chirho[w_chirho]);
+            } else if on_stack_chirho[w_chirho] {
+                lowlinks_chirho[v_chirho] = lowlinks_chirho[v_chirho].min(indices_chirho[w_chirho].unwrap());
+            }
+        }
+
+        if lowlinks_chirho[v_chirho] == indices_chirho[v_chirho].unwrap() {
+            let mut scc_chirho = Vec::new();
+            loop {
+                let w_chirho = stack_chirho.pop().unwrap();
+                on_stack_chirho[w_chirho] = false;
+                scc_chirho.push(w_chirho);
+                if w_chirho == v_chirho { break; }
+            }
+            sccs_chirho.push(scc_chirho);
+        }
+    }
+
+    for v_chirho in 0..n_chirho {
+        if indices_chirho[v_chirho].is_none() {
+            strongconnect_chirho(
+                v_chirho, &adj_chirho, &mut index_chirho, &mut stack_chirho,
+                &mut on_stack_chirho, &mut indices_chirho, &mut lowlinks_chirho, &mut sccs_chirho,
+            );
+        }
+    }
+
+    // Tarjan naturally produces SCCs with dependencies first (leaves before
+    // dependents), which is the order we need for type inference.
+    sccs_chirho
 }
 
 /// Collect the spine of a left-nested `AppChirho` into (head, [args]).

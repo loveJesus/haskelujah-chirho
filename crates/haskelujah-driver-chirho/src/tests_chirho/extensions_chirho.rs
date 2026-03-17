@@ -1469,3 +1469,56 @@ main = do
     assert!(result_chirho.is_ok(), "do-let constructor pat should work: {:?}", result_chirho.err());
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
+
+// ── SCC binding groups (forward references / let-polymorphism) ──
+
+/// `main = iD iD 42; iD x = x` — main references iD which is defined later;
+/// SCC analysis should generalize iD (forall a. a -> a) before main.
+#[test]
+fn scc_forward_ref_id_id_chirho() {
+    use crate::eval_source_chirho;
+    let src_chirho = r#"module Test where
+main = iD iD 42
+iD x = x
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "SccForward.hs", None);
+    assert!(result_chirho.is_ok(), "SCC forward ref should work: {:?}", result_chirho.err());
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+/// `main = print (double (triple 2)); double x = x + x; triple x = x * 3`
+/// — main depends on double and triple, both defined later.
+#[test]
+fn scc_forward_ref_multi_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"module Test where
+main = print (double (triple 2))
+double x = x + x
+triple x = x * 3
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let (_val_chirho, m_chirho) =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "SccMulti.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("SCC multi forward ref should work: {}", e_chirho));
+    assert_eq!(m_chirho.io_output_chirho, "12\n");
+}
+
+/// Mutual recursion: `isEven 0 = True; isEven n = isOdd (n-1);
+/// isOdd 0 = False; isOdd n = isEven (n-1)` — SCC groups them together.
+#[test]
+fn scc_mutual_recursion_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"module Test where
+main = print (isEven 4)
+isEven 0 = True
+isEven n = isOdd (n - 1)
+isOdd 0 = False
+isOdd n = isEven (n - 1)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let (_val_chirho, m_chirho) =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "SccMutual.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("SCC mutual recursion should work: {}", e_chirho));
+    assert_eq!(m_chirho.io_output_chirho, "True\n");
+}
