@@ -2897,6 +2897,9 @@ fn collect_expr_refs_chirho(
             collect_expr_refs_chirho(scrutinee_chirho, refs_chirho);
             for alt_chirho in alts_chirho {
                 collect_rhs_refs_chirho(&alt_chirho.rhs_chirho, refs_chirho);
+                for wb_chirho in &alt_chirho.where_binds_chirho {
+                    collect_local_bind_refs_chirho(wb_chirho, refs_chirho);
+                }
             }
         }
         ExprChirho::DoChirho { stmts_chirho, .. } => {
@@ -2929,6 +2932,54 @@ fn collect_expr_refs_chirho(
                 collect_expr_refs_chirho(e_chirho, refs_chirho);
             }
         }
+        ExprChirho::TypeAppChirho { expr_chirho, .. } => {
+            collect_expr_refs_chirho(expr_chirho, refs_chirho);
+        }
+        ExprChirho::ArithSeqChirho { from_chirho, then_chirho, to_chirho, .. } => {
+            collect_expr_refs_chirho(from_chirho, refs_chirho);
+            if let Some(t_chirho) = then_chirho { collect_expr_refs_chirho(t_chirho, refs_chirho); }
+            if let Some(t_chirho) = to_chirho { collect_expr_refs_chirho(t_chirho, refs_chirho); }
+        }
+        ExprChirho::ListCompChirho { body_chirho, quals_chirho, .. } => {
+            collect_expr_refs_chirho(body_chirho, refs_chirho);
+            for q_chirho in quals_chirho {
+                use haskelujah_ast_chirho::expr_chirho::StmtChirho;
+                match q_chirho {
+                    StmtChirho::ExprChirho(e_chirho) => collect_expr_refs_chirho(e_chirho, refs_chirho),
+                    StmtChirho::BindChirho { expr_chirho, .. } => collect_expr_refs_chirho(expr_chirho, refs_chirho),
+                    StmtChirho::LetChirho { binds_chirho, .. } => {
+                        for b_chirho in binds_chirho { collect_local_bind_refs_chirho(b_chirho, refs_chirho); }
+                    }
+                }
+            }
+        }
+        ExprChirho::LeftSectionChirho { op_chirho, arg_chirho, .. } => {
+            refs_chirho.insert(op_chirho.text_chirho().to_string());
+            collect_expr_refs_chirho(arg_chirho, refs_chirho);
+        }
+        ExprChirho::RightSectionChirho { arg_chirho, op_chirho, .. } => {
+            collect_expr_refs_chirho(arg_chirho, refs_chirho);
+            refs_chirho.insert(op_chirho.text_chirho().to_string());
+        }
+        ExprChirho::AnnChirho { expr_chirho, .. }
+        | ExprChirho::ParenChirho { inner_chirho: expr_chirho, .. }
+        | ExprChirho::SpliceChirho { expr_chirho, .. }
+        | ExprChirho::TypedSpliceChirho { expr_chirho, .. }
+        | ExprChirho::QuoteExprChirho { expr_chirho, .. } => {
+            collect_expr_refs_chirho(expr_chirho, refs_chirho);
+        }
+        ExprChirho::RecordConChirho { fields_chirho, .. } => {
+            for f_chirho in fields_chirho {
+                collect_expr_refs_chirho(&f_chirho.value_chirho, refs_chirho);
+            }
+        }
+        ExprChirho::RecordUpdateChirho { expr_chirho, fields_chirho, .. } => {
+            collect_expr_refs_chirho(expr_chirho, refs_chirho);
+            for f_chirho in fields_chirho {
+                collect_expr_refs_chirho(&f_chirho.value_chirho, refs_chirho);
+            }
+        }
+        // Literals, constructors, quote decls/types/pats have no variable refs
         _ => {}
     }
 }

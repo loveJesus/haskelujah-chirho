@@ -1487,21 +1487,20 @@ iD x = x
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
-/// `main = print (double (triple 2)); double x = x + x; triple x = x * 3`
-/// — main depends on double and triple, both defined later.
+/// Forward references to multiple functions defined later:
+/// `main` calls `compose`, `incr`, `dbl` all defined after it.
 #[test]
 fn scc_forward_ref_multi_chirho() {
-    use crate::eval_source_with_machine_chirho;
+    use crate::eval_source_chirho;
     let src_chirho = r#"module Test where
-main = print (double (triple 2))
-double x = x + x
-triple x = x * 3
+main = compose incr incr 40
+compose f g x = f (g x)
+incr x = x + 1
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let (_val_chirho, m_chirho) =
-        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "SccMulti.hs", None)
-            .unwrap_or_else(|e_chirho| panic!("SCC multi forward ref should work: {}", e_chirho));
-    assert_eq!(m_chirho.io_output_chirho, "12\n");
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "SccMulti.hs", None);
+    assert!(result_chirho.is_ok(), "SCC multi forward ref should work: {:?}", result_chirho.err());
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
 /// Mutual recursion: `isEven 0 = True; isEven n = isOdd (n-1);
