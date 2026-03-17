@@ -35,7 +35,7 @@ lex → layout → CST parse → AST lower → name resolve → kind infer → t
 
 ### Test Coverage
 
-**2011 tests passing**, 0 failures
+**2028 tests passing**, 0 failures
 
 ### Completed
 
