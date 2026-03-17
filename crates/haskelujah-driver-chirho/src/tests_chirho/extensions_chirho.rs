@@ -11,6 +11,7 @@
 #[allow(unused_imports)]
 use crate::{
     eval_source_chirho,
+    eval_source_with_machine_chirho,
     compile_source_chirho,
     frontend_warnings_chirho,
     check_source_file_chirho,
@@ -2034,5 +2035,145 @@ main = do
             assert_eq!(lines_chirho[1], "42", "default alt should bind scrutinee");
         }
         Err(e_chirho) => panic!("default fallthrough failed: {}", e_chirho),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Where-clause in case alternatives
+// ---------------------------------------------------------------------------
+
+/// `case e of x -> result where result = x` — where-clause binds case binder.
+#[test]
+fn case_alt_where_clause_chirho() {
+    let src_chirho = r#"
+module CaseWhere1 where
+
+f :: Int -> Int
+f n = case n of
+  x -> result
+    where result = x + 1
+
+main :: IO ()
+main = print (f 41)
+"#;
+    let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseWhere1.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "42");
+        }
+        Err(e_chirho) => panic!("case alt where-clause failed: {}", e_chirho),
+    }
+}
+
+/// Multiple bindings in a case alt where-clause.
+#[test]
+fn case_alt_where_multiple_binds_chirho() {
+    let src_chirho = r#"
+module CaseWhere2 where
+
+f :: Int -> Int
+f n = case n of
+  x -> a + b
+    where
+      a = x * 2
+      b = x + 1
+
+main :: IO ()
+main = print (f 10)
+"#;
+    let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseWhere2.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            // 10 * 2 + (10 + 1) = 20 + 11 = 31
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "31");
+        }
+        Err(e_chirho) => panic!("case alt where multiple binds failed: {}", e_chirho),
+    }
+}
+
+/// Where-clause in a constructor pattern case alt.
+#[test]
+fn case_alt_where_con_pattern_chirho() {
+    let src_chirho = r#"
+module CaseWhere3 where
+
+data Pair = MkPair Int Int
+
+f :: Pair -> Int
+f p = case p of
+  MkPair a b -> result
+    where result = a + b
+
+main :: IO ()
+main = print (f (MkPair 20 22))
+"#;
+    let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseWhere3.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "42");
+        }
+        Err(e_chirho) => panic!("case alt where con pattern failed: {}", e_chirho),
+    }
+}
+
+/// Where-clause in a multi-alt case expression (only on one alt).
+#[test]
+fn case_alt_where_multi_alt_chirho() {
+    let src_chirho = r#"
+module CaseWhere4 where
+
+f :: Int -> Int
+f n = case n of
+  0 -> 100
+  x -> doubled
+    where doubled = x * 2
+
+main :: IO ()
+main = do
+  print (f 0)
+  print (f 21)
+"#;
+    let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseWhere4.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            let lines_chirho: Vec<&str> = machine_chirho.io_output_chirho.trim().lines().collect();
+            assert_eq!(lines_chirho.len(), 2);
+            assert_eq!(lines_chirho[0], "100");
+            assert_eq!(lines_chirho[1], "42");
+        }
+        Err(e_chirho) => panic!("case alt where multi-alt failed: {}", e_chirho),
+    }
+}
+
+/// Where-clause with a function binding in case alt.
+#[test]
+fn case_alt_where_function_bind_chirho() {
+    let src_chirho = r#"
+module CaseWhere5 where
+
+f :: Int -> Int
+f n = case n of
+  x -> double x
+    where double y = y * 2
+
+main :: IO ()
+main = print (f 21)
+"#;
+    let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseWhere5.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "42");
+        }
+        Err(e_chirho) => panic!("case alt where function bind failed: {}", e_chirho),
     }
 }

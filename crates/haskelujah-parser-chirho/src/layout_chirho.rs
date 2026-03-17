@@ -40,9 +40,11 @@ use crate::lexer_chirho::{RawTokenChirho, RawTokenKindChirho};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LayoutContextChirho {
     /// An implicit layout block opened by a layout keyword.
-    /// The `u32` is the column number (1-based) of the first token in the block.
-    /// The `bool` is true if this context was opened by `let` (so `in` can close it).
-    ImplicitChirho(u32, bool),
+    /// Fields: column (1-based), is_let, is_of.
+    /// - `is_let`: true if opened by `let` (closed by `in`).
+    /// - `is_of`: true if opened by `of` (case alternatives can have
+    ///   where-clauses, so `where` should not unconditionally close these).
+    ImplicitChirho(u32, bool, bool),
     /// An explicit block opened by `{`.
     ExplicitChirho,
 }
@@ -82,6 +84,7 @@ impl<'src> LayoutRuleChirho<'src> {
         let mut context_stack_chirho: Vec<LayoutContextChirho> = Vec::new();
         let mut after_layout_keyword_chirho = false;
         let mut after_let_keyword_chirho = false;
+        let mut after_of_keyword_chirho = false;
         let mut after_module_where_chirho = false;
 
         // Collect non-trivia token indices for lookahead
@@ -108,7 +111,7 @@ impl<'src> LayoutRuleChirho<'src> {
             // No module header — insert implicit layout at column of first token
             if let Some(first_idx_chirho) = first_non_trivia_chirho {
                 let col_chirho = self.column_of_chirho(&self.raw_tokens_chirho[first_idx_chirho]);
-                context_stack_chirho.push(LayoutContextChirho::ImplicitChirho(col_chirho, false));
+                context_stack_chirho.push(LayoutContextChirho::ImplicitChirho(col_chirho, false, false));
                 let vspan_chirho = self.zero_span_at_chirho(
                     self.raw_tokens_chirho[first_idx_chirho]
                         .span_chirho
@@ -151,12 +154,14 @@ impl<'src> LayoutRuleChirho<'src> {
                 let enclosing_col_chirho = context_stack_chirho
                     .last()
                     .and_then(|ctx_chirho| match ctx_chirho {
-                        LayoutContextChirho::ImplicitChirho(c_chirho, _) => Some(*c_chirho),
+                        LayoutContextChirho::ImplicitChirho(c_chirho, _, _) => Some(*c_chirho),
                         LayoutContextChirho::ExplicitChirho => None,
                     });
 
                 let is_let_context_chirho = after_let_keyword_chirho;
+                let is_of_context_chirho = after_of_keyword_chirho;
                 after_let_keyword_chirho = false;
+                after_of_keyword_chirho = false;
 
                 if let Some(enc_chirho) = enclosing_col_chirho {
                     if col_chirho <= enc_chirho && !after_module_where_chirho {
@@ -177,7 +182,7 @@ impl<'src> LayoutRuleChirho<'src> {
                     } else {
                         // Normal implicit layout
                         context_stack_chirho
-                            .push(LayoutContextChirho::ImplicitChirho(col_chirho, is_let_context_chirho));
+                            .push(LayoutContextChirho::ImplicitChirho(col_chirho, is_let_context_chirho, is_of_context_chirho));
                         let vspan_chirho =
                             self.zero_span_at_chirho(token_chirho.span_chirho.start_chirho());
                         output_chirho.push(RawTokenChirho {
@@ -189,7 +194,7 @@ impl<'src> LayoutRuleChirho<'src> {
                     // No enclosing implicit context (we're at top level or in
                     // explicit braces) — just open a new implicit context.
                     context_stack_chirho
-                        .push(LayoutContextChirho::ImplicitChirho(col_chirho, is_let_context_chirho));
+                        .push(LayoutContextChirho::ImplicitChirho(col_chirho, is_let_context_chirho, is_of_context_chirho));
                     let vspan_chirho =
                         self.zero_span_at_chirho(token_chirho.span_chirho.start_chirho());
                     output_chirho.push(RawTokenChirho {
@@ -217,7 +222,7 @@ impl<'src> LayoutRuleChirho<'src> {
             // Only close contexts tagged as let-opened to avoid closing
             // module-level or other non-let implicit contexts.
             if token_chirho.kind_chirho == RawTokenKindChirho::InChirho {
-                if let Some(LayoutContextChirho::ImplicitChirho(_, true)) =
+                if let Some(LayoutContextChirho::ImplicitChirho(_, true, _)) =
                     context_stack_chirho.last()
                 {
                     let vspan_chirho =
@@ -230,18 +235,27 @@ impl<'src> LayoutRuleChirho<'src> {
                 }
             }
 
-            // Per GHC behavior: `where` closes ALL non-let implicit layout
-            // contexts (do/of/case) regardless of indentation. The `where`
-            // keyword always attaches to the enclosing equation, never to a
-            // do or case block. We preserve let-contexts (closed by `in`)
-            // and stop at the module-level context (indent ≤ 1).
+            // `where` closes non-let implicit layout contexts (do/of/case)
+            // only when the `where` keyword is NOT indented deeper than the
+            // context. When `where` appears indented inside a case alternative
+            // (col > context indent), it belongs to that alternative and must
+            // NOT close the `of` context. We preserve let-contexts (closed by
+            // `in`) and stop at the module-level context (indent ≤ 1).
             if token_chirho.kind_chirho == RawTokenKindChirho::WhereChirho {
-                while let Some(LayoutContextChirho::ImplicitChirho(indent_chirho, is_let_chirho)) =
+                while let Some(LayoutContextChirho::ImplicitChirho(indent_chirho, is_let_chirho, is_of_chirho)) =
                     context_stack_chirho.last()
                 {
                     // Don't close let contexts (those are closed by `in`)
                     // Don't close the outermost module-level context (indent ≤ 1)
                     if *is_let_chirho || *indent_chirho <= 1 {
+                        break;
+                    }
+                    // For `case...of` contexts: only close if `where` is at or
+                    // before the context indentation. When `where` is deeper, it
+                    // belongs to a case alternative's where-clause.
+                    // For `do`/other contexts: always close (where is not valid
+                    // inside do-blocks and belongs to the enclosing equation).
+                    if *is_of_chirho && col_chirho > *indent_chirho {
                         break;
                     }
                     // Close this do/of/case/where context
@@ -257,7 +271,7 @@ impl<'src> LayoutRuleChirho<'src> {
 
             loop {
                 match context_stack_chirho.last() {
-                    Some(LayoutContextChirho::ImplicitChirho(indent_chirho, _)) => {
+                    Some(LayoutContextChirho::ImplicitChirho(indent_chirho, _, _)) => {
                         let indent_chirho = *indent_chirho;
                         if col_chirho < indent_chirho {
                             // Close this layout block
@@ -334,6 +348,9 @@ impl<'src> LayoutRuleChirho<'src> {
                 after_layout_keyword_chirho = true;
                 after_let_keyword_chirho =
                     token_chirho.kind_chirho == RawTokenKindChirho::LetChirho;
+                after_of_keyword_chirho =
+                    token_chirho.kind_chirho == RawTokenKindChirho::OfChirho
+                    || is_lambda_case_chirho;
 
                 // Track if this is the `where` after `module ... where`
                 if token_chirho.kind_chirho == RawTokenKindChirho::WhereChirho {
@@ -351,7 +368,7 @@ impl<'src> LayoutRuleChirho<'src> {
 
         // Close any remaining implicit contexts at EOF
         while let Some(ctx_chirho) = context_stack_chirho.pop() {
-            if let LayoutContextChirho::ImplicitChirho(_, _) = ctx_chirho {
+            if let LayoutContextChirho::ImplicitChirho(_, _, _) = ctx_chirho {
                 let eof_offset_chirho =
                     ByteOffsetChirho::from_usize_chirho(self.source_chirho.len());
                 let vspan_chirho = self.zero_span_at_chirho(eof_offset_chirho);
