@@ -405,6 +405,24 @@ impl LowerCtxChirho {
                     // (StoreAllocFunChirho) that capture the current
                     // arg-register values AND patch the pre-allocated
                     // heap cell to point to the new closure.
+                    //
+                    // IMPORTANT: We defer inserting letrec binders into
+                    // arg_param_indices until after ALL RHS bodies are
+                    // lowered. Otherwise, a subsequent binding's RHS code
+                    // would emit ArgReg references for earlier bindings,
+                    // but those wouldn't be in the thunk's capture list
+                    // (since free_vars excludes letrec binder IDs).
+                    let mut deferred_binder_regs_chirho: Vec<(CoreIdChirho, usize)> =
+                        Vec::new();
+                    // Track next available register separately from
+                    // arg_param_indices to avoid polluting the index map.
+                    let mut next_reg_chirho = self
+                        .arg_param_indices_chirho
+                        .values()
+                        .max()
+                        .copied()
+                        .map(|m_chirho| m_chirho + 1)
+                        .unwrap_or(0);
                     for (i_chirho, (binder_chirho, rhs_chirho)) in
                         binds_chirho.iter().enumerate()
                     {
@@ -430,12 +448,21 @@ impl LowerCtxChirho {
                         captures_chirho
                             .sort_by_key(|&(id_chirho, _)| id_chirho);
 
-                        if !lam_binders_chirho.is_empty() && !captures_chirho.is_empty() {
-                            // Lambda RHS with arg-register captures:
-                            // must use runtime allocation.
+                        if !captures_chirho.is_empty() {
+                            // RHS with arg-register captures (lambda or thunk):
+                            // must use runtime allocation to capture current
+                            // arg-register values.
                             let n_captures_chirho = captures_chirho.len();
-                            let arity_chirho = lam_binders_chirho.len() as u16;
-                            let (_, inner_body_chirho) = collect_lam_chirho(rhs_chirho);
+                            let arity_chirho = if lam_binders_chirho.is_empty() {
+                                None // thunk
+                            } else {
+                                Some(lam_binders_chirho.len() as u16) // function
+                            };
+                            let (_, inner_body_chirho) = if !lam_binders_chirho.is_empty() {
+                                collect_lam_chirho(rhs_chirho)
+                            } else {
+                                (vec![], rhs_chirho)
+                            };
 
                             // Save current state
                             let saved_env_chirho: Vec<(CoreIdChirho, Option<ValueChirho>)> =
@@ -492,19 +519,14 @@ impl LowerCtxChirho {
                                 }
                             }
 
-                            // Assign a dest arg-register for the binding
-                            let max_reg_chirho = self
-                                .arg_param_indices_chirho
-                                .values()
-                                .max()
-                                .copied()
-                                .unwrap_or(0)
-                                + 1;
-                            let dest_reg_chirho = max_reg_chirho;
-                            self.arg_param_indices_chirho
-                                .insert(binder_chirho.id_chirho, dest_reg_chirho);
-                            // Keep env entry too so other bindings can find it
-                            // (the StoreAllocFun will update the heap cell)
+                            // Assign a dest arg-register for the binding.
+                            // We do NOT insert into arg_param_indices yet —
+                            // that happens after all RHS bodies are lowered.
+                            let dest_reg_chirho = next_reg_chirho;
+                            next_reg_chirho += 1;
+                            deferred_binder_regs_chirho.push(
+                                (binder_chirho.id_chirho, dest_reg_chirho),
+                            );
 
                             let capture_sources_chirho: Vec<ArgSourceChirho> =
                                 captures_chirho
@@ -516,7 +538,7 @@ impl LowerCtxChirho {
 
                             deferred_store_allocs_chirho.push((
                                 dest_reg_chirho,
-                                Some(arity_chirho),
+                                arity_chirho,
                                 body_slot_chirho,
                                 binder_chirho.name_chirho.clone(),
                                 capture_sources_chirho,
@@ -533,6 +555,12 @@ impl LowerCtxChirho {
                             *self.heap_chirho.read_mut_chirho(addr_chirho) =
                                 patched_chirho;
                         }
+                    }
+                    // Now that all RHS bodies are lowered, insert the
+                    // letrec binder → dest-register mappings so the
+                    // continuation body can reference them.
+                    for (id_chirho, reg_chirho) in &deferred_binder_regs_chirho {
+                        self.arg_param_indices_chirho.insert(*id_chirho, *reg_chirho);
                     }
                 } else {
                     // Non-recursive let: sequential lowering.

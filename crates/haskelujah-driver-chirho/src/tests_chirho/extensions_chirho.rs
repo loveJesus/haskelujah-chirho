@@ -1632,3 +1632,50 @@ main = print ((1, True, 'a') == (1, True, 'a'))
         result_chirho.err()
     );
 }
+
+/// Letrec where-clause with multiple bindings referencing outer lambda params.
+/// Regression: `c = x + y` where x, y are letrec-bound thunks with captures
+/// was producing 0 because thunks weren't capturing sibling letrec refs correctly.
+#[test]
+fn letrec_multi_thunk_capture_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"module Test where
+f a = c where { x = a; y = a; c = x + y }
+main = print (f 5)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let (_v_chirho, m_chirho) =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "LetrecMulti.hs", None)
+            .expect("should eval");
+    assert_eq!(m_chirho.io_output_chirho.trim(), "10", "f 5 = x + y = a + a = 10");
+}
+
+/// Letrec where-clause with arithmetic on captured values.
+#[test]
+fn letrec_thunk_arithmetic_capture_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"module Test where
+f a = c where { x = a + 1; y = a * 2; c = x + y }
+main = print (f 10)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let (_v_chirho, m_chirho) =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "LetrecArith.hs", None)
+            .expect("should eval");
+    assert_eq!(m_chirho.io_output_chirho.trim(), "31", "f 10: x=11, y=20, c=31");
+}
+
+/// Letrec where three thunks depend on two outer lambda params.
+#[test]
+fn letrec_multi_param_capture_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"module Test where
+f a b = c where { x = a * a; y = b * b; c = x + y }
+main = print (f 3 4)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let (_v_chirho, m_chirho) =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "LetrecMultiParam.hs", None)
+            .expect("should eval");
+    assert_eq!(m_chirho.io_output_chirho.trim(), "25", "f 3 4 = 9 + 16 = 25");
+}
