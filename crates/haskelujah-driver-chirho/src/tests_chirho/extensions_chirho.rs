@@ -2992,6 +2992,68 @@ main = putStrLn "ok"
     assert!(result_chirho.is_ok(), "GADT simple star kind sig failed: {:?}", result_chirho.err());
 }
 
+// ── Constraint/Star kind interchangeability ─────────────────────────────
+
+#[test]
+fn constraint_kind_in_gadt_arrow_chirho() {
+    // Dict :: Constraint -> Type — `Constraint` appears in function arrow position
+    let src_chirho = r#"
+{-# LANGUAGE GADTs, ConstraintKinds, KindSignatures #-}
+module DictGADT where
+
+import Data.Kind
+
+data Dict :: Constraint -> Type where
+  Dict :: a => Dict a
+
+main :: IO ()
+main = print "ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "DictGADT.hs");
+    assert!(result_chirho.is_ok(), "Constraint->Type GADT kind sig failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn constraint_star_interchangeable_in_type_family_chirho() {
+    // Type families returning Constraint should kind-check
+    let src_chirho = r#"
+{-# LANGUAGE TypeFamilies, ConstraintKinds, KindSignatures #-}
+module ConstraintFam where
+
+import Data.Kind
+
+class Show a where
+  show :: a -> String
+
+type family MyConstraint a :: Constraint where
+  MyConstraint Int = Show Int
+
+main :: IO ()
+main = print "ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ConstraintFam.hs");
+    assert!(result_chirho.is_ok(), "Constraint type family failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn datakinds_bool_kind_annotation_chirho() {
+    // DataKinds: (b :: Bool) uses a data type as a kind
+    let src_chirho = r#"
+{-# LANGUAGE DataKinds, KindSignatures, GADTs #-}
+module BoolKind where
+
+data MyFlag (b :: Bool) = MkFlag
+
+main :: IO ()
+main = print "ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "BoolKind.hs");
+    assert!(result_chirho.is_ok(), "DataKinds Bool kind annotation failed: {:?}", result_chirho.err());
+}
+
 #[test]
 fn prelude_export_count_chirho() {
     let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();

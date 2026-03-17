@@ -203,6 +203,14 @@ fn unify_kind_chirho(
             Ok(KindSubstChirho::empty_chirho())
         }
 
+        // ConstraintKinds: GHC treats Constraint and Type (*) as interchangeable
+        // in many contexts. Allow unification between them to handle patterns like
+        // `Dict :: Constraint -> Type` and constraint tuples in type positions.
+        (KindChirho::StarChirho, KindChirho::ConstraintChirho)
+        | (KindChirho::ConstraintChirho, KindChirho::StarChirho) => {
+            Ok(KindSubstChirho::empty_chirho())
+        }
+
         (KindChirho::VarChirho(v_chirho), k_chirho) | (k_chirho, KindChirho::VarChirho(v_chirho)) => {
             bind_kind_var_chirho(*v_chirho, k_chirho, span_chirho)
         }
@@ -398,14 +406,24 @@ impl KindInferCtxChirho {
                 KindChirho::ConstraintChirho
             }
             TypeChirho::ConChirho(name_chirho) => {
+                let text_chirho = name_chirho.text_chirho();
                 // A named kind (e.g. `N` in `N -> Type`): look it up or
                 // create a fresh kind variable.
-                if let Some(k_chirho) = self.env_chirho.lookup_chirho(name_chirho.text_chirho()) {
-                    k_chirho.clone()
+                if let Some(k_chirho) = self.env_chirho.lookup_chirho(text_chirho) {
+                    // DataKinds: if this name has kind * in the env, it's a
+                    // data type being used as a kind. At the kind level, data
+                    // types are opaque sorts that classify promoted constructors.
+                    // Treat them as equivalent to * for kind-checking purposes,
+                    // since promoted constructors ultimately have kind *.
+                    let k_chirho = k_chirho.clone();
+                    match &k_chirho {
+                        KindChirho::StarChirho => KindChirho::StarChirho,
+                        _ => k_chirho,
+                    }
                 } else {
                     let k_chirho = self.fresh_kind_chirho();
                     self.env_chirho
-                        .bind_chirho(name_chirho.text_chirho().to_string(), k_chirho.clone());
+                        .bind_chirho(text_chirho.to_string(), k_chirho.clone());
                     k_chirho
                 }
             }
@@ -856,6 +874,9 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
     // Phase 1: Process all type/data/newtype/class declarations to establish
     // the kind of each type constructor.
     for decl_chirho in &module_chirho.decls_chirho {
+        // Reset kind variable cache between declarations so that kind
+        // variables from one declaration don't leak into the next.
+        ctx_chirho.kind_var_cache_chirho.clear();
         match decl_chirho {
             DeclChirho::DataDeclChirho {
                 name_chirho,
@@ -1219,14 +1240,24 @@ mod tests_chirho {
 
     #[test]
     fn unify_mismatch_chirho() {
+        // Star and Constraint now unify (ConstraintKinds behavior).
         let result_chirho = unify_kind_chirho(
             &KindChirho::StarChirho,
             &KindChirho::ConstraintChirho,
             "test",
             SpanChirho::DUMMY_CHIRHO,
         );
+        assert!(result_chirho.is_ok());
+
+        // Arrow vs Star is a genuine mismatch.
+        let result2_chirho = unify_kind_chirho(
+            &KindChirho::StarChirho,
+            &KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho),
+            "test",
+            SpanChirho::DUMMY_CHIRHO,
+        );
         assert!(matches!(
-            result_chirho,
+            result2_chirho,
             Err(KindErrorChirho::MismatchChirho { .. })
         ));
     }
