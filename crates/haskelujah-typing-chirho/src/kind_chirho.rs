@@ -514,16 +514,26 @@ impl KindInferCtxChirho {
                 elements_chirho,
                 span_chirho,
             } => {
+                // Tuple elements can all be * (value tuple) or all Constraint
+                // (constraint tuple, e.g. (Show a, Eq a)). Use a fresh kind
+                // variable and unify each element against it so the tuple's
+                // kind is determined by its contents.
+                let elem_kind_chirho = self.fresh_kind_chirho();
                 for elem_chirho in elements_chirho {
                     let k_chirho = self.infer_type_kind_chirho(elem_chirho);
                     self.unify_chirho(
                         &k_chirho,
-                        &KindChirho::StarChirho,
+                        &elem_kind_chirho,
                         "tuple element type",
                         *span_chirho,
                     );
                 }
-                KindChirho::StarChirho
+                // Resolve the element kind — defaults to * if unconstrained.
+                let resolved_chirho = self.subst_chirho.apply_chirho(&elem_kind_chirho);
+                match &resolved_chirho {
+                    KindChirho::ConstraintChirho => KindChirho::ConstraintChirho,
+                    _ => KindChirho::StarChirho,
+                }
             }
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 self.infer_type_kind_chirho(inner_chirho)

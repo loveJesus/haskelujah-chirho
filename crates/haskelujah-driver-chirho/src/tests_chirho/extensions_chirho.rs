@@ -2177,3 +2177,129 @@ main = print (f 21)
         Err(e_chirho) => panic!("case alt where function bind failed: {}", e_chirho),
     }
 }
+
+// ---------------------------------------------------------------------------
+// Constraint tuple kind inference
+// ---------------------------------------------------------------------------
+
+/// Constraint tuple `(Show a, Eq a) => a -> String` should kind-check.
+#[test]
+fn constraint_tuple_kind_chirho() {
+    let src_chirho = r#"
+module ConstraintTuple1 where
+
+class Show a where
+  show :: a -> String
+
+class Eq a where
+  eq :: a -> a -> Bool
+
+showEq :: (Show a, Eq a) => a -> String
+showEq x = show x
+
+main :: IO ()
+main = print (showEq 42)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "ConstraintTuple1.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "\"42\"");
+        }
+        Err(e_chirho) => panic!("constraint tuple kind failed: {}", e_chirho),
+    }
+}
+
+/// Three-element constraint tuple.
+#[test]
+fn constraint_tuple_three_chirho() {
+    let src_chirho = r#"
+module ConstraintTuple2 where
+
+class Show a where
+  show :: a -> String
+
+class Eq a where
+  eq :: a -> a -> Bool
+
+class Ord a where
+  compare :: a -> a -> Int
+
+f :: (Show a, Eq a, Ord a) => a -> String
+f x = show x
+
+main :: IO ()
+main = print (f 99)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "ConstraintTuple2.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "\"99\"");
+        }
+        Err(e_chirho) => panic!("3-element constraint tuple failed: {}", e_chirho),
+    }
+}
+
+/// ConstraintKinds: type alias for a constraint tuple.
+#[test]
+fn constraint_kinds_type_alias_chirho() {
+    let src_chirho = r#"
+{-# LANGUAGE ConstraintKinds #-}
+module ConstraintKinds1 where
+
+class Show a where
+  show :: a -> String
+
+class Eq a where
+  eq :: a -> a -> Bool
+
+type ShowEq a = (Show a, Eq a)
+
+f :: ShowEq a => a -> String
+f x = show x
+
+main :: IO ()
+main = print (f 42)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "ConstraintKinds1.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "\"42\"");
+        }
+        Err(e_chirho) => panic!("ConstraintKinds type alias failed: {}", e_chirho),
+    }
+}
+
+/// Class with constraint tuple superclass.
+#[test]
+fn constraint_tuple_superclass_chirho() {
+    let src_chirho = r#"
+module ConstraintTuple3 where
+
+class Show a where
+  show :: a -> String
+
+class Eq a where
+  eq :: a -> a -> Bool
+
+class (Show a, Eq a) => Printable a where
+  display :: a -> String
+
+main :: IO ()
+main = print 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "ConstraintTuple3.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "42");
+        }
+        Err(e_chirho) => panic!("constraint tuple superclass failed: {}", e_chirho),
+    }
+}
