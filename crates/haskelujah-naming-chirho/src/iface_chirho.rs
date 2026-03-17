@@ -4199,7 +4199,26 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
-    modules_chirho
+    // Deduplicate: merge exports for modules with the same name.
+    // Earlier batches may define partial interfaces that later batches extend.
+    let mut deduped_chirho: Vec<ModuleIfaceChirho> = Vec::with_capacity(modules_chirho.len());
+    let mut index_chirho: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for m_chirho in modules_chirho {
+        if let Some(&idx_chirho) = index_chirho.get(&m_chirho.name_chirho) {
+            // Merge exports into existing entry
+            let existing_chirho = &mut deduped_chirho[idx_chirho];
+            for (k_chirho, v_chirho) in m_chirho.exports_chirho.values_chirho {
+                existing_chirho.exports_chirho.values_chirho.entry(k_chirho).or_insert(v_chirho);
+            }
+            for (k_chirho, v_chirho) in m_chirho.exports_chirho.types_chirho {
+                existing_chirho.exports_chirho.types_chirho.entry(k_chirho).or_insert(v_chirho);
+            }
+        } else {
+            index_chirho.insert(m_chirho.name_chirho.clone(), deduped_chirho.len());
+            deduped_chirho.push(m_chirho);
+        }
+    }
+    deduped_chirho
 }
 
 /// Collect all definitions (types + values) from a module's declarations.
