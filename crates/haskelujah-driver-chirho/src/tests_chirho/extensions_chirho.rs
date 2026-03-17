@@ -1438,3 +1438,34 @@ main = f x + y
     assert!(result_chirho.is_ok(), "mixed where bindings should work: {:?}", result_chirho.err());
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
+
+#[test]
+fn do_let_tuple_pattern_bind_chirho() {
+    // do { let (x, y) = (10, 32); putStrLn (show (x + y)) }
+    let src_chirho = r#"
+module Test where
+main = do
+  let (x, y) = (10, 32)
+  return (x + y)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DoLetTuple.hs", None);
+    assert!(result_chirho.is_ok(), "do-let tuple pat should work: {:?}", result_chirho.err());
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
+#[test]
+fn do_let_constructor_pattern_bind_chirho() {
+    // do { let MkBox x = MkBox 42; return x }
+    let src_chirho = r#"
+module Test where
+data MyBox = MkBox Int
+main = do
+  let MkBox x = MkBox 42
+  return x
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DoLetCon.hs", None);
+    assert!(result_chirho.is_ok(), "do-let constructor pat should work: {:?}", result_chirho.err());
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
