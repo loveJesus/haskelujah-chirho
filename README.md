@@ -10,9 +10,9 @@ Haskelujah is a Haskell compiler written in Rust. It targets practical compatibi
 
 | Metric | Value |
 |---|---|
-| Tests | **1,883 passing**, 0 failures |
+| Tests | **2,033 passing**, 0 failures |
 | Workspace | 21 crates |
-| Codebase | ~100,000 lines of Rust |
+| Codebase | ~129,000 lines of Rust |
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |
 
@@ -22,7 +22,8 @@ Haskelujah is a Haskell compiler written in Rust. It targets practical compatibi
 - Haskell 2010 lexing, layout insertion, and parsing
 - Hindley-Milner type inference with typeclasses, multi-parameter type classes, functional dependencies, and deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 - Kind inference with explicit kind signatures
-- GADTs, existential quantification, type applications, type families, DataKinds, ConstraintKinds
+- GADTs, existential quantification, type applications, type families (open/closed/associated), DataKinds, ConstraintKinds
+- RankNTypes, ScopedTypeVariables, LinearTypes, PolyKinds, TypeOperators
 - Pattern match exhaustiveness and redundancy checking
 - True lazy evaluation with infinite lists and bang patterns
 - IO, closures, recursion, list operations, arithmetic sequences
@@ -36,6 +37,9 @@ Haskelujah is a Haskell compiler written in Rust. It targets practical compatibi
 - Hierarchical multi-module compilation with dependency ordering and circular import support
 - Orphan instance detection
 - Incremental compilation with fingerprinting and artifact caching
+- SCC-based binding group analysis for correct polymorphic generalization
+- 40+ GHC extensions: LambdaCase, RecordWildCards, ViewPatterns, PatternSynonyms, DerivingVia, DerivingStrategies, TupleSections, MagicHash, TypedHoles, PartialTypeSignatures, GHC2021/GHC2024, and more
+- 70+ synthetic module interfaces for common Haskell libraries
 
 **Optimization passes:**
 - Inlining (INLINE/NOINLINE/INLINABLE pragmas)
