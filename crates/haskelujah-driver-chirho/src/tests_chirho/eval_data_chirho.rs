@@ -2637,3 +2637,66 @@ main = do
         }
     }
 
+    #[test]
+    fn eval_where_clause_captures_outer_var_chirho() {
+        // GHC tc081: where-clause function captures outer function's parameter
+        use crate::compile_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+f x = (x + 1, g True, g 'c')
+  where
+    g y = if x > 2 then [] else [y]
+";
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs");
+        assert!(result_chirho.is_ok(), "where-clause capturing outer var should compile: {:?}", result_chirho.err());
+    }
+
+    #[test]
+    fn eval_let_polymorphic_generalization_chirho() {
+        // Classic let-polymorphism: `let f x = x in (f True, f 'c')`
+        // f must be generalized to `forall a. a -> a` so it can be used at both types
+        use crate::compile_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = let f x = x in (f True, f 'c')
+";
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs");
+        assert!(result_chirho.is_ok(), "let-polymorphism should generalize f: {:?}", result_chirho.err());
+    }
+
+    #[test]
+    fn eval_let_polymorphic_list_singleton_chirho() {
+        // let-binding `wrap x = [x]` used at multiple types
+        use crate::compile_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+main = let wrap x = [x]
+       in (wrap True, wrap 42)
+";
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs");
+        assert!(result_chirho.is_ok(), "let-polymorphism for wrap should work: {:?}", result_chirho.err());
+    }
+
+    #[test]
+    fn eval_where_multiple_polymorphic_bindings_chirho() {
+        // Multiple where-clause bindings, each should be generalized independently
+        use crate::compile_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+f = (g True, g 'a', h [1], h [True])
+  where
+    g x = [x]
+    h xs = length xs
+";
+        let result_chirho =
+            compile_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs");
+        assert!(result_chirho.is_ok(), "multiple polymorphic where-bindings: {:?}", result_chirho.err());
+    }
+

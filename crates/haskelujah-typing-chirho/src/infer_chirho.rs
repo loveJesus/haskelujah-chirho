@@ -1273,6 +1273,9 @@ impl InferCtxChirho {
                                 }
                             }
 
+                            // Remove pre-bound mono type before generalizing
+                            // (see comment at where-clause site).
+                            self.env_chirho.remove_chirho(&name_str_chirho);
                             let gen_ty_chirho = self.generalize_chirho(&ty_chirho);
                             self.env_chirho
                                 .bind_chirho(name_str_chirho, gen_ty_chirho);
@@ -1466,6 +1469,9 @@ impl InferCtxChirho {
                                     }
                                 }
 
+                                // Remove pre-bound mono type before generalizing
+                                // (see comment at other where-clause site).
+                                self.env_chirho.remove_chirho(&name_str_chirho);
                                 let gen_chirho = self.generalize_chirho(&wt_chirho);
                                 self.env_chirho
                                     .bind_chirho(name_str_chirho, gen_chirho);
@@ -2249,6 +2255,14 @@ impl InferCtxChirho {
                             }
                         }
 
+                        // Remove the pre-bound monomorphic type for this
+                        // binding before generalizing — otherwise the binding's
+                        // own free type variables appear in the environment and
+                        // block quantification (e.g. `g y = [y]` in a where-clause
+                        // needs `y`'s type var generalized, but the pre-binding
+                        // `g :: t_fresh` unified to `t_y -> [t_y]` would keep
+                        // `t_y` in env free vars).
+                        self.env_chirho.remove_chirho(&name_str_chirho);
                         let gen_chirho = self.generalize_chirho(&wt_chirho);
                         self.env_chirho
                             .bind_chirho(name_str_chirho, gen_chirho);
