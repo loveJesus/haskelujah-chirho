@@ -381,6 +381,73 @@ impl KindInferCtxChirho {
         }
     }
 
+    /// Interpret a `TypeChirho` as a kind (for standalone kind signatures like
+    /// `data V :: N -> Type where`).  This converts the *type-level*
+    /// representation of a kind back into a `KindChirho`.
+    fn type_to_kind_chirho(&mut self, ty_chirho: &TypeChirho) -> KindChirho {
+        match ty_chirho {
+            TypeChirho::ConChirho(name_chirho)
+                if name_chirho.text_chirho() == "Type"
+                    || name_chirho.text_chirho() == "*" =>
+            {
+                KindChirho::StarChirho
+            }
+            TypeChirho::ConChirho(name_chirho)
+                if name_chirho.text_chirho() == "Constraint" =>
+            {
+                KindChirho::ConstraintChirho
+            }
+            TypeChirho::ConChirho(name_chirho) => {
+                // A named kind (e.g. `N` in `N -> Type`): look it up or
+                // create a fresh kind variable.
+                if let Some(k_chirho) = self.env_chirho.lookup_chirho(name_chirho.text_chirho()) {
+                    k_chirho.clone()
+                } else {
+                    let k_chirho = self.fresh_kind_chirho();
+                    self.env_chirho
+                        .bind_chirho(name_chirho.text_chirho().to_string(), k_chirho.clone());
+                    k_chirho
+                }
+            }
+            TypeChirho::FunChirho {
+                arg_chirho,
+                result_chirho,
+                ..
+            } => KindChirho::arrow_chirho(
+                self.type_to_kind_chirho(arg_chirho),
+                self.type_to_kind_chirho(result_chirho),
+            ),
+            TypeChirho::VarChirho(name_chirho) => {
+                let name_str_chirho = name_chirho.text_chirho();
+                if let Some(&var_chirho) = self.kind_var_cache_chirho.get(name_str_chirho) {
+                    KindChirho::VarChirho(var_chirho)
+                } else {
+                    let var_chirho = self.fresh_var_chirho();
+                    self.kind_var_cache_chirho
+                        .insert(name_str_chirho.to_string(), var_chirho);
+                    KindChirho::VarChirho(var_chirho)
+                }
+            }
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                // Kind application (rare, e.g. `(k1 k2) -> Type`).
+                let f_chirho = self.type_to_kind_chirho(fun_chirho);
+                let a_chirho = self.type_to_kind_chirho(arg_chirho);
+                KindChirho::arrow_chirho(a_chirho, f_chirho)
+            }
+            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                self.type_to_kind_chirho(inner_chirho)
+            }
+            _ => {
+                // Fallback: treat unknown shapes as *.
+                KindChirho::StarChirho
+            }
+        }
+    }
+
     /// Unify two kinds and accumulate the substitution.
     fn unify_chirho(
         &mut self,
@@ -617,25 +684,41 @@ impl KindInferCtxChirho {
         &mut self,
         name_chirho: &str,
         type_vars_chirho: &[TyVarChirho],
+        kind_sig_chirho: Option<&TypeChirho>,
         span_chirho: SpanChirho,
     ) {
-        // Each type parameter gets a kind: use the annotation if present,
-        // otherwise create a fresh kind variable for inference.
-        let mut param_kinds_chirho = Vec::new();
-        for tv_chirho in type_vars_chirho {
-            let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
-                self.ast_kind_to_kind_ctx_chirho(ann_chirho)
-            } else {
-                self.fresh_kind_chirho()
-            };
-            self.env_chirho
-                .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
-            param_kinds_chirho.push(k_chirho);
-        }
-
-        // The type constructor's kind: k1 -> k2 -> ... -> *
-        let kind_chirho =
-            KindChirho::arrow_n_chirho(param_kinds_chirho, KindChirho::StarChirho);
+        // If a standalone kind signature is given (e.g. `data V :: N -> Type where`),
+        // interpret it directly as the type constructor's kind.
+        let kind_chirho = if let Some(sig_chirho) = kind_sig_chirho {
+            let k_chirho = self.type_to_kind_chirho(sig_chirho);
+            // Still bind any explicit type variable names that appear.
+            for tv_chirho in type_vars_chirho {
+                let tvk_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
+                    self.ast_kind_to_kind_ctx_chirho(ann_chirho)
+                } else {
+                    self.fresh_kind_chirho()
+                };
+                self.env_chirho
+                    .bind_chirho(tv_chirho.text_chirho().to_string(), tvk_chirho);
+            }
+            k_chirho
+        } else {
+            // Each type parameter gets a kind: use the annotation if present,
+            // otherwise create a fresh kind variable for inference.
+            let mut param_kinds_chirho = Vec::new();
+            for tv_chirho in type_vars_chirho {
+                let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
+                    self.ast_kind_to_kind_ctx_chirho(ann_chirho)
+                } else {
+                    self.fresh_kind_chirho()
+                };
+                self.env_chirho
+                    .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
+                param_kinds_chirho.push(k_chirho);
+            }
+            // The type constructor's kind: k1 -> k2 -> ... -> *
+            KindChirho::arrow_n_chirho(param_kinds_chirho, KindChirho::StarChirho)
+        };
 
         // If already bound (e.g. from a use site), unify.
         if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
@@ -778,12 +861,14 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                 name_chirho,
                 type_vars_chirho,
                 constructors_chirho,
+                kind_sig_chirho,
                 span_chirho,
                 ..
             } => {
                 ctx_chirho.infer_data_decl_kind_chirho(
                     name_chirho.text_chirho(),
                     type_vars_chirho,
+                    kind_sig_chirho.as_ref(),
                     *span_chirho,
                 );
                 // Kind-check constructor field types.
@@ -837,12 +922,14 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                 name_chirho,
                 type_vars_chirho,
                 constructor_chirho,
+                kind_sig_chirho,
                 span_chirho,
                 ..
             } => {
                 ctx_chirho.infer_data_decl_kind_chirho(
                     name_chirho.text_chirho(),
                     type_vars_chirho,
+                    kind_sig_chirho.as_ref(),
                     *span_chirho,
                 );
                 // Kind-check the newtype constructor field.
@@ -1196,6 +1283,7 @@ mod tests_chirho {
                 },
             ],
             deriving_chirho: vec![],
+            kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }]);
 
@@ -1220,6 +1308,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             deriving_chirho: vec![],
+            kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }]);
 
@@ -1249,6 +1338,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             deriving_chirho: vec![],
+            kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }]);
 
@@ -1280,6 +1370,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             deriving_chirho: vec![],
+            kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }]);
 
@@ -1419,6 +1510,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             deriving_chirho: vec![],
+            kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }]);
 

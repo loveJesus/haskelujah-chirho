@@ -105,6 +105,8 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         constructors_chirho: Vec<ConDeclChirho>,
         deriving_chirho: Vec<NameChirho>,
+        /// Standalone kind signature for GADT-style: `data T :: K1 -> K2 -> Type where`
+        kind_sig_chirho: Option<crate::ty_chirho::TypeChirho>,
         span_chirho: SpanChirho,
     },
     /// Newtype declaration (`newtype T a = Con Type`).
@@ -113,6 +115,8 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         constructor_chirho: ConDeclChirho,
         deriving_chirho: Vec<NameChirho>,
+        /// Standalone kind signature for GADT-style newtype.
+        kind_sig_chirho: Option<crate::ty_chirho::TypeChirho>,
         span_chirho: SpanChirho,
     },
     /// Type alias (`type Name = Type`).

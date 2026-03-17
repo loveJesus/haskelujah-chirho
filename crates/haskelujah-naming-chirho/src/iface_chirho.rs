@@ -4644,6 +4644,7 @@ mod tests_chirho {
                         },
                     ],
                     deriving_chirho: vec![],
+                    kind_sig_chirho: None,
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 DeclChirho::FunBindChirho {
@@ -4686,6 +4687,7 @@ mod tests_chirho {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }],
                     deriving_chirho: vec![],
+                    kind_sig_chirho: None,
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 DeclChirho::FunBindChirho {
@@ -4726,6 +4728,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 }],
                 deriving_chirho: vec![],
+                kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
         );
@@ -4762,6 +4765,7 @@ mod tests_chirho {
                     },
                 ],
                 deriving_chirho: vec![],
+                kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
         );
@@ -4820,6 +4824,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 deriving_chirho: vec![],
+                kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
         );

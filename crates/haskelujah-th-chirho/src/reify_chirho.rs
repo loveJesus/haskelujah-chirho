@@ -425,6 +425,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             deriving_chirho: vec![mk_name_chirho("Show")],
+            kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 

@@ -490,6 +490,7 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
                 type_vars_chirho: ast_tyvars_chirho,
                 constructors_chirho: ast_cons_chirho,
                 deriving_chirho: deriving_names_chirho,
+                kind_sig_chirho: None,
                 span_chirho: TH_SPAN_CHIRHO,
             })
         }

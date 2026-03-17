@@ -1425,8 +1425,10 @@ impl LowerCtxChirho {
         let mut type_vars_chirho = Vec::new();
         let mut constructors_chirho = Vec::new();
         let mut deriving_chirho = Vec::new();
+        let mut kind_sig_chirho = None;
         let mut saw_equals_chirho = false;
         let mut saw_data_chirho = false;
+        let mut saw_double_colon_chirho = false;
 
         let mut idx_chirho = 0;
         while idx_chirho < children_chirho.len() {
@@ -1437,7 +1439,101 @@ impl LowerCtxChirho {
                         saw_data_chirho = true;
                     } else if tok_chirho.kind_chirho() == TokenKindChirho::EqualsChirho {
                         saw_equals_chirho = true;
-                    } else if saw_data_chirho && !saw_equals_chirho {
+                    } else if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho
+                        && saw_data_chirho
+                        && name_chirho.is_some()
+                        && !saw_equals_chirho
+                    {
+                        // Standalone kind signature: `data T :: K where`
+                        // Collect token atoms between `::` and `where`/`=`, then
+                        // build a TypeChirho from them (the CST stores these as
+                        // flat tokens, not a parsed type node).
+                        saw_double_colon_chirho = true;
+                        let mut atoms_chirho: Vec<TypeChirho> = Vec::new();
+                        let mut arrows_chirho: Vec<usize> = Vec::new(); // indices into atoms where -> appears
+                        let mut j_chirho = idx_chirho + 1;
+                        while j_chirho < children_chirho.len() {
+                            let kc_chirho = &children_chirho[j_chirho];
+                            match kc_chirho.element_chirho {
+                                GreenElementChirho::TokenChirho(kt_chirho)
+                                    if kt_chirho.kind_chirho() == TokenKindChirho::WhereKeywordChirho
+                                        || kt_chirho.kind_chirho() == TokenKindChirho::EqualsChirho =>
+                                {
+                                    break;
+                                }
+                                GreenElementChirho::TokenChirho(kt_chirho)
+                                    if kt_chirho.kind_chirho() == TokenKindChirho::RightArrowChirho =>
+                                {
+                                    arrows_chirho.push(atoms_chirho.len());
+                                }
+                                GreenElementChirho::TokenChirho(kt_chirho)
+                                    if kt_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                                        || kt_chirho.kind_chirho() == TokenKindChirho::VarIdChirho =>
+                                {
+                                    let s_chirho = self.span_chirho(
+                                        kc_chirho.start_chirho,
+                                        kc_chirho.end_chirho,
+                                    );
+                                    let nm_chirho =
+                                        self.name_from_token_chirho(kt_chirho, s_chirho);
+                                    if kt_chirho.kind_chirho() == TokenKindChirho::ConIdChirho {
+                                        atoms_chirho.push(TypeChirho::ConChirho(nm_chirho));
+                                    } else {
+                                        atoms_chirho.push(TypeChirho::VarChirho(nm_chirho));
+                                    }
+                                }
+                                GreenElementChirho::TokenChirho(kt_chirho)
+                                    if (kt_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
+                                        || kt_chirho.kind_chirho() == TokenKindChirho::ConSymChirho)
+                                        && kt_chirho.text_chirho() == "*" =>
+                                {
+                                    let s_chirho = self.span_chirho(
+                                        kc_chirho.start_chirho,
+                                        kc_chirho.end_chirho,
+                                    );
+                                    atoms_chirho.push(TypeChirho::ConChirho(
+                                        NameChirho::RawChirho(RawNameChirho::unqualified_chirho("*", s_chirho)),
+                                    ));
+                                }
+                                GreenElementChirho::NodeChirho(_) => {
+                                    // If the parser wrapped part of the kind sig
+                                    // in a node, lower it as a type.
+                                    atoms_chirho.push(
+                                        self.lower_type_from_child_chirho(kc_chirho),
+                                    );
+                                }
+                                _ => {}
+                            }
+                            j_chirho += 1;
+                        }
+                        // Build the kind type: fold right over arrows.
+                        // `N -> Type` with atoms=[N, Type], arrows=[1 position]
+                        // becomes FunChirho { arg: N, result: Type }.
+                        if !atoms_chirho.is_empty() {
+                            if arrows_chirho.is_empty() {
+                                // Single atom, no arrows (e.g. `data T :: Type where`).
+                                kind_sig_chirho = Some(atoms_chirho.remove(0));
+                            } else {
+                                // Split atoms by arrow positions and fold right.
+                                // atoms_chirho contains the types between arrows.
+                                // arrows_chirho[i] = the atom index at which arrow i occurs
+                                // (arrows separate atoms, so atom count = arrow count + 1).
+                                let mut result_chirho =
+                                    atoms_chirho.pop().unwrap();
+                                for a_chirho in atoms_chirho.into_iter().rev() {
+                                    result_chirho = TypeChirho::FunChirho {
+                                        arg_chirho: Box::new(a_chirho),
+                                        mult_chirho: None,
+                                        result_chirho: Box::new(result_chirho),
+                                        span_chirho: span_chirho,
+                                    };
+                                }
+                                kind_sig_chirho = Some(result_chirho);
+                            }
+                        }
+                        idx_chirho = j_chirho;
+                        continue;
+                    } else if saw_data_chirho && !saw_equals_chirho && !saw_double_colon_chirho {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                         if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
@@ -1485,6 +1581,7 @@ impl LowerCtxChirho {
             type_vars_chirho,
             constructors_chirho,
             deriving_chirho,
+            kind_sig_chirho,
             span_chirho,
         }
     }
@@ -1876,6 +1973,7 @@ impl LowerCtxChirho {
                 span_chirho,
             }),
             deriving_chirho,
+            kind_sig_chirho: None,
             span_chirho,
         }
     }
@@ -7558,6 +7656,32 @@ foo = 1
                     type_vars_chirho[0].kind_annotation_chirho,
                     Some(expected_chirho)
                 );
+            }
+            other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_standalone_kind_sig_gadt_chirho() {
+        // data V :: N -> Type where { VZ :: V Z }
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\ndata V :: N -> Type where\n  VZ :: V Z\n",
+        );
+        let data_decl_chirho = &module_chirho.decls_chirho[0];
+        match data_decl_chirho {
+            DeclChirho::DataDeclChirho {
+                name_chirho,
+                kind_sig_chirho,
+                constructors_chirho,
+                ..
+            } => {
+                assert_eq!(name_chirho.text_chirho(), "V");
+                assert!(
+                    kind_sig_chirho.is_some(),
+                    "standalone kind sig should be Some, got None. Decl: {:?}",
+                    data_decl_chirho
+                );
+                assert!(!constructors_chirho.is_empty(), "should have GADT constructors");
             }
             other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
         }

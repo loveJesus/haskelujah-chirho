@@ -883,6 +883,7 @@ mod tests_chirho {
             type_vars_chirho: vec![],
             constructors_chirho,
             deriving_chirho: vec![],
+            kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }
     }
@@ -1233,6 +1234,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 deriving_chirho: vec![],
+                kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             mk_case_decl_chirho("f", vec![mk_con_pat_chirho("Wrap")]),

@@ -2936,6 +2936,64 @@ main = do
     assert!(result_chirho.is_ok(), "Prelude list expanded failed: {:?}", result_chirho.err());
 }
 
+// ---------------------------------------------------------------------------
+// GADT standalone kind signatures
+// ---------------------------------------------------------------------------
+
+#[test]
+fn gadt_standalone_kind_sig_chirho() {
+    // `data V :: N -> Type where` — the type constructor V has kind N -> *,
+    // so `V Z` should kind-check instead of erroring with "expected *, found k0 -> k1".
+    let src_chirho = r#"
+{-# LANGUAGE GADTs, DataKinds, KindSignatures #-}
+module GadtKindSig where
+import Data.Kind (Type)
+data N = Z | S N
+data V :: N -> Type where
+  VZ :: V Z
+  VS :: V n -> V (S n)
+main :: IO ()
+main = putStrLn "ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "GadtKindSig.hs", None);
+    assert!(result_chirho.is_ok(), "GADT standalone kind sig failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn gadt_kind_sig_multi_param_chirho() {
+    // Multi-parameter kind signature: `data Pair :: * -> * -> Type where`
+    let src_chirho = r#"
+{-# LANGUAGE GADTs, KindSignatures #-}
+module GadtKindMulti where
+import Data.Kind (Type)
+data Pair :: * -> * -> Type where
+  MkPair :: a -> b -> Pair a b
+main :: IO ()
+main = putStrLn "ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "GadtKindMulti.hs", None);
+    assert!(result_chirho.is_ok(), "GADT multi-param kind sig failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn gadt_kind_sig_simple_star_chirho() {
+    // Simple kind signature `data T :: Type where` (just * kind, no arrows).
+    let src_chirho = r#"
+{-# LANGUAGE GADTs, KindSignatures #-}
+module GadtKindStar where
+import Data.Kind (Type)
+data T :: Type where
+  MkT :: T
+main :: IO ()
+main = putStrLn "ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "GadtKindStar.hs", None);
+    assert!(result_chirho.is_ok(), "GADT simple star kind sig failed: {:?}", result_chirho.err());
+}
+
 #[test]
 fn prelude_export_count_chirho() {
     let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
