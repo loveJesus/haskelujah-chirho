@@ -2303,3 +2303,115 @@ main = print 42
         Err(e_chirho) => panic!("constraint tuple superclass failed: {}", e_chirho),
     }
 }
+
+// ---------------------------------------------------------------------------
+// DoAndIfThenElse / continuation keywords in layout
+// ---------------------------------------------------------------------------
+
+/// `then`/`else` at same indentation as `if` in a do-block.
+#[test]
+fn do_if_then_else_aligned_chirho() {
+    let src_chirho = r#"
+module DoIfAligned where
+
+main :: IO ()
+main = do if True
+          then print 42
+          else print 0
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "DoIfAligned.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "42");
+        }
+        Err(e_chirho) => panic!("do if/then/else aligned failed: {}", e_chirho),
+    }
+}
+
+/// `then`/`else` at same column as do-block statements.
+#[test]
+fn do_if_then_else_at_do_indent_chirho() {
+    let src_chirho = r#"
+module DoIfDo where
+
+main :: IO ()
+main = do
+  print 1
+  if True
+    then print 42
+    else print 0
+  print 3
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "DoIfDo.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            let lines_chirho: Vec<&str> = machine_chirho.io_output_chirho.trim().lines().collect();
+            assert_eq!(lines_chirho, vec!["1", "42", "3"]);
+        }
+        Err(e_chirho) => panic!("do if/then/else at do indent failed: {}", e_chirho),
+    }
+}
+
+/// Nested if/then/else in do-block.
+#[test]
+fn do_nested_if_then_else_chirho() {
+    let src_chirho = r#"
+module DoNestedIf where
+
+f :: Int -> IO ()
+f n = do
+  if n > 0
+    then if n > 10
+           then print 100
+           else print n
+    else print 0
+
+main :: IO ()
+main = do
+  f 5
+  f 20
+  f 0
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "DoNestedIf.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            let lines_chirho: Vec<&str> = machine_chirho.io_output_chirho.trim().lines().collect();
+            assert_eq!(lines_chirho, vec!["5", "100", "0"]);
+        }
+        Err(e_chirho) => panic!("do nested if/then/else failed: {}", e_chirho),
+    }
+}
+
+/// Case-of with `of` on the next line at same indent as scrutinee.
+#[test]
+fn case_of_next_line_chirho() {
+    let src_chirho = r#"
+module CaseOfNext where
+
+f :: Int -> Int
+f n = case n
+        of 0 -> 100
+           _ -> n + 1
+
+main :: IO ()
+main = do
+  print (f 0)
+  print (f 41)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseOfNext.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            let lines_chirho: Vec<&str> = machine_chirho.io_output_chirho.trim().lines().collect();
+            assert_eq!(lines_chirho, vec!["100", "42"]);
+        }
+        Err(e_chirho) => panic!("case of next line failed: {}", e_chirho),
+    }
+}

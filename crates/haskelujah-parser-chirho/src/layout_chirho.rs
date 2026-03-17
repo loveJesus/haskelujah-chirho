@@ -273,6 +273,17 @@ impl<'src> LayoutRuleChirho<'src> {
                 match context_stack_chirho.last() {
                     Some(LayoutContextChirho::ImplicitChirho(indent_chirho, _, _)) => {
                         let indent_chirho = *indent_chirho;
+                        // `then`, `else`, `of` are always continuation keywords
+                        // — they never start new statements or close layout blocks.
+                        let is_cont_chirho = matches!(
+                            token_chirho.kind_chirho,
+                            RawTokenKindChirho::ThenChirho
+                                | RawTokenKindChirho::ElseChirho
+                                | RawTokenKindChirho::OfChirho
+                        );
+                        if is_cont_chirho {
+                            break;
+                        }
                         if col_chirho < indent_chirho {
                             // Close this layout block
                             let vspan_chirho = self
@@ -288,16 +299,25 @@ impl<'src> LayoutRuleChirho<'src> {
                             // Same indentation — insert semicolon before token
                             // But NOT for the very first token in the block
                             // (the virtual `{` was just emitted).
-                            // We detect this: if the previous non-trivia output
-                            // is a VirtualLeftBrace, skip the semicolon.
+                            // Also skip semicolons before continuation keywords
+                            // (`then`, `else`, `of`) which are always part of
+                            // the current expression, not new statements.
                             let last_nt_kind_chirho = output_chirho
                                 .iter()
                                 .rev()
                                 .find(|t_chirho| !t_chirho.kind_chirho.is_trivia_chirho())
                                 .map(|t_chirho| t_chirho.kind_chirho);
 
-                            if last_nt_kind_chirho
-                                != Some(RawTokenKindChirho::VirtualLeftBraceChirho)
+                            let is_continuation_chirho = matches!(
+                                token_chirho.kind_chirho,
+                                RawTokenKindChirho::ThenChirho
+                                    | RawTokenKindChirho::ElseChirho
+                                    | RawTokenKindChirho::OfChirho
+                            );
+
+                            if !is_continuation_chirho
+                                && last_nt_kind_chirho
+                                    != Some(RawTokenKindChirho::VirtualLeftBraceChirho)
                             {
                                 let vspan_chirho = self.zero_span_at_chirho(
                                     token_chirho.span_chirho.start_chirho(),
