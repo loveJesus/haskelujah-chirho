@@ -35,13 +35,13 @@ lex → layout → CST parse → AST lower → name resolve → kind infer → t
 
 ### Test Coverage
 
-**2101 tests passing**, 0 failures (run `bash spec-chirho/stats-chirho.sh` for live stats)
+**2108 tests passing**, 0 failures (run `bash spec-chirho/stats-chirho.sh` for live stats)
 
 ### Completed
 
 - Phase 1: 128 priorities ([spec-chirho/phase1-archive-chirho.md](spec-chirho/phase1-archive-chirho.md))
 - Phase 2: 62 priorities ([spec-chirho/phase2-archive-chirho.md](spec-chirho/phase2-archive-chirho.md))
-- Phase 3 done so far: GADTs, RankNTypes, ScopedTypeVariables, RecordWildCards, ViewPatterns, PatternSynonyms, strict data fields, DerivingVia, NamedFieldPuns, MultiWayIf, NumericUnderscores, Enum succ/pred, TupleSections, StandaloneDeriving, DeriveAnyClass, UnicodeSyntax, ImportQualifiedPost, DerivingStrategies, PackageImports, RoleAnnotations, DeriveDataTypeable, AssociatedTypeFamilies, LinearTypes, ParametricInstances, TypeAnnotatedPatterns, ModuleInterfacesBatch4, CaseBinderFix, WhereClauseInCaseAlts, ConstraintTupleKinds, DoAndIfThenElse, ModuleInterfacesBatch5, ModuleIfaceDedup, PreludeExpansion, GADTStandaloneKindSigs, ParserPanicHardening, NewtypeRecordAccessors, PatternBindingLetrec, NestedWhereClauseScoping, QualifiedTypeContextLowering, TypeEqualityConstraints, LayoutInClosesInterveningContexts, PolymorphicMonadApplicativeFunctor ([spec-chirho/phase3-progress-chirho.md](spec-chirho/phase3-progress-chirho.md))
+- Phase 3 done so far: GADTs, RankNTypes, ScopedTypeVariables, RecordWildCards, ViewPatterns, PatternSynonyms, strict data fields, DerivingVia, NamedFieldPuns, MultiWayIf, NumericUnderscores, Enum succ/pred, TupleSections, StandaloneDeriving, DeriveAnyClass, UnicodeSyntax, ImportQualifiedPost, DerivingStrategies, PackageImports, RoleAnnotations, DeriveDataTypeable, AssociatedTypeFamilies, LinearTypes, ParametricInstances, TypeAnnotatedPatterns, ModuleInterfacesBatch4, CaseBinderFix, WhereClauseInCaseAlts, ConstraintTupleKinds, DoAndIfThenElse, ModuleInterfacesBatch5, ModuleIfaceDedup, PreludeExpansion, GADTStandaloneKindSigs, ParserPanicHardening, NewtypeRecordAccessors, PatternBindingLetrec, NestedWhereClauseScoping, QualifiedTypeContextLowering, TypeEqualityConstraints, LayoutInClosesInterveningContexts, PolymorphicMonadApplicativeFunctor, LetWhereGeneralization, ListTupleTypeNormalization ([spec-chirho/phase3-progress-chirho.md](spec-chirho/phase3-progress-chirho.md))
 
 ### Phase 3 — Active Priorities
 

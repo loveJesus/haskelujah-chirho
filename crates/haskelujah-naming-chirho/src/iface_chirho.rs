@@ -4233,6 +4233,203 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Control.Monad.Trans — umbrella re-export module
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "lift", "liftIO",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &[
+            "MonadTrans", "MonadIO",
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.Trans".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Monad.Trans.State / Control.Monad.Trans.State.Lazy
+    for mod_name_chirho in &[
+        "Control.Monad.Trans.State",
+        "Control.Monad.Trans.State.Lazy",
+        "Control.Monad.Trans.State.Strict",
+    ] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "get", "put", "modify", "modify'", "gets",
+            "evalState", "execState", "runState",
+            "evalStateT", "execStateT", "runStateT",
+            "state", "withState", "mapState", "mapStateT",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["StateT", "State"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["StateT"]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Monad.Trans.Writer / Control.Monad.Trans.Writer.Lazy
+    for mod_name_chirho in &[
+        "Control.Monad.Trans.Writer",
+        "Control.Monad.Trans.Writer.Lazy",
+        "Control.Monad.Trans.Writer.Strict",
+        "Control.Monad.Trans.Writer.CPS",
+    ] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "tell", "listen", "pass", "censor",
+            "runWriter", "execWriter",
+            "runWriterT", "execWriterT",
+            "writer", "mapWriter", "mapWriterT",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["WriterT", "Writer"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["WriterT"]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Monad.Fail
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_val_chirho("fail");
+        exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("MonadFail", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.Fail".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Exception.Context
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "addExceptionContext", "getExceptionAnnotations",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["ExceptionContext"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["ExceptionContext"]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Exception.Context".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.Environment
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "getArgs", "getProgName", "getEnvironment",
+            "lookupEnv", "setEnv", "unsetEnv",
+            "withArgs", "withProgName",
+            "getExecutablePath",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.Environment".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Tree
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "drawTree", "drawForest", "flatten", "levels",
+            "foldTree", "unfoldTree", "unfoldForest",
+            "unfoldTreeM", "unfoldForestM",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Tree"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["Node"]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Forest"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Tree".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // GHC.STRef
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["newSTRef", "readSTRef", "writeSTRef"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("STRef", &["STRef"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.STRef".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Binary
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "encode", "decode", "encodeFile", "decodeFile",
+            "put", "get",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Binary"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Binary".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Type.Reflection.Unsafe
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["mkTrApp", "mkTrCon"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Type.Reflection.Unsafe".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Deduplicate: merge exports for modules with the same name.
     // Earlier batches may define partial interfaces that later batches extend.
     let mut deduped_chirho: Vec<ModuleIfaceChirho> = Vec::with_capacity(modules_chirho.len());
