@@ -2405,3 +2405,33 @@ instance MyCol Int where
         }
     }
 
+    #[test]
+    fn eval_nested_where_clause_chirho() {
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        // Nested where clause: innerFun uses a where-bound y that references pattern vars
+        let src_chirho = "\
+module Test where
+outerFun xs = innerFun xs
+  where
+    innerFun (x:xs) = y
+      where y = x + innerFun xs
+    innerFun [] = 0
+main = outerFun [1,2,3]
+";
+        let result_chirho = eval_source_chirho(
+            src_chirho,
+            &mut source_map_chirho,
+            "TestChirho.hs",
+            None,
+        );
+        match &result_chirho {
+            Ok(val_chirho) => {
+                // outerFun [1,2,3] = 1 + (2 + (3 + 0)) = 6
+                assert_eq!(*val_chirho, haskelujah_runtime_chirho::ValueChirho::IntChirho(6));
+            }
+            Err(e_chirho) => panic!("nested where clause should evaluate: {}", e_chirho),
+        }
+    }
+
+
