@@ -2533,3 +2533,28 @@ main = identity 42
         }
     }
 
+    #[test]
+    fn eval_let_case_in_single_line_chirho() {
+        // let d' = case d of PAT -> EXPR in d'  (all on one line)
+        // Tests that `in` correctly closes the intervening case-of layout
+        // context before closing the let context.
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+convert d = let d' = case d of True -> 1 ; False -> 0 in d'
+main = convert True
+";
+        let result_chirho =
+            eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(
+                    *val_chirho,
+                    haskelujah_runtime_chirho::ValueChirho::IntChirho(1)
+                );
+            }
+            Err(e_chirho) => panic!("single-line let/case/in should evaluate: {}", e_chirho),
+        }
+    }
+

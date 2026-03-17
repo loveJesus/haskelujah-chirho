@@ -225,19 +225,43 @@ impl<'src> LayoutRuleChirho<'src> {
 
             // Per Haskell 2010 §2.7: `in` unconditionally closes the
             // implicit layout context opened by the matching `let`.
-            // Only close contexts tagged as let-opened to avoid closing
-            // module-level or other non-let implicit contexts.
+            // It also closes any intervening implicit contexts (e.g. a
+            // `case-of` block nested inside the `let` binding) until it
+            // finds the `let` context.  This handles single-line patterns
+            // like: `let d' = case x of P -> E in d'`
             if token_chirho.kind_chirho == RawTokenKindChirho::InChirho {
-                if let Some(LayoutContextChirho::ImplicitChirho(_, true, _, _)) =
-                    context_stack_chirho.last()
-                {
-                    let vspan_chirho =
-                        self.zero_span_at_chirho(token_chirho.span_chirho.start_chirho());
-                    output_chirho.push(RawTokenChirho {
-                        kind_chirho: RawTokenKindChirho::VirtualRightBraceChirho,
-                        span_chirho: vspan_chirho,
-                    });
-                    context_stack_chirho.pop();
+                // Close intervening non-let implicit contexts, then the let.
+                while let Some(ctx_chirho) = context_stack_chirho.last() {
+                    match ctx_chirho {
+                        LayoutContextChirho::ImplicitChirho(_, true, _, _) => {
+                            // Found the let context — close it and stop.
+                            let vspan_chirho = self
+                                .zero_span_at_chirho(token_chirho.span_chirho.start_chirho());
+                            output_chirho.push(RawTokenChirho {
+                                kind_chirho: RawTokenKindChirho::VirtualRightBraceChirho,
+                                span_chirho: vspan_chirho,
+                            });
+                            context_stack_chirho.pop();
+                            break;
+                        }
+                        LayoutContextChirho::ImplicitChirho(indent_chirho, _, _, _)
+                            if *indent_chirho > 1 =>
+                        {
+                            // Close an intervening non-let implicit context
+                            // (e.g. case-of, do, where inside the let body).
+                            let vspan_chirho = self
+                                .zero_span_at_chirho(token_chirho.span_chirho.start_chirho());
+                            output_chirho.push(RawTokenChirho {
+                                kind_chirho: RawTokenKindChirho::VirtualRightBraceChirho,
+                                span_chirho: vspan_chirho,
+                            });
+                            context_stack_chirho.pop();
+                        }
+                        _ => {
+                            // Explicit context or module-level — stop without closing.
+                            break;
+                        }
+                    }
                 }
             }
 
