@@ -2166,6 +2166,45 @@ impl DesugarCtxChirho {
         binder_chirho
     }
 
+    /// For case alternatives with variable patterns, bind the pattern variable
+    /// name to the case binder id so that `case e of x -> x` correctly
+    /// references the scrutinee. Peels through Paren/Bang/Lazy/TypeAnnot
+    /// wrappers to find the inner variable. For As patterns, binds the
+    /// as-name to the case binder (inner pattern is handled separately).
+    fn bind_var_pat_to_case_binder_chirho(
+        &mut self,
+        pat_chirho: &PatChirho,
+        case_binder_id_chirho: CoreIdChirho,
+    ) {
+        match pat_chirho {
+            PatChirho::VarChirho(name_chirho) => {
+                self.bind_in_scope_chirho(
+                    name_chirho.text_chirho(),
+                    case_binder_id_chirho,
+                );
+            }
+            PatChirho::AsChirho { name_chirho, pattern_chirho, .. } => {
+                // Bind the as-name to the scrutinee.
+                self.bind_in_scope_chirho(
+                    name_chirho.text_chirho(),
+                    case_binder_id_chirho,
+                );
+                // Also bind inner pattern if it's a variable.
+                self.bind_var_pat_to_case_binder_chirho(pattern_chirho, case_binder_id_chirho);
+            }
+            PatChirho::ParenChirho { inner_chirho, .. }
+            | PatChirho::BangChirho { inner_chirho, .. }
+            | PatChirho::LazyChirho { inner_chirho, .. } => {
+                self.bind_var_pat_to_case_binder_chirho(inner_chirho, case_binder_id_chirho);
+            }
+            PatChirho::TypeAnnotChirho { pat_chirho, .. } => {
+                self.bind_var_pat_to_case_binder_chirho(pat_chirho, case_binder_id_chirho);
+            }
+            // Constructor/Literal/Wildcard patterns don't bind to the case binder.
+            _ => {}
+        }
+    }
+
     /// Recursively bind ALL variable names in a pattern tree (including
     /// nested constructor sub-patterns) so that the RHS can reference them.
     /// Does NOT create binders; just binds names to pre-allocated IDs.
@@ -3199,6 +3238,10 @@ impl DesugarCtxChirho {
                         // Pre-bind ALL nested pattern variables so the
                         // RHS can reference them during desugaring.
                         self.prebind_all_pat_vars_chirho(pat_ref_chirho);
+                        // For variable patterns (and as-patterns wrapping variables),
+                        // bind the pattern variable to the case binder so that
+                        // `case e of x -> x` correctly references the scrutinee.
+                        self.bind_var_pat_to_case_binder_chirho(pat_ref_chirho, wild_chirho.id_chirho);
                         let rhs_with_where_chirho = if alt_chirho.where_binds_chirho.is_empty() {
                             self.desugar_rhs_chirho(&alt_chirho.rhs_chirho)
                         } else {

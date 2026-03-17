@@ -1912,3 +1912,127 @@ main = print 42
         result_chirho.err()
     );
 }
+
+// ── Case binder (variable pattern) tests ───────────────────────────────
+
+/// `case 42 of x -> x` should return 42, not 0.
+#[test]
+fn case_binder_var_pattern_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"
+main = print (case (42 :: Int) of x -> x)
+"#;
+    let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseVar.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "42",
+                "case var pattern should bind scrutinee");
+        }
+        Err(e_chirho) => panic!("case var pattern failed: {}", e_chirho),
+    }
+}
+
+/// `case n of x -> x + 1` with n=41 should return 42.
+#[test]
+fn case_binder_var_arithmetic_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"
+f :: Int -> Int
+f n = case n of
+  x -> x + 1
+
+main :: IO ()
+main = print (f 41)
+"#;
+    let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseVar2.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "42",
+                "case var pattern should bind for arithmetic");
+        }
+        Err(e_chirho) => panic!("case var arithmetic failed: {}", e_chirho),
+    }
+}
+
+/// `case n of x -> let y = x * 2 in y` should use the scrutinee.
+#[test]
+fn case_binder_var_let_in_alt_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"
+main :: IO ()
+main = do
+  let n = 21 :: Int
+  print (case n of x -> let y = x * 2 in y)
+"#;
+    let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseVar3.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "42",
+                "case var should be visible in let-in-alt");
+        }
+        Err(e_chirho) => panic!("case var let-in-alt failed: {}", e_chirho),
+    }
+}
+
+/// Case binder with constructor patterns should still work.
+#[test]
+fn case_binder_con_pattern_still_works_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"
+data Color = Red | Green | Blue
+
+f :: Color -> Int
+f c = case c of
+  Red   -> 1
+  Green -> 2
+  Blue  -> 3
+
+main :: IO ()
+main = print (f Green)
+"#;
+    let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseVar4.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho.trim(), "2",
+                "constructor case alts should still work");
+        }
+        Err(e_chirho) => panic!("constructor case alt failed: {}", e_chirho),
+    }
+}
+
+/// Multiple case alts mixing literal and default.
+#[test]
+fn case_binder_default_fallthrough_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"
+f :: Int -> Int
+f n = case n of
+  0 -> 100
+  x -> x + 1
+
+main :: IO ()
+main = do
+  print (f 0)
+  print (f 41)
+"#;
+    let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseVar5.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            let lines_chirho: Vec<&str> = machine_chirho.io_output_chirho.trim().lines().collect();
+            assert_eq!(lines_chirho.len(), 2, "should have two outputs");
+            assert_eq!(lines_chirho[0], "100", "literal alt should match");
+            assert_eq!(lines_chirho[1], "42", "default alt should bind scrutinee");
+        }
+        Err(e_chirho) => panic!("default fallthrough failed: {}", e_chirho),
+    }
+}

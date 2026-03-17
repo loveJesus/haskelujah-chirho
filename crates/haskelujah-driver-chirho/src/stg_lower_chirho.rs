@@ -898,10 +898,51 @@ impl LowerCtxChirho {
 
             CoreExprChirho::CaseChirho {
                 scrutinee_chirho,
-                bind_chirho: _,
+                bind_chirho,
                 result_ty_chirho: _,
                 alts_chirho,
             } => {
+                // Bind the case binder to the scrutinee so that variable
+                // patterns like `case e of x -> x` correctly reference
+                // the scrutinee value. For variable scrutinees, copy the
+                // arg-param index or env entry; for others, allocate a thunk.
+                match scrutinee_chirho.as_ref() {
+                    CoreExprChirho::VarChirho(scrut_id_chirho) => {
+                        if let Some(&idx_chirho) =
+                            self.arg_param_indices_chirho.get(scrut_id_chirho)
+                        {
+                            self.arg_param_indices_chirho
+                                .insert(bind_chirho.id_chirho, idx_chirho);
+                        } else if let Some(val_chirho) =
+                            self.env_chirho.get(scrut_id_chirho).cloned()
+                        {
+                            self.env_chirho
+                                .insert(bind_chirho.id_chirho, val_chirho);
+                        }
+                    }
+                    CoreExprChirho::LitChirho(lit_chirho) => {
+                        let val_chirho = lower_lit_chirho(lit_chirho);
+                        self.env_chirho
+                            .insert(bind_chirho.id_chirho, val_chirho);
+                    }
+                    _ => {
+                        // Complex scrutinee: allocate a thunk so the case
+                        // binder can force it if referenced.
+                        let scrut_entry_chirho =
+                            self.lower_expr_chirho(scrutinee_chirho);
+                        let thunk_chirho = ClosureChirho::thunk_chirho(
+                            CodePtrChirho(scrut_entry_chirho),
+                            "<case_binder>",
+                            vec![],
+                        );
+                        let addr_chirho =
+                            self.heap_chirho.alloc_chirho(thunk_chirho);
+                        self.env_chirho.insert(
+                            bind_chirho.id_chirho,
+                            ValueChirho::HeapPtrChirho(addr_chirho),
+                        );
+                    }
+                }
                 // Newtype case erasure: if the only constructor alt is a
                 // newtype constructor, skip case dispatch — the scrutinee
                 // IS the inner value (newtype is erased at runtime).
