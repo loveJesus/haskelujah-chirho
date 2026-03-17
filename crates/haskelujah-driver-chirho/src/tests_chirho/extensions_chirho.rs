@@ -2415,3 +2415,246 @@ main = do
         Err(e_chirho) => panic!("case of next line failed: {}", e_chirho),
     }
 }
+
+// ── Module Interfaces Batch 5 ─────────────────────────────────────────────
+
+#[test]
+fn iface_data_proxy_chirho() {
+    let src_chirho = r#"
+module IfaceProxy where
+import Data.Proxy (Proxy(..))
+
+proxyInt :: Proxy Int
+proxyInt = Proxy
+
+main :: IO ()
+main = print "proxy ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceProxy.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Proxy import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_typeable_chirho() {
+    let src_chirho = r#"
+module IfaceTypeable where
+import Data.Typeable (Typeable, typeOf)
+
+main :: IO ()
+main = print "typeable ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceTypeable.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Typeable import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_coerce_chirho() {
+    let src_chirho = r#"
+module IfaceCoerce where
+import Data.Coerce (Coercible, coerce)
+
+main :: IO ()
+main = print "coerce ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceCoerce.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Coerce import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_ghc_type_lits_chirho() {
+    let src_chirho = r#"
+module IfaceTypeLits where
+import GHC.TypeLits (Nat, Symbol, KnownNat, KnownSymbol, natVal, symbolVal)
+
+main :: IO ()
+main = print "typelits ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceTypeLits.hs", None);
+    assert!(result_chirho.is_ok(), "GHC.TypeLits import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_ghc_type_nats_chirho() {
+    let src_chirho = r#"
+module IfaceTypeNats where
+import GHC.TypeNats (Nat, KnownNat, natVal)
+
+main :: IO ()
+main = print "typenats ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceTypeNats.hs", None);
+    assert!(result_chirho.is_ok(), "GHC.TypeNats import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_foreign_storable_chirho() {
+    let src_chirho = r#"
+module IfaceStorable where
+import Foreign.Storable (Storable, sizeOf, alignment)
+
+main :: IO ()
+main = print "storable ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceStorable.hs", None);
+    assert!(result_chirho.is_ok(), "Foreign.Storable import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_foreign_ptr_chirho() {
+    let src_chirho = r#"
+module IfacePtr where
+import Foreign.Ptr (Ptr, FunPtr, nullPtr, castPtr)
+
+main :: IO ()
+main = print "ptr ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfacePtr.hs", None);
+    assert!(result_chirho.is_ok(), "Foreign.Ptr import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_control_concurrent_mvar_chirho() {
+    let src_chirho = r#"
+module IfaceMVar where
+import Control.Concurrent.MVar (MVar, newMVar, takeMVar, putMVar)
+
+main :: IO ()
+main = print "mvar ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceMVar.hs", None);
+    assert!(result_chirho.is_ok(), "Control.Concurrent.MVar import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_control_monad_trans_class_chirho() {
+    let src_chirho = r#"
+module IfaceMonadTrans where
+import Control.Monad.Trans.Class (MonadTrans, lift)
+
+main :: IO ()
+main = print "monadtrans ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceMonadTrans.hs", None);
+    assert!(result_chirho.is_ok(), "Control.Monad.Trans.Class import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_text_prettyprint_chirho() {
+    let src_chirho = r#"
+module IfacePrettyPrint where
+import Text.PrettyPrint (Doc, text, render)
+
+main :: IO ()
+main = print "prettyprint ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfacePrettyPrint.hs", None);
+    assert!(result_chirho.is_ok(), "Text.PrettyPrint import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_data_chirho() {
+    let src_chirho = r#"
+module IfaceDataData where
+import Data.Data (Data, Typeable, toConstr)
+
+main :: IO ()
+main = print "data ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDataData.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Data import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_word_chirho() {
+    let src_chirho = r#"
+module IfaceWord where
+import Data.Word (Word, Word8, Word16, Word32, Word64)
+
+main :: IO ()
+main = print "word ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceWord.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Word import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_int_chirho() {
+    let src_chirho = r#"
+module IfaceDataInt where
+import Data.Int (Int, Int8, Int16, Int32, Int64)
+
+main :: IO ()
+main = print "int ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDataInt.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Int import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_map_chirho() {
+    let src_chirho = r#"
+module IfaceDataMap where
+import Data.Map (Map, empty, singleton, insert, lookup)
+
+main :: IO ()
+main = print "map ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDataMap.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Map import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_map_strict_chirho() {
+    let src_chirho = r#"
+module IfaceDataMapStrict where
+import Data.Map.Strict (Map, empty, singleton, insert)
+
+main :: IO ()
+main = print "map strict ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDataMapStrict.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Map.Strict import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_data_set_chirho() {
+    let src_chirho = r#"
+module IfaceDataSet where
+import Data.Set (Set, empty, singleton, insert, member)
+
+main :: IO ()
+main = print "set ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDataSet.hs", None);
+    assert!(result_chirho.is_ok(), "Data.Set import failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn iface_ghc_generics_chirho() {
+    let src_chirho = r#"
+module IfaceGenerics where
+import GHC.Generics (Generic, Rep, from, to)
+
+main :: IO ()
+main = print "generics ok"
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceGenerics.hs", None);
+    assert!(result_chirho.is_ok(), "GHC.Generics import failed: {:?}", result_chirho.err());
+}
