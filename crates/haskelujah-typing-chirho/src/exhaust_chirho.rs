@@ -796,6 +796,8 @@ fn classify_pattern_chirho(pat_chirho: &PatChirho) -> PatClassChirho {
         // View patterns: the view expression is opaque, so treat as wildcard
         // (exhaustiveness of the result pattern is checked when the view is applied).
         PatChirho::ViewChirho { pat_chirho, .. } => classify_pattern_chirho(pat_chirho),
+        // Type annotation — strip and classify inner pattern
+        PatChirho::TypeAnnotChirho { pat_chirho, .. } => classify_pattern_chirho(pat_chirho),
     }
 }
 

@@ -80,6 +80,12 @@ pub enum PatChirho {
         pat_chirho: Box<PatChirho>,
         span_chirho: SpanChirho,
     },
+    /// Type-annotated pattern (`(x :: Int)`), requires ScopedTypeVariables.
+    TypeAnnotChirho {
+        pat_chirho: Box<PatChirho>,
+        ty_chirho: super::ty_chirho::TypeChirho,
+        span_chirho: SpanChirho,
+    },
 }
 
 /// A field in a record pattern (`field = pat`).
@@ -106,7 +112,8 @@ impl PatChirho {
             | Self::BangChirho { span_chirho, .. }
             | Self::InfixConChirho { span_chirho, .. }
             | Self::RecordChirho { span_chirho, .. }
-            | Self::ViewChirho { span_chirho, .. } => *span_chirho,
+            | Self::ViewChirho { span_chirho, .. }
+            | Self::TypeAnnotChirho { span_chirho, .. } => *span_chirho,
         }
     }
 }

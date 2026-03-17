@@ -2021,6 +2021,10 @@ impl DesugarCtxChirho {
             // View pattern: at the outer level, always matches (DefaultChirho).
             // The actual view application + inner match is handled by wrapping the RHS.
             PatChirho::ViewChirho { .. } => AltConChirho::DefaultChirho,
+            // Type annotation: strip and delegate to inner pattern
+            PatChirho::TypeAnnotChirho { pat_chirho, .. } => {
+                self.pat_to_alt_con_chirho(pat_chirho)
+            }
         }
     }
 
@@ -2234,6 +2238,9 @@ impl DesugarCtxChirho {
                 // no-op in prebind_all, but prebind_nested handles it).
                 self.prebind_nested_pat_vars_chirho(pat_chirho);
             }
+            PatChirho::TypeAnnotChirho { pat_chirho, .. } => {
+                self.prebind_all_pat_vars_chirho(pat_chirho);
+            }
         }
     }
 
@@ -2312,6 +2319,9 @@ impl DesugarCtxChirho {
                 }
             }
             PatChirho::ViewChirho { pat_chirho, .. } => {
+                self.prebind_nested_pat_vars_chirho(pat_chirho);
+            }
+            PatChirho::TypeAnnotChirho { pat_chirho, .. } => {
                 self.prebind_nested_pat_vars_chirho(pat_chirho);
             }
         }
@@ -4748,6 +4758,7 @@ fn is_var_pat_chirho(pat_chirho: &PatChirho) -> bool {
         PatChirho::BangChirho { inner_chirho, .. }
         | PatChirho::LazyChirho { inner_chirho, .. }
         | PatChirho::ParenChirho { inner_chirho, .. } => is_var_pat_chirho(inner_chirho),
+        PatChirho::TypeAnnotChirho { pat_chirho, .. } => is_var_pat_chirho(pat_chirho),
         _ => false,
     }
 }
@@ -4769,6 +4780,9 @@ fn extract_var_name_from_pat_chirho(pat_chirho: &PatChirho) -> Option<String> {
         | PatChirho::LazyChirho { inner_chirho, .. }
         | PatChirho::ParenChirho { inner_chirho, .. } => {
             extract_var_name_from_pat_chirho(inner_chirho)
+        }
+        PatChirho::TypeAnnotChirho { pat_chirho, .. } => {
+            extract_var_name_from_pat_chirho(pat_chirho)
         }
         _ => None,
     }

@@ -5730,6 +5730,78 @@ impl LowerCtxChirho {
             }
             SyntaxKindChirho::ParenPatChirho => {
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+
+                // Check for type-annotated pattern: (pat :: Type)
+                // The CST parser produces flat tokens for the `:: Type` part.
+                let has_double_colon_chirho = children_chirho.iter().any(|c_chirho| {
+                    matches!(
+                        c_chirho.element_chirho,
+                        GreenElementChirho::TokenChirho(t_chirho)
+                            if t_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho
+                    )
+                });
+
+                if has_double_colon_chirho {
+                    // Type-annotated pattern: collect pat before :: and type after ::
+                    let mut inner_pat_chirho = None;
+                    let mut saw_dc_chirho = false;
+                    let mut type_children_chirho: Vec<&ChildChirho> = Vec::new();
+
+                    for child_chirho in &children_chirho {
+                        match child_chirho.element_chirho {
+                            GreenElementChirho::TokenChirho(tok_chirho) => {
+                                if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho {
+                                    saw_dc_chirho = true;
+                                } else if saw_dc_chirho {
+                                    // Token after :: — part of the type
+                                    type_children_chirho.push(child_chirho);
+                                }
+                                // Skip parens/etc before ::
+                            }
+                            GreenElementChirho::NodeChirho(n_chirho) => {
+                                if !saw_dc_chirho && is_pat_kind_chirho(n_chirho.kind_chirho()) {
+                                    if inner_pat_chirho.is_none() {
+                                        inner_pat_chirho = Some(
+                                            self.lower_pat_chirho(n_chirho, child_chirho.start_chirho),
+                                        );
+                                    }
+                                } else if saw_dc_chirho {
+                                    type_children_chirho.push(child_chirho);
+                                }
+                            }
+                        }
+                    }
+
+                    let pat_chirho = inner_pat_chirho.unwrap_or(PatChirho::WildcardChirho(span_chirho));
+                    let ty_chirho = if type_children_chirho.is_empty() {
+                        self.placeholder_type_chirho()
+                    } else {
+                        // Try structured node first, fall back to flat reconstruction
+                        let first_chirho = type_children_chirho[0];
+                        if let GreenElementChirho::NodeChirho(n_chirho) = first_chirho.element_chirho {
+                            if is_type_kind_chirho(n_chirho.kind_chirho()) {
+                                self.lower_type_chirho(n_chirho, first_chirho.start_chirho)
+                            } else {
+                                self.type_from_flat_children_chirho(
+                                    &type_children_chirho,
+                                    span_chirho,
+                                )
+                            }
+                        } else {
+                            self.type_from_flat_children_chirho(
+                                &type_children_chirho,
+                                span_chirho,
+                            )
+                        }
+                    };
+
+                    return PatChirho::TypeAnnotChirho {
+                        pat_chirho: Box::new(pat_chirho),
+                        ty_chirho,
+                        span_chirho,
+                    };
+                }
+
                 let pat_nodes_chirho: Vec<_> = children_chirho
                     .iter()
                     .filter(|c_chirho| {

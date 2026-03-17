@@ -1762,3 +1762,52 @@ main = print 42
         result_chirho.err()
     );
 }
+
+/// Type-annotated pattern: `(x :: Int)` in function argument
+#[test]
+fn type_annot_pat_basic_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let src_chirho = r#"module Test where
+{-# LANGUAGE ScopedTypeVariables #-}
+f (x :: Int) = x + 1
+main = print (f 41)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let (_v_chirho, m_chirho) =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TypeAnnotPat.hs", None)
+            .expect("type-annotated pattern should eval");
+    assert_eq!(m_chirho.io_output_chirho.trim(), "42");
+}
+
+/// Type-annotated pattern in case alternative
+#[test]
+fn type_annot_pat_case_chirho() {
+    let src_chirho = r#"module Test where
+{-# LANGUAGE ScopedTypeVariables #-}
+f x = case x of { (y :: Int) -> y + 10 }
+main = print (f 32)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TypeAnnotCase.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Type-annotated pattern in case should compile: {:?}",
+        result_chirho.err()
+    );
+}
+
+/// Type-annotated pattern compiles without ScopedTypeVariables too
+#[test]
+fn type_annot_pat_no_ext_chirho() {
+    let src_chirho = r#"module Test where
+f (x :: Int) = x + 1
+main = print (f 41)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TypeAnnotNoExt.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Type-annotated pattern without ext should compile: {:?}",
+        result_chirho.err()
+    );
+}

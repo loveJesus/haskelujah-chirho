@@ -1951,6 +1951,12 @@ impl InferCtxChirho {
                 let result_ty_chirho = self.fresh_var_chirho();
                 self.bind_pat_chirho(inner_pat_chirho, &result_ty_chirho);
             }
+            PatChirho::TypeAnnotChirho { pat_chirho: inner_pat_chirho, .. } => {
+                // Type-annotated pattern (x :: T): bind inner pattern with the
+                // given type. The annotation is used for scoped type variables
+                // but the underlying binding semantics are unchanged.
+                self.bind_pat_chirho(inner_pat_chirho, ty_chirho);
+            }
         }
     }
 

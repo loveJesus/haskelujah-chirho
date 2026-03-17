@@ -3083,6 +3083,40 @@ impl<'src> ParserChirho<'src> {
         self.parse_pat_chirho();
         self.eat_trivia_chirho();
 
+        // Type-annotated pattern: (pat :: Type)
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+            self.bump_chirho(); // ::
+            self.eat_trivia_chirho();
+            // Consume all type tokens until the closing )
+            let mut depth_chirho: i32 = 0;
+            while !self.at_eof_chirho() {
+                if self.at_chirho(RawTokenKindChirho::LeftParenChirho)
+                    || self.at_chirho(RawTokenKindChirho::LeftBracketChirho)
+                {
+                    depth_chirho += 1;
+                    self.bump_chirho();
+                } else if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                    if depth_chirho == 0 {
+                        break;
+                    }
+                    depth_chirho -= 1;
+                    self.bump_chirho();
+                } else if self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
+                    if depth_chirho > 0 {
+                        depth_chirho -= 1;
+                    }
+                    self.bump_chirho();
+                } else {
+                    self.bump_chirho();
+                }
+            }
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho();
+            }
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
         if self.at_chirho(RawTokenKindChirho::CommaChirho) {
             // Tuple pattern
             while self.at_chirho(RawTokenKindChirho::CommaChirho) {
