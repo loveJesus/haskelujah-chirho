@@ -1595,11 +1595,35 @@ impl<'src> ParserChirho<'src> {
             self.parse_type_chirho(); // right-recursive
             self.builder_chirho.finish_node_chirho();
         }
+        // Type equality constraint: a ~ b (parsed as infix type)
+        if self.at_chirho(RawTokenKindChirho::TildeChirho) {
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::InfixTypeChirho,
+            );
+            self.bump_chirho(); // ~
+            self.eat_trivia_chirho();
+            self.parse_btype_chirho(); // right operand (btype, not full type, to avoid consuming =>)
+            self.builder_chirho.finish_node_chirho();
+            // After the infix ~ type, check if this is part of a qualified type
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::FatArrowChirho) {
+                self.builder_chirho.start_node_at_chirho(
+                    cp_chirho,
+                    SyntaxKindChirho::QualTypeChirho,
+                );
+                self.bump_chirho(); // =>
+                self.eat_trivia_chirho();
+                self.parse_type_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            return;
+        }
         // TypeOperators: check for infix operator in type position (e.g. `a :+: b`)
-        // VarSym or ConSym that isn't a special symbol like %, !, ~, @
+        // VarSym or ConSym that isn't a special symbol like %, !, @
         if (self.at_chirho(RawTokenKindChirho::VarSymChirho)
             || self.at_chirho(RawTokenKindChirho::ConSymChirho))
-            && !matches!(self.current_text_chirho(), "%" | "!" | "~" | "@" | "|")
+            && !matches!(self.current_text_chirho(), "%" | "!" | "@" | "|")
         {
             self.builder_chirho.start_node_at_chirho(
                 cp_chirho,

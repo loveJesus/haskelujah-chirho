@@ -2434,4 +2434,102 @@ main = outerFun [1,2,3]
         }
     }
 
+    #[test]
+    fn eval_qualified_type_sig_single_constraint_chirho() {
+        // Type signature with a single constraint: Eq a => a -> a -> Bool
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+myEq :: Eq a => a -> a -> Bool
+myEq x y = x == y
+main = myEq 3 3
+";
+        let result_chirho =
+            eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(
+                    *val_chirho,
+                    haskelujah_runtime_chirho::ValueChirho::BoolChirho(true)
+                );
+            }
+            Err(e_chirho) => panic!("qualified type sig should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_qualified_type_sig_multiple_constraints_chirho() {
+        // Type signature with tuple constraint: (Eq a, Show a) => a -> String
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+describeEq :: (Eq a, Show a) => a -> a -> String
+describeEq x y = if x == y then show x else \"not equal\"
+main = describeEq 42 42
+";
+        let result_chirho =
+            eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok(val_chirho) => {
+                let s_chirho = format!("{}", val_chirho);
+                assert!(
+                    s_chirho.contains("42"),
+                    "expected result containing 42, got: {}",
+                    s_chirho
+                );
+            }
+            Err(e_chirho) => panic!("multiple constraint sig should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_equality_constraint_simple_chirho() {
+        // Type equality constraint: (a ~ Int) => a -> a
+        // This should type-check and evaluate successfully
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+identity :: (a ~ Int) => a -> a
+identity x = x
+main = identity 42
+";
+        let result_chirho =
+            eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(
+                    *val_chirho,
+                    haskelujah_runtime_chirho::ValueChirho::IntChirho(42)
+                );
+            }
+            Err(e_chirho) => panic!("equality constraint should evaluate: {}", e_chirho),
+        }
+    }
+
+    #[test]
+    fn eval_equality_constraint_bare_chirho() {
+        // Bare equality constraint without parens: a ~ Int => a -> a
+        use crate::eval_source_chirho;
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = "\
+module Test where
+identity :: a ~ Int => a -> a
+identity x = x
+main = identity 42
+";
+        let result_chirho =
+            eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None);
+        match &result_chirho {
+            Ok(val_chirho) => {
+                assert_eq!(
+                    *val_chirho,
+                    haskelujah_runtime_chirho::ValueChirho::IntChirho(42)
+                );
+            }
+            Err(e_chirho) => panic!("bare equality constraint should evaluate: {}", e_chirho),
+        }
+    }
 

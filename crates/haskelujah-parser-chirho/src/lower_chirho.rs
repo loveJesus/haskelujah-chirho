@@ -2825,6 +2825,83 @@ impl LowerCtxChirho {
         constraints_chirho
     }
 
+    /// Convert a lowered type into a list of constraints for a qualified type
+    /// context. Handles single constraints (`Eq a`), tupled constraints
+    /// (`(Eq a, Show a)`), parenthesized single constraints (`(Eq a)`),
+    /// equality constraints (`a ~ b`), and zero-arg constraints (`Typeable`).
+    fn type_to_constraints_chirho(
+        ty_chirho: &TypeChirho,
+        span_chirho: SpanChirho,
+    ) -> Vec<ConstraintChirho> {
+        match ty_chirho {
+            // Tuple: multiple constraints like (Eq a, Show a)
+            TypeChirho::TupleChirho { elements_chirho, .. } => {
+                elements_chirho
+                    .iter()
+                    .flat_map(|e_chirho| Self::type_to_constraints_chirho(e_chirho, span_chirho))
+                    .collect()
+            }
+            // Parens: unwrap (Eq a) → Eq a
+            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                Self::type_to_constraints_chirho(inner_chirho, span_chirho)
+            }
+            // Application: Eq a, Monad m, etc. — collect class name and args
+            TypeChirho::AppChirho { fun_chirho, arg_chirho, span_chirho: app_span_chirho } => {
+                let (class_name_chirho, mut args_chirho) =
+                    Self::collect_app_class_chirho(fun_chirho);
+                args_chirho.push(arg_chirho.as_ref().clone());
+                vec![ConstraintChirho {
+                    class_chirho: class_name_chirho,
+                    args_chirho,
+                    span_chirho: *app_span_chirho,
+                }]
+            }
+            // Bare constructor: Typeable (zero-arg constraint)
+            TypeChirho::ConChirho(name_chirho) => {
+                vec![ConstraintChirho {
+                    class_chirho: name_chirho.clone(),
+                    args_chirho: vec![],
+                    span_chirho,
+                }]
+            }
+            // Anything else — wrap as a single constraint with a synthetic name
+            other_chirho => {
+                vec![ConstraintChirho {
+                    class_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                        "?",
+                        span_chirho,
+                    )),
+                    args_chirho: vec![other_chirho.clone()],
+                    span_chirho,
+                }]
+            }
+        }
+    }
+
+    /// Walk a left-nested `AppChirho` spine to collect the class name and
+    /// preceding arguments. For `Monad m`, fun is `ConChirho("Monad")` and
+    /// returns `("Monad", [])`. For `MonadReader r m`, fun is
+    /// `AppChirho(ConChirho("MonadReader"), VarChirho("r"))` and returns
+    /// `("MonadReader", [r])`.
+    fn collect_app_class_chirho(ty_chirho: &TypeChirho) -> (NameChirho, Vec<TypeChirho>) {
+        match ty_chirho {
+            TypeChirho::ConChirho(name_chirho) => (name_chirho.clone(), vec![]),
+            TypeChirho::AppChirho { fun_chirho, arg_chirho, .. } => {
+                let (name_chirho, mut args_chirho) = Self::collect_app_class_chirho(fun_chirho);
+                args_chirho.push(arg_chirho.as_ref().clone());
+                (name_chirho, args_chirho)
+            }
+            // Fallback: use the type as a synthetic name
+            other_chirho => (
+                NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                    "?",
+                    other_chirho.span_chirho(),
+                )),
+                vec![],
+            ),
+        }
+    }
+
     /// Collect FunBind (and other decl) children from a WhereClause or similar
     /// node, lowering each into a DeclChirho and appending to `out_chirho`.
     fn collect_instance_methods_chirho(
@@ -3516,18 +3593,56 @@ impl LowerCtxChirho {
                 }
             }
             SyntaxKindChirho::QualTypeChirho => {
-                // context => type — for now, lower as just the body type
+                // context => type — lower with proper constraint preservation
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                let type_nodes_chirho: Vec<_> = children_chirho
-                    .iter()
-                    .filter(|c_chirho| {
-                        matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(n_chirho) if is_type_kind_chirho(n_chirho.kind_chirho()))
-                    })
-                    .collect();
-                if let Some(last_chirho) = type_nodes_chirho.last() {
-                    self.lower_type_from_child_chirho(last_chirho)
+                let mut saw_arrow_chirho = false;
+                let mut pre_arrow_chirho: Vec<&ChildChirho<'_>> = Vec::new();
+                let mut post_arrow_chirho: Vec<&ChildChirho<'_>> = Vec::new();
+
+                for child_chirho in &children_chirho {
+                    if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho
+                    {
+                        if tok_chirho.kind_chirho() == TokenKindChirho::DoubleArrowChirho {
+                            saw_arrow_chirho = true;
+                            continue;
+                        }
+                    }
+                    if saw_arrow_chirho {
+                        post_arrow_chirho.push(child_chirho);
+                    } else {
+                        pre_arrow_chirho.push(child_chirho);
+                    }
+                }
+
+                // Lower body type from post-arrow children
+                let body_chirho = if let Some(child_chirho) = post_arrow_chirho.iter().find(|c_chirho| {
+                    matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(n_chirho) if is_type_kind_chirho(n_chirho.kind_chirho()))
+                }) {
+                    self.lower_type_from_child_chirho(child_chirho)
                 } else {
                     self.placeholder_type_chirho()
+                };
+
+                // Lower context from pre-arrow children
+                let context_type_chirho = pre_arrow_chirho.iter().find(|c_chirho| {
+                    matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(n_chirho) if is_type_kind_chirho(n_chirho.kind_chirho()))
+                }).map(|child_chirho| self.lower_type_from_child_chirho(child_chirho));
+
+                // Convert context type to constraints
+                let context_chirho = if let Some(ctx_ty_chirho) = context_type_chirho {
+                    Self::type_to_constraints_chirho(&ctx_ty_chirho, span_chirho)
+                } else {
+                    Vec::new()
+                };
+
+                if context_chirho.is_empty() {
+                    body_chirho
+                } else {
+                    TypeChirho::QualChirho {
+                        context_chirho,
+                        body_chirho: Box::new(body_chirho),
+                        span_chirho,
+                    }
                 }
             }
             SyntaxKindChirho::ForallTypeChirho => {
@@ -3643,6 +3758,7 @@ impl LowerCtxChirho {
                             || k_chirho == TokenKindChirho::ConSymChirho
                             || k_chirho == TokenKindChirho::ConIdChirho
                             || k_chirho == TokenKindChirho::VarIdChirho
+                            || k_chirho == TokenKindChirho::TildeChirho
                         {
                             let txt_chirho = tok_chirho.text_chirho();
                             if txt_chirho != "`" {
@@ -7100,6 +7216,79 @@ mod tests_chirho {
         assert!(module_chirho.decls_chirho.iter().any(|d_chirho| {
             matches!(d_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "foo")
         }));
+    }
+
+    #[test]
+    fn lower_qualified_type_sig_chirho() {
+        // Type signature with Eq a => context should produce QualChirho
+        let module_chirho =
+            parse_and_lower_chirho("module M where\nfoo :: Eq a => a -> a -> Bool\n");
+        let ty_sig_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "foo")
+        });
+        assert!(ty_sig_chirho.is_some(), "should have a TypeSig for foo");
+        if let Some(DeclChirho::TypeSigChirho { ty_chirho, .. }) = ty_sig_chirho {
+            assert!(
+                matches!(ty_chirho, TypeChirho::QualChirho { context_chirho, .. } if !context_chirho.is_empty()),
+                "type should be QualChirho with non-empty context, got: {:?}",
+                ty_chirho
+            );
+        }
+    }
+
+    #[test]
+    fn lower_qualified_type_sig_tuple_context_chirho() {
+        // (Eq a, Show a) => should produce QualChirho with 2 constraints
+        let module_chirho =
+            parse_and_lower_chirho("module M where\nfoo :: (Eq a, Show a) => a -> String\n");
+        let ty_sig_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "foo")
+        });
+        assert!(ty_sig_chirho.is_some(), "should have a TypeSig for foo");
+        if let Some(DeclChirho::TypeSigChirho { ty_chirho, .. }) = ty_sig_chirho {
+            match ty_chirho {
+                TypeChirho::QualChirho { context_chirho, .. } => {
+                    assert_eq!(
+                        context_chirho.len(),
+                        2,
+                        "should have 2 constraints (Eq and Show), got: {:?}",
+                        context_chirho
+                    );
+                }
+                other_chirho => panic!("expected QualChirho, got: {:?}", other_chirho),
+            }
+        }
+    }
+
+    #[test]
+    fn lower_equality_constraint_type_sig_chirho() {
+        // a ~ Int => should produce QualChirho with equality constraint
+        let module_chirho =
+            parse_and_lower_chirho("module M where\nfoo :: a ~ Int => a -> Int\n");
+        let ty_sig_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "foo")
+        });
+        assert!(ty_sig_chirho.is_some(), "should have a TypeSig for foo");
+        if let Some(DeclChirho::TypeSigChirho { ty_chirho, .. }) = ty_sig_chirho {
+            match ty_chirho {
+                TypeChirho::QualChirho { context_chirho, .. } => {
+                    assert_eq!(context_chirho.len(), 1, "should have 1 constraint");
+                    // The constraint should be the ~ operator applied to two types
+                    let c_chirho = &context_chirho[0];
+                    assert_eq!(
+                        c_chirho.class_chirho.text_chirho(),
+                        "~",
+                        "constraint class should be ~"
+                    );
+                    assert_eq!(
+                        c_chirho.args_chirho.len(),
+                        2,
+                        "equality constraint should have 2 type args"
+                    );
+                }
+                other_chirho => panic!("expected QualChirho, got: {:?}", other_chirho),
+            }
+        }
     }
 
     #[test]

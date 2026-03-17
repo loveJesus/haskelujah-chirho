@@ -663,21 +663,44 @@ impl InferCtxChirho {
         let body_ast_chirho = Self::extract_constraints_chirho(ast_ty_chirho, &mut preds_chirho);
         let ty_chirho = self.ast_type_to_ty_chirho(body_ast_chirho, &mut var_map_chirho);
 
-        let scheme_preds_chirho: Vec<SchemePredChirho> = preds_chirho
-            .iter()
-            .map(|c_chirho| {
-                let class_name_chirho = c_chirho.class_chirho.text_chirho().to_string();
-                let pred_ty_chirho = if let Some(first_arg_chirho) = c_chirho.args_chirho.first() {
-                    self.ast_type_to_ty_chirho(first_arg_chirho, &mut var_map_chirho)
-                } else {
-                    self.fresh_var_chirho()
-                };
-                SchemePredChirho {
+        // Collect equality constraints (`~`) to record as deferred
+        // unifications in the scheme, and normal class predicates as
+        // SchemePredChirho.
+        let mut scheme_preds_chirho: Vec<SchemePredChirho> = Vec::new();
+        let mut equality_pairs_chirho: Vec<(TyChirho, TyChirho)> = Vec::new();
+
+        for c_chirho in &preds_chirho {
+            let class_name_chirho = c_chirho.class_chirho.text_chirho().to_string();
+            if class_name_chirho == "~" && c_chirho.args_chirho.len() >= 2 {
+                // Type equality constraint: a ~ b
+                let lhs_chirho =
+                    self.ast_type_to_ty_chirho(&c_chirho.args_chirho[0], &mut var_map_chirho);
+                let rhs_chirho =
+                    self.ast_type_to_ty_chirho(&c_chirho.args_chirho[1], &mut var_map_chirho);
+                equality_pairs_chirho.push((lhs_chirho, rhs_chirho));
+            } else {
+                let pred_ty_chirho =
+                    if let Some(first_arg_chirho) = c_chirho.args_chirho.first() {
+                        self.ast_type_to_ty_chirho(first_arg_chirho, &mut var_map_chirho)
+                    } else {
+                        self.fresh_var_chirho()
+                    };
+                scheme_preds_chirho.push(SchemePredChirho {
                     class_name_chirho,
                     ty_chirho: pred_ty_chirho,
-                }
-            })
-            .collect();
+                });
+            }
+        }
+
+        // Apply equality constraints: for `(a ~ b) => T`, unify `a` and `b`
+        // so the scheme body reflects the equality.
+        for (lhs_chirho, rhs_chirho) in &equality_pairs_chirho {
+            if let Ok(subst_chirho) =
+                unify_chirho(lhs_chirho, rhs_chirho, SpanChirho::DUMMY_CHIRHO)
+            {
+                self.apply_subst_all_chirho(&subst_chirho);
+            }
+        }
 
         // Peel off the outermost ForallChirho produced by ast_type_to_ty_chirho.
         // The vars in a top-level ForallChirho become scheme vars; nested ForallChirho
