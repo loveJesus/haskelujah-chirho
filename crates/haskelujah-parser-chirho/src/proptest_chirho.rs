@@ -6,18 +6,15 @@
 //! These tests exercise the lexer, layout engine, and CST parser with
 //! randomly-generated inputs to verify crash-freedom and basic invariants.
 //!
-//! NOTE: The arbitrary-input tests use `catch_unwind` because the parser
-//! currently panics on certain malformed inputs (checkpoint stack depth
-//! mismatch in GreenBuilder). These panics are tracked as known bugs.
-//! The structured-input tests (identifiers, module headers, etc.) remain
-//! strict — they must never panic.
+//! ALL tests are strict — arbitrary input must never panic.  The green
+//! builder gracefully handles malformed input (unclosed nodes, stack depth
+//! mismatches) by auto-closing or producing partial trees.
 
 #[cfg(test)]
 mod tests_chirho {
     use proptest::prelude::*;
     use haskelujah_span_chirho::SourceMapChirho;
     use haskelujah_syntax_chirho::SourceFileChirho;
-    use std::panic;
 
     /// Parse arbitrary text through the full pipeline (lex → layout → CST → AST).
     fn parse_no_panic_chirho(src_chirho: &str) {
@@ -31,33 +28,13 @@ mod tests_chirho {
             crate::lower_chirho::lower_module_chirho(&green_chirho, file_id_chirho);
     }
 
-    /// Parse with catch_unwind — returns true if parsing completed (or returned
-    /// errors gracefully), false if it panicked internally.
-    fn parse_catch_panic_chirho(src_chirho: &str) -> bool {
-        let src_owned_chirho = src_chirho.to_string();
-        panic::catch_unwind(move || {
-            let mut sm_chirho = SourceMapChirho::new_chirho();
-            let sf_chirho =
-                SourceFileChirho::from_source_map_chirho(&mut sm_chirho, "prop.hs", &src_owned_chirho);
-            let file_id_chirho = sf_chirho.file_id_chirho();
-            let green_chirho =
-                crate::cst_parser_chirho::parse_to_cst_chirho(sf_chirho.contents_chirho(), file_id_chirho);
-            let _module_chirho =
-                crate::lower_chirho::lower_module_chirho(&green_chirho, file_id_chirho);
-        })
-        .is_ok()
-    }
-
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(200))]
 
-        /// Arbitrary bytes should not abort the process. Internal panics are
-        /// caught and tolerated (known parser bug with checkpoint depths).
+        /// Arbitrary bytes must not crash the parser.
         #[test]
         fn parser_survives_arbitrary_input_chirho(src_chirho in "\\PC{0,200}") {
-            // catch_unwind: process must not abort. Panics are tolerated but
-            // tracked as a known issue in the green builder.
-            let _ok_chirho = parse_catch_panic_chirho(&src_chirho);
+            parse_no_panic_chirho(&src_chirho);
         }
 
         /// Valid Haskell-like identifiers should not crash the parser.
@@ -108,13 +85,12 @@ mod tests_chirho {
             parse_no_panic_chirho(&src_chirho);
         }
 
-        /// Unbalanced braces/brackets should not crash, just produce errors.
-        /// Uses catch_unwind for known parser edge cases.
+        /// Unbalanced braces/brackets must not crash — parser produces errors.
         #[test]
         fn parser_handles_unbalanced_delimiters_chirho(
             src_chirho in "[\\[\\]\\(\\)\\{\\}a-z0-9 \n]{0,100}"
         ) {
-            let _ok_chirho = parse_catch_panic_chirho(&src_chirho);
+            parse_no_panic_chirho(&src_chirho);
         }
 
         /// The CST should produce a green node for any valid Haskell snippet.

@@ -210,10 +210,10 @@ impl GreenBuilderChirho {
             // Skip the wrap and return silently.
             return;
         }
-        let parent_chirho = self
-            .stack_chirho
-            .last_mut()
-            .expect("stack should not be empty");
+        let Some(parent_chirho) = self.stack_chirho.last_mut() else {
+            // Stack is empty after depth recovery — skip the wrap.
+            return;
+        };
         let children_count_chirho = checkpoint_chirho.children_count_chirho
             .min(parent_chirho.1.len());
         let wrapped_children_chirho =
@@ -234,10 +234,11 @@ impl GreenBuilderChirho {
     /// Finish the current node, pushing it as a child of the parent node
     /// (or making it the root).
     pub fn finish_node_chirho(&mut self) {
-        let (kind_chirho, children_chirho) = self
-            .stack_chirho
-            .pop()
-            .expect("finish_node_chirho called without matching start_node_chirho");
+        let Some((kind_chirho, children_chirho)) = self.stack_chirho.pop() else {
+            // Stack underflow from malformed input — silently ignore rather
+            // than panicking so the parser can produce a (partial) tree.
+            return;
+        };
         let node_chirho = Arc::new(GreenNodeChirho::new_chirho(kind_chirho, children_chirho));
         let element_chirho = GreenElementChirho::NodeChirho(node_chirho);
 
@@ -251,23 +252,37 @@ impl GreenBuilderChirho {
         }
     }
 
-    /// Extract the finished root node. Panics if the tree is incomplete.
+    /// Extract the finished root node.
+    ///
+    /// Handles malformed builder state gracefully: auto-closes unclosed
+    /// nodes, wraps bare tokens, and produces an empty root if the stack
+    /// is empty.  This ensures the parser never panics on malformed input.
     pub fn finish_chirho(mut self) -> Arc<GreenNodeChirho> {
-        assert_eq!(
-            self.stack_chirho.len(),
-            1,
-            "unfinished nodes remain on the builder stack"
-        );
-        let (_, mut children_chirho) = self.stack_chirho.pop().unwrap();
-        assert_eq!(
-            children_chirho.len(),
-            1,
-            "root should have exactly one child (the root node)"
-        );
-        match children_chirho.pop().unwrap() {
-            GreenElementChirho::NodeChirho(n_chirho) => n_chirho,
-            _ => panic!("root child should be a node"),
+        // Auto-close any unclosed nodes: drain the stack down to one frame.
+        while self.stack_chirho.len() > 1 {
+            self.finish_node_chirho();
         }
+
+        // If the stack is completely empty (no start_node was ever called),
+        // produce a minimal empty root.
+        if self.stack_chirho.is_empty() {
+            return Arc::new(GreenNodeChirho::new_chirho(
+                SyntaxKindChirho::SourceFileChirho,
+                Vec::new(),
+            ));
+        }
+
+        let (root_kind_chirho, children_chirho) = self.stack_chirho.pop().unwrap();
+
+        // Happy path: root has exactly one node child.
+        if children_chirho.len() == 1 {
+            if let GreenElementChirho::NodeChirho(n_chirho) = &children_chirho[0] {
+                return Arc::clone(n_chirho);
+            }
+        }
+
+        // Fallback: wrap whatever children exist into a root node.
+        Arc::new(GreenNodeChirho::new_chirho(root_kind_chirho, children_chirho))
     }
 }
 
