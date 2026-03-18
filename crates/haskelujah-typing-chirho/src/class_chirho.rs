@@ -1153,6 +1153,53 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
+        // Typeable — GHC built-in class. Every type is automatically Typeable.
+        // We add a universal instance so that any Typeable constraint is satisfied.
+        let typeable_var_chirho = TyVarChirho(9070);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Typeable".to_string(),
+            supers_chirho: vec![],
+            var_chirho: typeable_var_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+        // Universal Typeable instance: every type is Typeable
+        let typeable_inst_var_chirho = TyVarChirho(9071);
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Typeable".to_string(),
+            head_ty_chirho: TyChirho::VarChirho(typeable_inst_var_chirho),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // Data class (Data.Data)
+        let data_var_chirho = TyVarChirho(9072);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Data".to_string(),
+            supers_chirho: vec!["Typeable".to_string()],
+            var_chirho: data_var_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // KnownNat / KnownSymbol / KnownChar — GHC type-level classes
+        for class_name_chirho in &["KnownNat", "KnownSymbol", "KnownChar"] {
+            let kn_var_chirho = TyVarChirho(9073);
+            self.add_class_chirho(ClassDeclChirho {
+                name_chirho: class_name_chirho.to_string(),
+                supers_chirho: vec![],
+                var_chirho: kn_var_chirho,
+                methods_chirho: HashMap::new(),
+                extra_vars_chirho: vec![],
+                fundeps_chirho: vec![],
+                defaults_chirho: HashMap::new(),
+            });
+        }
+
         // Coercible — GHC built-in class for safe coercions between
         // types with the same representation. We treat it as a two-parameter
         // class with a universal instance: Coercible a a (reflexivity).
