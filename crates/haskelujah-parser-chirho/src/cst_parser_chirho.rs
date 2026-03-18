@@ -1513,12 +1513,24 @@ impl<'src> ParserChirho<'src> {
             self.bump_chirho(); // forall
             self.eat_trivia_chirho();
             // Collect type variables until '.'
+            // Accepts bare VarId and kind-annotated (VarId :: Kind) binders
+            // where the kind is a simple kind (*, k, * -> *, etc.)
             while !self.at_dot_chirho()
                 && !self.at_eof_chirho()
                 && !self.at_decl_boundary_chirho()
             {
                 if self.at_chirho(RawTokenKindChirho::VarIdChirho) {
                     self.bump_chirho();
+                } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+                    // Only parse as a kind-annotated binder if we can
+                    // confirm the pattern: ( VarId :: SimpleKind )
+                    // Use a lookahead check to avoid consuming complex
+                    // type expressions that aren't simple kind annotations.
+                    if self.is_simple_kind_annotated_binder_chirho() {
+                        self.parse_paren_type_chirho();
+                    } else {
+                        break;
+                    }
                 } else {
                     break;
                 }
@@ -1921,6 +1933,83 @@ impl<'src> ParserChirho<'src> {
             i_chirho += 1;
         }
         None
+    }
+
+    /// Lookahead to check if the current `(` starts a simple kind-annotated
+    /// binder suitable for forall: `( VarId :: SimpleKind )` where SimpleKind
+    /// is `*`, `Type`, `Constraint`, a kind variable, or arrow kinds thereof.
+    /// Returns false for complex kinds like `Either x y` or `forall k. k -> Type`.
+    fn is_simple_kind_annotated_binder_chirho(&self) -> bool {
+        let mut i_chirho = self.pos_chirho + 1; // skip `(`
+        // Skip trivia after `(`
+        while i_chirho < self.tokens_chirho.len()
+            && self.tokens_chirho[i_chirho].kind_chirho.is_trivia_chirho()
+        {
+            i_chirho += 1;
+        }
+        // Must be VarId
+        if i_chirho >= self.tokens_chirho.len()
+            || self.tokens_chirho[i_chirho].kind_chirho != RawTokenKindChirho::VarIdChirho
+        {
+            return false;
+        }
+        i_chirho += 1;
+        // Skip trivia
+        while i_chirho < self.tokens_chirho.len()
+            && self.tokens_chirho[i_chirho].kind_chirho.is_trivia_chirho()
+        {
+            i_chirho += 1;
+        }
+        // Must be ::
+        if i_chirho >= self.tokens_chirho.len()
+            || self.tokens_chirho[i_chirho].kind_chirho != RawTokenKindChirho::ColonColonChirho
+        {
+            return false;
+        }
+        i_chirho += 1;
+        // Scan ahead for `)` — only simple kind tokens allowed:
+        // *, Type, Constraint, VarId (kind var), ConId (named kind), ->
+        // Must find `)` before any complex syntax (forall, application).
+        // Consecutive name tokens (VarId/ConId) without `->` indicate type
+        // application (e.g. `Either x y`), not a simple kind.
+        let mut paren_depth_chirho: u32 = 0;
+        let mut last_was_name_chirho = false;
+        while i_chirho < self.tokens_chirho.len() {
+            let k_chirho = self.tokens_chirho[i_chirho].kind_chirho;
+            if k_chirho.is_trivia_chirho() {
+                i_chirho += 1;
+                continue;
+            }
+            match k_chirho {
+                RawTokenKindChirho::RightParenChirho if paren_depth_chirho == 0 => return true,
+                RawTokenKindChirho::RightParenChirho => {
+                    paren_depth_chirho -= 1;
+                    last_was_name_chirho = false;
+                }
+                RawTokenKindChirho::LeftParenChirho => {
+                    paren_depth_chirho += 1;
+                    last_was_name_chirho = false;
+                }
+                RawTokenKindChirho::VarIdChirho | RawTokenKindChirho::ConIdChirho => {
+                    // Two consecutive names = type application, not a kind
+                    if last_was_name_chirho && paren_depth_chirho == 0 {
+                        return false;
+                    }
+                    last_was_name_chirho = true;
+                }
+                RawTokenKindChirho::RightArrowChirho => {
+                    last_was_name_chirho = false;
+                }
+                // VarSym covers `*` which is used as a kind
+                RawTokenKindChirho::VarSymChirho => {
+                    last_was_name_chirho = false;
+                }
+                // Any other token (forall, etc.) is not simple
+                _ => return false,
+            }
+            i_chirho += 1;
+        }
+        false
     }
 
     // -----------------------------------------------------------------------

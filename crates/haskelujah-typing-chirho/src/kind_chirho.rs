@@ -367,6 +367,39 @@ impl KindInferCtxChirho {
         KindChirho::VarChirho(self.fresh_var_chirho())
     }
 
+    /// Instantiate a kind by replacing all `VarChirho` with fresh variables.
+    /// This is used when looking up a poly-kinded type constructor so each
+    /// use site gets its own copy of the kind variables.
+    fn instantiate_kind_chirho(&mut self, kind_chirho: &KindChirho) -> KindChirho {
+        let mut var_map_chirho: HashMap<KindVarChirho, KindVarChirho> = HashMap::new();
+        self.instantiate_kind_inner_chirho(kind_chirho, &mut var_map_chirho)
+    }
+
+    fn instantiate_kind_inner_chirho(
+        &mut self,
+        kind_chirho: &KindChirho,
+        var_map_chirho: &mut HashMap<KindVarChirho, KindVarChirho>,
+    ) -> KindChirho {
+        match kind_chirho {
+            KindChirho::VarChirho(v_chirho) => {
+                // First resolve through the substitution
+                if let Some(resolved_chirho) = self.subst_chirho.map_chirho.get(v_chirho) {
+                    let resolved_chirho = resolved_chirho.clone();
+                    return self.instantiate_kind_inner_chirho(&resolved_chirho, var_map_chirho);
+                }
+                let new_var_chirho = *var_map_chirho.entry(*v_chirho).or_insert_with(|| {
+                    self.fresh_var_chirho()
+                });
+                KindChirho::VarChirho(new_var_chirho)
+            }
+            KindChirho::StarChirho | KindChirho::ConstraintChirho => kind_chirho.clone(),
+            KindChirho::ArrowChirho(a_chirho, b_chirho) => KindChirho::arrow_chirho(
+                self.instantiate_kind_inner_chirho(a_chirho, var_map_chirho),
+                self.instantiate_kind_inner_chirho(b_chirho, var_map_chirho),
+            ),
+        }
+    }
+
     /// Convert AST kind to internal kind, allocating fresh kind vars for PolyKinds.
     /// Same kind variable name maps to the same KindVarChirho within a declaration.
     fn ast_kind_to_kind_ctx_chirho(&mut self, ast_chirho: &AstKindChirho) -> KindChirho {
@@ -449,12 +482,22 @@ impl KindInferCtxChirho {
             TypeChirho::AppChirho {
                 fun_chirho,
                 arg_chirho,
-                ..
+                span_chirho,
             } => {
-                // Kind application (rare, e.g. `(k1 k2) -> Type`).
-                let f_chirho = self.type_to_kind_chirho(fun_chirho);
-                let a_chirho = self.type_to_kind_chirho(arg_chirho);
-                KindChirho::arrow_chirho(a_chirho, f_chirho)
+                // Kind application: if fun has kind (a -> r), apply arg of kind a
+                // to get result kind r.
+                let f_kind_chirho = self.type_to_kind_chirho(fun_chirho);
+                let a_kind_chirho = self.type_to_kind_chirho(arg_chirho);
+                let result_chirho = self.fresh_kind_chirho();
+                let expected_fun_chirho =
+                    KindChirho::arrow_chirho(a_kind_chirho, result_chirho.clone());
+                self.unify_chirho(
+                    &f_kind_chirho,
+                    &expected_fun_chirho,
+                    "kind application",
+                    *span_chirho,
+                );
+                result_chirho
             }
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 self.type_to_kind_chirho(inner_chirho)
@@ -532,7 +575,15 @@ impl KindInferCtxChirho {
             TypeChirho::ConChirho(name_chirho) => {
                 let text_chirho = name_chirho.text_chirho();
                 if let Some(k_chirho) = self.env_chirho.lookup_chirho(text_chirho) {
-                    k_chirho.clone()
+                    let k_chirho = k_chirho.clone();
+                    // Instantiate fresh kind variables for each use of a
+                    // poly-kinded type constructor (e.g. `Proxy :: k -> Type`
+                    // gets fresh `k` each time it appears).
+                    if k_chirho.free_vars_chirho().is_empty() {
+                        k_chirho
+                    } else {
+                        self.instantiate_kind_chirho(&k_chirho)
+                    }
                 } else {
                     // Unknown type constructor — assign a fresh kind variable.
                     let k_chirho = self.fresh_kind_chirho();
@@ -826,11 +877,15 @@ impl KindInferCtxChirho {
         self.env_chirho.bind_chirho(name_chirho.to_string(), kind_chirho);
     }
 
-    /// Finalize: apply substitution to all kinds in the environment and default
-    /// unconstrained kind variables to *.
-    fn finalize_chirho(&mut self) {
+    /// Finalize: apply substitution to all kinds in the environment.
+    /// When PolyKinds is NOT enabled, default unconstrained kind variables to *.
+    /// When PolyKinds IS enabled, preserve kind variables to allow polymorphic kinds.
+    fn finalize_chirho(&mut self, _poly_kinds_enabled_chirho: bool) {
         self.env_chirho.apply_subst_chirho(&self.subst_chirho);
-        // Default remaining kind variables to *
+        // Default remaining kind variables to *.
+        // Even with PolyKinds, unsolved kind variables default to * at the
+        // module boundary — the polymorphism is achieved by instantiating
+        // fresh vars at each use site in infer_type_kind_chirho.
         for kind_chirho in self.env_chirho.kinds_chirho.values_mut() {
             *kind_chirho = default_kind_vars_chirho(kind_chirho);
         }
@@ -882,6 +937,9 @@ pub struct KindResultChirho {
 /// Run kind inference on a module's type declarations and type signatures.
 pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChirho {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+    let poly_kinds_enabled_chirho = module_chirho.extensions_chirho.iter().any(|e_chirho| {
+        e_chirho == "PolyKinds" || e_chirho == "TypeInType"
+    });
 
     // Phase 1: Process all type/data/newtype/class declarations to establish
     // the kind of each type constructor.
@@ -889,6 +947,12 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
         // Reset kind variable cache between declarations so that kind
         // variables from one declaration don't leak into the next.
         ctx_chirho.kind_var_cache_chirho.clear();
+
+        // Snapshot the env keys so we can remove per-declaration locals
+        // (type variables) after processing this declaration, preventing
+        // scope leaks into subsequent declarations.
+        let env_keys_before_chirho: std::collections::HashSet<String> =
+            ctx_chirho.env_chirho.kinds_chirho.keys().cloned().collect();
         match decl_chirho {
             DeclChirho::DataDeclChirho {
                 name_chirho,
@@ -1070,10 +1134,31 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
             }
             _ => {}
         }
+
+        // Remove per-declaration locals (type variables like `a`, `b`, `k`)
+        // that were added during this declaration but shouldn't persist.
+        // Keep only type constructor names that were in the env before or
+        // that look like type constructors (uppercase first char).
+        let keys_to_remove_chirho: Vec<String> = ctx_chirho
+            .env_chirho
+            .kinds_chirho
+            .keys()
+            .filter(|k_chirho| {
+                !env_keys_before_chirho.contains(*k_chirho)
+                    && k_chirho
+                        .chars()
+                        .next()
+                        .map_or(true, |c_chirho| c_chirho.is_lowercase())
+            })
+            .cloned()
+            .collect();
+        for key_chirho in keys_to_remove_chirho {
+            ctx_chirho.env_chirho.kinds_chirho.remove(&key_chirho);
+        }
     }
 
     // Phase 2: Finalize — apply substitution and default unconstrained vars.
-    ctx_chirho.finalize_chirho();
+    ctx_chirho.finalize_chirho(poly_kinds_enabled_chirho);
 
     KindResultChirho {
         env_chirho: ctx_chirho.env_chirho,
