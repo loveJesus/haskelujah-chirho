@@ -954,7 +954,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &["toConstr", "gunfold", "gfoldl", "dataTypeOf",
                              "gmapT", "gmapQ", "gmapQl", "gmapQr", "gmapQi", "gmapM",
-                             "mkConstr", "mkDataType", "constrType", "showConstr"] {
+                             "mkConstr", "mkDataType", "constrType", "showConstr",
+                             "cast", "gcast", "gcast1", "gcast2",
+                             "typeOf", "typeRep", "mkFunTy",
+                             "fromConstr", "fromConstrB", "fromConstrM",
+                             "dataTypeConstrs", "maxConstrIndex", "indexConstr",
+                             "dataTypeName", "constrFields", "constrFixity",
+                             "constrIndex", "constrRep", "repConstr"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
