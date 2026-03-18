@@ -316,7 +316,7 @@ fn resolve_imports_chirho(
 
 /// Compute which (name, namespace, span) triples should be imported from a
 /// module's exports, respecting the import specification.
-fn compute_imported_names_chirho(
+pub fn compute_imported_names_chirho(
     exports_chirho: &IfaceExportsChirho,
     spec_chirho: &Option<haskelujah_ast_chirho::module_chirho::ImportSpecChirho>,
 ) -> Vec<(String, NamespaceChirho, SpanChirho)> {

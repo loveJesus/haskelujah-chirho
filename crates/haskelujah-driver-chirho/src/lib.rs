@@ -131,12 +131,54 @@ pub fn run_frontend_chirho(
         return Err(kind_result_chirho.diagnostics_chirho);
     }
 
+    // Phase 3.9: Seed the type environment with placeholder types for
+    // imported values that don't have explicit type schemes. This allows
+    // the type checker to see imported names as polymorphic variables
+    // rather than reporting them as "unbound variable" (E0202).
+    let mut merged_imported_types_chirho = imported_types_chirho.clone();
+    for import_chirho in &module_chirho.imports_chirho {
+        let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
+        if let Some(iface_chirho) = ifaces_chirho
+            .iter()
+            .find(|m_chirho| m_chirho.name_chirho == module_name_chirho)
+        {
+            // Collect which names this import brings in.
+            let names_chirho = haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho(
+                &iface_chirho.exports_chirho,
+                &import_chirho.spec_chirho,
+            );
+            for (name_chirho, ns_chirho, _span_chirho) in &names_chirho {
+                if ns_chirho == &haskelujah_naming_chirho::env_chirho::NamespaceChirho::ValueChirho
+                    && !merged_imported_types_chirho.contains_key(name_chirho)
+                {
+                    // Assign a fully polymorphic type: forall a. a
+                    // This allows the type checker to accept the name
+                    // without knowing the precise type.
+                    let fresh_var_chirho = haskelujah_typing_chirho::TyVarChirho(
+                        9000 + merged_imported_types_chirho.len() as u32,
+                    );
+                    let placeholder_scheme_chirho = haskelujah_typing_chirho::SchemeChirho {
+                        vars_chirho: vec![fresh_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: haskelujah_typing_chirho::TyChirho::VarChirho(fresh_var_chirho),
+                    };
+                    merged_imported_types_chirho
+                        .insert(name_chirho.clone(), placeholder_scheme_chirho);
+                    // Also bind qualified version
+                    if !import_chirho.qualified_chirho {
+                        // Already inserted unqualified above
+                    }
+                }
+            }
+        }
+    }
+
     // Phase 4: Type inference — use import-aware variant when upstream
     // type schemes are available, plain variant otherwise.
-    let infer_result_chirho = if imported_types_chirho.is_empty() {
+    let infer_result_chirho = if merged_imported_types_chirho.is_empty() {
         infer_module_chirho(&module_chirho)
     } else {
-        infer_module_with_imports_chirho(&module_chirho, imported_types_chirho)
+        infer_module_with_imports_chirho(&module_chirho, &merged_imported_types_chirho)
     };
     if infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(infer_result_chirho.diagnostics_chirho);

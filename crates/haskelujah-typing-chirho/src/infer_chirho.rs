@@ -10060,9 +10060,13 @@ pub fn infer_module_with_imports_chirho(
     imported_types_chirho: &HashMap<String, SchemeChirho>,
 ) -> InferResultChirho {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
-    // Seed the type environment with imported type schemes.
+    // Seed the type environment with imported type schemes, but only if
+    // the name doesn't already have a built-in type (from seed_builtins_chirho).
+    // This prevents imported placeholder types from overriding precise built-in types.
     for (name_chirho, scheme_chirho) in imported_types_chirho {
-        ctx_chirho.env_chirho.bind_chirho(name_chirho.clone(), scheme_chirho.clone());
+        if ctx_chirho.env_chirho.lookup_chirho(name_chirho).is_none() {
+            ctx_chirho.env_chirho.bind_chirho(name_chirho.clone(), scheme_chirho.clone());
+        }
     }
     let subst_chirho = ctx_chirho.infer_module_chirho(module_chirho);
     ctx_chirho.check_deferred_preds_chirho(&subst_chirho);

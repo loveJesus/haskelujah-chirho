@@ -5544,4 +5544,71 @@ mod tests_chirho {
             "foo should be exported via self re-export"
         );
     }
+
+    #[test]
+    fn builtin_dedup_data_map_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let data_map_chirho: Vec<_> = ifaces_chirho
+            .iter()
+            .filter(|i_chirho| i_chirho.name_chirho == "Data.Map")
+            .collect();
+        assert_eq!(
+            data_map_chirho.len(),
+            1,
+            "Data.Map should be deduplicated to a single entry"
+        );
+        let dm_chirho = &data_map_chirho[0];
+        // Should have standard Haskell API names from the second definition
+        assert!(
+            dm_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("singleton"),
+            "Data.Map should export 'singleton' after dedup merge"
+        );
+        assert!(
+            dm_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("empty"),
+            "Data.Map should export 'empty' after dedup merge"
+        );
+        // Should also have internal names from the first definition
+        assert!(
+            dm_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("mapInsert"),
+            "Data.Map should still export 'mapInsert' from first definition"
+        );
+    }
+
+    #[test]
+    fn builtin_dedup_foreign_storable_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let fs_chirho: Vec<_> = ifaces_chirho
+            .iter()
+            .filter(|i_chirho| i_chirho.name_chirho == "Foreign.Storable")
+            .collect();
+        assert_eq!(
+            fs_chirho.len(),
+            1,
+            "Foreign.Storable should be deduplicated to a single entry"
+        );
+        let s_chirho = &fs_chirho[0];
+        assert!(
+            s_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("sizeOf"),
+            "Foreign.Storable should export 'sizeOf'"
+        );
+        assert!(
+            s_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("peek"),
+            "Foreign.Storable should export 'peek'"
+        );
+    }
 }
