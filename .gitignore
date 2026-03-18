@@ -34,3 +34,6 @@ Thumbs.db
 # Claude state
 .claude/
 *.sqlite
+
+# Temporary working directory (agent scratch, codex assist, etc.)
+/tmp-chirho/
