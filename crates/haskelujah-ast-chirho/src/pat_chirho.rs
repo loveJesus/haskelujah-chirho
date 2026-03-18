@@ -15,8 +15,11 @@ pub enum PatChirho {
     VarChirho(NameChirho),
     /// Constructor pattern (`Just x`, `Left a`).
     ConChirho {
+        /// Constructor name being matched.
         con_chirho: NameChirho,
+        /// Positional subpatterns matched against constructor fields.
         args_chirho: Vec<PatChirho>,
+        /// Span covering the whole constructor pattern.
         span_chirho: SpanChirho,
     },
     /// Literal pattern (`42`, `'a'`, `"hello"`).
@@ -25,65 +28,93 @@ pub enum PatChirho {
     WildcardChirho(SpanChirho),
     /// As pattern (`x@pat`).
     AsChirho {
+        /// Variable name bound to the entire matched value.
         name_chirho: NameChirho,
+        /// Nested pattern matched after the alias binding.
         pattern_chirho: Box<PatChirho>,
+        /// Span covering the whole as-pattern.
         span_chirho: SpanChirho,
     },
     /// Tuple pattern (`(a, b, c)`).
     TupleChirho {
+        /// Tuple element patterns in source order.
         elements_chirho: Vec<PatChirho>,
+        /// Span covering the whole tuple pattern.
         span_chirho: SpanChirho,
     },
     /// List pattern (`[a, b, c]`).
     ListChirho {
+        /// Element patterns matched against the list.
         elements_chirho: Vec<PatChirho>,
+        /// Span covering the whole list pattern.
         span_chirho: SpanChirho,
     },
     /// Parenthesized pattern (`(pat)`).
     ParenChirho {
+        /// Inner pattern wrapped in parentheses.
         inner_chirho: Box<PatChirho>,
+        /// Span covering the whole parenthesized pattern.
         span_chirho: SpanChirho,
     },
     /// Negated literal pattern (`-42`).
     NegChirho {
+        /// Literal being matched after unary negation.
         lit_chirho: LitChirho,
+        /// Span covering the whole negated literal pattern.
         span_chirho: SpanChirho,
     },
     /// Lazy (irrefutable) pattern (`~pat`).
     LazyChirho {
+        /// Pattern matched lazily.
         inner_chirho: Box<PatChirho>,
+        /// Span covering the whole lazy pattern.
         span_chirho: SpanChirho,
     },
     /// Bang pattern (`!pat`).
     BangChirho {
+        /// Pattern forced before matching proceeds.
         inner_chirho: Box<PatChirho>,
+        /// Span covering the whole bang pattern.
         span_chirho: SpanChirho,
     },
     /// Infix constructor pattern (`x : xs`).
     InfixConChirho {
+        /// Left operand pattern.
         left_chirho: Box<PatChirho>,
+        /// Infix constructor being matched.
         op_chirho: NameChirho,
+        /// Right operand pattern.
         right_chirho: Box<PatChirho>,
+        /// Span covering the whole infix constructor pattern.
         span_chirho: SpanChirho,
     },
     /// Record pattern (`Foo { bar = baz }` or `Foo { bar, .. }`).
     RecordChirho {
+        /// Record constructor being matched.
         con_chirho: NameChirho,
+        /// Field subpatterns explicitly listed in the record pattern.
         fields_chirho: Vec<PatFieldChirho>,
         /// Whether `..` was present (RecordWildCards).
         has_wildcard_chirho: bool,
+        /// Span covering the whole record pattern.
         span_chirho: SpanChirho,
     },
     /// View pattern (`expr -> pat`), requires ViewPatterns extension.
     ViewChirho {
+        /// Expression applied to the scrutinee before matching.
         expr_chirho: Box<super::expr_chirho::ExprChirho>,
+        /// Pattern matched against the view result.
         pat_chirho: Box<PatChirho>,
+        /// Span covering the whole view pattern.
         span_chirho: SpanChirho,
     },
     /// Type-annotated pattern (`(x :: Int)`), requires ScopedTypeVariables.
     TypeAnnotChirho {
+        /// Underlying pattern carrying the annotation.
         pat_chirho: Box<PatChirho>,
+        /// Type annotation attached to the pattern.
         ty_chirho: super::ty_chirho::TypeChirho,
+        /// Span covering the whole typed pattern.
         span_chirho: SpanChirho,
     },
 }

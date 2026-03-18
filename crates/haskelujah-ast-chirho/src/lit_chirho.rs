@@ -8,9 +8,13 @@ use haskelujah_span_chirho::SpanChirho;
 /// A literal value in source code.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LitChirho {
+    /// Integer literal and its source span.
     IntChirho(i64, SpanChirho),
+    /// Floating-point literal and its source span.
     FloatChirho(f64, SpanChirho),
+    /// Character literal and its source span.
     CharChirho(char, SpanChirho),
+    /// String literal contents and its source span.
     StringChirho(String, SpanChirho),
 }
 

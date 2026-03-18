@@ -88,114 +88,169 @@ impl Deref for TyVarChirho {
 pub enum DeclChirho {
     /// Type signature (`foo :: Type`).
     TypeSigChirho {
+        /// Name whose type is being declared.
         name_chirho: NameChirho,
+        /// Declared type for the binding.
         ty_chirho: TypeChirho,
+        /// Span covering the whole type signature.
         span_chirho: SpanChirho,
     },
     /// Function binding (`foo x y = ...` with possibly multiple equations).
     FunBindChirho {
+        /// Bound top-level function name.
         name_chirho: NameChirho,
+        /// Clauses implementing the function.
         matches_chirho: Vec<MatchArmChirho>,
+        /// Span covering the whole binding group.
         span_chirho: SpanChirho,
     },
     /// Pattern binding (`(a, b) = expr`).
     PatBindChirho {
+        /// Pattern introduced by the binding.
         pat_chirho: PatChirho,
+        /// Right-hand side assigned to the pattern.
         rhs_chirho: RhsChirho,
+        /// Span covering the whole pattern binding.
         span_chirho: SpanChirho,
     },
     /// Data type declaration (`data T a = C1 | C2`).
     DataDeclChirho {
+        /// Declared type constructor name.
         name_chirho: NameChirho,
+        /// Type parameters introduced by the declaration.
         type_vars_chirho: Vec<TyVarChirho>,
+        /// Constructors belonging to the data type.
         constructors_chirho: Vec<ConDeclChirho>,
+        /// Classes listed in the deriving clause.
         deriving_chirho: Vec<NameChirho>,
         /// Standalone kind signature for GADT-style: `data T :: K1 -> K2 -> Type where`
         kind_sig_chirho: Option<crate::ty_chirho::TypeChirho>,
+        /// Span covering the whole data declaration.
         span_chirho: SpanChirho,
     },
     /// Newtype declaration (`newtype T a = Con Type`).
     NewtypeDeclChirho {
+        /// Declared newtype constructor name.
         name_chirho: NameChirho,
+        /// Type parameters introduced by the declaration.
         type_vars_chirho: Vec<TyVarChirho>,
+        /// The single runtime constructor carried by the newtype.
         constructor_chirho: ConDeclChirho,
+        /// Classes listed in the deriving clause.
         deriving_chirho: Vec<NameChirho>,
         /// Standalone kind signature for GADT-style newtype.
         kind_sig_chirho: Option<crate::ty_chirho::TypeChirho>,
+        /// Span covering the whole newtype declaration.
         span_chirho: SpanChirho,
     },
     /// Type alias (`type Name = Type`).
     TypeAliasDeclChirho {
+        /// Alias name being introduced.
         name_chirho: NameChirho,
+        /// Type parameters accepted by the alias.
         type_vars_chirho: Vec<TyVarChirho>,
+        /// Aliased right-hand-side type.
         rhs_chirho: TypeChirho,
+        /// Span covering the whole type alias.
         span_chirho: SpanChirho,
     },
     /// Type family declaration (open or closed).
     /// Open: `type family F a :: *`
     /// Closed: `type family F a where { F Int = Bool; ... }`
     TypeFamilyDeclChirho {
+        /// Family name being declared.
         name_chirho: NameChirho,
+        /// Family parameters introduced by the declaration.
         type_vars_chirho: Vec<TyVarChirho>,
+        /// Optional result kind annotation after `::`.
         result_kind_chirho: Option<TypeChirho>,
         /// Equations for closed families; empty for open families.
         equations_chirho: Vec<TypeFamilyEquationChirho>,
+        /// Span covering the whole family declaration.
         span_chirho: SpanChirho,
     },
     /// Open type family instance (`type instance F Int = Bool`).
     TypeFamilyInstanceDeclChirho {
+        /// Family being instantiated.
         family_name_chirho: NameChirho,
+        /// Left-hand-side instance arguments.
         lhs_types_chirho: Vec<TypeChirho>,
+        /// Reduced result type for the instance.
         rhs_chirho: TypeChirho,
+        /// Span covering the whole family instance declaration.
         span_chirho: SpanChirho,
     },
     /// Type class declaration.
     ClassDeclChirho {
+        /// Class context required by the declaration head.
         context_chirho: Vec<ConstraintChirho>,
+        /// Class name being introduced.
         name_chirho: NameChirho,
+        /// Class type parameters.
         type_vars_chirho: Vec<TyVarChirho>,
+        /// Method signatures and optional defaults declared in the class body.
         methods_chirho: Vec<ClassMethodChirho>,
         /// Associated type families declared inside the class.
         associated_tfs_chirho: Vec<AssocTypeFamilyChirho>,
         /// Functional dependencies: `| a -> b, c -> d`.
         /// Each pair `(from_vars, to_vars)` means the from-vars determine the to-vars.
         fundeps_chirho: Vec<(Vec<String>, Vec<String>)>,
+        /// Span covering the whole class declaration.
         span_chirho: SpanChirho,
     },
     /// Instance declaration.
     InstanceDeclChirho {
+        /// Constraints required by the instance head.
         context_chirho: Vec<ConstraintChirho>,
+        /// Class implemented by the instance.
         class_chirho: NameChirho,
+        /// Concrete instance head arguments.
         types_chirho: Vec<TypeChirho>,
+        /// Method implementations provided by the instance body.
         methods_chirho: Vec<LocalBindChirho>,
         /// Associated type family instances: `type FamName ConcreteType = ResultType`.
         assoc_tf_instances_chirho: Vec<AssocTfInstanceChirho>,
+        /// Span covering the whole instance declaration.
         span_chirho: SpanChirho,
     },
     /// Fixity declaration (`infixl 6 +`).
     FixityDeclChirho {
+        /// Associativity declared for the operators.
         fixity_chirho: FixityChirho,
+        /// Optional precedence level.
         precedence_chirho: Option<u8>,
+        /// Operators whose fixity is being declared.
         ops_chirho: Vec<NameChirho>,
+        /// Span covering the whole fixity declaration.
         span_chirho: SpanChirho,
     },
     /// Default declaration (`default (Int, Double)`).
     DefaultDeclChirho {
+        /// Fallback defaulted types used by ambiguous numeric inference.
         types_chirho: Vec<TypeChirho>,
+        /// Span covering the whole default declaration.
         span_chirho: SpanChirho,
     },
     /// Foreign declaration (`foreign import`/`foreign export`).
     ForeignDeclChirho {
+        /// Whether the declaration imports or exports a symbol.
         direction_chirho: ForeignDirectionChirho,
+        /// Local Haskell binding name.
         name_chirho: NameChirho,
+        /// Haskell type attached to the foreign binding.
         ty_chirho: TypeChirho,
+        /// Calling convention such as `ccall` or `stdcall`.
         calling_conv_chirho: String,
+        /// Optional safety annotation (`safe`, `unsafe`, `interruptible`).
         safety_chirho: Option<String>,
+        /// Optional foreign symbol name when it differs from the local binding name.
         foreign_name_chirho: Option<String>,
+        /// Span covering the whole foreign declaration.
         span_chirho: SpanChirho,
     },
     /// Pattern synonym declaration.
     PatSynDeclChirho {
+        /// Pattern synonym name being introduced.
         name_chirho: NameChirho,
         /// Pattern variables bound by this synonym.
         args_chirho: Vec<NameChirho>,
@@ -203,18 +258,25 @@ pub enum DeclChirho {
         dir_chirho: PatSynDirChirho,
         /// The pattern this synonym expands to in pattern position.
         pat_chirho: PatChirho,
+        /// Span covering the whole pattern synonym declaration.
         span_chirho: SpanChirho,
     },
     /// Template Haskell splice at declaration level (`$(makeLenses ''Foo)`).
     SpliceDeclChirho {
+        /// Splice expression to execute during compilation.
         expr_chirho: crate::expr_chirho::ExprChirho,
+        /// Span covering the whole splice declaration.
         span_chirho: SpanChirho,
     },
     /// Standalone deriving declaration (`deriving instance Show Foo`).
     StandaloneDerivingDeclChirho {
+        /// Constraints attached to the deriving instance head.
         context_chirho: Vec<ConstraintChirho>,
+        /// Class being derived.
         class_chirho: NameChirho,
+        /// Instance head types receiving the derived instance.
         types_chirho: Vec<TypeChirho>,
+        /// Span covering the whole standalone deriving declaration.
         span_chirho: SpanChirho,
     },
 }
@@ -249,22 +311,30 @@ pub enum StrictnessChirho {
 pub enum ConDeclChirho {
     /// Ordinary constructor (`Con Type1 !Type2`).
     OrdinaryChirho {
+        /// Constructor name.
         name_chirho: NameChirho,
+        /// Positional constructor fields and their strictness.
         fields_chirho: Vec<(StrictnessChirho, TypeChirho)>,
+        /// Span covering the whole constructor declaration.
         span_chirho: SpanChirho,
     },
     /// Record constructor (`Con { field1 :: Type1, field2 :: Type2 }`).
     RecordChirho {
+        /// Constructor name.
         name_chirho: NameChirho,
+        /// Named record fields declared by the constructor.
         fields_chirho: Vec<FieldDeclChirho>,
+        /// Span covering the whole constructor declaration.
         span_chirho: SpanChirho,
     },
     /// GADT constructor (`Con :: forall a. Ctx => Arg -> ... -> T Int a`).
     /// Preserves the full type signature including return type for type refinement.
     GadtChirho {
+        /// Constructor name.
         name_chirho: NameChirho,
         /// The full type signature after `::`.
         ty_chirho: TypeChirho,
+        /// Span covering the whole constructor declaration.
         span_chirho: SpanChirho,
     },
 }

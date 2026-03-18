@@ -672,8 +672,20 @@ impl KindInferCtxChirho {
                 );
                 KindChirho::StarChirho
             }
-            // DataKinds: promoted constructors have kind * (they're type-level constants).
-            TypeChirho::PromotedConChirho { .. } => KindChirho::StarChirho,
+            // DataKinds: promoted constructors ('True, 'Just, 'Proxy, etc.)
+            // have kinds determined by their data constructor types. Since we
+            // don't track constructor types in the kind env, assign a fresh
+            // kind variable so they can unify with whatever context expects.
+            TypeChirho::PromotedConChirho { name_chirho, .. } => {
+                let text_chirho = name_chirho.text_chirho();
+                if let Some(k_chirho) = self.env_chirho.lookup_chirho(text_chirho) {
+                    k_chirho.clone()
+                } else {
+                    let k_chirho = self.fresh_kind_chirho();
+                    self.env_chirho.bind_chirho(text_chirho.to_string(), k_chirho.clone());
+                    k_chirho
+                }
+            }
             // DataKinds: promoted list '[a, b] has kind [*] which we represent as *.
             TypeChirho::PromotedListChirho {
                 elements_chirho,

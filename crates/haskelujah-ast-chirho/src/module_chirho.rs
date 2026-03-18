@@ -55,7 +55,9 @@ pub enum ExportSpecChirho {
     /// Export a type/class with some or all constructors/methods
     /// (`Foo(..)`, `Foo(A, B)`).
     TyConChirho {
+        /// The exported type or class name.
         name_chirho: NameChirho,
+        /// Which constructors or methods are re-exported.
         members_chirho: ExportMembersChirho,
     },
     /// Re-export an entire module (`module Data.List`).
@@ -104,7 +106,9 @@ pub enum ImportItemChirho {
     VarChirho(NameChirho),
     /// Import a type/class with some or all constructors/methods.
     TyConChirho {
+        /// The imported type or class name.
         name_chirho: NameChirho,
+        /// Which constructors or methods are imported.
         members_chirho: ExportMembersChirho,
     },
 }

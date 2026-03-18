@@ -21,146 +21,213 @@ pub enum ExprChirho {
     LitChirho(LitChirho),
     /// Function application (`f x`).
     AppChirho {
+        /// Function expression being applied.
         fun_chirho: Box<ExprChirho>,
+        /// Argument expression supplied to the function.
         arg_chirho: Box<ExprChirho>,
+        /// Span covering the whole application.
         span_chirho: SpanChirho,
     },
     /// Type application (`f @Int`, `read @Bool "True"`).
     TypeAppChirho {
+        /// Expression receiving an explicit type argument.
         expr_chirho: Box<ExprChirho>,
+        /// Type argument supplied with visible type application.
         ty_chirho: TypeChirho,
+        /// Span covering the whole type application.
         span_chirho: SpanChirho,
     },
     /// Infix application (`a + b`).
     InfixChirho {
+        /// Left operand expression.
         left_chirho: Box<ExprChirho>,
+        /// Operator applied between the operands.
         op_chirho: NameChirho,
+        /// Right operand expression.
         right_chirho: Box<ExprChirho>,
+        /// Span covering the whole infix application.
         span_chirho: SpanChirho,
     },
     /// Negation (`-x`).
     NegChirho {
+        /// Expression being negated.
         expr_chirho: Box<ExprChirho>,
+        /// Span covering the whole negation.
         span_chirho: SpanChirho,
     },
     /// Lambda expression (`\x y -> body`).
     LamChirho {
+        /// Parameters introduced by the lambda.
         pats_chirho: Vec<PatChirho>,
+        /// Lambda body expression.
         body_chirho: Box<ExprChirho>,
+        /// Span covering the whole lambda.
         span_chirho: SpanChirho,
     },
     /// Let expression (`let binds in body`).
     LetChirho {
+        /// Local bindings visible in the body.
         binds_chirho: Vec<LocalBindChirho>,
+        /// Body evaluated with the local bindings in scope.
         body_chirho: Box<ExprChirho>,
+        /// Span covering the whole let expression.
         span_chirho: SpanChirho,
     },
     /// If expression (`if c then t else e`).
     IfChirho {
+        /// Condition deciding which branch to evaluate.
         cond_chirho: Box<ExprChirho>,
+        /// Branch evaluated when the condition is true.
         then_chirho: Box<ExprChirho>,
+        /// Branch evaluated when the condition is false.
         else_chirho: Box<ExprChirho>,
+        /// Span covering the whole conditional expression.
         span_chirho: SpanChirho,
     },
     /// Case expression (`case e of { alts }`).
     CaseChirho {
+        /// Expression being scrutinized.
         scrutinee_chirho: Box<ExprChirho>,
+        /// Alternatives matched against the scrutinee.
         alts_chirho: Vec<AltChirho>,
+        /// Span covering the whole case expression.
         span_chirho: SpanChirho,
     },
     /// Do expression (`do { stmts }`).
     DoChirho {
+        /// Statements executed in sequence.
         stmts_chirho: Vec<StmtChirho>,
+        /// Span covering the whole do block.
         span_chirho: SpanChirho,
     },
     /// Tuple expression (`(a, b, c)`).
     TupleChirho {
+        /// Tuple elements in source order.
         elements_chirho: Vec<ExprChirho>,
+        /// Span covering the whole tuple expression.
         span_chirho: SpanChirho,
     },
     /// List expression (`[a, b, c]`).
     ListChirho {
+        /// List elements in source order.
         elements_chirho: Vec<ExprChirho>,
+        /// Span covering the whole list expression.
         span_chirho: SpanChirho,
     },
     /// Arithmetic sequence (`[1..10]`, `[1,3..10]`).
     ArithSeqChirho {
+        /// First element in the arithmetic progression.
         from_chirho: Box<ExprChirho>,
+        /// Optional second element establishing the step size.
         then_chirho: Option<Box<ExprChirho>>,
+        /// Optional inclusive upper bound.
         to_chirho: Option<Box<ExprChirho>>,
+        /// Span covering the whole arithmetic sequence.
         span_chirho: SpanChirho,
     },
     /// List comprehension (`[e | quals]`).
     ListCompChirho {
+        /// Result expression produced for each successful qualifier path.
         body_chirho: Box<ExprChirho>,
+        /// Qualifiers driving generator, guard, and let semantics.
         quals_chirho: Vec<StmtChirho>,
+        /// Span covering the whole list comprehension.
         span_chirho: SpanChirho,
     },
     /// Left section (`(+ 1)`).
     LeftSectionChirho {
+        /// Operator waiting for a left operand.
         op_chirho: NameChirho,
+        /// Right operand fixed by the section.
         arg_chirho: Box<ExprChirho>,
+        /// Span covering the whole left section.
         span_chirho: SpanChirho,
     },
     /// Right section (`(1 +)`).
     RightSectionChirho {
+        /// Left operand fixed by the section.
         arg_chirho: Box<ExprChirho>,
+        /// Operator waiting for a right operand.
         op_chirho: NameChirho,
+        /// Span covering the whole right section.
         span_chirho: SpanChirho,
     },
     /// Type annotation (`expr :: Type`).
     AnnChirho {
+        /// Expression receiving the type annotation.
         expr_chirho: Box<ExprChirho>,
+        /// Annotated type attached to the expression.
         ty_chirho: TypeChirho,
+        /// Span covering the whole annotation.
         span_chirho: SpanChirho,
     },
     /// Parenthesized expression (`(expr)`).
     ParenChirho {
+        /// Inner expression wrapped in parentheses.
         inner_chirho: Box<ExprChirho>,
+        /// Span covering the whole parenthesized expression.
         span_chirho: SpanChirho,
     },
     /// Record construction (`Con { f1 = e1, f2 = e2 }` or `Con { f1, .. }`).
     RecordConChirho {
+        /// Constructor being built.
         con_chirho: NameChirho,
+        /// Explicit field assignments provided in the record literal.
         fields_chirho: Vec<FieldAssignChirho>,
         /// Whether `..` was present (RecordWildCards).
         has_wildcard_chirho: bool,
+        /// Span covering the whole record construction.
         span_chirho: SpanChirho,
     },
     /// Record update (`expr { f1 = e1 }`).
     RecordUpdateChirho {
+        /// Original record expression being copied and updated.
         expr_chirho: Box<ExprChirho>,
+        /// Replacement field assignments applied to the record.
         fields_chirho: Vec<FieldAssignChirho>,
+        /// Span covering the whole record update.
         span_chirho: SpanChirho,
     },
     /// Template Haskell splice expression (`$(expr)` or `$name`).
     SpliceChirho {
+        /// Expression spliced into the surrounding AST.
         expr_chirho: Box<ExprChirho>,
+        /// Span covering the whole splice expression.
         span_chirho: SpanChirho,
     },
     /// Template Haskell typed splice expression (`$$(expr)` or `$$name`).
     TypedSpliceChirho {
+        /// Typed splice expression evaluated at compile time.
         expr_chirho: Box<ExprChirho>,
+        /// Span covering the whole typed splice.
         span_chirho: SpanChirho,
     },
     /// Template Haskell expression quotation (`[| expr |]` or `[e| expr |]`).
     QuoteExprChirho {
+        /// Quoted expression AST payload.
         expr_chirho: Box<ExprChirho>,
+        /// Span covering the whole expression quote.
         span_chirho: SpanChirho,
     },
     /// Template Haskell declaration quotation (`[d| decls |]`).
     QuoteDeclChirho {
+        /// Declarations captured inside the quotation.
         decls_chirho: Vec<crate::decl_chirho::DeclChirho>,
+        /// Span covering the whole declaration quote.
         span_chirho: SpanChirho,
     },
     /// Template Haskell type quotation (`[t| type |]`).
     QuoteTypeChirho {
+        /// Quoted type AST payload.
         ty_chirho: TypeChirho,
+        /// Span covering the whole type quote.
         span_chirho: SpanChirho,
     },
     /// Template Haskell pattern quotation (`[p| pat |]`).
     QuotePatChirho {
+        /// Quoted pattern AST payload.
         pat_chirho: PatChirho,
+        /// Span covering the whole pattern quote.
         span_chirho: SpanChirho,
     },
 }
@@ -192,7 +259,9 @@ pub struct AltChirho {
 /// A right-hand side — either unguarded or guarded.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RhsChirho {
+    /// An unguarded right-hand side (`= expr`).
     UnguardedChirho(ExprChirho),
+    /// One or more guarded right-hand sides (`| guard = expr`).
     GuardedChirho(Vec<GuardedExprChirho>),
 }
 
@@ -214,13 +283,18 @@ pub enum StmtChirho {
     ExprChirho(ExprChirho),
     /// Bind statement (`pat <- expr`).
     BindChirho {
+        /// Pattern bound by the statement.
         pat_chirho: PatChirho,
+        /// Expression producing the bound value.
         expr_chirho: ExprChirho,
+        /// Span covering the whole bind statement.
         span_chirho: SpanChirho,
     },
     /// Let statement in do (`let binds`).
     LetChirho {
+        /// Local bindings introduced by the statement.
         binds_chirho: Vec<LocalBindChirho>,
+        /// Span covering the whole let statement.
         span_chirho: SpanChirho,
     },
 }
@@ -230,20 +304,29 @@ pub enum StmtChirho {
 pub enum LocalBindChirho {
     /// A function/value binding.
     FunBindChirho {
+        /// Bound local name.
         name_chirho: NameChirho,
+        /// Clauses implementing the binding.
         matches_chirho: Vec<MatchArmChirho>,
+        /// Span covering the whole local binding.
         span_chirho: SpanChirho,
     },
     /// A pattern binding (`(a, b) = expr`).
     PatBindChirho {
+        /// Pattern introduced by the binding.
         pat_chirho: PatChirho,
+        /// Right-hand side producing the bound value.
         rhs_chirho: RhsChirho,
+        /// Span covering the whole local binding.
         span_chirho: SpanChirho,
     },
     /// A type signature.
     TypeSigChirho {
+        /// Name whose local type is annotated.
         name_chirho: NameChirho,
+        /// Declared local type.
         ty_chirho: TypeChirho,
+        /// Span covering the whole local type signature.
         span_chirho: SpanChirho,
     },
 }
