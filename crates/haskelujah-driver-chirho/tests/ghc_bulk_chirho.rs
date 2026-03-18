@@ -30,6 +30,7 @@ struct BulkResultChirho {
 }
 
 /// Try to parse a .hs file through the Haskelujah frontend.
+/// Uses sibling file search to resolve companion test modules.
 fn try_parse_chirho(path_chirho: &Path) -> Result<(), String> {
     let source_chirho = fs::read_to_string(path_chirho)
         .map_err(|e_chirho| format!("read error: {}", e_chirho))?;
@@ -41,11 +42,13 @@ fn try_parse_chirho(path_chirho: &Path) -> Result<(), String> {
         .to_string_lossy()
         .to_string();
 
-    // Use compile_source which runs the full frontend + core pipeline
-    haskelujah_driver_chirho::compile_source_chirho(
+    // Use compile with search path to find sibling companion modules
+    let search_dir_chirho = path_chirho.parent().unwrap_or(Path::new("."));
+    haskelujah_driver_chirho::compile_source_with_search_path_chirho(
         &source_chirho,
         &mut sm_chirho,
         &file_name_chirho,
+        search_dir_chirho,
     )
     .map(|_| ())
     .map_err(|e_chirho| format!("{}", e_chirho))

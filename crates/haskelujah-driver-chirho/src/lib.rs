@@ -679,6 +679,74 @@ pub fn compile_source_chirho(
     compile_backend_chirho(module_chirho, infer_result_chirho)
 }
 
+/// Compile a source file, also searching sibling `.hs` files in the same directory
+/// to build module interfaces for cross-module imports (like GHC test companion files).
+pub fn compile_source_with_search_path_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+    search_dir_chirho: &Path,
+) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    let source_file_chirho =
+        SourceFileChirho::from_source_map_chirho(source_map_chirho, file_name_chirho, source_chirho);
+    let file_id_chirho = source_file_chirho.file_id_chirho();
+
+    let mut all_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+
+    // Scan sibling .hs files and build interfaces from them.
+    if search_dir_chirho.is_dir() {
+        if let Ok(entries_chirho) = std::fs::read_dir(search_dir_chirho) {
+            for entry_chirho in entries_chirho.flatten() {
+                let p_chirho = entry_chirho.path();
+                if p_chirho.extension().is_some_and(|e_chirho| e_chirho == "hs")
+                    && p_chirho.file_name().map(|n_chirho| n_chirho.to_string_lossy().to_string())
+                        != Some(file_name_chirho.to_string())
+                {
+                    if let Ok(sibling_source_chirho) = std::fs::read_to_string(&p_chirho) {
+                        let sibling_name_chirho = p_chirho
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .to_string();
+                        let sibling_file_chirho = SourceFileChirho::from_source_map_chirho(
+                            source_map_chirho,
+                            &sibling_name_chirho,
+                            &sibling_source_chirho,
+                        );
+                        let sibling_fid_chirho = sibling_file_chirho.file_id_chirho();
+                        // Quick parse to get module name and exports
+                        let parser_chirho = ParserChirho::new_chirho(&sibling_source_chirho, sibling_fid_chirho);
+                        let green_chirho = parser_chirho.parse_chirho();
+                        let sibling_module_chirho = lower_module_chirho(&green_chirho, sibling_fid_chirho);
+                        let iface_chirho = build_iface_with_imports_chirho(
+                            &sibling_module_chirho,
+                            &all_ifaces_chirho,
+                        );
+                        all_ifaces_chirho.push(iface_chirho);
+                    }
+                }
+            }
+        }
+    }
+
+    let empty_imported_types_chirho = std::collections::HashMap::new();
+
+    let frontend_result_chirho = run_frontend_chirho(
+        source_chirho,
+        file_id_chirho,
+        &all_ifaces_chirho,
+        &empty_imported_types_chirho,
+    )?;
+
+    let FrontendResultChirho {
+        module_chirho,
+        infer_result_chirho,
+        warnings_chirho: _warnings_chirho,
+    } = frontend_result_chirho;
+
+    compile_backend_chirho(module_chirho, infer_result_chirho)
+}
+
 /// Run the back-end pipeline phases (5 through 7) on an already-front-end-compiled
 /// module, producing a [`CompileResultChirho`].
 ///
