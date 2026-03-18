@@ -714,15 +714,26 @@ pub fn compile_source_with_search_path_chirho(
                             &sibling_source_chirho,
                         );
                         let sibling_fid_chirho = sibling_file_chirho.file_id_chirho();
-                        // Quick parse to get module name and exports
-                        let parser_chirho = ParserChirho::new_chirho(&sibling_source_chirho, sibling_fid_chirho);
-                        let green_chirho = parser_chirho.parse_chirho();
-                        let sibling_module_chirho = lower_module_chirho(&green_chirho, sibling_fid_chirho);
-                        let iface_chirho = build_iface_with_imports_chirho(
-                            &sibling_module_chirho,
-                            &all_ifaces_chirho,
+                        // Quick parse to get module name and exports.
+                        // Wrap in catch_unwind to handle panics in complex files.
+                        let iface_result_chirho = std::panic::catch_unwind(
+                            std::panic::AssertUnwindSafe(|| {
+                                let parser_chirho = ParserChirho::new_chirho(
+                                    &sibling_source_chirho,
+                                    sibling_fid_chirho,
+                                );
+                                let green_chirho = parser_chirho.parse_chirho();
+                                let sibling_module_chirho =
+                                    lower_module_chirho(&green_chirho, sibling_fid_chirho);
+                                build_iface_with_imports_chirho(
+                                    &sibling_module_chirho,
+                                    &all_ifaces_chirho,
+                                )
+                            }),
                         );
-                        all_ifaces_chirho.push(iface_chirho);
+                        if let Ok(iface_chirho) = iface_result_chirho {
+                            all_ifaces_chirho.push(iface_chirho);
+                        }
                     }
                 }
             }
