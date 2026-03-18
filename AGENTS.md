@@ -35,7 +35,7 @@ lex → layout → CST parse → AST lower → name resolve → kind infer → t
 
 ### Test Coverage
 
-**2113 tests passing**, 0 failures (run `bash spec-chirho/stats-chirho.sh` for live stats)
+**2116 tests passing**, 0 failures (run `bash spec-chirho/stats-chirho.sh` for live stats)
 
 ### Completed
 
