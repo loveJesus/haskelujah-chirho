@@ -123,6 +123,25 @@ pub fn unify_chirho(
             unify_chirho(a1_chirho, a2_chirho, span_chirho)
         }
 
+        // General List ↔ App unification: treat List(a) as App(Con("[]"), a)
+        // so that `m a` can unify with `[a]` by binding `m := []`.
+        (TyChirho::AppChirho(f_chirho, a1_chirho), TyChirho::ListChirho(a2_chirho)) => {
+            let list_con_chirho = TyChirho::ConChirho("[]".to_string());
+            let s1_chirho = unify_chirho(f_chirho, &list_con_chirho, span_chirho)?;
+            let a1_sub_chirho = s1_chirho.apply_ty_chirho(a1_chirho);
+            let a2_sub_chirho = s1_chirho.apply_ty_chirho(a2_chirho);
+            let s2_chirho = unify_chirho(&a1_sub_chirho, &a2_sub_chirho, span_chirho)?;
+            Ok(s2_chirho.compose_chirho(&s1_chirho))
+        }
+        (TyChirho::ListChirho(a1_chirho), TyChirho::AppChirho(f_chirho, a2_chirho)) => {
+            let list_con_chirho = TyChirho::ConChirho("[]".to_string());
+            let s1_chirho = unify_chirho(f_chirho, &list_con_chirho, span_chirho)?;
+            let a1_sub_chirho = s1_chirho.apply_ty_chirho(a1_chirho);
+            let a2_sub_chirho = s1_chirho.apply_ty_chirho(a2_chirho);
+            let s2_chirho = unify_chirho(&a1_sub_chirho, &a2_sub_chirho, span_chirho)?;
+            Ok(s2_chirho.compose_chirho(&s1_chirho))
+        }
+
         // Tuple normalization: App(App(Con("(,)"), a), b) ≡ Tuple([a, b])
         // and higher arities: App(...App(Con("(,,)"), a)..., c) ≡ Tuple([a, b, c])
         (TyChirho::AppChirho(..), TyChirho::TupleChirho(elems_chirho)) => {
