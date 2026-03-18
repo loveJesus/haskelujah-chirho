@@ -35,7 +35,7 @@ lex → layout → CST parse → AST lower → name resolve → kind infer → t
 
 ### Test Coverage
 
-**2121 tests passing** (GHC typecheck/should_compile: 788/938, 84.0%), 0 failures (run `bash spec-chirho/stats-chirho.sh` for live stats)
+**2121 tests passing** (GHC typecheck/should_compile: 791/938, 84.3%), 0 failures (run `bash spec-chirho/stats-chirho.sh` for live stats)
 
 ### Completed
 
