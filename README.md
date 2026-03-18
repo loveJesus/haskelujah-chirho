@@ -10,7 +10,7 @@ Haskelujah is a Haskell compiler written in Rust. It targets practical compatibi
 
 | Metric | Value |
 |---|---|
-| Tests | **2,121 passing**, 0 failures (GHC compat: 84.0%) |
+| Tests | **2,121 passing**, 0 failures (GHC compat: 84.3%) |
 | Workspace | 21 crates, 130 Rust source files |
 | Codebase | ~132,700 lines of Rust |
 | Module interfaces | 272 synthetic Haskell modules |
