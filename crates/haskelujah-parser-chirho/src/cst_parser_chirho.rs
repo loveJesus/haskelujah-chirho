@@ -1236,6 +1236,13 @@ impl<'src> ParserChirho<'src> {
     // -----------------------------------------------------------------------
 
     fn parse_value_decl_chirho(&mut self) {
+        // BangPatterns: skip `!` prefix in let/where bindings (e.g. `let !y = ...`)
+        if self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
+            && self.current_text_chirho() == "!"
+        {
+            self.bump_chirho(); // skip !
+            self.eat_trivia_chirho();
+        }
         if self.is_type_sig_chirho() {
             self.parse_type_sig_chirho();
         } else if self.starts_pat_bind_chirho() {
