@@ -1775,6 +1775,14 @@ impl<'src> ParserChirho<'src> {
         self.parse_type_chirho();
         self.eat_trivia_chirho();
 
+        // Kind annotation: (a :: k) — consume :: and the kind type
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+            self.bump_chirho(); // ::
+            self.eat_trivia_chirho();
+            self.parse_type_chirho(); // the kind
+            self.eat_trivia_chirho();
+        }
+
         if self.at_chirho(RawTokenKindChirho::CommaChirho) {
             // It's a tuple type — change the node kind would be ideal,
             // but we just keep ParenType and it wraps the contents.
