@@ -2514,18 +2514,25 @@ impl InferCtxChirho {
                                     field_names_chirho,
                                 );
                                 // Bind field accessor functions: fieldName :: T -> FieldType
-                                for (i_chirho, fd_chirho) in fields_chirho.iter().enumerate() {
+                                // Use a running index into field_tys_chirho (which is
+                                // flattened by field names, not by field declarations).
+                                let mut ft_idx_chirho = 0;
+                                for fd_chirho in fields_chirho {
                                     for fname_chirho in &fd_chirho.names_chirho {
-                                        let accessor_ty_chirho = TyChirho::FunChirho(
-                                            Box::new(result_ty_chirho.clone()),
-                                            Box::new(field_tys_chirho[i_chirho].clone()),
-                                         MultChirho::ManyChirho,);
-                                        let accessor_scheme_chirho =
-                                            self.generalize_chirho(&accessor_ty_chirho);
-                                        self.env_chirho.bind_chirho(
-                                            fname_chirho.text_chirho().to_string(),
-                                            accessor_scheme_chirho,
-                                        );
+                                        if ft_idx_chirho < field_tys_chirho.len() {
+                                            let accessor_ty_chirho = TyChirho::FunChirho(
+                                                Box::new(result_ty_chirho.clone()),
+                                                Box::new(field_tys_chirho[ft_idx_chirho].clone()),
+                                                MultChirho::ManyChirho,
+                                            );
+                                            let accessor_scheme_chirho =
+                                                self.generalize_chirho(&accessor_ty_chirho);
+                                            self.env_chirho.bind_chirho(
+                                                fname_chirho.text_chirho().to_string(),
+                                                accessor_scheme_chirho,
+                                            );
+                                        }
+                                        ft_idx_chirho += 1;
                                     }
                                 }
                             }
@@ -2636,19 +2643,23 @@ impl InferCtxChirho {
                                 gen_scheme_chirho,
                             );
                             // Bind field accessor functions: fieldName :: T -> FieldType
-                            for (i_chirho, fd_chirho) in fields_chirho.iter().enumerate() {
+                            let mut nt_ft_idx_chirho = 0;
+                            for fd_chirho in fields_chirho {
                                 for fname_chirho in &fd_chirho.names_chirho {
-                                    let accessor_ty_chirho = TyChirho::FunChirho(
-                                        Box::new(result_ty_chirho.clone()),
-                                        Box::new(field_tys_chirho[i_chirho].clone()),
-                                        MultChirho::ManyChirho,
-                                    );
-                                    let accessor_scheme_chirho =
-                                        self.generalize_chirho(&accessor_ty_chirho);
-                                    self.env_chirho.bind_chirho(
-                                        fname_chirho.text_chirho().to_string(),
-                                        accessor_scheme_chirho,
-                                    );
+                                    if nt_ft_idx_chirho < field_tys_chirho.len() {
+                                        let accessor_ty_chirho = TyChirho::FunChirho(
+                                            Box::new(result_ty_chirho.clone()),
+                                            Box::new(field_tys_chirho[nt_ft_idx_chirho].clone()),
+                                            MultChirho::ManyChirho,
+                                        );
+                                        let accessor_scheme_chirho =
+                                            self.generalize_chirho(&accessor_ty_chirho);
+                                        self.env_chirho.bind_chirho(
+                                            fname_chirho.text_chirho().to_string(),
+                                            accessor_scheme_chirho,
+                                        );
+                                    }
+                                    nt_ft_idx_chirho += 1;
                                 }
                             }
                         }
