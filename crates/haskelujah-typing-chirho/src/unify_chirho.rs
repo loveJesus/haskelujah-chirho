@@ -221,6 +221,29 @@ pub fn unify_chirho(
             unify_chirho(other_chirho, body_chirho, span_chirho)
         }
 
+        // Function ↔ App unification: treat Fun(a, b) as App(App(Con("->"), a), b)
+        // so that `f a b` can unify with `a -> b` by binding `f := (->)`.
+        (TyChirho::AppChirho(_, _), TyChirho::FunChirho(a_chirho, b_chirho, _)) => {
+            let fun_as_app_chirho = TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("->".to_string())),
+                    Box::new((**a_chirho).clone()),
+                )),
+                Box::new((**b_chirho).clone()),
+            );
+            unify_chirho(ty1_chirho, &fun_as_app_chirho, span_chirho)
+        }
+        (TyChirho::FunChirho(a_chirho, b_chirho, _), TyChirho::AppChirho(_, _)) => {
+            let fun_as_app_chirho = TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("->".to_string())),
+                    Box::new((**a_chirho).clone()),
+                )),
+                Box::new((**b_chirho).clone()),
+            );
+            unify_chirho(&fun_as_app_chirho, ty2_chirho, span_chirho)
+        }
+
         // Everything else is a mismatch
         _ => Err(UnifyErrorChirho::MismatchChirho {
             expected_chirho: ty1_chirho.clone(),
