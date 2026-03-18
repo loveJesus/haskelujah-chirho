@@ -4810,6 +4810,210 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.IntMap / Data.IntMap.Strict
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["IntMap", "Key"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &[
+            "empty", "singleton", "insert", "delete", "lookup",
+            "member", "notMember", "findWithDefault",
+            "union", "unionWith", "intersection", "difference",
+            "map", "mapWithKey", "filter", "filterWithKey",
+            "foldlWithKey'", "foldrWithKey", "toList", "fromList",
+            "toAscList", "elems", "keys", "size", "null",
+            "mapKeys", "mapKeysMonotonic", "adjust", "alter",
+            "intersectionWith", "differenceWith",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for mod_name_chirho in &["Data.IntMap", "Data.IntMap.Strict", "Data.IntMap.Lazy"] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
+    // Data.Functor.Compose
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["Compose"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["Compose"]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Compose", "getCompose"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Functor.Compose".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Functor.Const
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["Const"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["Const"]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Const", "getConst"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Functor.Const".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Monoid (extend)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "Monoid", "Dual", "Endo", "All", "Any", "Sum", "Product",
+            "First", "Last", "Ap", "Alt",
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &[
+            "mempty", "mappend", "mconcat",
+            "Dual", "getDual", "Endo", "appEndo",
+            "All", "getAll", "Any", "getAny",
+            "Sum", "getSum", "Product", "getProduct",
+            "First", "getFirst", "Last", "getLast",
+            "Ap",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Monoid".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Monad.IO.Class
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["MonadIO"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["liftIO"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.IO.Class".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.IO
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["Handle", "IOMode", "BufferMode", "SeekMode"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &[
+            "stdin", "stdout", "stderr",
+            "openFile", "hClose", "hFlush",
+            "hPutStr", "hPutStrLn", "hPutChar",
+            "hGetLine", "hGetContents", "hGetChar",
+            "hSetBuffering", "hSetEncoding",
+            "hIsEOF", "isEOF",
+            "withFile", "readFile", "writeFile", "appendFile",
+            "ReadMode", "WriteMode", "AppendMode", "ReadWriteMode",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.IO".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Concurrent
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["ThreadId", "MVar"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &[
+            "forkIO", "forkOS", "killThread", "throwTo",
+            "threadDelay", "myThreadId",
+            "newMVar", "readMVar", "takeMVar", "putMVar",
+            "newEmptyMVar", "tryTakeMVar", "tryPutMVar",
+            "modifyMVar", "modifyMVar_", "withMVar",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Concurrent".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Sequence
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["Seq"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &[
+            "empty", "singleton", "fromList", "toList",
+            "length", "null", "index", "lookup",
+            "(<|)", "(|>)", "(><)",
+            "filter", "sort", "reverse",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Sequence".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Map — extend with missing commonly-used exports
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "mapKeys", "mapKeysMonotonic", "adjust", "alter",
+            "intersectionWith", "differenceWith",
+            "isSubmapOf", "isProperSubmapOf",
+            "restrictKeys", "withoutKeys",
+            "(!?)", "(!)", "findMin", "findMax",
+            "deleteMin", "deleteMax",
+            "lookupMin", "lookupMax",
+            "updateWithKey", "insertWithKey",
+            "foldlWithKey", "foldrWithKey'",
+            "mapAccum", "mapAccumWithKey",
+            "mergeWithKey",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for mod_name_chirho in &["Data.Map", "Data.Map.Strict", "Data.Map.Lazy"] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
     // Deduplicate: merge exports for modules with the same name.
     // Earlier batches may define partial interfaces that later batches extend.
     let mut deduped_chirho: Vec<ModuleIfaceChirho> = Vec::with_capacity(modules_chirho.len());
