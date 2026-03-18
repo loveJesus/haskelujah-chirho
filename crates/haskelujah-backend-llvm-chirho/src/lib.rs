@@ -14,5 +14,7 @@ pub use codegen_chirho::compile_core_to_llvm_executable_chirho;
 
 /// Legacy stub — kept for backward compatibility with `check_source_file_chirho`.
 pub fn compile_to_llvm_ir_stub_chirho(module_name_chirho: &str) -> String {
+    // TODO(codex-audit): remove this compatibility stub once all callers use
+    // the real LLVM entry points.
     format!("; haskelujah llvm stub for module {module_name_chirho}\n")
 }

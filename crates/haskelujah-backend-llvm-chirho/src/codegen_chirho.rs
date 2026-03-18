@@ -129,16 +129,10 @@ impl LlvmCodegenChirho {
             writeln!(
                 self.output_chirho,
                 "; foreign export {} \"{}\" = {}",
-                export_chirho.calling_conv_chirho,
-                c_name_chirho,
-                export_chirho.haskell_name_chirho
+                export_chirho.calling_conv_chirho, c_name_chirho, export_chirho.haskell_name_chirho
             )
             .unwrap();
-            writeln!(
-                self.output_chirho,
-                "define i64 @{c_name_chirho}() {{"
-            )
-            .unwrap();
+            writeln!(self.output_chirho, "define i64 @{c_name_chirho}() {{").unwrap();
             writeln!(
                 self.output_chirho,
                 "  %result = call i64 @{haskell_fn_chirho}()"
@@ -162,8 +156,7 @@ impl LlvmCodegenChirho {
         }
 
         // Collect lambda parameters
-        let (params_chirho, body_chirho) =
-            collect_lambda_params_chirho(&binding_chirho.rhs_chirho);
+        let (params_chirho, body_chirho) = collect_lambda_params_chirho(&binding_chirho.rhs_chirho);
 
         // Track local scope: lambda parameters are local
         self.local_scope_chirho.clear();
@@ -243,13 +236,12 @@ impl LlvmCodegenChirho {
                             .join(", ");
                         let tmp_chirho = self.fresh_tmp_chirho();
                         // Resolve the function name: top-level binding or local var
-                        let fn_ref_chirho = if let Some(name_chirho) =
-                            self.toplevel_names_chirho.get(id_chirho)
-                        {
-                            format!("@{}", mangle_name_chirho(name_chirho))
-                        } else {
-                            format!("@haskelujah_v{}", id_chirho.0)
-                        };
+                        let fn_ref_chirho =
+                            if let Some(name_chirho) = self.toplevel_names_chirho.get(id_chirho) {
+                                format!("@{}", mangle_name_chirho(name_chirho))
+                            } else {
+                                format!("@haskelujah_v{}", id_chirho.0)
+                            };
                         writeln!(
                             self.output_chirho,
                             "  {tmp_chirho} = call i64 {fn_ref_chirho}({args_str_chirho})"
@@ -259,6 +251,8 @@ impl LlvmCodegenChirho {
                     }
                     _ => {
                         // Unknown callee — compile as indirect call (simplified)
+                        // TODO(codex-audit): this is still a placeholder, not a
+                        // real indirect closure/function-pointer call.
                         let fun_val_chirho = self.compile_expr_chirho(fun_chirho);
                         let arg_val_chirho = self.compile_expr_chirho(arg_chirho);
                         let tmp_chirho = self.fresh_tmp_chirho();
@@ -285,10 +279,8 @@ impl LlvmCodegenChirho {
             } => {
                 // Lambda that wasn't collected as a top-level function parameter.
                 // Lift it to a separate function.
-                let lifted_name_chirho = format!(
-                    "haskelujah_lambda_{}",
-                    self.lifted_functions_chirho.len()
-                );
+                let lifted_name_chirho =
+                    format!("haskelujah_lambda_{}", self.lifted_functions_chirho.len());
                 let param_chirho = format!("%v{}", binder_chirho.id_chirho.0);
 
                 let mut inner_codegen_chirho = LlvmCodegenChirho::new_chirho();
@@ -382,9 +374,9 @@ impl LlvmCodegenChirho {
                 .unwrap();
 
                 // Check if we have literal alts
-                let has_lit_alts_chirho = alts_chirho.iter().any(|a_chirho| {
-                    matches!(a_chirho.con_chirho, AltConChirho::LitConChirho(_))
-                });
+                let has_lit_alts_chirho = alts_chirho
+                    .iter()
+                    .any(|a_chirho| matches!(a_chirho.con_chirho, AltConChirho::LitConChirho(_)));
 
                 if has_lit_alts_chirho {
                     self.compile_case_lit_chirho(
@@ -500,8 +492,10 @@ impl LlvmCodegenChirho {
     fn compile_lit_chirho(&self, lit_chirho: &CoreLitChirho) -> String {
         match lit_chirho {
             CoreLitChirho::IntChirho(v_chirho) => format!("{v_chirho}"),
+            // TODO(codex-audit): lower to real LLVM floating-point constants.
             CoreLitChirho::FloatChirho(_) => "0".to_string(), // TODO: float support
             CoreLitChirho::CharChirho(c_chirho) => format!("{}", *c_chirho as i64),
+            // TODO(codex-audit): lower to global string data instead of `0`.
             CoreLitChirho::StringChirho(_) => "0".to_string(), // TODO: string support
         }
     }
@@ -639,6 +633,8 @@ impl LlvmCodegenChirho {
                             )
                             .unwrap();
                         } else {
+                            // TODO(codex-audit): multi-field constructor case
+                            // binders are still stubbed rather than projected.
                             writeln!(
                                 self.output_chirho,
                                 "  {binder_var_chirho} = add i64 0, 0 ; stub field {field_idx_chirho}"
@@ -652,8 +648,7 @@ impl LlvmCodegenChirho {
                         "  store i64 {val_chirho}, ptr {result_tmp_chirho}.addr"
                     )
                     .unwrap();
-                    writeln!(self.output_chirho, "  br label %{end_label_chirho}")
-                        .unwrap();
+                    writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
 
                     if i_chirho + 1 < alts_chirho.len() {
                         writeln!(self.output_chirho, "{else_label_chirho}:").unwrap();
@@ -676,8 +671,7 @@ impl LlvmCodegenChirho {
                         "  store i64 {val_chirho}, ptr {result_tmp_chirho}.addr"
                     )
                     .unwrap();
-                    writeln!(self.output_chirho, "  br label %{end_label_chirho}")
-                        .unwrap();
+                    writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
                 }
                 _ => {}
             }
@@ -695,7 +689,9 @@ impl LlvmCodegenChirho {
 }
 
 /// Collect all lambda parameters from a nested chain of Lam nodes.
-fn collect_lambda_params_chirho(expr_chirho: &CoreExprChirho) -> (Vec<CoreIdChirho>, &CoreExprChirho) {
+fn collect_lambda_params_chirho(
+    expr_chirho: &CoreExprChirho,
+) -> (Vec<CoreIdChirho>, &CoreExprChirho) {
     let mut params_chirho = Vec::new();
     let mut current_chirho = expr_chirho;
 
@@ -745,7 +741,9 @@ fn constructor_tag_chirho(name_chirho: &str) -> i64 {
             // Hash the name to get a tag (placeholder strategy)
             let mut hash_chirho: i64 = 0;
             for byte_chirho in name_chirho.bytes() {
-                hash_chirho = hash_chirho.wrapping_mul(31).wrapping_add(byte_chirho as i64);
+                hash_chirho = hash_chirho
+                    .wrapping_mul(31)
+                    .wrapping_add(byte_chirho as i64);
             }
             hash_chirho.abs()
         }
@@ -791,22 +789,31 @@ pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) 
     let mut ir_chirho = codegen_chirho.compile_module_chirho(&filtered_module_chirho);
 
     // Check if there's a binding named "main" — that's the Haskell entry point
-    let has_main_chirho = module_chirho.bindings_chirho.iter().any(|b_chirho| {
-        b_chirho.binder_chirho.name_chirho == "main"
-    });
+    let has_main_chirho = module_chirho
+        .bindings_chirho
+        .iter()
+        .any(|b_chirho| b_chirho.binder_chirho.name_chirho == "main");
 
     if has_main_chirho {
         // Add printf/puts declarations and a C main() entry point
         writeln!(ir_chirho).unwrap();
         writeln!(ir_chirho, "; ── RTS entry point ──").unwrap();
-        writeln!(ir_chirho, "@.fmt_int = private unnamed_addr constant [5 x i8] c\"%ld\\0A\\00\"").unwrap();
+        writeln!(
+            ir_chirho,
+            "@.fmt_int = private unnamed_addr constant [5 x i8] c\"%ld\\0A\\00\""
+        )
+        .unwrap();
         writeln!(ir_chirho, "declare i32 @printf(ptr, ...)").unwrap();
         writeln!(ir_chirho, "declare i32 @puts(ptr)").unwrap();
         writeln!(ir_chirho).unwrap();
         writeln!(ir_chirho, "define i32 @main() {{").unwrap();
         writeln!(ir_chirho, "entry:").unwrap();
         writeln!(ir_chirho, "  %result = call i64 @haskelujah_main()").unwrap();
-        writeln!(ir_chirho, "  call i32 (ptr, ...) @printf(ptr @.fmt_int, i64 %result)").unwrap();
+        writeln!(
+            ir_chirho,
+            "  call i32 (ptr, ...) @printf(ptr @.fmt_int, i64 %result)"
+        )
+        .unwrap();
         writeln!(ir_chirho, "  %exitcode = trunc i64 %result to i32").unwrap();
         writeln!(ir_chirho, "  ret i32 %exitcode").unwrap();
         writeln!(ir_chirho, "}}").unwrap();
@@ -818,9 +825,9 @@ pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) 
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
+    use haskelujah_core_chirho::CoreBindingChirho;
     use haskelujah_core_chirho::{BinderChirho, CoreIdChirho, InlineAnnotationChirho};
     use haskelujah_typing_chirho::ty_chirho::TyChirho;
-    use haskelujah_core_chirho::CoreBindingChirho;
 
     fn dummy_binder_chirho(name_chirho: &str, id_chirho: u32) -> BinderChirho {
         BinderChirho {
@@ -843,7 +850,7 @@ mod tests_chirho {
                 binder_chirho: dummy_binder_chirho("main", 0),
                 rhs_chirho: int_lit_chirho(42),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
@@ -868,7 +875,7 @@ mod tests_chirho {
                     body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(0))),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
@@ -889,14 +896,11 @@ mod tests_chirho {
                 binder_chirho: dummy_binder_chirho("main", 10),
                 rhs_chirho: CoreExprChirho::LetChirho {
                     rec_chirho: false,
-                    binds_chirho: vec![(
-                        dummy_binder_chirho("x", 0),
-                        int_lit_chirho(42),
-                    )],
+                    binds_chirho: vec![(dummy_binder_chirho("x", 0), int_lit_chirho(42))],
                     body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(0))),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
@@ -933,7 +937,7 @@ mod tests_chirho {
                     ],
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
@@ -968,7 +972,7 @@ mod tests_chirho {
                 binder_chirho: dummy_binder_chirho("main", 0),
                 rhs_chirho: int_lit_chirho(42),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
@@ -993,7 +997,7 @@ mod tests_chirho {
                 binder_chirho: dummy_binder_chirho("helper", 0),
                 rhs_chirho: int_lit_chirho(99),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
@@ -1020,7 +1024,7 @@ mod tests_chirho {
                     args_chirho: vec![int_lit_chirho(2), int_lit_chirho(3)],
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
@@ -1044,7 +1048,10 @@ mod tests_chirho {
             arg_chirho: Box::new(int_lit_chirho(2)),
         };
         let (callee_chirho, args_chirho) = flatten_app_chirho(&expr_chirho);
-        assert!(matches!(callee_chirho, CoreExprChirho::VarChirho(CoreIdChirho(0))));
+        assert!(matches!(
+            callee_chirho,
+            CoreExprChirho::VarChirho(CoreIdChirho(0))
+        ));
         assert_eq!(args_chirho.len(), 2);
     }
 }

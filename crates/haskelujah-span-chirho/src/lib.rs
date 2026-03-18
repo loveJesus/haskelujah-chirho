@@ -425,11 +425,14 @@ impl SourceMapChirho {
 /// identifiers, literals, etc.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SpannedChirho<T> {
+    /// The wrapped value.
     pub node_chirho: T,
+    /// The source span associated with the wrapped value.
     pub span_chirho: SpanChirho,
 }
 
 impl<T> SpannedChirho<T> {
+    /// Construct a spanned wrapper from a value and its source span.
     #[inline]
     pub const fn new_chirho(node_chirho: T, span_chirho: SpanChirho) -> Self {
         Self {

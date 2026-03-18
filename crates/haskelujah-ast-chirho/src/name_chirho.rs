@@ -20,6 +20,7 @@ pub struct RawNameChirho {
 }
 
 impl RawNameChirho {
+    /// Construct an unqualified source name such as `map`.
     pub fn unqualified_chirho(text_chirho: impl Into<String>, span_chirho: SpanChirho) -> Self {
         Self {
             text_chirho: text_chirho.into(),
@@ -28,6 +29,7 @@ impl RawNameChirho {
         }
     }
 
+    /// Construct a qualified source name such as `Data.List.map`.
     pub fn qualified_chirho(
         qualifier_chirho: impl Into<String>,
         text_chirho: impl Into<String>,
@@ -40,6 +42,7 @@ impl RawNameChirho {
         }
     }
 
+    /// Return the fully qualified textual form of the name.
     pub fn full_name_chirho(&self) -> String {
         match &self.qualifier_chirho {
             Some(q_chirho) => format!("{}.{}", q_chirho, self.text_chirho),
@@ -53,6 +56,7 @@ impl RawNameChirho {
 pub struct DefIdChirho(pub u32);
 
 impl DefIdChirho {
+    /// Construct a definition identifier from its raw numeric value.
     pub fn new_chirho(id_chirho: u32) -> Self {
         Self(id_chirho)
     }
@@ -61,7 +65,9 @@ impl DefIdChirho {
 /// A name after resolution, carrying both source text and a unique ID.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ResolvedNameChirho {
+    /// The original source spelling and span information.
     pub raw_chirho: RawNameChirho,
+    /// The unique definition this occurrence resolves to.
     pub def_id_chirho: DefIdChirho,
 }
 
@@ -73,6 +79,7 @@ pub enum NameChirho {
 }
 
 impl NameChirho {
+    /// Return the source span covering this name occurrence.
     pub fn span_chirho(&self) -> SpanChirho {
         match self {
             Self::RawChirho(n_chirho) => n_chirho.span_chirho,
@@ -80,6 +87,7 @@ impl NameChirho {
         }
     }
 
+    /// Return the unqualified text of the name as written in source.
     pub fn text_chirho(&self) -> &str {
         match self {
             Self::RawChirho(n_chirho) => &n_chirho.text_chirho,
@@ -87,7 +95,7 @@ impl NameChirho {
         }
     }
 
-    /// Full qualified name (e.g. `Data.Map` instead of just `Map`).
+    /// Return the fully qualified name, including any module qualifier.
     pub fn full_name_chirho(&self) -> String {
         match self {
             Self::RawChirho(n_chirho) => n_chirho.full_name_chirho(),
@@ -102,8 +110,7 @@ mod tests_chirho {
 
     #[test]
     fn raw_name_unqualified_chirho() {
-        let name_chirho =
-            RawNameChirho::unqualified_chirho("foo", SpanChirho::DUMMY_CHIRHO);
+        let name_chirho = RawNameChirho::unqualified_chirho("foo", SpanChirho::DUMMY_CHIRHO);
         assert_eq!(name_chirho.full_name_chirho(), "foo");
         assert!(name_chirho.qualifier_chirho.is_none());
     }

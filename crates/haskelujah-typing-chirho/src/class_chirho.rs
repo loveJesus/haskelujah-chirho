@@ -1081,6 +1081,78 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
+        // instance Floating Float
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Floating".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Float".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // RealFrac (superclass: Real, Fractional)
+        let realfrac_var_chirho = TyVarChirho(9060);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "RealFrac".to_string(),
+            supers_chirho: vec!["Real".to_string(), "Fractional".to_string()],
+            var_chirho: realfrac_var_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // instance RealFrac Double / Float
+        for ty_name_chirho in &["Double", "Float"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "RealFrac".to_string(),
+                head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
+
+        // RealFloat (superclass: RealFrac, Floating)
+        let realfloat_var_chirho = TyVarChirho(9061);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "RealFloat".to_string(),
+            supers_chirho: vec!["RealFrac".to_string(), "Floating".to_string()],
+            var_chirho: realfloat_var_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // instance RealFloat Double / Float
+        for ty_name_chirho in &["Double", "Float"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "RealFloat".to_string(),
+                head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
+
+        // MonadIO class
+        let monadio_var_chirho = TyVarChirho(9062);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "MonadIO".to_string(),
+            supers_chirho: vec!["Monad".to_string()],
+            var_chirho: monadio_var_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // instance MonadIO IO
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "MonadIO".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("IO".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
         // Integral (superclass: Num)
         let integral_var_chirho = TyVarChirho(9008);
         self.add_class_chirho(ClassDeclChirho {

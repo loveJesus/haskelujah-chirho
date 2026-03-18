@@ -31,8 +31,11 @@ pub enum AstKindChirho {
 /// `F Int = Bool` or `F [a] = a`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeFamilyEquationChirho {
+    /// The family arguments on the left-hand side of the equation.
     pub lhs_types_chirho: Vec<TypeChirho>,
+    /// The reduced result type on the right-hand side.
     pub rhs_chirho: TypeChirho,
+    /// Span covering the whole equation.
     pub span_chirho: SpanChirho,
 }
 
@@ -42,7 +45,9 @@ pub struct TypeFamilyEquationChirho {
 /// With KindSignatures: `data Foo (a :: *) = ...` → `TyVarChirho { name: a, kind: Some(Star) }`
 #[derive(Debug, Clone, PartialEq)]
 pub struct TyVarChirho {
+    /// The source name of the type variable.
     pub name_chirho: NameChirho,
+    /// Optional kind annotation supplied in source.
     pub kind_annotation_chirho: Option<AstKindChirho>,
 }
 
@@ -223,6 +228,7 @@ pub enum PatSynDirChirho {
     UnidirChirho,
     /// `pattern P x <- pat where P x = expr` — separate match and builder.
     ExplBidirChirho {
+        /// Builder-side bindings used when the synonym appears in expression position.
         builder_binds_chirho: Vec<LocalBindChirho>,
     },
 }
@@ -266,22 +272,30 @@ pub enum ConDeclChirho {
 /// A record field declaration (`fieldName :: !Type`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldDeclChirho {
+    /// Field names that share the same type declaration.
     pub names_chirho: Vec<NameChirho>,
+    /// The declared field type.
     pub ty_chirho: TypeChirho,
+    /// Strictness annotation attached to the field.
     pub strictness_chirho: StrictnessChirho,
+    /// Span covering the whole field declaration.
     pub span_chirho: SpanChirho,
 }
 
 /// A method in a class declaration.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassMethodChirho {
+    /// Method name.
     pub name_chirho: NameChirho,
+    /// Declared method type.
     pub ty_chirho: TypeChirho,
+    /// Optional default implementation clauses.
     pub default_chirho: Option<Vec<MatchArmChirho>>,
     /// Default signature from `{-# LANGUAGE DefaultSignatures #-}`:
     /// `default methodName :: MoreConstrained => Type`.
     /// Stores the raw type text for the more-constrained default method type.
     pub default_sig_chirho: Option<String>,
+    /// Span covering the whole method declaration.
     pub span_chirho: SpanChirho,
 }
 
@@ -289,10 +303,13 @@ pub struct ClassMethodChirho {
 /// `type FamilyName a :: *` or `type FamilyName a` (with optional default).
 #[derive(Debug, Clone, PartialEq)]
 pub struct AssocTypeFamilyChirho {
+    /// Name of the associated type family.
     pub name_chirho: NameChirho,
+    /// Family parameters declared in the class body.
     pub type_vars_chirho: Vec<NameChirho>,
     /// Optional default: `type FamilyName a = DefaultType`.
     pub default_rhs_chirho: Option<TypeChirho>,
+    /// Span covering the whole associated type declaration.
     pub span_chirho: SpanChirho,
 }
 
@@ -300,17 +317,24 @@ pub struct AssocTypeFamilyChirho {
 /// `type FamilyName ConcreteType = ResultType`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AssocTfInstanceChirho {
+    /// Associated family name being instantiated.
     pub family_name_chirho: NameChirho,
+    /// Concrete left-hand-side arguments for the instance.
     pub lhs_types_chirho: Vec<TypeChirho>,
+    /// Result type produced by this associated family instance.
     pub rhs_chirho: TypeChirho,
+    /// Span covering the whole associated type instance.
     pub span_chirho: SpanChirho,
 }
 
 /// Fixity direction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixityChirho {
+    /// Non-associative infix operator.
     InfixChirho,
+    /// Left-associative infix operator.
     InfixlChirho,
+    /// Right-associative infix operator.
     InfixrChirho,
 }
 
@@ -324,6 +348,7 @@ pub enum ForeignDirectionChirho {
 }
 
 impl DeclChirho {
+    /// Return the source span covering this top-level declaration.
     pub fn span_chirho(&self) -> SpanChirho {
         match self {
             Self::TypeSigChirho { span_chirho, .. }

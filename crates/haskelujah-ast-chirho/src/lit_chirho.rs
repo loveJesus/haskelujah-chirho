@@ -15,6 +15,7 @@ pub enum LitChirho {
 }
 
 impl LitChirho {
+    /// Return the source span covering this literal.
     pub fn span_chirho(&self) -> SpanChirho {
         match self {
             Self::IntChirho(_, s_chirho) => *s_chirho,

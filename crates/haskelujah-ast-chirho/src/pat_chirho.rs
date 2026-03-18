@@ -91,12 +91,16 @@ pub enum PatChirho {
 /// A field in a record pattern (`field = pat`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct PatFieldChirho {
+    /// The record field name being matched.
     pub name_chirho: NameChirho,
+    /// The pattern bound to the field.
     pub pattern_chirho: PatChirho,
+    /// Span covering the whole field binding.
     pub span_chirho: SpanChirho,
 }
 
 impl PatChirho {
+    /// Return the source span covering this pattern.
     pub fn span_chirho(&self) -> SpanChirho {
         match self {
             Self::VarChirho(n_chirho) => n_chirho.span_chirho(),

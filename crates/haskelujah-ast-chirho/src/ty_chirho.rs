@@ -78,20 +78,22 @@ pub enum TypeChirho {
     },
     /// PartialTypeSignatures wildcard type (`_`). Lowered to a fresh
     /// unification variable during type inference.
-    WildcardChirho {
-        span_chirho: SpanChirho,
-    },
+    WildcardChirho { span_chirho: SpanChirho },
 }
 
 /// A class constraint in a type context (e.g. `Eq a`, `Show (Maybe a)`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConstraintChirho {
+    /// The class name being applied.
     pub class_chirho: NameChirho,
+    /// Type arguments supplied to the class.
     pub args_chirho: Vec<TypeChirho>,
+    /// Span covering the whole constraint.
     pub span_chirho: SpanChirho,
 }
 
 impl TypeChirho {
+    /// Return the source span covering this type expression.
     pub fn span_chirho(&self) -> SpanChirho {
         match self {
             Self::VarChirho(n_chirho) => n_chirho.span_chirho(),

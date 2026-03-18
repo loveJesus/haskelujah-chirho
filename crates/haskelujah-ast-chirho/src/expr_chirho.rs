@@ -168,17 +168,24 @@ pub enum ExprChirho {
 /// A field assignment in a record expression.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldAssignChirho {
+    /// The field being assigned.
     pub name_chirho: NameChirho,
+    /// The expression stored in the field.
     pub value_chirho: ExprChirho,
+    /// Span covering the whole field assignment.
     pub span_chirho: SpanChirho,
 }
 
 /// A case alternative (`pattern -> expr` or `pattern | guard -> expr`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct AltChirho {
+    /// The pattern matched by this alternative.
     pub pat_chirho: PatChirho,
+    /// The right-hand side for the alternative.
     pub rhs_chirho: RhsChirho,
+    /// Local bindings introduced by an alternative-level `where`.
     pub where_binds_chirho: Vec<LocalBindChirho>,
+    /// Span covering the whole alternative.
     pub span_chirho: SpanChirho,
 }
 
@@ -192,8 +199,11 @@ pub enum RhsChirho {
 /// A guarded expression (`| guard = expr`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct GuardedExprChirho {
+    /// The boolean guard expression.
     pub guard_chirho: ExprChirho,
+    /// The body to evaluate when the guard succeeds.
     pub body_chirho: ExprChirho,
+    /// Span covering the whole guarded RHS arm.
     pub span_chirho: SpanChirho,
 }
 
@@ -241,13 +251,18 @@ pub enum LocalBindChirho {
 /// One equation/clause of a function binding (`f p1 p2 = body where ...`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchArmChirho {
+    /// Argument patterns for this clause.
     pub pats_chirho: Vec<PatChirho>,
+    /// The clause right-hand side.
     pub rhs_chirho: RhsChirho,
+    /// Local `where` bindings attached to this clause.
     pub where_binds_chirho: Vec<LocalBindChirho>,
+    /// Span covering the whole clause.
     pub span_chirho: SpanChirho,
 }
 
 impl ExprChirho {
+    /// Return the source span covering this expression.
     pub fn span_chirho(&self) -> SpanChirho {
         match self {
             Self::VarChirho(n_chirho) | Self::ConChirho(n_chirho) => n_chirho.span_chirho(),
