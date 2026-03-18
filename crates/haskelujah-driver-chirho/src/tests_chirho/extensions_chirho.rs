@@ -3055,6 +3055,59 @@ main = print "ok"
 }
 
 #[test]
+fn type_family_app_pattern_closed_chirho() {
+    let src_chirho = r#"
+{-# LANGUAGE TypeFamilies #-}
+module TfAppChirho where
+
+type family F a where
+  F (Maybe a) = [a]
+  F Int = Bool
+
+foo :: F (Maybe Int)
+foo = [1, 2, 3]
+
+bar :: F Int
+bar = True
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TfApp.hs");
+    assert!(result_chirho.is_ok(), "Type family app pattern failed: {:?}", result_chirho.err());
+}
+
+#[test]
+fn imported_module_value_resolves_chirho() {
+    let src_chirho = r#"
+module ImportValChirho where
+import Data.Map (singleton, empty)
+import Foreign.Storable (sizeOf)
+import Data.Foldable (foldl')
+
+x :: Int
+x = 0
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ImportVal.hs");
+    assert!(result_chirho.is_ok(), "Imported module values should resolve: {:?}", result_chirho.err());
+}
+
+#[test]
+fn real_float_monadio_instances_chirho() {
+    let src_chirho = r#"
+module RfMioChirho where
+
+foo :: RealFloat a => a -> Bool
+foo x = isNaN x || isInfinite x
+
+bar :: Double -> Bool
+bar = foo
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "RfMio.hs");
+    assert!(result_chirho.is_ok(), "RealFloat constraint failed: {:?}", result_chirho.err());
+}
+
+#[test]
 fn prelude_export_count_chirho() {
     let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let prelude_chirho = ifaces_chirho.iter().find(|m_chirho| m_chirho.name_chirho == "Prelude").unwrap();
