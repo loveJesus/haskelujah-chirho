@@ -21,8 +21,7 @@
 use std::collections::HashMap;
 
 use crate::version_chirho::{
-    parse_version_chirho, parse_version_constraint_chirho, VersionChirho,
-    VersionConstraintChirho,
+    parse_version_chirho, parse_version_constraint_chirho, VersionChirho, VersionConstraintChirho,
 };
 
 // ---------------------------------------------------------------------------
@@ -233,33 +232,27 @@ pub fn parse_cabal_chirho(input_chirho: &str) -> PackageDescChirho {
                 pkg_chirho.library_chirho = Some(lib_chirho);
             }
             StanzaChirho::ExecutableChirho(name_chirho) => {
-                let exe_chirho =
-                    parse_executable_chirho(name_chirho, stanza_fields_chirho);
+                let exe_chirho = parse_executable_chirho(name_chirho, stanza_fields_chirho);
                 pkg_chirho.executables_chirho.push(exe_chirho);
             }
             StanzaChirho::TestSuiteChirho(name_chirho) => {
-                let ts_chirho =
-                    parse_test_suite_chirho(name_chirho, stanza_fields_chirho);
+                let ts_chirho = parse_test_suite_chirho(name_chirho, stanza_fields_chirho);
                 pkg_chirho.test_suites_chirho.push(ts_chirho);
             }
             StanzaChirho::BenchmarkChirho(name_chirho) => {
-                let bm_chirho =
-                    parse_benchmark_chirho(name_chirho, stanza_fields_chirho);
+                let bm_chirho = parse_benchmark_chirho(name_chirho, stanza_fields_chirho);
                 pkg_chirho.benchmarks_chirho.push(bm_chirho);
             }
             StanzaChirho::FlagChirho(name_chirho) => {
-                let flag_chirho =
-                    parse_flag_chirho(name_chirho, stanza_fields_chirho);
+                let flag_chirho = parse_flag_chirho(name_chirho, stanza_fields_chirho);
                 pkg_chirho.flags_chirho.push(flag_chirho);
             }
             StanzaChirho::SourceRepoChirho(kind_chirho) => {
-                let repo_chirho =
-                    parse_source_repo_chirho(kind_chirho, stanza_fields_chirho);
+                let repo_chirho = parse_source_repo_chirho(kind_chirho, stanza_fields_chirho);
                 pkg_chirho.source_repos_chirho.push(repo_chirho);
             }
             StanzaChirho::CommonChirho(name_chirho) => {
-                let common_chirho =
-                    parse_common_stanza_chirho(name_chirho, stanza_fields_chirho);
+                let common_chirho = parse_common_stanza_chirho(name_chirho, stanza_fields_chirho);
                 pkg_chirho.common_stanzas_chirho.push(common_chirho);
             }
             StanzaChirho::CustomSetupChirho => {
@@ -308,10 +301,16 @@ fn lex_fields_chirho(input_chirho: &str) -> Vec<FieldChirho> {
             let is_stanza_header_chirho = matches!(
                 potential_key_chirho.to_lowercase().as_str(),
                 "library" | "common" | "custom-setup"
-            ) || potential_key_chirho.to_lowercase().starts_with("executable")
-                || potential_key_chirho.to_lowercase().starts_with("test-suite")
+            ) || potential_key_chirho
+                .to_lowercase()
+                .starts_with("executable")
+                || potential_key_chirho
+                    .to_lowercase()
+                    .starts_with("test-suite")
                 || potential_key_chirho.to_lowercase().starts_with("benchmark")
-                || potential_key_chirho.to_lowercase().starts_with("source-repository")
+                || potential_key_chirho
+                    .to_lowercase()
+                    .starts_with("source-repository")
                 || potential_key_chirho.to_lowercase().starts_with("flag");
 
             let looks_like_field_chirho = !potential_key_chirho.is_empty()
@@ -330,8 +329,7 @@ fn lex_fields_chirho(input_chirho: &str) -> Vec<FieldChirho> {
                     current_value_chirho.clear();
                 }
 
-                current_key_chirho =
-                    Some(potential_key_chirho.to_lowercase().to_string());
+                current_key_chirho = Some(potential_key_chirho.to_lowercase().to_string());
                 let val_part_chirho = trimmed_chirho[colon_idx_chirho + 1..].trim();
                 current_value_chirho = val_part_chirho.to_string();
                 field_indent_chirho = indent_chirho;
@@ -360,15 +358,15 @@ fn lex_fields_chirho(input_chirho: &str) -> Vec<FieldChirho> {
             }
 
             // Create a pseudo-field for the stanza header
-            let (header_chirho, name_part_chirho) =
-                if let Some(idx_chirho) = lower_chirho.find(' ') {
-                    (
-                        lower_chirho[..idx_chirho].to_string(),
-                        trimmed_chirho[idx_chirho + 1..].trim().to_string(),
-                    )
-                } else {
-                    (lower_chirho.clone(), String::new())
-                };
+            let (header_chirho, name_part_chirho) = if let Some(idx_chirho) = lower_chirho.find(' ')
+            {
+                (
+                    lower_chirho[..idx_chirho].to_string(),
+                    trimmed_chirho[idx_chirho + 1..].trim().to_string(),
+                )
+            } else {
+                (lower_chirho.clone(), String::new())
+            };
 
             fields_chirho.push(FieldChirho {
                 key_chirho: format!("__stanza__{}", header_chirho),
@@ -409,46 +407,31 @@ fn strip_comment_chirho(line_chirho: &str) -> &str {
 }
 
 /// Group fields into stanzas.
-fn group_stanzas_chirho(
-    fields_chirho: &[FieldChirho],
-) -> Vec<(StanzaChirho, Vec<&FieldChirho>)> {
+fn group_stanzas_chirho(fields_chirho: &[FieldChirho]) -> Vec<(StanzaChirho, Vec<&FieldChirho>)> {
     let mut stanzas_chirho: Vec<(StanzaChirho, Vec<&FieldChirho>)> = Vec::new();
     let mut current_stanza_chirho = StanzaChirho::TopLevelChirho;
     let mut current_fields_chirho: Vec<&FieldChirho> = Vec::new();
 
     for field_chirho in fields_chirho {
-        if let Some(stanza_type_chirho) =
-            field_chirho.key_chirho.strip_prefix("__stanza__")
-        {
+        if let Some(stanza_type_chirho) = field_chirho.key_chirho.strip_prefix("__stanza__") {
             // Flush current stanza
             if !current_fields_chirho.is_empty()
                 || matches!(current_stanza_chirho, StanzaChirho::TopLevelChirho)
             {
-                stanzas_chirho
-                    .push((current_stanza_chirho.clone(), current_fields_chirho));
+                stanzas_chirho.push((current_stanza_chirho.clone(), current_fields_chirho));
                 current_fields_chirho = Vec::new();
             }
 
             current_stanza_chirho = match stanza_type_chirho {
                 "library" => StanzaChirho::LibraryChirho,
-                "executable" => {
-                    StanzaChirho::ExecutableChirho(field_chirho.value_chirho.clone())
-                }
-                "test-suite" => {
-                    StanzaChirho::TestSuiteChirho(field_chirho.value_chirho.clone())
-                }
-                "benchmark" => {
-                    StanzaChirho::BenchmarkChirho(field_chirho.value_chirho.clone())
-                }
-                "flag" => {
-                    StanzaChirho::FlagChirho(field_chirho.value_chirho.clone())
-                }
+                "executable" => StanzaChirho::ExecutableChirho(field_chirho.value_chirho.clone()),
+                "test-suite" => StanzaChirho::TestSuiteChirho(field_chirho.value_chirho.clone()),
+                "benchmark" => StanzaChirho::BenchmarkChirho(field_chirho.value_chirho.clone()),
+                "flag" => StanzaChirho::FlagChirho(field_chirho.value_chirho.clone()),
                 "source-repository" => {
                     StanzaChirho::SourceRepoChirho(field_chirho.value_chirho.clone())
                 }
-                "common" => {
-                    StanzaChirho::CommonChirho(field_chirho.value_chirho.clone())
-                }
+                "common" => StanzaChirho::CommonChirho(field_chirho.value_chirho.clone()),
                 "custom-setup" => StanzaChirho::CustomSetupChirho,
                 _ => StanzaChirho::TopLevelChirho,
             };
@@ -464,20 +447,15 @@ fn group_stanzas_chirho(
 }
 
 /// Apply top-level fields to the package description.
-fn apply_top_level_chirho(
-    pkg_chirho: &mut PackageDescChirho,
-    fields_chirho: &[&FieldChirho],
-) {
+fn apply_top_level_chirho(pkg_chirho: &mut PackageDescChirho, fields_chirho: &[&FieldChirho]) {
     for field_chirho in fields_chirho {
         match field_chirho.key_chirho.as_str() {
             "name" => pkg_chirho.name_chirho = field_chirho.value_chirho.clone(),
             "version" => {
-                pkg_chirho.version_chirho =
-                    parse_version_chirho(&field_chirho.value_chirho);
+                pkg_chirho.version_chirho = parse_version_chirho(&field_chirho.value_chirho);
             }
             "cabal-version" => {
-                pkg_chirho.cabal_version_chirho =
-                    Some(field_chirho.value_chirho.clone());
+                pkg_chirho.cabal_version_chirho = Some(field_chirho.value_chirho.clone());
             }
             "license" => {
                 pkg_chirho.license_chirho = Some(field_chirho.value_chirho.clone());
@@ -492,8 +470,7 @@ fn apply_top_level_chirho(
                 pkg_chirho.synopsis_chirho = Some(field_chirho.value_chirho.clone());
             }
             "description" => {
-                pkg_chirho.description_chirho =
-                    Some(field_chirho.value_chirho.clone());
+                pkg_chirho.description_chirho = Some(field_chirho.value_chirho.clone());
             }
             "category" => {
                 pkg_chirho.category_chirho = Some(field_chirho.value_chirho.clone());
@@ -502,12 +479,10 @@ fn apply_top_level_chirho(
                 pkg_chirho.homepage_chirho = Some(field_chirho.value_chirho.clone());
             }
             "bug-reports" => {
-                pkg_chirho.bug_reports_chirho =
-                    Some(field_chirho.value_chirho.clone());
+                pkg_chirho.bug_reports_chirho = Some(field_chirho.value_chirho.clone());
             }
             "build-type" => {
-                pkg_chirho.build_type_chirho =
-                    Some(field_chirho.value_chirho.clone());
+                pkg_chirho.build_type_chirho = Some(field_chirho.value_chirho.clone());
             }
             _ => {} // Ignore unknown top-level fields
         }
@@ -525,8 +500,7 @@ fn parse_deps_chirho(value_chirho: &str) -> Vec<DependencyChirho> {
         }
 
         // Split on first whitespace or operator
-        let (name_chirho, constraint_str_chirho) =
-            split_dep_name_chirho(trimmed_chirho);
+        let (name_chirho, constraint_str_chirho) = split_dep_name_chirho(trimmed_chirho);
 
         if name_chirho.is_empty() {
             continue;
@@ -583,31 +557,35 @@ fn parse_build_info_chirho(fields_chirho: &[&FieldChirho]) -> BuildInfoChirho {
     for field_chirho in fields_chirho {
         match field_chirho.key_chirho.as_str() {
             "build-depends" => {
-                info_chirho.build_depends_chirho =
-                    parse_deps_chirho(&field_chirho.value_chirho);
+                info_chirho
+                    .build_depends_chirho
+                    .extend(parse_deps_chirho(&field_chirho.value_chirho));
             }
             "hs-source-dirs" => {
-                info_chirho.hs_source_dirs_chirho =
-                    parse_modules_chirho(&field_chirho.value_chirho);
+                info_chirho
+                    .hs_source_dirs_chirho
+                    .extend(parse_modules_chirho(&field_chirho.value_chirho));
             }
             "default-language" => {
-                info_chirho.default_language_chirho =
-                    Some(field_chirho.value_chirho.clone());
+                info_chirho.default_language_chirho = Some(field_chirho.value_chirho.clone());
             }
             "ghc-options" => {
-                info_chirho.ghc_options_chirho = field_chirho
-                    .value_chirho
-                    .split_whitespace()
-                    .map(|s_chirho| s_chirho.to_string())
-                    .collect();
+                info_chirho.ghc_options_chirho.extend(
+                    field_chirho
+                        .value_chirho
+                        .split_whitespace()
+                        .map(|s_chirho| s_chirho.to_string()),
+                );
             }
             "default-extensions" => {
-                info_chirho.default_extensions_chirho =
-                    parse_modules_chirho(&field_chirho.value_chirho);
+                info_chirho
+                    .default_extensions_chirho
+                    .extend(parse_modules_chirho(&field_chirho.value_chirho));
             }
             "other-extensions" => {
-                info_chirho.other_extensions_chirho =
-                    parse_modules_chirho(&field_chirho.value_chirho);
+                info_chirho
+                    .other_extensions_chirho
+                    .extend(parse_modules_chirho(&field_chirho.value_chirho));
             }
             "import" => {
                 // `import: common-stanza-name` — may be comma-separated
@@ -650,10 +628,7 @@ fn parse_library_chirho(fields_chirho: &[&FieldChirho]) -> LibraryChirho {
 }
 
 /// Parse an executable stanza.
-fn parse_executable_chirho(
-    name_chirho: &str,
-    fields_chirho: &[&FieldChirho],
-) -> ExecutableChirho {
+fn parse_executable_chirho(name_chirho: &str, fields_chirho: &[&FieldChirho]) -> ExecutableChirho {
     let mut main_is_chirho = None;
     let mut other_chirho = Vec::new();
 
@@ -678,10 +653,7 @@ fn parse_executable_chirho(
 }
 
 /// Parse a test-suite stanza.
-fn parse_test_suite_chirho(
-    name_chirho: &str,
-    fields_chirho: &[&FieldChirho],
-) -> TestSuiteChirho {
+fn parse_test_suite_chirho(name_chirho: &str, fields_chirho: &[&FieldChirho]) -> TestSuiteChirho {
     let mut type_chirho = None;
     let mut main_is_chirho = None;
     let mut other_chirho = Vec::new();
@@ -711,10 +683,7 @@ fn parse_test_suite_chirho(
 }
 
 /// Parse a benchmark stanza.
-fn parse_benchmark_chirho(
-    name_chirho: &str,
-    fields_chirho: &[&FieldChirho],
-) -> BenchmarkChirho {
+fn parse_benchmark_chirho(name_chirho: &str, fields_chirho: &[&FieldChirho]) -> BenchmarkChirho {
     let mut type_chirho = None;
     let mut main_is_chirho = None;
     let mut other_chirho = Vec::new();
@@ -744,10 +713,7 @@ fn parse_benchmark_chirho(
 }
 
 /// Parse a flag stanza.
-fn parse_flag_chirho(
-    name_chirho: &str,
-    fields_chirho: &[&FieldChirho],
-) -> FlagChirho {
+fn parse_flag_chirho(name_chirho: &str, fields_chirho: &[&FieldChirho]) -> FlagChirho {
     let mut description_chirho = None;
     let mut default_chirho = true;
     let mut manual_chirho = false;
@@ -782,10 +748,7 @@ fn parse_flag_chirho(
 }
 
 /// Parse a source-repository stanza.
-fn parse_source_repo_chirho(
-    kind_chirho: &str,
-    fields_chirho: &[&FieldChirho],
-) -> SourceRepoChirho {
+fn parse_source_repo_chirho(kind_chirho: &str, fields_chirho: &[&FieldChirho]) -> SourceRepoChirho {
     let mut type_chirho = None;
     let mut location_chirho = None;
     let mut tag_chirho = None;
@@ -854,10 +817,7 @@ fn parse_condition_or_chirho(input_chirho: &str) -> (ConditionChirho, &str) {
         let trimmed_chirho = rest_chirho.trim_start();
         if let Some(after_chirho) = trimmed_chirho.strip_prefix("||") {
             let (rhs_chirho, rest2_chirho) = parse_condition_and_chirho(after_chirho);
-            lhs_chirho = ConditionChirho::OrChirho(
-                Box::new(lhs_chirho),
-                Box::new(rhs_chirho),
-            );
+            lhs_chirho = ConditionChirho::OrChirho(Box::new(lhs_chirho), Box::new(rhs_chirho));
             rest_chirho = rest2_chirho;
         } else {
             break;
@@ -873,10 +833,7 @@ fn parse_condition_and_chirho(input_chirho: &str) -> (ConditionChirho, &str) {
         let trimmed_chirho = rest_chirho.trim_start();
         if let Some(after_chirho) = trimmed_chirho.strip_prefix("&&") {
             let (rhs_chirho, rest2_chirho) = parse_condition_atom_chirho(after_chirho);
-            lhs_chirho = ConditionChirho::AndChirho(
-                Box::new(lhs_chirho),
-                Box::new(rhs_chirho),
-            );
+            lhs_chirho = ConditionChirho::AndChirho(Box::new(lhs_chirho), Box::new(rhs_chirho));
             rest_chirho = rest2_chirho;
         } else {
             break;
@@ -893,7 +850,10 @@ fn parse_condition_atom_chirho(input_chirho: &str) -> (ConditionChirho, &str) {
     // Negation: `!cond`
     if let Some(rest_chirho) = trimmed_chirho.strip_prefix('!') {
         let (inner_chirho, rest2_chirho) = parse_condition_atom_chirho(rest_chirho);
-        return (ConditionChirho::NotChirho(Box::new(inner_chirho)), rest2_chirho);
+        return (
+            ConditionChirho::NotChirho(Box::new(inner_chirho)),
+            rest2_chirho,
+        );
     }
 
     // Parenthesized: `(cond)`
@@ -958,12 +918,8 @@ pub fn eval_condition_chirho(
         ConditionChirho::FlagChirho(name_chirho) => {
             *flags_chirho.get(name_chirho).unwrap_or(&false)
         }
-        ConditionChirho::OsChirho(name_chirho) => {
-            os_chirho.eq_ignore_ascii_case(name_chirho)
-        }
-        ConditionChirho::ArchChirho(name_chirho) => {
-            arch_chirho.eq_ignore_ascii_case(name_chirho)
-        }
+        ConditionChirho::OsChirho(name_chirho) => os_chirho.eq_ignore_ascii_case(name_chirho),
+        ConditionChirho::ArchChirho(name_chirho) => arch_chirho.eq_ignore_ascii_case(name_chirho),
         ConditionChirho::ImplChirho(_) => {
             // For now, treat impl conditions as true (we are haskelujah)
             true
@@ -986,14 +942,24 @@ pub fn eval_condition_chirho(
 
 /// Merge `from` build info into `into`.
 fn merge_build_info_chirho(into_chirho: &mut BuildInfoChirho, from_chirho: &BuildInfoChirho) {
-    into_chirho.build_depends_chirho.extend(from_chirho.build_depends_chirho.clone());
-    into_chirho.hs_source_dirs_chirho.extend(from_chirho.hs_source_dirs_chirho.clone());
+    into_chirho
+        .build_depends_chirho
+        .extend(from_chirho.build_depends_chirho.clone());
+    into_chirho
+        .hs_source_dirs_chirho
+        .extend(from_chirho.hs_source_dirs_chirho.clone());
     if into_chirho.default_language_chirho.is_none() {
         into_chirho.default_language_chirho = from_chirho.default_language_chirho.clone();
     }
-    into_chirho.ghc_options_chirho.extend(from_chirho.ghc_options_chirho.clone());
-    into_chirho.default_extensions_chirho.extend(from_chirho.default_extensions_chirho.clone());
-    into_chirho.other_extensions_chirho.extend(from_chirho.other_extensions_chirho.clone());
+    into_chirho
+        .ghc_options_chirho
+        .extend(from_chirho.ghc_options_chirho.clone());
+    into_chirho
+        .default_extensions_chirho
+        .extend(from_chirho.default_extensions_chirho.clone());
+    into_chirho
+        .other_extensions_chirho
+        .extend(from_chirho.other_extensions_chirho.clone());
 }
 
 /// Apply `import:` directives: merge common stanza fields into components.
@@ -1004,22 +970,6 @@ fn apply_imports_chirho(pkg_chirho: &mut PackageDescChirho) {
         .map(|c_chirho| (c_chirho.name_chirho.clone(), c_chirho.clone()))
         .collect();
 
-    // Helper closure: find `import` fields in build_info and merge common stanza fields.
-    // The `import` field was parsed as a build-depends-style field but stored in
-    // the build_info; however, our current parser stores unknown fields nowhere.
-    // Instead, we look for common stanza names that match `import:` fields.
-    // Since `import:` is parsed as a regular field by lex_fields_chirho, we need
-    // to also handle it in parse_build_info_chirho. Let's check if `import` fields
-    // are captured. Actually, they're stored as unknown fields and ignored.
-    // We need to handle imports differently — store them and apply them.
-
-    // For now, look through the raw fields again. Since we already grouped stanzas,
-    // we need a different approach. Let's add import tracking to BuildInfoChirho.
-
-    // The simplest approach: scan build_info for the import field.
-    // Since our current parser drops unknown fields, we need to handle `import`
-    // explicitly in parse_build_info_chirho.
-
     // Apply to library
     if let Some(lib_chirho) = &mut pkg_chirho.library_chirho {
         for import_name_chirho in &lib_chirho.build_info_chirho.imports_chirho.clone() {
@@ -1028,6 +978,12 @@ fn apply_imports_chirho(pkg_chirho: &mut PackageDescChirho) {
                     &mut lib_chirho.build_info_chirho,
                     &common_chirho.build_info_chirho,
                 );
+                lib_chirho
+                    .exposed_modules_chirho
+                    .extend(common_chirho.exposed_modules_chirho.clone());
+                lib_chirho
+                    .other_modules_chirho
+                    .extend(common_chirho.other_modules_chirho.clone());
             }
         }
     }
@@ -1040,6 +996,9 @@ fn apply_imports_chirho(pkg_chirho: &mut PackageDescChirho) {
                     &mut exe_chirho.build_info_chirho,
                     &common_chirho.build_info_chirho,
                 );
+                exe_chirho
+                    .other_modules_chirho
+                    .extend(common_chirho.other_modules_chirho.clone());
             }
         }
     }
@@ -1052,6 +1011,9 @@ fn apply_imports_chirho(pkg_chirho: &mut PackageDescChirho) {
                     &mut ts_chirho.build_info_chirho,
                     &common_chirho.build_info_chirho,
                 );
+                ts_chirho
+                    .other_modules_chirho
+                    .extend(common_chirho.other_modules_chirho.clone());
             }
         }
     }
@@ -1064,6 +1026,9 @@ fn apply_imports_chirho(pkg_chirho: &mut PackageDescChirho) {
                     &mut bm_chirho.build_info_chirho,
                     &common_chirho.build_info_chirho,
                 );
+                bm_chirho
+                    .other_modules_chirho
+                    .extend(common_chirho.other_modules_chirho.clone());
             }
         }
     }
@@ -1112,6 +1077,33 @@ test-suite hello-test
   default-language: Haskell2010
 "#;
 
+    const AESON_LIBRARY_SNIPPET_CHIRHO: &str = r#"
+cabal-version:      2.2
+name:               aeson
+version:            2.2.3.0
+
+library
+  default-language: Haskell2010
+  hs-source-dirs:   src
+  exposed-modules:
+    Data.Aeson
+    Data.Aeson.Decoding
+
+  other-modules:
+    Data.Aeson.Internal.Prelude
+    Data.Aeson.Types.Internal
+
+  build-depends:
+    , base              >=4.12.0.0 && <5
+    , bytestring        >=0.10.8.2 && <0.13
+
+  build-depends:
+    , generically  >=0.1   && <0.2
+    , time-compat  >=1.9.6 && <1.10
+
+  ghc-options:      -Wall
+"#;
+
     #[test]
     fn parse_top_level_fields_chirho() {
         let pkg_chirho = parse_cabal_chirho(SAMPLE_CABAL_CHIRHO);
@@ -1130,9 +1122,15 @@ test-suite hello-test
         let pkg_chirho = parse_cabal_chirho(SAMPLE_CABAL_CHIRHO);
         let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
 
-        assert_eq!(lib_chirho.exposed_modules_chirho, vec!["Hello", "Hello.World"]);
+        assert_eq!(
+            lib_chirho.exposed_modules_chirho,
+            vec!["Hello", "Hello.World"]
+        );
         assert_eq!(lib_chirho.other_modules_chirho, vec!["Hello.Internal"]);
-        assert_eq!(lib_chirho.build_info_chirho.hs_source_dirs_chirho, vec!["src"]);
+        assert_eq!(
+            lib_chirho.build_info_chirho.hs_source_dirs_chirho,
+            vec!["src"]
+        );
         assert_eq!(
             lib_chirho.build_info_chirho.default_language_chirho,
             Some("Haskell2010".to_string())
@@ -1189,9 +1187,7 @@ test-suite hello-test
 
     #[test]
     fn parse_deps_multiple_chirho() {
-        let deps_chirho = parse_deps_chirho(
-            "base >=4.14 && <5, containers >=0.6, text ^>=2.0",
-        );
+        let deps_chirho = parse_deps_chirho("base >=4.14 && <5, containers >=0.6, text ^>=2.0");
         assert_eq!(deps_chirho.len(), 3);
         assert_eq!(deps_chirho[0].package_chirho, "base");
         assert_eq!(deps_chirho[1].package_chirho, "containers");
@@ -1257,19 +1253,23 @@ description:
 
     #[test]
     fn dependency_constraint_satisfaction_chirho() {
-        let deps_chirho =
-            parse_deps_chirho("base >=4.14 && <5");
+        let deps_chirho = parse_deps_chirho("base >=4.14 && <5");
         let dep_chirho = &deps_chirho[0];
 
-        let v_ok_chirho =
-            parse_version_chirho("4.17.0.0").unwrap();
-        assert!(dep_chirho.constraint_chirho.satisfied_by_chirho(&v_ok_chirho));
+        let v_ok_chirho = parse_version_chirho("4.17.0.0").unwrap();
+        assert!(dep_chirho
+            .constraint_chirho
+            .satisfied_by_chirho(&v_ok_chirho));
 
         let v_bad_chirho = parse_version_chirho("5.0").unwrap();
-        assert!(!dep_chirho.constraint_chirho.satisfied_by_chirho(&v_bad_chirho));
+        assert!(!dep_chirho
+            .constraint_chirho
+            .satisfied_by_chirho(&v_bad_chirho));
 
         let v_old_chirho = parse_version_chirho("4.13").unwrap();
-        assert!(!dep_chirho.constraint_chirho.satisfied_by_chirho(&v_old_chirho));
+        assert!(!dep_chirho
+            .constraint_chirho
+            .satisfied_by_chirho(&v_old_chirho));
     }
 
     #[test]
@@ -1311,7 +1311,10 @@ flag optimize
 
         let debug_chirho = &pkg_chirho.flags_chirho[0];
         assert_eq!(debug_chirho.name_chirho, "debug");
-        assert_eq!(debug_chirho.description_chirho.as_deref(), Some("Enable debug output"));
+        assert_eq!(
+            debug_chirho.description_chirho.as_deref(),
+            Some("Enable debug output")
+        );
         assert!(!debug_chirho.default_chirho);
         assert!(debug_chirho.manual_chirho);
 
@@ -1390,7 +1393,10 @@ library
 
         let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
         // After import resolution, library should have the common stanza's settings merged
-        assert_eq!(lib_chirho.build_info_chirho.ghc_options_chirho, vec!["-Wall", "-Wcompat"]);
+        assert_eq!(
+            lib_chirho.build_info_chirho.ghc_options_chirho,
+            vec!["-Wall", "-Wcompat"]
+        );
         assert_eq!(
             lib_chirho.build_info_chirho.default_language_chirho,
             Some("Haskell2010".to_string())
@@ -1400,15 +1406,85 @@ library
     }
 
     #[test]
+    fn parse_common_stanza_import_merges_module_lists_chirho() {
+        let input_chirho = r#"
+name: my-pkg
+version: 1.0
+
+common shared
+  exposed-modules: Shared.Public
+  other-modules: Shared.Internal
+  ghc-options: -Wall
+
+library
+  import: shared
+  exposed-modules: Lib
+  other-modules: Lib.Internal
+
+executable cli
+  import: shared
+  main-is: Main.hs
+  other-modules: Cli.Internal
+"#;
+        let pkg_chirho = parse_cabal_chirho(input_chirho);
+        let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
+        assert_eq!(
+            lib_chirho.exposed_modules_chirho,
+            vec!["Lib", "Shared.Public"]
+        );
+        assert_eq!(
+            lib_chirho.other_modules_chirho,
+            vec!["Lib.Internal", "Shared.Internal"]
+        );
+        assert_eq!(pkg_chirho.executables_chirho.len(), 1);
+        assert_eq!(
+            pkg_chirho.executables_chirho[0].other_modules_chirho,
+            vec!["Cli.Internal", "Shared.Internal"]
+        );
+    }
+
+    #[test]
+    fn parse_real_aeson_repeated_build_depends_chirho() {
+        let pkg_chirho = parse_cabal_chirho(AESON_LIBRARY_SNIPPET_CHIRHO);
+        let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
+        let dep_names_chirho: Vec<&str> = lib_chirho
+            .build_info_chirho
+            .build_depends_chirho
+            .iter()
+            .map(|dep_chirho| dep_chirho.package_chirho.as_str())
+            .collect();
+
+        assert_eq!(pkg_chirho.name_chirho, "aeson");
+        assert_eq!(
+            lib_chirho.build_info_chirho.hs_source_dirs_chirho,
+            vec!["src"]
+        );
+        assert_eq!(
+            lib_chirho.build_info_chirho.ghc_options_chirho,
+            vec!["-Wall"]
+        );
+        assert_eq!(
+            dep_names_chirho,
+            vec!["base", "bytestring", "generically", "time-compat"]
+        );
+    }
+
+    #[test]
     fn parse_condition_flag_chirho() {
         let cond_chirho = parse_condition_chirho("flag(debug)");
-        assert_eq!(cond_chirho, ConditionChirho::FlagChirho("debug".to_string()));
+        assert_eq!(
+            cond_chirho,
+            ConditionChirho::FlagChirho("debug".to_string())
+        );
     }
 
     #[test]
     fn parse_condition_os_chirho() {
         let cond_chirho = parse_condition_chirho("os(windows)");
-        assert_eq!(cond_chirho, ConditionChirho::OsChirho("windows".to_string()));
+        assert_eq!(
+            cond_chirho,
+            ConditionChirho::OsChirho("windows".to_string())
+        );
     }
 
     #[test]
@@ -1447,7 +1523,10 @@ library
     #[test]
     fn parse_condition_impl_chirho() {
         let cond_chirho = parse_condition_chirho("impl(ghc >= 8.0)");
-        assert_eq!(cond_chirho, ConditionChirho::ImplChirho("ghc >= 8.0".to_string()));
+        assert_eq!(
+            cond_chirho,
+            ConditionChirho::ImplChirho("ghc >= 8.0".to_string())
+        );
     }
 
     #[test]
@@ -1455,22 +1534,42 @@ library
         let mut flags_chirho = HashMap::new();
         flags_chirho.insert("debug".to_string(), true);
         let cond_chirho = ConditionChirho::FlagChirho("debug".to_string());
-        assert!(eval_condition_chirho(&cond_chirho, &flags_chirho, "linux", "x86_64"));
+        assert!(eval_condition_chirho(
+            &cond_chirho,
+            &flags_chirho,
+            "linux",
+            "x86_64"
+        ));
     }
 
     #[test]
     fn eval_condition_flag_false_chirho() {
         let flags_chirho = HashMap::new();
         let cond_chirho = ConditionChirho::FlagChirho("debug".to_string());
-        assert!(!eval_condition_chirho(&cond_chirho, &flags_chirho, "linux", "x86_64"));
+        assert!(!eval_condition_chirho(
+            &cond_chirho,
+            &flags_chirho,
+            "linux",
+            "x86_64"
+        ));
     }
 
     #[test]
     fn eval_condition_os_chirho() {
         let flags_chirho = HashMap::new();
         let cond_chirho = ConditionChirho::OsChirho("linux".to_string());
-        assert!(eval_condition_chirho(&cond_chirho, &flags_chirho, "linux", "x86_64"));
-        assert!(!eval_condition_chirho(&cond_chirho, &flags_chirho, "windows", "x86_64"));
+        assert!(eval_condition_chirho(
+            &cond_chirho,
+            &flags_chirho,
+            "linux",
+            "x86_64"
+        ));
+        assert!(!eval_condition_chirho(
+            &cond_chirho,
+            &flags_chirho,
+            "windows",
+            "x86_64"
+        ));
     }
 
     #[test]
@@ -1481,17 +1580,30 @@ library
             Box::new(ConditionChirho::FlagChirho("debug".to_string())),
             Box::new(ConditionChirho::OsChirho("linux".to_string())),
         );
-        assert!(eval_condition_chirho(&cond_chirho, &flags_chirho, "linux", "x86_64"));
-        assert!(!eval_condition_chirho(&cond_chirho, &flags_chirho, "windows", "x86_64"));
+        assert!(eval_condition_chirho(
+            &cond_chirho,
+            &flags_chirho,
+            "linux",
+            "x86_64"
+        ));
+        assert!(!eval_condition_chirho(
+            &cond_chirho,
+            &flags_chirho,
+            "windows",
+            "x86_64"
+        ));
     }
 
     #[test]
     fn eval_condition_not_chirho() {
         let flags_chirho = HashMap::new();
-        let cond_chirho = ConditionChirho::NotChirho(
-            Box::new(ConditionChirho::FalseChirho),
-        );
-        assert!(eval_condition_chirho(&cond_chirho, &flags_chirho, "linux", "x86_64"));
+        let cond_chirho = ConditionChirho::NotChirho(Box::new(ConditionChirho::FalseChirho));
+        assert!(eval_condition_chirho(
+            &cond_chirho,
+            &flags_chirho,
+            "linux",
+            "x86_64"
+        ));
     }
 
     #[test]
@@ -1566,7 +1678,10 @@ benchmark full-bench
 
         // Source repository
         assert_eq!(pkg_chirho.source_repos_chirho.len(), 1);
-        assert_eq!(pkg_chirho.source_repos_chirho[0].type_chirho.as_deref(), Some("git"));
+        assert_eq!(
+            pkg_chirho.source_repos_chirho[0].type_chirho.as_deref(),
+            Some("git")
+        );
 
         // Flags
         assert_eq!(pkg_chirho.flags_chirho.len(), 1);
@@ -1575,12 +1690,21 @@ benchmark full-bench
 
         // Common stanzas
         assert_eq!(pkg_chirho.common_stanzas_chirho.len(), 1);
-        assert_eq!(pkg_chirho.common_stanzas_chirho[0].name_chirho, "shared-opts");
+        assert_eq!(
+            pkg_chirho.common_stanzas_chirho[0].name_chirho,
+            "shared-opts"
+        );
 
         // Library (with imports resolved)
         let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
-        assert_eq!(lib_chirho.exposed_modules_chirho, vec!["Lib", "Lib.Internal"]);
-        assert_eq!(lib_chirho.build_info_chirho.ghc_options_chirho, vec!["-Wall"]);
+        assert_eq!(
+            lib_chirho.exposed_modules_chirho,
+            vec!["Lib", "Lib.Internal"]
+        );
+        assert_eq!(
+            lib_chirho.build_info_chirho.ghc_options_chirho,
+            vec!["-Wall"]
+        );
         assert_eq!(
             lib_chirho.build_info_chirho.default_language_chirho,
             Some("Haskell2010".to_string())
@@ -1590,7 +1714,9 @@ benchmark full-bench
         assert_eq!(pkg_chirho.executables_chirho.len(), 1);
         assert_eq!(pkg_chirho.executables_chirho[0].name_chirho, "full-exe");
         assert_eq!(
-            pkg_chirho.executables_chirho[0].build_info_chirho.ghc_options_chirho,
+            pkg_chirho.executables_chirho[0]
+                .build_info_chirho
+                .ghc_options_chirho,
             vec!["-Wall"]
         );
 
@@ -1598,7 +1724,9 @@ benchmark full-bench
         assert_eq!(pkg_chirho.test_suites_chirho.len(), 1);
         assert_eq!(pkg_chirho.test_suites_chirho[0].name_chirho, "full-test");
         assert_eq!(
-            pkg_chirho.test_suites_chirho[0].build_info_chirho.ghc_options_chirho,
+            pkg_chirho.test_suites_chirho[0]
+                .build_info_chirho
+                .ghc_options_chirho,
             vec!["-Wall"]
         );
 
