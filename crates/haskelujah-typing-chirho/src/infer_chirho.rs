@@ -2549,21 +2549,45 @@ impl InferCtxChirho {
                 }
                 DeclChirho::NewtypeDeclChirho {
                     name_chirho,
+                    type_vars_chirho,
                     constructor_chirho,
                     ..
                 } => {
-                    let result_ty_chirho =
+                    // Build fully-applied result type: N a b ...
+                    let base_ty_chirho =
                         TyChirho::ConChirho(name_chirho.text_chirho().to_string());
+                    let mut nt_tv_map_chirho: HashMap<String, TyVarChirho> = HashMap::new();
+                    let nt_tv_vars_chirho: Vec<TyVarChirho> = type_vars_chirho
+                        .iter()
+                        .map(|tv_chirho| {
+                            let v_chirho = TyVarChirho(self.next_var_chirho);
+                            self.next_var_chirho += 1;
+                            nt_tv_map_chirho
+                                .insert(tv_chirho.text_chirho().to_string(), v_chirho);
+                            v_chirho
+                        })
+                        .collect();
+                    let result_ty_chirho =
+                        nt_tv_vars_chirho
+                            .iter()
+                            .fold(base_ty_chirho, |acc_chirho, tv_chirho| {
+                                TyChirho::AppChirho(
+                                    Box::new(acc_chirho),
+                                    Box::new(TyChirho::VarChirho(*tv_chirho)),
+                                )
+                            });
                     match constructor_chirho {
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                             name_chirho: con_name_chirho,
                             fields_chirho,
                             ..
                         } => {
-                            // Newtype constructor: exactly one field → result type
+                            // Newtype constructor: field type → result type
                             let field_tys_chirho: Vec<TyChirho> = fields_chirho
                                 .iter()
-                                .map(|_| self.fresh_var_chirho())
+                                .map(|(_s_chirho, ty_chirho)| {
+                                    self.ast_type_to_ty_chirho(ty_chirho, &mut nt_tv_map_chirho)
+                                })
                                 .collect();
                             let con_ty_chirho = TyChirho::fun_n_chirho(
                                 field_tys_chirho,
@@ -2596,7 +2620,7 @@ impl InferCtxChirho {
                                 .flat_map(|fd_chirho| {
                                     let ty_chirho = self.ast_type_to_ty_chirho(
                                         &fd_chirho.ty_chirho,
-                                        &mut std::collections::HashMap::new(),
+                                        &mut nt_tv_map_chirho,
                                     );
                                     std::iter::repeat(ty_chirho)
                                         .take(fd_chirho.names_chirho.len())
