@@ -87,6 +87,11 @@ pub fn run_frontend_chirho(
     ifaces_chirho: &[ModuleIfaceChirho],
     imported_types_chirho: &std::collections::HashMap<String, haskelujah_typing_chirho::SchemeChirho>,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
+    // Check for -fdefer-type-errors / -fdefer-out-of-scope-variables
+    // These GHC flags cause type errors to be deferred as warnings.
+    let defer_errors_chirho = source_chirho.contains("-fdefer-type-errors")
+        || source_chirho.contains("-fdefer-out-of-scope-variables");
+
     // Phase 1: CST parse (lex + layout + recursive-descent)
     let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
     let green_chirho = parser_chirho.parse_chirho();
@@ -116,7 +121,7 @@ pub fn run_frontend_chirho(
     // Phase 3: Name resolution
     let resolve_result_chirho =
         resolve_module_with_imports_chirho(&module_chirho, ifaces_chirho);
-    if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
+    if !defer_errors_chirho && resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(resolve_result_chirho.diagnostics_chirho);
     }
 
@@ -127,7 +132,7 @@ pub fn run_frontend_chirho(
     // Phase 3.5: Kind inference
     let kind_result_chirho =
         haskelujah_typing_chirho::infer_module_kinds_chirho(&module_chirho);
-    if kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
+    if !defer_errors_chirho && kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(kind_result_chirho.diagnostics_chirho);
     }
 
@@ -180,7 +185,7 @@ pub fn run_frontend_chirho(
     } else {
         infer_module_with_imports_chirho(&module_chirho, &merged_imported_types_chirho)
     };
-    if infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
+    if !defer_errors_chirho && infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(infer_result_chirho.diagnostics_chirho);
     }
 
