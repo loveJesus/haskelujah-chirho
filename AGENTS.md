@@ -1,5 +1,5 @@
 <!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. — John 3:16 -->
-codex will be more the leader hallelujah
+codex will be more the leader hallelujah and this metropoliluya session is HASKELUJAH
 Please comment the full content of John 3:16 at the top of all our files.
 
 ## Identifier Naming Convention: Chirho Suffix
