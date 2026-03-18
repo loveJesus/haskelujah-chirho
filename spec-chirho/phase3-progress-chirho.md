@@ -107,3 +107,5 @@
 97. **Skip constraint checks for unknown classes** — Deferred predicate checker now skips constraints for classes with no known instances (user-defined or given constraints). GHC typecheck: +5. 0 new tests
 98. **Fun↔App unification** — Treat `Fun(a, b)` as `App(App(Con("->"), a), b)` during unification so type variables can bind to the function type constructor. GHC typecheck: +3. 0 new tests
 99. **Tuple↔App general unification** — Convert `Tuple([a, b])` to `App(App(Con("(,)"), a), b)` when unifying against App patterns with type variable heads. Enables Bifunctor-style patterns. 0 GHC tests affected
+100. **Bang patterns in let/where bindings** — Fixed CST parser to skip `!` prefix in `parse_value_decl_chirho` so that `let !y = expr` properly binds `y`. GHC typecheck: 789→791 (+2). 0 new tests
+101. **KNOWN ISSUE: Lambda + inline do** — `\w -> do return w` creates empty variable names due to layout rule interaction between lambda arrow and do block on the same line. Explicit braces `\w -> do { return w }` works. Affects ~3 tests.
