@@ -438,6 +438,58 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // GHC.Exts re-exports all GHC.Prim primops. Add a second entry
+    // that the deduplication pass will merge with the first GHC.Exts.
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "seq", "realWorld#", "proxy#", "void#", "coerce",
+            "I#", "W#", "D#", "F#", "C#",
+            "+#", "-#", "*#", "negateInt#", "quotInt#", "remInt#",
+            "+##", "-##", "*##", "/##", "negateDouble#",
+            "plusFloat#", "minusFloat#", "timesFloat#", "divideFloat#", "negateFloat#",
+            "plusWord#", "minusWord#", "timesWord#", "timesWord2#", "quotWord#", "remWord#",
+            ">#", ">=#", "==#", "/=#", "<#", "<=#",
+            "gtWord#", "geWord#", "eqWord#", "neWord#", "ltWord#", "leWord#",
+            "int2Word#", "word2Int#", "int2Double#", "double2Int#",
+            "int2Float#", "float2Int#", "float2Double#", "double2Float#",
+            "chr#", "ord#", "word2Double#", "word2Float#",
+            "newArray#", "readArray#", "writeArray#", "indexArray#",
+            "sizeofArray#", "sizeofMutableArray#",
+            "newByteArray#", "readIntArray#", "writeIntArray#", "indexIntArray#",
+            "sizeofByteArray#", "sizeofMutableByteArray#",
+            "unsafeFreezeArray#", "unsafeThawArray#",
+            "newMutVar#", "readMutVar#", "writeMutVar#",
+            "newMVar#", "takeMVar#", "putMVar#", "tryTakeMVar#", "tryPutMVar#",
+            "mkWeak#", "deRefWeak#", "finalizeWeak#",
+            "makeStableName#", "eqStableName#", "stableNameToInt#",
+            "dataToTag#", "tagToEnum#", "reallyUnsafePtrEquality#",
+            "touch#", "noDuplicate#",
+            "raise#", "raiseIO#", "catch#",
+            "maskAsyncExceptions#", "unmaskAsyncExceptions#",
+            "atomically#", "retry#", "catchRetry#", "catchSTM#",
+            "newTVar#", "readTVar#", "readTVarIO#", "writeTVar#",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &[
+            "Int#", "Word#", "Float#", "Double#", "Char#", "Addr#",
+            "MutableByteArray#", "ByteArray#", "Array#", "MutableArray#",
+            "SmallArray#", "SmallMutableArray#",
+            "MutVar#", "TVar#", "MVar#", "State#", "RealWorld",
+            "Weak#", "StableName#", "StablePtr#",
+            "Proxy#", "TYPE", "RuntimeRep", "LiftedRep", "UnliftedRep",
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Exts".to_string(),
+            exports_chirho,
+        });
+    }
+
     // GHC.Types
     {
         let mut exports_chirho = IfaceExportsChirho::default();
