@@ -11,16 +11,16 @@
 ///
 /// Uses an O(min(m,n)) space algorithm with a single row buffer.
 pub fn edit_distance_chirho(a_chirho: &str, b_chirho: &str) -> usize {
-    let a_bytes_chirho = a_chirho.as_bytes();
-    let b_bytes_chirho = b_chirho.as_bytes();
+    let mut a_chars_chirho: Vec<char> = a_chirho.chars().collect();
+    let mut b_chars_chirho: Vec<char> = b_chirho.chars().collect();
 
     // Ensure a is the shorter string to minimize memory usage.
-    if a_bytes_chirho.len() > b_bytes_chirho.len() {
-        return edit_distance_chirho(b_chirho, a_chirho);
+    if a_chars_chirho.len() > b_chars_chirho.len() {
+        std::mem::swap(&mut a_chars_chirho, &mut b_chars_chirho);
     }
 
-    let m_chirho = a_bytes_chirho.len();
-    let n_chirho = b_bytes_chirho.len();
+    let m_chirho = a_chars_chirho.len();
+    let n_chirho = b_chars_chirho.len();
 
     // Previous row of distances.
     let mut prev_chirho: Vec<usize> = (0..=m_chirho).collect();
@@ -29,7 +29,7 @@ pub fn edit_distance_chirho(a_chirho: &str, b_chirho: &str) -> usize {
     for j_chirho in 1..=n_chirho {
         curr_chirho[0] = j_chirho;
         for i_chirho in 1..=m_chirho {
-            let cost_chirho = if a_bytes_chirho[i_chirho - 1] == b_bytes_chirho[j_chirho - 1] {
+            let cost_chirho = if a_chars_chirho[i_chirho - 1] == b_chars_chirho[j_chirho - 1] {
                 0
             } else {
                 1
@@ -54,14 +54,22 @@ pub fn suggest_similar_names_chirho<'a>(
     max_distance_chirho: usize,
     max_results_chirho: usize,
 ) -> Vec<&'a str> {
+    let mut seen_candidates_chirho = std::collections::HashSet::new();
     let mut scored_chirho: Vec<(&str, usize)> = candidates_chirho
         .into_iter()
         .filter(|c_chirho| *c_chirho != name_chirho) // don't suggest the exact same name
+        .filter(|c_chirho| seen_candidates_chirho.insert(*c_chirho))
         .map(|c_chirho| (c_chirho, edit_distance_chirho(name_chirho, c_chirho)))
         .filter(|(_, d_chirho)| *d_chirho <= max_distance_chirho && *d_chirho > 0)
         .collect();
 
-    scored_chirho.sort_by_key(|(_, d_chirho)| *d_chirho);
+    scored_chirho.sort_by(
+        |(left_name_chirho, left_distance_chirho), (right_name_chirho, right_distance_chirho)| {
+            left_distance_chirho
+                .cmp(right_distance_chirho)
+                .then_with(|| left_name_chirho.cmp(right_name_chirho))
+        },
+    );
     scored_chirho.truncate(max_results_chirho);
     scored_chirho
         .into_iter()
@@ -151,6 +159,13 @@ mod tests_chirho {
     }
 
     #[test]
+    fn edit_distance_handles_unicode_scalar_values_chirho() {
+        assert_eq!(edit_distance_chirho("cafe", "cafe"), 0);
+        assert_eq!(edit_distance_chirho("cafe", "cafe\u{301}"), 1);
+        assert_eq!(edit_distance_chirho("cafe", "café"), 1);
+    }
+
+    #[test]
     fn suggest_similar_finds_close_matches_chirho() {
         let candidates_chirho = ["map", "filter", "fold", "mop", "fmap", "max"];
         let suggestions_chirho =
@@ -193,6 +208,22 @@ mod tests_chirho {
                 .unwrap();
             assert!(idx_r_chirho < idx_b_chirho);
         }
+    }
+
+    #[test]
+    fn suggest_sorted_deterministically_for_equal_distance_chirho() {
+        let candidates_chirho = ["may", "map", "max"];
+        let suggestions_chirho =
+            suggest_similar_names_chirho("maz", candidates_chirho.into_iter(), 1, 3);
+        assert_eq!(suggestions_chirho, vec!["map", "max", "may"]);
+    }
+
+    #[test]
+    fn suggest_similar_deduplicates_candidates_chirho() {
+        let candidates_chirho = ["map", "map", "max", "mop"];
+        let suggestions_chirho =
+            suggest_similar_names_chirho("maz", candidates_chirho.into_iter(), 2, 4);
+        assert_eq!(suggestions_chirho, vec!["map", "max", "mop"]);
     }
 
     #[test]
