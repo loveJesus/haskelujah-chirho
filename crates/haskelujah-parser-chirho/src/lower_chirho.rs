@@ -2007,6 +2007,8 @@ impl LowerCtxChirho {
         let mut eq_rhs_chirho: Option<TypeChirho> = None;
         let mut eq_saw_equals_chirho = false;
         let mut eq_saw_family_name_chirho = false; // skip first ConId in each equation (family name)
+        let mut eq_paren_depth_chirho: usize = 0; // parenthesized group depth
+        let mut eq_paren_types_chirho: Vec<TypeChirho> = Vec::new();
 
         let mut idx_chirho = 0;
         while idx_chirho < children_chirho.len() {
@@ -2065,6 +2067,8 @@ impl LowerCtxChirho {
                         eq_rhs_chirho = None;
                         eq_saw_equals_chirho = false;
                         eq_saw_family_name_chirho = false;
+                        eq_paren_depth_chirho = 0;
+                        eq_paren_types_chirho.clear();
                     } else if saw_family_chirho && !saw_where_chirho && !saw_double_colon_chirho {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
@@ -2083,10 +2087,44 @@ impl LowerCtxChirho {
                             }
                         }
                     } else if saw_where_chirho && !eq_saw_equals_chirho {
-                        // LHS type tokens in equation — flat token form
+                        // LHS type tokens in equation — flat token form.
+                        // Handle parenthesized groups by collecting types until
+                        // the matching `)` and combining as applications.
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        if kind_chirho == TokenKindChirho::ConIdChirho {
+                        if kind_chirho == TokenKindChirho::LeftParenChirho {
+                            // Start collecting a parenthesized group
+                            eq_paren_depth_chirho += 1;
+                        } else if kind_chirho == TokenKindChirho::RightParenChirho {
+                            if eq_paren_depth_chirho > 0 {
+                                eq_paren_depth_chirho -= 1;
+                                if eq_paren_depth_chirho == 0 && !eq_paren_types_chirho.is_empty()
+                                {
+                                    // Build application from collected types
+                                    let mut result_ty_chirho =
+                                        eq_paren_types_chirho.remove(0);
+                                    for t_chirho in eq_paren_types_chirho.drain(..) {
+                                        result_ty_chirho = TypeChirho::AppChirho {
+                                            fun_chirho: Box::new(result_ty_chirho),
+                                            arg_chirho: Box::new(t_chirho),
+                                            span_chirho: s_chirho,
+                                        };
+                                    }
+                                    eq_lhs_types_chirho.push(result_ty_chirho);
+                                }
+                            }
+                        } else if eq_paren_depth_chirho > 0 {
+                            // Inside parens — collect types
+                            if kind_chirho == TokenKindChirho::ConIdChirho {
+                                let nm_chirho =
+                                    self.name_from_token_chirho(tok_chirho, s_chirho);
+                                eq_paren_types_chirho.push(TypeChirho::ConChirho(nm_chirho));
+                            } else if kind_chirho == TokenKindChirho::VarIdChirho {
+                                let nm_chirho =
+                                    self.name_from_token_chirho(tok_chirho, s_chirho);
+                                eq_paren_types_chirho.push(TypeChirho::VarChirho(nm_chirho));
+                            }
+                        } else if kind_chirho == TokenKindChirho::ConIdChirho {
                             if !eq_saw_family_name_chirho {
                                 // First ConId in equation is the family name — skip it
                                 eq_saw_family_name_chirho = true;
@@ -2109,6 +2147,14 @@ impl LowerCtxChirho {
                     } else if saw_where_chirho && eq_saw_equals_chirho && eq_rhs_chirho.is_none() {
                         eq_rhs_chirho =
                             Some(self.lower_type_chirho(n_chirho, child_chirho.start_chirho));
+                    } else if saw_where_chirho && !eq_saw_equals_chirho {
+                        // LHS node in equation — a parenthesized type like (Maybe a)
+                        if !eq_saw_family_name_chirho {
+                            eq_saw_family_name_chirho = true;
+                        }
+                        let ty_chirho =
+                            self.lower_type_chirho(n_chirho, child_chirho.start_chirho);
+                        eq_lhs_types_chirho.push(ty_chirho);
                     }
                 }
             }
@@ -2146,6 +2192,8 @@ impl LowerCtxChirho {
         let mut rhs_chirho = None;
         let mut saw_instance_chirho = false;
         let mut saw_equals_chirho = false;
+        let mut inst_paren_depth_chirho: usize = 0;
+        let mut inst_paren_types_chirho: Vec<TypeChirho> = Vec::new();
 
         let mut idx_chirho = 0;
         while idx_chirho < children_chirho.len() {
@@ -2162,7 +2210,37 @@ impl LowerCtxChirho {
                     } else if saw_instance_chirho && !saw_equals_chirho {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        if kind_chirho == TokenKindChirho::ConIdChirho
+                        if kind_chirho == TokenKindChirho::LeftParenChirho {
+                            inst_paren_depth_chirho += 1;
+                        } else if kind_chirho == TokenKindChirho::RightParenChirho {
+                            if inst_paren_depth_chirho > 0 {
+                                inst_paren_depth_chirho -= 1;
+                                if inst_paren_depth_chirho == 0
+                                    && !inst_paren_types_chirho.is_empty()
+                                {
+                                    let mut result_ty_chirho =
+                                        inst_paren_types_chirho.remove(0);
+                                    for t_chirho in inst_paren_types_chirho.drain(..) {
+                                        result_ty_chirho = TypeChirho::AppChirho {
+                                            fun_chirho: Box::new(result_ty_chirho),
+                                            arg_chirho: Box::new(t_chirho),
+                                            span_chirho: s_chirho,
+                                        };
+                                    }
+                                    lhs_types_chirho.push(result_ty_chirho);
+                                }
+                            }
+                        } else if inst_paren_depth_chirho > 0 {
+                            if kind_chirho == TokenKindChirho::ConIdChirho {
+                                let nm_chirho =
+                                    self.name_from_token_chirho(tok_chirho, s_chirho);
+                                inst_paren_types_chirho.push(TypeChirho::ConChirho(nm_chirho));
+                            } else if kind_chirho == TokenKindChirho::VarIdChirho {
+                                let nm_chirho =
+                                    self.name_from_token_chirho(tok_chirho, s_chirho);
+                                inst_paren_types_chirho.push(TypeChirho::VarChirho(nm_chirho));
+                            }
+                        } else if kind_chirho == TokenKindChirho::ConIdChirho
                             && family_name_chirho.is_none()
                         {
                             family_name_chirho =
@@ -2171,8 +2249,6 @@ impl LowerCtxChirho {
                             && (kind_chirho == TokenKindChirho::ConIdChirho
                                 || kind_chirho == TokenKindChirho::VarIdChirho)
                         {
-                            // LHS type pattern token: ConId (e.g. Int, Bool) or
-                            // VarId (type variable e.g. a, b)
                             let name_chirho = self.name_from_token_chirho(tok_chirho, s_chirho);
                             if kind_chirho == TokenKindChirho::ConIdChirho {
                                 lhs_types_chirho.push(TypeChirho::ConChirho(name_chirho));

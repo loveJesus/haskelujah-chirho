@@ -2383,11 +2383,14 @@ impl InferCtxChirho {
                     ..
                 } => {
                     let fname_chirho = family_name_chirho.text_chirho().to_string();
+                    // Collect free type variables from LHS types so they become
+                    // ForallVarChirho (matchable pattern vars) in the equation.
+                    let inst_params_chirho = collect_free_type_vars_from_ast_chirho(lhs_types_chirho);
                     let lhs_chirho: Vec<TyChirho> = lhs_types_chirho
                         .iter()
-                        .map(|t_chirho| ast_type_to_syn_rhs_chirho(t_chirho, &[]))
+                        .map(|t_chirho| ast_type_to_syn_rhs_chirho(t_chirho, &inst_params_chirho))
                         .collect();
-                    let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_chirho, &[]);
+                    let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_chirho, &inst_params_chirho);
                     self.register_type_family_instance_chirho(fname_chirho, lhs_chirho, rhs_ty_chirho);
                 }
                 _ => {}
@@ -10075,6 +10078,52 @@ pub fn infer_module_with_imports_chirho(
     result_chirho
 }
 
+/// Collect free type variable names from AST types (for type family instances).
+fn collect_free_type_vars_from_ast_chirho(types_chirho: &[TypeChirho]) -> Vec<String> {
+    let mut vars_chirho = Vec::new();
+    fn walk_chirho(ty_chirho: &TypeChirho, vars_chirho: &mut Vec<String>) {
+        match ty_chirho {
+            TypeChirho::VarChirho(name_chirho) => {
+                let text_chirho = name_chirho.text_chirho().to_string();
+                if !vars_chirho.contains(&text_chirho) {
+                    vars_chirho.push(text_chirho);
+                }
+            }
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                walk_chirho(fun_chirho, vars_chirho);
+                walk_chirho(arg_chirho, vars_chirho);
+            }
+            TypeChirho::FunChirho {
+                arg_chirho,
+                result_chirho,
+                ..
+            } => {
+                walk_chirho(arg_chirho, vars_chirho);
+                walk_chirho(result_chirho, vars_chirho);
+            }
+            TypeChirho::ListChirho {
+                element_chirho, ..
+            } => walk_chirho(element_chirho, vars_chirho),
+            TypeChirho::TupleChirho {
+                elements_chirho, ..
+            } => {
+                for e_chirho in elements_chirho {
+                    walk_chirho(e_chirho, vars_chirho);
+                }
+            }
+            _ => {}
+        }
+    }
+    for ty_chirho in types_chirho {
+        walk_chirho(ty_chirho, &mut vars_chirho);
+    }
+    vars_chirho
+}
+
 /// Match a type family LHS pattern against a concrete type argument.
 /// Type variables in the pattern bind to the corresponding argument types.
 /// Type constructors must match exactly.
@@ -10091,6 +10140,16 @@ fn match_type_pattern_chirho(
                 existing_chirho == arg_chirho
             } else {
                 bindings_chirho.insert(var_name_chirho, arg_chirho.clone());
+                true
+            }
+        }
+        // ForallVar in the pattern — a named type variable from type family LHS
+        // (e.g. `a` in `F (Maybe a) = [a]`). Matches any argument type.
+        TyChirho::ForallVarChirho(name_chirho) => {
+            if let Some(existing_chirho) = bindings_chirho.get(name_chirho) {
+                existing_chirho == arg_chirho
+            } else {
+                bindings_chirho.insert(name_chirho.clone(), arg_chirho.clone());
                 true
             }
         }
@@ -10152,6 +10211,12 @@ fn substitute_type_vars_chirho(
             let var_name_chirho = format!("tv{}", tv_chirho.0);
             bindings_chirho
                 .get(&var_name_chirho)
+                .cloned()
+                .unwrap_or_else(|| ty_chirho.clone())
+        }
+        TyChirho::ForallVarChirho(name_chirho) => {
+            bindings_chirho
+                .get(name_chirho)
                 .cloned()
                 .unwrap_or_else(|| ty_chirho.clone())
         }
