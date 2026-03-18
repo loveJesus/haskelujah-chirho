@@ -6527,6 +6527,12 @@ impl LowerCtxChirho {
                 else if t_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
                     Some((AstKindChirho::VarChirho(t_chirho.text_chirho().to_string()), pos_chirho + 1))
                 }
+                // DataKinds: uppercase identifier like `Bool` in `(b :: Bool)`.
+                // Any uppercase name in kind position that isn't `Type` or `Constraint`
+                // is a promoted data type used as a kind.
+                else if t_chirho.kind_chirho() == TokenKindChirho::ConIdChirho {
+                    Some((AstKindChirho::VarChirho(t_chirho.text_chirho().to_string()), pos_chirho + 1))
+                }
                 // Parenthesized kind: `(kind)`
                 else if t_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
                     let (inner_chirho, after_chirho) =
