@@ -88,6 +88,30 @@ impl InferCtxChirho {
             "ShowS".to_string(),
             (vec![], TyChirho::fun_chirho(TyChirho::string_chirho(), TyChirho::string_chirho())),
         );
+        // Built-in type synonym: type ReadS a = String -> [(a, String)]
+        type_synonyms_chirho.insert(
+            "ReadS".to_string(),
+            (
+                vec!["a".to_string()],
+                TyChirho::fun_chirho(
+                    TyChirho::string_chirho(),
+                    TyChirho::ListChirho(Box::new(TyChirho::TupleChirho(vec![
+                        TyChirho::ForallVarChirho("a".to_string()),
+                        TyChirho::string_chirho(),
+                    ]))),
+                ),
+            ),
+        );
+        // GHC.TypeLits: type Nat = Natural
+        type_synonyms_chirho.insert(
+            "Nat".to_string(),
+            (vec![], TyChirho::ConChirho("Natural".to_string())),
+        );
+        // type FilePath = String
+        type_synonyms_chirho.insert(
+            "FilePath".to_string(),
+            (vec![], TyChirho::string_chirho()),
+        );
         Self {
             next_var_chirho: 0,
             env_chirho,
