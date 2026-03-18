@@ -3032,7 +3032,19 @@ impl InferCtxChirho {
                 continue;
             }
 
-            if !self.class_env_chirho.entails_chirho(&defaulted_pred_chirho) {
+            // Skip constraints for classes with no instances in our env.
+            // These are user-defined classes where instances are defined in
+            // the same module, or given constraints from type signatures.
+            let has_instances_chirho = self
+                .class_env_chirho
+                .instances_chirho
+                .get(&defaulted_pred_chirho.class_name_chirho)
+                .is_some_and(|insts_chirho| !insts_chirho.is_empty());
+            if !has_instances_chirho {
+                continue;
+            }
+            if !self.class_env_chirho.entails_chirho(&defaulted_pred_chirho)
+            {
                 self.diagnostics_chirho.push_chirho(
                     DiagnosticChirho::error_with_code_chirho(
                         ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
