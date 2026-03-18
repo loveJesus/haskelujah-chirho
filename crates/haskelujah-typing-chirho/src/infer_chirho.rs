@@ -10126,6 +10126,23 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         },
     );
+
+    // List cons constructor: (:) :: forall a. a -> [a] -> [a]
+    let cons_v_chirho = TyVarChirho(1801);
+    env_chirho.bind_chirho(
+        ":".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![cons_v_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(cons_v_chirho),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(cons_v_chirho))),
+                ],
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(cons_v_chirho))),
+            ),
+        },
+    );
 }
 
 // ---------------------------------------------------------------------------
