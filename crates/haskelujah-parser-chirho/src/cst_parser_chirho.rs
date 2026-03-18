@@ -1371,16 +1371,17 @@ impl<'src> ParserChirho<'src> {
         }
 
         // Parse argument patterns until = or |
-        // Use parse_lpat_chirho (not parse_apat_chirho) so that
-        // as-patterns (x@pat) and negated literal patterns (-1) are
-        // recognized.
+        // Use parse_fun_arg_pat_chirho which parses atomic patterns
+        // without constructor application (so `f True True` gives two
+        // separate patterns, not `True applied_to True`). Handles
+        // as-patterns, negated literals, and bang patterns.
         while self.can_start_apat_chirho()
             || (self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
                 && (self.current_text_chirho() == "-"
                     || self.current_text_chirho() == "!"))
         {
             let before_chirho = self.pos_chirho;
-            self.parse_lpat_chirho();
+            self.parse_fun_arg_pat_chirho();
             self.eat_trivia_chirho();
             if self.pos_chirho == before_chirho {
                 break;
@@ -2922,6 +2923,80 @@ impl<'src> ParserChirho<'src> {
 
             self.parse_lpat_chirho();
             self.builder_chirho.finish_node_chirho();
+        }
+    }
+
+    /// Parse a function argument pattern: like `parse_lpat_chirho` but does
+    /// NOT greedily consume arguments after a constructor name. This ensures
+    /// `f True True = ...` is parsed as two separate patterns, not
+    /// `True applied_to True`. Handles as-patterns, negated literals,
+    /// bang/lazy patterns, and parenthesized patterns.
+    fn parse_fun_arg_pat_chirho(&mut self) {
+        match self.current_kind_chirho() {
+            Some(RawTokenKindChirho::VarIdChirho) => {
+                // Variable or as-pattern
+                let cp_chirho = self.builder_chirho.checkpoint_chirho();
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::VarPatChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+                self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::AtChirho) {
+                    self.builder_chirho.start_node_at_chirho(
+                        cp_chirho,
+                        SyntaxKindChirho::AsPatChirho,
+                    );
+                    self.bump_chirho(); // @
+                    self.eat_trivia_chirho();
+                    self.parse_apat_chirho();
+                    self.builder_chirho.finish_node_chirho();
+                }
+            }
+            Some(RawTokenKindChirho::ConIdChirho)
+            | Some(RawTokenKindChirho::QualifiedIdChirho) => {
+                // Bare constructor pattern — NO argument consumption
+                let cp_chirho = self.builder_chirho.checkpoint_chirho();
+                self.bump_chirho(); // ConId
+                self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+                    // Record pattern
+                    self.builder_chirho.start_node_at_chirho(
+                        cp_chirho,
+                        SyntaxKindChirho::RecordPatChirho,
+                    );
+                    self.parse_record_pat_fields_chirho();
+                    self.builder_chirho.finish_node_chirho();
+                } else {
+                    // Nullary constructor pattern (no arguments)
+                    self.builder_chirho.start_node_at_chirho(
+                        cp_chirho,
+                        SyntaxKindChirho::ConPatChirho,
+                    );
+                    self.builder_chirho.finish_node_chirho();
+                }
+            }
+            Some(RawTokenKindChirho::VarSymChirho)
+                if self.current_text_chirho() == "-" =>
+            {
+                // Negated literal pattern — delegate to parse_apat_chirho
+                // which handles the NegPat node construction
+                self.parse_apat_chirho();
+            }
+            Some(RawTokenKindChirho::VarSymChirho)
+                if self.current_text_chirho() == "!" =>
+            {
+                // Bang pattern
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::BangPatChirho);
+                self.bump_chirho(); // !
+                self.eat_trivia_chirho();
+                self.parse_apat_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            _ => {
+                // Fallback to apat (parenthesized, tuple, list, literal, wildcard)
+                self.parse_apat_chirho();
+            }
         }
     }
 
