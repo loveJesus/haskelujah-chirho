@@ -10096,6 +10096,24 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             },
         );
     }
+
+    // StaticPointers: `static` is treated as `forall a. a -> StaticPtr a`
+    // so that `static expr` type-checks and returns `StaticPtr a`.
+    let static_v_chirho = TyVarChirho(1800);
+    env_chirho.bind_chirho(
+        "static".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![static_v_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(static_v_chirho),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("StaticPtr".to_string())),
+                    Box::new(TyChirho::VarChirho(static_v_chirho)),
+                ),
+            ),
+        },
+    );
 }
 
 // ---------------------------------------------------------------------------
