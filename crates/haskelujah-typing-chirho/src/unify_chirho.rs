@@ -157,11 +157,9 @@ pub fn unify_chirho(
                     return Ok(subst_chirho);
                 }
             }
-            Err(UnifyErrorChirho::MismatchChirho {
-                expected_chirho: ty1_chirho.clone(),
-                actual_chirho: ty2_chirho.clone(),
-                span_chirho,
-            })
+            // General case: convert Tuple to App form and try again
+            let tuple_as_app_chirho = tuple_to_app_chirho(elems_chirho);
+            unify_chirho(ty1_chirho, &tuple_as_app_chirho, span_chirho)
         }
         (TyChirho::TupleChirho(elems_chirho), TyChirho::AppChirho(..)) => {
             if let Some(app_elems_chirho) = collect_tuple_app_chirho(ty2_chirho) {
@@ -176,11 +174,9 @@ pub fn unify_chirho(
                     return Ok(subst_chirho);
                 }
             }
-            Err(UnifyErrorChirho::MismatchChirho {
-                expected_chirho: ty1_chirho.clone(),
-                actual_chirho: ty2_chirho.clone(),
-                span_chirho,
-            })
+            // General case: convert Tuple to App form and try again
+            let tuple_as_app_chirho = tuple_to_app_chirho(elems_chirho);
+            unify_chirho(&tuple_as_app_chirho, ty2_chirho, span_chirho)
         }
 
         // ForallVar: two identical forall-bound variables
@@ -251,6 +247,25 @@ pub fn unify_chirho(
             span_chirho,
         }),
     }
+}
+
+/// Convert a Tuple([a, b]) to App(App(Con("(,)"), a), b).
+/// For arity N, uses the appropriate tuple constructor "(,,...,)".
+fn tuple_to_app_chirho(elems_chirho: &[TyChirho]) -> TyChirho {
+    let arity_chirho = elems_chirho.len();
+    let con_name_chirho = if arity_chirho == 0 {
+        "()".to_string()
+    } else {
+        format!("({})", ",".repeat(arity_chirho - 1))
+    };
+    let mut result_chirho = TyChirho::ConChirho(con_name_chirho);
+    for elem_chirho in elems_chirho {
+        result_chirho = TyChirho::AppChirho(
+            Box::new(result_chirho),
+            Box::new(elem_chirho.clone()),
+        );
+    }
+    result_chirho
 }
 
 /// Check if a type is a fully-applied tuple constructor, e.g.
