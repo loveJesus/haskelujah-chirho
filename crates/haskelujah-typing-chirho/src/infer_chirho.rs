@@ -1057,7 +1057,13 @@ impl InferCtxChirho {
                         // treated as holes — emit a warning, not an error, and
                         // assign a fresh type variable. This lets code with holes
                         // compile (for type exploration / incremental development).
-                        if text_chirho.starts_with('_') {
+                        if text_chirho.starts_with('?') {
+                            // ImplicitParams: `?x` is an implicit parameter.
+                            // Assign a fresh type variable so it can unify
+                            // with whatever the constraint provides.
+                            let ip_ty_chirho = self.fresh_var_chirho();
+                            (SubstChirho::empty_chirho(), ip_ty_chirho)
+                        } else if text_chirho.starts_with('_') {
                             let hole_ty_chirho = self.fresh_var_chirho();
                             let diag_chirho = DiagnosticChirho::warning_with_code_chirho(
                                 ErrorCodeChirho::warning_chirho(4200),

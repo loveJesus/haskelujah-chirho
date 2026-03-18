@@ -448,6 +448,18 @@ impl<'src> LexerChirho<'src> {
                 }
             }
 
+            // ImplicitParams: ?varName — lex as a single VarId token
+            b'?' if self.peek_at_chirho(1).is_some_and(|b_chirho| b_chirho.is_ascii_lowercase() || b_chirho == b'_') => {
+                self.pos_chirho += 1; // skip '?'
+                // Consume the identifier part
+                while self.pos_chirho < self.bytes_chirho.len()
+                    && is_ident_char_chirho(self.bytes_chirho[self.pos_chirho])
+                {
+                    self.pos_chirho += 1;
+                }
+                self.make_token_chirho(RawTokenKindChirho::VarIdChirho, start_chirho)
+            }
+
             // Any other symbol character
             _ if is_symbol_char_chirho(byte_chirho) => self.lex_operator_chirho(start_chirho),
 
