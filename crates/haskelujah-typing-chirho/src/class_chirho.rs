@@ -1153,7 +1153,55 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
-        // Integral (superclass: Num)
+        // Coercible — GHC built-in class for safe coercions between
+        // types with the same representation. We treat it as a two-parameter
+        // class with a universal instance: Coercible a a (reflexivity).
+        // Real Coercible resolution requires role analysis; for now we
+        // accept any Coercible constraint to avoid false E0204 errors.
+        let coercible_var_a_chirho = TyVarChirho(9064);
+        let coercible_var_b_chirho = TyVarChirho(9065);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Coercible".to_string(),
+            supers_chirho: vec![],
+            var_chirho: coercible_var_a_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![coercible_var_b_chirho],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // Universal Coercible instance: Coercible a a (reflexivity)
+        let coercible_inst_var_chirho = TyVarChirho(9066);
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Coercible".to_string(),
+            head_ty_chirho: TyChirho::VarChirho(coercible_inst_var_chirho),
+            extra_head_tys_chirho: vec![TyChirho::VarChirho(coercible_inst_var_chirho)],
+            context_chirho: vec![],
+        });
+
+        // Real (superclass: Num, Ord)
+        let real_var_chirho = TyVarChirho(9063);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Real".to_string(),
+            supers_chirho: vec!["Num".to_string(), "Ord".to_string()],
+            var_chirho: real_var_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // instance Real Int / Integer / Double / Float
+        for ty_name_chirho in &["Int", "Integer", "Double", "Float"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "Real".to_string(),
+                head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
+
+        // Integral (superclass: Real, Enum — simplified to Num for now)
         let integral_var_chirho = TyVarChirho(9008);
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Integral".to_string(),
