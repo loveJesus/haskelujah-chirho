@@ -29,6 +29,10 @@ area (Rectangle w h) = w * h
 applyTwice :: (Int -> Int) -> Int -> Int
 applyTwice f x = f (f x)
 
+-- Project Euler #1
+euler1 :: Int
+euler1 = sum (filter (\x -> x `mod` 3 == 0 || x `mod` 5 == 0) (enumFromTo 1 999))
+
 main :: IO ()
 main = do
   putStrLn "=== Haskelujah Chirho Demo ==="
@@ -37,18 +41,21 @@ main = do
   print (fib 10)
   print (fib 20)
   putStrLn ""
-  putStrLn "Collatz steps:"
+  putStrLn "Collatz steps for 27:"
   print (collatzSteps 27)
   putStrLn ""
   putStrLn "Shapes:"
   print (area (Circle 5))
   print (area (Rectangle 3 7))
   putStrLn ""
-  putStrLn "Higher-order functions:"
+  putStrLn "Higher-order:"
   print (applyTwice (\x -> x * 2) 3)
   putStrLn ""
-  putStrLn "List operations:"
-  print (sum [1, 2, 3, 4, 5])
-  print (length [10, 20, 30, 40])
+  putStrLn "Euler #1 (multiples of 3/5 below 1000):"
+  print euler1
+  putStrLn ""
+  putStrLn "List processing:"
+  print (sum (map (\x -> x * x) (enumFromTo 1 10)))
+  print (length (filter (\x -> x `mod` 2 == 0) (enumFromTo 1 100)))
   putStrLn ""
   putStrLn "Done! Glory to God."
