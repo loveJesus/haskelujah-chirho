@@ -29,6 +29,7 @@
 //! - **FFI**: Foreign function calls via Cranelift's call_indirect / call_extern
 
 pub mod codegen_chirho;
+pub mod jit_chirho;
 pub mod lower_chirho;
 pub mod runtime_layout_chirho;
 
