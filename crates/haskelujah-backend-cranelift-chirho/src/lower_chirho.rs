@@ -154,6 +154,24 @@ pub fn lower_expr_chirho(
             } else if let Some(val_chirho) = ctx_chirho.env_chirho.lookup_chirho(*id_chirho) {
                 // Function parameters are stored directly as SSA values.
                 val_chirho
+            } else if let Some((func_ref_chirho, _arity_chirho)) =
+                ctx_chirho.func_ref_map_chirho.get(id_chirho)
+            {
+                if *_arity_chirho == 0 {
+                    // Zero-arity top-level bindings are runtime values
+                    // (constants, dictionaries, thunks) in the executable
+                    // subset, so referencing them should evaluate the binding.
+                    let call_inst_chirho = builder_chirho.ins().call(*func_ref_chirho, &[]);
+                    builder_chirho.inst_results(call_inst_chirho)[0]
+                } else {
+                    // Non-zero-arity top-level functions can appear as
+                    // first-class values inside constructor payloads or be
+                    // passed to indirect calls. Materialize the function
+                    // address instead of the old zero placeholder.
+                    builder_chirho
+                        .ins()
+                        .func_addr(cl_types_chirho::I64, *func_ref_chirho)
+                }
             } else {
                 // Unresolved variable — emit 0 as a safe placeholder.
                 builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
@@ -734,6 +752,24 @@ fn lower_app_chirho(
         if let Some((func_ref_chirho, _arity_chirho)) =
             ctx_chirho.func_ref_map_chirho.get(func_id_chirho)
         {
+            if *_arity_chirho < all_args_chirho.len() {
+                let mut direct_arg_vals_chirho = Vec::with_capacity(*_arity_chirho);
+                for arg_chirho in all_args_chirho.iter().take(*_arity_chirho) {
+                    let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+                    direct_arg_vals_chirho
+                        .push(ensure_i64_chirho(builder_chirho, val_chirho, false));
+                }
+                let direct_call_inst_chirho = builder_chirho
+                    .ins()
+                    .call(*func_ref_chirho, &direct_arg_vals_chirho);
+                let direct_result_chirho = builder_chirho.inst_results(direct_call_inst_chirho)[0];
+                return lower_indirect_app_chirho(
+                    builder_chirho,
+                    ctx_chirho,
+                    direct_result_chirho,
+                    &all_args_chirho[*_arity_chirho..],
+                );
+            }
             if *_arity_chirho != all_args_chirho.len() {
                 let fun_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, callee_chirho);
                 return lower_indirect_app_chirho(

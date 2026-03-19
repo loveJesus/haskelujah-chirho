@@ -820,6 +820,42 @@ main = fib 10"#;
             .map(|(exit_code_chirho, _stdout_chirho)| exit_code_chirho)
     }
 
+    fn cranelift_round_trip_chirho(src_chirho: &str) -> Option<i32> {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
+        let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
+        let obj_chirho = haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
+            &result_chirho.core_chirho,
+            &config_chirho,
+        )
+        .ok()?;
+
+        let tmp_dir_chirho = tempfile::tempdir().ok()?;
+        let obj_path_chirho = tmp_dir_chirho.path().join("main.o");
+        let bin_path_chirho = tmp_dir_chirho.path().join("main");
+        std::fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho).ok()?;
+        let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
+
+        let compile_status_chirho = std::process::Command::new("cc")
+            .arg("-o")
+            .arg(&bin_path_chirho)
+            .arg(&obj_path_chirho)
+            .arg("-Wl,-no_fixup_chains")
+            .arg("-L")
+            .arg(&rts_lib_dir_chirho)
+            .arg("-lhaskelujah_rts_chirho")
+            .status()
+            .ok()?;
+        if !compile_status_chirho.success() {
+            return None;
+        }
+
+        let run_status_chirho = std::process::Command::new(&bin_path_chirho)
+            .status()
+            .ok()?;
+        run_status_chirho.code()
+    }
+
     fn ensure_rts_staticlib_for_tests_chirho() -> Option<std::path::PathBuf> {
         let crate_dir_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
         let workspace_root_chirho = crate_dir_chirho.parent()?.parent()?.to_path_buf();
@@ -1249,6 +1285,35 @@ main = fib 10"#;
             !obj_chirho.object_bytes_chirho.is_empty(),
             "cranelift fibonacci object file should not be empty"
         );
+    }
+
+    #[test]
+    fn cranelift_round_trip_payload_constructor_box_int_chirho() {
+        let src_chirho = r#"module Main where
+data Box = Box Int
+unBox :: Box -> Int
+unBox (Box n) = n
+main = unBox (Box 42)
+"#;
+        let exit_code_chirho = cranelift_round_trip_chirho(src_chirho);
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 42, "Cranelift round-trip: Box Int should exit with 42");
+        }
+    }
+
+    #[test]
+    fn cranelift_round_trip_payload_constructor_rect_area_chirho() {
+        let src_chirho = r#"module Main where
+data Shape = Circle Int | Rect Int Int
+area :: Shape -> Int
+area (Circle r) = 3 * r * r
+area (Rect w h) = w * h
+main = area (Rect 3 7)
+"#;
+        let exit_code_chirho = cranelift_round_trip_chirho(src_chirho);
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 21, "Cranelift round-trip: Rect 3 7 should exit with 21");
+        }
     }
 
     // ---------------------------------------------------------------

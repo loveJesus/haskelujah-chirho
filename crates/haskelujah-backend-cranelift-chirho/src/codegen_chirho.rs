@@ -45,8 +45,9 @@ pub fn compile_core_to_object_executable_chirho(
     module_chirho: &CoreModuleChirho,
     config_chirho: &TargetConfigChirho,
 ) -> Result<NativeObjectChirho, String> {
-    let filtered_module_chirho =
+    let mut filtered_module_chirho =
         haskelujah_core_chirho::elide_dicts_and_filter_chirho(module_chirho);
+    restore_selector_bindings_chirho(module_chirho, &mut filtered_module_chirho);
     compile_core_to_object_chirho(&filtered_module_chirho, config_chirho)
 }
 
@@ -247,6 +248,32 @@ pub fn compile_core_to_object_chirho(
 /// Map of CoreId → (FuncId, arity) for declared top-level functions.
 type FuncDeclMapChirho =
     HashMap<haskelujah_core_chirho::expr_chirho::CoreIdChirho, (cranelift_module::FuncId, usize)>;
+
+fn restore_selector_bindings_chirho(
+    original_module_chirho: &CoreModuleChirho,
+    filtered_module_chirho: &mut CoreModuleChirho,
+) {
+    let original_bindings_by_id_chirho: HashMap<_, _> = original_module_chirho
+        .bindings_chirho
+        .iter()
+        .map(|binding_chirho| (binding_chirho.binder_chirho.id_chirho, binding_chirho))
+        .collect();
+
+    for binding_chirho in &mut filtered_module_chirho.bindings_chirho {
+        if !binding_chirho
+            .binder_chirho
+            .name_chirho
+            .starts_with("$sel_")
+        {
+            continue;
+        }
+        if let Some(original_binding_chirho) =
+            original_bindings_by_id_chirho.get(&binding_chirho.binder_chirho.id_chirho)
+        {
+            binding_chirho.rhs_chirho = original_binding_chirho.rhs_chirho.clone();
+        }
+    }
+}
 
 /// Lower a single Core binding to a Cranelift function definition.
 ///
@@ -1497,6 +1524,117 @@ mod tests_chirho {
             }],
         };
         let module_chirho = single_binding_module_chirho("main", rhs_chirho);
+        let exit_code_chirho = compile_and_run_exit_code_chirho(&module_chirho);
+        assert_eq!(exit_code_chirho, 42);
+    }
+
+    #[test]
+    fn run_constructor_payload_function_value_chirho() {
+        let inc_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("incChirho", 0),
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: int_binder_chirho("xChirho", 1),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "+#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(CoreIdChirho(1)),
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+                    ],
+                }),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+
+        let fun_binder_chirho = int_binder_chirho("funChirho", 3);
+        let main_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("main", 2),
+            rhs_chirho: CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "BoxedFunChirho".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(
+                        inc_binding_chirho.binder_chirho.id_chirho,
+                    )],
+                }),
+                bind_chirho: int_binder_chirho("boxedFunChirho", 4),
+                result_ty_chirho: TyChirho::int_chirho(),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("BoxedFunChirho".to_string()),
+                    binders_chirho: vec![fun_binder_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(fun_binder_chirho.id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                            41,
+                        ))),
+                    },
+                }],
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "FunctionField".to_string(),
+            bindings_chirho: vec![inc_binding_chirho, main_binding_chirho],
+            names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let exit_code_chirho = compile_and_run_exit_code_chirho(&module_chirho);
+        assert_eq!(exit_code_chirho, 42);
+    }
+
+    #[test]
+    fn run_overapplied_function_return_value_chirho() {
+        let inc_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("incChirho", 0),
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: int_binder_chirho("xChirho", 1),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "+#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(CoreIdChirho(1)),
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+                    ],
+                }),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let get_inc_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("getIncChirho", 2),
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: int_binder_chirho("dictChirho", 3),
+                body_chirho: Box::new(CoreExprChirho::VarChirho(
+                    inc_binding_chirho.binder_chirho.id_chirho,
+                )),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let main_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("main", 4),
+            rhs_chirho: CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                        get_inc_binding_chirho.binder_chirho.id_chirho,
+                    )),
+                    arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))),
+                }),
+                arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(41))),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Overapply".to_string(),
+            bindings_chirho: vec![inc_binding_chirho, get_inc_binding_chirho, main_binding_chirho],
+            names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
+        };
+
         let exit_code_chirho = compile_and_run_exit_code_chirho(&module_chirho);
         assert_eq!(exit_code_chirho, 42);
     }
