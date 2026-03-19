@@ -929,7 +929,11 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         writeln!(self.output_chirho, "declare i32 @putchar(i32)").unwrap();
-        writeln!(self.output_chirho, "declare ptr @malloc(i64)").unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare ptr @haskelujah_alloc_chirho(i64)"
+        )
+        .unwrap();
         writeln!(self.output_chirho, "declare void @abort() noreturn").unwrap();
         writeln!(self.output_chirho, "declare i32 @fprintf(ptr, ...)").unwrap();
         writeln!(self.output_chirho, "declare ptr @fdopen(i32, ptr)").unwrap();
@@ -1972,7 +1976,7 @@ impl LlvmCodegenChirho {
         let closure_ptr_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
             self.output_chirho,
-            "  {closure_ptr_tmp_chirho} = call ptr @malloc(i64 {alloc_size_chirho})"
+            "  {closure_ptr_tmp_chirho} = call ptr @haskelujah_alloc_chirho(i64 {alloc_size_chirho})"
         )
         .unwrap();
         let fun_bits_tmp_chirho = self.fresh_tmp_chirho();
@@ -2140,7 +2144,7 @@ impl LlvmCodegenChirho {
         let alloc_size_chirho = ((field_vals_chirho.len() + 1) * 8) as i64;
         writeln!(
             self.output_chirho,
-            "  {alloc_tmp_chirho} = call ptr @malloc(i64 {alloc_size_chirho})"
+            "  {alloc_tmp_chirho} = call ptr @haskelujah_alloc_chirho(i64 {alloc_size_chirho})"
         )
         .unwrap();
 
@@ -2233,7 +2237,7 @@ impl LlvmCodegenChirho {
                 let buf_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
                     self.output_chirho,
-                    "  {buf_tmp_chirho} = call ptr @malloc(i64 32)"
+                    "  {buf_tmp_chirho} = call ptr @haskelujah_alloc_chirho(i64 32)"
                 )
                 .unwrap();
                 writeln!(
@@ -2265,7 +2269,7 @@ impl LlvmCodegenChirho {
                 let buf_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
                     self.output_chirho,
-                    "  {buf_tmp_chirho} = call ptr @malloc(i64 8)"
+                    "  {buf_tmp_chirho} = call ptr @haskelujah_alloc_chirho(i64 8)"
                 )
                 .unwrap();
                 let char_tmp_chirho = self.fresh_tmp_chirho();
@@ -2286,7 +2290,7 @@ impl LlvmCodegenChirho {
                 let buf_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
                     self.output_chirho,
-                    "  {buf_tmp_chirho} = call ptr @malloc(i64 32)"
+                    "  {buf_tmp_chirho} = call ptr @haskelujah_alloc_chirho(i64 32)"
                 )
                 .unwrap();
                 let float_tmp_chirho = self.fresh_tmp_chirho();
@@ -2461,7 +2465,7 @@ impl LlvmCodegenChirho {
         let buf_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
             self.output_chirho,
-            "  {buf_tmp_chirho} = call ptr @malloc(i64 4096)"
+            "  {buf_tmp_chirho} = call ptr @haskelujah_alloc_chirho(i64 4096)"
         )
         .unwrap();
         let index_ptr_tmp_chirho = self.fresh_tmp_chirho();
@@ -3032,8 +3036,8 @@ pub fn compile_core_to_llvm_chirho(module_chirho: &CoreModuleChirho) -> String {
 /// Compile a Core module to LLVM IR text with a C-compatible `main()` entry
 /// point. Pure programs print the resulting `i64` via `printf`, while simple
 /// Prelude IO programs run `haskelujah_main()` for side effects and return `0`.
-/// The resulting IR can be compiled with `clang -o output file.ll` to produce
-/// a native executable.
+/// The resulting IR can be linked with the RTS static library to produce a
+/// native executable.
 ///
 /// Currently emits only bindings transitively reachable from `main` since the
 /// LLVM backend doesn't yet support closures/heap needed by the full Prelude.
@@ -3147,6 +3151,7 @@ fn restore_selector_bindings_chirho(
 mod tests_chirho {
     use super::*;
     use std::fs;
+    use std::path::{Path, PathBuf};
     use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -3282,11 +3287,15 @@ mod tests_chirho {
         let exe_path_chirho = temp_dir_chirho.join("main.out");
         fs::write(&ll_path_chirho, ir_chirho).expect("should write llvm ir");
 
+        let rts_lib_dir_chirho = ensure_rts_staticlib_chirho();
         let clang_output_chirho = Command::new("clang")
             .arg("-O0")
             .arg(&ll_path_chirho)
             .arg("-o")
             .arg(&exe_path_chirho)
+            .arg("-L")
+            .arg(&rts_lib_dir_chirho)
+            .arg("-lhaskelujah_rts_chirho")
             .output()
             .expect("clang should be available for llvm backend tests");
         assert!(
@@ -3316,6 +3325,30 @@ mod tests_chirho {
             "executable failed with exit code {exit_code_chirho}:\nstdout:\n{stdout_chirho}\nstderr:\n{stderr_chirho}"
         );
         stdout_chirho
+    }
+
+    fn ensure_rts_staticlib_chirho() -> PathBuf {
+        let workspace_root_chirho = workspace_root_chirho();
+        let cargo_status_chirho = Command::new("cargo")
+            .current_dir(&workspace_root_chirho)
+            .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+            .status()
+            .expect("cargo should be available to build the RTS staticlib");
+        assert!(
+            cargo_status_chirho.success(),
+            "cargo build -p haskelujah-rts-chirho failed with exit code {}",
+            cargo_status_chirho.code().unwrap_or(-1)
+        );
+        workspace_root_chirho.join("target").join("debug")
+    }
+
+    fn workspace_root_chirho() -> PathBuf {
+        let crate_dir_chirho = Path::new(env!("CARGO_MANIFEST_DIR"));
+        crate_dir_chirho
+            .parent()
+            .and_then(Path::parent)
+            .expect("backend llvm crate should live under workspace/crates")
+            .to_path_buf()
     }
 
     #[test]
@@ -3551,7 +3584,7 @@ mod tests_chirho {
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
         assert!(ir_chirho.contains("%env_chirho"), "expected closure env in IR:\n{ir_chirho}");
-        assert!(ir_chirho.contains("call ptr @malloc(i64 16)"));
+        assert!(ir_chirho.contains("call ptr @haskelujah_alloc_chirho(i64 16)"));
         assert!(ir_chirho.contains("tail call i64 @haskelujah_lambda_"));
         assert!(ir_chirho.contains(", i64 1)"), "expected captured call argument in IR:\n{ir_chirho}");
     }
@@ -3617,7 +3650,7 @@ mod tests_chirho {
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
         assert!(ir_chirho.contains("define i64 @haskelujah_lambda_0(i64 %env_chirho"));
-        assert!(ir_chirho.contains("call ptr @malloc(i64 16)"));
+        assert!(ir_chirho.contains("call ptr @haskelujah_alloc_chirho(i64 16)"));
         assert!(ir_chirho.contains("tail call i64 @haskelujah_lambda_0(i64 %v"));
         assert!(ir_chirho.contains(", i64 1)"));
     }
@@ -3901,8 +3934,8 @@ mod tests_chirho {
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
-        assert!(ir_chirho.contains("declare ptr @malloc(i64)"));
-        assert!(ir_chirho.contains("call ptr @malloc(i64 24)"));
+        assert!(ir_chirho.contains("declare ptr @haskelujah_alloc_chirho(i64)"));
+        assert!(ir_chirho.contains("call ptr @haskelujah_alloc_chirho(i64 24)"));
         assert!(ir_chirho.contains("phi i64"));
         assert!(ir_chirho.contains("load i64, ptr"));
         assert!(ir_chirho.contains("add i64 %v0, %v1"));
@@ -4213,7 +4246,7 @@ mod tests_chirho {
 
         let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
         assert!(ir_chirho.contains("define i64 @haskelujah_print(i64 %v2)"));
-        assert!(ir_chirho.contains("call ptr @malloc(i64 32)"));
+        assert!(ir_chirho.contains("call ptr @haskelujah_alloc_chirho(i64 32)"));
         assert!(ir_chirho.contains("@snprintf"));
         assert!(ir_chirho.contains("call i32 @puts(ptr "));
         assert!(ir_chirho.contains("ret i64 0"));
@@ -4302,7 +4335,7 @@ mod tests_chirho {
         let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
         assert!(ir_chirho.contains("declare i32 @snprintf(ptr, i64, ptr, ...)"));
         assert!(ir_chirho.contains("define i64 @haskelujah_show(i64 %v2)"));
-        assert!(ir_chirho.contains("call ptr @malloc(i64 32)"));
+        assert!(ir_chirho.contains("call ptr @haskelujah_alloc_chirho(i64 32)"));
         assert!(ir_chirho.contains("@snprintf(ptr"));
     }
 

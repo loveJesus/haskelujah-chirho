@@ -5,8 +5,8 @@ mod repl_chirho;
 
 use std::env;
 use std::fs;
-use std::path::Path;
-use std::process::{Command, ExitCode};
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitCode, Stdio};
 
 use haskelujah_backend_cranelift_chirho::{
     compile_core_to_object_executable_chirho, TargetConfigChirho,
@@ -264,18 +264,14 @@ fn run_command_chirho(
             let link_result_chirho = {
                 let ll_path_chirho = exe_path_chirho.with_extension("ll");
                 let _ = fs::write(&ll_path_chirho, &result_chirho.llvm_ir_chirho);
-                let clang_status_chirho = Command::new("clang")
-                    .args(["-O2", "-o"])
-                    .arg(&exe_path_chirho)
-                    .arg(&ll_path_chirho)
-                    .stderr(std::process::Stdio::null())
-                    .status();
+                let link_result_chirho = link_llvm_file_chirho(
+                    &ll_path_chirho,
+                    &exe_path_chirho,
+                    "-O2",
+                    true,
+                );
                 let _ = fs::remove_file(&ll_path_chirho);
-                clang_status_chirho
-                    .ok()
-                    .filter(|s_chirho| s_chirho.success())
-                    .map(|_| ())
-                    .ok_or(())
+                link_result_chirho.map_err(|_| ())
             };
             if let Ok(()) = link_result_chirho {
                 let status_chirho = Command::new(&exe_path_chirho).status();
@@ -426,32 +422,19 @@ fn compile_command_chirho(
                     }
 
                     // Invoke clang to compile .ll → native executable
-                    let clang_status_chirho = Command::new("clang")
-                        .args([
-                            CLANG_OPT_LEVEL_CHIRHO,
-                            "-o",
-                            output_path_chirho,
-                            &ll_path_chirho,
-                        ])
-                        .status();
-
-                    match clang_status_chirho {
-                        Ok(status_chirho) if status_chirho.success() => {
+                    match link_llvm_file_chirho(
+                        Path::new(&ll_path_chirho),
+                        Path::new(output_path_chirho),
+                        CLANG_OPT_LEVEL_CHIRHO,
+                        false,
+                    ) {
+                        Ok(()) => {
                             println!("compiled: {path_chirho} → {output_path_chirho}");
                             // Clean up the intermediate .ll file
                             let _ = fs::remove_file(&ll_path_chirho);
                         }
-                        Ok(status_chirho) => {
-                            eprintln!(
-                                "clang failed with exit code {}; LLVM IR saved to {ll_path_chirho}",
-                                status_chirho.code().unwrap_or(-1)
-                            );
-                            return ExitCode::from(1);
-                        }
-                        Err(e_chirho) => {
-                            eprintln!(
-                                "could not run clang: {e_chirho}; LLVM IR saved to {ll_path_chirho}"
-                            );
+                        Err(error_chirho) => {
+                            eprintln!("{error_chirho}; LLVM IR saved to {ll_path_chirho}");
                             return ExitCode::from(1);
                         }
                     }
@@ -655,30 +638,92 @@ fn link_llvm_executable_chirho(
     fs::write(&ll_path_chirho, llvm_ir_chirho)
         .map_err(|e_chirho| format!("cannot write {}: {}", ll_path_chirho.display(), e_chirho))?;
 
-    let clang_status_chirho = Command::new("clang")
-        .args([
-            CLANG_OPT_LEVEL_CHIRHO,
-            "-o",
-            output_path_chirho
-                .to_str()
-                .ok_or_else(|| format!("non-utf8 output path: {}", output_path_chirho.display()))?,
-            ll_path_chirho
-                .to_str()
-                .ok_or_else(|| format!("non-utf8 llvm path: {}", ll_path_chirho.display()))?,
-        ])
+    let link_result_chirho = link_llvm_file_chirho(
+        &ll_path_chirho,
+        output_path_chirho,
+        CLANG_OPT_LEVEL_CHIRHO,
+        false,
+    );
+    if link_result_chirho.is_ok() {
+        let _ = fs::remove_file(&ll_path_chirho);
+    }
+    link_result_chirho
+}
+
+fn link_llvm_file_chirho(
+    llvm_path_chirho: &Path,
+    output_path_chirho: &Path,
+    opt_level_chirho: &str,
+    suppress_stderr_chirho: bool,
+) -> Result<(), String> {
+    let rts_lib_dir_chirho = ensure_rts_staticlib_chirho()?;
+    let output_path_str_chirho = output_path_chirho
+        .to_str()
+        .ok_or_else(|| format!("non-utf8 output path: {}", output_path_chirho.display()))?;
+    let llvm_path_str_chirho = llvm_path_chirho
+        .to_str()
+        .ok_or_else(|| format!("non-utf8 llvm path: {}", llvm_path_chirho.display()))?;
+
+    let mut clang_command_chirho = Command::new("clang");
+    clang_command_chirho.args([
+        opt_level_chirho,
+        "-o",
+        output_path_str_chirho,
+        llvm_path_str_chirho,
+    ]);
+    append_rts_link_args_chirho(&mut clang_command_chirho, &rts_lib_dir_chirho);
+    if suppress_stderr_chirho {
+        clang_command_chirho.stderr(Stdio::null());
+    }
+
+    let clang_status_chirho = clang_command_chirho
         .status()
         .map_err(|e_chirho| format!("could not run clang: {}", e_chirho))?;
 
     if clang_status_chirho.success() {
-        let _ = fs::remove_file(&ll_path_chirho);
         Ok(())
     } else {
         Err(format!(
             "clang failed with exit code {}; LLVM IR saved to {}",
             clang_status_chirho.code().unwrap_or(-1),
-            ll_path_chirho.display(),
+            llvm_path_chirho.display(),
         ))
     }
+}
+
+fn append_rts_link_args_chirho(
+    clang_command_chirho: &mut Command,
+    rts_lib_dir_chirho: &Path,
+) {
+    clang_command_chirho
+        .arg("-L")
+        .arg(rts_lib_dir_chirho)
+        .arg("-lhaskelujah_rts_chirho");
+}
+
+fn ensure_rts_staticlib_chirho() -> Result<PathBuf, String> {
+    let workspace_root_chirho = workspace_root_chirho();
+    let cargo_status_chirho = Command::new("cargo")
+        .current_dir(&workspace_root_chirho)
+        .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+        .status()
+        .map_err(|e_chirho| format!("could not build haskelujah-rts-chirho: {}", e_chirho))?;
+    if !cargo_status_chirho.success() {
+        return Err(format!(
+            "cargo build -p haskelujah-rts-chirho failed with exit code {}",
+            cargo_status_chirho.code().unwrap_or(-1)
+        ));
+    }
+    Ok(workspace_root_chirho.join("target").join("debug"))
+}
+
+fn workspace_root_chirho() -> PathBuf {
+    let crate_dir_chirho = Path::new(env!("CARGO_MANIFEST_DIR"));
+    crate_dir_chirho
+        .parent()
+        .and_then(Path::parent)
+        .expect("cli crate should live under workspace/crates")
+        .to_path_buf()
 }
 
 /// `haskelujah init [name]` — create a new Haskell project with .cabal scaffold.
