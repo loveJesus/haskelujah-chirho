@@ -110,6 +110,35 @@ pub fn compile_core_to_object_chirho(
         );
     }
 
+    // ── Import libc functions for Prelude IO ─────────────────────────────
+    let mut libc_puts_id_chirho = None;
+    let mut libc_printf_id_chirho = None;
+    {
+        // puts(ptr) -> i32
+        let mut puts_sig_chirho = obj_module_chirho.make_signature();
+        puts_sig_chirho.params.push(AbiParamChirho::new(
+            obj_module_chirho.target_config().pointer_type(),
+        ));
+        puts_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I32));
+        libc_puts_id_chirho = obj_module_chirho
+            .declare_function("puts", LinkageChirho::Import, &puts_sig_chirho)
+            .ok();
+
+        // printf(ptr, ...) -> i32
+        let mut printf_sig_chirho = obj_module_chirho.make_signature();
+        printf_sig_chirho.params.push(AbiParamChirho::new(
+            obj_module_chirho.target_config().pointer_type(),
+        ));
+        printf_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I32));
+        libc_printf_id_chirho = obj_module_chirho
+            .declare_function("printf", LinkageChirho::Import, &printf_sig_chirho)
+            .ok();
+    }
+
     // ── Pass 2: Define all function bodies ─────────────────────────────────
     for binding_chirho in &module_chirho.bindings_chirho {
         lower_binding_chirho(
