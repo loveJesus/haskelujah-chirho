@@ -581,11 +581,14 @@ impl<'a> ExhaustCheckerChirho<'a> {
             return; // nullary function — nothing to check
         }
 
-        // Check each parameter column independently
-        for col_chirho in 0..arity_chirho {
+        // Check only the first parameter column for redundancy.
+        // Later columns (e.g. `acc` in `go 0 acc; go k acc`) may all
+        // be wildcards, which would cause false redundancy warnings if
+        // checked independently. Exhaustiveness still checks all columns.
+        {
             let pats_chirho: Vec<&PatChirho> = matches_chirho
                 .iter()
-                .filter_map(|arm_chirho| arm_chirho.pats_chirho.get(col_chirho))
+                .filter_map(|arm_chirho| arm_chirho.pats_chirho.first())
                 .collect();
             let spans_chirho: Vec<SpanChirho> = matches_chirho
                 .iter()
