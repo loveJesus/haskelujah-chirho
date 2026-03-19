@@ -582,7 +582,7 @@ impl LlvmCodegenChirho {
                             let tmp_chirho = self.fresh_tmp_chirho();
                             writeln!(
                                 self.output_chirho,
-                                "  {tmp_chirho} = call i64 {fn_ref_chirho}()"
+                                "  {tmp_chirho} = tail call i64 {fn_ref_chirho}()"
                             )
                             .unwrap();
                             return self.compile_curried_indirect_apps_chirho(
@@ -599,7 +599,7 @@ impl LlvmCodegenChirho {
                             let tmp_chirho = self.fresh_tmp_chirho();
                             writeln!(
                                 self.output_chirho,
-                                "  {tmp_chirho} = call i64 {fn_ref_chirho}({direct_args_str_chirho})"
+                                "  {tmp_chirho} = tail call i64 {fn_ref_chirho}({direct_args_str_chirho})"
                             )
                             .unwrap();
                             return self.compile_curried_indirect_apps_chirho(
@@ -610,7 +610,7 @@ impl LlvmCodegenChirho {
                         let tmp_chirho = self.fresh_tmp_chirho();
                         writeln!(
                             self.output_chirho,
-                            "  {tmp_chirho} = call i64 {fn_ref_chirho}({args_str_chirho})"
+                            "  {tmp_chirho} = tail call i64 {fn_ref_chirho}({args_str_chirho})"
                         )
                         .unwrap();
                         return tmp_chirho;
