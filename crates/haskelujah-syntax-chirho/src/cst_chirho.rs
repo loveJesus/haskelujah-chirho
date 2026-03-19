@@ -162,6 +162,8 @@ pub enum SyntaxKindChirho {
     WildcardPatChirho,
     /// As pattern (`x@pat`).
     AsPatChirho,
+    /// Type-annotated pattern (`p :: Type`), requires ScopedTypeVariables.
+    SigPatChirho,
     /// Parenthesized pattern (`(pat)`).
     ParenPatChirho,
     /// Tuple pattern (`(p1, p2)`).
@@ -317,6 +319,7 @@ impl SyntaxKindChirho {
                 | Self::RecordPatChirho
                 | Self::InfixConPatChirho
                 | Self::ViewPatChirho
+                | Self::SigPatChirho
         )
     }
 

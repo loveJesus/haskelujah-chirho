@@ -3075,6 +3075,19 @@ impl<'src> ParserChirho<'src> {
         self.parse_lpat_chirho();
         self.eat_trivia_chirho();
 
+        // ScopedTypeVariables: pattern type annotation (p :: Type)
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+            self.builder_chirho.start_node_at_chirho(
+                cp_chirho,
+                SyntaxKindChirho::SigPatChirho,
+            );
+            self.bump_chirho(); // ::
+            self.eat_trivia_chirho();
+            self.parse_type_chirho(); // the type annotation
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
         // Check for infix constructor pattern
         if self.at_chirho(RawTokenKindChirho::ConSymChirho)
             || self.at_chirho(RawTokenKindChirho::BacktickChirho)

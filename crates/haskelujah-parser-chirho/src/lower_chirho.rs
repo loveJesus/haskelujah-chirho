@@ -6278,6 +6278,47 @@ impl LowerCtxChirho {
                     span_chirho,
                 }
             }
+            SyntaxKindChirho::SigPatChirho => {
+                // CST: SigPat = pat '::' type  (ScopedTypeVariables)
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let mut inner_pat_chirho = None;
+                let mut sig_type_chirho = None;
+                let mut saw_double_colon_chirho = false;
+
+                for child_chirho in &children_chirho {
+                    match child_chirho.element_chirho {
+                        GreenElementChirho::TokenChirho(tok_chirho) => {
+                            if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho {
+                                saw_double_colon_chirho = true;
+                            }
+                        }
+                        GreenElementChirho::NodeChirho(n_chirho) => {
+                            if !saw_double_colon_chirho && is_pat_kind_chirho(n_chirho.kind_chirho())
+                            {
+                                inner_pat_chirho = Some(
+                                    self.lower_pat_chirho(n_chirho, child_chirho.start_chirho),
+                                );
+                            } else if saw_double_colon_chirho
+                                && is_type_kind_chirho(n_chirho.kind_chirho())
+                            {
+                                sig_type_chirho = Some(
+                                    self.lower_type_chirho(n_chirho, child_chirho.start_chirho),
+                                );
+                            }
+                        }
+                    }
+                }
+
+                let inner_chirho = inner_pat_chirho
+                    .unwrap_or_else(|| PatChirho::WildcardChirho(span_chirho));
+                let ty_chirho = sig_type_chirho
+                    .unwrap_or_else(|| self.placeholder_type_chirho());
+                PatChirho::TypeAnnotChirho {
+                    pat_chirho: Box::new(inner_chirho),
+                    ty_chirho,
+                    span_chirho,
+                }
+            }
             SyntaxKindChirho::ViewPatChirho => {
                 // CST: ViewPat = expr '->' pat  (inside parens)
                 // The parser already validated the arrow; children in order:
@@ -7038,6 +7079,7 @@ fn is_pat_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::RecordPatChirho
             | SyntaxKindChirho::InfixConPatChirho
             | SyntaxKindChirho::ViewPatChirho
+            | SyntaxKindChirho::SigPatChirho
     )
 }
 
