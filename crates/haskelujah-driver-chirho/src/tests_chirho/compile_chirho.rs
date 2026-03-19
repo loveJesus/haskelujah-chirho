@@ -819,6 +819,27 @@ main = fib 10"#;
         }
     }
 
+    #[test]
+    fn llvm_round_trip_do_put_str_ln_then_print_output_chirho() {
+        let src_chirho =
+            "module Main where\nmain = do\n  putStrLn \"Hello from Haskelujah!\"\n  print 42\n";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "do block executable should exit successfully");
+            assert_eq!(stdout_chirho, "Hello from Haskelujah!\n42\n");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_bind_return_print_output_chirho() {
+        let src_chirho = "module Main where\nmain = do\n  x <- return 42\n  print x\n";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "bind executable should exit successfully");
+            assert_eq!(stdout_chirho, "42\n");
+        }
+    }
+
     // ── Cranelift backend driver integration tests ────────────────────────
 
     #[test]

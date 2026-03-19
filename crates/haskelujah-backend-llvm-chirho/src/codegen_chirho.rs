@@ -294,6 +294,65 @@ impl LlvmCodegenChirho {
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
+            "return" | "pure" | "returnIO#" => {
+                let Some(arg_id_chirho) = params_chirho.last() else {
+                    return false;
+                };
+                writeln!(
+                    self.output_chirho,
+                    "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "entry:").unwrap();
+                writeln!(self.output_chirho, "  ret i64 %v{}", arg_id_chirho.0).unwrap();
+                writeln!(self.output_chirho, "}}").unwrap();
+                true
+            }
+            ">>" | "thenIO#" => {
+                let Some(arg_id_chirho) = params_chirho.last() else {
+                    return false;
+                };
+                writeln!(
+                    self.output_chirho,
+                    "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "entry:").unwrap();
+                writeln!(self.output_chirho, "  ret i64 %v{}", arg_id_chirho.0).unwrap();
+                writeln!(self.output_chirho, "}}").unwrap();
+                true
+            }
+            ">>=" | "bindIO#" => {
+                if params_chirho.len() < 2 {
+                    return false;
+                }
+                let value_id_chirho = params_chirho[0];
+                let cont_id_chirho = params_chirho[1];
+                writeln!(
+                    self.output_chirho,
+                    "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "entry:").unwrap();
+                self.next_tmp_chirho = 0;
+                let cont_ptr_tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {cont_ptr_tmp_chirho} = inttoptr i64 %v{} to ptr",
+                    cont_id_chirho.0
+                )
+                .unwrap();
+                let result_tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {result_tmp_chirho} = call i64 {cont_ptr_tmp_chirho}(i64 %v{})",
+                    value_id_chirho.0
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "  ret i64 {result_tmp_chirho}").unwrap();
+                writeln!(self.output_chirho, "}}").unwrap();
+                true
+            }
             _ => false,
         }
     }
@@ -1583,6 +1642,34 @@ mod tests_chirho {
         assert!(ir_chirho.contains("call i32 (ptr, ...) @printf(ptr @.str.0, i64 %v2)"));
         assert!(ir_chirho.contains("ret i64 0"));
         assert!(!ir_chirho.contains("@.fmt_int"));
+    }
+
+    #[test]
+    fn compile_bind_io_builtin_calls_continuation_chirho() {
+        let bind_binder_chirho = dummy_binder_chirho(">>=", 0);
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Bind".to_string(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: bind_binder_chirho.clone(),
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: dummy_binder_chirho("action", 1),
+                    body_chirho: Box::new(CoreExprChirho::LamChirho {
+                        binder_chirho: dummy_binder_chirho("k", 2),
+                        body_chirho: Box::new(int_lit_chirho(0)),
+                    }),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        assert!(ir_chirho.contains("define i64 @haskelujah__u003e_u003e_u003d(i64 %v1, i64 %v2)"));
+        assert!(ir_chirho.contains("inttoptr i64 %v2 to ptr"));
+        assert!(ir_chirho.contains("call i64 %t"));
     }
 
     #[test]
