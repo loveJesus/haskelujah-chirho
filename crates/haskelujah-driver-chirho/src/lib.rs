@@ -1859,6 +1859,18 @@ pub fn discover_modules_chirho(
             exe_chirho.build_info_chirho.hs_source_dirs_chirho.clone()
         };
 
+        // Compile other-modules BEFORE main-is so dependencies are available
+        for mod_name_chirho in &exe_chirho.other_modules_chirho {
+            if seen_chirho.insert(format!("{}:{}", exe_chirho.name_chirho, mod_name_chirho)) {
+                if let Some(path_chirho) =
+                    find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
+                {
+                    modules_chirho.push((mod_name_chirho.clone(), path_chirho));
+                }
+            }
+        }
+
+        // Now add main-is AFTER other-modules
         if let Some(main_is_chirho) = &exe_chirho.main_is_chirho {
             let main_path_chirho = src_dirs_chirho
                 .iter()
@@ -1869,16 +1881,6 @@ pub fn discover_modules_chirho(
                 let mod_name_chirho = "Main".to_string();
                 if seen_chirho.insert(format!("{}:{}", exe_chirho.name_chirho, mod_name_chirho)) {
                     modules_chirho.push((mod_name_chirho, path_chirho));
-                }
-            }
-        }
-
-        for mod_name_chirho in &exe_chirho.other_modules_chirho {
-            if seen_chirho.insert(format!("{}:{}", exe_chirho.name_chirho, mod_name_chirho)) {
-                if let Some(path_chirho) =
-                    find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
-                {
-                    modules_chirho.push((mod_name_chirho.clone(), path_chirho));
                 }
             }
         }
