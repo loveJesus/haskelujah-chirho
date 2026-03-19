@@ -20,6 +20,9 @@ use haskelujah_driver_chirho::{
 use haskelujah_runtime_chirho::ExecutionModeChirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+// Keep CLI linking on the same unoptimized path the LLVM round-trip tests verify.
+const CLANG_OPT_LEVEL_CHIRHO: &str = "-O0";
+
 fn main() -> ExitCode {
     main_chirho()
 }
@@ -330,7 +333,12 @@ fn compile_command_chirho(
 
                     // Invoke clang to compile .ll → native executable
                     let clang_status_chirho = Command::new("clang")
-                        .args(["-O2", "-o", output_path_chirho, &ll_path_chirho])
+                        .args([
+                            CLANG_OPT_LEVEL_CHIRHO,
+                            "-o",
+                            output_path_chirho,
+                            &ll_path_chirho,
+                        ])
                         .status();
 
                     match clang_status_chirho {
@@ -534,7 +542,7 @@ fn link_llvm_executable_chirho(
 
     let clang_status_chirho = Command::new("clang")
         .args([
-            "-O2",
+            CLANG_OPT_LEVEL_CHIRHO,
             "-o",
             output_path_chirho
                 .to_str()

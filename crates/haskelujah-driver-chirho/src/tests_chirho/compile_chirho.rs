@@ -1031,6 +1031,27 @@ main = do
     }
 
     #[test]
+    fn llvm_round_trip_recursive_where_print_output_chirho() {
+        let src_chirho = r#"module Main where
+main :: IO ()
+main = do
+  putStrLn "Hello from Haskelujah Chirho!"
+  print (2 + 3)
+  print (factorial 10)
+  where
+    factorial 0 = 1
+    factorial n = n * factorial (n - 1)
+"#;
+        let (exit_code_chirho, stdout_chirho) =
+            llvm_round_trip_output_chirho(src_chirho).expect("recursive where LLVM round-trip");
+        assert_eq!(
+            exit_code_chirho, 0,
+            "recursive where executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "Hello from Haskelujah Chirho!\n5\n3628800\n");
+    }
+
+    #[test]
     fn llvm_round_trip_put_str_ln_show_int_output_chirho() {
         let src_chirho = "module Main where\nmain = putStrLn (show 42)";
         if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
