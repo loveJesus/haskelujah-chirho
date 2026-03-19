@@ -253,7 +253,16 @@ fn compile_command_chirho(
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
-    match compile_source_chirho(&source_text_chirho, &mut source_map_chirho, file_name_chirho) {
+    // Use search path so sibling modules can be found
+    let search_dir_chirho = Path::new(&path_chirho)
+        .parent()
+        .unwrap_or(Path::new("."));
+    match haskelujah_driver_chirho::compile_source_with_search_path_chirho(
+        &source_text_chirho,
+        &mut source_map_chirho,
+        file_name_chirho,
+        search_dir_chirho,
+    ) {
         Ok(result_chirho) => {
             if let Some(ref output_path_chirho) = flags_chirho.output_path_chirho {
                 if flags_chirho.emit_cranelift_chirho {
@@ -424,15 +433,67 @@ fn build_command_chirho(
             cabal_path_chirho.display()
         );
         let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
-        match haskelujah_driver_chirho::compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho) {
-            Ok(result_chirho) => {
-                eprintln!(
-                    "Compiled {} modules from package '{}'",
-                    result_chirho.module_results_chirho.len(),
-                    result_chirho.package_chirho.name_chirho,
-                );
-                eprintln!("Build successful.");
-                ExitCode::SUCCESS
+        let build_dir_chirho = project_path_chirho.join("dist-chirho").join("build");
+        if let Err(error_chirho) = fs::create_dir_all(&build_dir_chirho) {
+            eprintln!(
+                "error creating build directory {}: {}",
+                build_dir_chirho.display(),
+                error_chirho,
+            );
+            return ExitCode::from(1);
+        }
+
+        match haskelujah_driver_chirho::build_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+        {
+            Ok(build_result_chirho) => {
+                if build_result_chirho.executables_chirho.is_empty() {
+                    match haskelujah_driver_chirho::compile_cabal_project_chirho(
+                        &cabal_path_chirho,
+                        &index_chirho,
+                    ) {
+                        Ok(result_chirho) => {
+                            eprintln!(
+                                "Compiled {} modules from package '{}'",
+                                result_chirho.module_results_chirho.len(),
+                                result_chirho.package_chirho.name_chirho,
+                            );
+                            for warning_chirho in &result_chirho.warnings_chirho {
+                                eprintln!("warning: {}", warning_chirho);
+                            }
+                            eprintln!("Build successful (no executable targets).");
+                            ExitCode::SUCCESS
+                        }
+                        Err(error_chirho) => {
+                            eprintln!("error: {}", error_chirho);
+                            ExitCode::from(1)
+                        }
+                    }
+                } else {
+                    for executable_chirho in &build_result_chirho.executables_chirho {
+                        let output_path_chirho =
+                            build_dir_chirho.join(&executable_chirho.name_chirho);
+                        if let Err(error_chirho) = link_llvm_executable_chirho(
+                            &executable_chirho.llvm_ir_chirho,
+                            &output_path_chirho,
+                        ) {
+                            eprintln!(
+                                "error building executable {}: {}",
+                                executable_chirho.name_chirho, error_chirho
+                            );
+                            return ExitCode::from(1);
+                        }
+                        eprintln!(
+                            "Built executable {} → {}",
+                            executable_chirho.name_chirho,
+                            output_path_chirho.display(),
+                        );
+                        for warning_chirho in &executable_chirho.warnings_chirho {
+                            eprintln!("warning: {}", warning_chirho);
+                        }
+                    }
+                    eprintln!("Build successful.");
+                    ExitCode::SUCCESS
+                }
             }
             Err(error_chirho) => {
                 eprintln!("error: {}", error_chirho);
@@ -460,6 +521,40 @@ fn build_command_chirho(
                 ExitCode::from(1)
             }
         }
+    }
+}
+
+fn link_llvm_executable_chirho(
+    llvm_ir_chirho: &str,
+    output_path_chirho: &Path,
+) -> Result<(), String> {
+    let ll_path_chirho = output_path_chirho.with_extension("ll");
+    fs::write(&ll_path_chirho, llvm_ir_chirho)
+        .map_err(|e_chirho| format!("cannot write {}: {}", ll_path_chirho.display(), e_chirho))?;
+
+    let clang_status_chirho = Command::new("clang")
+        .args([
+            "-O2",
+            "-o",
+            output_path_chirho
+                .to_str()
+                .ok_or_else(|| format!("non-utf8 output path: {}", output_path_chirho.display()))?,
+            ll_path_chirho
+                .to_str()
+                .ok_or_else(|| format!("non-utf8 llvm path: {}", ll_path_chirho.display()))?,
+        ])
+        .status()
+        .map_err(|e_chirho| format!("could not run clang: {}", e_chirho))?;
+
+    if clang_status_chirho.success() {
+        let _ = fs::remove_file(&ll_path_chirho);
+        Ok(())
+    } else {
+        Err(format!(
+            "clang failed with exit code {}; LLVM IR saved to {}",
+            clang_status_chirho.code().unwrap_or(-1),
+            ll_path_chirho.display(),
+        ))
     }
 }
 
