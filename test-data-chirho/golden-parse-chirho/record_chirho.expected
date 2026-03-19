@@ -56,7 +56,8 @@ SourceFileChirho
           WhitespaceTriviaChirho " "
           EqualsChirho "="
           WhitespaceTriviaChirho " "
-          StringLiteralChirho ""Ada""
+          LiteralExprChirho
+            StringLiteralChirho ""Ada""
         CommaChirho ","
         WhitespaceTriviaChirho " "
         FieldAssignChirho
@@ -64,7 +65,8 @@ SourceFileChirho
           WhitespaceTriviaChirho " "
           EqualsChirho "="
           WhitespaceTriviaChirho " "
-          IntegerLiteralChirho "36"
+          LiteralExprChirho
+            IntegerLiteralChirho "36"
           WhitespaceTriviaChirho " "
         RightBraceChirho "}"
       WhitespaceTriviaChirho "\n"
