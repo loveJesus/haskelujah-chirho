@@ -152,6 +152,35 @@ fn main_chirho() -> ExitCode {
         "run" => run_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
         "compile" => compile_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
         "build" => build_command_chirho(program_name_chirho, path_chirho),
+        "build-run" => {
+            // Build then run the first executable
+            let result_chirho = build_command_chirho(program_name_chirho, path_chirho.clone());
+            if result_chirho != ExitCode::SUCCESS {
+                return result_chirho;
+            }
+            // Find and run the executable
+            let dir_chirho = path_chirho.as_deref().unwrap_or(".");
+            let build_dir_chirho = Path::new(dir_chirho).join("dist-chirho").join("build");
+            if let Ok(entries_chirho) = fs::read_dir(&build_dir_chirho) {
+                for entry_chirho in entries_chirho.flatten() {
+                    let p_chirho = entry_chirho.path();
+                    if p_chirho.is_file() && !p_chirho.extension().is_some_and(|e| e == "ll") {
+                        eprintln!("");
+                        let status_chirho = Command::new(&p_chirho).status();
+                        return match status_chirho {
+                            Ok(s_chirho) if s_chirho.success() => ExitCode::SUCCESS,
+                            Ok(s_chirho) => ExitCode::from(s_chirho.code().unwrap_or(1) as u8),
+                            Err(e_chirho) => {
+                                eprintln!("error running {}: {}", p_chirho.display(), e_chirho);
+                                ExitCode::from(1)
+                            }
+                        };
+                    }
+                }
+            }
+            eprintln!("No executable found in {}", build_dir_chirho.display());
+            ExitCode::from(1)
+        }
         "install" => install_command_chirho(program_name_chirho, &positional_chirho),
         "repl" => repl_chirho::repl_command_chirho(),
         "init" => init_command_chirho(path_chirho),
