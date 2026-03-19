@@ -19,6 +19,7 @@
 pub mod value_chirho;
 pub mod heap_chirho;
 pub mod gc_chirho;
+pub mod ffi_chirho;
 
 pub use value_chirho::{
     ValueChirho, ClosureChirho, InfoTableChirho, InfoTagChirho,

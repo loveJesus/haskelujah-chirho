@@ -8,4 +8,7 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[lib]
+crate-type = ["lib", "staticlib"]
+
 [dependencies]
