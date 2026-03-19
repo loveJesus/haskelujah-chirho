@@ -784,12 +784,16 @@ main = fib 10"#;
         let ll_path_chirho = tmp_dir_chirho.path().join("main.ll");
         let bin_path_chirho = tmp_dir_chirho.path().join("main");
         std::fs::write(&ll_path_chirho, &exec_ir_chirho).ok()?;
+        let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
 
         let compile_output_chirho = std::process::Command::new("clang")
             .arg("-O0")
             .arg("-o")
             .arg(&bin_path_chirho)
             .arg(&ll_path_chirho)
+            .arg("-L")
+            .arg(&rts_lib_dir_chirho)
+            .arg("-lhaskelujah_rts_chirho")
             .output()
             .ok()?;
 
@@ -810,6 +814,20 @@ main = fib 10"#;
     fn llvm_round_trip_chirho(src_chirho: &str) -> Option<i32> {
         llvm_round_trip_output_chirho(src_chirho)
             .map(|(exit_code_chirho, _stdout_chirho)| exit_code_chirho)
+    }
+
+    fn ensure_rts_staticlib_for_tests_chirho() -> Option<std::path::PathBuf> {
+        let crate_dir_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let workspace_root_chirho = crate_dir_chirho.parent()?.parent()?.to_path_buf();
+        let cargo_status_chirho = std::process::Command::new("cargo")
+            .current_dir(&workspace_root_chirho)
+            .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+            .status()
+            .ok()?;
+        if !cargo_status_chirho.success() {
+            return None;
+        }
+        Some(workspace_root_chirho.join("target").join("debug"))
     }
 
     #[test]
