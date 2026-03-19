@@ -155,6 +155,7 @@ fn main_chirho() -> ExitCode {
         "install" => install_command_chirho(program_name_chirho, &positional_chirho),
         "repl" => repl_chirho::repl_command_chirho(),
         "init" => init_command_chirho(path_chirho),
+        "clean" => clean_command_chirho(path_chirho),
         _ => {
             eprintln!("unknown command `{command_chirho}`");
             print_usage_chirho(program_name_chirho);
@@ -633,6 +634,27 @@ fn link_llvm_executable_chirho(
 }
 
 /// `haskelujah init [name]` — create a new Haskell project with .cabal scaffold.
+/// `haskelujah clean [dir]` — remove build artifacts (dist-chirho/).
+fn clean_command_chirho(path_arg_chirho: Option<String>) -> ExitCode {
+    let project_dir_chirho = path_arg_chirho.as_deref().unwrap_or(".");
+    let dist_dir_chirho = Path::new(project_dir_chirho).join("dist-chirho");
+    if dist_dir_chirho.exists() {
+        match fs::remove_dir_all(&dist_dir_chirho) {
+            Ok(()) => {
+                eprintln!("Cleaned {}", dist_dir_chirho.display());
+                ExitCode::SUCCESS
+            }
+            Err(e_chirho) => {
+                eprintln!("error cleaning {}: {}", dist_dir_chirho.display(), e_chirho);
+                ExitCode::from(1)
+            }
+        }
+    } else {
+        eprintln!("Nothing to clean.");
+        ExitCode::SUCCESS
+    }
+}
+
 fn init_command_chirho(name_arg_chirho: Option<String>) -> ExitCode {
     let project_name_chirho = name_arg_chirho.unwrap_or_else(|| "my-project".to_string());
     let project_dir_chirho = Path::new(&project_name_chirho);
@@ -803,6 +825,7 @@ fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("  run      <file.hs>              compile via LLVM and execute (STG fallback)");
     eprintln!("  check    <file.hs>              type-check without code generation");
     eprintln!("  compile  <file.hs> -o <exe>     compile to native executable via LLVM");
+    eprintln!("  clean    [dir]                  remove build artifacts (dist-chirho/)");
     eprintln!("  install  <package> <version>    fetch from Hackage, compile, register");
     eprintln!("  repl                            interactive REPL");
     eprintln!();
