@@ -36,7 +36,6 @@ use cranelift_frontend::Variable as ClVariableChirho;
 use haskelujah_core_chirho::expr_chirho::{
     AltConChirho, CoreAltChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho,
 };
-use cranelift_codegen::ir::GlobalValue as CrGlobalValueChirho;
 
 use std::collections::HashMap;
 
