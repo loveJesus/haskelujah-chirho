@@ -36,6 +36,7 @@ use cranelift_frontend::Variable as ClVariableChirho;
 use haskelujah_core_chirho::expr_chirho::{
     AltConChirho, CoreAltChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho,
 };
+use cranelift_codegen::ir::GlobalValue as CrGlobalValueChirho;
 
 use std::collections::HashMap;
 
@@ -75,6 +76,8 @@ pub struct LowerCtxChirho<'a> {
     pub toplevel_names_chirho: &'a HashMap<CoreIdChirho, String>,
     /// Optional FuncRef for libc `puts` (used by putStrLn lowering)
     pub puts_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Map of string content → GlobalValue for data section string literals
+    pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
 }
 
 impl<'a> LowerCtxChirho<'a> {
@@ -108,12 +111,10 @@ pub fn lower_lit_chirho(
                 .ins()
                 .iconst(cl_types_chirho::I64, *c_chirho as i64)
         }
-        CoreLitChirho::StringChirho(s_chirho) => {
-            // String literal: for now, return 0 as placeholder.
-            // Proper implementation needs Cranelift DataDescription +
-            // global_value to embed string in the object's data section.
-            // The putStrLn lowering in lower_app_chirho should handle
-            // string constants specially.
+        CoreLitChirho::StringChirho(_s_chirho) => {
+            // String literals are embedded in the data section.
+            // The actual pointer is resolved via lower_string_lit_chirho
+            // which needs the LowerCtxChirho. As a fallback, return 0.
             builder_chirho
                 .ins()
                 .iconst(cl_types_chirho::I64, 0)
@@ -134,7 +135,18 @@ pub fn lower_expr_chirho(
 ) -> ClValueChirho {
     match expr_chirho {
         // ── Literals ───────────────────────────────────────────────────────
-        CoreExprChirho::LitChirho(lit_chirho) => lower_lit_chirho(builder_chirho, lit_chirho),
+        CoreExprChirho::LitChirho(lit_chirho) => {
+            // Check for string literals with data section globals
+            if let CoreLitChirho::StringChirho(s_chirho) = lit_chirho {
+                if let Some(gv_chirho) = ctx_chirho.string_globals_chirho.get(s_chirho.as_str()) {
+                    return builder_chirho.ins().global_value(
+                        cl_types_chirho::I64,
+                        *gv_chirho,
+                    );
+                }
+            }
+            lower_lit_chirho(builder_chirho, lit_chirho)
+        }
 
         // ── Variables ──────────────────────────────────────────────────────
         CoreExprChirho::VarChirho(id_chirho) => {

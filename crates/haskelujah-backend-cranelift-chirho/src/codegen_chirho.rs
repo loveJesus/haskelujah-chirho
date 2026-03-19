@@ -28,7 +28,7 @@ use cranelift_frontend::{FunctionBuilder as FuncBuilderChirho, FunctionBuilderCo
 use cranelift_module::{Linkage as LinkageChirho, Module as ModuleTraitChirho};
 use cranelift_object::{ObjectBuilder as ObjBuilderChirho, ObjectModule as ObjModuleChirho};
 
-use haskelujah_core_chirho::expr_chirho::{BinderChirho, CoreBindingChirho, CoreExprChirho, CoreModuleChirho};
+use haskelujah_core_chirho::expr_chirho::{BinderChirho, CoreBindingChirho, CoreExprChirho, CoreLitChirho, CoreModuleChirho};
 
 use crate::lower_chirho::{
     ensure_i64_chirho, lower_expr_chirho, LowerCtxChirho, VarEnvChirho,
@@ -146,6 +146,31 @@ pub fn compile_core_to_object_chirho(
             .ok();
     }
 
+    // ── Pre-scan: embed string literals in data section ────────────────────
+    let mut string_data_ids_chirho: HashMap<String, cranelift_module::DataId> = HashMap::new();
+    {
+        let mut string_counter_chirho = 0u32;
+        collect_string_literals_chirho(module_chirho, &mut |s_chirho: &str| {
+            if !string_data_ids_chirho.contains_key(s_chirho) {
+                let name_chirho = format!(".str.{}", string_counter_chirho);
+                string_counter_chirho += 1;
+                let mut data_desc_chirho = cranelift_module::DataDescription::new();
+                let mut bytes_chirho = s_chirho.as_bytes().to_vec();
+                bytes_chirho.push(0); // null terminator
+                data_desc_chirho.define(bytes_chirho.into_boxed_slice());
+                if let Ok(data_id_chirho) = obj_module_chirho.declare_data(
+                    &name_chirho,
+                    LinkageChirho::Local,
+                    false, // not writable
+                    false, // not TLS
+                ) {
+                    let _ = obj_module_chirho.define_data(data_id_chirho, &data_desc_chirho);
+                    string_data_ids_chirho.insert(s_chirho.to_string(), data_id_chirho);
+                }
+            }
+        });
+    }
+
     // ── Pass 2: Define all function bodies ─────────────────────────────────
     for binding_chirho in &module_chirho.bindings_chirho {
         lower_binding_chirho(
@@ -155,6 +180,7 @@ pub fn compile_core_to_object_chirho(
             &func_decl_map_chirho,
             module_chirho,
             libc_puts_id_chirho,
+            &string_data_ids_chirho,
         )?;
     }
 
@@ -180,6 +206,46 @@ type FuncDeclMapChirho = HashMap<
 ///
 /// Lambda arguments are peeled from the RHS expression and become function
 /// parameters. The body is then lowered by `lower_expr_chirho`.
+/// Collect all string literals from a Core module.
+fn collect_string_literals_chirho(
+    module_chirho: &CoreModuleChirho,
+    callback_chirho: &mut dyn FnMut(&str),
+) {
+    fn walk_expr_chirho(expr_chirho: &CoreExprChirho, cb_chirho: &mut dyn FnMut(&str)) {
+        match expr_chirho {
+            CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(s_chirho)) => {
+                cb_chirho(s_chirho);
+            }
+            CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
+                walk_expr_chirho(fun_chirho, cb_chirho);
+                walk_expr_chirho(arg_chirho, cb_chirho);
+            }
+            CoreExprChirho::LamChirho { body_chirho, .. } => {
+                walk_expr_chirho(body_chirho, cb_chirho);
+            }
+            CoreExprChirho::LetChirho { binds_chirho, body_chirho, .. } => {
+                for (_, rhs_chirho) in binds_chirho {
+                    walk_expr_chirho(rhs_chirho, cb_chirho);
+                }
+                walk_expr_chirho(body_chirho, cb_chirho);
+            }
+            CoreExprChirho::CaseChirho { scrutinee_chirho, alts_chirho, .. } => {
+                walk_expr_chirho(scrutinee_chirho, cb_chirho);
+                for alt_chirho in alts_chirho {
+                    walk_expr_chirho(&alt_chirho.rhs_chirho, cb_chirho);
+                }
+            }
+            CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
+                walk_expr_chirho(expr_chirho, cb_chirho);
+            }
+            _ => {}
+        }
+    }
+    for binding_chirho in &module_chirho.bindings_chirho {
+        walk_expr_chirho(&binding_chirho.rhs_chirho, callback_chirho);
+    }
+}
+
 fn lower_binding_chirho(
     module_chirho: &mut ObjModuleChirho,
     fb_ctx_chirho: &mut FuncBuilderCtxChirho,
@@ -187,6 +253,7 @@ fn lower_binding_chirho(
     func_decl_map_chirho: &FuncDeclMapChirho,
     core_module_chirho: &CoreModuleChirho,
     libc_puts_id_chirho: Option<cranelift_module::FuncId>,
+    string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
 
@@ -251,6 +318,15 @@ fn lower_binding_chirho(
             module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func)
         });
 
+        // Import string data globals into this function
+        let mut string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue> =
+            HashMap::new();
+        for (s_chirho, data_id_chirho) in string_data_ids_chirho {
+            let gv_chirho =
+                module_chirho.declare_data_in_func(*data_id_chirho, builder_chirho.func);
+            string_globals_chirho.insert(s_chirho.clone(), gv_chirho);
+        }
+
         // Build name map for detecting Prelude functions
         let toplevel_names_chirho: HashMap<
             haskelujah_core_chirho::expr_chirho::CoreIdChirho,
@@ -273,6 +349,7 @@ fn lower_binding_chirho(
             func_ref_map_chirho: &func_ref_map_chirho,
             toplevel_names_chirho: &toplevel_names_chirho,
             puts_ref_chirho: puts_fref_chirho,
+            string_globals_chirho,
         };
 
         // ── Lower the body expression ──────────────────────────────────────
