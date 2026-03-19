@@ -385,8 +385,13 @@ impl InferCtxChirho {
         // Instantiate and defer predicates
         for pred_chirho in &scheme_chirho.preds_chirho {
             let instantiated_ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
+            let instantiated_extra_chirho: Vec<TyChirho> = pred_chirho.extra_tys_chirho.iter()
+                .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
+                .collect();
+            let mut pred_inst_chirho = PredChirho::new_chirho(&pred_chirho.class_name_chirho, instantiated_ty_chirho);
+            pred_inst_chirho.extra_tys_chirho = instantiated_extra_chirho;
             self.deferred_preds_chirho.push((
-                PredChirho::new_chirho(&pred_chirho.class_name_chirho, instantiated_ty_chirho),
+                pred_inst_chirho,
                 span_chirho,
             ));
         }
@@ -422,6 +427,7 @@ impl InferCtxChirho {
                 scheme_preds_chirho.push(SchemePredChirho {
                     class_name_chirho: pred_chirho.class_name_chirho,
                     ty_chirho: pred_chirho.ty_chirho,
+                    extra_tys_chirho: pred_chirho.extra_tys_chirho,
                 });
             } else {
                 remaining_chirho.push((pred_chirho, span_chirho));
@@ -787,9 +793,13 @@ impl InferCtxChirho {
                 } else {
                     self.fresh_var_chirho()
                 };
+                let extra_tys_chirho: Vec<TyChirho> = c_chirho.args_chirho.iter().skip(1)
+                    .map(|arg_chirho| self.ast_type_to_ty_chirho(arg_chirho, &mut var_map_chirho))
+                    .collect();
                 scheme_preds_chirho.push(SchemePredChirho {
                     class_name_chirho,
                     ty_chirho: pred_ty_chirho,
+                    extra_tys_chirho,
                 });
             }
         }
@@ -3848,6 +3858,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         preds_chirho: vec![SchemePredChirho {
             class_name_chirho: "Num".to_string(),
             ty_chirho: TyChirho::VarChirho(num_v_chirho),
+            extra_tys_chirho: vec![],
         }],
         ty_chirho: TyChirho::fun_n_chirho(
             vec![
@@ -3868,6 +3879,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         preds_chirho: vec![SchemePredChirho {
             class_name_chirho: "Eq".to_string(),
             ty_chirho: TyChirho::VarChirho(eq_v_chirho),
+            extra_tys_chirho: vec![],
         }],
         ty_chirho: TyChirho::fun_n_chirho(
             vec![
@@ -3887,6 +3899,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         preds_chirho: vec![SchemePredChirho {
             class_name_chirho: "Ord".to_string(),
             ty_chirho: TyChirho::VarChirho(ord_v_chirho),
+            extra_tys_chirho: vec![],
         }],
         ty_chirho: TyChirho::fun_n_chirho(
             vec![
@@ -3910,6 +3923,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Ord".to_string(),
                 ty_chirho: TyChirho::VarChirho(cmp_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
@@ -3928,6 +3942,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         preds_chirho: vec![SchemePredChirho {
             class_name_chirho: "Ord".to_string(),
             ty_chirho: TyChirho::VarChirho(minmax_v_chirho),
+            extra_tys_chirho: vec![],
         }],
         ty_chirho: TyChirho::fun_n_chirho(
             vec![
@@ -3949,6 +3964,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Show".to_string(),
                 ty_chirho: TyChirho::VarChirho(show_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(show_v_chirho),
@@ -3966,6 +3982,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Num".to_string(),
                 ty_chirho: TyChirho::VarChirho(negate_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(negate_v_chirho),
@@ -3983,6 +4000,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Num".to_string(),
                 ty_chirho: TyChirho::VarChirho(fi_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::int_chirho(),
@@ -4000,6 +4018,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Fractional".to_string(),
                 ty_chirho: TyChirho::VarChirho(div_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
@@ -4020,6 +4039,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Fractional".to_string(),
                 ty_chirho: TyChirho::VarChirho(recip_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(recip_v_chirho),
@@ -4037,6 +4057,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Fractional".to_string(),
                 ty_chirho: TyChirho::VarChirho(fr_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::ConChirho("Rational".to_string()),
@@ -4054,6 +4075,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Read".to_string(),
                 ty_chirho: TyChirho::VarChirho(read_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::string_chirho(),
@@ -4071,6 +4093,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "IsString".to_string(),
                 ty_chirho: TyChirho::VarChirho(fs_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::string_chirho(),
@@ -4089,6 +4112,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "IsList".to_string(),
                 ty_chirho: TyChirho::VarChirho(fl_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::ListChirho(Box::new(TyChirho::VarChirho(fl_a_chirho))),
@@ -4105,6 +4129,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "IsList".to_string(),
                 ty_chirho: TyChirho::VarChirho(fl_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(fl_v_chirho),
@@ -4159,6 +4184,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Applicative".to_string(),
                 ty_chirho: TyChirho::VarChirho(pure_f_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(pure_a_chirho),
@@ -4181,6 +4207,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Applicative".to_string(),
                 ty_chirho: TyChirho::VarChirho(ap_f_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
@@ -4848,6 +4875,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Num".to_string(),
                 ty_chirho: TyChirho::VarChirho(neg_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(neg_v_chirho),
@@ -4885,6 +4913,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Show".to_string(),
                 ty_chirho: TyChirho::VarChirho(print_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(print_v_chirho),
@@ -4903,6 +4932,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Monad".to_string(),
                 ty_chirho: TyChirho::VarChirho(return_m_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(return_a_chirho),
@@ -4925,6 +4955,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Monad".to_string(),
                 ty_chirho: TyChirho::VarChirho(bind_m_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
@@ -4959,6 +4990,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Monad".to_string(),
                 ty_chirho: TyChirho::VarChirho(then_m_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
@@ -5585,6 +5617,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -5609,6 +5642,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(k_chirho),
@@ -5637,6 +5671,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(k_chirho),
@@ -5657,6 +5692,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::ListChirho(Box::new(TyChirho::TupleChirho(vec![
@@ -5679,6 +5715,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![TyChirho::VarChirho(k_chirho), TyChirho::int_chirho()],
@@ -5845,6 +5882,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -5873,6 +5911,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -5897,6 +5936,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -6342,6 +6382,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "NFData".to_string(),
                 ty_chirho: TyChirho::VarChirho(ds_a_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
@@ -6362,6 +6403,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "NFData".to_string(),
                 ty_chirho: TyChirho::VarChirho(force_a_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![TyChirho::VarChirho(force_a_chirho)],
@@ -6396,6 +6438,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "NFData".to_string(),
                 ty_chirho: TyChirho::VarChirho(rnf_a_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![TyChirho::VarChirho(rnf_a_chirho)],
@@ -6417,6 +6460,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Semigroup".to_string(),
                 ty_chirho: TyChirho::VarChirho(sg_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_n_chirho(
                 [
@@ -6437,6 +6481,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Monoid".to_string(),
                 ty_chirho: TyChirho::VarChirho(mon_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::VarChirho(mon_v_chirho),
         },
@@ -6451,6 +6496,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Monoid".to_string(),
                 ty_chirho: TyChirho::VarChirho(mc_v_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::ListChirho(Box::new(TyChirho::VarChirho(mc_v_chirho))),
@@ -7141,6 +7187,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Num".to_string(),
                     ty_chirho: TyChirho::VarChirho(abs_v_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(abs_v_chirho),
@@ -7160,6 +7207,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Num".to_string(),
                     ty_chirho: TyChirho::VarChirho(sig_v_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(sig_v_chirho),
@@ -7589,6 +7637,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Enum".to_string(),
                 ty_chirho: TyChirho::VarChirho(enum_a_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::int_chirho(),
@@ -7606,6 +7655,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Enum".to_string(),
                 ty_chirho: TyChirho::VarChirho(from_enum_a_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(from_enum_a_chirho),
@@ -7623,6 +7673,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Enum".to_string(),
                 ty_chirho: TyChirho::VarChirho(succ_a_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(succ_a_chirho),
@@ -7640,6 +7691,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Enum".to_string(),
                 ty_chirho: TyChirho::VarChirho(pred_a_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(pred_a_chirho),
@@ -7705,6 +7757,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Bounded".to_string(),
                 ty_chirho: TyChirho::VarChirho(min_bound_a_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::VarChirho(min_bound_a_chirho),
         },
@@ -7719,6 +7772,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Bounded".to_string(),
                 ty_chirho: TyChirho::VarChirho(max_bound_a_chirho),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::VarChirho(max_bound_a_chirho),
         },
@@ -7821,6 +7875,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Functor".to_string(),
                     ty_chirho: TyChirho::VarChirho(fmap_f_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::FunChirho(
                     Box::new(TyChirho::FunChirho(
@@ -9344,6 +9399,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(b_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -9442,6 +9498,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Functor".to_string(),
                     ty_chirho: TyChirho::VarChirho(f_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::AppChirho(
@@ -9518,6 +9575,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Monad".to_string(),
                     ty_chirho: TyChirho::VarChirho(m_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::AppChirho(
@@ -9612,6 +9670,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Semigroup".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![TyChirho::VarChirho(a_chirho), TyChirho::VarChirho(a_chirho)],
@@ -9631,6 +9690,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Monoid".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![TyChirho::VarChirho(a_chirho), TyChirho::VarChirho(a_chirho)],
@@ -9650,6 +9710,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Monoid".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::VarChirho(a_chirho),
             },
@@ -9666,6 +9727,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Monoid".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_chirho))),
@@ -9718,6 +9780,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Eq".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_chirho))),
@@ -9737,6 +9800,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Eq".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_chirho))),
@@ -9760,6 +9824,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Monad".to_string(),
                     ty_chirho: TyChirho::VarChirho(m_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -9795,6 +9860,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Monad".to_string(),
                     ty_chirho: TyChirho::VarChirho(m_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -9850,10 +9916,12 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     SchemePredChirho {
                         class_name_chirho: "Real".to_string(),
                         ty_chirho: TyChirho::VarChirho(a_chirho),
+                        extra_tys_chirho: vec![],
                     },
                     SchemePredChirho {
                         class_name_chirho: "Fractional".to_string(),
                         ty_chirho: TyChirho::VarChirho(b_chirho),
+                        extra_tys_chirho: vec![],
                     },
                 ],
                 ty_chirho: TyChirho::FunChirho(
@@ -9877,10 +9945,12 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     SchemePredChirho {
                         class_name_chirho: "Integral".to_string(),
                         ty_chirho: TyChirho::VarChirho(a_chirho),
+                        extra_tys_chirho: vec![],
                     },
                     SchemePredChirho {
                         class_name_chirho: "Num".to_string(),
                         ty_chirho: TyChirho::VarChirho(b_chirho),
+                        extra_tys_chirho: vec![],
                     },
                 ],
                 ty_chirho: TyChirho::FunChirho(
@@ -9902,6 +9972,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Integral".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::FunChirho(
                     Box::new(TyChirho::VarChirho(a_chirho)),
@@ -9922,6 +9993,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Real".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::FunChirho(
                     Box::new(TyChirho::VarChirho(a_chirho)),
@@ -9964,6 +10036,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Integral".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::FunChirho(
                     Box::new(TyChirho::VarChirho(a_chirho)),
@@ -9988,6 +10061,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Integral".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::FunChirho(
                     Box::new(TyChirho::VarChirho(a_chirho)),
@@ -10099,6 +10173,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(b_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -10125,6 +10200,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Eq".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![list_a_chirho.clone(), list_a_chirho],
@@ -10145,6 +10221,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Eq".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![list_a_chirho.clone(), list_a_chirho.clone()],
@@ -10192,6 +10269,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![SchemePredChirho {
                     class_name_chirho: "Eq".to_string(),
                     ty_chirho: TyChirho::VarChirho(a_chirho),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![

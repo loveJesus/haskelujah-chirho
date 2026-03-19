@@ -150,6 +150,7 @@ impl SubstChirho {
                 .map(|p_chirho| crate::ty_chirho::SchemePredChirho {
                     class_name_chirho: p_chirho.class_name_chirho.clone(),
                     ty_chirho: restricted_chirho.apply_ty_chirho(&p_chirho.ty_chirho),
+                    extra_tys_chirho: p_chirho.extra_tys_chirho.iter().map(|t_chirho| restricted_chirho.apply_ty_chirho(t_chirho)).collect(),
                 })
                 .collect(),
             ty_chirho: restricted_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho),

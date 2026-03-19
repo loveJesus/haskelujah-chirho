@@ -723,6 +723,7 @@ mod tests_chirho {
                 ty_chirho: TyChirho::VarChirho(
                     haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
                 ),
+                extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)),
@@ -780,12 +781,14 @@ mod tests_chirho {
                     ty_chirho: TyChirho::VarChirho(
                         haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
                     ),
+                    extra_tys_chirho: vec![],
                 },
                 SchemePredChirho {
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(
                         haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
                     ),
+                    extra_tys_chirho: vec![],
                 },
             ],
             ty_chirho: TyChirho::fun_chirho(
@@ -1076,6 +1079,7 @@ mod tests_chirho {
                     ty_chirho: TyChirho::VarChirho(
                         haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
                     ),
+                    extra_tys_chirho: vec![],
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     [

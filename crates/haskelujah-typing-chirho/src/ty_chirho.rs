@@ -251,6 +251,8 @@ impl fmt::Display for TyChirho {
 pub struct SchemePredChirho {
     pub class_name_chirho: String,
     pub ty_chirho: TyChirho,
+    /// Extra type arguments for multi-parameter type classes.
+    pub extra_tys_chirho: Vec<TyChirho>,
 }
 
 /// A type scheme: `forall a1 a2 ... . (preds =>) ty`. Represents polymorphism.
@@ -286,7 +288,11 @@ impl SchemeChirho {
 
 impl fmt::Display for SchemePredChirho {
     fn fmt(&self, f_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f_chirho, "{} {}", self.class_name_chirho, self.ty_chirho)
+        write!(f_chirho, "{} {}", self.class_name_chirho, self.ty_chirho)?;
+        for extra_chirho in &self.extra_tys_chirho {
+            write!(f_chirho, " {}", extra_chirho)?;
+        }
+        Ok(())
     }
 }
 
