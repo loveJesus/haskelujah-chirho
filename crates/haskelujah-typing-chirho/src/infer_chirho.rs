@@ -2388,7 +2388,7 @@ impl InferCtxChirho {
         let first_chirho = &matches_chirho[0];
         let arity_chirho = first_chirho.pats_chirho.len();
 
-        // Create fresh vars for parameters and result
+        // Create fresh vars for the overall function type
         let param_tys_chirho: Vec<TyChirho> =
             (0..arity_chirho).map(|_| self.fresh_var_chirho()).collect();
         let result_ty_chirho = self.fresh_var_chirho();
@@ -2397,14 +2397,19 @@ impl InferCtxChirho {
         for match_arm_chirho in matches_chirho {
             self.env_chirho.push_scope_chirho();
 
-            // Bind pattern variables
+            // Each equation gets its own fresh param/result types so GADT
+            // pattern matching can refine types independently per equation.
+            let eq_param_tys_chirho: Vec<TyChirho> =
+                (0..arity_chirho).map(|_| self.fresh_var_chirho()).collect();
+            let eq_result_ty_chirho = self.fresh_var_chirho();
+
+            // Bind pattern variables against per-equation fresh types
             for (pat_chirho, pat_ty_chirho) in match_arm_chirho
                 .pats_chirho
                 .iter()
-                .zip(param_tys_chirho.iter())
+                .zip(eq_param_tys_chirho.iter())
             {
-                let pat_ty_sub_chirho = subst_chirho.apply_ty_chirho(pat_ty_chirho);
-                self.bind_pat_chirho(pat_chirho, &pat_ty_sub_chirho);
+                self.bind_pat_chirho(pat_chirho, pat_ty_chirho);
             }
 
             // Collect where-clause type signatures
@@ -2533,9 +2538,9 @@ impl InferCtxChirho {
             subst_chirho = sr_chirho.compose_chirho(&subst_chirho);
             self.apply_subst_all_chirho(&sr_chirho);
 
-            // Unify with result type
-            let result_sub_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
-            match self.unify_normalized_chirho(&result_sub_chirho, &rhs_ty_chirho, span_chirho) {
+            // Unify RHS with per-equation result type
+            let eq_result_sub_chirho = subst_chirho.apply_ty_chirho(&eq_result_ty_chirho);
+            match self.unify_normalized_chirho(&eq_result_sub_chirho, &rhs_ty_chirho, span_chirho) {
                 Ok(su_chirho) => {
                     subst_chirho = su_chirho.compose_chirho(&subst_chirho);
                     self.apply_subst_all_chirho(&su_chirho);
@@ -2544,6 +2549,25 @@ impl InferCtxChirho {
                     self.report_unify_error_chirho(&err_chirho);
                 }
             }
+
+            // Unify per-equation function type with overall function type.
+            // This propagates non-GADT constraints while allowing GADT
+            // equations to have independently refined types.
+            for (eq_p_chirho, p_chirho) in eq_param_tys_chirho.iter().zip(param_tys_chirho.iter()) {
+                let eq_p_sub_chirho = subst_chirho.apply_ty_chirho(eq_p_chirho);
+                let p_sub_chirho = subst_chirho.apply_ty_chirho(p_chirho);
+                if let Ok(s_chirho) = self.unify_normalized_chirho(
+                    &eq_p_sub_chirho,
+                    &p_sub_chirho,
+                    span_chirho,
+                ) {
+                    subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+                    self.apply_subst_all_chirho(&s_chirho);
+                }
+            }
+            // Don't unify per-eq result with overall result here —
+            // let the signature check handle it. This allows GADT
+            // equations to have different result types.
 
             self.env_chirho.pop_scope_chirho();
         }
