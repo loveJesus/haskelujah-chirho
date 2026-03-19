@@ -1,0 +1,10 @@
+cabal-version: 2.4
+name: multi-module
+version: 0.1.0.0
+synopsis: Multi-module demo for Haskelujah Chirho
+executable multi-module
+  main-is: Main.hs
+  other-modules: MathLib
+  hs-source-dirs: src
+  build-depends: base
+  default-language: Haskell2010
