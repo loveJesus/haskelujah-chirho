@@ -24,7 +24,7 @@
 //! | `TyLamChirho`        | Skip wrapper, lower body directly             |
 //! | `TyAppChirho`        | Lower inner expression                        |
 //! | `AppChirho`          | Indirect function call via `call_indirect`    |
-//! | `ConAppChirho`       | Constructor tag as `iconst` (simplified)      |
+//! | `ConAppChirho`       | Immediate tag or boxed tag+fields             |
 //! | `LamChirho`          | Error — must be peeled by `codegen_chirho`    |
 
 use cranelift_codegen::ir::condcodes::IntCC as IntCcChirho;
@@ -77,6 +77,8 @@ pub struct LowerCtxChirho<'a> {
     pub puts_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_print_int_chirho` (non-variadic print)
     pub print_int_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_alloc_chirho` (boxed constructors)
+    pub alloc_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
     pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
 }
@@ -213,17 +215,9 @@ pub fn lower_expr_chirho(
             arg_chirho,
         } => lower_app_chirho(builder_chirho, ctx_chirho, fun_chirho, arg_chirho),
 
-        // ── Data constructor application ───────────────────────────────────
-        // Simplified: return the constructor tag index (0-based) as an i64.
-        // Full heap allocation would be added once the runtime is integrated.
         CoreExprChirho::ConAppChirho {
             con_name_chirho, ..
-        } => {
-            let tag_chirho = con_tag_for_chirho(con_name_chirho);
-            builder_chirho
-                .ins()
-                .iconst(cl_types_chirho::I64, tag_chirho as i64)
-        }
+        } => lower_constructor_app_chirho(builder_chirho, ctx_chirho, con_name_chirho, expr_chirho),
 
         // ── Lambda — should have been peeled by the caller ─────────────────
         CoreExprChirho::LamChirho { .. } => {
@@ -335,6 +329,12 @@ fn lower_case_chirho(
     // ── Evaluate the scrutinee in the current block ────────────────────────
     let scrut_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, scrutinee_chirho);
     let scrut_i64_chirho = ensure_i64_chirho(builder_chirho, scrut_val_chirho, false);
+    let needs_constructor_tags_chirho = concrete_alts_need_constructor_tag_chirho(alts_chirho);
+    let scrut_cmp_i64_chirho = if needs_constructor_tags_chirho {
+        load_constructor_tag_chirho(builder_chirho, scrut_i64_chirho)
+    } else {
+        scrut_i64_chirho
+    };
 
     // Bind the scrutinee to the case binder so alts can reference it.
     ctx_chirho
@@ -395,7 +395,7 @@ fn lower_case_chirho(
         let eq_val_chirho =
             builder_chirho
                 .ins()
-                .icmp(IntCcChirho::Equal, scrut_i64_chirho, expected_val_chirho);
+                .icmp(IntCcChirho::Equal, scrut_cmp_i64_chirho, expected_val_chirho);
         builder_chirho.ins().brif(
             eq_val_chirho,
             alt_body_block_chirho,
@@ -413,11 +413,23 @@ fn lower_case_chirho(
         builder_chirho.switch_to_block(alt_body_block_chirho);
         builder_chirho.seal_block(alt_body_block_chirho);
 
-        // Bind alt binders to the scrutinee value (simplified for non-product alts).
-        for binder_chirho in &alt_chirho.binders_chirho {
-            ctx_chirho
-                .env_chirho
-                .bind_chirho(binder_chirho.id_chirho, scrut_i64_chirho);
+        if matches!(alt_chirho.con_chirho, AltConChirho::DataConChirho(_)) {
+            for (field_idx_chirho, binder_chirho) in alt_chirho.binders_chirho.iter().enumerate() {
+                let field_val_chirho = load_constructor_field_chirho(
+                    builder_chirho,
+                    scrut_i64_chirho,
+                    field_idx_chirho,
+                );
+                ctx_chirho
+                    .env_chirho
+                    .bind_chirho(binder_chirho.id_chirho, field_val_chirho);
+            }
+        } else {
+            for binder_chirho in &alt_chirho.binders_chirho {
+                ctx_chirho
+                    .env_chirho
+                    .bind_chirho(binder_chirho.id_chirho, scrut_i64_chirho);
+            }
         }
 
         let result_val_chirho =
@@ -463,6 +475,142 @@ fn lower_case_chirho(
     builder_chirho.seal_block(merge_block_chirho);
 
     builder_chirho.block_params(merge_block_chirho)[0]
+}
+
+fn lower_constructor_app_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    con_name_chirho: &str,
+    expr_chirho: &CoreExprChirho,
+) -> ClValueChirho {
+    let tag_chirho = con_tag_for_chirho(con_name_chirho) as i64;
+    let CoreExprChirho::ConAppChirho { args_chirho, .. } = expr_chirho else {
+        return builder_chirho.ins().iconst(cl_types_chirho::I64, tag_chirho);
+    };
+    if args_chirho.is_empty() {
+        return builder_chirho.ins().iconst(cl_types_chirho::I64, tag_chirho);
+    }
+    let Some(alloc_ref_chirho) = ctx_chirho.alloc_ref_chirho else {
+        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    };
+
+    let alloc_size_chirho = ((args_chirho.len() + 1) * 8) as i64;
+    let alloc_size_val_chirho = builder_chirho
+        .ins()
+        .iconst(cl_types_chirho::I64, alloc_size_chirho);
+    let alloc_call_chirho = builder_chirho
+        .ins()
+        .call(alloc_ref_chirho, &[alloc_size_val_chirho]);
+    let alloc_ptr_chirho = builder_chirho.inst_results(alloc_call_chirho)[0];
+    let mem_flags_chirho = cranelift_codegen::ir::MemFlags::new();
+
+    let tag_val_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, tag_chirho);
+    builder_chirho
+        .ins()
+        .store(mem_flags_chirho, tag_val_chirho, alloc_ptr_chirho, 0);
+
+    for (field_idx_chirho, arg_chirho) in args_chirho.iter().enumerate() {
+        let field_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+        let field_i64_chirho = ensure_i64_chirho(builder_chirho, field_val_chirho, false);
+        let offset_chirho = ((field_idx_chirho + 1) * 8) as i32;
+        builder_chirho
+            .ins()
+            .store(mem_flags_chirho, field_i64_chirho, alloc_ptr_chirho, offset_chirho);
+    }
+
+    let boxed_mask_chirho = builder_chirho
+        .ins()
+        .iconst(cl_types_chirho::I64, i64::MIN);
+    builder_chirho.ins().bor(alloc_ptr_chirho, boxed_mask_chirho)
+}
+
+fn concrete_alts_need_constructor_tag_chirho(alts_chirho: &[CoreAltChirho]) -> bool {
+    alts_chirho
+        .iter()
+        .any(|alt_chirho| matches!(alt_chirho.con_chirho, AltConChirho::DataConChirho(_)))
+}
+
+fn looks_like_data_constructor_name_chirho(name_chirho: &str) -> bool {
+    if matches!(name_chirho, "[]" | ":") {
+        return true;
+    }
+    if name_chirho.starts_with("$Dict_") || name_chirho.starts_with("$tuple") {
+        return true;
+    }
+    if name_chirho.starts_with('(') && name_chirho.ends_with(')') {
+        return true;
+    }
+    name_chirho
+        .chars()
+        .next()
+        .is_some_and(|chirho| chirho.is_ascii_uppercase())
+}
+
+fn load_constructor_tag_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    scrut_i64_chirho: ClValueChirho,
+) -> ClValueChirho {
+    let boxed_block_chirho = builder_chirho.create_block();
+    let immediate_block_chirho = builder_chirho.create_block();
+    let join_block_chirho = builder_chirho.create_block();
+    builder_chirho.append_block_param(join_block_chirho, cl_types_chirho::I64);
+
+    let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    let is_boxed_chirho =
+        builder_chirho
+            .ins()
+            .icmp(IntCcChirho::SignedLessThan, scrut_i64_chirho, zero_chirho);
+    builder_chirho.ins().brif(
+        is_boxed_chirho,
+        boxed_block_chirho,
+        &[],
+        immediate_block_chirho,
+        &[],
+    );
+
+    builder_chirho.switch_to_block(immediate_block_chirho);
+    builder_chirho.ins().jump(join_block_chirho, &[scrut_i64_chirho]);
+    builder_chirho.seal_block(immediate_block_chirho);
+
+    builder_chirho.switch_to_block(boxed_block_chirho);
+    let boxed_ptr_chirho = decode_boxed_constructor_ptr_chirho(builder_chirho, scrut_i64_chirho);
+    let boxed_tag_chirho = builder_chirho.ins().load(
+        cl_types_chirho::I64,
+        cranelift_codegen::ir::MemFlags::new(),
+        boxed_ptr_chirho,
+        0,
+    );
+    builder_chirho.ins().jump(join_block_chirho, &[boxed_tag_chirho]);
+    builder_chirho.seal_block(boxed_block_chirho);
+
+    builder_chirho.switch_to_block(join_block_chirho);
+    builder_chirho.seal_block(join_block_chirho);
+    builder_chirho.block_params(join_block_chirho)[0]
+}
+
+fn decode_boxed_constructor_ptr_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    scrut_i64_chirho: ClValueChirho,
+) -> ClValueChirho {
+    let ptr_mask_chirho = builder_chirho
+        .ins()
+        .iconst(cl_types_chirho::I64, i64::MAX);
+    builder_chirho.ins().band(scrut_i64_chirho, ptr_mask_chirho)
+}
+
+fn load_constructor_field_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    scrut_i64_chirho: ClValueChirho,
+    field_idx_chirho: usize,
+) -> ClValueChirho {
+    let boxed_ptr_chirho = decode_boxed_constructor_ptr_chirho(builder_chirho, scrut_i64_chirho);
+    let offset_chirho = ((field_idx_chirho + 1) * 8) as i32;
+    builder_chirho.ins().load(
+        cl_types_chirho::I64,
+        cranelift_codegen::ir::MemFlags::new(),
+        boxed_ptr_chirho,
+        offset_chirho,
+    )
 }
 
 /// Compute the expected i64 value for a case alternative constructor/literal.
@@ -537,6 +685,21 @@ fn lower_app_chirho(
     if let CoreExprChirho::VarChirho(func_id_chirho) = callee_chirho {
         // Check for Prelude IO functions (putStrLn, print)
         if let Some(name_chirho) = ctx_chirho.toplevel_names_chirho.get(func_id_chirho) {
+            if looks_like_data_constructor_name_chirho(name_chirho) {
+                let constructor_expr_chirho = CoreExprChirho::ConAppChirho {
+                    con_name_chirho: name_chirho.clone(),
+                    args_chirho: all_args_chirho
+                        .iter()
+                        .map(|arg_chirho| (*arg_chirho).clone())
+                        .collect(),
+                };
+                return lower_constructor_app_chirho(
+                    builder_chirho,
+                    ctx_chirho,
+                    name_chirho,
+                    &constructor_expr_chirho,
+                );
+            }
             if matches!(name_chirho.as_str(), "putStrLn" | "putStrLn#") {
                 if let Some(puts_ref_chirho) = ctx_chirho.puts_ref_chirho {
                     if let Some(arg_expr_chirho) = all_args_chirho.last() {
@@ -571,6 +734,15 @@ fn lower_app_chirho(
         if let Some((func_ref_chirho, _arity_chirho)) =
             ctx_chirho.func_ref_map_chirho.get(func_id_chirho)
         {
+            if *_arity_chirho != all_args_chirho.len() {
+                let fun_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, callee_chirho);
+                return lower_indirect_app_chirho(
+                    builder_chirho,
+                    ctx_chirho,
+                    fun_val_chirho,
+                    &all_args_chirho,
+                );
+            }
             // Lower all arguments.
             let mut arg_vals_chirho = Vec::new();
             for a_chirho in &all_args_chirho {
@@ -585,19 +757,31 @@ fn lower_app_chirho(
         }
     }
 
-    // Fallback: lower both sides and use call_indirect.
-    let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
-    let arg_i64_chirho = ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
-
     let fun_ptr_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, fun_chirho);
+    lower_indirect_app_chirho(builder_chirho, ctx_chirho, fun_ptr_chirho, &[arg_chirho])
+}
+
+fn lower_indirect_app_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    fun_ptr_chirho: ClValueChirho,
+    args_chirho: &[&CoreExprChirho],
+) -> ClValueChirho {
     let fun_ptr_i64_chirho = ensure_i64_chirho(builder_chirho, fun_ptr_chirho, false);
+    let mut arg_vals_chirho = Vec::with_capacity(args_chirho.len());
+    for arg_chirho in args_chirho {
+        let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+        arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, arg_val_chirho, false));
+    }
 
     let mut sig_chirho = builder_chirho.func.stencil.signature.clone();
     sig_chirho.params.clear();
     sig_chirho.returns.clear();
-    sig_chirho
-        .params
-        .push(cranelift_codegen::ir::AbiParam::new(cl_types_chirho::I64));
+    for _ in args_chirho {
+        sig_chirho
+            .params
+            .push(cranelift_codegen::ir::AbiParam::new(cl_types_chirho::I64));
+    }
     sig_chirho
         .returns
         .push(cranelift_codegen::ir::AbiParam::new(cl_types_chirho::I64));
@@ -606,7 +790,7 @@ fn lower_app_chirho(
     let call_inst_chirho =
         builder_chirho
             .ins()
-            .call_indirect(sig_ref_chirho, fun_ptr_i64_chirho, &[arg_i64_chirho]);
+            .call_indirect(sig_ref_chirho, fun_ptr_i64_chirho, &arg_vals_chirho);
     builder_chirho.inst_results(call_inst_chirho)[0]
 }
 
