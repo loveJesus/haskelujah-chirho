@@ -381,6 +381,76 @@ library
         let _ = std::fs::remove_dir_all(&temp_dir_chirho);
     }
 
+    #[test]
+    fn cabal_project_builds_executable_llvm_plan_chirho() {
+        use crate::build_cabal_project_chirho;
+        use std::io::Write;
+
+        let temp_dir_chirho =
+            std::env::temp_dir().join("haskelujah_cabal_build_exec_test_chirho");
+        let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+        std::fs::create_dir_all(temp_dir_chirho.join("src")).unwrap();
+
+        let cabal_path_chirho = temp_dir_chirho.join("build-exec.cabal");
+        let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
+        write!(
+            cabal_file_chirho,
+            r#"cabal-version: 3.0
+name:         build-exec
+version:      0.1.0.0
+
+library
+  exposed-modules: Lib
+  hs-source-dirs:  src
+  build-depends:   base >=4.14 && <5
+
+executable hello-app
+  main-is:         Main.hs
+  hs-source-dirs:  src
+  other-modules:   Lib
+  build-depends:   base >=4.14 && <5, build-exec
+"#
+        )
+        .unwrap();
+
+        let mut lib_file_chirho =
+            std::fs::File::create(temp_dir_chirho.join("src/Lib.hs")).unwrap();
+        write!(
+            lib_file_chirho,
+            "module Lib where\nmessage = \"Hello from Cabal build\"\n"
+        )
+        .unwrap();
+
+        let mut main_file_chirho =
+            std::fs::File::create(temp_dir_chirho.join("src/Main.hs")).unwrap();
+        write!(
+            main_file_chirho,
+            "module Main where\nimport Lib\nmain = putStrLn message\n"
+        )
+        .unwrap();
+
+        let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
+        let result_chirho =
+            build_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+                .expect("cabal executable project should build");
+
+        assert_eq!(result_chirho.package_chirho.name_chirho, "build-exec");
+        assert_eq!(result_chirho.executables_chirho.len(), 1);
+        assert_eq!(result_chirho.executables_chirho[0].name_chirho, "hello-app");
+        assert_eq!(
+            result_chirho.executables_chirho[0].compilation_order_chirho,
+            vec!["Lib".to_string(), "Main".to_string()]
+        );
+        assert!(result_chirho.executables_chirho[0]
+            .llvm_ir_chirho
+            .contains("define i32 @main()"));
+        assert!(result_chirho.executables_chirho[0]
+            .llvm_ir_chirho
+            .contains("@haskelujah_main"));
+
+        let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+    }
+
     // ── PrimOp / arithmetic end-to-end tests ────────────────────────────
 
 

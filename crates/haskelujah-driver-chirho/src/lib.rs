@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 use haskelujah_ast_chirho::ModuleChirho;
 use haskelujah_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_chirho;
+use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_to_wasm_stub_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_chirho;
 use haskelujah_core_chirho::{
@@ -1705,6 +1706,25 @@ pub struct CabalCompileResultChirho {
     pub build_plan_chirho: haskelujah_package_chirho::BuildPlanChirho,
     /// Per-module compilation results, in compilation order.
     pub module_results_chirho: Vec<CompileResultChirho>,
+    /// Module names in compilation order.
+    pub compilation_order_chirho: Vec<String>,
+    /// Non-fatal warnings across all compiled modules.
+    pub warnings_chirho: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct CabalExecutableBuildResultChirho {
+    pub name_chirho: String,
+    pub llvm_ir_chirho: String,
+    pub compilation_order_chirho: Vec<String>,
+    pub warnings_chirho: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct CabalBuildResultChirho {
+    pub package_chirho: haskelujah_package_chirho::PackageDescChirho,
+    pub build_plan_chirho: haskelujah_package_chirho::BuildPlanChirho,
+    pub executables_chirho: Vec<CabalExecutableBuildResultChirho>,
 }
 
 /// Compile a Haskell project from a `.cabal` file path.
@@ -1753,37 +1773,77 @@ pub fn compile_cabal_project_chirho(
         .parent()
         .unwrap_or_else(|| Path::new("."));
     let source_files_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
-
-    // Read sources and compile.
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let mut sources_chirho: Vec<(String, String)> = Vec::new();
-
-    for (module_name_chirho, path_chirho) in &source_files_chirho {
-        let content_chirho = std::fs::read_to_string(path_chirho).map_err(|e_chirho| {
-            format!(
-                "cannot read module {} at {}: {}",
-                module_name_chirho,
-                path_chirho.display(),
-                e_chirho
-            )
-        })?;
-        sources_chirho.push((module_name_chirho.clone(), content_chirho));
-    }
-
-    // Build (file_name, source) pairs for compile_modules_chirho.
-    let source_refs_chirho: Vec<(&str, &str)> = sources_chirho
-        .iter()
-        .map(|(name_chirho, src_chirho)| (name_chirho.as_str(), src_chirho.as_str()))
-        .collect();
-
-    let module_results_chirho =
-        compile_modules_chirho(&source_refs_chirho, &mut source_map_chirho)
-            .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
+    let project_compile_result_chirho = compile_module_files_in_dependency_order_chirho(
+        &source_files_chirho,
+        &mut source_map_chirho,
+    )?;
 
     Ok(CabalCompileResultChirho {
         package_chirho,
         build_plan_chirho,
-        module_results_chirho,
+        module_results_chirho: project_compile_result_chirho.module_results_chirho,
+        compilation_order_chirho: project_compile_result_chirho.compilation_order_chirho,
+        warnings_chirho: project_compile_result_chirho.warnings_chirho,
+    })
+}
+
+pub fn build_cabal_project_chirho(
+    cabal_path_chirho: impl AsRef<Path>,
+    index_chirho: &haskelujah_package_chirho::PackageIndexChirho,
+) -> Result<CabalBuildResultChirho, String> {
+    use haskelujah_package_chirho::{parse_cabal_chirho, resolve_deps_chirho};
+    use std::collections::BTreeSet;
+
+    let cabal_content_chirho =
+        std::fs::read_to_string(cabal_path_chirho.as_ref()).map_err(|e_chirho| {
+            format!(
+                "cannot read {}: {}",
+                cabal_path_chirho.as_ref().display(),
+                e_chirho
+            )
+        })?;
+    let package_chirho = parse_cabal_chirho(&cabal_content_chirho);
+
+    let all_deps_chirho = collect_package_deps_chirho(&package_chirho);
+    let mut builtins_chirho = BTreeSet::new();
+    builtins_chirho.insert("base".to_string());
+    builtins_chirho.insert("ghc-prim".to_string());
+    builtins_chirho.insert("ghc-bignum".to_string());
+    builtins_chirho.insert("rts".to_string());
+    let build_plan_chirho =
+        resolve_deps_chirho(&all_deps_chirho, index_chirho, &builtins_chirho)
+            .map_err(|e_chirho| format!("dependency resolution failed: {}", e_chirho))?;
+
+    let project_dir_chirho = cabal_path_chirho
+        .as_ref()
+        .parent()
+        .unwrap_or_else(|| Path::new("."));
+
+    let mut executables_chirho = Vec::new();
+    for executable_chirho in &package_chirho.executables_chirho {
+        let target_modules_chirho =
+            discover_executable_modules_chirho(&package_chirho, executable_chirho, project_dir_chirho);
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let project_compile_result_chirho = compile_module_files_in_dependency_order_chirho(
+            &target_modules_chirho,
+            &mut source_map_chirho,
+        )?;
+        let merged_core_chirho =
+            merge_compile_results_core_chirho(&project_compile_result_chirho.module_results_chirho)?;
+        let llvm_ir_chirho = compile_core_to_llvm_executable_chirho(&merged_core_chirho);
+        executables_chirho.push(CabalExecutableBuildResultChirho {
+            name_chirho: executable_chirho.name_chirho.clone(),
+            llvm_ir_chirho,
+            compilation_order_chirho: project_compile_result_chirho.compilation_order_chirho,
+            warnings_chirho: project_compile_result_chirho.warnings_chirho,
+        });
+    }
+
+    Ok(CabalBuildResultChirho {
+        package_chirho,
+        build_plan_chirho,
+        executables_chirho,
     })
 }
 
@@ -1793,9 +1853,13 @@ fn collect_package_deps_chirho(
 ) -> Vec<haskelujah_package_chirho::DependencyChirho> {
     let mut deps_chirho = Vec::new();
     let mut seen_chirho = std::collections::HashSet::new();
+    let package_name_chirho = &package_chirho.name_chirho;
 
     if let Some(lib_chirho) = &package_chirho.library_chirho {
         for dep_chirho in &lib_chirho.build_info_chirho.build_depends_chirho {
+            if dep_chirho.package_chirho == *package_name_chirho {
+                continue;
+            }
             if seen_chirho.insert(dep_chirho.package_chirho.clone()) {
                 deps_chirho.push(dep_chirho.clone());
             }
@@ -1803,6 +1867,9 @@ fn collect_package_deps_chirho(
     }
     for exe_chirho in &package_chirho.executables_chirho {
         for dep_chirho in &exe_chirho.build_info_chirho.build_depends_chirho {
+            if dep_chirho.package_chirho == *package_name_chirho {
+                continue;
+            }
             if seen_chirho.insert(dep_chirho.package_chirho.clone()) {
                 deps_chirho.push(dep_chirho.clone());
             }
@@ -1810,6 +1877,9 @@ fn collect_package_deps_chirho(
     }
     for ts_chirho in &package_chirho.test_suites_chirho {
         for dep_chirho in &ts_chirho.build_info_chirho.build_depends_chirho {
+            if dep_chirho.package_chirho == *package_name_chirho {
+                continue;
+            }
             if seen_chirho.insert(dep_chirho.package_chirho.clone()) {
                 deps_chirho.push(dep_chirho.clone());
             }
@@ -1817,6 +1887,420 @@ fn collect_package_deps_chirho(
     }
 
     deps_chirho
+}
+
+fn discover_executable_modules_chirho(
+    package_chirho: &haskelujah_package_chirho::PackageDescChirho,
+    executable_chirho: &haskelujah_package_chirho::ExecutableChirho,
+    project_dir_chirho: &Path,
+) -> Vec<(String, PathBuf)> {
+    let mut target_package_chirho = package_chirho.clone();
+    target_package_chirho.executables_chirho = vec![executable_chirho.clone()];
+    target_package_chirho.test_suites_chirho.clear();
+    target_package_chirho.benchmarks_chirho.clear();
+    discover_modules_chirho(&target_package_chirho, project_dir_chirho)
+}
+
+fn compile_module_files_in_dependency_order_chirho(
+    module_files_chirho: &[(String, PathBuf)],
+    source_map_chirho: &mut SourceMapChirho,
+) -> Result<ProjectCompileResultChirho, String> {
+    let mut module_sources_chirho: Vec<(String, String, String)> = Vec::new();
+    for (module_name_chirho, path_chirho) in module_files_chirho {
+        let source_chirho = std::fs::read_to_string(path_chirho).map_err(|e_chirho| {
+            format!(
+                "cannot read module {} at {}: {}",
+                module_name_chirho,
+                path_chirho.display(),
+                e_chirho
+            )
+        })?;
+        module_sources_chirho.push((
+            module_name_chirho.clone(),
+            path_chirho.to_string_lossy().to_string(),
+            source_chirho,
+        ));
+    }
+    compile_module_sources_in_dependency_order_chirho(module_sources_chirho, source_map_chirho)
+}
+
+fn compile_module_sources_in_dependency_order_chirho(
+    module_sources_chirho: Vec<(String, String, String)>,
+    source_map_chirho: &mut SourceMapChirho,
+) -> Result<ProjectCompileResultChirho, String> {
+    if module_sources_chirho.is_empty() {
+        return Ok(ProjectCompileResultChirho {
+            module_results_chirho: Vec::new(),
+            compilation_order_chirho: Vec::new(),
+            warnings_chirho: Vec::new(),
+        });
+    }
+
+    let mut dep_graph_chirho = haskelujah_incremental_chirho::DepGraphChirho::new_chirho();
+    let known_modules_chirho: std::collections::HashSet<String> = module_sources_chirho
+        .iter()
+        .map(|(name_chirho, _, _)| name_chirho.clone())
+        .collect();
+
+    for (module_name_chirho, _, source_chirho) in &module_sources_chirho {
+        let fp_chirho =
+            haskelujah_incremental_chirho::FingerprintChirho::from_str_chirho(source_chirho);
+        dep_graph_chirho.add_module_chirho(module_name_chirho, fp_chirho);
+        for imported_chirho in extract_imports_chirho(source_chirho) {
+            if known_modules_chirho.contains(&imported_chirho) {
+                dep_graph_chirho.add_dep_chirho(module_name_chirho, &imported_chirho);
+            }
+        }
+    }
+
+    let sccs_chirho = dep_graph_chirho.topo_sort_sccs_chirho();
+    let mut results_chirho: Vec<CompileResultChirho> = Vec::new();
+    let mut ifaces_chirho: Vec<ModuleIfaceChirho> =
+        haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let mut all_warnings_chirho: Vec<String> = Vec::new();
+    let mut imported_types_chirho: std::collections::HashMap<
+        String,
+        haskelujah_typing_chirho::ty_chirho::SchemeChirho,
+    > = std::collections::HashMap::new();
+    let mut order_chirho: Vec<String> = Vec::new();
+
+    for scc_chirho in &sccs_chirho {
+        for module_name_chirho in scc_chirho {
+            let (_, file_name_chirho, source_chirho) = module_sources_chirho
+                .iter()
+                .find(|(name_chirho, _, _)| name_chirho == module_name_chirho)
+                .ok_or_else(|| format!("Module {} not found in sources", module_name_chirho))?;
+
+            let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+                source_map_chirho,
+                file_name_chirho,
+                source_chirho,
+            );
+            let file_id_chirho = source_file_chirho.file_id_chirho();
+
+            let frontend_result_chirho = run_frontend_chirho(
+                source_chirho,
+                file_id_chirho,
+                &ifaces_chirho,
+                &imported_types_chirho,
+            )
+            .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
+
+            let FrontendResultChirho {
+                module_chirho,
+                infer_result_chirho,
+                warnings_chirho,
+            } = frontend_result_chirho;
+
+            all_warnings_chirho.extend(warnings_chirho);
+
+            let iface_chirho =
+                build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+            for (name_chirho, _val_chirho) in &iface_chirho.exports_chirho.values_chirho {
+                if let Some(scheme_chirho) =
+                    infer_result_chirho.env_chirho.lookup_chirho(name_chirho)
+                {
+                    imported_types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
+                }
+            }
+            ifaces_chirho.push(iface_chirho);
+
+            let compile_result_chirho = compile_backend_chirho(module_chirho, infer_result_chirho)
+                .map_err(|e_chirho| format!("Backend error for {}: {}", module_name_chirho, e_chirho))?;
+
+            results_chirho.push(compile_result_chirho);
+            order_chirho.push(module_name_chirho.clone());
+        }
+    }
+
+    Ok(ProjectCompileResultChirho {
+        module_results_chirho: results_chirho,
+        compilation_order_chirho: order_chirho,
+        warnings_chirho: all_warnings_chirho,
+    })
+}
+
+fn merge_compile_results_core_chirho(
+    results_chirho: &[CompileResultChirho],
+) -> Result<CoreModuleChirho, String> {
+    use haskelujah_core_chirho::expr_chirho::{CoreExprChirho, CoreIdChirho};
+
+    if results_chirho.is_empty() {
+        return Err("no compiled modules to merge".to_string());
+    }
+
+    fn offset_id_chirho(id_chirho: CoreIdChirho, off_chirho: u32) -> CoreIdChirho {
+        CoreIdChirho(id_chirho.0 + off_chirho)
+    }
+
+    fn offset_binder_chirho(
+        binder_chirho: &mut haskelujah_core_chirho::expr_chirho::BinderChirho,
+        off_chirho: u32,
+    ) {
+        binder_chirho.id_chirho = offset_id_chirho(binder_chirho.id_chirho, off_chirho);
+    }
+
+    fn offset_expr_chirho(expr_chirho: &mut CoreExprChirho, off_chirho: u32) {
+        match expr_chirho {
+            CoreExprChirho::VarChirho(id_chirho) => {
+                *id_chirho = offset_id_chirho(*id_chirho, off_chirho);
+            }
+            CoreExprChirho::LitChirho(_) => {}
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                offset_expr_chirho(fun_chirho, off_chirho);
+                offset_expr_chirho(arg_chirho, off_chirho);
+            }
+            CoreExprChirho::LamChirho {
+                binder_chirho,
+                body_chirho,
+            } => {
+                offset_binder_chirho(binder_chirho, off_chirho);
+                offset_expr_chirho(body_chirho, off_chirho);
+            }
+            CoreExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
+                for (binder_chirho, rhs_chirho) in binds_chirho {
+                    offset_binder_chirho(binder_chirho, off_chirho);
+                    offset_expr_chirho(rhs_chirho, off_chirho);
+                }
+                offset_expr_chirho(body_chirho, off_chirho);
+            }
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                bind_chirho,
+                alts_chirho,
+                ..
+            } => {
+                offset_binder_chirho(bind_chirho, off_chirho);
+                offset_expr_chirho(scrutinee_chirho, off_chirho);
+                for alt_chirho in alts_chirho {
+                    for binder_chirho in &mut alt_chirho.binders_chirho {
+                        offset_binder_chirho(binder_chirho, off_chirho);
+                    }
+                    offset_expr_chirho(&mut alt_chirho.rhs_chirho, off_chirho);
+                }
+            }
+            CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+                offset_expr_chirho(body_chirho, off_chirho);
+            }
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => {
+                offset_expr_chirho(inner_chirho, off_chirho);
+            }
+            CoreExprChirho::PrimOpChirho { args_chirho, .. }
+            | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+                for arg_chirho in args_chirho {
+                    offset_expr_chirho(arg_chirho, off_chirho);
+                }
+            }
+        }
+    }
+
+    fn remap_expr_chirho(
+        expr_chirho: &mut CoreExprChirho,
+        remap_chirho: &std::collections::HashMap<CoreIdChirho, CoreIdChirho>,
+    ) {
+        match expr_chirho {
+            CoreExprChirho::VarChirho(id_chirho) => {
+                if let Some(&new_id_chirho) = remap_chirho.get(id_chirho) {
+                    *id_chirho = new_id_chirho;
+                }
+            }
+            CoreExprChirho::LitChirho(_) => {}
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                remap_expr_chirho(fun_chirho, remap_chirho);
+                remap_expr_chirho(arg_chirho, remap_chirho);
+            }
+            CoreExprChirho::LamChirho { body_chirho, .. } => {
+                remap_expr_chirho(body_chirho, remap_chirho);
+            }
+            CoreExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
+                for (_binder_chirho, rhs_chirho) in binds_chirho {
+                    remap_expr_chirho(rhs_chirho, remap_chirho);
+                }
+                remap_expr_chirho(body_chirho, remap_chirho);
+            }
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                alts_chirho,
+                ..
+            } => {
+                remap_expr_chirho(scrutinee_chirho, remap_chirho);
+                for alt_chirho in alts_chirho {
+                    remap_expr_chirho(&mut alt_chirho.rhs_chirho, remap_chirho);
+                }
+            }
+            CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+                remap_expr_chirho(body_chirho, remap_chirho);
+            }
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => {
+                remap_expr_chirho(inner_chirho, remap_chirho);
+            }
+            CoreExprChirho::PrimOpChirho { args_chirho, .. }
+            | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+                for arg_chirho in args_chirho {
+                    remap_expr_chirho(arg_chirho, remap_chirho);
+                }
+            }
+        }
+    }
+
+    fn collect_binder_ids_chirho(
+        expr_chirho: &CoreExprChirho,
+        ids_chirho: &mut std::collections::HashSet<CoreIdChirho>,
+    ) {
+        match expr_chirho {
+            CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => {}
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                collect_binder_ids_chirho(fun_chirho, ids_chirho);
+                collect_binder_ids_chirho(arg_chirho, ids_chirho);
+            }
+            CoreExprChirho::LamChirho {
+                binder_chirho,
+                body_chirho,
+            } => {
+                ids_chirho.insert(binder_chirho.id_chirho);
+                collect_binder_ids_chirho(body_chirho, ids_chirho);
+            }
+            CoreExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
+                for (binder_chirho, rhs_chirho) in binds_chirho {
+                    ids_chirho.insert(binder_chirho.id_chirho);
+                    collect_binder_ids_chirho(rhs_chirho, ids_chirho);
+                }
+                collect_binder_ids_chirho(body_chirho, ids_chirho);
+            }
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                bind_chirho,
+                alts_chirho,
+                ..
+            } => {
+                ids_chirho.insert(bind_chirho.id_chirho);
+                collect_binder_ids_chirho(scrutinee_chirho, ids_chirho);
+                for alt_chirho in alts_chirho {
+                    for binder_chirho in &alt_chirho.binders_chirho {
+                        ids_chirho.insert(binder_chirho.id_chirho);
+                    }
+                    collect_binder_ids_chirho(&alt_chirho.rhs_chirho, ids_chirho);
+                }
+            }
+            CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+                collect_binder_ids_chirho(body_chirho, ids_chirho);
+            }
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => {
+                collect_binder_ids_chirho(inner_chirho, ids_chirho);
+            }
+            CoreExprChirho::PrimOpChirho { args_chirho, .. }
+            | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+                for arg_chirho in args_chirho {
+                    collect_binder_ids_chirho(arg_chirho, ids_chirho);
+                }
+            }
+        }
+    }
+
+    let mut merged_bindings_chirho = Vec::new();
+    let mut merged_names_chirho: std::collections::HashMap<CoreIdChirho, String> =
+        std::collections::HashMap::new();
+    let mut id_offset_chirho: u32 = 0;
+
+    for result_chirho in results_chirho {
+        let mut bindings_chirho = result_chirho.core_chirho.bindings_chirho.clone();
+        if id_offset_chirho > 0 {
+            for binding_chirho in &mut bindings_chirho {
+                offset_binder_chirho(&mut binding_chirho.binder_chirho, id_offset_chirho);
+                offset_expr_chirho(&mut binding_chirho.rhs_chirho, id_offset_chirho);
+            }
+        }
+        for (id_chirho, name_chirho) in &result_chirho.core_chirho.names_chirho {
+            merged_names_chirho.insert(
+                offset_id_chirho(*id_chirho, id_offset_chirho),
+                name_chirho.clone(),
+            );
+        }
+        merged_bindings_chirho.extend(bindings_chirho);
+        let max_id_chirho = result_chirho
+            .core_chirho
+            .names_chirho
+            .keys()
+            .map(|id_chirho| id_chirho.0)
+            .max()
+            .unwrap_or(0);
+        id_offset_chirho += max_id_chirho + 1;
+    }
+
+    let mut def_name_to_id_chirho: std::collections::HashMap<String, CoreIdChirho> =
+        std::collections::HashMap::new();
+    for binding_chirho in &merged_bindings_chirho {
+        def_name_to_id_chirho
+            .entry(binding_chirho.binder_chirho.name_chirho.clone())
+            .or_insert(binding_chirho.binder_chirho.id_chirho);
+    }
+
+    let mut all_binder_ids_chirho: std::collections::HashSet<CoreIdChirho> =
+        std::collections::HashSet::new();
+    for binding_chirho in &merged_bindings_chirho {
+        all_binder_ids_chirho.insert(binding_chirho.binder_chirho.id_chirho);
+        collect_binder_ids_chirho(&binding_chirho.rhs_chirho, &mut all_binder_ids_chirho);
+    }
+
+    let mut remap_chirho: std::collections::HashMap<CoreIdChirho, CoreIdChirho> =
+        std::collections::HashMap::new();
+    for (id_chirho, name_chirho) in &merged_names_chirho {
+        if all_binder_ids_chirho.contains(id_chirho) {
+            continue;
+        }
+        if let Some(&def_id_chirho) = def_name_to_id_chirho.get(name_chirho) {
+            if def_id_chirho != *id_chirho {
+                remap_chirho.insert(*id_chirho, def_id_chirho);
+            }
+        }
+    }
+
+    if !remap_chirho.is_empty() {
+        for binding_chirho in &mut merged_bindings_chirho {
+            remap_expr_chirho(&mut binding_chirho.rhs_chirho, &remap_chirho);
+        }
+    }
+
+    Ok(CoreModuleChirho {
+        name_chirho: results_chirho
+            .last()
+            .map(|result_chirho| result_chirho.module_chirho.name_chirho.text_chirho().to_string())
+            .unwrap_or_else(|| "Main".to_string()),
+        bindings_chirho: merged_bindings_chirho,
+        names_chirho: merged_names_chirho,
+        specialize_pragmas_chirho: std::collections::HashMap::new(),
+        foreign_exports_chirho: vec![],
+    })
 }
 
 /// Discover Haskell module files from a package description.
