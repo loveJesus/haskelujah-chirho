@@ -492,8 +492,7 @@ impl LlvmCodegenChirho {
     fn compile_lit_chirho(&self, lit_chirho: &CoreLitChirho) -> String {
         match lit_chirho {
             CoreLitChirho::IntChirho(v_chirho) => format!("{v_chirho}"),
-            // TODO(codex-audit): lower to real LLVM floating-point constants.
-            CoreLitChirho::FloatChirho(_) => "0".to_string(), // TODO: float support
+            CoreLitChirho::FloatChirho(v_chirho) => encode_float_literal_chirho(*v_chirho),
             CoreLitChirho::CharChirho(c_chirho) => format!("{}", *c_chirho as i64),
             // TODO(codex-audit): lower to global string data instead of `0`.
             CoreLitChirho::StringChirho(_) => "0".to_string(), // TODO: string support
@@ -725,6 +724,12 @@ fn flatten_app_chirho(expr_chirho: &CoreExprChirho) -> (&CoreExprChirho, Vec<&Co
     (current_chirho, args_chirho)
 }
 
+fn encode_float_literal_chirho(value_chirho: f64) -> String {
+    let bits_chirho = value_chirho.to_bits();
+    let signed_bits_chirho = i64::from_ne_bytes(bits_chirho.to_ne_bytes());
+    signed_bits_chirho.to_string()
+}
+
 /// Get a numeric tag for a data constructor name.
 fn constructor_tag_chirho(name_chirho: &str) -> i64 {
     match name_chirho {
@@ -910,6 +915,26 @@ mod tests_chirho {
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
         assert!(ir_chirho.contains("define i64 @haskelujah_main()"));
         assert!(ir_chirho.contains("; let x = 42"));
+    }
+
+    #[test]
+    fn compile_float_literal_as_i64_bits_chirho() {
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "FloatTest".to_string(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: dummy_binder_chirho("main", 0),
+                rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(3.5)),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        assert!(ir_chirho.contains("ret i64 4615063718147915776"));
+        assert!(!ir_chirho.contains("ret i64 0"));
     }
 
     #[test]
