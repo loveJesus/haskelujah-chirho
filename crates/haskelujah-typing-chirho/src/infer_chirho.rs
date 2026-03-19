@@ -1347,16 +1347,25 @@ impl InferCtxChirho {
                             if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
                                 let sig_scheme_chirho =
                                     self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                                let sig_ty_raw_chirho =
-                                    self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
-                                let sig_ty_chirho =
-                                    self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
+                                let sig_full_chirho = if sig_scheme_chirho.vars_chirho.is_empty() {
+                                    sig_scheme_chirho.ty_chirho.clone()
+                                } else {
+                                    TyChirho::ForallChirho {
+                                        vars_chirho: sig_scheme_chirho.vars_chirho.clone(),
+                                        body_chirho: Box::new(sig_scheme_chirho.ty_chirho.clone()),
+                                    }
+                                };
+                                let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(
+                                    &self.expand_type_synonyms_chirho(&sig_full_chirho),
+                                );
                                 let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
-                                let inferred_sub_chirho =
-                                    self.reduce_type_families_in_ty_chirho(&inferred_sub_chirho);
-                                match self.unify_normalized_chirho(
+                                let inferred_sub_chirho = self.reduce_type_families_in_ty_chirho(
+                                    &self.expand_type_synonyms_chirho(&inferred_sub_chirho),
+                                );
+                                match crate::unify_chirho::subsume_chirho(
                                     &inferred_sub_chirho,
                                     &sig_ty_chirho,
+                                    &mut self.next_var_chirho,
                                     *span_chirho,
                                 ) {
                                     Ok(sig_s_chirho) => {
@@ -1564,11 +1573,27 @@ impl InferCtxChirho {
                                 // Check against where-clause type signature if present
                                 if let Some(sig_ast_chirho) = wb_sigs_chirho.get(&name_str_chirho) {
                                     let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                                    let sig_ty_raw_chirho = self.instantiate_chirho(&sig_scheme_chirho, *wb_span_chirho);
-                                    let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
+                                    let sig_full_chirho = if sig_scheme_chirho.vars_chirho.is_empty() {
+                                        sig_scheme_chirho.ty_chirho.clone()
+                                    } else {
+                                        TyChirho::ForallChirho {
+                                            vars_chirho: sig_scheme_chirho.vars_chirho.clone(),
+                                            body_chirho: Box::new(sig_scheme_chirho.ty_chirho.clone()),
+                                        }
+                                    };
+                                    let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(
+                                        &self.expand_type_synonyms_chirho(&sig_full_chirho),
+                                    );
                                     let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&wt_chirho);
-                                    let inferred_sub_chirho = self.reduce_type_families_in_ty_chirho(&inferred_sub_chirho);
-                                    match self.unify_normalized_chirho(&inferred_sub_chirho, &sig_ty_chirho, *wb_span_chirho) {
+                                    let inferred_sub_chirho = self.reduce_type_families_in_ty_chirho(
+                                        &self.expand_type_synonyms_chirho(&inferred_sub_chirho),
+                                    );
+                                    match crate::unify_chirho::subsume_chirho(
+                                        &inferred_sub_chirho,
+                                        &sig_ty_chirho,
+                                        &mut self.next_var_chirho,
+                                        *wb_span_chirho,
+                                    ) {
                                         Ok(sig_s_chirho) => {
                                             subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
                                             self.apply_subst_all_chirho(&sig_s_chirho);
