@@ -87,6 +87,16 @@ fn main_chirho() -> ExitCode {
         return ExitCode::from(2);
     };
 
+    // Handle --version and --help as commands
+    if command_chirho == "--version" || command_chirho == "-V" {
+        eprintln!("haskelujah-chirho 0.1.0 (GHC compat: 858/938, 91.5%)");
+        return ExitCode::SUCCESS;
+    }
+    if command_chirho == "--help" || command_chirho == "-h" || command_chirho == "help" {
+        print_usage_chirho(program_name_chirho);
+        return ExitCode::SUCCESS;
+    }
+
     match command_chirho {
         "check" | "plan" | "script" => {
             let Some(path_chirho) = path_chirho else {
@@ -780,21 +790,30 @@ fn install_command_chirho(
 }
 
 fn print_usage_chirho(program_name_chirho: &str) {
+    eprintln!("Haskelujah Chirho — A Haskell compiler in Rust");
+    eprintln!("GHC compatibility: 858/938 (91.5%)");
+    eprintln!();
     eprintln!("usage: {program_name_chirho} <command> [args] [options]");
     eprintln!();
     eprintln!("commands:");
+    eprintln!("  init     [name]                 create a new project with .cabal scaffold");
+    eprintln!("  build    [dir]                  compile a Cabal project to native executable");
+    eprintln!("  run      <file.hs>              compile via LLVM and execute (STG fallback)");
     eprintln!("  check    <file.hs>              type-check without code generation");
-    eprintln!("  run      <file.hs>              evaluate via the STG interpreter");
-    eprintln!("  compile  <file.hs>              compile (with -o: produce native/.wasm)");
-    eprintln!("  build    [dir]                  compile a multi-module project");
+    eprintln!("  compile  <file.hs> -o <exe>     compile to native executable via LLVM");
     eprintln!("  install  <package> <version>    fetch from Hackage, compile, register");
     eprintln!("  repl                            interactive REPL");
     eprintln!();
     eprintln!("flags:");
-    eprintln!("  -o, --output <path>  output native executable or .wasm file (compile only)");
-    eprintln!("  --wasm               emit WebAssembly instead of native (with -o)");
-    eprintln!("  --cranelift          emit native code via Cranelift (with -o)");
+    eprintln!("  -o, --output <path>  output native executable or .wasm file");
+    eprintln!("  --wasm               emit WebAssembly instead of native");
+    eprintln!("  --cranelift          emit native code via Cranelift");
     eprintln!("  --dump-core          print Core IR to stderr");
-    eprintln!("  --dump-stg           print STG code table to stderr (run only)");
+    eprintln!("  --dump-stg           print STG code table to stderr");
     eprintln!("  --dump-llvm          print LLVM IR to stderr");
+    eprintln!();
+    eprintln!("example:");
+    eprintln!("  {program_name_chirho} init my-project");
+    eprintln!("  {program_name_chirho} build my-project");
+    eprintln!("  ./my-project/dist-chirho/build/my-project");
 }
