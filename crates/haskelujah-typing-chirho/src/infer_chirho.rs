@@ -1755,7 +1755,21 @@ impl InferCtxChirho {
                             last_ty_chirho = TyChirho::unit_chirho();
                         }
                         StmtChirho::LetChirho { binds_chirho, .. } => {
-                            // let in do: introduce local bindings
+                            // let in do: introduce local bindings (letrec)
+                            // Pre-bind all names with fresh vars for recursion
+                            for bind_chirho in binds_chirho {
+                                if let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                                    name_chirho, ..
+                                } = bind_chirho
+                                {
+                                    let fresh_chirho = self.fresh_var_chirho();
+                                    self.env_chirho.bind_chirho(
+                                        name_chirho.text_chirho().to_string(),
+                                        SchemeChirho::mono_chirho(fresh_chirho),
+                                    );
+                                }
+                            }
+                            // Now infer and generalize
                             for bind_chirho in binds_chirho {
                                 match bind_chirho {
                                     haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
@@ -1767,7 +1781,9 @@ impl InferCtxChirho {
                                             .infer_matches_chirho(matches_chirho, *bind_span_chirho);
                                         subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                                         self.apply_subst_all_chirho(&s_chirho);
-                                        let gen_chirho = self.generalize_chirho(&ty_chirho);
+                                        self.env_chirho.remove_chirho(&name_chirho.text_chirho().to_string());
+                                        let ty_sub_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
+                                        let gen_chirho = self.generalize_chirho(&ty_sub_chirho);
                                         self.env_chirho.bind_chirho(
                                             name_chirho.text_chirho().to_string(),
                                             gen_chirho,
