@@ -496,6 +496,8 @@ fn build_command_chirho(
         return ExitCode::from(1);
     }
 
+    let build_start_chirho = std::time::Instant::now();
+
     // Check for .cabal file
     let cabal_file_chirho = find_cabal_file_chirho(project_path_chirho);
 
@@ -532,7 +534,7 @@ fn build_command_chirho(
                             for warning_chirho in &result_chirho.warnings_chirho {
                                 eprintln!("warning: {}", warning_chirho);
                             }
-                            eprintln!("Build successful (no executable targets).");
+                            eprintln!("Build successful (no executable targets) in {:.2}s.", build_start_chirho.elapsed().as_secs_f64());
                             ExitCode::SUCCESS
                         }
                         Err(error_chirho) => {
@@ -563,7 +565,7 @@ fn build_command_chirho(
                             eprintln!("warning: {}", warning_chirho);
                         }
                     }
-                    eprintln!("Build successful.");
+                    eprintln!("Build successful in {:.2}s.", build_start_chirho.elapsed().as_secs_f64());
                     ExitCode::SUCCESS
                 }
             }
@@ -585,7 +587,7 @@ fn build_command_chirho(
                 for warning_chirho in &result_chirho.warnings_chirho {
                     eprintln!("warning: {}", warning_chirho);
                 }
-                eprintln!("Build successful.");
+                eprintln!("Build successful in {:.2}s.", build_start_chirho.elapsed().as_secs_f64());
                 ExitCode::SUCCESS
             }
             Err(error_chirho) => {
