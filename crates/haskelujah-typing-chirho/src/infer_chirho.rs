@@ -2032,8 +2032,21 @@ impl InferCtxChirho {
 
             // Record update: expr { f1 = e1, ... }
             // For now, infer the expression type and pass through
-            ExprChirho::RecordUpdateChirho { expr_chirho, .. } => {
-                self.infer_expr_chirho(expr_chirho)
+            ExprChirho::RecordUpdateChirho {
+                expr_chirho,
+                fields_chirho,
+                ..
+            } => {
+                let (s1_chirho, base_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                // Type-check each field update value
+                let mut combined_chirho = s1_chirho;
+                for field_chirho in fields_chirho {
+                    let (fs_chirho, _field_ty_chirho) =
+                        self.infer_expr_chirho(&field_chirho.value_chirho);
+                    combined_chirho = fs_chirho.compose_chirho(&combined_chirho);
+                    self.apply_subst_all_chirho(&fs_chirho);
+                }
+                (combined_chirho, base_ty_chirho)
             }
 
             // TypeApplications: infer the inner expression, then unify
