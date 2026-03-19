@@ -112,6 +112,9 @@ impl LlvmCodegenChirho {
             "declare i64 @haskelujah_negate_chirho(i64)"
         )
         .unwrap();
+        writeln!(self.output_chirho, "declare i32 @puts(ptr)").unwrap();
+        writeln!(self.output_chirho, "declare i32 @printf(ptr, ...)").unwrap();
+        writeln!(self.output_chirho, "declare i32 @putchar(i32)").unwrap();
         writeln!(self.output_chirho, "declare ptr @malloc(i64)").unwrap();
         writeln!(self.output_chirho).unwrap();
 
@@ -195,6 +198,16 @@ impl LlvmCodegenChirho {
             .collect::<Vec<_>>()
             .join(", ");
 
+        if self.compile_builtin_binding_chirho(
+            &binding_chirho.binder_chirho.name_chirho,
+            &fn_name_chirho,
+            &params_chirho,
+            &params_str_chirho,
+        ) {
+            writeln!(self.output_chirho).unwrap();
+            return;
+        }
+
         writeln!(
             self.output_chirho,
             "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
@@ -211,6 +224,45 @@ impl LlvmCodegenChirho {
         writeln!(self.output_chirho, "  ret i64 {result_chirho}").unwrap();
         writeln!(self.output_chirho, "}}").unwrap();
         writeln!(self.output_chirho).unwrap();
+    }
+
+    fn compile_builtin_binding_chirho(
+        &mut self,
+        binding_name_chirho: &str,
+        fn_name_chirho: &str,
+        params_chirho: &[CoreIdChirho],
+        params_str_chirho: &str,
+    ) -> bool {
+        match binding_name_chirho {
+            "putStrLn" | "putStrLn#" => {
+                let Some(arg_id_chirho) = params_chirho.first() else {
+                    return false;
+                };
+                writeln!(
+                    self.output_chirho,
+                    "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "entry:").unwrap();
+                self.next_tmp_chirho = 0;
+                let arg_ptr_tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {arg_ptr_tmp_chirho} = inttoptr i64 %v{} to ptr",
+                    arg_id_chirho.0
+                )
+                .unwrap();
+                writeln!(
+                    self.output_chirho,
+                    "  call i32 @puts(ptr {arg_ptr_tmp_chirho})"
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "  ret i64 0").unwrap();
+                writeln!(self.output_chirho, "}}").unwrap();
+                true
+            }
+            _ => false,
+        }
     }
 
     /// Compile a Core expression, returning the LLVM value name holding the result.
@@ -972,7 +1024,8 @@ pub fn compile_core_to_llvm_chirho(module_chirho: &CoreModuleChirho) -> String {
 }
 
 /// Compile a Core module to LLVM IR text with a C-compatible `main()` entry
-/// point that calls `haskelujah_main()` and prints the i64 result via `printf`.
+/// point. Pure programs print the resulting `i64` via `printf`, while simple
+/// Prelude IO programs run `haskelujah_main()` for side effects and return `0`.
 /// The resulting IR can be compiled with `clang -o output file.ll` to produce
 /// a native executable.
 ///
@@ -985,6 +1038,37 @@ pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) 
 
     let mut codegen_chirho = LlvmCodegenChirho::new_chirho();
     let mut ir_chirho = codegen_chirho.compile_module_chirho(&filtered_module_chirho);
+    let has_builtin_io_chirho =
+        filtered_module_chirho
+            .bindings_chirho
+            .iter()
+            .any(|binding_chirho| {
+                matches!(
+                    binding_chirho.binder_chirho.name_chirho.as_str(),
+                    "putStrLn"
+                        | "putStrLn#"
+                        | "putStr"
+                        | "putStr#"
+                        | "putChar"
+                        | "putChar#"
+                        | "print"
+                        | "interact"
+                        | "getLine"
+                        | "getLine#"
+                        | "getChar"
+                        | "getContents"
+                        | "getContents#"
+                        | "readFile"
+                        | "writeFile"
+                        | "appendFile"
+                        | "return"
+                        | "pure"
+                        | ">>="
+                        | "bindIO#"
+                        | ">>"
+                        | "thenIO#"
+                )
+            });
 
     // Check if there's a binding named "main" — that's the Haskell entry point
     let has_main_chirho = module_chirho
@@ -993,27 +1077,32 @@ pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) 
         .any(|b_chirho| b_chirho.binder_chirho.name_chirho == "main");
 
     if has_main_chirho {
-        // Add printf/puts declarations and a C main() entry point
+        // Add a C main() entry point.
         writeln!(ir_chirho).unwrap();
         writeln!(ir_chirho, "; ── RTS entry point ──").unwrap();
-        writeln!(
-            ir_chirho,
-            "@.fmt_int = private unnamed_addr constant [5 x i8] c\"%ld\\0A\\00\""
-        )
-        .unwrap();
-        writeln!(ir_chirho, "declare i32 @printf(ptr, ...)").unwrap();
-        writeln!(ir_chirho, "declare i32 @puts(ptr)").unwrap();
+        if !has_builtin_io_chirho {
+            writeln!(
+                ir_chirho,
+                "@.fmt_int = private unnamed_addr constant [5 x i8] c\"%ld\\0A\\00\""
+            )
+            .unwrap();
+        }
         writeln!(ir_chirho).unwrap();
         writeln!(ir_chirho, "define i32 @main() {{").unwrap();
         writeln!(ir_chirho, "entry:").unwrap();
-        writeln!(ir_chirho, "  %result = call i64 @haskelujah_main()").unwrap();
-        writeln!(
-            ir_chirho,
-            "  call i32 (ptr, ...) @printf(ptr @.fmt_int, i64 %result)"
-        )
-        .unwrap();
-        writeln!(ir_chirho, "  %exitcode = trunc i64 %result to i32").unwrap();
-        writeln!(ir_chirho, "  ret i32 %exitcode").unwrap();
+        if has_builtin_io_chirho {
+            writeln!(ir_chirho, "  call i64 @haskelujah_main()").unwrap();
+            writeln!(ir_chirho, "  ret i32 0").unwrap();
+        } else {
+            writeln!(ir_chirho, "  %result = call i64 @haskelujah_main()").unwrap();
+            writeln!(
+                ir_chirho,
+                "  call i32 (ptr, ...) @printf(ptr @.fmt_int, i64 %result)"
+            )
+            .unwrap();
+            writeln!(ir_chirho, "  %exitcode = trunc i64 %result to i32").unwrap();
+            writeln!(ir_chirho, "  ret i32 %exitcode").unwrap();
+        }
         writeln!(ir_chirho, "}}").unwrap();
     }
 
@@ -1357,6 +1446,50 @@ mod tests_chirho {
         assert!(ir_chirho.contains("add i64 2, 3"));
         assert!(ir_chirho.contains("define i32 @main()"));
         assert!(ir_chirho.contains("call i64 @haskelujah_main()"));
+    }
+
+    #[test]
+    fn compile_executable_put_str_ln_uses_libc_io_chirho() {
+        let put_str_ln_binder_chirho = dummy_binder_chirho("putStrLn", 1);
+        let arg_binder_chirho = dummy_binder_chirho("arg", 2);
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Main".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("main", 0),
+                    rhs_chirho: CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                            put_str_ln_binder_chirho.id_chirho,
+                        )),
+                        arg_chirho: Box::new(CoreExprChirho::LitChirho(
+                            CoreLitChirho::StringChirho("Hello from Haskelujah!".to_string()),
+                        )),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: put_str_ln_binder_chirho.clone(),
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: arg_binder_chirho,
+                        body_chirho: Box::new(int_lit_chirho(0)),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+        assert!(ir_chirho.contains("define i64 @haskelujah_putStrLn(i64 %v2)"));
+        assert!(ir_chirho.contains("call i32 @puts(ptr %t0)"));
+        assert!(ir_chirho.contains("call i64 @haskelujah_main()"));
+        assert!(ir_chirho.contains("ret i32 0"));
+        assert!(!ir_chirho.contains("@.fmt_int"));
+        assert!(!ir_chirho.contains("call i32 (ptr, ...) @printf(ptr @.fmt_int"));
     }
 
     #[test]

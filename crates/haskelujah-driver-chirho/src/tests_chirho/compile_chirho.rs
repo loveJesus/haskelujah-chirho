@@ -701,8 +701,9 @@ main = fib 10"#;
     // a native binary, execute it, and compare the exit code to the STG
     // interpreter result.
 
-    /// Helper: compile source to LLVM IR executable, link with clang, run, return exit code.
-    fn llvm_round_trip_chirho(src_chirho: &str) -> Option<i32> {
+    /// Helper: compile source to LLVM IR executable, link with clang, run,
+    /// and capture the exit code plus stdout.
+    fn llvm_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)> {
         let mut sm_chirho = SourceMapChirho::new_chirho();
         let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
 
@@ -730,7 +731,15 @@ main = fib 10"#;
             .output()
             .ok()?;
 
-        run_output_chirho.status.code()
+        let exit_code_chirho = run_output_chirho.status.code()?;
+        let stdout_chirho = String::from_utf8(run_output_chirho.stdout).ok()?;
+        Some((exit_code_chirho, stdout_chirho))
+    }
+
+    /// Helper: compile source to LLVM IR executable, link with clang, run, return exit code.
+    fn llvm_round_trip_chirho(src_chirho: &str) -> Option<i32> {
+        llvm_round_trip_output_chirho(src_chirho)
+            .map(|(exit_code_chirho, _stdout_chirho)| exit_code_chirho)
     }
 
     #[test]
@@ -787,6 +796,16 @@ main = fib 10"#;
                 code_chirho as i64, stg_val_chirho,
                 "LLVM native exit code should match STG interpreter result"
             );
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_put_str_ln_output_chirho() {
+        let src_chirho = "module Main where\nmain = putStrLn \"Hello from Haskelujah!\"";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "putStrLn executable should exit successfully");
+            assert_eq!(stdout_chirho, "Hello from Haskelujah!\n");
         }
     }
 
@@ -1011,4 +1030,3 @@ main = fib 10"#;
         ).expect("foreign export should not break evaluation");
         assert_eq!(val_chirho, haskelujah_runtime_chirho::ValueChirho::IntChirho(42));
     }
-
