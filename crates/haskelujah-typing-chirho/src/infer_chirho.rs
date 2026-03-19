@@ -1354,7 +1354,10 @@ impl InferCtxChirho {
                             // Remove pre-bound mono type before generalizing
                             // (see comment at where-clause site).
                             self.env_chirho.remove_chirho(&name_str_chirho);
-                            let gen_ty_chirho = self.generalize_chirho(&ty_chirho);
+                            // Apply current substitution before generalizing so
+                            // that constraints from sig checks are reflected.
+                            let ty_sub_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
+                            let gen_ty_chirho = self.generalize_chirho(&ty_sub_chirho);
                             self.env_chirho.bind_chirho(name_str_chirho, gen_ty_chirho);
                         }
                         haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
