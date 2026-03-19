@@ -359,15 +359,26 @@ impl MachineChirho {
             .collect()
     }
 
+    fn collect_roots_chirho(&self) -> Vec<HeapAddrChirho> {
+        let mut roots_chirho =
+            extract_roots_from_stack_chirho(self.stack_chirho.frames_chirho());
+        roots_chirho.extend(extract_roots_from_values_chirho(&self.arg_regs_chirho));
+        roots_chirho.extend(extract_roots_from_values_chirho(
+            &self.iorefs_chirho.values().cloned().collect::<Vec<_>>(),
+        ));
+        roots_chirho.extend(extract_roots_from_values_chirho(
+            &self.tvars_chirho.values().cloned().collect::<Vec<_>>(),
+        ));
+        roots_chirho
+    }
+
     /// Run garbage collection if the allocation threshold has been reached.
     /// Extracts roots from the stack and argument registers.
     fn maybe_gc_chirho(&mut self) {
         if !self.gc_state_chirho.notify_alloc_chirho() {
             return;
         }
-        let mut roots_chirho =
-            extract_roots_from_stack_chirho(self.stack_chirho.frames_chirho());
-        roots_chirho.extend(extract_roots_from_values_chirho(&self.arg_regs_chirho));
+        let roots_chirho = self.collect_roots_chirho();
         let stats_chirho =
             self.gc_state_chirho
                 .collect_chirho(&mut self.heap_chirho, &roots_chirho);
@@ -4569,5 +4580,59 @@ mod tests_chirho {
             ],
         }]);
         assert_eq!(result_chirho.unwrap(), ValueChirho::FloatChirho(42.0));
+    }
+
+    #[test]
+    fn maybe_gc_keeps_ioref_and_tvar_payloads_alive_chirho() {
+        let mut machine_chirho = MachineChirho::new_chirho(vec![]).with_gc_config_chirho(
+            GcConfigChirho {
+                alloc_threshold_chirho: 1,
+                min_heap_size_chirho: 0,
+            },
+        );
+
+        let ioref_payload_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
+            ClosureChirho::con_chirho(
+                DataConTagChirho(0),
+                "I#",
+                vec![ValueChirho::IntChirho(11)],
+            ),
+        );
+        let tvar_payload_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
+            ClosureChirho::con_chirho(
+                DataConTagChirho(0),
+                "I#",
+                vec![ValueChirho::IntChirho(29)],
+            ),
+        );
+        let dead_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
+            ClosureChirho::con_chirho(
+                DataConTagChirho(0),
+                "I#",
+                vec![ValueChirho::IntChirho(99)],
+            ),
+        );
+
+        machine_chirho.iorefs_chirho.insert(
+            0,
+            ValueChirho::HeapPtrChirho(ioref_payload_addr_chirho),
+        );
+        machine_chirho.tvars_chirho.insert(
+            0,
+            ValueChirho::HeapPtrChirho(tvar_payload_addr_chirho),
+        );
+
+        machine_chirho.maybe_gc_chirho();
+
+        let ioref_payload_chirho = machine_chirho.heap_chirho.read_chirho(ioref_payload_addr_chirho);
+        assert_eq!(ioref_payload_chirho.info_chirho.name_chirho, "I#");
+        assert_eq!(ioref_payload_chirho.payload_chirho, vec![ValueChirho::IntChirho(11)]);
+
+        let tvar_payload_chirho = machine_chirho.heap_chirho.read_chirho(tvar_payload_addr_chirho);
+        assert_eq!(tvar_payload_chirho.info_chirho.name_chirho, "I#");
+        assert_eq!(tvar_payload_chirho.payload_chirho, vec![ValueChirho::IntChirho(29)]);
+
+        let dead_closure_chirho = machine_chirho.heap_chirho.read_chirho(dead_addr_chirho);
+        assert_eq!(dead_closure_chirho.info_chirho.name_chirho, "$DEAD");
     }
 }
