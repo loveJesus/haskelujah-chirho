@@ -109,12 +109,14 @@ pub fn lower_lit_chirho(
                 .iconst(cl_types_chirho::I64, *c_chirho as i64)
         }
         CoreLitChirho::StringChirho(s_chirho) => {
-            // String literals: return length as placeholder until heap allocation
-            // is wired in. This keeps the backend compilable end-to-end while
-            // the runtime representation is designed.
+            // String literal: for now, return 0 as placeholder.
+            // Proper implementation needs Cranelift DataDescription +
+            // global_value to embed string in the object's data section.
+            // The putStrLn lowering in lower_app_chirho should handle
+            // string constants specially.
             builder_chirho
                 .ins()
-                .iconst(cl_types_chirho::I64, s_chirho.len() as i64)
+                .iconst(cl_types_chirho::I64, 0)
         }
     }
 }
