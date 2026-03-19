@@ -228,6 +228,15 @@ fn collect_pat_names_chirho(pat_chirho: &PatChirho, out_chirho: &mut Vec<String>
                 collect_pat_names_chirho(&field_chirho.pattern_chirho, out_chirho);
             }
         }
+        PatChirho::TypeAnnotChirho { pat_chirho, .. } => {
+            collect_pat_names_chirho(pat_chirho, out_chirho);
+        }
+        PatChirho::LazyChirho { inner_chirho, .. } => {
+            collect_pat_names_chirho(inner_chirho, out_chirho);
+        }
+        PatChirho::ViewChirho { pat_chirho, .. } => {
+            collect_pat_names_chirho(pat_chirho, out_chirho);
+        }
         _ => {}
     }
 }
