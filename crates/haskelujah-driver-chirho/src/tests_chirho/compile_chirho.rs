@@ -809,6 +809,16 @@ main = fib 10"#;
         }
     }
 
+    #[test]
+    fn llvm_round_trip_print_int_output_chirho() {
+        let src_chirho = "module Main where\nmain = print 42";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "print executable should exit successfully");
+            assert_eq!(stdout_chirho, "42\n");
+        }
+    }
+
     // ── Cranelift backend driver integration tests ────────────────────────
 
     #[test]

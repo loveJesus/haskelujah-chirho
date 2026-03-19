@@ -47,6 +47,8 @@ pub struct LlvmCodegenChirho {
     string_globals_chirho: HashMap<String, String>,
     /// Maps CoreId → name for top-level bindings, used to resolve cross-references.
     toplevel_names_chirho: HashMap<CoreIdChirho, String>,
+    /// Maps CoreId → lambda arity for top-level bindings.
+    toplevel_arities_chirho: HashMap<CoreIdChirho, usize>,
     /// Tracks CoreIds that are lambda parameters or let-bound in the current function scope.
     local_scope_chirho: HashSet<CoreIdChirho>,
 }
@@ -63,6 +65,7 @@ impl LlvmCodegenChirho {
             emitted_names_chirho: HashSet::new(),
             string_globals_chirho: HashMap::new(),
             toplevel_names_chirho: HashMap::new(),
+            toplevel_arities_chirho: HashMap::new(),
             local_scope_chirho: HashSet::new(),
         }
     }
@@ -122,13 +125,21 @@ impl LlvmCodegenChirho {
 
         // Collect top-level binding CoreIds for cross-reference resolution
         let mut toplevel_names_chirho = HashMap::new();
+        let mut toplevel_arities_chirho = HashMap::new();
         for binding_chirho in &module_chirho.bindings_chirho {
             toplevel_names_chirho.insert(
                 binding_chirho.binder_chirho.id_chirho,
                 binding_chirho.binder_chirho.name_chirho.clone(),
             );
+            let (params_chirho, _body_chirho) =
+                collect_lambda_params_chirho(&binding_chirho.rhs_chirho);
+            toplevel_arities_chirho.insert(
+                binding_chirho.binder_chirho.id_chirho,
+                params_chirho.len(),
+            );
         }
         self.toplevel_names_chirho = toplevel_names_chirho;
+        self.toplevel_arities_chirho = toplevel_arities_chirho;
 
         // Compile each top-level binding
         for binding_chirho in &module_chirho.bindings_chirho {
@@ -261,6 +272,28 @@ impl LlvmCodegenChirho {
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
+            "print" | "print#" => {
+                let Some(arg_id_chirho) = params_chirho.last() else {
+                    return false;
+                };
+                let fmt_name_chirho = self.intern_string_global_name_chirho("%ld\n");
+                writeln!(
+                    self.output_chirho,
+                    "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "entry:").unwrap();
+                self.next_tmp_chirho = 0;
+                writeln!(
+                    self.output_chirho,
+                    "  call i32 (ptr, ...) @printf(ptr @{fmt_name_chirho}, i64 %v{})",
+                    arg_id_chirho.0
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "  ret i64 0").unwrap();
+                writeln!(self.output_chirho, "}}").unwrap();
+                true
+            }
             _ => false,
         }
     }
@@ -275,15 +308,30 @@ impl LlvmCodegenChirho {
                     // Local variable (parameter, let-bound, case binder)
                     format!("%v{}", id_chirho.0)
                 } else if let Some(name_chirho) = self.toplevel_names_chirho.get(id_chirho) {
-                    // Reference to a top-level binding — call it as a zero-arg function
                     let mangled_chirho = mangle_name_chirho(name_chirho);
-                    let tmp_chirho = self.fresh_tmp_chirho();
-                    writeln!(
-                        self.output_chirho,
-                        "  {tmp_chirho} = call i64 @{mangled_chirho}()"
-                    )
-                    .unwrap();
-                    tmp_chirho
+                    let arity_chirho = self
+                        .toplevel_arities_chirho
+                        .get(id_chirho)
+                        .copied()
+                        .unwrap_or(0);
+                    if arity_chirho > 0 {
+                        let tmp_chirho = self.fresh_tmp_chirho();
+                        writeln!(
+                            self.output_chirho,
+                            "  {tmp_chirho} = ptrtoint ptr @{mangled_chirho} to i64"
+                        )
+                        .unwrap();
+                        tmp_chirho
+                    } else {
+                        // Reference to a nullary top-level binding — call it to obtain its value.
+                        let tmp_chirho = self.fresh_tmp_chirho();
+                        writeln!(
+                            self.output_chirho,
+                            "  {tmp_chirho} = call i64 @{mangled_chirho}()"
+                        )
+                        .unwrap();
+                        tmp_chirho
+                    }
                 } else {
                     // Unknown variable — use as local (may be from outer scope
                     // like case binder, which we've already bound)
@@ -548,8 +596,13 @@ impl LlvmCodegenChirho {
     }
 
     fn intern_string_literal_chirho(&mut self, value_chirho: &str) -> String {
+        let global_name_chirho = self.intern_string_global_name_chirho(value_chirho);
+        format!("ptrtoint (ptr @{global_name_chirho} to i64)")
+    }
+
+    fn intern_string_global_name_chirho(&mut self, value_chirho: &str) -> String {
         if let Some(global_name_chirho) = self.string_globals_chirho.get(value_chirho) {
-            return format!("ptrtoint (ptr @{global_name_chirho} to i64)");
+            return global_name_chirho.clone();
         }
 
         let global_name_chirho = format!(".str.{}", self.next_string_chirho);
@@ -566,7 +619,7 @@ impl LlvmCodegenChirho {
         self.string_globals_chirho
             .insert(value_chirho.to_string(), global_name_chirho.clone());
 
-        format!("ptrtoint (ptr @{global_name_chirho} to i64)")
+        global_name_chirho
     }
 
     fn compile_indirect_call_chirho(
@@ -1490,6 +1543,46 @@ mod tests_chirho {
         assert!(ir_chirho.contains("ret i32 0"));
         assert!(!ir_chirho.contains("@.fmt_int"));
         assert!(!ir_chirho.contains("call i32 (ptr, ...) @printf(ptr @.fmt_int"));
+    }
+
+    #[test]
+    fn compile_executable_print_uses_printf_chirho() {
+        let print_binder_chirho = dummy_binder_chirho("print", 1);
+        let arg_binder_chirho = dummy_binder_chirho("arg", 2);
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Main".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("main", 0),
+                    rhs_chirho: CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                            print_binder_chirho.id_chirho,
+                        )),
+                        arg_chirho: Box::new(int_lit_chirho(42)),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: print_binder_chirho.clone(),
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: arg_binder_chirho,
+                        body_chirho: Box::new(int_lit_chirho(0)),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+        assert!(ir_chirho.contains("define i64 @haskelujah_print(i64 %v2)"));
+        assert!(ir_chirho.contains("call i32 (ptr, ...) @printf(ptr @.str.0, i64 %v2)"));
+        assert!(ir_chirho.contains("ret i64 0"));
+        assert!(!ir_chirho.contains("@.fmt_int"));
     }
 
     #[test]
