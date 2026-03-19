@@ -2189,10 +2189,52 @@ impl InferCtxChirho {
                     self.bind_pat_chirho(elem_pat_chirho, elem_ty_chirho);
                 }
             }
-            PatChirho::ConChirho { args_chirho, .. } => {
-                for arg_chirho in args_chirho {
-                    let fresh_chirho = self.fresh_var_chirho();
-                    self.bind_pat_chirho(arg_chirho, &fresh_chirho);
+            PatChirho::ConChirho { con_chirho, args_chirho, .. } => {
+                // Try to look up the constructor's type scheme to get
+                // proper argument types (enables GADT field types and
+                // higher-rank field extraction).
+                let con_text_chirho = con_chirho.text_chirho();
+                let scheme_opt_chirho = self.env_chirho.lookup_chirho(con_text_chirho).cloned();
+                let mut used_con_types_chirho = false;
+                if let Some(scheme_chirho) = scheme_opt_chirho {
+                    // Only use constructor types if the scheme is polymorphic
+                    // (has forall-bound vars), indicating GADT or polymorphic fields
+                    if !scheme_chirho.vars_chirho.is_empty() {
+                        let con_ty_chirho = self.instantiate_chirho(
+                            &scheme_chirho,
+                            SpanChirho::DUMMY_CHIRHO,
+                        );
+                        let mut remaining_chirho = con_ty_chirho;
+                        let mut ok_chirho = true;
+                        for arg_chirho in args_chirho {
+                            match remaining_chirho {
+                                TyChirho::FunChirho(arg_ty_chirho, res_ty_chirho, _) => {
+                                    self.bind_pat_chirho(arg_chirho, &arg_ty_chirho);
+                                    remaining_chirho = *res_ty_chirho;
+                                }
+                                _ => {
+                                    ok_chirho = false;
+                                    let fresh_chirho = self.fresh_var_chirho();
+                                    self.bind_pat_chirho(arg_chirho, &fresh_chirho);
+                                }
+                            }
+                        }
+                        if ok_chirho {
+                            // Unify remaining (result type) with scrutinee type
+                            let _ = crate::unify_chirho::unify_chirho(
+                                &remaining_chirho,
+                                ty_chirho,
+                                SpanChirho::DUMMY_CHIRHO,
+                            );
+                        }
+                        used_con_types_chirho = true;
+                    }
+                }
+                if !used_con_types_chirho {
+                    for arg_chirho in args_chirho {
+                        let fresh_chirho = self.fresh_var_chirho();
+                        self.bind_pat_chirho(arg_chirho, &fresh_chirho);
+                    }
                 }
             }
             PatChirho::RecordChirho {
