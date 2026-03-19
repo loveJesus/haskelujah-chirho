@@ -892,6 +892,26 @@ main = fib 10"#;
     }
 
     #[test]
+    fn llvm_round_trip_print_comparison_outputs_bool_chirho() {
+        let src_chirho = r#"module Main where
+main = do
+  print (2 == 2)
+  print (2 /= 3)
+  print (2 < 3)
+  print (3 > 2)
+  print (2 <= 2)
+  print (3 >= 3)"#;
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(
+                exit_code_chirho, 0,
+                "comparison executable should exit successfully"
+            );
+            assert_eq!(stdout_chirho, "True\nTrue\nTrue\nTrue\nTrue\nTrue\n");
+        }
+    }
+
+    #[test]
     fn llvm_round_trip_do_put_str_ln_then_print_output_chirho() {
         let src_chirho =
             "module Main where\nmain = do\n  putStrLn \"Hello from Haskelujah!\"\n  print 42\n";

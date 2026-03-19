@@ -123,6 +123,36 @@ impl LlvmCodegenChirho {
             CoreExprChirho::LitChirho(CoreLitChirho::CharChirho(_)) => {
                 Some(ShowBuiltinKindChirho::CharChirho)
             }
+            CoreExprChirho::PrimOpChirho {
+                name_chirho,
+                args_chirho: _,
+            } if matches!(
+                name_chirho.as_str(),
+                "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#"
+            ) => Some(ShowBuiltinKindChirho::BoolChirho),
+            CoreExprChirho::AppChirho {
+                fun_chirho: _,
+                arg_chirho: _,
+            } => {
+                let (callee_chirho, args_chirho) = flatten_app_chirho(expr_chirho);
+                match callee_chirho {
+                    CoreExprChirho::VarChirho(id_chirho) => self
+                        .toplevel_names_chirho
+                        .get(id_chirho)
+                        .and_then(|name_chirho| match (name_chirho.as_str(), args_chirho.len()) {
+                            ("not", 1)
+                            | ("not#", 1)
+                            | ("==", 2)
+                            | ("/=", 2)
+                            | ("<", 2)
+                            | ("<=", 2)
+                            | (">", 2)
+                            | (">=", 2) => Some(ShowBuiltinKindChirho::BoolChirho),
+                            _ => None,
+                        }),
+                    _ => None,
+                }
+            }
             CoreExprChirho::ConAppChirho {
                 con_name_chirho,
                 args_chirho,
@@ -764,6 +794,21 @@ impl LlvmCodegenChirho {
                     writeln!(
                         self.output_chirho,
                         "  {tmp_chirho} = sub i64 0, {operand_chirho}"
+                    )
+                    .unwrap();
+                    tmp_chirho
+                } else if args_chirho.len() == 1 && name_chirho == "not#" {
+                    let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+                    let cmp_tmp_chirho = self.fresh_tmp_chirho();
+                    writeln!(
+                        self.output_chirho,
+                        "  {cmp_tmp_chirho} = icmp eq i64 {operand_chirho}, 0"
+                    )
+                    .unwrap();
+                    let tmp_chirho = self.fresh_tmp_chirho();
+                    writeln!(
+                        self.output_chirho,
+                        "  {tmp_chirho} = zext i1 {cmp_tmp_chirho} to i64"
                     )
                     .unwrap();
                     tmp_chirho
@@ -1903,6 +1948,69 @@ mod tests_chirho {
                 "expected {prim_name_chirho} to lower to {llvm_op_chirho}, got:\n{ir_chirho}"
             );
         }
+    }
+
+    #[test]
+    fn compile_executable_with_all_basic_comparison_primops_chirho() {
+        let cases_chirho = [
+            ("==#", "eq", 5, 5),
+            ("/=#", "ne", 5, 4),
+            ("<#", "slt", 2, 3),
+            ("<=#", "sle", 2, 2),
+            (">#", "sgt", 3, 2),
+            (">=#", "sge", 3, 3),
+        ];
+
+        for (prim_name_chirho, llvm_pred_chirho, lhs_chirho, rhs_chirho) in cases_chirho {
+            let module_chirho = CoreModuleChirho {
+                name_chirho: format!("Cmp{}", prim_name_chirho),
+                bindings_chirho: vec![CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("main", 10),
+                    rhs_chirho: CoreExprChirho::PrimOpChirho {
+                        name_chirho: prim_name_chirho.to_string(),
+                        args_chirho: vec![int_lit_chirho(lhs_chirho), int_lit_chirho(rhs_chirho)],
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                }],
+                names_chirho: HashMap::new(),
+                specialize_pragmas_chirho: HashMap::new(),
+                foreign_exports_chirho: vec![],
+            };
+
+            let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+            assert!(
+                ir_chirho.contains(&format!("icmp {llvm_pred_chirho} i64 {lhs_chirho}, {rhs_chirho}")),
+                "expected {prim_name_chirho} to lower to icmp {llvm_pred_chirho}, got:\n{ir_chirho}"
+            );
+            assert!(
+                ir_chirho.contains("zext i1"),
+                "expected {prim_name_chirho} to extend the Bool tag to i64, got:\n{ir_chirho}"
+            );
+        }
+    }
+
+    #[test]
+    fn compile_executable_not_bool_primop_chirho() {
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Not".to_string(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: dummy_binder_chirho("main", 10),
+                rhs_chirho: CoreExprChirho::PrimOpChirho {
+                    name_chirho: "not#".to_string(),
+                    args_chirho: vec![int_lit_chirho(1)],
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+        assert!(ir_chirho.contains("icmp eq i64 1, 0"));
+        assert!(ir_chirho.contains("zext i1"));
     }
 
     #[test]
