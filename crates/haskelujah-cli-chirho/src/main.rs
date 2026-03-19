@@ -478,6 +478,25 @@ fn atty_is_terminal_chirho() -> bool {
     std::io::stderr().is_terminal()
 }
 
+/// Print a status message with optional green coloring.
+fn status_chirho(label_chirho: &str, msg_chirho: &str) {
+    if atty_is_terminal_chirho() {
+        eprintln!("\x1b[1;32m{:>12}\x1b[0m {}", label_chirho, msg_chirho);
+    } else {
+        eprintln!("{:>12} {}", label_chirho, msg_chirho);
+    }
+}
+
+/// Print an error message with optional red coloring.
+#[allow(dead_code)]
+fn error_msg_chirho(msg_chirho: &str) {
+    if atty_is_terminal_chirho() {
+        eprintln!("\x1b[1;31merror\x1b[0m: {}", msg_chirho);
+    } else {
+        eprintln!("error: {}", msg_chirho);
+    }
+}
+
 /// `haskelujah build [<dir>]` — compile a multi-module Haskell project from a directory.
 ///
 /// If a `.cabal` file is found, uses Cabal-based compilation (parses `.cabal`,
@@ -535,7 +554,7 @@ fn build_command_chirho(
                             for warning_chirho in &result_chirho.warnings_chirho {
                                 eprintln!("warning: {}", warning_chirho);
                             }
-                            eprintln!("Build successful (no executable targets) in {:.2}s.", build_start_chirho.elapsed().as_secs_f64());
+                            status_chirho("Finished", &format!("build (no executables) in {:.2}s", build_start_chirho.elapsed().as_secs_f64()));
                             ExitCode::SUCCESS
                         }
                         Err(error_chirho) => {
@@ -566,7 +585,7 @@ fn build_command_chirho(
                             eprintln!("warning: {}", warning_chirho);
                         }
                     }
-                    eprintln!("Build successful in {:.2}s.", build_start_chirho.elapsed().as_secs_f64());
+                    status_chirho("Finished", &format!("build in {:.2}s", build_start_chirho.elapsed().as_secs_f64()));
                     ExitCode::SUCCESS
                 }
             }
@@ -588,7 +607,7 @@ fn build_command_chirho(
                 for warning_chirho in &result_chirho.warnings_chirho {
                     eprintln!("warning: {}", warning_chirho);
                 }
-                eprintln!("Build successful in {:.2}s.", build_start_chirho.elapsed().as_secs_f64());
+                status_chirho("Finished", &format!("build in {:.2}s", build_start_chirho.elapsed().as_secs_f64()));
                 ExitCode::SUCCESS
             }
             Err(error_chirho) => {
