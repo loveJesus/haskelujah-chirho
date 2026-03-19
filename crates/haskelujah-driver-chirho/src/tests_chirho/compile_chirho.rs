@@ -820,7 +820,7 @@ main = fib 10"#;
             .map(|(exit_code_chirho, _stdout_chirho)| exit_code_chirho)
     }
 
-    fn cranelift_round_trip_chirho(src_chirho: &str) -> Option<i32> {
+    fn cranelift_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)> {
         let mut sm_chirho = SourceMapChirho::new_chirho();
         let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
         let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
@@ -850,10 +850,17 @@ main = fib 10"#;
             return None;
         }
 
-        let run_status_chirho = std::process::Command::new(&bin_path_chirho)
-            .status()
+        let run_output_chirho = std::process::Command::new(&bin_path_chirho)
+            .output()
             .ok()?;
-        run_status_chirho.code()
+        let exit_code_chirho = run_output_chirho.status.code()?;
+        let stdout_chirho = String::from_utf8(run_output_chirho.stdout).ok()?;
+        Some((exit_code_chirho, stdout_chirho))
+    }
+
+    fn cranelift_round_trip_chirho(src_chirho: &str) -> Option<i32> {
+        cranelift_round_trip_output_chirho(src_chirho)
+            .map(|(exit_code_chirho, _stdout_chirho)| exit_code_chirho)
     }
 
     fn ensure_rts_staticlib_for_tests_chirho() -> Option<std::path::PathBuf> {
@@ -1313,6 +1320,24 @@ main = area (Rect 3 7)
         let exit_code_chirho = cranelift_round_trip_chirho(src_chirho);
         if let Some(code_chirho) = exit_code_chirho {
             assert_eq!(code_chirho, 21, "Cranelift round-trip: Rect 3 7 should exit with 21");
+        }
+    }
+
+    #[test]
+    fn cranelift_round_trip_io_order_output_chirho() {
+        let src_chirho = r#"module Main where
+main = do
+  putStrLn "hello"
+  print 42
+"#;
+        if let Some((exit_code_chirho, stdout_chirho)) = cranelift_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "Cranelift IO program should exit successfully");
+            assert_eq!(
+                stdout_chirho,
+                "hello\n42\n",
+                "Cranelift should preserve source IO sequencing",
+            );
         }
     }
 
