@@ -14,6 +14,8 @@
 
 use std::alloc::{Layout, alloc_zeroed, dealloc};
 use std::collections::{HashMap, VecDeque};
+use std::ffi::CStr;
+use std::io::Write;
 use std::mem::{align_of, size_of};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
@@ -248,6 +250,26 @@ pub extern "C" fn haskelujah_alloc_total_chirho() -> u64 {
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_print_int_chirho(value_chirho: i64) -> i64 {
     println!("{value_chirho}");
+    let _ = std::io::stdout().flush();
+    0
+}
+
+/// Print a NUL-terminated UTF-8 string followed by a newline using the same
+/// stdout implementation as `haskelujah_print_int_chirho`, keeping IO order
+/// stable for Cranelift executables.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_put_str_ln_chirho(ptr_bits_chirho: u64) -> i64 {
+    if ptr_bits_chirho == 0 {
+        println!();
+        let _ = std::io::stdout().flush();
+        return 0;
+    }
+
+    let ptr_chirho = ptr_bits_chirho as usize as *const std::ffi::c_char;
+    let c_str_chirho = unsafe { CStr::from_ptr(ptr_chirho) };
+    let text_chirho = c_str_chirho.to_string_lossy();
+    println!("{text_chirho}");
+    let _ = std::io::stdout().flush();
     0
 }
 

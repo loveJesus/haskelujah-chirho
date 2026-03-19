@@ -73,8 +73,8 @@ pub struct LowerCtxChirho<'a> {
     pub func_ref_map_chirho: &'a HashMap<CoreIdChirho, (cranelift_codegen::ir::FuncRef, usize)>,
     /// Map of CoreId → name for detecting Prelude functions (putStrLn, print, etc.)
     pub toplevel_names_chirho: &'a HashMap<CoreIdChirho, String>,
-    /// Optional FuncRef for libc `puts` (used by putStrLn lowering)
-    pub puts_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_put_str_ln_chirho`
+    pub put_str_ln_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_print_int_chirho` (non-variadic print)
     pub print_int_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_alloc_chirho` (boxed constructors)
@@ -719,7 +719,7 @@ fn lower_app_chirho(
                 );
             }
             if matches!(name_chirho.as_str(), "putStrLn" | "putStrLn#") {
-                if let Some(puts_ref_chirho) = ctx_chirho.puts_ref_chirho {
+                if let Some(put_str_ln_ref_chirho) = ctx_chirho.put_str_ln_ref_chirho {
                     if let Some(arg_expr_chirho) = all_args_chirho.last() {
                         let arg_val_chirho =
                             lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
@@ -727,7 +727,7 @@ fn lower_app_chirho(
                             ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
                         builder_chirho
                             .ins()
-                            .call(puts_ref_chirho, &[arg_i64_chirho]);
+                            .call(put_str_ln_ref_chirho, &[arg_i64_chirho]);
                         return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
                     }
                 }
