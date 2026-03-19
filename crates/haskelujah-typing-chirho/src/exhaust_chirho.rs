@@ -581,25 +581,35 @@ impl<'a> ExhaustCheckerChirho<'a> {
             return; // nullary function — nothing to check
         }
 
-        // Check only the first parameter column for redundancy.
-        // Later columns (e.g. `acc` in `go 0 acc; go k acc`) may all
-        // be wildcards, which would cause false redundancy warnings if
-        // checked independently. Exhaustiveness still checks all columns.
-        {
+        // Find the first column that has non-wildcard patterns (constructors
+        // or literals) and check that column for redundancy. Columns that are
+        // all wildcards (like `acc` in `go 0 acc; go k acc` or `a` in
+        // `gcd' a 0; gcd' a b`) would produce false redundancy warnings.
+        let spans_chirho: Vec<SpanChirho> = matches_chirho
+            .iter()
+            .map(|arm_chirho| arm_chirho.span_chirho)
+            .collect();
+        for col_chirho in 0..arity_chirho {
             let pats_chirho: Vec<&PatChirho> = matches_chirho
                 .iter()
-                .filter_map(|arm_chirho| arm_chirho.pats_chirho.first())
+                .filter_map(|arm_chirho| arm_chirho.pats_chirho.get(col_chirho))
                 .collect();
-            let spans_chirho: Vec<SpanChirho> = matches_chirho
-                .iter()
-                .map(|arm_chirho| arm_chirho.span_chirho)
-                .collect();
-            self.check_pattern_column_chirho(
-                &pats_chirho,
-                &spans_chirho,
-                fn_span_chirho,
-                fn_name_chirho,
-            );
+            // Check if this column has any non-wildcard pattern
+            let has_non_wildcard_chirho = pats_chirho.iter().any(|p_chirho| {
+                !matches!(
+                    classify_pattern_chirho(p_chirho),
+                    PatClassChirho::WildcardChirho
+                )
+            });
+            if has_non_wildcard_chirho {
+                self.check_pattern_column_chirho(
+                    &pats_chirho,
+                    &spans_chirho,
+                    fn_span_chirho,
+                    fn_name_chirho,
+                );
+                break;
+            }
         }
     }
 
