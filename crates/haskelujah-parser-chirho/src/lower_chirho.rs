@@ -3805,6 +3805,24 @@ impl LowerCtxChirho {
                 // unification variable (and optionally emit warning W4201).
                 TypeChirho::WildcardChirho { span_chirho }
             }
+            SyntaxKindChirho::LitTypeChirho => {
+                // DataKinds: type-level literals (42, "hello", 'x')
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let value_chirho = children_chirho
+                    .iter()
+                    .find_map(|c_chirho| {
+                        if let GreenElementChirho::TokenChirho(tok_chirho) = c_chirho.element_chirho {
+                            Some(tok_chirho.text_chirho().to_string())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_default();
+                TypeChirho::LitChirho {
+                    value_chirho,
+                    span_chirho,
+                }
+            }
             SyntaxKindChirho::InfixTypeChirho => {
                 // TypeOperators: `a :+: b` or `a `Either` b`
                 // Children: left-type, operator-token (or backtick-name-backtick), right-type
@@ -6962,6 +6980,7 @@ fn is_type_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::PromotedListTypeChirho
             | SyntaxKindChirho::InfixTypeChirho
             | SyntaxKindChirho::WildcardTypeChirho
+            | SyntaxKindChirho::LitTypeChirho
     )
 }
 

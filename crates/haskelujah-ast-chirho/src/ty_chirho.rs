@@ -102,6 +102,13 @@ pub enum TypeChirho {
     /// PartialTypeSignatures wildcard type (`_`). Lowered to a fresh
     /// unification variable during type inference.
     WildcardChirho { span_chirho: SpanChirho },
+    /// Type-level literal (DataKinds: numeric `42`, string `"hello"`, char `'x'`).
+    LitChirho {
+        /// The literal value as a string representation.
+        value_chirho: String,
+        /// Span covering the type-level literal.
+        span_chirho: SpanChirho,
+    },
 }
 
 /// A class constraint in a type context (e.g. `Eq a`, `Show (Maybe a)`).
@@ -130,7 +137,8 @@ impl TypeChirho {
             | Self::ForallChirho { span_chirho, .. }
             | Self::PromotedConChirho { span_chirho, .. }
             | Self::PromotedListChirho { span_chirho, .. }
-            | Self::WildcardChirho { span_chirho } => *span_chirho,
+            | Self::WildcardChirho { span_chirho }
+            | Self::LitChirho { span_chirho, .. } => *span_chirho,
         }
     }
 }

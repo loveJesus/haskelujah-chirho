@@ -212,6 +212,8 @@ pub enum SyntaxKindChirho {
     InfixTypeChirho,
     /// PartialTypeSignatures wildcard type (`_`).
     WildcardTypeChirho,
+    /// DataKinds type-level literal (`42`, `"hello"`, `'x'`).
+    LitTypeChirho,
 
     // -- Template Haskell --
     /// A splice expression (`$(expr)` or `$name`).
@@ -337,6 +339,7 @@ impl SyntaxKindChirho {
                 | Self::PromotedListTypeChirho
                 | Self::InfixTypeChirho
                 | Self::WildcardTypeChirho
+                | Self::LitTypeChirho
         )
     }
 }

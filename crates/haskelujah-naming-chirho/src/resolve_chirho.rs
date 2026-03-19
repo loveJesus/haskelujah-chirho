@@ -650,6 +650,8 @@ fn type_con_names_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirh
         }
         // PartialTypeSignatures: `_` wildcard has no type constructor names.
         TypeChirho::WildcardChirho { .. } => {}
+        // Type-level literal — no type constructor names to extract.
+        TypeChirho::LitChirho { .. } => {}
     }
     result_chirho
 }

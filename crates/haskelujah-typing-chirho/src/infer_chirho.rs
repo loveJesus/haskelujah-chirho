@@ -747,6 +747,10 @@ impl InferCtxChirho {
                 self.diagnostics_chirho.push_chirho(diag_chirho);
                 fresh_ty_chirho
             }
+            // Type-level literal (DataKinds): treat as a type-level constant.
+            TypeChirho::LitChirho { value_chirho, .. } => {
+                TyChirho::ConChirho(value_chirho.clone())
+            }
         }
     }
 
@@ -3371,6 +3375,8 @@ fn ast_type_to_syn_rhs_chirho(ty_chirho: &TypeChirho, params_chirho: &[String]) 
         // PartialTypeSignatures: wildcard in a type synonym RHS is a fresh
         // anonymous variable (synthesised as "_wildcard_chirho").
         TypeChirho::WildcardChirho { .. } => TyChirho::ConChirho("_wildcard_chirho".to_string()),
+        // Type-level literal (DataKinds): treat as a type-level constant.
+        TypeChirho::LitChirho { value_chirho, .. } => TyChirho::ConChirho(value_chirho.clone()),
     }
 }
 

@@ -757,6 +757,8 @@ impl KindInferCtxChirho {
             // during type inference. Kind-wise it is treated as * (a regular
             // monotype position).
             TypeChirho::WildcardChirho { .. } => KindChirho::StarChirho,
+            // Type-level literal (DataKinds): literals have kind *.
+            TypeChirho::LitChirho { .. } => KindChirho::StarChirho,
         }
     }
 

@@ -107,6 +107,10 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
         TypeChirho::WildcardChirho { .. } => {
             ThTypeChirho::VarTChirho(ThNameChirho::mk_name_chirho("_wildcard_chirho"))
         }
+        // Type-level literal (DataKinds): treat as an opaque type constructor.
+        TypeChirho::LitChirho { value_chirho, .. } => {
+            ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(value_chirho))
+        }
     }
 }
 

@@ -1748,6 +1748,15 @@ impl<'src> ParserChirho<'src> {
                 self.bump_chirho();
                 self.builder_chirho.finish_node_chirho();
             }
+            // DataKinds: type-level numeric/string/char literals
+            Some(RawTokenKindChirho::IntLitChirho)
+            | Some(RawTokenKindChirho::StringLitChirho)
+            | Some(RawTokenKindChirho::CharLitChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::LitTypeChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
             _ => {
                 // Unexpected — wrap in error node
                 self.builder_chirho
@@ -3668,6 +3677,10 @@ impl<'src> ParserChirho<'src> {
                 | Some(RawTokenKindChirho::TickChirho)
                 // PartialTypeSignatures: `_` as a wildcard type
                 | Some(RawTokenKindChirho::UnderscoreChirho)
+                // DataKinds: type-level literals
+                | Some(RawTokenKindChirho::IntLitChirho)
+                | Some(RawTokenKindChirho::StringLitChirho)
+                | Some(RawTokenKindChirho::CharLitChirho)
         )
     }
 
