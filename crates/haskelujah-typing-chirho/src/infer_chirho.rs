@@ -3402,8 +3402,44 @@ fn ast_type_to_syn_rhs_chirho(ty_chirho: &TypeChirho, params_chirho: &[String]) 
         TypeChirho::QualChirho { body_chirho, .. } => {
             ast_type_to_syn_rhs_chirho(body_chirho, params_chirho)
         }
-        TypeChirho::ForallChirho { body_chirho, .. } => {
-            ast_type_to_syn_rhs_chirho(body_chirho, params_chirho)
+        TypeChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => {
+            // Preserve the forall structure in the synonym RHS so that
+            // higher-rank type synonyms like `type Locker = forall a. IO a -> IO a`
+            // retain their polymorphic structure when expanded.
+            let forall_var_names_chirho: Vec<String> = vars_chirho
+                .iter()
+                .map(|v_chirho| v_chirho.text_chirho().to_string())
+                .collect();
+            // Extend params with forall-bound vars so they become ForallVarChirho
+            let mut extended_params_chirho = params_chirho.to_vec();
+            extended_params_chirho.extend(forall_var_names_chirho.iter().cloned());
+            let body_ty_chirho =
+                ast_type_to_syn_rhs_chirho(body_chirho, &extended_params_chirho);
+            // Create ForallChirho with TyVarChirho identifiers for the bound vars
+            let bound_vars_chirho: Vec<TyVarChirho> = forall_var_names_chirho
+                .iter()
+                .enumerate()
+                .map(|(i_chirho, _)| TyVarChirho(8000 + i_chirho as u32))
+                .collect();
+            // Replace ForallVarChirho names with the TyVarChirho references
+            let mut renamed_body_chirho = body_ty_chirho;
+            for (name_chirho, tv_chirho) in
+                forall_var_names_chirho.iter().zip(bound_vars_chirho.iter())
+            {
+                renamed_body_chirho = subst_named_var_chirho(
+                    &renamed_body_chirho,
+                    name_chirho,
+                    &TyChirho::VarChirho(*tv_chirho),
+                );
+            }
+            TyChirho::ForallChirho {
+                vars_chirho: bound_vars_chirho,
+                body_chirho: Box::new(renamed_body_chirho),
+            }
         }
         TypeChirho::PromotedConChirho { name_chirho, .. } => {
             TyChirho::ConChirho(format!("'{}", name_chirho.text_chirho()))
