@@ -12,10 +12,10 @@ Haskelujah Chirho is a Haskell compiler written in Rust, aiming to be a drop-in 
 
 | Metric | Value |
 |---|---|
-| GHC Compat | **857/938 (91.4%)** typecheck/should_compile |
+| GHC Compat | **858/938 (91.5%)** typecheck/should_compile |
 | Tests | **2,121 passing**, 0 failures |
 | Workspace | 21 crates, 129 Rust source files |
-| Codebase | ~137,200 lines of Rust |
+| Codebase | ~139,000 lines of Rust |
 | Module interfaces | 280 synthetic Haskell modules |
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |
@@ -110,26 +110,27 @@ cargo test -p haskelujah-parser-chirho --test golden_parse_chirho
 ### CLI Usage
 
 ```bash
+# Create a new project
+haskelujah init my-project
+
+# Build a Cabal project → native executable
+haskelujah build my-project/
+./my-project/dist-chirho/build/my-project
+
+# Compile and run (LLVM native, falls back to STG interpreter)
+haskelujah run MyModule.hs
+
 # Type-check a Haskell source file
 haskelujah check MyModule.hs
 
-# Evaluate via the STG interpreter
-haskelujah run MyModule.hs
-
 # Compile to a native executable (via LLVM + clang)
 haskelujah compile MyModule.hs -o main
-
-# Build a Cabal project (parses .cabal, compiles all modules, links executable)
-haskelujah build my-project/
 
 # Compile to WebAssembly
 haskelujah compile MyModule.hs --wasm -o out.wasm
 
 # Compile via Cranelift
 haskelujah compile MyModule.hs --cranelift -o main
-
-# Build a multi-module project
-haskelujah build my-project/
 
 # Start the REPL
 haskelujah repl
