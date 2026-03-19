@@ -269,11 +269,8 @@ mod tests_chirho {
     #[test]
     fn all_reachable_nothing_collected_chirho() {
         let mut heap_chirho = HeapChirho::new_chirho();
-        let a0_chirho = heap_chirho.alloc_chirho(ClosureChirho::con_chirho(
-            DataConTagChirho(0),
-            "X",
-            vec![],
-        ));
+        let a0_chirho =
+            heap_chirho.alloc_chirho(ClosureChirho::con_chirho(DataConTagChirho(0), "X", vec![]));
         let a1_chirho = heap_chirho.alloc_chirho(ClosureChirho::con_chirho(
             DataConTagChirho(1),
             "Y",
@@ -330,11 +327,7 @@ mod tests_chirho {
     #[test]
     fn small_heap_skips_gc_chirho() {
         let mut heap_chirho = HeapChirho::new_chirho();
-        heap_chirho.alloc_chirho(ClosureChirho::con_chirho(
-            DataConTagChirho(0),
-            "X",
-            vec![],
-        ));
+        heap_chirho.alloc_chirho(ClosureChirho::con_chirho(DataConTagChirho(0), "X", vec![]));
 
         let mut gc_chirho = GcStateChirho::new_chirho(GcConfigChirho {
             alloc_threshold_chirho: 1,
@@ -361,11 +354,8 @@ mod tests_chirho {
     #[test]
     fn transitive_reachability_chirho() {
         let mut heap_chirho = HeapChirho::new_chirho();
-        let a0_chirho = heap_chirho.alloc_chirho(ClosureChirho::con_chirho(
-            DataConTagChirho(0),
-            "A",
-            vec![],
-        ));
+        let a0_chirho =
+            heap_chirho.alloc_chirho(ClosureChirho::con_chirho(DataConTagChirho(0), "A", vec![]));
         let a1_chirho = heap_chirho.alloc_chirho(ClosureChirho::con_chirho(
             DataConTagChirho(0),
             "B",
@@ -376,11 +366,7 @@ mod tests_chirho {
             "C",
             vec![ValueChirho::HeapPtrChirho(a1_chirho)],
         ));
-        heap_chirho.alloc_chirho(ClosureChirho::con_chirho(
-            DataConTagChirho(0),
-            "D",
-            vec![],
-        ));
+        heap_chirho.alloc_chirho(ClosureChirho::con_chirho(DataConTagChirho(0), "D", vec![]));
 
         let mut gc_chirho = GcStateChirho::new_chirho(GcConfigChirho {
             alloc_threshold_chirho: 1,
@@ -430,11 +416,7 @@ mod tests_chirho {
     fn cycle_count_increments_chirho() {
         let mut heap_chirho = HeapChirho::new_chirho();
         for _ in 0..5 {
-            heap_chirho.alloc_chirho(ClosureChirho::con_chirho(
-                DataConTagChirho(0),
-                "X",
-                vec![],
-            ));
+            heap_chirho.alloc_chirho(ClosureChirho::con_chirho(DataConTagChirho(0), "X", vec![]));
         }
 
         let mut gc_chirho = GcStateChirho::new_chirho(GcConfigChirho {

@@ -99,7 +99,11 @@ impl InfoTableChirho {
     }
 
     /// Create an info table for a data constructor.
-    pub fn con_chirho(con_tag_chirho: DataConTagChirho, arity_chirho: u16, name_chirho: &str) -> Self {
+    pub fn con_chirho(
+        con_tag_chirho: DataConTagChirho,
+        arity_chirho: u16,
+        name_chirho: &str,
+    ) -> Self {
         Self {
             tag_chirho: InfoTagChirho::ConChirho,
             arity_chirho,
@@ -305,13 +309,11 @@ mod tests_chirho {
 
     #[test]
     fn create_fun_closure_chirho() {
-        let closure_chirho = ClosureChirho::fun_chirho(
-            2,
-            CodePtrChirho(0),
-            "add",
-            vec![],
+        let closure_chirho = ClosureChirho::fun_chirho(2, CodePtrChirho(0), "add", vec![]);
+        assert_eq!(
+            closure_chirho.info_chirho.tag_chirho,
+            InfoTagChirho::FunChirho
         );
-        assert_eq!(closure_chirho.info_chirho.tag_chirho, InfoTagChirho::FunChirho);
         assert_eq!(closure_chirho.info_chirho.arity_chirho, 2);
         assert!(closure_chirho.payload_chirho.is_empty());
     }
@@ -323,7 +325,10 @@ mod tests_chirho {
             "lazy_val",
             vec![ValueChirho::IntChirho(42)],
         );
-        assert_eq!(closure_chirho.info_chirho.tag_chirho, InfoTagChirho::ThunkChirho);
+        assert_eq!(
+            closure_chirho.info_chirho.tag_chirho,
+            InfoTagChirho::ThunkChirho
+        );
         assert_eq!(closure_chirho.info_chirho.arity_chirho, 0);
         assert_eq!(closure_chirho.payload_chirho.len(), 1);
     }
@@ -336,15 +341,24 @@ mod tests_chirho {
             "Just",
             vec![ValueChirho::IntChirho(42)],
         );
-        assert_eq!(closure_chirho.info_chirho.tag_chirho, InfoTagChirho::ConChirho);
-        assert_eq!(closure_chirho.info_chirho.con_tag_chirho, DataConTagChirho(1));
+        assert_eq!(
+            closure_chirho.info_chirho.tag_chirho,
+            InfoTagChirho::ConChirho
+        );
+        assert_eq!(
+            closure_chirho.info_chirho.con_tag_chirho,
+            DataConTagChirho(1)
+        );
         assert_eq!(closure_chirho.info_chirho.arity_chirho, 1);
     }
 
     #[test]
     fn create_ind_closure_chirho() {
         let closure_chirho = ClosureChirho::ind_chirho(HeapAddrChirho(5));
-        assert_eq!(closure_chirho.info_chirho.tag_chirho, InfoTagChirho::IndChirho);
+        assert_eq!(
+            closure_chirho.info_chirho.tag_chirho,
+            InfoTagChirho::IndChirho
+        );
         assert_eq!(
             closure_chirho.payload_chirho[0],
             ValueChirho::HeapPtrChirho(HeapAddrChirho(5))
@@ -354,12 +368,12 @@ mod tests_chirho {
     #[test]
     fn create_pap_closure_chirho() {
         // f applied to 1 arg, needs 1 more
-        let closure_chirho = ClosureChirho::pap_chirho(
-            1,
-            HeapAddrChirho(0),
-            vec![ValueChirho::IntChirho(10)],
+        let closure_chirho =
+            ClosureChirho::pap_chirho(1, HeapAddrChirho(0), vec![ValueChirho::IntChirho(10)]);
+        assert_eq!(
+            closure_chirho.info_chirho.tag_chirho,
+            InfoTagChirho::PapChirho
         );
-        assert_eq!(closure_chirho.info_chirho.tag_chirho, InfoTagChirho::PapChirho);
         assert_eq!(closure_chirho.info_chirho.arity_chirho, 1);
         // payload: [HeapPtr(fun), Int(10)]
         assert_eq!(closure_chirho.payload_chirho.len(), 2);

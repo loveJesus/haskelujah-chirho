@@ -122,11 +122,7 @@ mod tests_chirho {
     #[test]
     fn alloc_and_read_chirho() {
         let mut heap_chirho = HeapChirho::new_chirho();
-        let closure_chirho = ClosureChirho::con_chirho(
-            DataConTagChirho(0),
-            "True",
-            vec![],
-        );
+        let closure_chirho = ClosureChirho::con_chirho(DataConTagChirho(0), "True", vec![]);
         let addr_chirho = heap_chirho.alloc_chirho(closure_chirho);
         assert_eq!(addr_chirho, HeapAddrChirho(0));
 
@@ -150,20 +146,24 @@ mod tests_chirho {
         let mut heap_chirho = HeapChirho::new_chirho();
 
         // Allocate a thunk
-        let thunk_addr_chirho = heap_chirho.alloc_chirho(
-            ClosureChirho::thunk_chirho(CodePtrChirho(0), "x", vec![]),
-        );
+        let thunk_addr_chirho =
+            heap_chirho.alloc_chirho(ClosureChirho::thunk_chirho(CodePtrChirho(0), "x", vec![]));
 
         // Allocate the result
-        let result_addr_chirho = heap_chirho.alloc_chirho(
-            ClosureChirho::con_chirho(DataConTagChirho(0), "I#", vec![ValueChirho::IntChirho(42)]),
-        );
+        let result_addr_chirho = heap_chirho.alloc_chirho(ClosureChirho::con_chirho(
+            DataConTagChirho(0),
+            "I#",
+            vec![ValueChirho::IntChirho(42)],
+        ));
 
         // Update thunk → indirection
         heap_chirho.update_to_ind_chirho(thunk_addr_chirho, result_addr_chirho);
 
         let updated_chirho = heap_chirho.read_chirho(thunk_addr_chirho);
-        assert_eq!(updated_chirho.info_chirho.tag_chirho, InfoTagChirho::IndChirho);
+        assert_eq!(
+            updated_chirho.info_chirho.tag_chirho,
+            InfoTagChirho::IndChirho
+        );
     }
 
     #[test]
@@ -171,9 +171,11 @@ mod tests_chirho {
         let mut heap_chirho = HeapChirho::new_chirho();
 
         // addr 0: the actual value
-        let val_addr_chirho = heap_chirho.alloc_chirho(
-            ClosureChirho::con_chirho(DataConTagChirho(0), "I#", vec![ValueChirho::IntChirho(1)]),
-        );
+        let val_addr_chirho = heap_chirho.alloc_chirho(ClosureChirho::con_chirho(
+            DataConTagChirho(0),
+            "I#",
+            vec![ValueChirho::IntChirho(1)],
+        ));
 
         // addr 1: indirection → addr 0
         let ind1_chirho = heap_chirho.alloc_chirho(ClosureChirho::ind_chirho(val_addr_chirho));
@@ -189,13 +191,15 @@ mod tests_chirho {
     #[test]
     fn blackhole_chirho() {
         let mut heap_chirho = HeapChirho::new_chirho();
-        let addr_chirho = heap_chirho.alloc_chirho(
-            ClosureChirho::thunk_chirho(CodePtrChirho(0), "x", vec![]),
-        );
+        let addr_chirho =
+            heap_chirho.alloc_chirho(ClosureChirho::thunk_chirho(CodePtrChirho(0), "x", vec![]));
 
         heap_chirho.blackhole_chirho(addr_chirho);
 
         let read_chirho = heap_chirho.read_chirho(addr_chirho);
-        assert_eq!(read_chirho.info_chirho.tag_chirho, InfoTagChirho::BlackholeChirho);
+        assert_eq!(
+            read_chirho.info_chirho.tag_chirho,
+            InfoTagChirho::BlackholeChirho
+        );
     }
 }

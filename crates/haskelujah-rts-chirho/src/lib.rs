@@ -16,17 +16,16 @@
 //! Native-code backends link against this crate for heap management and GC
 //! without pulling in interpreter-specific machinery.
 
-pub mod value_chirho;
-pub mod heap_chirho;
-pub mod gc_chirho;
 pub mod ffi_chirho;
+pub mod gc_chirho;
+pub mod heap_chirho;
+pub mod value_chirho;
 
-pub use value_chirho::{
-    ValueChirho, ClosureChirho, InfoTableChirho, InfoTagChirho,
-    CodePtrChirho, DataConTagChirho, HeapAddrChirho,
+pub use gc_chirho::{
+    GcConfigChirho, GcStateChirho, GcStatsChirho, extract_roots_from_values_chirho,
 };
 pub use heap_chirho::HeapChirho;
-pub use gc_chirho::{
-    GcConfigChirho, GcStateChirho, GcStatsChirho,
-    extract_roots_from_values_chirho,
+pub use value_chirho::{
+    ClosureChirho, CodePtrChirho, DataConTagChirho, HeapAddrChirho, InfoTableChirho, InfoTagChirho,
+    ValueChirho,
 };
