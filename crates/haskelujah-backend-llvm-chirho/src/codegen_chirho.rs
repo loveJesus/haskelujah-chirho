@@ -16,7 +16,7 @@
 //! The full STG machine with lazy evaluation, thunks, closures, and
 //! info tables will be added incrementally.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use haskelujah_core_chirho::{
@@ -28,16 +28,22 @@ use haskelujah_core_chirho::{
 pub struct LlvmCodegenChirho {
     /// The LLVM IR output buffer.
     output_chirho: String,
+    /// Module-level globals emitted ahead of function bodies.
+    global_defs_chirho: String,
     /// Counter for generating unique LLVM temporaries (%t0, %t1, ...).
     next_tmp_chirho: u32,
     /// Counter for generating unique LLVM labels.
     next_label_chirho: u32,
+    /// Counter for generating unique LLVM string globals.
+    next_string_chirho: u32,
     /// Lifted lambda functions accumulated during codegen.
     lifted_functions_chirho: Vec<String>,
     /// Track emitted function names to prevent duplicate definitions.
     emitted_names_chirho: HashSet<String>,
+    /// Deduplicated mapping from string literal contents to LLVM global names.
+    string_globals_chirho: HashMap<String, String>,
     /// Maps CoreId → name for top-level bindings, used to resolve cross-references.
-    toplevel_names_chirho: std::collections::HashMap<CoreIdChirho, String>,
+    toplevel_names_chirho: HashMap<CoreIdChirho, String>,
     /// Tracks CoreIds that are lambda parameters or let-bound in the current function scope.
     local_scope_chirho: HashSet<CoreIdChirho>,
 }
@@ -46,11 +52,14 @@ impl LlvmCodegenChirho {
     pub fn new_chirho() -> Self {
         Self {
             output_chirho: String::new(),
+            global_defs_chirho: String::new(),
             next_tmp_chirho: 0,
             next_label_chirho: 0,
+            next_string_chirho: 0,
             lifted_functions_chirho: Vec::new(),
             emitted_names_chirho: HashSet::new(),
-            toplevel_names_chirho: std::collections::HashMap::new(),
+            string_globals_chirho: HashMap::new(),
+            toplevel_names_chirho: HashMap::new(),
             local_scope_chirho: HashSet::new(),
         }
     }
@@ -72,7 +81,10 @@ impl LlvmCodegenChirho {
     /// Compile a Core module to LLVM IR text.
     pub fn compile_module_chirho(&mut self, module_chirho: &CoreModuleChirho) -> String {
         self.output_chirho.clear();
+        self.global_defs_chirho.clear();
         self.lifted_functions_chirho.clear();
+        self.string_globals_chirho.clear();
+        self.next_string_chirho = 0;
 
         // Module header
         writeln!(
@@ -99,8 +111,10 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(self.output_chirho).unwrap();
 
+        let globals_insert_offset_chirho = self.output_chirho.len();
+
         // Collect top-level binding CoreIds for cross-reference resolution
-        let mut toplevel_names_chirho = std::collections::HashMap::new();
+        let mut toplevel_names_chirho = HashMap::new();
         for binding_chirho in &module_chirho.bindings_chirho {
             toplevel_names_chirho.insert(
                 binding_chirho.binder_chirho.id_chirho,
@@ -118,6 +132,11 @@ impl LlvmCodegenChirho {
         for lifted_chirho in &self.lifted_functions_chirho.clone() {
             self.output_chirho.push_str(lifted_chirho);
             self.output_chirho.push('\n');
+        }
+
+        if !self.global_defs_chirho.is_empty() {
+            self.output_chirho
+                .insert_str(globals_insert_offset_chirho, &self.global_defs_chirho);
         }
 
         // Emit foreign export stubs: wrapper functions with C linkage
@@ -489,14 +508,37 @@ impl LlvmCodegenChirho {
         }
     }
 
-    fn compile_lit_chirho(&self, lit_chirho: &CoreLitChirho) -> String {
+    fn compile_lit_chirho(&mut self, lit_chirho: &CoreLitChirho) -> String {
         match lit_chirho {
             CoreLitChirho::IntChirho(v_chirho) => format!("{v_chirho}"),
             CoreLitChirho::FloatChirho(v_chirho) => encode_float_literal_chirho(*v_chirho),
             CoreLitChirho::CharChirho(c_chirho) => format!("{}", *c_chirho as i64),
-            // TODO(codex-audit): lower to global string data instead of `0`.
-            CoreLitChirho::StringChirho(_) => "0".to_string(), // TODO: string support
+            CoreLitChirho::StringChirho(value_chirho) => {
+                self.intern_string_literal_chirho(value_chirho)
+            }
         }
+    }
+
+    fn intern_string_literal_chirho(&mut self, value_chirho: &str) -> String {
+        if let Some(global_name_chirho) = self.string_globals_chirho.get(value_chirho) {
+            return format!("ptrtoint (ptr @{global_name_chirho} to i64)");
+        }
+
+        let global_name_chirho = format!(".str.{}", self.next_string_chirho);
+        self.next_string_chirho += 1;
+
+        let escaped_bytes_chirho = escape_llvm_string_bytes_chirho(value_chirho.as_bytes());
+        let len_chirho = value_chirho.len() + 1;
+        writeln!(
+            self.global_defs_chirho,
+            "@{global_name_chirho} = private unnamed_addr constant [{len_chirho} x i8] c\"{escaped_bytes_chirho}\\00\", align 1"
+        )
+        .unwrap();
+
+        self.string_globals_chirho
+            .insert(value_chirho.to_string(), global_name_chirho.clone());
+
+        format!("ptrtoint (ptr @{global_name_chirho} to i64)")
     }
 
     fn compile_case_lit_chirho(
@@ -730,6 +772,21 @@ fn encode_float_literal_chirho(value_chirho: f64) -> String {
     signed_bits_chirho.to_string()
 }
 
+fn escape_llvm_string_bytes_chirho(bytes_chirho: &[u8]) -> String {
+    let mut escaped_chirho = String::new();
+    for byte_chirho in bytes_chirho {
+        match byte_chirho {
+            b' '..=b'~' if *byte_chirho != b'\\' && *byte_chirho != b'"' => {
+                escaped_chirho.push(char::from(*byte_chirho));
+            }
+            _ => {
+                write!(escaped_chirho, "\\{:02X}", byte_chirho).unwrap();
+            }
+        }
+    }
+    escaped_chirho
+}
+
 /// Get a numeric tag for a data constructor name.
 fn constructor_tag_chirho(name_chirho: &str) -> i64 {
     match name_chirho {
@@ -935,6 +992,30 @@ mod tests_chirho {
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
         assert!(ir_chirho.contains("ret i64 4615063718147915776"));
         assert!(!ir_chirho.contains("ret i64 0"));
+    }
+
+    #[test]
+    fn compile_string_literal_as_global_ptr_chirho() {
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "StringTest".to_string(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: dummy_binder_chirho("main", 0),
+                rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                    "Hello\n".to_string(),
+                )),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        assert!(ir_chirho.contains(
+            "@.str.0 = private unnamed_addr constant [7 x i8] c\"Hello\\0A\\00\", align 1"
+        ));
+        assert!(ir_chirho.contains("ret i64 ptrtoint (ptr @.str.0 to i64)"));
     }
 
     #[test]
