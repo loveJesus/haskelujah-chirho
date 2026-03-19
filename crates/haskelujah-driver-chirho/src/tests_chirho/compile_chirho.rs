@@ -912,6 +912,34 @@ main = do
     }
 
     #[test]
+    fn llvm_round_trip_if_then_else_true_branch_output_chirho() {
+        let src_chirho =
+            "module Main where\nmain = if 2 + 3 == 5 then putStrLn \"yes\" else putStrLn \"no\"";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(
+                exit_code_chirho, 0,
+                "if-then-else executable should exit successfully"
+            );
+            assert_eq!(stdout_chirho, "yes\n");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_if_then_else_false_branch_output_chirho() {
+        let src_chirho =
+            "module Main where\nmain = if 2 + 3 == 6 then putStrLn \"yes\" else putStrLn \"no\"";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(
+                exit_code_chirho, 0,
+                "if-then-else executable should exit successfully"
+            );
+            assert_eq!(stdout_chirho, "no\n");
+        }
+    }
+
+    #[test]
     fn llvm_round_trip_do_put_str_ln_then_print_output_chirho() {
         let src_chirho =
             "module Main where\nmain = do\n  putStrLn \"Hello from Haskelujah!\"\n  print 42\n";
