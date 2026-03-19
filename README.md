@@ -116,8 +116,11 @@ haskelujah check MyModule.hs
 # Evaluate via the STG interpreter
 haskelujah run MyModule.hs
 
-# Compile to a native executable (via LLVM)
+# Compile to a native executable (via LLVM + clang)
 haskelujah compile MyModule.hs -o main
+
+# Build a Cabal project (parses .cabal, compiles all modules, links executable)
+haskelujah build my-project/
 
 # Compile to WebAssembly
 haskelujah compile MyModule.hs --wasm -o out.wasm
