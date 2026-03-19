@@ -564,11 +564,20 @@ fn emit_expr_chirho(
             }
         }
 
-        CoreExprChirho::ConAppChirho { .. } => {
-            // Constructor application — return 0 as a tag placeholder
-            // (full constructor support needs heap/memory)
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } => {
+            // Nullary constructors can lower to their tag directly even before
+            // heap-backed constructor payloads exist. Constructors with fields
+            // still need real memory support, so they keep the placeholder.
             buf_chirho.push(0x42); // i64.const
-            encode_i64_chirho(buf_chirho, 0);
+            let tag_chirho = if args_chirho.is_empty() {
+                constructor_tag_chirho(con_name_chirho)
+            } else {
+                0
+            };
+            encode_i64_chirho(buf_chirho, tag_chirho);
         }
     }
 }
@@ -583,12 +592,10 @@ fn emit_alt_compare_chirho(
             emit_lit_chirho(buf_chirho, lit_chirho);
             buf_chirho.push(0x51); // i64.eq
         }
-        AltConChirho::DataConChirho(_name_chirho) => {
-            // For now, treat data constructors by comparing tags
-            // The scrutinee should already be a tag value from ConApp
-            // We don't have a tag lookup here, so push 0 and compare
+        AltConChirho::DataConChirho(name_chirho) => {
+            // Compare against the lowered constructor tag.
             buf_chirho.push(0x42); // i64.const
-            encode_i64_chirho(buf_chirho, 0);
+            encode_i64_chirho(buf_chirho, constructor_tag_chirho(name_chirho));
             buf_chirho.push(0x51); // i64.eq
         }
         AltConChirho::DefaultChirho => {
@@ -637,9 +644,9 @@ fn emit_nested_if_else_chirho(
             emit_lit_chirho(buf_chirho, lit_chirho);
             buf_chirho.push(0x51); // i64.eq
         }
-        AltConChirho::DataConChirho(_) => {
+        AltConChirho::DataConChirho(name_chirho) => {
             buf_chirho.push(0x42); // i64.const (tag — would need tag lookup)
-            encode_i64_chirho(buf_chirho, idx_chirho as i64);
+            encode_i64_chirho(buf_chirho, constructor_tag_chirho(name_chirho));
             buf_chirho.push(0x51); // i64.eq
         }
         AltConChirho::DefaultChirho => {
@@ -702,6 +709,18 @@ fn emit_lit_chirho(buf_chirho: &mut Vec<u8>, lit_chirho: &CoreLitChirho) {
     }
 }
 
+fn constructor_tag_chirho(name_chirho: &str) -> i64 {
+    match name_chirho {
+        "False" => 0,
+        "True" => 1,
+        "Nothing" => 0,
+        "Just" => 1,
+        "Left" => 0,
+        "Right" => 1,
+        _ => 0,
+    }
+}
+
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
@@ -728,6 +747,12 @@ mod tests_chirho {
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
         }
+    }
+
+    fn contains_subslice_chirho(haystack_chirho: &[u8], needle_chirho: &[u8]) -> bool {
+        haystack_chirho
+            .windows(needle_chirho.len())
+            .any(|window_chirho| window_chirho == needle_chirho)
     }
 
     #[test]
@@ -914,8 +939,41 @@ mod tests_chirho {
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
-        // Should contain i64.const 1 (the constructor tag)
-        assert!(wasm_chirho.contains(&0x42_u8)); // i64.const
+        assert!(contains_subslice_chirho(&wasm_chirho, &[0x42, 0x01]));
+    }
+
+    #[test]
+    fn wasm_case_data_constructor_chirho() {
+        // main = case True of { True -> 42; False -> 0 }
+        let module_chirho = make_module_chirho(vec![CoreBindingChirho {
+            binder_chirho: dummy_binder_chirho("main", 0),
+            rhs_chirho: CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "True".to_string(),
+                    args_chirho: vec![],
+                }),
+                bind_chirho: dummy_binder_chirho("scrut", 5),
+                result_ty_chirho: TyChirho::int_chirho(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                    },
+                ],
+            },
+            is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+        }]);
+
+        let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
+        assert!(contains_subslice_chirho(&wasm_chirho, &[0x42, 0x01, 0x51]));
+        assert!(contains_subslice_chirho(&wasm_chirho, &[0x42, 0x00, 0x51]));
     }
 
     #[test]
