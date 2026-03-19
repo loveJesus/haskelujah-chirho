@@ -68,12 +68,13 @@ pub struct LlvmCodegenChirho {
     lifted_local_capture_ids_chirho: HashMap<CoreIdChirho, Vec<CoreIdChirho>>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum ShowBuiltinKindChirho {
     IntChirho,
     BoolChirho,
     CharChirho,
     DoubleChirho,
+    ListChirho(Box<ShowBuiltinKindChirho>),
 }
 
 impl LlvmCodegenChirho {
@@ -527,14 +528,39 @@ impl LlvmCodegenChirho {
             CoreExprChirho::ConAppChirho {
                 con_name_chirho,
                 args_chirho,
-            } if args_chirho.is_empty() && matches!(con_name_chirho.as_str(), "True" | "False") => {
-                Some(ShowBuiltinKindChirho::BoolChirho)
-            }
+            } => match (con_name_chirho.as_str(), args_chirho.as_slice()) {
+                ("True", []) | ("False", []) => Some(ShowBuiltinKindChirho::BoolChirho),
+                (":", [head_expr_chirho, tail_expr_chirho]) => {
+                    let head_kind_chirho = self
+                        .classify_expr_show_kind_chirho(head_expr_chirho)
+                        .unwrap_or(ShowBuiltinKindChirho::IntChirho);
+                    match self.classify_expr_show_kind_chirho(tail_expr_chirho) {
+                        Some(ShowBuiltinKindChirho::ListChirho(tail_kind_chirho))
+                            if *tail_kind_chirho == head_kind_chirho =>
+                        {
+                            Some(ShowBuiltinKindChirho::ListChirho(Box::new(head_kind_chirho)))
+                        }
+                        None
+                            if matches!(
+                                tail_expr_chirho,
+                                CoreExprChirho::ConAppChirho {
+                                    con_name_chirho,
+                                    args_chirho,
+                                } if con_name_chirho == "[]" && args_chirho.is_empty()
+                            ) =>
+                        {
+                            Some(ShowBuiltinKindChirho::ListChirho(Box::new(head_kind_chirho)))
+                        }
+                        _ => None,
+                    }
+                }
+                _ => None,
+            },
             CoreExprChirho::VarChirho(id_chirho) => self
                 .local_value_kinds_chirho
                 .get(id_chirho)
-                .copied()
-                .or_else(|| self.toplevel_value_kinds_chirho.get(id_chirho).copied())
+                .cloned()
+                .or_else(|| self.toplevel_value_kinds_chirho.get(id_chirho).cloned())
                 .or_else(|| {
                     self.toplevel_names_chirho
                         .get(id_chirho)
@@ -1064,6 +1090,35 @@ impl LlvmCodegenChirho {
                                         show_kind_chirho,
                                     );
                                     return "0".to_string();
+                                }
+                            }
+                        }
+                        if matches!(
+                            name_chirho.as_str(),
+                            "show"
+                                | "showInt#"
+                                | "showBool#"
+                                | "showChar#"
+                                | "showFloat#"
+                                | "$sel_Show_show"
+                        ) {
+                            if let Some(arg_expr_chirho) = args_chirho.last() {
+                                if let Some(show_kind_chirho) =
+                                    self.classify_expr_show_kind_chirho(arg_expr_chirho)
+                                {
+                                    let arg_value_chirho =
+                                        self.compile_expr_chirho(arg_expr_chirho);
+                                    let ptr_tmp_chirho = self.emit_show_value_ptr_chirho(
+                                        &arg_value_chirho,
+                                        show_kind_chirho,
+                                    );
+                                    let result_tmp_chirho = self.fresh_tmp_chirho();
+                                    writeln!(
+                                        self.output_chirho,
+                                        "  {result_tmp_chirho} = ptrtoint ptr {ptr_tmp_chirho} to i64"
+                                    )
+                                    .unwrap();
+                                    return result_tmp_chirho;
                                 }
                             }
                         }
@@ -1756,7 +1811,8 @@ impl LlvmCodegenChirho {
             ShowBuiltinKindChirho::IntChirho
             | ShowBuiltinKindChirho::BoolChirho
             | ShowBuiltinKindChirho::CharChirho
-            | ShowBuiltinKindChirho::DoubleChirho => {
+            | ShowBuiltinKindChirho::DoubleChirho
+            | ShowBuiltinKindChirho::ListChirho(_) => {
                 let ptr_tmp_chirho =
                     self.emit_show_value_ptr_chirho(arg_value_chirho, show_kind_chirho);
                 let result_tmp_chirho = self.fresh_tmp_chirho();
@@ -1852,7 +1908,281 @@ impl LlvmCodegenChirho {
                 .unwrap();
                 buf_tmp_chirho
             }
+            ShowBuiltinKindChirho::ListChirho(element_kind_chirho) => {
+                self.emit_show_list_value_ptr_chirho(
+                    arg_value_chirho,
+                    element_kind_chirho.as_ref(),
+                )
+            }
         }
+    }
+
+    fn emit_store_byte_at_index_chirho(
+        &mut self,
+        buffer_ptr_chirho: &str,
+        index_value_chirho: &str,
+        byte_value_chirho: u8,
+    ) {
+        let dst_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {dst_ptr_tmp_chirho} = getelementptr i8, ptr {buffer_ptr_chirho}, i64 {index_value_chirho}"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  store i8 {byte_value_chirho}, ptr {dst_ptr_tmp_chirho}"
+        )
+        .unwrap();
+    }
+
+    fn emit_push_byte_chirho(
+        &mut self,
+        buffer_ptr_chirho: &str,
+        index_ptr_chirho: &str,
+        byte_value_chirho: u8,
+    ) {
+        let index_value_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {index_value_tmp_chirho} = load i64, ptr {index_ptr_chirho}"
+        )
+        .unwrap();
+        self.emit_store_byte_at_index_chirho(
+            buffer_ptr_chirho,
+            &index_value_tmp_chirho,
+            byte_value_chirho,
+        );
+        let next_index_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {next_index_tmp_chirho} = add i64 {index_value_tmp_chirho}, 1"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  store i64 {next_index_tmp_chirho}, ptr {index_ptr_chirho}"
+        )
+        .unwrap();
+    }
+
+    fn emit_append_c_string_chirho(
+        &mut self,
+        buffer_ptr_chirho: &str,
+        index_ptr_chirho: &str,
+        source_ptr_chirho: &str,
+    ) {
+        let src_ptr_alloca_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {src_ptr_alloca_tmp_chirho} = alloca ptr"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  store ptr {source_ptr_chirho}, ptr {src_ptr_alloca_tmp_chirho}"
+        )
+        .unwrap();
+
+        let loop_label_chirho = self.fresh_label_chirho("show.append.loop");
+        let copy_label_chirho = self.fresh_label_chirho("show.append.copy");
+        let done_label_chirho = self.fresh_label_chirho("show.append.done");
+        writeln!(self.output_chirho, "  br label %{loop_label_chirho}").unwrap();
+
+        writeln!(self.output_chirho, "{loop_label_chirho}:").unwrap();
+        let src_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {src_ptr_tmp_chirho} = load ptr, ptr {src_ptr_alloca_tmp_chirho}"
+        )
+        .unwrap();
+        let src_char_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {src_char_tmp_chirho} = load i8, ptr {src_ptr_tmp_chirho}"
+        )
+        .unwrap();
+        let is_end_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {is_end_tmp_chirho} = icmp eq i8 {src_char_tmp_chirho}, 0"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  br i1 {is_end_tmp_chirho}, label %{done_label_chirho}, label %{copy_label_chirho}"
+        )
+        .unwrap();
+
+        writeln!(self.output_chirho, "{copy_label_chirho}:").unwrap();
+        let index_value_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {index_value_tmp_chirho} = load i64, ptr {index_ptr_chirho}"
+        )
+        .unwrap();
+        let dst_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {dst_ptr_tmp_chirho} = getelementptr i8, ptr {buffer_ptr_chirho}, i64 {index_value_tmp_chirho}"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  store i8 {src_char_tmp_chirho}, ptr {dst_ptr_tmp_chirho}"
+        )
+        .unwrap();
+        let next_index_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {next_index_tmp_chirho} = add i64 {index_value_tmp_chirho}, 1"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  store i64 {next_index_tmp_chirho}, ptr {index_ptr_chirho}"
+        )
+        .unwrap();
+        let next_src_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {next_src_ptr_tmp_chirho} = getelementptr i8, ptr {src_ptr_tmp_chirho}, i64 1"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  store ptr {next_src_ptr_tmp_chirho}, ptr {src_ptr_alloca_tmp_chirho}"
+        )
+        .unwrap();
+        writeln!(self.output_chirho, "  br label %{loop_label_chirho}").unwrap();
+
+        writeln!(self.output_chirho, "{done_label_chirho}:").unwrap();
+    }
+
+    fn emit_show_list_value_ptr_chirho(
+        &mut self,
+        arg_value_chirho: &str,
+        element_kind_chirho: &ShowBuiltinKindChirho,
+    ) -> String {
+        let buf_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {buf_tmp_chirho} = call ptr @malloc(i64 4096)"
+        )
+        .unwrap();
+        let index_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {index_ptr_tmp_chirho} = alloca i64"
+        )
+        .unwrap();
+        writeln!(self.output_chirho, "  store i64 0, ptr {index_ptr_tmp_chirho}").unwrap();
+        self.emit_push_byte_chirho(&buf_tmp_chirho, &index_ptr_tmp_chirho, b'[');
+
+        let current_list_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {current_list_ptr_tmp_chirho} = alloca i64"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  store i64 {arg_value_chirho}, ptr {current_list_ptr_tmp_chirho}"
+        )
+        .unwrap();
+        let first_elem_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {first_elem_ptr_tmp_chirho} = alloca i1"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  store i1 true, ptr {first_elem_ptr_tmp_chirho}"
+        )
+        .unwrap();
+
+        let loop_label_chirho = self.fresh_label_chirho("show.list.loop");
+        let elem_label_chirho = self.fresh_label_chirho("show.list.elem");
+        let sep_label_chirho = self.fresh_label_chirho("show.list.sep");
+        let body_label_chirho = self.fresh_label_chirho("show.list.body");
+        let done_label_chirho = self.fresh_label_chirho("show.list.done");
+        writeln!(self.output_chirho, "  br label %{loop_label_chirho}").unwrap();
+
+        writeln!(self.output_chirho, "{loop_label_chirho}:").unwrap();
+        let current_list_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {current_list_tmp_chirho} = load i64, ptr {current_list_ptr_tmp_chirho}"
+        )
+        .unwrap();
+        let current_tag_tmp_chirho = self.load_constructor_tag_chirho(&current_list_tmp_chirho);
+        let is_empty_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {is_empty_tmp_chirho} = icmp eq i64 {current_tag_tmp_chirho}, {}",
+            constructor_tag_chirho("[]")
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  br i1 {is_empty_tmp_chirho}, label %{done_label_chirho}, label %{elem_label_chirho}"
+        )
+        .unwrap();
+
+        writeln!(self.output_chirho, "{elem_label_chirho}:").unwrap();
+        let is_first_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {is_first_tmp_chirho} = load i1, ptr {first_elem_ptr_tmp_chirho}"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  br i1 {is_first_tmp_chirho}, label %{body_label_chirho}, label %{sep_label_chirho}"
+        )
+        .unwrap();
+
+        writeln!(self.output_chirho, "{sep_label_chirho}:").unwrap();
+        self.emit_push_byte_chirho(&buf_tmp_chirho, &index_ptr_tmp_chirho, b',');
+        writeln!(self.output_chirho, "  br label %{body_label_chirho}").unwrap();
+
+        writeln!(self.output_chirho, "{body_label_chirho}:").unwrap();
+        writeln!(
+            self.output_chirho,
+            "  store i1 false, ptr {first_elem_ptr_tmp_chirho}"
+        )
+        .unwrap();
+        let head_value_tmp_chirho =
+            self.load_boxed_constructor_field_chirho(&current_list_tmp_chirho, 1);
+        let head_ptr_tmp_chirho = self.emit_show_value_ptr_chirho(
+            &head_value_tmp_chirho,
+            element_kind_chirho.clone(),
+        );
+        self.emit_append_c_string_chirho(
+            &buf_tmp_chirho,
+            &index_ptr_tmp_chirho,
+            &head_ptr_tmp_chirho,
+        );
+        let tail_value_tmp_chirho =
+            self.load_boxed_constructor_field_chirho(&current_list_tmp_chirho, 2);
+        writeln!(
+            self.output_chirho,
+            "  store i64 {tail_value_tmp_chirho}, ptr {current_list_ptr_tmp_chirho}"
+        )
+        .unwrap();
+        writeln!(self.output_chirho, "  br label %{loop_label_chirho}").unwrap();
+
+        writeln!(self.output_chirho, "{done_label_chirho}:").unwrap();
+        self.emit_push_byte_chirho(&buf_tmp_chirho, &index_ptr_tmp_chirho, b']');
+        let final_index_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {final_index_tmp_chirho} = load i64, ptr {index_ptr_tmp_chirho}"
+        )
+        .unwrap();
+        self.emit_store_byte_at_index_chirho(&buf_tmp_chirho, &final_index_tmp_chirho, 0);
+        buf_tmp_chirho
     }
 
     fn compile_case_lit_chirho(
@@ -2200,6 +2530,8 @@ fn classify_basic_ty_chirho(ty_chirho: &TyChirho) -> Option<ShowBuiltinKindChirh
         TyChirho::ConChirho(name_chirho) if name_chirho == "Double" || name_chirho == "Float" => {
             Some(ShowBuiltinKindChirho::DoubleChirho)
         }
+        TyChirho::ListChirho(inner_ty_chirho) => classify_basic_ty_chirho(inner_ty_chirho)
+            .map(|inner_kind_chirho| ShowBuiltinKindChirho::ListChirho(Box::new(inner_kind_chirho))),
         _ => None,
     }
 }
@@ -3392,6 +3724,74 @@ mod tests_chirho {
         assert!(ir_chirho.contains("declare i32 @snprintf(ptr, i64, ptr, ...)"));
         assert!(ir_chirho.contains("define i64 @haskelujah_show(i64 %v2)"));
         assert!(ir_chirho.contains("call ptr @malloc(i64 32)"));
+        assert!(ir_chirho.contains("@snprintf(ptr"));
+    }
+
+    #[test]
+    fn compile_executable_print_int_list_uses_list_show_loop_chirho() {
+        let print_binder_chirho = dummy_binder_chirho("print", 1);
+        let list_arg_binder_chirho = BinderChirho {
+            id_chirho: CoreIdChirho(2),
+            name_chirho: "xs".to_string(),
+            ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+            span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+        };
+        let list_expr_chirho = CoreExprChirho::ConAppChirho {
+            con_name_chirho: ":".to_string(),
+            args_chirho: vec![
+                int_lit_chirho(1),
+                CoreExprChirho::ConAppChirho {
+                    con_name_chirho: ":".to_string(),
+                    args_chirho: vec![
+                        int_lit_chirho(2),
+                        CoreExprChirho::ConAppChirho {
+                            con_name_chirho: ":".to_string(),
+                            args_chirho: vec![
+                                int_lit_chirho(3),
+                                CoreExprChirho::ConAppChirho {
+                                    con_name_chirho: "[]".to_string(),
+                                    args_chirho: vec![],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        };
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "ListPrint".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("main", 0),
+                    rhs_chirho: CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                            print_binder_chirho.id_chirho,
+                        )),
+                        arg_chirho: Box::new(list_expr_chirho),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: print_binder_chirho,
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: list_arg_binder_chirho,
+                        body_chirho: Box::new(int_lit_chirho(0)),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+        assert!(ir_chirho.contains("show.list.loop"));
+        assert!(ir_chirho.contains("store i8 91"));
+        assert!(ir_chirho.contains("store i8 44"));
+        assert!(ir_chirho.contains("store i8 93"));
         assert!(ir_chirho.contains("@snprintf(ptr"));
     }
 
