@@ -1011,6 +1011,18 @@ main = do
     }
 
     #[test]
+    fn llvm_round_trip_print_sum_list_output_chirho() {
+        let src_chirho = "module Main where\nmain = print (sum [1,2,3])";
+        let (exit_code_chirho, stdout_chirho) =
+            llvm_round_trip_output_chirho(src_chirho).expect("sum list LLVM round-trip");
+        assert_eq!(
+            exit_code_chirho, 0,
+            "sum list executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "6\n");
+    }
+
+    #[test]
     fn llvm_round_trip_map_lambda_sum_chirho() {
         let src_chirho = "module Main where\nmain = sum (map (\\x -> x * 2) [1,2,3])";
         let exit_code_chirho = llvm_round_trip_chirho(src_chirho);

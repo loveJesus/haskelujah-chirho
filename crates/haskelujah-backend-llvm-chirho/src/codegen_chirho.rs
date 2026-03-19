@@ -573,6 +573,40 @@ impl LlvmCodegenChirho {
                             }
                         }
                         let fn_ref_chirho = format!("@{}", mangle_name_chirho(name_chirho));
+                        let arity_chirho = self
+                            .toplevel_arities_chirho
+                            .get(id_chirho)
+                            .copied()
+                            .unwrap_or(0);
+                        if arity_chirho == 0 {
+                            let tmp_chirho = self.fresh_tmp_chirho();
+                            writeln!(
+                                self.output_chirho,
+                                "  {tmp_chirho} = call i64 {fn_ref_chirho}()"
+                            )
+                            .unwrap();
+                            return self.compile_curried_indirect_apps_chirho(
+                                &tmp_chirho,
+                                &arg_vals_chirho,
+                            );
+                        }
+                        if arg_vals_chirho.len() > arity_chirho {
+                            let direct_args_str_chirho = arg_vals_chirho[..arity_chirho]
+                                .iter()
+                                .map(|v_chirho| format!("i64 {v_chirho}"))
+                                .collect::<Vec<_>>()
+                                .join(", ");
+                            let tmp_chirho = self.fresh_tmp_chirho();
+                            writeln!(
+                                self.output_chirho,
+                                "  {tmp_chirho} = call i64 {fn_ref_chirho}({direct_args_str_chirho})"
+                            )
+                            .unwrap();
+                            return self.compile_curried_indirect_apps_chirho(
+                                &tmp_chirho,
+                                &arg_vals_chirho[arity_chirho..],
+                            );
+                        }
                         let tmp_chirho = self.fresh_tmp_chirho();
                         writeln!(
                             self.output_chirho,
@@ -584,7 +618,7 @@ impl LlvmCodegenChirho {
                 }
 
                 let fun_val_chirho = self.compile_expr_chirho(callee_chirho);
-                self.compile_indirect_call_chirho(&fun_val_chirho, &args_str_chirho)
+                self.compile_curried_indirect_apps_chirho(&fun_val_chirho, &arg_vals_chirho)
             }
 
             CoreExprChirho::LamChirho {
@@ -881,6 +915,20 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         result_tmp_chirho
+    }
+
+    fn compile_curried_indirect_apps_chirho(
+        &mut self,
+        fun_val_chirho: &str,
+        arg_vals_chirho: &[String],
+    ) -> String {
+        let mut current_fun_chirho = fun_val_chirho.to_string();
+        for arg_val_chirho in arg_vals_chirho {
+            let arg_str_chirho = format!("i64 {arg_val_chirho}");
+            current_fun_chirho =
+                self.compile_indirect_call_chirho(&current_fun_chirho, &arg_str_chirho);
+        }
+        current_fun_chirho
     }
 
     fn compile_constructor_app_chirho(
@@ -1347,13 +1395,22 @@ fn collect_lambda_binders_chirho(
     let mut binders_chirho = Vec::new();
     let mut current_chirho = expr_chirho;
 
-    while let CoreExprChirho::LamChirho {
-        binder_chirho,
-        body_chirho,
-    } = current_chirho
-    {
-        binders_chirho.push(binder_chirho);
-        current_chirho = body_chirho;
+    loop {
+        match current_chirho {
+            CoreExprChirho::LamChirho {
+                binder_chirho,
+                body_chirho,
+            } => {
+                binders_chirho.push(binder_chirho);
+                current_chirho = body_chirho;
+            }
+            // Type lambdas are erased at runtime but can wrap real value
+            // parameters on dictionary selectors and polymorphic helpers.
+            CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+                current_chirho = body_chirho;
+            }
+            _ => break,
+        }
     }
 
     (binders_chirho, current_chirho)
@@ -1500,8 +1557,9 @@ pub fn compile_core_to_llvm_chirho(module_chirho: &CoreModuleChirho) -> String {
 /// LLVM backend doesn't yet support closures/heap needed by the full Prelude.
 pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) -> String {
     // Dictionary elision + reachability filtering via shared Core utility
-    let filtered_module_chirho =
+    let mut filtered_module_chirho =
         haskelujah_core_chirho::elide_dicts_and_filter_chirho(module_chirho);
+    restore_selector_bindings_chirho(module_chirho, &mut filtered_module_chirho);
 
     let mut codegen_chirho = LlvmCodegenChirho::new_chirho();
     let mut ir_chirho = codegen_chirho.compile_module_chirho(&filtered_module_chirho);
@@ -1574,6 +1632,29 @@ pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) 
     }
 
     ir_chirho
+}
+
+fn restore_selector_bindings_chirho(
+    original_module_chirho: &CoreModuleChirho,
+    filtered_module_chirho: &mut CoreModuleChirho,
+) {
+    let original_bindings_by_id_chirho: HashMap<CoreIdChirho, &CoreBindingChirho> =
+        original_module_chirho
+            .bindings_chirho
+            .iter()
+            .map(|binding_chirho| (binding_chirho.binder_chirho.id_chirho, binding_chirho))
+            .collect();
+
+    for binding_chirho in &mut filtered_module_chirho.bindings_chirho {
+        if !binding_chirho.binder_chirho.name_chirho.starts_with("$sel_") {
+            continue;
+        }
+        if let Some(original_binding_chirho) =
+            original_bindings_by_id_chirho.get(&binding_chirho.binder_chirho.id_chirho)
+        {
+            binding_chirho.rhs_chirho = original_binding_chirho.rhs_chirho.clone();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2165,6 +2246,202 @@ mod tests_chirho {
         assert!(ir_chirho.contains("define i64 @haskelujah_show(i64 %v2)"));
         assert!(ir_chirho.contains("call ptr @malloc(i64 32)"));
         assert!(ir_chirho.contains("@snprintf(ptr"));
+    }
+
+    #[test]
+    fn compile_ty_lam_wrapped_runtime_params_chirho() {
+        let dict_binder_chirho = dummy_binder_chirho("dNum", 1);
+        let arg_binder_chirho = dummy_binder_chirho("x", 2);
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Selector".to_string(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: dummy_binder_chirho("$sel_Num_fromInteger", 0),
+                rhs_chirho: CoreExprChirho::TyLamChirho {
+                    ty_var_chirho: "a".to_string(),
+                    body_chirho: Box::new(CoreExprChirho::LamChirho {
+                        binder_chirho: dict_binder_chirho,
+                        body_chirho: Box::new(CoreExprChirho::LamChirho {
+                            binder_chirho: arg_binder_chirho,
+                            body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(2))),
+                        }),
+                    }),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        assert!(ir_chirho.contains(
+            "define i64 @haskelujah__u0024sel_Num_fromInteger(i64 %v1, i64 %v2)"
+        ));
+        assert!(ir_chirho.contains("ret i64 %v2"));
+    }
+
+    #[test]
+    fn compile_overapplied_selector_as_direct_then_indirect_call_chirho() {
+        let dict_binder_chirho = BinderChirho {
+            id_chirho: CoreIdChirho(1),
+            name_chirho: "d".to_string(),
+            ty_chirho: TyChirho::ConChirho("$Dict_Num".to_string()),
+            span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+        };
+        let method_binder_chirho = BinderChirho {
+            id_chirho: CoreIdChirho(2),
+            name_chirho: "fromInteger".to_string(),
+            ty_chirho: TyChirho::ConChirho("Int".to_string()),
+            span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+        };
+        let arg_binder_chirho = dummy_binder_chirho("x", 3);
+        let selector_binder_chirho = BinderChirho {
+            id_chirho: CoreIdChirho(10),
+            name_chirho: "$sel_Num_fromInteger".to_string(),
+            ty_chirho: TyChirho::ConChirho("Selector".to_string()),
+            span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+        };
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "SelectorApply".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: selector_binder_chirho.clone(),
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: dict_binder_chirho.clone(),
+                        body_chirho: Box::new(CoreExprChirho::VarChirho(
+                            method_binder_chirho.id_chirho,
+                        )),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: method_binder_chirho.clone(),
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: arg_binder_chirho,
+                        body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(3))),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("main", 0),
+                    rhs_chirho: CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                                selector_binder_chirho.id_chirho,
+                            )),
+                            arg_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                                con_name_chirho: "$Dict_Num".to_string(),
+                                args_chirho: vec![int_lit_chirho(0)],
+                            }),
+                        }),
+                        arg_chirho: Box::new(int_lit_chirho(42)),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        assert!(ir_chirho.contains("call i64 @haskelujah__u0024sel_Num_fromInteger(i64"));
+        assert!(ir_chirho.contains("inttoptr i64 %t"));
+        assert!(!ir_chirho.contains(
+            "call i64 @haskelujah__u0024sel_Num_fromInteger(i64 %t0, i64 42)"
+        ));
+    }
+
+    #[test]
+    fn restore_selector_bindings_restores_original_rhs_chirho() {
+        let dict_binder_chirho = BinderChirho {
+            id_chirho: CoreIdChirho(1),
+            name_chirho: "$dict".to_string(),
+            ty_chirho: TyChirho::ConChirho("$Dict_Num".to_string()),
+            span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+        };
+        let method_binder_chirho = BinderChirho {
+            id_chirho: CoreIdChirho(2),
+            name_chirho: "fromInteger".to_string(),
+            ty_chirho: TyChirho::ConChirho("Int".to_string()),
+            span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+        };
+        let selector_binder_chirho = BinderChirho {
+            id_chirho: CoreIdChirho(10),
+            name_chirho: "$sel_Num_fromInteger".to_string(),
+            ty_chirho: TyChirho::ConChirho("Selector".to_string()),
+            span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+        };
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "SelectorExec".to_string(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: selector_binder_chirho.clone(),
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: dict_binder_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::CaseChirho {
+                        scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
+                            dict_binder_chirho.id_chirho,
+                        )),
+                        bind_chirho: dummy_binder_chirho("wild", 11),
+                        result_ty_chirho: TyChirho::ConChirho("Selector".to_string()),
+                        alts_chirho: vec![CoreAltChirho {
+                            con_chirho: AltConChirho::DataConChirho("$Dict_Num".to_string()),
+                            binders_chirho: vec![
+                                dummy_binder_chirho("f0", 12),
+                                dummy_binder_chirho("f1", 13),
+                                dummy_binder_chirho("f2", 14),
+                                dummy_binder_chirho("f3", 15),
+                                dummy_binder_chirho("f4", 16),
+                                dummy_binder_chirho("f5", 17),
+                                method_binder_chirho.clone(),
+                                dummy_binder_chirho("f7", 18),
+                                dummy_binder_chirho("f8", 19),
+                            ],
+                            rhs_chirho: CoreExprChirho::VarChirho(method_binder_chirho.id_chirho),
+                        }],
+                    }),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+        let mut filtered_module_chirho = CoreModuleChirho {
+            name_chirho: module_chirho.name_chirho.clone(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: selector_binder_chirho,
+                rhs_chirho: CoreExprChirho::CaseChirho {
+                    scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(dict_binder_chirho.id_chirho)),
+                    bind_chirho: dummy_binder_chirho("wild", 11),
+                    result_ty_chirho: TyChirho::ConChirho("Selector".to_string()),
+                    alts_chirho: vec![],
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        restore_selector_bindings_chirho(&module_chirho, &mut filtered_module_chirho);
+
+        match &filtered_module_chirho.bindings_chirho[0].rhs_chirho {
+            CoreExprChirho::LamChirho {
+                binder_chirho,
+                body_chirho,
+            } => {
+                assert_eq!(binder_chirho.id_chirho, dict_binder_chirho.id_chirho);
+                assert!(matches!(body_chirho.as_ref(), CoreExprChirho::CaseChirho { .. }));
+            }
+            other_chirho => panic!("expected restored selector lambda, got {other_chirho:?}"),
+        }
     }
 
     #[test]
