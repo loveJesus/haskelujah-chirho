@@ -144,6 +144,7 @@ fn main_chirho() -> ExitCode {
         "build" => build_command_chirho(program_name_chirho, path_chirho),
         "install" => install_command_chirho(program_name_chirho, &positional_chirho),
         "repl" => repl_chirho::repl_command_chirho(),
+        "init" => init_command_chirho(path_chirho),
         _ => {
             eprintln!("unknown command `{command_chirho}`");
             print_usage_chirho(program_name_chirho);
@@ -617,6 +618,59 @@ fn link_llvm_executable_chirho(
             ll_path_chirho.display(),
         ))
     }
+}
+
+/// `haskelujah init [name]` — create a new Haskell project with .cabal scaffold.
+fn init_command_chirho(name_arg_chirho: Option<String>) -> ExitCode {
+    let project_name_chirho = name_arg_chirho.unwrap_or_else(|| "my-project".to_string());
+    let project_dir_chirho = Path::new(&project_name_chirho);
+
+    if project_dir_chirho.exists() {
+        eprintln!(
+            "error: directory `{}` already exists",
+            project_dir_chirho.display()
+        );
+        return ExitCode::from(1);
+    }
+
+    if let Err(e_chirho) = fs::create_dir_all(project_dir_chirho) {
+        eprintln!("error creating directory: {}", e_chirho);
+        return ExitCode::from(1);
+    }
+
+    let cabal_content_chirho = format!(
+        "cabal-version: 2.4\nname: {name}\nversion: 0.1.0.0\n\nexecutable {name}\n  main-is: Main.hs\n  build-depends: base\n  default-language: Haskell2010\n",
+        name = project_name_chirho
+    );
+
+    let main_content_chirho =
+        "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
+         -- believes in him should not perish but have eternal life. — John 3:16\n\
+         \n\
+         module Main where\n\
+         \n\
+         main :: IO ()\n\
+         main = putStrLn \"Hello from Haskelujah Chirho!\"\n";
+
+    let cabal_path_chirho = project_dir_chirho.join(format!("{}.cabal", project_name_chirho));
+    let main_path_chirho = project_dir_chirho.join("Main.hs");
+
+    if let Err(e_chirho) = fs::write(&cabal_path_chirho, cabal_content_chirho) {
+        eprintln!("error writing {}: {}", cabal_path_chirho.display(), e_chirho);
+        return ExitCode::from(1);
+    }
+    if let Err(e_chirho) = fs::write(&main_path_chirho, main_content_chirho) {
+        eprintln!("error writing {}: {}", main_path_chirho.display(), e_chirho);
+        return ExitCode::from(1);
+    }
+
+    eprintln!("Created project `{}`", project_name_chirho);
+    eprintln!("  {}", cabal_path_chirho.display());
+    eprintln!("  {}", main_path_chirho.display());
+    eprintln!("");
+    eprintln!("To build:  haskelujah build {}", project_name_chirho);
+    eprintln!("To run:    haskelujah run {}/Main.hs", project_name_chirho);
+    ExitCode::SUCCESS
 }
 
 /// Find a `.cabal` file in the given directory (first match).
