@@ -60,9 +60,9 @@ Haskelujah Chirho is a Haskell compiler written in Rust, aiming to be a drop-in 
 
 | Backend | Maturity | Output | Notes |
 |---|---|---|---|
-| LLVM | **Beta** | Native executables via clang | Primary compilation target |
+| Cranelift | **Beta** | Native executables via system `cc` | **Default** — no LLVM needed, self-contained |
+| LLVM | **Beta** | Native executables via clang | Full feature support (`--llvm` flag) |
 | WebAssembly | **Beta** | Binary `.wasm` files | First-class target |
-| Cranelift | Experimental | Native objects (x86_64, aarch64, s390x, riscv64) | Fast compile times |
 | JVM | Research | `.class` bytecode | Scaffold only |
 | BEAM | Research | `.beam` bytecode | Scaffold only |
 
@@ -197,7 +197,7 @@ haskelujah clean .          # Remove build artifacts
 | Type checking | Reference | 91.5% compatible (858/938) |
 | Compilation speed | ~1-5s for small files | ~0.2-0.4s |
 | Runtime (fib 40) | 0.39s (-O2) | 0.32s (18% faster) |
-| Native code | Via NCG or LLVM | Via LLVM + clang |
+| Native code | Via NCG or LLVM | Cranelift (default) or LLVM + clang |
 | WebAssembly | Via Asterius/GHCJS | Built-in (beta) |
 | Package manager | cabal-install / Stack | Built-in `build` command |
 | Project scaffold | `cabal init` | `haskelujah init` |
