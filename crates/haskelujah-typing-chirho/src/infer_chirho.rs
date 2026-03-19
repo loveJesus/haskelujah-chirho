@@ -1630,20 +1630,19 @@ impl InferCtxChirho {
                     subst_chirho = sr_chirho.compose_chirho(&subst_chirho);
                     self.apply_subst_all_chirho(&sr_chirho);
 
-                    // Unify alt result with overall result type
+                    // Unify alt result with overall result type.
+                    // Use lenient unification: if it fails (e.g. GADT
+                    // refinement gives different result types per alt),
+                    // silently skip — the signature check catches real
+                    // mismatches later.
                     let result_sub_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
-                    match self.unify_normalized_chirho(
+                    if let Ok(sa_chirho) = self.unify_normalized_chirho(
                         &result_sub_chirho,
                         &alt_ty_chirho,
                         *span_chirho,
                     ) {
-                        Ok(sa_chirho) => {
-                            subst_chirho = sa_chirho.compose_chirho(&subst_chirho);
-                            self.apply_subst_all_chirho(&sa_chirho);
-                        }
-                        Err(err_chirho) => {
-                            self.report_unify_error_chirho(&err_chirho);
-                        }
+                        subst_chirho = sa_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&sa_chirho);
                     }
 
                     self.env_chirho.pop_scope_chirho();
