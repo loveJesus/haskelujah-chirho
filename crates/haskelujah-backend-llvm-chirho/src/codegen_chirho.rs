@@ -236,60 +236,36 @@ impl LlvmCodegenChirho {
             }
 
             CoreExprChirho::AppChirho {
-                fun_chirho,
-                arg_chirho,
+                fun_chirho: _,
+                arg_chirho: _,
             } => {
                 // Try to detect a direct call pattern: f arg1 arg2 ...
                 let (callee_chirho, args_chirho) = flatten_app_chirho(expr_chirho);
-                match callee_chirho {
-                    CoreExprChirho::VarChirho(id_chirho) => {
-                        // Compile all arguments
-                        let arg_vals_chirho: Vec<String> = args_chirho
-                            .iter()
-                            .map(|a_chirho| self.compile_expr_chirho(a_chirho))
-                            .collect();
-                        let args_str_chirho = arg_vals_chirho
-                            .iter()
-                            .map(|v_chirho| format!("i64 {v_chirho}"))
-                            .collect::<Vec<_>>()
-                            .join(", ");
+                let arg_vals_chirho: Vec<String> = args_chirho
+                    .iter()
+                    .map(|a_chirho| self.compile_expr_chirho(a_chirho))
+                    .collect();
+                let args_str_chirho = arg_vals_chirho
+                    .iter()
+                    .map(|v_chirho| format!("i64 {v_chirho}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                if let CoreExprChirho::VarChirho(id_chirho) = callee_chirho {
+                    if let Some(name_chirho) = self.toplevel_names_chirho.get(id_chirho) {
+                        let fn_ref_chirho = format!("@{}", mangle_name_chirho(name_chirho));
                         let tmp_chirho = self.fresh_tmp_chirho();
-                        // Resolve the function name: top-level binding or local var
-                        let fn_ref_chirho =
-                            if let Some(name_chirho) = self.toplevel_names_chirho.get(id_chirho) {
-                                format!("@{}", mangle_name_chirho(name_chirho))
-                            } else {
-                                format!("@haskelujah_v{}", id_chirho.0)
-                            };
                         writeln!(
                             self.output_chirho,
                             "  {tmp_chirho} = call i64 {fn_ref_chirho}({args_str_chirho})"
                         )
                         .unwrap();
-                        tmp_chirho
-                    }
-                    _ => {
-                        // Unknown callee — compile as indirect call (simplified)
-                        // TODO(codex-audit): this is still a placeholder, not a
-                        // real indirect closure/function-pointer call.
-                        let fun_val_chirho = self.compile_expr_chirho(fun_chirho);
-                        let arg_val_chirho = self.compile_expr_chirho(arg_chirho);
-                        let tmp_chirho = self.fresh_tmp_chirho();
-                        // Placeholder: in a real impl this would be an indirect call
-                        // through a function pointer or closure
-                        writeln!(
-                            self.output_chirho,
-                            "  ; indirect apply {fun_val_chirho} {arg_val_chirho}"
-                        )
-                        .unwrap();
-                        writeln!(
-                            self.output_chirho,
-                            "  {tmp_chirho} = add i64 {fun_val_chirho}, {arg_val_chirho}"
-                        )
-                        .unwrap();
-                        tmp_chirho
+                        return tmp_chirho;
                     }
                 }
+
+                let fun_val_chirho = self.compile_expr_chirho(callee_chirho);
+                self.compile_indirect_call_chirho(&fun_val_chirho, &args_str_chirho)
             }
 
             CoreExprChirho::LamChirho {
@@ -539,6 +515,26 @@ impl LlvmCodegenChirho {
             .insert(value_chirho.to_string(), global_name_chirho.clone());
 
         format!("ptrtoint (ptr @{global_name_chirho} to i64)")
+    }
+
+    fn compile_indirect_call_chirho(
+        &mut self,
+        fun_val_chirho: &str,
+        args_str_chirho: &str,
+    ) -> String {
+        let fun_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        let result_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {fun_ptr_tmp_chirho} = inttoptr i64 {fun_val_chirho} to ptr"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {result_tmp_chirho} = call i64 {fun_ptr_tmp_chirho}({args_str_chirho})"
+        )
+        .unwrap();
+        result_tmp_chirho
     }
 
     fn compile_case_lit_chirho(
@@ -1016,6 +1012,41 @@ mod tests_chirho {
             "@.str.0 = private unnamed_addr constant [7 x i8] c\"Hello\\0A\\00\", align 1"
         ));
         assert!(ir_chirho.contains("ret i64 ptrtoint (ptr @.str.0 to i64)"));
+    }
+
+    #[test]
+    fn compile_indirect_call_for_local_function_value_chirho() {
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "IndirectCallTest".to_string(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: dummy_binder_chirho("main", 10),
+                rhs_chirho: CoreExprChirho::LetChirho {
+                    rec_chirho: false,
+                    binds_chirho: vec![(
+                        dummy_binder_chirho("f", 1),
+                        CoreExprChirho::LamChirho {
+                            binder_chirho: dummy_binder_chirho("x", 0),
+                            body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(0))),
+                        },
+                    )],
+                    body_chirho: Box::new(CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(1))),
+                        arg_chirho: Box::new(int_lit_chirho(42)),
+                    }),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        assert!(ir_chirho.contains("inttoptr i64 %v1 to ptr"));
+        assert!(ir_chirho.contains("call i64 %t"));
+        assert!(!ir_chirho.contains("add i64 %v1, 42"));
+        assert!(!ir_chirho.contains("@haskelujah_v1"));
     }
 
     #[test]
