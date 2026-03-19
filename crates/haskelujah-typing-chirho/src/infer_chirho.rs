@@ -270,6 +270,10 @@ impl InferCtxChirho {
                     .map(|e_chirho| self.expand_syn_chirho(e_chirho, depth_chirho))
                     .collect(),
             ),
+            TyChirho::ForallChirho { vars_chirho, body_chirho } => TyChirho::ForallChirho {
+                vars_chirho: vars_chirho.clone(),
+                body_chirho: Box::new(self.expand_syn_chirho(body_chirho, depth_chirho)),
+            },
             _ => ty_chirho.clone(),
         }
     }
