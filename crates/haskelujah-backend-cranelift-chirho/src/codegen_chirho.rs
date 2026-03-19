@@ -36,7 +36,7 @@ use haskelujah_core_chirho::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreLitChirho, CoreModuleChirho,
 };
 
-use crate::lower_chirho::{LowerCtxChirho, VarEnvChirho, ensure_i64_chirho, lower_expr_chirho};
+use crate::lower_chirho::{ensure_i64_chirho, lower_expr_chirho, LowerCtxChirho, VarEnvChirho};
 use crate::{NativeObjectChirho, TargetConfigChirho};
 
 /// Compile a `CoreModuleChirho` to a native object file via Cranelift,
@@ -250,6 +250,274 @@ pub fn compile_core_to_object_chirho(
 type FuncDeclMapChirho =
     HashMap<haskelujah_core_chirho::expr_chirho::CoreIdChirho, (cranelift_module::FuncId, usize)>;
 
+#[derive(Debug, Clone)]
+struct LocalLiftedBindingChirho {
+    binder_chirho: BinderChirho,
+    rhs_chirho: CoreExprChirho,
+    symbol_name_chirho: String,
+    arity_chirho: usize,
+}
+
+fn is_runtime_lambda_chirho(expr_chirho: &CoreExprChirho) -> bool {
+    !peel_lambdas_chirho(expr_chirho).0.is_empty()
+}
+
+fn collect_local_lambda_bindings_chirho(
+    owner_id_chirho: haskelujah_core_chirho::expr_chirho::CoreIdChirho,
+    expr_chirho: &CoreExprChirho,
+    next_local_idx_chirho: &mut u32,
+    lifted_bindings_chirho: &mut Vec<LocalLiftedBindingChirho>,
+) {
+    match expr_chirho {
+        CoreExprChirho::LetChirho {
+            binds_chirho,
+            body_chirho,
+            ..
+        } => {
+            for (binder_chirho, rhs_chirho) in binds_chirho {
+                if is_runtime_lambda_chirho(rhs_chirho) {
+                    let symbol_name_chirho = format!(
+                        "haskelujah_local_{}_{}_chirho",
+                        owner_id_chirho.0, *next_local_idx_chirho
+                    );
+                    *next_local_idx_chirho += 1;
+                    let arity_chirho = peel_lambdas_chirho(rhs_chirho).0.len();
+                    lifted_bindings_chirho.push(LocalLiftedBindingChirho {
+                        binder_chirho: binder_chirho.clone(),
+                        rhs_chirho: rhs_chirho.clone(),
+                        symbol_name_chirho,
+                        arity_chirho,
+                    });
+                }
+                collect_local_lambda_bindings_chirho(
+                    owner_id_chirho,
+                    rhs_chirho,
+                    next_local_idx_chirho,
+                    lifted_bindings_chirho,
+                );
+            }
+            collect_local_lambda_bindings_chirho(
+                owner_id_chirho,
+                body_chirho,
+                next_local_idx_chirho,
+                lifted_bindings_chirho,
+            );
+        }
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => {
+            collect_local_lambda_bindings_chirho(
+                owner_id_chirho,
+                fun_chirho,
+                next_local_idx_chirho,
+                lifted_bindings_chirho,
+            );
+            collect_local_lambda_bindings_chirho(
+                owner_id_chirho,
+                arg_chirho,
+                next_local_idx_chirho,
+                lifted_bindings_chirho,
+            );
+        }
+        CoreExprChirho::LamChirho { body_chirho, .. }
+        | CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+            collect_local_lambda_bindings_chirho(
+                owner_id_chirho,
+                body_chirho,
+                next_local_idx_chirho,
+                lifted_bindings_chirho,
+            );
+        }
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho,
+            alts_chirho,
+            ..
+        } => {
+            collect_local_lambda_bindings_chirho(
+                owner_id_chirho,
+                scrutinee_chirho,
+                next_local_idx_chirho,
+                lifted_bindings_chirho,
+            );
+            for alt_chirho in alts_chirho {
+                collect_local_lambda_bindings_chirho(
+                    owner_id_chirho,
+                    &alt_chirho.rhs_chirho,
+                    next_local_idx_chirho,
+                    lifted_bindings_chirho,
+                );
+            }
+        }
+        CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
+            collect_local_lambda_bindings_chirho(
+                owner_id_chirho,
+                expr_chirho,
+                next_local_idx_chirho,
+                lifted_bindings_chirho,
+            );
+        }
+        CoreExprChirho::PrimOpChirho { args_chirho, .. }
+        | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+            for arg_chirho in args_chirho {
+                collect_local_lambda_bindings_chirho(
+                    owner_id_chirho,
+                    arg_chirho,
+                    next_local_idx_chirho,
+                    lifted_bindings_chirho,
+                );
+            }
+        }
+        CoreExprChirho::LitChirho(_) | CoreExprChirho::VarChirho(_) => {}
+    }
+}
+
+fn declare_function_signature_chirho(
+    module_chirho: &mut ObjModuleChirho,
+    param_count_chirho: usize,
+) -> cranelift_codegen::ir::Signature {
+    let mut sig_chirho = module_chirho.make_signature();
+    sig_chirho
+        .returns
+        .push(AbiParamChirho::new(cl_types_chirho::I64));
+    for _ in 0..param_count_chirho {
+        sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+    }
+    sig_chirho
+}
+
+fn declare_local_lifted_bindings_chirho(
+    module_chirho: &mut ObjModuleChirho,
+    lifted_bindings_chirho: &[LocalLiftedBindingChirho],
+) -> Result<FuncDeclMapChirho, String> {
+    let mut local_decl_map_chirho = HashMap::new();
+    for lifted_binding_chirho in lifted_bindings_chirho {
+        let sig_chirho =
+            declare_function_signature_chirho(module_chirho, lifted_binding_chirho.arity_chirho);
+        let func_id_chirho = module_chirho
+            .declare_function(
+                &lifted_binding_chirho.symbol_name_chirho,
+                LinkageChirho::Local,
+                &sig_chirho,
+            )
+            .map_err(|e_chirho| {
+                format!(
+                    "failed to declare lifted local function '{}': {e_chirho}",
+                    lifted_binding_chirho.symbol_name_chirho
+                )
+            })?;
+        local_decl_map_chirho.insert(
+            lifted_binding_chirho.binder_chirho.id_chirho,
+            (func_id_chirho, lifted_binding_chirho.arity_chirho),
+        );
+    }
+    Ok(local_decl_map_chirho)
+}
+
+fn define_function_body_chirho(
+    module_chirho: &mut ObjModuleChirho,
+    fb_ctx_chirho: &mut FuncBuilderCtxChirho,
+    func_id_chirho: cranelift_module::FuncId,
+    debug_name_chirho: &str,
+    rhs_chirho: &CoreExprChirho,
+    imported_decl_map_chirho: &FuncDeclMapChirho,
+    toplevel_names_chirho: &HashMap<haskelujah_core_chirho::expr_chirho::CoreIdChirho, String>,
+    put_str_ln_func_id_chirho: Option<cranelift_module::FuncId>,
+    print_int_func_id_chirho: Option<cranelift_module::FuncId>,
+    alloc_func_id_chirho: Option<cranelift_module::FuncId>,
+    string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
+) -> Result<(), String> {
+    let (param_binders_chirho, body_chirho) = peel_lambdas_chirho(rhs_chirho);
+    let sig_chirho = declare_function_signature_chirho(module_chirho, param_binders_chirho.len());
+
+    let mut func_chirho = ClFunctionChirho::with_name_signature(
+        cranelift_codegen::ir::UserFuncName::user(0, func_id_chirho.as_u32()),
+        sig_chirho,
+    );
+
+    {
+        let mut builder_chirho = FuncBuilderChirho::new(&mut func_chirho, fb_ctx_chirho);
+        let entry_block_chirho = builder_chirho.create_block();
+        builder_chirho.append_block_params_for_function_params(entry_block_chirho);
+        builder_chirho.switch_to_block(entry_block_chirho);
+        builder_chirho.seal_block(entry_block_chirho);
+
+        let mut func_ref_map_chirho: HashMap<
+            haskelujah_core_chirho::expr_chirho::CoreIdChirho,
+            (cranelift_codegen::ir::FuncRef, usize),
+        > = HashMap::new();
+        for (core_id_chirho, (decl_func_id_chirho, arity_chirho)) in imported_decl_map_chirho {
+            let fref_chirho =
+                module_chirho.declare_func_in_func(*decl_func_id_chirho, builder_chirho.func);
+            func_ref_map_chirho.insert(*core_id_chirho, (fref_chirho, *arity_chirho));
+        }
+
+        let mut env_chirho = VarEnvChirho::new_chirho();
+        let block_params_chirho = builder_chirho.block_params(entry_block_chirho).to_vec();
+        for (binder_chirho, param_val_chirho) in
+            param_binders_chirho.iter().zip(block_params_chirho.iter())
+        {
+            env_chirho.bind_chirho(binder_chirho.id_chirho, *param_val_chirho);
+        }
+
+        let mut next_var_idx_chirho: u32 = 0;
+        let mut cl_vars_chirho: HashMap<
+            haskelujah_core_chirho::expr_chirho::CoreIdChirho,
+            cranelift_frontend::Variable,
+        > = HashMap::new();
+        let put_str_ln_fref_chirho = put_str_ln_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let print_int_fref_chirho = print_int_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let alloc_fref_chirho = alloc_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+
+        let mut string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue> =
+            HashMap::new();
+        for (s_chirho, data_id_chirho) in string_data_ids_chirho {
+            let gv_chirho =
+                module_chirho.declare_data_in_func(*data_id_chirho, builder_chirho.func);
+            string_globals_chirho.insert(s_chirho.clone(), gv_chirho);
+        }
+
+        let mut ctx_chirho = LowerCtxChirho {
+            env_chirho: &mut env_chirho,
+            next_var_idx_chirho: &mut next_var_idx_chirho,
+            cl_vars_chirho: &mut cl_vars_chirho,
+            func_ref_map_chirho: &func_ref_map_chirho,
+            toplevel_names_chirho,
+            put_str_ln_ref_chirho: put_str_ln_fref_chirho,
+            print_int_ref_chirho: print_int_fref_chirho,
+            alloc_ref_chirho: alloc_fref_chirho,
+            string_globals_chirho,
+        };
+
+        let result_val_chirho =
+            lower_expr_chirho(&mut builder_chirho, &mut ctx_chirho, body_chirho);
+        let result_i64_chirho = ensure_i64_chirho(&mut builder_chirho, result_val_chirho, false);
+        builder_chirho.ins().return_(&[result_i64_chirho]);
+
+        builder_chirho.finalize();
+    }
+
+    let mut ctx_chirho = cranelift_codegen::Context::for_function(func_chirho);
+    if let Err(verifier_error_chirho) = ctx_chirho.verify(module_chirho.isa()) {
+        return Err(format!(
+            "failed to verify function '{debug_name_chirho}': {verifier_error_chirho}\n{}",
+            ctx_chirho.func.display()
+        ));
+    }
+    module_chirho
+        .define_function(func_id_chirho, &mut ctx_chirho)
+        .map_err(|e_chirho| {
+            format!("failed to define function '{debug_name_chirho}': {e_chirho}")
+        })?;
+
+    Ok(())
+}
+
 fn restore_selector_bindings_chirho(
     original_module_chirho: &CoreModuleChirho,
     filtered_module_chirho: &mut CoreModuleChirho,
@@ -343,88 +611,32 @@ fn lower_binding_chirho(
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
-
-    // ── Count parameters from nested lambdas ──────────────────────────────
-    let (param_binders_chirho, body_chirho) = peel_lambdas_chirho(&binding_chirho.rhs_chirho);
-
-    // ── Look up the pre-declared function ID ──────────────────────────────
+    let (_param_binders_chirho, body_chirho) = peel_lambdas_chirho(&binding_chirho.rhs_chirho);
     let (func_id_chirho, _arity_chirho) = func_decl_map_chirho
         .get(&binding_chirho.binder_chirho.id_chirho)
         .ok_or_else(|| format!("function '{name_chirho}' not pre-declared"))?;
     let func_id_chirho = *func_id_chirho;
 
-    // ── Build function signature (matching declaration) ───────────────────
-    let param_count_chirho = param_binders_chirho.len();
-    let mut sig_chirho = module_chirho.make_signature();
-    sig_chirho
-        .returns
-        .push(AbiParamChirho::new(cl_types_chirho::I64));
-    for _ in 0..param_count_chirho {
-        sig_chirho
-            .params
-            .push(AbiParamChirho::new(cl_types_chirho::I64));
-    }
-
-    // ── Build function body ────────────────────────────────────────────────
-    let mut func_chirho = ClFunctionChirho::with_name_signature(
-        cranelift_codegen::ir::UserFuncName::user(0, func_id_chirho.as_u32()),
-        sig_chirho,
+    let mut next_local_idx_chirho = 0;
+    let mut lifted_bindings_chirho = Vec::new();
+    collect_local_lambda_bindings_chirho(
+        binding_chirho.binder_chirho.id_chirho,
+        body_chirho,
+        &mut next_local_idx_chirho,
+        &mut lifted_bindings_chirho,
     );
+    let local_decl_map_chirho =
+        declare_local_lifted_bindings_chirho(module_chirho, &lifted_bindings_chirho)?;
 
-    {
-        let mut builder_chirho = FuncBuilderChirho::new(&mut func_chirho, fb_ctx_chirho);
-        let entry_block_chirho = builder_chirho.create_block();
-        builder_chirho.append_block_params_for_function_params(entry_block_chirho);
-        builder_chirho.switch_to_block(entry_block_chirho);
-        builder_chirho.seal_block(entry_block_chirho);
+    let mut imported_decl_map_chirho = func_decl_map_chirho.clone();
+    imported_decl_map_chirho.extend(local_decl_map_chirho.iter().map(
+        |(core_id_chirho, (local_func_id_chirho, arity_chirho))| {
+            (*core_id_chirho, (*local_func_id_chirho, *arity_chirho))
+        },
+    ));
 
-        // ── Import all declared functions into this function for direct calls ─
-        let mut func_ref_map_chirho: HashMap<
-            haskelujah_core_chirho::expr_chirho::CoreIdChirho,
-            (cranelift_codegen::ir::FuncRef, usize),
-        > = HashMap::new();
-        for (core_id_chirho, (decl_func_id_chirho, arity_chirho)) in func_decl_map_chirho {
-            let fref_chirho =
-                module_chirho.declare_func_in_func(*decl_func_id_chirho, builder_chirho.func);
-            func_ref_map_chirho.insert(*core_id_chirho, (fref_chirho, *arity_chirho));
-        }
-
-        // ── Bind lambda parameters to SSA values ──────────────────────────
-        let mut env_chirho = VarEnvChirho::new_chirho();
-        let block_params_chirho = builder_chirho.block_params(entry_block_chirho).to_vec();
-        for (binder_chirho, param_val_chirho) in
-            param_binders_chirho.iter().zip(block_params_chirho.iter())
-        {
-            env_chirho.bind_chirho(binder_chirho.id_chirho, *param_val_chirho);
-        }
-
-        // ── Set up lowering context ────────────────────────────────────────
-        let mut next_var_idx_chirho: u32 = 0;
-        let mut cl_vars_chirho: HashMap<
-            haskelujah_core_chirho::expr_chirho::CoreIdChirho,
-            cranelift_frontend::Variable,
-        > = HashMap::new();
-        let put_str_ln_fref_chirho = put_str_ln_func_id_chirho
-            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
-        let print_int_fref_chirho = print_int_func_id_chirho
-            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
-        let alloc_fref_chirho = alloc_func_id_chirho
-            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
-
-        // Import string data globals into this function
-        let mut string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue> =
-            HashMap::new();
-        for (s_chirho, data_id_chirho) in string_data_ids_chirho {
-            let gv_chirho =
-                module_chirho.declare_data_in_func(*data_id_chirho, builder_chirho.func);
-            string_globals_chirho.insert(s_chirho.clone(), gv_chirho);
-        }
-
-        // Build name map for detecting Prelude functions
-        let toplevel_names_chirho: HashMap<
-            haskelujah_core_chirho::expr_chirho::CoreIdChirho,
-            String,
-        > = core_module_chirho
+    let toplevel_names_chirho: HashMap<haskelujah_core_chirho::expr_chirho::CoreIdChirho, String> =
+        core_module_chirho
             .bindings_chirho
             .iter()
             .map(|b_chirho| {
@@ -435,40 +647,43 @@ fn lower_binding_chirho(
             })
             .collect();
 
-        let mut ctx_chirho = LowerCtxChirho {
-            env_chirho: &mut env_chirho,
-            next_var_idx_chirho: &mut next_var_idx_chirho,
-            cl_vars_chirho: &mut cl_vars_chirho,
-            func_ref_map_chirho: &func_ref_map_chirho,
-            toplevel_names_chirho: &toplevel_names_chirho,
-            put_str_ln_ref_chirho: put_str_ln_fref_chirho,
-            print_int_ref_chirho: print_int_fref_chirho,
-            alloc_ref_chirho: alloc_fref_chirho,
-            string_globals_chirho,
-        };
-
-        // ── Lower the body expression ──────────────────────────────────────
-        let result_val_chirho =
-            lower_expr_chirho(&mut builder_chirho, &mut ctx_chirho, body_chirho);
-        let result_i64_chirho = ensure_i64_chirho(&mut builder_chirho, result_val_chirho, false);
-        builder_chirho.ins().return_(&[result_i64_chirho]);
-
-        builder_chirho.finalize();
+    for lifted_binding_chirho in &lifted_bindings_chirho {
+        let (lifted_func_id_chirho, _) = local_decl_map_chirho
+            .get(&lifted_binding_chirho.binder_chirho.id_chirho)
+            .ok_or_else(|| {
+                format!(
+                    "lifted local function '{}' missing declaration",
+                    lifted_binding_chirho.symbol_name_chirho
+                )
+            })?;
+        define_function_body_chirho(
+            module_chirho,
+            fb_ctx_chirho,
+            *lifted_func_id_chirho,
+            &lifted_binding_chirho.symbol_name_chirho,
+            &lifted_binding_chirho.rhs_chirho,
+            &imported_decl_map_chirho,
+            &toplevel_names_chirho,
+            put_str_ln_func_id_chirho,
+            print_int_func_id_chirho,
+            alloc_func_id_chirho,
+            string_data_ids_chirho,
+        )?;
     }
 
-    // ── Define the function in the object module ───────────────────────────
-    let mut ctx_chirho = cranelift_codegen::Context::for_function(func_chirho);
-    if let Err(verifier_error_chirho) = ctx_chirho.verify(module_chirho.isa()) {
-        return Err(format!(
-            "failed to verify function '{name_chirho}': {verifier_error_chirho}\n{}",
-            ctx_chirho.func.display()
-        ));
-    }
-    module_chirho
-        .define_function(func_id_chirho, &mut ctx_chirho)
-        .map_err(|e_chirho| format!("failed to define function '{name_chirho}': {e_chirho}"))?;
-
-    Ok(())
+    define_function_body_chirho(
+        module_chirho,
+        fb_ctx_chirho,
+        func_id_chirho,
+        name_chirho,
+        &binding_chirho.rhs_chirho,
+        &imported_decl_map_chirho,
+        &toplevel_names_chirho,
+        put_str_ln_func_id_chirho,
+        print_int_func_id_chirho,
+        alloc_func_id_chirho,
+        string_data_ids_chirho,
+    )
 }
 
 /// Peel all leading lambda binders from an expression and return them together
@@ -520,14 +735,14 @@ fn count_params_chirho(expr_chirho: &CoreExprChirho) -> (usize, &CoreExprChirho)
 mod tests_chirho {
     use super::*;
     use crate::TargetConfigChirho;
-    use std::fs;
-    use std::process::Command;
     use haskelujah_core_chirho::expr_chirho::{
         AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
         CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
     };
     use haskelujah_span_chirho::SpanChirho;
     use haskelujah_typing_chirho::ty_chirho::TyChirho;
+    use std::fs;
+    use std::process::Command;
 
     // ── Shared helpers ────────────────────────────────────────────────────
 
@@ -573,9 +788,14 @@ mod tests_chirho {
 
     fn compile_and_run_exit_code_chirho(module_chirho: &CoreModuleChirho) -> i32 {
         let object_bytes_chirho = compile_ok_chirho(module_chirho);
-        let temp_dir_chirho =
-            std::env::temp_dir().join("haskelujah-cranelift-runtime-test-chirho");
-        let _ = fs::remove_dir_all(&temp_dir_chirho);
+        let unique_suffix_chirho = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos();
+        let temp_dir_chirho = std::env::temp_dir().join(format!(
+            "haskelujah-cranelift-runtime-test-{}-{unique_suffix_chirho}",
+            std::process::id()
+        ));
         fs::create_dir_all(&temp_dir_chirho).expect("create temp runtime dir");
         let obj_path_chirho = temp_dir_chirho.join("test.o");
         let exe_path_chirho = temp_dir_chirho.join("test-exe");
@@ -1562,7 +1782,9 @@ mod tests_chirho {
                     con_chirho: AltConChirho::DataConChirho("BoxedFunChirho".to_string()),
                     binders_chirho: vec![fun_binder_chirho.clone()],
                     rhs_chirho: CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(fun_binder_chirho.id_chirho)),
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                            fun_binder_chirho.id_chirho,
+                        )),
                         arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
                             41,
                         ))),
@@ -1629,7 +1851,11 @@ mod tests_chirho {
         };
         let module_chirho = CoreModuleChirho {
             name_chirho: "Overapply".to_string(),
-            bindings_chirho: vec![inc_binding_chirho, get_inc_binding_chirho, main_binding_chirho],
+            bindings_chirho: vec![
+                inc_binding_chirho,
+                get_inc_binding_chirho,
+                main_binding_chirho,
+            ],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],

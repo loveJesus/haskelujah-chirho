@@ -1341,6 +1341,42 @@ main = do
         }
     }
 
+    #[test]
+    fn cranelift_round_trip_recursive_where_print_output_chirho() {
+        let src_chirho = r#"module Main where
+collatz n = go n 0
+  where
+    go 1 acc = acc
+    go k acc = if mod k 2 == 0 then go (div k 2) (acc + 1) else go (3 * k + 1) (acc + 1)
+main = print (collatz 7)
+"#;
+        let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
+            .expect("recursive where Cranelift round-trip");
+        assert_eq!(
+            exit_code_chirho, 0,
+            "recursive where Cranelift executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "16\n");
+    }
+
+    #[test]
+    fn cranelift_round_trip_nested_where_print_output_chirho() {
+        let src_chirho = r#"module Main where
+sumTo n = outer n where
+  outer m = go m 0 where
+    go 0 acc = acc
+    go k acc = go (k - 1) (acc + k)
+main = print (sumTo 10)
+"#;
+        let (exit_code_chirho, stdout_chirho) =
+            cranelift_round_trip_output_chirho(src_chirho).expect("nested where Cranelift round-trip");
+        assert_eq!(
+            exit_code_chirho, 0,
+            "nested where Cranelift executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "55\n");
+    }
+
     // ---------------------------------------------------------------
     // §29 — Structured error messages with "did you mean?" suggestions
     // ---------------------------------------------------------------
