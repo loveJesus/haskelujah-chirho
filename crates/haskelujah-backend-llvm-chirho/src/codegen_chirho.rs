@@ -126,6 +126,276 @@ impl LlvmCodegenChirho {
         }
     }
 
+    fn remember_local_alias_chirho(
+        &mut self,
+        alias_id_chirho: CoreIdChirho,
+        source_id_chirho: CoreIdChirho,
+    ) {
+        self.local_scope_chirho.insert(alias_id_chirho);
+        if let Some(value_kind_chirho) = self.local_value_kinds_chirho.get(&source_id_chirho) {
+            self.local_value_kinds_chirho
+                .insert(alias_id_chirho, value_kind_chirho.clone());
+        } else {
+            self.local_value_kinds_chirho.remove(&alias_id_chirho);
+        }
+    }
+
+    fn should_entry_alias_free_id_chirho(&self, id_chirho: CoreIdChirho) -> bool {
+        if self.toplevel_names_chirho.contains_key(&id_chirho)
+            || self.lifted_local_names_chirho.contains_key(&id_chirho)
+        {
+            return false;
+        }
+
+        self.resolved_names_chirho
+            .get(&id_chirho)
+            .is_none_or(|name_chirho| builtin_runtime_arity_by_name_chirho(name_chirho).is_none())
+    }
+
+    fn collect_free_runtime_var_ids_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+    ) -> Vec<CoreIdChirho> {
+        let mut bound_ids_chirho = HashSet::new();
+        let mut seen_ids_chirho = HashSet::new();
+        let mut free_ids_chirho = Vec::new();
+        self.collect_free_runtime_var_ids_inner_chirho(
+            expr_chirho,
+            &mut bound_ids_chirho,
+            &mut seen_ids_chirho,
+            &mut free_ids_chirho,
+        );
+        free_ids_chirho
+    }
+
+    fn collect_free_runtime_var_ids_inner_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        bound_ids_chirho: &mut HashSet<CoreIdChirho>,
+        seen_ids_chirho: &mut HashSet<CoreIdChirho>,
+        free_ids_chirho: &mut Vec<CoreIdChirho>,
+    ) {
+        match expr_chirho {
+            CoreExprChirho::VarChirho(id_chirho) => {
+                if !bound_ids_chirho.contains(id_chirho)
+                    && self.should_entry_alias_free_id_chirho(*id_chirho)
+                    && seen_ids_chirho.insert(*id_chirho)
+                {
+                    free_ids_chirho.push(*id_chirho);
+                }
+            }
+            CoreExprChirho::LitChirho(_) => {}
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                self.collect_free_runtime_var_ids_inner_chirho(
+                    fun_chirho,
+                    bound_ids_chirho,
+                    seen_ids_chirho,
+                    free_ids_chirho,
+                );
+                self.collect_free_runtime_var_ids_inner_chirho(
+                    arg_chirho,
+                    bound_ids_chirho,
+                    seen_ids_chirho,
+                    free_ids_chirho,
+                );
+            }
+            CoreExprChirho::LamChirho {
+                binder_chirho,
+                body_chirho,
+            } => {
+                let inserted_chirho = bound_ids_chirho.insert(binder_chirho.id_chirho);
+                self.collect_free_runtime_var_ids_inner_chirho(
+                    body_chirho,
+                    bound_ids_chirho,
+                    seen_ids_chirho,
+                    free_ids_chirho,
+                );
+                if inserted_chirho {
+                    bound_ids_chirho.remove(&binder_chirho.id_chirho);
+                }
+            }
+            CoreExprChirho::LetChirho {
+                rec_chirho,
+                binds_chirho,
+                body_chirho,
+            } => {
+                let let_ids_chirho: Vec<CoreIdChirho> = binds_chirho
+                    .iter()
+                    .map(|(binder_chirho, _)| binder_chirho.id_chirho)
+                    .collect();
+                if *rec_chirho {
+                    for let_id_chirho in &let_ids_chirho {
+                        bound_ids_chirho.insert(*let_id_chirho);
+                    }
+                    for (_, rhs_chirho) in binds_chirho {
+                        self.collect_free_runtime_var_ids_inner_chirho(
+                            rhs_chirho,
+                            bound_ids_chirho,
+                            seen_ids_chirho,
+                            free_ids_chirho,
+                        );
+                    }
+                    self.collect_free_runtime_var_ids_inner_chirho(
+                        body_chirho,
+                        bound_ids_chirho,
+                        seen_ids_chirho,
+                        free_ids_chirho,
+                    );
+                    for let_id_chirho in &let_ids_chirho {
+                        bound_ids_chirho.remove(let_id_chirho);
+                    }
+                } else {
+                    for (_, rhs_chirho) in binds_chirho {
+                        self.collect_free_runtime_var_ids_inner_chirho(
+                            rhs_chirho,
+                            bound_ids_chirho,
+                            seen_ids_chirho,
+                            free_ids_chirho,
+                        );
+                    }
+                    for let_id_chirho in &let_ids_chirho {
+                        bound_ids_chirho.insert(*let_id_chirho);
+                    }
+                    self.collect_free_runtime_var_ids_inner_chirho(
+                        body_chirho,
+                        bound_ids_chirho,
+                        seen_ids_chirho,
+                        free_ids_chirho,
+                    );
+                    for let_id_chirho in &let_ids_chirho {
+                        bound_ids_chirho.remove(let_id_chirho);
+                    }
+                }
+            }
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                bind_chirho,
+                alts_chirho,
+                ..
+            } => {
+                self.collect_free_runtime_var_ids_inner_chirho(
+                    scrutinee_chirho,
+                    bound_ids_chirho,
+                    seen_ids_chirho,
+                    free_ids_chirho,
+                );
+                let bind_inserted_chirho = bound_ids_chirho.insert(bind_chirho.id_chirho);
+                for alt_chirho in alts_chirho {
+                    let mut inserted_ids_chirho = Vec::new();
+                    for binder_chirho in &alt_chirho.binders_chirho {
+                        if bound_ids_chirho.insert(binder_chirho.id_chirho) {
+                            inserted_ids_chirho.push(binder_chirho.id_chirho);
+                        }
+                    }
+                    self.collect_free_runtime_var_ids_inner_chirho(
+                        &alt_chirho.rhs_chirho,
+                        bound_ids_chirho,
+                        seen_ids_chirho,
+                        free_ids_chirho,
+                    );
+                    for inserted_id_chirho in inserted_ids_chirho {
+                        bound_ids_chirho.remove(&inserted_id_chirho);
+                    }
+                }
+                if bind_inserted_chirho {
+                    bound_ids_chirho.remove(&bind_chirho.id_chirho);
+                }
+            }
+            CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+                self.collect_free_runtime_var_ids_inner_chirho(
+                    body_chirho,
+                    bound_ids_chirho,
+                    seen_ids_chirho,
+                    free_ids_chirho,
+                );
+            }
+            CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
+                self.collect_free_runtime_var_ids_inner_chirho(
+                    expr_chirho,
+                    bound_ids_chirho,
+                    seen_ids_chirho,
+                    free_ids_chirho,
+                );
+            }
+            CoreExprChirho::PrimOpChirho { args_chirho, .. }
+            | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+                for arg_chirho in args_chirho {
+                    self.collect_free_runtime_var_ids_inner_chirho(
+                        arg_chirho,
+                        bound_ids_chirho,
+                        seen_ids_chirho,
+                        free_ids_chirho,
+                    );
+                }
+            }
+        }
+    }
+
+    fn emit_missing_param_aliases_chirho(
+        &mut self,
+        param_binders_chirho: &[&BinderChirho],
+        body_chirho: &CoreExprChirho,
+    ) {
+        let free_ids_chirho = self.collect_free_runtime_var_ids_chirho(body_chirho);
+        let free_id_set_chirho: HashSet<CoreIdChirho> = free_ids_chirho.iter().copied().collect();
+        let param_ids_chirho: HashSet<CoreIdChirho> = param_binders_chirho
+            .iter()
+            .map(|binder_chirho| binder_chirho.id_chirho)
+            .collect();
+
+        let unresolved_ids_chirho: Vec<CoreIdChirho> = free_ids_chirho
+            .iter()
+            .copied()
+            .filter(|id_chirho| !param_ids_chirho.contains(id_chirho))
+            .collect();
+        if unresolved_ids_chirho.is_empty() {
+            return;
+        }
+
+        let candidate_param_ids_chirho: Vec<CoreIdChirho> = param_binders_chirho
+            .iter()
+            .filter(|binder_chirho| !is_dictionary_param_name_chirho(&binder_chirho.name_chirho))
+            .map(|binder_chirho| binder_chirho.id_chirho)
+            .filter(|id_chirho| !free_id_set_chirho.contains(id_chirho))
+            .collect();
+        if candidate_param_ids_chirho.is_empty() {
+            return;
+        }
+
+        let alias_pairs_chirho: Vec<(CoreIdChirho, CoreIdChirho)> =
+            if candidate_param_ids_chirho.len() == 1 {
+                unresolved_ids_chirho
+                    .iter()
+                    .copied()
+                    .map(|alias_id_chirho| (alias_id_chirho, candidate_param_ids_chirho[0]))
+                    .collect()
+            } else if unresolved_ids_chirho.len() <= candidate_param_ids_chirho.len() {
+                unresolved_ids_chirho
+                    .iter()
+                    .copied()
+                    .zip(candidate_param_ids_chirho.iter().copied())
+                    .collect()
+            } else {
+                Vec::new()
+            };
+        if alias_pairs_chirho.is_empty() {
+            return;
+        }
+
+        for (alias_id_chirho, source_id_chirho) in alias_pairs_chirho {
+            self.remember_local_alias_chirho(alias_id_chirho, source_id_chirho);
+            writeln!(
+                self.output_chirho,
+                "  %v{} = add i64 0, %v{}",
+                alias_id_chirho.0, source_id_chirho.0
+            )
+            .unwrap();
+        }
+    }
+
     fn collect_captured_local_ids_chirho(
         &self,
         expr_chirho: &CoreExprChirho,
@@ -589,11 +859,7 @@ impl LlvmCodegenChirho {
         &mut self,
         name_chirho: &str,
     ) -> Option<(String, usize)> {
-        let arity_chirho = match name_chirho {
-            "undefined" | "undefined#" => 0,
-            "error" | "error#" => 1,
-            _ => return None,
-        };
+        let arity_chirho = builtin_runtime_arity_by_name_chirho(name_chirho)?;
         let fn_name_chirho = mangle_name_chirho(name_chirho);
         if self.emitted_names_chirho.insert(fn_name_chirho.clone()) {
             let mut def_chirho = String::new();
@@ -798,6 +1064,7 @@ impl LlvmCodegenChirho {
 
         // Reset temporaries for this function
         self.next_tmp_chirho = 0;
+        self.emit_missing_param_aliases_chirho(&param_binders_chirho, body_chirho);
 
         // Compile the body
         let result_chirho = self.compile_expr_chirho(body_chirho);
@@ -2619,6 +2886,18 @@ fn collect_lambda_binders_chirho(
     (binders_chirho, current_chirho)
 }
 
+fn builtin_runtime_arity_by_name_chirho(name_chirho: &str) -> Option<usize> {
+    match name_chirho {
+        "undefined" | "undefined#" => Some(0),
+        "error" | "error#" => Some(1),
+        _ => None,
+    }
+}
+
+fn is_dictionary_param_name_chirho(name_chirho: &str) -> bool {
+    name_chirho.starts_with("$d") || name_chirho.starts_with("$dict")
+}
+
 /// Flatten nested applications into callee + argument list.
 fn flatten_app_chirho(expr_chirho: &CoreExprChirho) -> (&CoreExprChirho, Vec<&CoreExprChirho>) {
     let mut args_chirho = Vec::new();
@@ -2888,7 +3167,105 @@ mod tests_chirho {
         CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(v_chirho))
     }
 
-    fn run_executable_module_chirho(module_chirho: &CoreModuleChirho) -> String {
+    fn wildcard_first_column_safe_divide_module_chirho() -> CoreModuleChirho {
+        let safe_divide_binder_chirho = dummy_binder_chirho("safeDivideChirho", 7);
+        let first_arg_binder_chirho = dummy_binder_chirho("_arg0", 2);
+        let second_arg_binder_chirho = dummy_binder_chirho("_arg1", 3);
+        let case_binder_chirho = dummy_binder_chirho("wild", 4);
+        let print_binder_chirho = dummy_binder_chirho("print", 5);
+        let print_arg_binder_chirho = dummy_binder_chirho("printArgChirho", 6);
+        let result_binder_chirho = dummy_binder_chirho("resultChirho", 9);
+
+        CoreModuleChirho {
+            name_chirho: "WildcardFirstColumn".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("main", 0),
+                    rhs_chirho: CoreExprChirho::LetChirho {
+                        rec_chirho: false,
+                        binds_chirho: vec![(
+                            result_binder_chirho.clone(),
+                            CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                                        safe_divide_binder_chirho.id_chirho,
+                                    )),
+                                    arg_chirho: Box::new(int_lit_chirho(10)),
+                                }),
+                                arg_chirho: Box::new(int_lit_chirho(2)),
+                            },
+                        )],
+                        body_chirho: Box::new(CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                                print_binder_chirho.id_chirho,
+                            )),
+                            arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                result_binder_chirho.id_chirho,
+                            )),
+                        }),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: safe_divide_binder_chirho,
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: first_arg_binder_chirho,
+                        body_chirho: Box::new(CoreExprChirho::LamChirho {
+                            binder_chirho: second_arg_binder_chirho.clone(),
+                            body_chirho: Box::new(CoreExprChirho::CaseChirho {
+                                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
+                                    second_arg_binder_chirho.id_chirho,
+                                )),
+                                bind_chirho: case_binder_chirho,
+                                result_ty_chirho: TyChirho::int_chirho(),
+                                alts_chirho: vec![
+                                    CoreAltChirho {
+                                        con_chirho: AltConChirho::LitConChirho(
+                                            CoreLitChirho::IntChirho(0),
+                                        ),
+                                        binders_chirho: vec![],
+                                        rhs_chirho: int_lit_chirho(0),
+                                    },
+                                    CoreAltChirho {
+                                        con_chirho: AltConChirho::DefaultChirho,
+                                        binders_chirho: vec![],
+                                        rhs_chirho: CoreExprChirho::PrimOpChirho {
+                                            name_chirho: "div#".to_string(),
+                                            args_chirho: vec![
+                                                CoreExprChirho::VarChirho(CoreIdChirho(8)),
+                                                CoreExprChirho::VarChirho(
+                                                    second_arg_binder_chirho.id_chirho,
+                                                ),
+                                            ],
+                                        },
+                                    },
+                                ],
+                            }),
+                        }),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: print_binder_chirho,
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: print_arg_binder_chirho,
+                        body_chirho: Box::new(int_lit_chirho(0)),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        }
+    }
+
+    fn run_executable_module_result_chirho(
+        module_chirho: &CoreModuleChirho,
+    ) -> (i32, String, String) {
         let ir_chirho = compile_core_to_llvm_executable_chirho(module_chirho);
         let unique_suffix_chirho = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -2922,16 +3299,23 @@ mod tests_chirho {
         let run_output_chirho = Command::new(&exe_path_chirho)
             .output()
             .expect("linked executable should run");
-        assert!(
-            run_output_chirho.status.success(),
-            "executable failed:\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&run_output_chirho.stdout),
-            String::from_utf8_lossy(&run_output_chirho.stderr)
-        );
-
         let _ = fs::remove_dir_all(&temp_dir_chirho);
 
-        String::from_utf8(run_output_chirho.stdout).expect("program stdout should be utf-8")
+        (
+            run_output_chirho.status.code().unwrap_or(-1),
+            String::from_utf8(run_output_chirho.stdout).expect("program stdout should be utf-8"),
+            String::from_utf8(run_output_chirho.stderr).expect("program stderr should be utf-8"),
+        )
+    }
+
+    fn run_executable_module_chirho(module_chirho: &CoreModuleChirho) -> String {
+        let (exit_code_chirho, stdout_chirho, stderr_chirho) =
+            run_executable_module_result_chirho(module_chirho);
+        assert!(
+            exit_code_chirho == 0,
+            "executable failed with exit code {exit_code_chirho}:\nstdout:\n{stdout_chirho}\nstderr:\n{stderr_chirho}"
+        );
+        stdout_chirho
     }
 
     #[test]
@@ -3834,6 +4218,24 @@ mod tests_chirho {
         assert!(ir_chirho.contains("call i32 @puts(ptr "));
         assert!(ir_chirho.contains("ret i64 0"));
         assert!(!ir_chirho.contains("@.fmt_int"));
+    }
+
+    #[test]
+    fn compile_wildcard_first_column_function_aliases_unbound_rhs_var_chirho() {
+        let module_chirho = wildcard_first_column_safe_divide_module_chirho();
+
+        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        assert!(ir_chirho.contains("define i64 @haskelujah_safeDivideChirho(i64 %v2, i64 %v3)"));
+        assert!(ir_chirho.contains("%v8 = add i64 0, %v2"));
+        assert!(ir_chirho.contains("sdiv i64 %v8, %v3"));
+    }
+
+    #[test]
+    fn run_executable_wildcard_first_column_function_prints_division_result_chirho() {
+        let module_chirho = wildcard_first_column_safe_divide_module_chirho();
+
+        let stdout_chirho = run_executable_module_chirho(&module_chirho);
+        assert_eq!(stdout_chirho.trim(), "5");
     }
 
     #[test]
