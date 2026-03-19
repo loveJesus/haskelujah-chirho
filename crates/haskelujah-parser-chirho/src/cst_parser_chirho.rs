@@ -1641,6 +1641,8 @@ impl<'src> ParserChirho<'src> {
         }
         // TypeOperators: check for infix operator in type position (e.g. `a :+: b`)
         // VarSym or ConSym that isn't a special symbol like %, !, @
+        // Use btype for the right operand so that `->` binds looser than
+        // type operators: `a :~: b -> ()` parses as `(a :~: b) -> ()`.
         if (self.at_chirho(RawTokenKindChirho::VarSymChirho)
             || self.at_chirho(RawTokenKindChirho::ConSymChirho))
             && !matches!(self.current_text_chirho(), "%" | "!" | "@" | "|")
@@ -1651,8 +1653,29 @@ impl<'src> ParserChirho<'src> {
             );
             self.bump_chirho(); // operator
             self.eat_trivia_chirho();
-            self.parse_type_chirho(); // right operand
+            self.parse_btype_chirho(); // right operand (btype, not full type)
             self.builder_chirho.finish_node_chirho();
+            // After the infix type, check for -> / => to continue
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
+                self.builder_chirho.start_node_at_chirho(
+                    cp_chirho,
+                    SyntaxKindChirho::FunTypeChirho,
+                );
+                self.bump_chirho(); // ->
+                self.eat_trivia_chirho();
+                self.parse_type_chirho();
+                self.builder_chirho.finish_node_chirho();
+            } else if self.at_chirho(RawTokenKindChirho::FatArrowChirho) {
+                self.builder_chirho.start_node_at_chirho(
+                    cp_chirho,
+                    SyntaxKindChirho::QualTypeChirho,
+                );
+                self.bump_chirho(); // =>
+                self.eat_trivia_chirho();
+                self.parse_type_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
             return;
         }
         // Backtick infix type constructors: a `Either` b
