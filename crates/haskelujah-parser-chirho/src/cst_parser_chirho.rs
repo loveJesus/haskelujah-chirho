@@ -3224,8 +3224,23 @@ impl<'src> ParserChirho<'src> {
                         cp_chirho,
                         SyntaxKindChirho::ConPatChirho,
                     );
-                    while self.can_start_apat_chirho() {
+                    while self.can_start_apat_chirho()
+                        || self.at_chirho(RawTokenKindChirho::AtChirho)
+                    {
                         let before_chirho = self.pos_chirho;
+                        // TyAppPat: @Type in constructor patterns
+                        if self.at_chirho(RawTokenKindChirho::AtChirho) {
+                            self.bump_chirho(); // @
+                            self.eat_trivia_chirho();
+                            // Parse the type argument (skip it for now —
+                            // the type is used for type variable binding
+                            // but doesn't affect the pattern structure)
+                            if self.can_start_atype_chirho() {
+                                self.parse_atype_chirho();
+                            }
+                            self.eat_trivia_chirho();
+                            continue;
+                        }
                         self.parse_apat_chirho();
                         self.eat_trivia_chirho();
                         if self.pos_chirho == before_chirho {
