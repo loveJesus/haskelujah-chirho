@@ -60,6 +60,8 @@ pub struct LlvmCodegenChirho {
     local_value_kinds_chirho: HashMap<CoreIdChirho, ShowBuiltinKindChirho>,
     /// Maps let/where-bound lambda CoreIds to their lifted LLVM symbol names.
     lifted_local_names_chirho: HashMap<CoreIdChirho, String>,
+    /// Maps let/where-bound lambda CoreIds to their runtime arity.
+    lifted_local_arities_chirho: HashMap<CoreIdChirho, usize>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -88,6 +90,7 @@ impl LlvmCodegenChirho {
             local_scope_chirho: HashSet::new(),
             local_value_kinds_chirho: HashMap::new(),
             lifted_local_names_chirho: HashMap::new(),
+            lifted_local_arities_chirho: HashMap::new(),
         }
     }
 
@@ -142,6 +145,7 @@ impl LlvmCodegenChirho {
         inner_codegen_chirho.toplevel_arities_chirho = self.toplevel_arities_chirho.clone();
         inner_codegen_chirho.toplevel_value_kinds_chirho = self.toplevel_value_kinds_chirho.clone();
         inner_codegen_chirho.lifted_local_names_chirho = self.lifted_local_names_chirho.clone();
+        inner_codegen_chirho.lifted_local_arities_chirho = self.lifted_local_arities_chirho.clone();
         for binder_chirho in &param_binders_chirho {
             inner_codegen_chirho.remember_local_binder_chirho(binder_chirho);
         }
@@ -168,6 +172,8 @@ impl LlvmCodegenChirho {
         self.string_globals_chirho = inner_codegen_chirho.string_globals_chirho.clone();
         self.global_defs_chirho
             .push_str(&inner_codegen_chirho.global_defs_chirho);
+        self.lifted_functions_chirho
+            .extend(inner_codegen_chirho.lifted_functions_chirho.clone());
         self.lifted_functions_chirho
             .push(inner_codegen_chirho.output_chirho);
 
@@ -396,6 +402,7 @@ impl LlvmCodegenChirho {
         self.local_scope_chirho.clear();
         self.local_value_kinds_chirho.clear();
         self.lifted_local_names_chirho.clear();
+        self.lifted_local_arities_chirho.clear();
         for binder_chirho in &param_binders_chirho {
             self.remember_local_binder_chirho(binder_chirho);
         }
@@ -633,13 +640,24 @@ impl LlvmCodegenChirho {
                     .iter()
                     .map(|a_chirho| self.compile_expr_chirho(a_chirho))
                     .collect();
-                let args_str_chirho = arg_vals_chirho
-                    .iter()
-                    .map(|v_chirho| format!("i64 {v_chirho}"))
-                    .collect::<Vec<_>>()
-                    .join(", ");
 
                 if let CoreExprChirho::VarChirho(id_chirho) = callee_chirho {
+                    if let Some(lifted_name_chirho) =
+                        self.lifted_local_names_chirho.get(id_chirho).cloned()
+                    {
+                        let arity_chirho = self
+                            .lifted_local_arities_chirho
+                            .get(id_chirho)
+                            .copied()
+                            .unwrap_or(0);
+                        if let Some(result_chirho) = self.compile_known_call_chirho(
+                            &format!("@{lifted_name_chirho}"),
+                            arity_chirho,
+                            &arg_vals_chirho,
+                        ) {
+                            return result_chirho;
+                        }
+                    }
                     if let Some(name_chirho) = self.toplevel_names_chirho.get(id_chirho) {
                         if matches!(name_chirho.as_str(), "print" | "print#") {
                             if let Some(arg_expr_chirho) = args_chirho.last() {
@@ -662,42 +680,13 @@ impl LlvmCodegenChirho {
                             .get(id_chirho)
                             .copied()
                             .unwrap_or(0);
-                        if arity_chirho == 0 {
-                            let tmp_chirho = self.fresh_tmp_chirho();
-                            writeln!(
-                                self.output_chirho,
-                                "  {tmp_chirho} = tail call i64 {fn_ref_chirho}()"
-                            )
-                            .unwrap();
-                            return self.compile_curried_indirect_apps_chirho(
-                                &tmp_chirho,
-                                &arg_vals_chirho,
-                            );
+                        if let Some(result_chirho) = self.compile_known_call_chirho(
+                            &fn_ref_chirho,
+                            arity_chirho,
+                            &arg_vals_chirho,
+                        ) {
+                            return result_chirho;
                         }
-                        if arg_vals_chirho.len() > arity_chirho {
-                            let direct_args_str_chirho = arg_vals_chirho[..arity_chirho]
-                                .iter()
-                                .map(|v_chirho| format!("i64 {v_chirho}"))
-                                .collect::<Vec<_>>()
-                                .join(", ");
-                            let tmp_chirho = self.fresh_tmp_chirho();
-                            writeln!(
-                                self.output_chirho,
-                                "  {tmp_chirho} = tail call i64 {fn_ref_chirho}({direct_args_str_chirho})"
-                            )
-                            .unwrap();
-                            return self.compile_curried_indirect_apps_chirho(
-                                &tmp_chirho,
-                                &arg_vals_chirho[arity_chirho..],
-                            );
-                        }
-                        let tmp_chirho = self.fresh_tmp_chirho();
-                        writeln!(
-                            self.output_chirho,
-                            "  {tmp_chirho} = tail call i64 {fn_ref_chirho}({args_str_chirho})"
-                        )
-                        .unwrap();
-                        return tmp_chirho;
                     }
                 }
 
@@ -729,6 +718,10 @@ impl LlvmCodegenChirho {
                         let lifted_name_chirho = self.fresh_lifted_name_chirho();
                         self.lifted_local_names_chirho
                             .insert(binder_chirho.id_chirho, lifted_name_chirho);
+                        self.lifted_local_arities_chirho.insert(
+                            binder_chirho.id_chirho,
+                            collect_lambda_params_chirho(rhs_chirho).0.len(),
+                        );
                     }
                 }
 
@@ -992,6 +985,44 @@ impl LlvmCodegenChirho {
                 self.compile_indirect_call_chirho(&current_fun_chirho, &arg_str_chirho);
         }
         current_fun_chirho
+    }
+
+    fn compile_known_call_chirho(
+        &mut self,
+        fn_ref_chirho: &str,
+        arity_chirho: usize,
+        arg_vals_chirho: &[String],
+    ) -> Option<String> {
+        if arity_chirho == 0 {
+            let tmp_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {tmp_chirho} = tail call i64 {fn_ref_chirho}()"
+            )
+            .unwrap();
+            return Some(self.compile_curried_indirect_apps_chirho(&tmp_chirho, arg_vals_chirho));
+        }
+
+        if arg_vals_chirho.len() < arity_chirho {
+            return None;
+        }
+
+        let direct_args_str_chirho = arg_vals_chirho[..arity_chirho]
+            .iter()
+            .map(|v_chirho| format!("i64 {v_chirho}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {tmp_chirho} = tail call i64 {fn_ref_chirho}({direct_args_str_chirho})"
+        )
+        .unwrap();
+        if arg_vals_chirho.len() == arity_chirho {
+            return Some(tmp_chirho);
+        }
+
+        Some(self.compile_curried_indirect_apps_chirho(&tmp_chirho, &arg_vals_chirho[arity_chirho..]))
     }
 
     fn compile_constructor_app_chirho(
@@ -1968,6 +1999,114 @@ mod tests_chirho {
         assert!(
             !ir_chirho.contains("inttoptr i64 %v1 to ptr"),
             "recursive local helper should resolve through lifted symbol, got:\n{ir_chirho}"
+        );
+    }
+
+    #[test]
+    fn compile_nested_local_lambda_emits_nested_lifted_defs_chirho() {
+        let sum_to_binder_chirho = dummy_binder_chirho("sumTo", 10);
+        let outer_binder_chirho = dummy_binder_chirho("outer", 1);
+        let go_binder_chirho = dummy_binder_chirho("go", 2);
+        let n_binder_chirho = dummy_binder_chirho("n", 0);
+        let outer_arg_binder_chirho = dummy_binder_chirho("m", 3);
+        let acc_binder_chirho = dummy_binder_chirho("acc", 4);
+        let wild_binder_chirho = dummy_binder_chirho("wild", 5);
+        let go_arg_binder_chirho = dummy_binder_chirho("k", 6);
+        let go_body_chirho = CoreExprChirho::CaseChirho {
+            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(go_arg_binder_chirho.id_chirho)),
+            bind_chirho: wild_binder_chirho,
+            result_ty_chirho: TyChirho::int_chirho(),
+            alts_chirho: vec![
+                CoreAltChirho {
+                    con_chirho: AltConChirho::LitConChirho(CoreLitChirho::IntChirho(0)),
+                    binders_chirho: vec![],
+                    rhs_chirho: CoreExprChirho::VarChirho(acc_binder_chirho.id_chirho),
+                },
+                CoreAltChirho {
+                    con_chirho: AltConChirho::DefaultChirho,
+                    binders_chirho: vec![],
+                    rhs_chirho: CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(go_binder_chirho.id_chirho)),
+                            arg_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                                name_chirho: "-#".to_string(),
+                                args_chirho: vec![
+                                    CoreExprChirho::VarChirho(go_arg_binder_chirho.id_chirho),
+                                    int_lit_chirho(1),
+                                ],
+                            }),
+                        }),
+                        arg_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                            name_chirho: "+#".to_string(),
+                            args_chirho: vec![
+                                CoreExprChirho::VarChirho(acc_binder_chirho.id_chirho),
+                                CoreExprChirho::VarChirho(go_arg_binder_chirho.id_chirho),
+                            ],
+                        }),
+                    },
+                },
+            ],
+        };
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "NestedLetTest".to_string(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: sum_to_binder_chirho,
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: n_binder_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::LetChirho {
+                        rec_chirho: false,
+                        binds_chirho: vec![(
+                            outer_binder_chirho.clone(),
+                            CoreExprChirho::LamChirho {
+                                binder_chirho: outer_arg_binder_chirho.clone(),
+                                body_chirho: Box::new(CoreExprChirho::LetChirho {
+                                    rec_chirho: true,
+                                    binds_chirho: vec![(
+                                        go_binder_chirho.clone(),
+                                        CoreExprChirho::LamChirho {
+                                            binder_chirho: go_arg_binder_chirho.clone(),
+                                            body_chirho: Box::new(CoreExprChirho::LamChirho {
+                                                binder_chirho: acc_binder_chirho.clone(),
+                                                body_chirho: Box::new(go_body_chirho),
+                                            }),
+                                        },
+                                    )],
+                                    body_chirho: Box::new(CoreExprChirho::AppChirho {
+                                        fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                                            fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                                                go_binder_chirho.id_chirho,
+                                            )),
+                                            arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                                outer_arg_binder_chirho.id_chirho,
+                                            )),
+                                        }),
+                                        arg_chirho: Box::new(int_lit_chirho(0)),
+                                    }),
+                                }),
+                            },
+                        )],
+                        body_chirho: Box::new(CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(outer_binder_chirho.id_chirho)),
+                            arg_chirho: Box::new(CoreExprChirho::VarChirho(n_binder_chirho.id_chirho)),
+                        }),
+                    }),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        assert!(
+            ir_chirho.matches("define i64 @haskelujah_lambda_").count() >= 2,
+            "nested where should emit both outer and inner lifted helpers, got:\n{ir_chirho}"
+        );
+        assert!(
+            ir_chirho.contains("ptrtoint ptr @haskelujah_lambda_"),
+            "nested where body should reference a lifted helper symbol, got:\n{ir_chirho}"
         );
     }
 

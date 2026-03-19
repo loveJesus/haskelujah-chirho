@@ -1052,6 +1052,24 @@ main = do
     }
 
     #[test]
+    fn llvm_round_trip_nested_where_print_output_chirho() {
+        let src_chirho = r#"module Main where
+sumTo n = outer n where
+  outer m = go m 0 where
+    go 0 acc = acc
+    go k acc = go (k - 1) (acc + k)
+main = print (sumTo 10)
+"#;
+        let (exit_code_chirho, stdout_chirho) =
+            llvm_round_trip_output_chirho(src_chirho).expect("nested where LLVM round-trip");
+        assert_eq!(
+            exit_code_chirho, 0,
+            "nested where executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "55\n");
+    }
+
+    #[test]
     fn llvm_round_trip_put_str_ln_show_int_output_chirho() {
         let src_chirho = "module Main where\nmain = putStrLn (show 42)";
         if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
