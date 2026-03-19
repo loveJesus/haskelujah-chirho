@@ -1871,6 +1871,41 @@ mod tests_chirho {
     }
 
     #[test]
+    fn compile_executable_with_all_basic_arithmetic_primops_chirho() {
+        let cases_chirho = [
+            ("+#", "add", 2, 3),
+            ("-#", "sub", 50, 8),
+            ("*#", "mul", 6, 7),
+            ("div#", "sdiv", 84, 2),
+            ("mod#", "srem", 127, 85),
+        ];
+
+        for (prim_name_chirho, llvm_op_chirho, lhs_chirho, rhs_chirho) in cases_chirho {
+            let module_chirho = CoreModuleChirho {
+                name_chirho: format!("PrimOp{}", prim_name_chirho),
+                bindings_chirho: vec![CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("main", 10),
+                    rhs_chirho: CoreExprChirho::PrimOpChirho {
+                        name_chirho: prim_name_chirho.to_string(),
+                        args_chirho: vec![int_lit_chirho(lhs_chirho), int_lit_chirho(rhs_chirho)],
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                }],
+                names_chirho: HashMap::new(),
+                specialize_pragmas_chirho: HashMap::new(),
+                foreign_exports_chirho: vec![],
+            };
+
+            let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+            assert!(
+                ir_chirho.contains(&format!("{llvm_op_chirho} i64 {lhs_chirho}, {rhs_chirho}")),
+                "expected {prim_name_chirho} to lower to {llvm_op_chirho}, got:\n{ir_chirho}"
+            );
+        }
+    }
+
+    #[test]
     fn compile_executable_put_str_ln_uses_libc_io_chirho() {
         let put_str_ln_binder_chirho = dummy_binder_chirho("putStrLn", 1);
         let arg_binder_chirho = dummy_binder_chirho("arg", 2);

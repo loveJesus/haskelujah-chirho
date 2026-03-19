@@ -763,6 +763,38 @@ main = fib 10"#;
     }
 
     #[test]
+    fn llvm_round_trip_subtraction_chirho() {
+        let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 50 - 8");
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 42, "LLVM round-trip: 50 - 8 should exit with 42");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_multiplication_chirho() {
+        let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 6 * 7");
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 42, "LLVM round-trip: 6 * 7 should exit with 42");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_division_chirho() {
+        let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 84 `div` 2");
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 42, "LLVM round-trip: 84 `div` 2 should exit with 42");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_modulo_chirho() {
+        let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 127 `mod` 85");
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 42, "LLVM round-trip: 127 `mod` 85 should exit with 42");
+        }
+    }
+
+    #[test]
     fn llvm_round_trip_fibonacci_chirho() {
         // fib 10 = 55 → exit code 55
         let src_chirho = r#"module Main where
