@@ -1,19 +1,22 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 -->
 
-# Haskelujah
+# Haskelujah Chirho
 
 > *"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."* — John 3:16
 
-Haskelujah is a Haskell compiler written in Rust. It targets practical compatibility with real-world Haskell (GHC semantics, Cabal packages, Hackage libraries) through a typed, modular pipeline with first-class WebAssembly support and multiple native code generation backends.
+Haskelujah Chirho is a Haskell compiler written in Rust, aiming to be a drop-in replacement for GHC. It targets practical compatibility with real-world Haskell (GHC semantics, Cabal packages, Hackage libraries) through a typed, modular pipeline with first-class WebAssembly support and multiple native code generation backends.
+
+**End-to-end compilation works:** `haskelujah compile Main.hs -o main` produces a native executable via LLVM+libc.
 
 ## Status
 
 | Metric | Value |
 |---|---|
-| Tests | **2,121 passing**, 0 failures (GHC compat: 84.3%) |
-| Workspace | 21 crates, 130 Rust source files |
-| Codebase | ~132,700 lines of Rust |
-| Module interfaces | 272 synthetic Haskell modules |
+| GHC Compat | **810/938 (86.4%)** typecheck/should_compile |
+| Tests | **2,121 passing**, 0 failures |
+| Workspace | 21 crates, 129 Rust source files |
+| Codebase | ~135,700 lines of Rust |
+| Module interfaces | 280 synthetic Haskell modules |
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |
 
