@@ -820,6 +820,46 @@ main = fib 10"#;
     }
 
     #[test]
+    fn llvm_round_trip_print_true_output_chirho() {
+        let src_chirho = "module Main where\nmain = print True";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "print True executable should exit successfully");
+            assert_eq!(stdout_chirho, "True\n");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_print_false_output_chirho() {
+        let src_chirho = "module Main where\nmain = print False";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "print False executable should exit successfully");
+            assert_eq!(stdout_chirho, "False\n");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_print_char_output_chirho() {
+        let src_chirho = "module Main where\nmain = print 'A'";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "print Char executable should exit successfully");
+            assert_eq!(stdout_chirho, "'A'\n");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_print_float_output_chirho() {
+        let src_chirho = "module Main where\nmain = print 3.14";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "print Float executable should exit successfully");
+            assert_eq!(stdout_chirho, "3.14\n");
+        }
+    }
+
+    #[test]
     fn llvm_round_trip_do_put_str_ln_then_print_output_chirho() {
         let src_chirho =
             "module Main where\nmain = do\n  putStrLn \"Hello from Haskelujah!\"\n  print 42\n";
@@ -847,6 +887,46 @@ main = fib 10"#;
         {
             assert_eq!(exit_code_chirho, 0, "show executable should exit successfully");
             assert_eq!(stdout_chirho, "42\n");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_put_str_ln_show_true_output_chirho() {
+        let src_chirho = "module Main where\nmain = putStrLn (show True)";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "show True executable should exit successfully");
+            assert_eq!(stdout_chirho, "True\n");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_put_str_ln_show_false_output_chirho() {
+        let src_chirho = "module Main where\nmain = putStrLn (show False)";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "show False executable should exit successfully");
+            assert_eq!(stdout_chirho, "False\n");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_put_str_ln_show_char_output_chirho() {
+        let src_chirho = "module Main where\nmain = putStrLn (show 'A')";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "show Char executable should exit successfully");
+            assert_eq!(stdout_chirho, "'A'\n");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_put_str_ln_show_float_output_chirho() {
+        let src_chirho = "module Main where\nmain = putStrLn (show 3.14)";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "show Float executable should exit successfully");
+            assert_eq!(stdout_chirho, "3.14\n");
         }
     }
 
