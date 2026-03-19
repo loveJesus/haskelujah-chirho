@@ -1602,9 +1602,7 @@ impl MachineChirho {
             }
             Some(other_chirho) => {
                 self.stack_chirho.push_chirho(other_chirho);
-                Ok(ReturnActionChirho::DoneChirho(
-                    ValueChirho::HeapPtrChirho(addr_chirho),
-                ))
+                self.return_heap_ptr_chirho(addr_chirho)
             }
             None => Ok(ReturnActionChirho::DoneChirho(
                 ValueChirho::HeapPtrChirho(addr_chirho),
@@ -4634,5 +4632,51 @@ mod tests_chirho {
 
         let dead_closure_chirho = machine_chirho.heap_chirho.read_chirho(dead_addr_chirho);
         assert_eq!(dead_closure_chirho.info_chirho.name_chirho, "$DEAD");
+    }
+
+    #[test]
+    fn enter_pap_flows_through_primop_frames_chirho() {
+        let mut machine_chirho = MachineChirho::new_chirho(vec![
+            CodeChirho::PrimChirho {
+                op_chirho: PrimOpKindChirho::AddIntChirho,
+                args_chirho: vec![
+                    ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(1)),
+                    ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(2)),
+                ],
+            },
+        ]);
+
+        let fun_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
+            ClosureChirho::fun_chirho(2, CodePtrChirho(0), "f", vec![]),
+        );
+        let pap_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
+            ClosureChirho::pap_chirho(
+                1,
+                fun_addr_chirho,
+                vec![ValueChirho::IntChirho(10)],
+            ),
+        );
+        let pap_closure_chirho = machine_chirho.heap_chirho.read_chirho(pap_addr_chirho).clone();
+
+        machine_chirho.stack_chirho.push_chirho(FrameChirho::PrimOpChirho {
+            op_chirho: PrimOpKindChirho::SeqChirho,
+            args_so_far_chirho: vec![],
+            pending_args_chirho: vec![ValueChirho::IntChirho(42)],
+            remaining_chirho: 2,
+        });
+
+        let result_chirho = machine_chirho
+            .enter_pap_chirho(pap_addr_chirho, &pap_closure_chirho)
+            .unwrap();
+
+        match result_chirho {
+            ReturnActionChirho::DoneChirho(ValueChirho::IntChirho(42)) => {}
+            ReturnActionChirho::DoneChirho(other_chirho) => {
+                panic!("expected seq result 42, got {:?}", other_chirho)
+            }
+            ReturnActionChirho::ContinueChirho(next_chirho) => {
+                panic!("expected final seq result, got continuation {}", next_chirho)
+            }
+        }
     }
 }
