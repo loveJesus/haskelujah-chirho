@@ -52,7 +52,14 @@ pub fn compile_core_to_object_chirho(
     config_chirho: &TargetConfigChirho,
 ) -> Result<NativeObjectChirho, String> {
     // ── Build Cranelift ISA from target triple ─────────────────────────────
-    let flag_builder_chirho = cl_settings_chirho::builder();
+    let mut flag_builder_chirho = cl_settings_chirho::builder();
+    // Enable PIC for macOS ARM64 (required for linking with libc)
+    cranelift_codegen::settings::Configurable::set(
+        &mut flag_builder_chirho,
+        "is_pic",
+        "true",
+    )
+    .map_err(|e_chirho| format!("failed to set is_pic: {e_chirho}"))?;
     let isa_builder_chirho = cl_isa_chirho::lookup_by_name(&config_chirho.triple_chirho)
         .map_err(|e_chirho| {
             format!(
@@ -146,6 +153,8 @@ pub fn compile_core_to_object_chirho(
             &mut fb_ctx_chirho,
             binding_chirho,
             &func_decl_map_chirho,
+            module_chirho,
+            libc_puts_id_chirho,
         )?;
     }
 
@@ -176,6 +185,8 @@ fn lower_binding_chirho(
     fb_ctx_chirho: &mut FuncBuilderCtxChirho,
     binding_chirho: &CoreBindingChirho,
     func_decl_map_chirho: &FuncDeclMapChirho,
+    core_module_chirho: &CoreModuleChirho,
+    libc_puts_id_chirho: Option<cranelift_module::FuncId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
 
@@ -235,11 +246,33 @@ fn lower_binding_chirho(
             haskelujah_core_chirho::expr_chirho::CoreIdChirho,
             cranelift_frontend::Variable,
         > = HashMap::new();
+        // Import puts if available
+        let puts_fref_chirho = libc_puts_id_chirho.map(|fid_chirho| {
+            module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func)
+        });
+
+        // Build name map for detecting Prelude functions
+        let toplevel_names_chirho: HashMap<
+            haskelujah_core_chirho::expr_chirho::CoreIdChirho,
+            String,
+        > = core_module_chirho
+            .bindings_chirho
+            .iter()
+            .map(|b_chirho| {
+                (
+                    b_chirho.binder_chirho.id_chirho,
+                    b_chirho.binder_chirho.name_chirho.clone(),
+                )
+            })
+            .collect();
+
         let mut ctx_chirho = LowerCtxChirho {
             env_chirho: &mut env_chirho,
             next_var_idx_chirho: &mut next_var_idx_chirho,
             cl_vars_chirho: &mut cl_vars_chirho,
             func_ref_map_chirho: &func_ref_map_chirho,
+            toplevel_names_chirho: &toplevel_names_chirho,
+            puts_ref_chirho: puts_fref_chirho,
         };
 
         // ── Lower the body expression ──────────────────────────────────────

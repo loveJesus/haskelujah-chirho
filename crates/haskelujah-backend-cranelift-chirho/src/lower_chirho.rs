@@ -71,6 +71,10 @@ pub struct LowerCtxChirho<'a> {
     /// Map of CoreId → (FuncRef, arity) for direct top-level function calls.
     /// FuncRef is pre-imported into the current function via declare_func_in_func.
     pub func_ref_map_chirho: &'a HashMap<CoreIdChirho, (cranelift_codegen::ir::FuncRef, usize)>,
+    /// Map of CoreId → name for detecting Prelude functions (putStrLn, print, etc.)
+    pub toplevel_names_chirho: &'a HashMap<CoreIdChirho, String>,
+    /// Optional FuncRef for libc `puts` (used by putStrLn lowering)
+    pub puts_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
 }
 
 impl<'a> LowerCtxChirho<'a> {
@@ -503,6 +507,23 @@ fn lower_app_chirho(
 
     // Try direct call for known functions via pre-imported FuncRefs.
     if let CoreExprChirho::VarChirho(func_id_chirho) = callee_chirho {
+        // Check for Prelude IO functions (putStrLn, print)
+        if let Some(name_chirho) = ctx_chirho.toplevel_names_chirho.get(func_id_chirho) {
+            if matches!(name_chirho.as_str(), "putStrLn" | "putStrLn#") {
+                if let Some(puts_ref_chirho) = ctx_chirho.puts_ref_chirho {
+                    if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                        let arg_val_chirho =
+                            lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                        let arg_i64_chirho =
+                            ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                        // In Cranelift, i64 IS the pointer type on 64-bit
+                        builder_chirho.ins().call(puts_ref_chirho, &[arg_i64_chirho]);
+                        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+                    }
+                }
+            }
+        }
+
         if let Some((func_ref_chirho, _arity_chirho)) =
             ctx_chirho.func_ref_map_chirho.get(func_id_chirho)
         {

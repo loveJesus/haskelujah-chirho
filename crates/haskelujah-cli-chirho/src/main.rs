@@ -373,7 +373,7 @@ fn compile_command_chirho(
                             }
                             // Link with system linker
                             let linker_status_chirho = Command::new("cc")
-                                .args(["-o", output_path_chirho, &obj_path_chirho])
+                                .args(["-o", output_path_chirho, &obj_path_chirho, "-Wl,-no_fixup_chains"])
                                 .status();
                             match linker_status_chirho {
                                 Ok(status_chirho) if status_chirho.success() => {
