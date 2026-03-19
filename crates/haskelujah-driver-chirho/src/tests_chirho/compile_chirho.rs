@@ -840,6 +840,43 @@ main = fib 10"#;
         }
     }
 
+    #[test]
+    fn llvm_round_trip_put_str_ln_show_int_output_chirho() {
+        let src_chirho = "module Main where\nmain = putStrLn (show 42)";
+        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
+        {
+            assert_eq!(exit_code_chirho, 0, "show executable should exit successfully");
+            assert_eq!(stdout_chirho, "42\n");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_map_lambda_sum_chirho() {
+        let src_chirho = "module Main where\nmain = sum (map (\\x -> x * 2) [1,2,3])";
+        let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 12, "map should compile through LLVM");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_filter_sum_chirho() {
+        let src_chirho = "module Main where\nmain = sum (filter (> 2) [1,2,3,4])";
+        let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 7, "filter should compile through LLVM");
+        }
+    }
+
+    #[test]
+    fn llvm_round_trip_foldr_sum_chirho() {
+        let src_chirho = "module Main where\nmain = foldr (+) 0 [1,2,3]";
+        let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
+        if let Some(code_chirho) = exit_code_chirho {
+            assert_eq!(code_chirho, 6, "foldr should compile through LLVM");
+        }
+    }
+
     // ── Cranelift backend driver integration tests ────────────────────────
 
     #[test]

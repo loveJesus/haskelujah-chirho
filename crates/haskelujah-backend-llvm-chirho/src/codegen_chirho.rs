@@ -117,6 +117,7 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(self.output_chirho, "declare i32 @puts(ptr)").unwrap();
         writeln!(self.output_chirho, "declare i32 @printf(ptr, ...)").unwrap();
+        writeln!(self.output_chirho, "declare i32 @snprintf(ptr, i64, ptr, ...)").unwrap();
         writeln!(self.output_chirho, "declare i32 @putchar(i32)").unwrap();
         writeln!(self.output_chirho, "declare ptr @malloc(i64)").unwrap();
         writeln!(self.output_chirho).unwrap();
@@ -291,6 +292,40 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "  ret i64 0").unwrap();
+                writeln!(self.output_chirho, "}}").unwrap();
+                true
+            }
+            "show" | "showInt#" => {
+                let Some(arg_id_chirho) = params_chirho.last() else {
+                    return false;
+                };
+                let fmt_name_chirho = self.intern_string_global_name_chirho("%ld");
+                writeln!(
+                    self.output_chirho,
+                    "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "entry:").unwrap();
+                self.next_tmp_chirho = 0;
+                let buf_tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {buf_tmp_chirho} = call ptr @malloc(i64 32)"
+                )
+                .unwrap();
+                writeln!(
+                    self.output_chirho,
+                    "  call i32 (ptr, i64, ptr, ...) @snprintf(ptr {buf_tmp_chirho}, i64 32, ptr @{fmt_name_chirho}, i64 %v{})",
+                    arg_id_chirho.0
+                )
+                .unwrap();
+                let result_tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {result_tmp_chirho} = ptrtoint ptr {buf_tmp_chirho} to i64"
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "  ret i64 {result_tmp_chirho}").unwrap();
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
@@ -1670,6 +1705,46 @@ mod tests_chirho {
         assert!(ir_chirho.contains("define i64 @haskelujah__u003e_u003e_u003d(i64 %v1, i64 %v2)"));
         assert!(ir_chirho.contains("inttoptr i64 %v2 to ptr"));
         assert!(ir_chirho.contains("call i64 %t"));
+    }
+
+    #[test]
+    fn compile_executable_show_int_uses_snprintf_chirho() {
+        let show_binder_chirho = dummy_binder_chirho("show", 1);
+        let arg_binder_chirho = dummy_binder_chirho("arg", 2);
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Main".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("main", 0),
+                    rhs_chirho: CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                            show_binder_chirho.id_chirho,
+                        )),
+                        arg_chirho: Box::new(int_lit_chirho(42)),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: show_binder_chirho.clone(),
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: arg_binder_chirho,
+                        body_chirho: Box::new(int_lit_chirho(0)),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+        assert!(ir_chirho.contains("declare i32 @snprintf(ptr, i64, ptr, ...)"));
+        assert!(ir_chirho.contains("define i64 @haskelujah_show(i64 %v2)"));
+        assert!(ir_chirho.contains("call ptr @malloc(i64 32)"));
+        assert!(ir_chirho.contains("@snprintf(ptr"));
     }
 
     #[test]
