@@ -3399,7 +3399,16 @@ fn ast_type_to_syn_rhs_chirho(ty_chirho: &TypeChirho, params_chirho: &[String]) 
         TypeChirho::ParenChirho { inner_chirho, .. } => {
             ast_type_to_syn_rhs_chirho(inner_chirho, params_chirho)
         }
-        TypeChirho::QualChirho { body_chirho, .. } => {
+        TypeChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+            ..
+        } => {
+            // Preserve constraint context but convert the body.
+            // For now, just pass through the body since constraints in
+            // synonym RHS are handled during instantiation.
+            // TODO: properly preserve constraints as deferred predicates
+            let _ = context_chirho;
             ast_type_to_syn_rhs_chirho(body_chirho, params_chirho)
         }
         TypeChirho::ForallChirho {
