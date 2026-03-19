@@ -1,0 +1,8 @@
+cabal-version: 2.4
+name: expr-eval
+version: 0.1.0.0
+synopsis: Expression evaluator demo for Haskelujah Chirho
+executable expr-eval
+  main-is: Main.hs
+  build-depends: base
+  default-language: Haskell2010
