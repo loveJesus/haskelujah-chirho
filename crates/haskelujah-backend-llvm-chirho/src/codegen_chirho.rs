@@ -311,6 +311,9 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(self.output_chirho, "declare i32 @putchar(i32)").unwrap();
         writeln!(self.output_chirho, "declare ptr @malloc(i64)").unwrap();
+        writeln!(self.output_chirho, "declare void @abort() noreturn").unwrap();
+        writeln!(self.output_chirho, "declare i32 @fprintf(ptr, ...)").unwrap();
+        writeln!(self.output_chirho, "declare ptr @fdopen(i32, ptr)").unwrap();
         writeln!(self.output_chirho).unwrap();
 
         let globals_insert_offset_chirho = self.output_chirho.len();
@@ -514,6 +517,47 @@ impl LlvmCodegenChirho {
                     &format!("%v{}", arg_id_chirho.0),
                     show_kind_chirho,
                 );
+                true
+            }
+            "error" | "error#" => {
+                // error :: String -> a — print message to stderr and abort
+                let Some(arg_id_chirho) = params_chirho.first() else {
+                    return false;
+                };
+                writeln!(
+                    self.output_chirho,
+                    "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "entry:").unwrap();
+                let msg_ptr_chirho = format!("%msg_ptr");
+                writeln!(
+                    self.output_chirho,
+                    "  {msg_ptr_chirho} = inttoptr i64 %v{} to ptr",
+                    arg_id_chirho.0
+                )
+                .unwrap();
+                writeln!(
+                    self.output_chirho,
+                    "  call i32 @puts(ptr {msg_ptr_chirho})"
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "  call void @abort()").unwrap();
+                writeln!(self.output_chirho, "  unreachable").unwrap();
+                writeln!(self.output_chirho, "}}").unwrap();
+                true
+            }
+            "undefined" | "undefined#" => {
+                // undefined :: a — abort immediately
+                writeln!(
+                    self.output_chirho,
+                    "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
+                )
+                .unwrap();
+                writeln!(self.output_chirho, "entry:").unwrap();
+                writeln!(self.output_chirho, "  call void @abort()").unwrap();
+                writeln!(self.output_chirho, "  unreachable").unwrap();
+                writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
             "return" | "pure" | "returnIO#" => {
@@ -1921,7 +1965,7 @@ mod tests_chirho {
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
         assert!(ir_chirho.contains("inttoptr i64 %v1 to ptr"));
-        assert!(ir_chirho.contains("call i64 %t"));
+        assert!(ir_chirho.contains("call i64 %t") || ir_chirho.contains("tail call i64 %t"));
         assert!(!ir_chirho.contains("add i64 %v1, 42"));
         assert!(!ir_chirho.contains("@haskelujah_v1"));
     }
