@@ -1715,6 +1715,7 @@ pub struct CabalCompileResultChirho {
 #[derive(Debug)]
 pub struct CabalExecutableBuildResultChirho {
     pub name_chirho: String,
+    pub core_chirho: CoreModuleChirho,
     pub llvm_ir_chirho: String,
     pub compilation_order_chirho: Vec<String>,
     pub warnings_chirho: Vec<String>,
@@ -1834,6 +1835,7 @@ pub fn build_cabal_project_chirho(
         let llvm_ir_chirho = compile_core_to_llvm_executable_chirho(&merged_core_chirho);
         executables_chirho.push(CabalExecutableBuildResultChirho {
             name_chirho: executable_chirho.name_chirho.clone(),
+            core_chirho: merged_core_chirho,
             llvm_ir_chirho,
             compilation_order_chirho: project_compile_result_chirho.compilation_order_chirho,
             warnings_chirho: project_compile_result_chirho.warnings_chirho,

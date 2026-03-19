@@ -441,6 +441,10 @@ executable hello-app
             result_chirho.executables_chirho[0].compilation_order_chirho,
             vec!["Lib".to_string(), "Main".to_string()]
         );
+        assert!(!result_chirho.executables_chirho[0]
+            .core_chirho
+            .bindings_chirho
+            .is_empty());
         assert!(result_chirho.executables_chirho[0]
             .llvm_ir_chirho
             .contains("define i32 @main()"));

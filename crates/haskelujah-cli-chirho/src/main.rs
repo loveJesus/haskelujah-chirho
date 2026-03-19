@@ -34,6 +34,7 @@ struct FlagsChirho {
     dump_llvm_chirho: bool,
     output_path_chirho: Option<String>,
     emit_wasm_chirho: bool,
+    emit_llvm_chirho: bool,
     emit_cranelift_chirho: bool,
 }
 
@@ -51,6 +52,7 @@ fn main_chirho() -> ExitCode {
         dump_llvm_chirho: false,
         output_path_chirho: None,
         emit_wasm_chirho: false,
+        emit_llvm_chirho: false,
         emit_cranelift_chirho: false,
     };
     let mut positional_chirho: Vec<&str> = Vec::new();
@@ -65,6 +67,7 @@ fn main_chirho() -> ExitCode {
             "--dump-stg" => flags_chirho.dump_stg_chirho = true,
             "--dump-llvm" => flags_chirho.dump_llvm_chirho = true,
             "--wasm" => flags_chirho.emit_wasm_chirho = true,
+            "--llvm" => flags_chirho.emit_llvm_chirho = true,
             "--cranelift" => flags_chirho.emit_cranelift_chirho = true,
             "-o" | "--output" => {
                 if let Some(next_chirho) = raw_args_chirho.get(idx_chirho + 2) {
@@ -95,6 +98,11 @@ fn main_chirho() -> ExitCode {
     if command_chirho == "--help" || command_chirho == "-h" || command_chirho == "help" {
         print_usage_chirho(program_name_chirho);
         return ExitCode::SUCCESS;
+    }
+
+    if flags_chirho.emit_llvm_chirho && flags_chirho.emit_cranelift_chirho {
+        eprintln!("cannot combine --llvm and --cranelift");
+        return ExitCode::from(2);
     }
 
     match command_chirho {
@@ -151,10 +159,11 @@ fn main_chirho() -> ExitCode {
         }
         "run" => run_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
         "compile" => compile_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
-        "build" => build_command_chirho(program_name_chirho, path_chirho),
+        "build" => build_command_chirho(program_name_chirho, path_chirho, &flags_chirho),
         "build-run" => {
             // Build then run the first executable
-            let result_chirho = build_command_chirho(program_name_chirho, path_chirho.clone());
+            let result_chirho =
+                build_command_chirho(program_name_chirho, path_chirho.clone(), &flags_chirho);
             if result_chirho != ExitCode::SUCCESS {
                 return result_chirho;
             }
@@ -353,66 +362,17 @@ fn compile_command_chirho(
         Ok(result_chirho) => {
             if let Some(ref output_path_chirho) = flags_chirho.output_path_chirho {
                 if flags_chirho.emit_cranelift_chirho {
-                    // Generate native object file via Cranelift
-                    let config_chirho = TargetConfigChirho::default();
-                    match compile_core_to_object_executable_chirho(
+                    match link_cranelift_executable_from_core_chirho(
                         &result_chirho.core_chirho,
-                        &config_chirho,
+                        Path::new(output_path_chirho),
                     ) {
-                        Ok(obj_chirho) => {
-                            let obj_path_chirho = format!("{output_path_chirho}.o");
-                            if let Err(e_chirho) =
-                                fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho)
-                            {
-                                eprintln!(
-                                    "error writing object to `{obj_path_chirho}`: {e_chirho}"
-                                );
-                                return ExitCode::from(1);
-                            }
-                            let rts_lib_dir_chirho = match ensure_rts_staticlib_chirho() {
-                                Ok(path_chirho) => path_chirho,
-                                Err(error_chirho) => {
-                                    eprintln!("{error_chirho}");
-                                    return ExitCode::from(1);
-                                }
-                            };
-                            // Link with system linker
-                            let mut linker_command_chirho = Command::new("cc");
-                            linker_command_chirho.args([
-                                "-o",
-                                output_path_chirho,
-                                &obj_path_chirho,
-                                "-Wl,-no_fixup_chains",
-                            ]);
-                            append_rts_link_args_chirho(
-                                &mut linker_command_chirho,
-                                &rts_lib_dir_chirho,
+                        Ok(()) => {
+                            println!(
+                                "compiled (cranelift): {path_chirho} → {output_path_chirho}"
                             );
-                            let linker_status_chirho = linker_command_chirho.status();
-                            match linker_status_chirho {
-                                Ok(status_chirho) if status_chirho.success() => {
-                                    println!(
-                                        "compiled (cranelift): {path_chirho} → {output_path_chirho}"
-                                    );
-                                    let _ = fs::remove_file(&obj_path_chirho);
-                                }
-                                Ok(status_chirho) => {
-                                    eprintln!(
-                                        "linker failed with exit code {}; object saved to {obj_path_chirho}",
-                                        status_chirho.code().unwrap_or(-1)
-                                    );
-                                    return ExitCode::from(1);
-                                }
-                                Err(e_chirho) => {
-                                    eprintln!(
-                                        "could not run linker: {e_chirho}; object saved to {obj_path_chirho}"
-                                    );
-                                    return ExitCode::from(1);
-                                }
-                            }
                         }
-                        Err(e_chirho) => {
-                            eprintln!("cranelift compilation failed: {e_chirho}");
+                        Err(error_chirho) => {
+                            eprintln!("{error_chirho}");
                             return ExitCode::from(1);
                         }
                     }
@@ -534,13 +494,21 @@ fn error_msg_chirho(msg_chirho: &str) {
 /// If a `.cabal` file is found, uses Cabal-based compilation (parses `.cabal`,
 /// resolves dependencies, discovers modules from `hs-source-dirs`).
 /// Otherwise, discovers `.hs` files recursively and compiles in dependency order.
-fn build_command_chirho(_program_name_chirho: &str, path_arg_chirho: Option<String>) -> ExitCode {
+fn build_command_chirho(
+    _program_name_chirho: &str,
+    path_arg_chirho: Option<String>,
+    flags_chirho: &FlagsChirho,
+) -> ExitCode {
     let project_dir_chirho = path_arg_chirho.as_deref().unwrap_or(".");
     let project_path_chirho = std::path::Path::new(project_dir_chirho);
 
     if !project_path_chirho.is_dir() {
         eprintln!("error: `{}` is not a directory", project_dir_chirho);
         return ExitCode::from(1);
+    }
+    if flags_chirho.emit_wasm_chirho {
+        eprintln!("error: `build` does not support `--wasm` yet");
+        return ExitCode::from(2);
     }
 
     let build_start_chirho = std::time::Instant::now();
@@ -598,18 +566,45 @@ fn build_command_chirho(_program_name_chirho: &str, path_arg_chirho: Option<Stri
                     for executable_chirho in &build_result_chirho.executables_chirho {
                         let output_path_chirho =
                             build_dir_chirho.join(&executable_chirho.name_chirho);
-                        if let Err(error_chirho) = link_llvm_executable_chirho(
-                            &executable_chirho.llvm_ir_chirho,
-                            &output_path_chirho,
-                        ) {
-                            eprintln!(
-                                "error building executable {}: {}",
-                                executable_chirho.name_chirho, error_chirho
-                            );
-                            return ExitCode::from(1);
-                        }
+                        let backend_used_chirho = if flags_chirho.emit_llvm_chirho {
+                            if let Err(error_chirho) = link_llvm_executable_chirho(
+                                &executable_chirho.llvm_ir_chirho,
+                                &output_path_chirho,
+                            ) {
+                                eprintln!(
+                                    "error building executable {}: {}",
+                                    executable_chirho.name_chirho, error_chirho
+                                );
+                                return ExitCode::from(1);
+                            }
+                            "llvm"
+                        } else {
+                            match link_cranelift_executable_from_core_chirho(
+                                &executable_chirho.core_chirho,
+                                &output_path_chirho,
+                            ) {
+                                Ok(()) => "cranelift",
+                                Err(cranelift_error_chirho) => {
+                                    eprintln!(
+                                        "warning: Cranelift build failed for {}: {}; falling back to LLVM",
+                                        executable_chirho.name_chirho, cranelift_error_chirho
+                                    );
+                                    if let Err(error_chirho) = link_llvm_executable_chirho(
+                                        &executable_chirho.llvm_ir_chirho,
+                                        &output_path_chirho,
+                                    ) {
+                                        eprintln!(
+                                            "error building executable {}: {}",
+                                            executable_chirho.name_chirho, error_chirho
+                                        );
+                                        return ExitCode::from(1);
+                                    }
+                                    "llvm-fallback"
+                                }
+                            }
+                        };
                         eprintln!(
-                            "Built executable {} → {}",
+                            "Built executable {} → {} ({backend_used_chirho})",
                             executable_chirho.name_chirho,
                             output_path_chirho.display(),
                         );
@@ -722,6 +717,57 @@ fn link_llvm_file_chirho(
             "clang failed with exit code {}; LLVM IR saved to {}",
             clang_status_chirho.code().unwrap_or(-1),
             llvm_path_chirho.display(),
+        ))
+    }
+}
+
+fn link_cranelift_executable_from_core_chirho(
+    core_chirho: &haskelujah_core_chirho::CoreModuleChirho,
+    output_path_chirho: &Path,
+) -> Result<(), String> {
+    let config_chirho = TargetConfigChirho::default();
+    let obj_chirho = compile_core_to_object_executable_chirho(core_chirho, &config_chirho)
+        .map_err(|error_chirho| format!("cranelift compilation failed: {error_chirho}"))?;
+    link_cranelift_object_file_chirho(&obj_chirho.object_bytes_chirho, output_path_chirho)
+}
+
+fn link_cranelift_object_file_chirho(
+    object_bytes_chirho: &[u8],
+    output_path_chirho: &Path,
+) -> Result<(), String> {
+    let obj_path_chirho = output_path_chirho.with_extension("o");
+    fs::write(&obj_path_chirho, object_bytes_chirho)
+        .map_err(|error_chirho| format!("cannot write {}: {}", obj_path_chirho.display(), error_chirho))?;
+    let rts_lib_dir_chirho = ensure_rts_staticlib_chirho()?;
+    let output_path_str_chirho = output_path_chirho
+        .to_str()
+        .ok_or_else(|| format!("non-utf8 output path: {}", output_path_chirho.display()))?;
+    let obj_path_str_chirho = obj_path_chirho
+        .to_str()
+        .ok_or_else(|| format!("non-utf8 object path: {}", obj_path_chirho.display()))?;
+
+    let mut linker_command_chirho = Command::new("cc");
+    linker_command_chirho.args([
+        "-o",
+        output_path_str_chirho,
+        obj_path_str_chirho,
+        "-Wl,-no_fixup_chains",
+    ]);
+    append_rts_link_args_chirho(&mut linker_command_chirho, &rts_lib_dir_chirho);
+    let linker_status_chirho = linker_command_chirho.status().map_err(|error_chirho| {
+        format!(
+            "could not run linker: {error_chirho}; object saved to {}",
+            obj_path_chirho.display()
+        )
+    })?;
+    if linker_status_chirho.success() {
+        let _ = fs::remove_file(&obj_path_chirho);
+        Ok(())
+    } else {
+        Err(format!(
+            "linker failed with exit code {}; object saved to {}",
+            linker_status_chirho.code().unwrap_or(-1),
+            obj_path_chirho.display()
         ))
     }
 }
@@ -970,7 +1016,8 @@ fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("flags:");
     eprintln!("  -o, --output <path>  output native executable or .wasm file");
     eprintln!("  --wasm               emit WebAssembly instead of native");
-    eprintln!("  --cranelift          emit native code via Cranelift");
+    eprintln!("  --cranelift          emit native code via Cranelift for `compile`");
+    eprintln!("  --llvm               force LLVM instead of default Cranelift `build`");
     eprintln!("  --dump-core          print Core IR to stderr");
     eprintln!("  --dump-stg           print STG code table to stderr");
     eprintln!("  --dump-llvm          print LLVM IR to stderr");
