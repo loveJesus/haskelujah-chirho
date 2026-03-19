@@ -152,8 +152,9 @@ fn main_chirho() -> ExitCode {
     }
 }
 
-/// `haskelujah run <file.hs>` — evaluate a Haskell program through the STG machine
-/// and print any IO output it produces.
+/// `haskelujah run <file.hs>` — compile via LLVM and execute the resulting
+/// native binary. Falls back to the STG interpreter if LLVM compilation
+/// or linking fails.
 fn run_command_chirho(
     program_name_chirho: &str,
     path_arg_chirho: Option<String>,
@@ -201,6 +202,58 @@ fn run_command_chirho(
         }
     }
 
+    // Try LLVM compile-and-run first for programs with main :: IO ()
+    {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let search_dir_chirho = Path::new(&path_chirho)
+            .parent()
+            .unwrap_or(Path::new("."));
+        if let Ok(result_chirho) =
+            haskelujah_driver_chirho::compile_source_with_search_path_chirho(
+                &source_text_chirho,
+                &mut sm_chirho,
+                file_name_chirho,
+                search_dir_chirho,
+            )
+        {
+            let tmp_dir_chirho = std::env::temp_dir().join("haskelujah-run-chirho");
+            let _ = fs::create_dir_all(&tmp_dir_chirho);
+            let exe_path_chirho = tmp_dir_chirho.join("a.out");
+            // Suppress clang stderr for the try-LLVM path
+            let link_result_chirho = {
+                let ll_path_chirho = exe_path_chirho.with_extension("ll");
+                let _ = fs::write(&ll_path_chirho, &result_chirho.llvm_ir_chirho);
+                let clang_status_chirho = Command::new("clang")
+                    .args(["-O2", "-o"])
+                    .arg(&exe_path_chirho)
+                    .arg(&ll_path_chirho)
+                    .stderr(std::process::Stdio::null())
+                    .status();
+                let _ = fs::remove_file(&ll_path_chirho);
+                clang_status_chirho
+                    .ok()
+                    .filter(|s_chirho| s_chirho.success())
+                    .map(|_| ())
+                    .ok_or(())
+            };
+            if let Ok(()) = link_result_chirho {
+                let status_chirho = Command::new(&exe_path_chirho).status();
+                let _ = fs::remove_file(&exe_path_chirho);
+                match status_chirho {
+                    Ok(s_chirho) => {
+                        return if s_chirho.success() {
+                            ExitCode::SUCCESS
+                        } else {
+                            ExitCode::from(s_chirho.code().unwrap_or(1) as u8)
+                        };
+                    }
+                    Err(_) => {} // fall through to STG interpreter
+                }
+            }
+        }
+    }
+
+    // Fallback: STG interpreter
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
     match eval_source_with_machine_chirho(
