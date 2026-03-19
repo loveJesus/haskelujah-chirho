@@ -2972,18 +2972,39 @@ impl<'src> ParserChirho<'src> {
             self.builder_chirho
                 .start_node_chirho(SyntaxKindChirho::FieldAssignChirho);
 
-            while !self.at_chirho(RawTokenKindChirho::CommaChirho)
-                && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
-                && !self.at_eof_chirho()
-                && !self.at_decl_boundary_chirho()
+            // Parse field name
+            if self.at_chirho(RawTokenKindChirho::VarIdChirho)
+                || self.at_chirho(RawTokenKindChirho::ConIdChirho)
             {
+                self.bump_chirho(); // field name
                 self.eat_trivia_chirho();
-                if !self.at_chirho(RawTokenKindChirho::CommaChirho)
+            }
+
+            // Parse = and value expression
+            if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+                self.bump_chirho(); // =
+                self.eat_trivia_chirho();
+                // Parse the value as a proper expression so lambdas,
+                // let-expressions etc. get correct AST nodes.
+                if self.can_start_aexp_chirho() || self.at_chirho(RawTokenKindChirho::BackslashChirho) || self.at_chirho(RawTokenKindChirho::LetChirho) || self.at_chirho(RawTokenKindChirho::IfChirho) || self.at_chirho(RawTokenKindChirho::CaseChirho) || self.at_chirho(RawTokenKindChirho::DoChirho) {
+                    self.parse_expr_chirho();
+                    self.eat_trivia_chirho();
+                }
+            } else {
+                // NamedFieldPuns or other tokens — consume until , or }
+                while !self.at_chirho(RawTokenKindChirho::CommaChirho)
                     && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
-                    && !self.at_decl_boundary_chirho()
                     && !self.at_eof_chirho()
+                    && !self.at_decl_boundary_chirho()
                 {
-                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    if !self.at_chirho(RawTokenKindChirho::CommaChirho)
+                        && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                        && !self.at_decl_boundary_chirho()
+                        && !self.at_eof_chirho()
+                    {
+                        self.bump_chirho();
+                    }
                 }
             }
 
