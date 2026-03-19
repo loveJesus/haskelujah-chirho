@@ -2907,7 +2907,9 @@ impl InferCtxChirho {
             }
         }
 
-        // Also pre-bind PatBindChirho variables
+        // Also pre-bind PatBindChirho variables. When a type signature
+        // exists for a pattern-bound variable, use the signature scheme
+        // for proper polymorphism (e.g. `id1 :: a -> a; (id1) = id`).
         for decl_chirho in &module_chirho.decls_chirho {
             if let DeclChirho::PatBindChirho {
                 pat_chirho,
@@ -2917,11 +2919,18 @@ impl InferCtxChirho {
             {
                 let names_chirho = crate::linearity_chirho::pat_bound_names_chirho(pat_chirho);
                 for name_chirho in names_chirho {
-                    let pre_ty_chirho = self.fresh_var_chirho();
-                    self.env_chirho.bind_chirho(
-                        name_chirho.clone(),
-                        SchemeChirho::mono_chirho(pre_ty_chirho),
-                    );
+                    if let Some(sig_ast_chirho) = type_sigs_chirho.get(&name_chirho) {
+                        let sig_scheme_chirho =
+                            self.ast_type_to_scheme_chirho(sig_ast_chirho);
+                        self.env_chirho
+                            .bind_chirho(name_chirho.clone(), sig_scheme_chirho);
+                    } else {
+                        let pre_ty_chirho = self.fresh_var_chirho();
+                        self.env_chirho.bind_chirho(
+                            name_chirho.clone(),
+                            SchemeChirho::mono_chirho(pre_ty_chirho),
+                        );
+                    }
                 }
             }
         }
@@ -3060,8 +3069,32 @@ impl InferCtxChirho {
                     if let Some(scheme_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
                         let resolved_chirho =
                             subst_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho);
-                        let gen_chirho = self.generalize_chirho(&resolved_chirho);
-                        self.env_chirho.bind_chirho(name_chirho.clone(), gen_chirho);
+
+                        // Check against type signature if one exists
+                        if let Some(sig_ast_chirho) = type_sigs_chirho.get(name_chirho) {
+                            let sig_scheme_chirho =
+                                self.ast_type_to_scheme_chirho(sig_ast_chirho);
+                            let sig_ty_raw_chirho =
+                                self.instantiate_chirho(&sig_scheme_chirho, SpanChirho::DUMMY_CHIRHO);
+                            let sig_ty_chirho =
+                                self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
+                            let inferred_sub_chirho =
+                                self.reduce_type_families_in_ty_chirho(&resolved_chirho);
+                            if let Ok(sig_s_chirho) = self.unify_normalized_chirho(
+                                &inferred_sub_chirho,
+                                &sig_ty_chirho,
+                                SpanChirho::DUMMY_CHIRHO,
+                            ) {
+                                subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
+                                self.apply_subst_all_chirho(&sig_s_chirho);
+                            }
+                            // Use the signature scheme directly for proper
+                            // polymorphism (e.g. `id1 :: a -> a; (id1) = id`)
+                            self.env_chirho.bind_chirho(name_chirho.clone(), sig_scheme_chirho);
+                        } else {
+                            let gen_chirho = self.generalize_chirho(&resolved_chirho);
+                            self.env_chirho.bind_chirho(name_chirho.clone(), gen_chirho);
+                        }
                     }
                 }
             }
