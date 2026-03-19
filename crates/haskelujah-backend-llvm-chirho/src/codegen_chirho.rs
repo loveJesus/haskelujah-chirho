@@ -24,6 +24,9 @@ use haskelujah_core_chirho::{
     CoreModuleChirho,
 };
 
+const BOXED_CONSTRUCTOR_TAG_MASK_CHIRHO: i64 = i64::MIN;
+const BOXED_CONSTRUCTOR_PTR_MASK_CHIRHO: i64 = i64::MAX;
+
 /// LLVM IR generation context.
 pub struct LlvmCodegenChirho {
     /// The LLVM IR output buffer.
@@ -109,6 +112,7 @@ impl LlvmCodegenChirho {
             "declare i64 @haskelujah_negate_chirho(i64)"
         )
         .unwrap();
+        writeln!(self.output_chirho, "declare ptr @malloc(i64)").unwrap();
         writeln!(self.output_chirho).unwrap();
 
         let globals_insert_offset_chirho = self.output_chirho.len();
@@ -474,13 +478,9 @@ impl LlvmCodegenChirho {
             }
 
             CoreExprChirho::ConAppChirho {
-                con_name_chirho, ..
-            } => {
-                // Return the constructor tag. Without heap allocation,
-                // fields are not accessible — only tag-based dispatch works.
-                let tag_chirho = constructor_tag_chirho(con_name_chirho);
-                format!("{tag_chirho}")
-            }
+                con_name_chirho,
+                args_chirho,
+            } => self.compile_constructor_app_chirho(con_name_chirho, args_chirho),
         }
     }
 
@@ -535,6 +535,70 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         result_tmp_chirho
+    }
+
+    fn compile_constructor_app_chirho(
+        &mut self,
+        con_name_chirho: &str,
+        args_chirho: &[CoreExprChirho],
+    ) -> String {
+        let tag_chirho = constructor_tag_chirho(con_name_chirho);
+        if args_chirho.is_empty() {
+            return format!("{tag_chirho}");
+        }
+
+        let field_vals_chirho: Vec<String> = args_chirho
+            .iter()
+            .map(|arg_chirho| self.compile_expr_chirho(arg_chirho))
+            .collect();
+        let alloc_tmp_chirho = self.fresh_tmp_chirho();
+        let alloc_size_chirho = ((field_vals_chirho.len() + 1) * 8) as i64;
+        writeln!(
+            self.output_chirho,
+            "  {alloc_tmp_chirho} = call ptr @malloc(i64 {alloc_size_chirho})"
+        )
+        .unwrap();
+
+        let tag_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {tag_ptr_tmp_chirho} = getelementptr i64, ptr {alloc_tmp_chirho}, i64 0"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  store i64 {tag_chirho}, ptr {tag_ptr_tmp_chirho}"
+        )
+        .unwrap();
+
+        for (field_idx_chirho, field_val_chirho) in field_vals_chirho.iter().enumerate() {
+            let field_ptr_tmp_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {field_ptr_tmp_chirho} = getelementptr i64, ptr {alloc_tmp_chirho}, i64 {}",
+                field_idx_chirho + 1
+            )
+            .unwrap();
+            writeln!(
+                self.output_chirho,
+                "  store i64 {field_val_chirho}, ptr {field_ptr_tmp_chirho}"
+            )
+            .unwrap();
+        }
+
+        let ptr_i64_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {ptr_i64_tmp_chirho} = ptrtoint ptr {alloc_tmp_chirho} to i64"
+        )
+        .unwrap();
+        let tagged_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {tagged_ptr_tmp_chirho} = or i64 {ptr_i64_tmp_chirho}, {BOXED_CONSTRUCTOR_TAG_MASK_CHIRHO}"
+        )
+        .unwrap();
+        tagged_ptr_tmp_chirho
     }
 
     fn compile_case_lit_chirho(
@@ -630,6 +694,7 @@ impl LlvmCodegenChirho {
         // Multi-alt with data constructors: use tag comparison chain
         // Each constructor gets a tag (True=1, False=0, etc.)
         let default_label_chirho = self.fresh_label_chirho("case.default");
+        let scrut_tag_tmp_chirho = self.load_constructor_tag_chirho(scrut_val_chirho);
 
         for (i_chirho, alt_chirho) in alts_chirho.iter().enumerate() {
             match &alt_chirho.con_chirho {
@@ -645,7 +710,7 @@ impl LlvmCodegenChirho {
 
                     writeln!(
                         self.output_chirho,
-                        "  {cmp_tmp_chirho} = icmp eq i64 {scrut_val_chirho}, {tag_chirho}"
+                        "  {cmp_tmp_chirho} = icmp eq i64 {scrut_tag_tmp_chirho}, {tag_chirho}"
                     )
                     .unwrap();
                     writeln!(
@@ -655,30 +720,10 @@ impl LlvmCodegenChirho {
                     .unwrap();
 
                     writeln!(self.output_chirho, "{then_label_chirho}:").unwrap();
-                    // Bind alt binders (constructor field projections).
-                    // Without heap layout, single-field constructors get the
-                    // scrutinee value; multi-field binders get 0 as a stub.
-                    for (field_idx_chirho, binder_chirho) in
-                        alt_chirho.binders_chirho.iter().enumerate()
-                    {
-                        self.local_scope_chirho.insert(binder_chirho.id_chirho);
-                        let binder_var_chirho = format!("%v{}", binder_chirho.id_chirho.0);
-                        if alt_chirho.binders_chirho.len() == 1 {
-                            writeln!(
-                                self.output_chirho,
-                                "  {binder_var_chirho} = add i64 0, {scrut_val_chirho}"
-                            )
-                            .unwrap();
-                        } else {
-                            // TODO(codex-audit): multi-field constructor case
-                            // binders are still stubbed rather than projected.
-                            writeln!(
-                                self.output_chirho,
-                                "  {binder_var_chirho} = add i64 0, 0 ; stub field {field_idx_chirho}"
-                            )
-                            .unwrap();
-                        }
-                    }
+                    self.bind_constructor_fields_chirho(
+                        scrut_val_chirho,
+                        &alt_chirho.binders_chirho,
+                    );
                     let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
                     writeln!(
                         self.output_chirho,
@@ -721,6 +766,101 @@ impl LlvmCodegenChirho {
         {
             writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
             writeln!(self.output_chirho, "  unreachable").unwrap();
+        }
+    }
+
+    fn load_constructor_tag_chirho(&mut self, scrut_val_chirho: &str) -> String {
+        let boxed_label_chirho = self.fresh_label_chirho("case.tag.boxed");
+        let immediate_label_chirho = self.fresh_label_chirho("case.tag.immediate");
+        let join_label_chirho = self.fresh_label_chirho("case.tag.join");
+        let is_boxed_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {is_boxed_tmp_chirho} = icmp slt i64 {scrut_val_chirho}, 0"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  br i1 {is_boxed_tmp_chirho}, label %{boxed_label_chirho}, label %{immediate_label_chirho}"
+        )
+        .unwrap();
+
+        writeln!(self.output_chirho, "{immediate_label_chirho}:").unwrap();
+        writeln!(self.output_chirho, "  br label %{join_label_chirho}").unwrap();
+
+        writeln!(self.output_chirho, "{boxed_label_chirho}:").unwrap();
+        let boxed_ptr_tmp_chirho = self.decode_boxed_constructor_ptr_chirho(scrut_val_chirho);
+        let tag_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {tag_ptr_tmp_chirho} = getelementptr i64, ptr {boxed_ptr_tmp_chirho}, i64 0"
+        )
+        .unwrap();
+        let boxed_tag_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {boxed_tag_tmp_chirho} = load i64, ptr {tag_ptr_tmp_chirho}"
+        )
+        .unwrap();
+        writeln!(self.output_chirho, "  br label %{join_label_chirho}").unwrap();
+
+        writeln!(self.output_chirho, "{join_label_chirho}:").unwrap();
+        let scrut_tag_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {scrut_tag_tmp_chirho} = phi i64 [{scrut_val_chirho}, %{immediate_label_chirho}], [{boxed_tag_tmp_chirho}, %{boxed_label_chirho}]"
+        )
+        .unwrap();
+        scrut_tag_tmp_chirho
+    }
+
+    fn decode_boxed_constructor_ptr_chirho(&mut self, scrut_val_chirho: &str) -> String {
+        let ptr_bits_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {ptr_bits_tmp_chirho} = and i64 {scrut_val_chirho}, {BOXED_CONSTRUCTOR_PTR_MASK_CHIRHO}"
+        )
+        .unwrap();
+        let ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {ptr_tmp_chirho} = inttoptr i64 {ptr_bits_tmp_chirho} to ptr"
+        )
+        .unwrap();
+        ptr_tmp_chirho
+    }
+
+    fn bind_constructor_fields_chirho(
+        &mut self,
+        scrut_val_chirho: &str,
+        binders_chirho: &[haskelujah_core_chirho::BinderChirho],
+    ) {
+        if binders_chirho.is_empty() {
+            return;
+        }
+
+        let boxed_ptr_tmp_chirho = self.decode_boxed_constructor_ptr_chirho(scrut_val_chirho);
+        for (field_idx_chirho, binder_chirho) in binders_chirho.iter().enumerate() {
+            self.local_scope_chirho.insert(binder_chirho.id_chirho);
+            let field_ptr_tmp_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {field_ptr_tmp_chirho} = getelementptr i64, ptr {boxed_ptr_tmp_chirho}, i64 {}",
+                field_idx_chirho + 1
+            )
+            .unwrap();
+            let field_val_tmp_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {field_val_tmp_chirho} = load i64, ptr {field_ptr_tmp_chirho}"
+            )
+            .unwrap();
+            let binder_var_chirho = format!("%v{}", binder_chirho.id_chirho.0);
+            writeln!(
+                self.output_chirho,
+                "  {binder_var_chirho} = add i64 0, {field_val_tmp_chirho}"
+            )
+            .unwrap();
         }
     }
 }
@@ -1047,6 +1187,51 @@ mod tests_chirho {
         assert!(ir_chirho.contains("call i64 %t"));
         assert!(!ir_chirho.contains("add i64 %v1, 42"));
         assert!(!ir_chirho.contains("@haskelujah_v1"));
+    }
+
+    #[test]
+    fn compile_case_multi_field_constructor_binders_chirho() {
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "CtorCaseTest".to_string(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: dummy_binder_chirho("main", 10),
+                rhs_chirho: CoreExprChirho::CaseChirho {
+                    scrutinee_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                        con_name_chirho: "Pair".to_string(),
+                        args_chirho: vec![int_lit_chirho(10), int_lit_chirho(32)],
+                    }),
+                    bind_chirho: dummy_binder_chirho("pair", 99),
+                    result_ty_chirho: TyChirho::int_chirho(),
+                    alts_chirho: vec![CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("Pair".to_string()),
+                        binders_chirho: vec![
+                            dummy_binder_chirho("x", 0),
+                            dummy_binder_chirho("y", 1),
+                        ],
+                        rhs_chirho: CoreExprChirho::PrimOpChirho {
+                            name_chirho: "+#".to_string(),
+                            args_chirho: vec![
+                                CoreExprChirho::VarChirho(CoreIdChirho(0)),
+                                CoreExprChirho::VarChirho(CoreIdChirho(1)),
+                            ],
+                        },
+                    }],
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        assert!(ir_chirho.contains("declare ptr @malloc(i64)"));
+        assert!(ir_chirho.contains("call ptr @malloc(i64 24)"));
+        assert!(ir_chirho.contains("phi i64"));
+        assert!(ir_chirho.contains("load i64, ptr"));
+        assert!(ir_chirho.contains("add i64 %v0, %v1"));
+        assert!(!ir_chirho.contains("stub field"));
     }
 
     #[test]
