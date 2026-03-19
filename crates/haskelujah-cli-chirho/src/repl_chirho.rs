@@ -413,7 +413,12 @@ fn has_toplevel_equals_chirho(input_chirho: &str) -> bool {
             '=' if depth_chirho == 0 => {
                 // Check it's not `==`
                 let next_chirho = chars_chirho.get(i_chirho + 1).copied().unwrap_or('\0');
-                if next_chirho != '=' && prev_chirho != '/' && prev_chirho != '!' && prev_chirho != '<' && prev_chirho != '>' {
+                if next_chirho != '='
+                    && prev_chirho != '/'
+                    && prev_chirho != '!'
+                    && prev_chirho != '<'
+                    && prev_chirho != '>'
+                {
                     return true;
                 }
             }

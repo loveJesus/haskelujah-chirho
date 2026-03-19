@@ -122,7 +122,7 @@ pub fn compile_core_to_object_chirho(
     }
 
     // ── Import libc functions for Prelude IO ─────────────────────────────
-    let (libc_puts_id_chirho, libc_printf_id_chirho) = {
+    let (libc_puts_id_chirho, print_int_func_id_chirho) = {
         // puts(ptr) -> i32
         let mut puts_sig_chirho = obj_module_chirho.make_signature();
         puts_sig_chirho.params.push(AbiParamChirho::new(
@@ -135,22 +135,24 @@ pub fn compile_core_to_object_chirho(
             .declare_function("puts", LinkageChirho::Import, &puts_sig_chirho)
             .ok();
 
-        // print currently lowers to printf("%ld\n", value), so model the
-        // exact two-argument call shape instead of variadics.
-        let mut printf_sig_chirho = obj_module_chirho.make_signature();
-        printf_sig_chirho.params.push(AbiParamChirho::new(
-            obj_module_chirho.target_config().pointer_type(),
-        ));
-        printf_sig_chirho
+        // Cranelift does not model libc varargs robustly on Apple AArch64,
+        // so use a fixed-signature RTS helper for integer printing.
+        let mut print_int_sig_chirho = obj_module_chirho.make_signature();
+        print_int_sig_chirho
             .params
             .push(AbiParamChirho::new(cl_types_chirho::I64));
-        printf_sig_chirho
+        print_int_sig_chirho
             .returns
-            .push(AbiParamChirho::new(cl_types_chirho::I32));
-        let libc_printf_id_chirho = obj_module_chirho
-            .declare_function("printf", LinkageChirho::Import, &printf_sig_chirho)
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        let print_int_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_print_int_chirho",
+                LinkageChirho::Import,
+                &print_int_sig_chirho,
+            )
             .ok();
-        (libc_puts_id_chirho, libc_printf_id_chirho)
+
+        (libc_puts_id_chirho, print_int_func_id_chirho)
     };
 
     // ── Pre-scan: embed string literals in data section ────────────────────
@@ -205,7 +207,7 @@ pub fn compile_core_to_object_chirho(
             &func_decl_map_chirho,
             module_chirho,
             libc_puts_id_chirho,
-            libc_printf_id_chirho,
+            print_int_func_id_chirho,
             &string_data_ids_chirho,
         )?;
     }
@@ -288,7 +290,7 @@ fn lower_binding_chirho(
     func_decl_map_chirho: &FuncDeclMapChirho,
     core_module_chirho: &CoreModuleChirho,
     libc_puts_id_chirho: Option<cranelift_module::FuncId>,
-    libc_printf_id_chirho: Option<cranelift_module::FuncId>,
+    print_int_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
@@ -353,10 +355,10 @@ fn lower_binding_chirho(
             haskelujah_core_chirho::expr_chirho::CoreIdChirho,
             cranelift_frontend::Variable,
         > = HashMap::new();
-        // Import puts and printf if available
+        // Import puts and RTS print helper if available.
         let puts_fref_chirho = libc_puts_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
-        let printf_fref_chirho = libc_printf_id_chirho
+        let print_int_fref_chirho = print_int_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
 
         // Import string data globals into this function
@@ -390,7 +392,7 @@ fn lower_binding_chirho(
             func_ref_map_chirho: &func_ref_map_chirho,
             toplevel_names_chirho: &toplevel_names_chirho,
             puts_ref_chirho: puts_fref_chirho,
-            printf_ref_chirho: printf_fref_chirho,
+            print_int_ref_chirho: print_int_fref_chirho,
             string_globals_chirho,
         };
 

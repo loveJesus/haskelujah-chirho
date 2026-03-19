@@ -243,6 +243,14 @@ pub extern "C" fn haskelujah_alloc_total_chirho() -> u64 {
     native_gc_runtime_lock_chirho().alloc_total_chirho()
 }
 
+/// Print an integer value followed by a newline for native backends that avoid
+/// variadic libc calls.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_print_int_chirho(value_chirho: i64) -> i64 {
+    println!("{value_chirho}");
+    0
+}
+
 // ---------------------------------------------------------------------------
 // Runtime error handling
 // ---------------------------------------------------------------------------
@@ -257,6 +265,16 @@ pub extern "C" fn haskelujah_error_chirho(msg_chirho: *const u8, len_chirho: u64
         eprintln!("haskelujah: error (non-UTF8 message)");
     }
     std::process::abort();
+}
+
+/// Print a boolean as True/False followed by newline.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_print_bool_chirho(b_chirho: i64) {
+    if b_chirho != 0 {
+        println!("True");
+    } else {
+        println!("False");
+    }
 }
 
 /// Runtime panic for undefined/bottom values.

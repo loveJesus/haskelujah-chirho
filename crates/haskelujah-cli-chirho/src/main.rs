@@ -9,13 +9,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
 use haskelujah_backend_cranelift_chirho::{
-    compile_core_to_object_executable_chirho, TargetConfigChirho,
+    TargetConfigChirho, compile_core_to_object_executable_chirho,
 };
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
 use haskelujah_driver_chirho::{
-    compile_source_chirho, eval_source_with_machine_chirho,
-    render_diagnostics_chirho, render_summary_chirho,
+    compile_source_chirho, eval_source_with_machine_chirho, render_diagnostics_chirho,
+    render_summary_chirho,
 };
 use haskelujah_runtime_chirho::ExecutionModeChirho;
 use haskelujah_span_chirho::SourceMapChirho;
@@ -246,17 +246,13 @@ fn run_command_chirho(
     // Try LLVM compile-and-run first for programs with main :: IO ()
     {
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        let search_dir_chirho = Path::new(&path_chirho)
-            .parent()
-            .unwrap_or(Path::new("."));
-        if let Ok(result_chirho) =
-            haskelujah_driver_chirho::compile_source_with_search_path_chirho(
-                &source_text_chirho,
-                &mut sm_chirho,
-                file_name_chirho,
-                search_dir_chirho,
-            )
-        {
+        let search_dir_chirho = Path::new(&path_chirho).parent().unwrap_or(Path::new("."));
+        if let Ok(result_chirho) = haskelujah_driver_chirho::compile_source_with_search_path_chirho(
+            &source_text_chirho,
+            &mut sm_chirho,
+            file_name_chirho,
+            search_dir_chirho,
+        ) {
             let tmp_dir_chirho = std::env::temp_dir().join("haskelujah-run-chirho");
             let _ = fs::create_dir_all(&tmp_dir_chirho);
             let exe_path_chirho = tmp_dir_chirho.join("a.out");
@@ -264,12 +260,8 @@ fn run_command_chirho(
             let link_result_chirho = {
                 let ll_path_chirho = exe_path_chirho.with_extension("ll");
                 let _ = fs::write(&ll_path_chirho, &result_chirho.llvm_ir_chirho);
-                let link_result_chirho = link_llvm_file_chirho(
-                    &ll_path_chirho,
-                    &exe_path_chirho,
-                    "-O2",
-                    true,
-                );
+                let link_result_chirho =
+                    link_llvm_file_chirho(&ll_path_chirho, &exe_path_chirho, "-O2", true);
                 let _ = fs::remove_file(&ll_path_chirho);
                 link_result_chirho.map_err(|_| ())
             };
@@ -301,8 +293,12 @@ fn run_command_chirho(
     ) {
         Ok((_value_chirho, machine_chirho)) => {
             if flags_chirho.dump_stg_chirho {
-                eprintln!("=== STG Code Table ({} entries) ===", machine_chirho.code_table_chirho.len());
-                for (idx_chirho, code_chirho) in machine_chirho.code_table_chirho.iter().enumerate() {
+                eprintln!(
+                    "=== STG Code Table ({} entries) ===",
+                    machine_chirho.code_table_chirho.len()
+                );
+                for (idx_chirho, code_chirho) in machine_chirho.code_table_chirho.iter().enumerate()
+                {
                     eprintln!("  [{idx_chirho}] {code_chirho:?}");
                 }
             }
@@ -347,9 +343,7 @@ fn compile_command_chirho(
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
     // Use search path so sibling modules can be found
-    let search_dir_chirho = Path::new(&path_chirho)
-        .parent()
-        .unwrap_or(Path::new("."));
+    let search_dir_chirho = Path::new(&path_chirho).parent().unwrap_or(Path::new("."));
     match haskelujah_driver_chirho::compile_source_with_search_path_chirho(
         &source_text_chirho,
         &mut source_map_chirho,
@@ -367,26 +361,52 @@ fn compile_command_chirho(
                     ) {
                         Ok(obj_chirho) => {
                             let obj_path_chirho = format!("{output_path_chirho}.o");
-                            if let Err(e_chirho) = fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho) {
-                                eprintln!("error writing object to `{obj_path_chirho}`: {e_chirho}");
+                            if let Err(e_chirho) =
+                                fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho)
+                            {
+                                eprintln!(
+                                    "error writing object to `{obj_path_chirho}`: {e_chirho}"
+                                );
                                 return ExitCode::from(1);
                             }
+                            let rts_lib_dir_chirho = match ensure_rts_staticlib_chirho() {
+                                Ok(path_chirho) => path_chirho,
+                                Err(error_chirho) => {
+                                    eprintln!("{error_chirho}");
+                                    return ExitCode::from(1);
+                                }
+                            };
                             // Link with system linker
-                            let linker_status_chirho = Command::new("cc")
-                                .args(["-o", output_path_chirho, &obj_path_chirho, "-Wl,-no_fixup_chains"])
-                                .status();
+                            let mut linker_command_chirho = Command::new("cc");
+                            linker_command_chirho.args([
+                                "-o",
+                                output_path_chirho,
+                                &obj_path_chirho,
+                                "-Wl,-no_fixup_chains",
+                            ]);
+                            append_rts_link_args_chirho(
+                                &mut linker_command_chirho,
+                                &rts_lib_dir_chirho,
+                            );
+                            let linker_status_chirho = linker_command_chirho.status();
                             match linker_status_chirho {
                                 Ok(status_chirho) if status_chirho.success() => {
-                                    println!("compiled (cranelift): {path_chirho} → {output_path_chirho}");
+                                    println!(
+                                        "compiled (cranelift): {path_chirho} → {output_path_chirho}"
+                                    );
                                     let _ = fs::remove_file(&obj_path_chirho);
                                 }
                                 Ok(status_chirho) => {
-                                    eprintln!("linker failed with exit code {}; object saved to {obj_path_chirho}",
-                                        status_chirho.code().unwrap_or(-1));
+                                    eprintln!(
+                                        "linker failed with exit code {}; object saved to {obj_path_chirho}",
+                                        status_chirho.code().unwrap_or(-1)
+                                    );
                                     return ExitCode::from(1);
                                 }
                                 Err(e_chirho) => {
-                                    eprintln!("could not run linker: {e_chirho}; object saved to {obj_path_chirho}");
+                                    eprintln!(
+                                        "could not run linker: {e_chirho}; object saved to {obj_path_chirho}"
+                                    );
                                     return ExitCode::from(1);
                                 }
                             }
@@ -404,7 +424,10 @@ fn compile_command_chirho(
                         eprintln!("error writing WASM to `{output_path_chirho}`: {e_chirho}");
                         return ExitCode::from(1);
                     }
-                    println!("compiled: {path_chirho} → {output_path_chirho} ({} bytes wasm)", wasm_bytes_chirho.len());
+                    println!(
+                        "compiled: {path_chirho} → {output_path_chirho} ({} bytes wasm)",
+                        wasm_bytes_chirho.len()
+                    );
                 } else {
                     // Generate executable LLVM IR with C main() entry point
                     let exec_ir_chirho =
@@ -443,10 +466,7 @@ fn compile_command_chirho(
                 println!(
                     "compiled: {} (module: {})",
                     path_chirho,
-                    result_chirho
-                        .module_chirho
-                        .name_chirho
-                        .text_chirho(),
+                    result_chirho.module_chirho.name_chirho.text_chirho(),
                 );
                 println!(
                     "  core bindings: {}",
@@ -514,13 +534,8 @@ fn error_msg_chirho(msg_chirho: &str) {
 /// If a `.cabal` file is found, uses Cabal-based compilation (parses `.cabal`,
 /// resolves dependencies, discovers modules from `hs-source-dirs`).
 /// Otherwise, discovers `.hs` files recursively and compiles in dependency order.
-fn build_command_chirho(
-    _program_name_chirho: &str,
-    path_arg_chirho: Option<String>,
-) -> ExitCode {
-    let project_dir_chirho = path_arg_chirho
-        .as_deref()
-        .unwrap_or(".");
+fn build_command_chirho(_program_name_chirho: &str, path_arg_chirho: Option<String>) -> ExitCode {
+    let project_dir_chirho = path_arg_chirho.as_deref().unwrap_or(".");
     let project_path_chirho = std::path::Path::new(project_dir_chirho);
 
     if !project_path_chirho.is_dir() {
@@ -534,10 +549,7 @@ fn build_command_chirho(
     let cabal_file_chirho = find_cabal_file_chirho(project_path_chirho);
 
     if let Some(cabal_path_chirho) = cabal_file_chirho {
-        eprintln!(
-            "Found Cabal file: {}",
-            cabal_path_chirho.display()
-        );
+        eprintln!("Found Cabal file: {}", cabal_path_chirho.display());
         let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
         let build_dir_chirho = project_path_chirho.join("dist-chirho").join("build");
         if let Err(error_chirho) = fs::create_dir_all(&build_dir_chirho) {
@@ -549,8 +561,10 @@ fn build_command_chirho(
             return ExitCode::from(1);
         }
 
-        match haskelujah_driver_chirho::build_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
-        {
+        match haskelujah_driver_chirho::build_cabal_project_chirho(
+            &cabal_path_chirho,
+            &index_chirho,
+        ) {
             Ok(build_result_chirho) => {
                 if build_result_chirho.executables_chirho.is_empty() {
                     match haskelujah_driver_chirho::compile_cabal_project_chirho(
@@ -566,7 +580,13 @@ fn build_command_chirho(
                             for warning_chirho in &result_chirho.warnings_chirho {
                                 eprintln!("warning: {}", warning_chirho);
                             }
-                            status_chirho("Finished", &format!("build (no executables) in {:.2}s", build_start_chirho.elapsed().as_secs_f64()));
+                            status_chirho(
+                                "Finished",
+                                &format!(
+                                    "build (no executables) in {:.2}s",
+                                    build_start_chirho.elapsed().as_secs_f64()
+                                ),
+                            );
                             ExitCode::SUCCESS
                         }
                         Err(error_chirho) => {
@@ -597,7 +617,13 @@ fn build_command_chirho(
                             eprintln!("warning: {}", warning_chirho);
                         }
                     }
-                    status_chirho("Finished", &format!("build in {:.2}s", build_start_chirho.elapsed().as_secs_f64()));
+                    status_chirho(
+                        "Finished",
+                        &format!(
+                            "build in {:.2}s",
+                            build_start_chirho.elapsed().as_secs_f64()
+                        ),
+                    );
                     ExitCode::SUCCESS
                 }
             }
@@ -609,7 +635,10 @@ fn build_command_chirho(
     } else {
         eprintln!("Building project in {}...", project_path_chirho.display());
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        match haskelujah_driver_chirho::compile_project_dir_chirho(project_path_chirho, &mut sm_chirho) {
+        match haskelujah_driver_chirho::compile_project_dir_chirho(
+            project_path_chirho,
+            &mut sm_chirho,
+        ) {
             Ok(result_chirho) => {
                 eprintln!(
                     "Compiled {} modules in order: {}",
@@ -619,7 +648,13 @@ fn build_command_chirho(
                 for warning_chirho in &result_chirho.warnings_chirho {
                     eprintln!("warning: {}", warning_chirho);
                 }
-                status_chirho("Finished", &format!("build in {:.2}s", build_start_chirho.elapsed().as_secs_f64()));
+                status_chirho(
+                    "Finished",
+                    &format!(
+                        "build in {:.2}s",
+                        build_start_chirho.elapsed().as_secs_f64()
+                    ),
+                );
                 ExitCode::SUCCESS
             }
             Err(error_chirho) => {
@@ -691,10 +726,7 @@ fn link_llvm_file_chirho(
     }
 }
 
-fn append_rts_link_args_chirho(
-    clang_command_chirho: &mut Command,
-    rts_lib_dir_chirho: &Path,
-) {
+fn append_rts_link_args_chirho(clang_command_chirho: &mut Command, rts_lib_dir_chirho: &Path) {
     clang_command_chirho
         .arg("-L")
         .arg(rts_lib_dir_chirho)
@@ -770,8 +802,7 @@ fn init_command_chirho(name_arg_chirho: Option<String>) -> ExitCode {
         name = project_name_chirho
     );
 
-    let main_content_chirho =
-        "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
+    let main_content_chirho = "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
          -- believes in him should not perish but have eternal life. — John 3:16\n\
          \n\
          module Main where\n\
@@ -783,7 +814,11 @@ fn init_command_chirho(name_arg_chirho: Option<String>) -> ExitCode {
     let main_path_chirho = project_dir_chirho.join("Main.hs");
 
     if let Err(e_chirho) = fs::write(&cabal_path_chirho, cabal_content_chirho) {
-        eprintln!("error writing {}: {}", cabal_path_chirho.display(), e_chirho);
+        eprintln!(
+            "error writing {}: {}",
+            cabal_path_chirho.display(),
+            e_chirho
+        );
         return ExitCode::from(1);
     }
     if let Err(e_chirho) = fs::write(&main_path_chirho, main_content_chirho) {
@@ -805,7 +840,10 @@ fn find_cabal_file_chirho(dir_chirho: &std::path::Path) -> Option<std::path::Pat
     let entries_chirho = std::fs::read_dir(dir_chirho).ok()?;
     for entry_chirho in entries_chirho.flatten() {
         let path_chirho = entry_chirho.path();
-        if path_chirho.extension().map_or(false, |ext_chirho| ext_chirho == "cabal") {
+        if path_chirho
+            .extension()
+            .map_or(false, |ext_chirho| ext_chirho == "cabal")
+        {
             return Some(path_chirho);
         }
     }
@@ -814,16 +852,16 @@ fn find_cabal_file_chirho(dir_chirho: &std::path::Path) -> Option<std::path::Pat
 
 /// `haskelujah install <package-name> <version>` — fetch a package from Hackage,
 /// compile it, and register it in the local package database.
-fn install_command_chirho(
-    program_name_chirho: &str,
-    positional_chirho: &[&str],
-) -> ExitCode {
+fn install_command_chirho(program_name_chirho: &str, positional_chirho: &[&str]) -> ExitCode {
     // Expect: install <name> <version>
     let pkg_name_chirho = match positional_chirho.get(1) {
         Some(name_chirho) => *name_chirho,
         None => {
             eprintln!("missing package name for `install`");
-            eprintln!("usage: {} install <package-name> <version>", program_name_chirho);
+            eprintln!(
+                "usage: {} install <package-name> <version>",
+                program_name_chirho
+            );
             return ExitCode::from(2);
         }
     };
@@ -832,7 +870,10 @@ fn install_command_chirho(
         Some(v_chirho) => *v_chirho,
         None => {
             eprintln!("missing version for `install`");
-            eprintln!("usage: {} install <package-name> <version>", program_name_chirho);
+            eprintln!(
+                "usage: {} install <package-name> <version>",
+                program_name_chirho
+            );
             return ExitCode::from(2);
         }
     };
@@ -890,7 +931,11 @@ fn install_command_chirho(
                 result_chirho.modules_compiled_chirho,
                 result_chirho.installed_pkg_chirho.depends_chirho.len(),
             );
-            if !result_chirho.installed_pkg_chirho.exposed_modules_chirho.is_empty() {
+            if !result_chirho
+                .installed_pkg_chirho
+                .exposed_modules_chirho
+                .is_empty()
+            {
                 eprintln!("  exposed modules:");
                 for mod_chirho in &result_chirho.installed_pkg_chirho.exposed_modules_chirho {
                     eprintln!("    {}", mod_chirho.module_name_chirho);
