@@ -3097,6 +3097,10 @@ impl InferCtxChirho {
                         let resolved_chirho =
                             subst_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho);
 
+                        // Remove pre-bound mono type before generalizing so
+                        // that the binding's own type variable can be quantified.
+                        self.env_chirho.remove_chirho(name_chirho);
+
                         // Check against type signature if one exists
                         if let Some(sig_ast_chirho) = type_sigs_chirho.get(name_chirho) {
                             let sig_scheme_chirho =
