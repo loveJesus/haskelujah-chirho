@@ -6,7 +6,7 @@
 
 Haskelujah Chirho is a Haskell compiler written in Rust, aiming to be a drop-in replacement for GHC. It targets practical compatibility with real-world Haskell (GHC semantics, Cabal packages, Hackage libraries) through a typed, modular pipeline with first-class WebAssembly support and multiple native code generation backends.
 
-**End-to-end compilation works:** `haskelujah compile Main.hs -o main` produces a native executable via LLVM+libc.
+**End-to-end compilation works:** `haskelujah build my-project/` parses `.cabal` files, compiles all modules in dependency order, and produces native executables via LLVM+clang. Supports `putStrLn`, `print`, arithmetic, if-then-else, pattern matching, recursion, higher-order functions, lambdas, ADTs, list operations, guards, let/where bindings, and multi-module imports.
 
 ## Status
 
