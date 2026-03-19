@@ -356,10 +356,15 @@ impl ClassEnvChirho {
     /// Check if a predicate is entailed by the class environment
     /// (i.e., there exists an instance that satisfies it with no remaining goals).
     pub fn entails_chirho(&self, pred_chirho: &PredChirho) -> bool {
-        // If the predicate's type is still a variable, we cannot resolve
-        // it concretely — defer it (assume satisfiable, like GHC does
-        // for ambiguous/deferred constraints).
-        if pred_chirho.ty_chirho.contains_var_chirho() {
+        // If the predicate's type (or any extra type argument) is still a
+        // variable, we cannot resolve it concretely — defer it (assume
+        // satisfiable, like GHC does for ambiguous/deferred constraints).
+        if pred_chirho.ty_chirho.contains_var_chirho()
+            || pred_chirho
+                .extra_tys_chirho
+                .iter()
+                .any(|t_chirho| t_chirho.contains_var_chirho())
+        {
             return true;
         }
         if let Some(sub_goals_chirho) = self.resolve_chirho(pred_chirho) {
