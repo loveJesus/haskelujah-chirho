@@ -12,7 +12,7 @@ Haskelujah Chirho is a Haskell compiler written in Rust, aiming to be a drop-in 
 
 | Metric | Value |
 |---|---|
-| GHC Compat | **829/938 (88.4%)** typecheck/should_compile |
+| GHC Compat | **856/938 (91.3%)** typecheck/should_compile |
 | Tests | **2,121 passing**, 0 failures |
 | Workspace | 21 crates, 129 Rust source files |
 | Codebase | ~137,200 lines of Rust |
