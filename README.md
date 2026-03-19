@@ -202,7 +202,7 @@ haskelujah clean .          # Remove build artifacts
 | Project scaffold | `cabal init` | `haskelujah init` |
 | REPL | GHCi | `haskelujah repl` |
 | Lazy evaluation | Full | Strict (LLVM), Lazy (STG interpreter) |
-| Garbage collection | Generational GC | malloc-based (no GC yet in LLVM) |
+| Garbage collection | Generational GC | Mark-sweep GC (Rust RTS staticlib) |
 | Type classes | Full dictionary passing | Type checking OK, runtime partial |
 | GADTs | Full | 91.5% type checking, compilation for simple cases |
 | Template Haskell | Full | Partial (makeLenses works) |
