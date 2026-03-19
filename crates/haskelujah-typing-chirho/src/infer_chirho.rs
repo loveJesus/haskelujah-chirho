@@ -1819,17 +1819,25 @@ impl InferCtxChirho {
                 ty_chirho: ann_ty_chirho,
                 span_chirho,
             } => {
-                // Type annotation: infer the expression, then unify with the annotation
+                // Type annotation: infer the expression, then check against annotation
+                // using subsumption to handle higher-rank annotations properly
                 let (s_chirho, inferred_ty_chirho) = self.infer_expr_chirho(expr_chirho);
                 self.apply_subst_all_chirho(&s_chirho);
 
                 let mut var_map_chirho = HashMap::new();
                 let ann_internal_chirho =
                     self.ast_type_to_ty_chirho(ann_ty_chirho, &mut var_map_chirho);
+                let ann_normalized_chirho = self.reduce_type_families_in_ty_chirho(
+                    &self.expand_type_synonyms_chirho(&ann_internal_chirho),
+                );
+                let inferred_normalized_chirho = self.reduce_type_families_in_ty_chirho(
+                    &self.expand_type_synonyms_chirho(&inferred_ty_chirho),
+                );
 
-                match self.unify_normalized_chirho(
-                    &inferred_ty_chirho,
-                    &ann_internal_chirho,
+                match crate::unify_chirho::subsume_chirho(
+                    &inferred_normalized_chirho,
+                    &ann_normalized_chirho,
+                    &mut self.next_var_chirho,
                     *span_chirho,
                 ) {
                     Ok(su_chirho) => {
