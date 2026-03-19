@@ -76,6 +76,8 @@ pub struct LowerCtxChirho<'a> {
     pub toplevel_names_chirho: &'a HashMap<CoreIdChirho, String>,
     /// Optional FuncRef for libc `puts` (used by putStrLn lowering)
     pub puts_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for libc `printf` (used by print lowering)
+    pub printf_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
     pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
 }
@@ -530,9 +532,30 @@ fn lower_app_chirho(
                             lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
                         let arg_i64_chirho =
                             ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
-                        // In Cranelift, i64 IS the pointer type on 64-bit
                         builder_chirho.ins().call(puts_ref_chirho, &[arg_i64_chirho]);
                         return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+                    }
+                }
+            }
+            // print :: Show a => a -> IO () — for Int, use printf("%ld\n", val)
+            if matches!(name_chirho.as_str(), "print" | "print#") {
+                if let Some(puts_ref_chirho) = ctx_chirho.puts_ref_chirho {
+                    if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                        // Use printf format string for integers
+                        if let Some(fmt_gv_chirho) = ctx_chirho.string_globals_chirho.get("%ld\n") {
+                            let fmt_ptr_chirho = builder_chirho.ins().global_value(
+                                cl_types_chirho::I64,
+                                *fmt_gv_chirho,
+                            );
+                            let arg_val_chirho =
+                                lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                            let arg_i64_chirho =
+                                ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                            if let Some(printf_ref_chirho) = ctx_chirho.printf_ref_chirho {
+                                builder_chirho.ins().call(printf_ref_chirho, &[fmt_ptr_chirho, arg_i64_chirho]);
+                            }
+                            return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+                        }
                     }
                 }
             }

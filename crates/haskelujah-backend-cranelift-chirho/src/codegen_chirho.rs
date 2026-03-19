@@ -148,26 +148,37 @@ pub fn compile_core_to_object_chirho(
 
     // ── Pre-scan: embed string literals in data section ────────────────────
     let mut string_data_ids_chirho: HashMap<String, cranelift_module::DataId> = HashMap::new();
+    // Always include printf format strings
+    let builtin_strings_chirho = ["%ld\n", "%s\n", "True", "False"];
     {
         let mut string_counter_chirho = 0u32;
-        collect_string_literals_chirho(module_chirho, &mut |s_chirho: &str| {
-            if !string_data_ids_chirho.contains_key(s_chirho) {
-                let name_chirho = format!(".str.{}", string_counter_chirho);
-                string_counter_chirho += 1;
+        let mut add_string_chirho = |s_chirho: &str,
+                                      obj_mod_chirho: &mut ObjModuleChirho,
+                                      map_chirho: &mut HashMap<String, cranelift_module::DataId>,
+                                      counter_chirho: &mut u32| {
+            if !map_chirho.contains_key(s_chirho) {
+                let name_chirho = format!(".str.{}", counter_chirho);
+                *counter_chirho += 1;
                 let mut data_desc_chirho = cranelift_module::DataDescription::new();
                 let mut bytes_chirho = s_chirho.as_bytes().to_vec();
-                bytes_chirho.push(0); // null terminator
+                bytes_chirho.push(0);
                 data_desc_chirho.define(bytes_chirho.into_boxed_slice());
-                if let Ok(data_id_chirho) = obj_module_chirho.declare_data(
+                if let Ok(data_id_chirho) = obj_mod_chirho.declare_data(
                     &name_chirho,
                     LinkageChirho::Local,
-                    false, // not writable
-                    false, // not TLS
+                    false,
+                    false,
                 ) {
-                    let _ = obj_module_chirho.define_data(data_id_chirho, &data_desc_chirho);
-                    string_data_ids_chirho.insert(s_chirho.to_string(), data_id_chirho);
+                    let _ = obj_mod_chirho.define_data(data_id_chirho, &data_desc_chirho);
+                    map_chirho.insert(s_chirho.to_string(), data_id_chirho);
                 }
             }
+        };
+        for s_chirho in &builtin_strings_chirho {
+            add_string_chirho(s_chirho, &mut obj_module_chirho, &mut string_data_ids_chirho, &mut string_counter_chirho);
+        }
+        collect_string_literals_chirho(module_chirho, &mut |s_chirho: &str| {
+            add_string_chirho(s_chirho, &mut obj_module_chirho, &mut string_data_ids_chirho, &mut string_counter_chirho);
         });
     }
 
@@ -180,6 +191,7 @@ pub fn compile_core_to_object_chirho(
             &func_decl_map_chirho,
             module_chirho,
             libc_puts_id_chirho,
+            libc_printf_id_chirho,
             &string_data_ids_chirho,
         )?;
     }
@@ -253,6 +265,7 @@ fn lower_binding_chirho(
     func_decl_map_chirho: &FuncDeclMapChirho,
     core_module_chirho: &CoreModuleChirho,
     libc_puts_id_chirho: Option<cranelift_module::FuncId>,
+    libc_printf_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
@@ -313,8 +326,11 @@ fn lower_binding_chirho(
             haskelujah_core_chirho::expr_chirho::CoreIdChirho,
             cranelift_frontend::Variable,
         > = HashMap::new();
-        // Import puts if available
+        // Import puts and printf if available
         let puts_fref_chirho = libc_puts_id_chirho.map(|fid_chirho| {
+            module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func)
+        });
+        let printf_fref_chirho = libc_printf_id_chirho.map(|fid_chirho| {
             module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func)
         });
 
@@ -349,6 +365,7 @@ fn lower_binding_chirho(
             func_ref_map_chirho: &func_ref_map_chirho,
             toplevel_names_chirho: &toplevel_names_chirho,
             puts_ref_chirho: puts_fref_chirho,
+            printf_ref_chirho: printf_fref_chirho,
             string_globals_chirho,
         };
 
