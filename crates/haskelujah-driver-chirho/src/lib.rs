@@ -2005,16 +2005,9 @@ fn collect_package_deps_chirho(
             }
         }
     }
-    for ts_chirho in &package_chirho.test_suites_chirho {
-        for dep_chirho in &ts_chirho.build_info_chirho.build_depends_chirho {
-            if dep_chirho.package_chirho == *package_name_chirho {
-                continue;
-            }
-            if seen_chirho.insert(dep_chirho.package_chirho.clone()) {
-                deps_chirho.push(dep_chirho.clone());
-            }
-        }
-    }
+    // Skip test-suite dependencies — they're not needed for library use.
+    // Test deps like QuickCheck, HUnit, etc. would require recursive
+    // Hackage fetching which we don't support yet.
 
     deps_chirho
 }
@@ -2976,11 +2969,21 @@ pub fn install_package_chirho(
     // Step 4: Resolve dependencies.
     let all_deps_chirho = collect_package_deps_chirho(&package_chirho);
 
+    // Treat common GHC boot/platform packages as builtins (satisfied by
+    // our synthetic module interfaces). This lets simple packages install
+    // without pulling the entire boot library set.
     let mut builtins_chirho = BTreeSet::new();
-    builtins_chirho.insert("base".to_string());
-    builtins_chirho.insert("ghc-prim".to_string());
-    builtins_chirho.insert("ghc-bignum".to_string());
-    builtins_chirho.insert("rts".to_string());
+    for builtin_chirho in &[
+        "base", "ghc-prim", "ghc-bignum", "ghc-internal", "rts",
+        "deepseq", "array", "bytestring", "containers", "text",
+        "filepath", "directory", "process", "time", "transformers",
+        "mtl", "parsec", "template-haskell", "pretty", "binary",
+        "integer-gmp", "ghc-boot-th", "ghc-boot", "exceptions",
+        "stm", "unix", "Win32", "hashable", "unordered-containers",
+        "vector", "primitive", "tagged", "distributive", "comonad",
+    ] {
+        builtins_chirho.insert(builtin_chirho.to_string());
+    }
 
     let build_plan_chirho =
         resolve_deps_chirho(&all_deps_chirho, index_chirho, &builtins_chirho)
