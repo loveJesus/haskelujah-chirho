@@ -20,9 +20,11 @@ use std::mem::{align_of, size_of};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::thread;
 
-/// GC threshold: collect after this many allocations.
+/// GC threshold: disabled until proper root tracking is implemented.
+/// Without GC roots, the collector frees live cons cells and corrupts data.
+/// Programs will leak memory but produce correct results.
 const GC_THRESHOLD_CHIRHO: u64 = u64::MAX;
-const NATIVE_MAIN_STACK_SIZE_CHIRHO: usize = 1024 * 1024 * 1024;
+const NATIVE_MAIN_STACK_SIZE_CHIRHO: usize = 1024 * 1024 * 1024; // 1GB
 
 type NativeEntryFnChirho = unsafe extern "C" fn() -> i64;
 
