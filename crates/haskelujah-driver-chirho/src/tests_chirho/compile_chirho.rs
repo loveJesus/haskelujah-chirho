@@ -36,8 +36,10 @@ fn builds_a_check_summary_for_batch_mode_chirho() {
             .runtime_plan_chirho
             .incremental_session_chirho
     );
-    assert!(render_summary_chirho(&check_summary_chirho)
-        .contains("llvm_preview: ; haskelujah llvm stub"));
+    assert!(
+        render_summary_chirho(&check_summary_chirho)
+            .contains("llvm_preview: ; haskelujah llvm stub")
+    );
 }
 
 #[test]
@@ -432,16 +434,22 @@ executable hello-app
         result_chirho.executables_chirho[0].compilation_order_chirho,
         vec!["Lib".to_string(), "Main".to_string()]
     );
-    assert!(!result_chirho.executables_chirho[0]
-        .core_chirho
-        .bindings_chirho
-        .is_empty());
-    assert!(result_chirho.executables_chirho[0]
-        .llvm_ir_chirho
-        .contains("define i32 @main()"));
-    assert!(result_chirho.executables_chirho[0]
-        .llvm_ir_chirho
-        .contains("@haskelujah_main"));
+    assert!(
+        !result_chirho.executables_chirho[0]
+            .core_chirho
+            .bindings_chirho
+            .is_empty()
+    );
+    assert!(
+        result_chirho.executables_chirho[0]
+            .llvm_ir_chirho
+            .contains("define i32 @main()")
+    );
+    assert!(
+        result_chirho.executables_chirho[0]
+            .llvm_ir_chirho
+            .contains("@haskelujah_main")
+    );
 
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
 }
@@ -450,7 +458,7 @@ executable hello-app
 fn cabal_project_cranelift_dedups_duplicate_prelude_bindings_chirho() {
     use crate::build_cabal_project_chirho;
     use haskelujah_backend_cranelift_chirho::{
-        compile_core_to_object_executable_chirho, TargetConfigChirho,
+        TargetConfigChirho, compile_core_to_object_executable_chirho,
     };
     use std::io::Write;
 
@@ -714,7 +722,10 @@ fn llvm_executable_constant_chirho() {
     assert!(exec_ir_chirho.contains("define i64 @haskelujah_main()"));
     assert!(exec_ir_chirho.contains("ret i64 42"));
     assert!(exec_ir_chirho.contains("define i32 @main()"));
-    assert!(exec_ir_chirho.contains("call i64 @haskelujah_main()"));
+    assert!(exec_ir_chirho.contains("ptrtoint ptr @haskelujah_main to i64"));
+    assert!(
+        exec_ir_chirho.contains("call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)")
+    );
 }
 
 #[test]
@@ -1096,8 +1107,7 @@ fn llvm_round_trip_put_str_ln_output_chirho() {
 
 #[test]
 fn llvm_round_trip_put_str_output_chirho() {
-    let src_chirho =
-        "module Main where\nmain = do\n  putStr \"Hello\"\n  putStr \" from\"\n  putStrLn \" Haskelujah!\"\n";
+    let src_chirho = "module Main where\nmain = do\n  putStr \"Hello\"\n  putStr \" from\"\n  putStrLn \" Haskelujah!\"\n";
     if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
         assert_eq!(
             exit_code_chirho, 0,
@@ -2050,6 +2060,9 @@ main = do
     let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
     if let Some((code_chirho, stdout_chirho)) = result_chirho {
         assert_eq!(code_chirho, 0, "putStr should exit 0");
-        assert_eq!(stdout_chirho, "Hello World!\n", "putStr concatenates without newlines");
+        assert_eq!(
+            stdout_chirho, "Hello World!\n",
+            "putStr concatenates without newlines"
+        );
     }
 }

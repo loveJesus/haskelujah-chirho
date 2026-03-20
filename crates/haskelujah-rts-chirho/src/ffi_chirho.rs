@@ -18,9 +18,13 @@ use std::ffi::CStr;
 use std::io::Write;
 use std::mem::{align_of, size_of};
 use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::thread;
 
 /// GC threshold: collect after this many allocations.
 const GC_THRESHOLD_CHIRHO: u64 = 65536;
+const NATIVE_MAIN_STACK_SIZE_CHIRHO: usize = 256 * 1024 * 1024;
+
+type NativeEntryFnChirho = unsafe extern "C" fn() -> i64;
 
 #[derive(Debug)]
 struct NativeAllocRecordChirho {
@@ -245,6 +249,36 @@ pub extern "C" fn haskelujah_alloc_total_chirho() -> u64 {
     native_gc_runtime_lock_chirho().alloc_total_chirho()
 }
 
+/// Run a native backend entry function on a worker thread with an explicitly
+/// large stack so non-tail-recursive list code does not immediately exhaust the
+/// relatively small default macOS main-thread stack.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_main_with_large_stack_chirho(entry_fn_bits_chirho: u64) -> i64 {
+    if entry_fn_bits_chirho == 0 {
+        eprintln!("haskelujah: null native entry function");
+        std::process::abort();
+    }
+
+    let entry_fn_chirho: NativeEntryFnChirho =
+        unsafe { std::mem::transmute(entry_fn_bits_chirho as usize) };
+    let join_handle_chirho = thread::Builder::new()
+        .name("haskelujah-main-chirho".to_string())
+        .stack_size(NATIVE_MAIN_STACK_SIZE_CHIRHO)
+        .spawn(move || unsafe { entry_fn_chirho() })
+        .unwrap_or_else(|error_chirho| {
+            eprintln!("haskelujah: failed to spawn main thread: {error_chirho}");
+            std::process::abort();
+        });
+
+    match join_handle_chirho.join() {
+        Ok(result_chirho) => result_chirho,
+        Err(_) => {
+            eprintln!("haskelujah: native main thread panicked");
+            std::process::abort();
+        }
+    }
+}
+
 /// Print an integer value followed by a newline for native backends that avoid
 /// variadic libc calls.
 #[unsafe(no_mangle)]
@@ -434,13 +468,17 @@ pub extern "C" fn haskelujah_write_file_chirho(
         return -1;
     } else {
         let ptr_chirho = path_bits_chirho as usize as *const std::ffi::c_char;
-        unsafe { CStr::from_ptr(ptr_chirho) }.to_string_lossy().into_owned()
+        unsafe { CStr::from_ptr(ptr_chirho) }
+            .to_string_lossy()
+            .into_owned()
     };
     let content_chirho = if content_bits_chirho == 0 {
         String::new()
     } else {
         let ptr_chirho = content_bits_chirho as usize as *const std::ffi::c_char;
-        unsafe { CStr::from_ptr(ptr_chirho) }.to_string_lossy().into_owned()
+        unsafe { CStr::from_ptr(ptr_chirho) }
+            .to_string_lossy()
+            .into_owned()
     };
     match std::fs::write(&path_chirho, &content_chirho) {
         Ok(()) => 0,
@@ -456,7 +494,9 @@ pub extern "C" fn haskelujah_read_file_chirho(path_bits_chirho: u64) -> u64 {
         return 0;
     } else {
         let ptr_chirho = path_bits_chirho as usize as *const std::ffi::c_char;
-        unsafe { CStr::from_ptr(ptr_chirho) }.to_string_lossy().into_owned()
+        unsafe { CStr::from_ptr(ptr_chirho) }
+            .to_string_lossy()
+            .into_owned()
     };
     match std::fs::read_to_string(&path_chirho) {
         Ok(content_chirho) => alloc_c_string_chirho(content_chirho.as_bytes()),
@@ -559,12 +599,10 @@ mod tests_chirho {
         assert_ne!(true_ptr_bits_chirho, 0);
         assert_ne!(false_ptr_bits_chirho, 0);
 
-        let true_text_chirho = unsafe {
-            CStr::from_ptr(true_ptr_bits_chirho as usize as *const std::ffi::c_char)
-        };
-        let false_text_chirho = unsafe {
-            CStr::from_ptr(false_ptr_bits_chirho as usize as *const std::ffi::c_char)
-        };
+        let true_text_chirho =
+            unsafe { CStr::from_ptr(true_ptr_bits_chirho as usize as *const std::ffi::c_char) };
+        let false_text_chirho =
+            unsafe { CStr::from_ptr(false_ptr_bits_chirho as usize as *const std::ffi::c_char) };
         assert_eq!(true_text_chirho.to_bytes(), b"True");
         assert_eq!(false_text_chirho.to_bytes(), b"False");
 
@@ -608,5 +646,39 @@ mod tests_chirho {
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
         runtime_chirho.reset_chirho();
+    }
+
+    unsafe extern "C" fn ffi_test_entry_chirho() -> i64 {
+        42
+    }
+
+    fn deep_stack_recurse_chirho(depth_chirho: usize) -> i64 {
+        let stack_buf_chirho = [0u8; 64 * 1024];
+        let next_acc_chirho = i64::from(stack_buf_chirho[0]);
+        if depth_chirho == 0 {
+            next_acc_chirho
+        } else {
+            next_acc_chirho + deep_stack_recurse_chirho(depth_chirho - 1)
+        }
+    }
+
+    unsafe extern "C" fn ffi_test_deep_stack_entry_chirho() -> i64 {
+        deep_stack_recurse_chirho(255)
+    }
+
+    #[test]
+    fn main_with_large_stack_runs_entry_function_chirho() {
+        let result_chirho = haskelujah_main_with_large_stack_chirho(
+            ffi_test_entry_chirho as *const () as usize as u64,
+        );
+        assert_eq!(result_chirho, 42);
+    }
+
+    #[test]
+    fn main_with_large_stack_handles_deep_stack_recursion_chirho() {
+        let result_chirho = haskelujah_main_with_large_stack_chirho(
+            ffi_test_deep_stack_entry_chirho as *const () as usize as u64,
+        );
+        assert_eq!(result_chirho, 0);
     }
 }

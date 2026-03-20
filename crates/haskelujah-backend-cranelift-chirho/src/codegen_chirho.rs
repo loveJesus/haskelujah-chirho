@@ -54,13 +54,21 @@ pub fn compile_core_to_object_executable_chirho(
     let mut filtered_module_chirho =
         haskelujah_core_chirho::elide_dicts_and_filter_chirho(module_chirho);
     restore_selector_bindings_chirho(module_chirho, &mut filtered_module_chirho);
-    compile_core_to_object_chirho(&filtered_module_chirho, config_chirho)
+    compile_core_to_object_inner_chirho(&filtered_module_chirho, config_chirho, true)
 }
 
 /// Compile a `CoreModuleChirho` to a native object file via Cranelift.
 pub fn compile_core_to_object_chirho(
     module_chirho: &CoreModuleChirho,
     config_chirho: &TargetConfigChirho,
+) -> Result<NativeObjectChirho, String> {
+    compile_core_to_object_inner_chirho(module_chirho, config_chirho, false)
+}
+
+fn compile_core_to_object_inner_chirho(
+    module_chirho: &CoreModuleChirho,
+    config_chirho: &TargetConfigChirho,
+    executable_mode_chirho: bool,
 ) -> Result<NativeObjectChirho, String> {
     // ── Build Cranelift ISA from target triple ─────────────────────────────
     let mut flag_builder_chirho = cl_settings_chirho::builder();
@@ -112,15 +120,18 @@ pub fn compile_core_to_object_chirho(
                 .push(AbiParamChirho::new(cl_types_chirho::I64));
         }
 
-        let linkage_chirho = if name_chirho == "main" {
-            LinkageChirho::Export
-        } else {
-            LinkageChirho::Local
-        };
+        let (symbol_name_chirho, linkage_chirho) =
+            if executable_mode_chirho && name_chirho == "main" {
+                ("haskelujah_main", LinkageChirho::Local)
+            } else if name_chirho == "main" {
+                ("main", LinkageChirho::Export)
+            } else {
+                (name_chirho.as_str(), LinkageChirho::Local)
+            };
         let func_id_chirho = obj_module_chirho
-            .declare_function(name_chirho, linkage_chirho, &sig_chirho)
+            .declare_function(symbol_name_chirho, linkage_chirho, &sig_chirho)
             .map_err(|e_chirho| {
-                format!("failed to declare function '{name_chirho}': {e_chirho}")
+                format!("failed to declare function '{symbol_name_chirho}': {e_chirho}")
             })?;
         func_decl_map_chirho.insert(
             binding_chirho.binder_chirho.id_chirho,
@@ -140,6 +151,7 @@ pub fn compile_core_to_object_chirho(
         show_float_func_id_chirho,
         put_str_func_id_chirho,
         get_line_func_id_chirho,
+        main_with_large_stack_func_id_chirho,
     ) = {
         let mut put_str_ln_sig_chirho = obj_module_chirho.make_signature();
         put_str_ln_sig_chirho
@@ -260,6 +272,21 @@ pub fn compile_core_to_object_chirho(
             )
             .ok();
 
+        let mut main_with_large_stack_sig_chirho = obj_module_chirho.make_signature();
+        main_with_large_stack_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        main_with_large_stack_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        let main_with_large_stack_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_main_with_large_stack_chirho",
+                LinkageChirho::Import,
+                &main_with_large_stack_sig_chirho,
+            )
+            .ok();
+
         (
             put_str_ln_func_id_chirho,
             print_int_func_id_chirho,
@@ -271,6 +298,7 @@ pub fn compile_core_to_object_chirho(
             show_float_func_id_chirho,
             put_str_func_id_chirho,
             get_line_func_id_chirho,
+            main_with_large_stack_func_id_chirho,
         )
     };
 
@@ -337,6 +365,26 @@ pub fn compile_core_to_object_chirho(
             get_line_func_id_chirho,
             &string_data_ids_chirho,
         )?;
+    }
+
+    if executable_mode_chirho {
+        if let Some(main_binding_chirho) = module_chirho
+            .bindings_chirho
+            .iter()
+            .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == "main")
+        {
+            if let (Some((main_func_id_chirho, _)), Some(main_with_large_stack_func_id_chirho)) = (
+                func_decl_map_chirho.get(&main_binding_chirho.binder_chirho.id_chirho),
+                main_with_large_stack_func_id_chirho,
+            ) {
+                define_native_main_wrapper_chirho(
+                    &mut obj_module_chirho,
+                    &mut fb_ctx_chirho,
+                    *main_func_id_chirho,
+                    main_with_large_stack_func_id_chirho,
+                )?;
+            }
+        }
     }
 
     // ── Finalize and emit object bytes ─────────────────────────────────────
@@ -1440,6 +1488,64 @@ fn define_function_body_chirho(
         .map_err(|e_chirho| {
             format!("failed to define function '{debug_name_chirho}': {e_chirho}")
         })?;
+
+    Ok(())
+}
+
+fn define_native_main_wrapper_chirho(
+    module_chirho: &mut ObjModuleChirho,
+    fb_ctx_chirho: &mut FuncBuilderCtxChirho,
+    haskelujah_main_func_id_chirho: cranelift_module::FuncId,
+    main_with_large_stack_func_id_chirho: cranelift_module::FuncId,
+) -> Result<(), String> {
+    let mut native_main_sig_chirho = module_chirho.make_signature();
+    native_main_sig_chirho
+        .returns
+        .push(AbiParamChirho::new(cl_types_chirho::I32));
+    let native_main_func_id_chirho = module_chirho
+        .declare_function("main", LinkageChirho::Export, &native_main_sig_chirho)
+        .map_err(|error_chirho| format!("failed to declare native main wrapper: {error_chirho}"))?;
+
+    let mut func_chirho = ClFunctionChirho::with_name_signature(
+        cranelift_codegen::ir::UserFuncName::user(0, native_main_func_id_chirho.as_u32()),
+        native_main_sig_chirho,
+    );
+
+    {
+        let mut builder_chirho = FuncBuilderChirho::new(&mut func_chirho, fb_ctx_chirho);
+        let entry_block_chirho = builder_chirho.create_block();
+        builder_chirho.switch_to_block(entry_block_chirho);
+        builder_chirho.seal_block(entry_block_chirho);
+
+        let haskelujah_main_ref_chirho =
+            module_chirho.declare_func_in_func(haskelujah_main_func_id_chirho, builder_chirho.func);
+        let main_with_large_stack_ref_chirho = module_chirho
+            .declare_func_in_func(main_with_large_stack_func_id_chirho, builder_chirho.func);
+        let haskelujah_main_addr_chirho = builder_chirho
+            .ins()
+            .func_addr(cl_types_chirho::I64, haskelujah_main_ref_chirho);
+        let call_inst_chirho = builder_chirho.ins().call(
+            main_with_large_stack_ref_chirho,
+            &[haskelujah_main_addr_chirho],
+        );
+        let result_chirho = builder_chirho.inst_results(call_inst_chirho)[0];
+        let exit_code_chirho = builder_chirho
+            .ins()
+            .ireduce(cl_types_chirho::I32, result_chirho);
+        builder_chirho.ins().return_(&[exit_code_chirho]);
+        builder_chirho.finalize();
+    }
+
+    let mut ctx_chirho = cranelift_codegen::Context::for_function(func_chirho);
+    if let Err(verifier_error_chirho) = ctx_chirho.verify(module_chirho.isa()) {
+        return Err(format!(
+            "failed to verify native main wrapper: {verifier_error_chirho}\n{}",
+            ctx_chirho.func.display()
+        ));
+    }
+    module_chirho
+        .define_function(native_main_func_id_chirho, &mut ctx_chirho)
+        .map_err(|error_chirho| format!("failed to define native main wrapper: {error_chirho}"))?;
 
     Ok(())
 }

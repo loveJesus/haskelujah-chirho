@@ -1048,6 +1048,11 @@ impl LlvmCodegenChirho {
             "declare i64 @haskelujah_get_line_chirho()"
         )
         .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare i64 @haskelujah_main_with_large_stack_chirho(i64)"
+        )
+        .unwrap();
         writeln!(self.output_chirho, "declare i32 @fprintf(ptr, ...)").unwrap();
         writeln!(self.output_chirho, "declare ptr @fdopen(i32, ptr)").unwrap();
         writeln!(self.output_chirho).unwrap();
@@ -3671,11 +3676,24 @@ pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) 
         writeln!(ir_chirho).unwrap();
         writeln!(ir_chirho, "define i32 @main() {{").unwrap();
         writeln!(ir_chirho, "entry:").unwrap();
+        writeln!(
+            ir_chirho,
+            "  %main_fn = ptrtoint ptr @haskelujah_main to i64"
+        )
+        .unwrap();
         if has_builtin_io_chirho {
-            writeln!(ir_chirho, "  call i64 @haskelujah_main()").unwrap();
+            writeln!(
+                ir_chirho,
+                "  call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)"
+            )
+            .unwrap();
             writeln!(ir_chirho, "  ret i32 0").unwrap();
         } else {
-            writeln!(ir_chirho, "  %result = call i64 @haskelujah_main()").unwrap();
+            writeln!(
+                ir_chirho,
+                "  %result = call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)"
+            )
+            .unwrap();
             writeln!(
                 ir_chirho,
                 "  call i32 (ptr, ...) @printf(ptr @.fmt_int, i64 %result)"
@@ -4611,7 +4629,10 @@ mod tests_chirho {
         assert!(ir_chirho.contains("define i64 @haskelujah_main()"));
         // Should contain the C main entry point
         assert!(ir_chirho.contains("define i32 @main()"));
-        assert!(ir_chirho.contains("call i64 @haskelujah_main()"));
+        assert!(ir_chirho.contains("ptrtoint ptr @haskelujah_main to i64"));
+        assert!(
+            ir_chirho.contains("call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)")
+        );
         assert!(ir_chirho.contains("@printf"));
         assert!(ir_chirho.contains("ret i32 %exitcode"));
     }
@@ -4661,7 +4682,9 @@ mod tests_chirho {
         let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
         assert!(ir_chirho.contains("add i64 2, 3"));
         assert!(ir_chirho.contains("define i32 @main()"));
-        assert!(ir_chirho.contains("call i64 @haskelujah_main()"));
+        assert!(
+            ir_chirho.contains("call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)")
+        );
     }
 
     #[test]
@@ -4802,7 +4825,9 @@ mod tests_chirho {
         let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
         assert!(ir_chirho.contains("define i64 @haskelujah_putStrLn(i64 %v2)"));
         assert!(ir_chirho.contains("call i32 @puts(ptr %t0)"));
-        assert!(ir_chirho.contains("call i64 @haskelujah_main()"));
+        assert!(
+            ir_chirho.contains("call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)")
+        );
         assert!(ir_chirho.contains("ret i32 0"));
         assert!(!ir_chirho.contains("@.fmt_int"));
         assert!(!ir_chirho.contains("call i32 (ptr, ...) @printf(ptr @.fmt_int"));
