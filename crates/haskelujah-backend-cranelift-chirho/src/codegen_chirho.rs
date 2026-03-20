@@ -18,7 +18,7 @@
 //! ObjectModule::finish() → .o bytes
 //! ```
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use cranelift_codegen::ir::types as cl_types_chirho;
 use cranelift_codegen::ir::{
@@ -416,6 +416,251 @@ fn declare_local_lifted_bindings_chirho(
     Ok(local_decl_map_chirho)
 }
 
+fn is_dictionary_param_name_chirho(name_chirho: &str) -> bool {
+    name_chirho.starts_with("$d") || name_chirho.starts_with("$dict")
+}
+
+fn collect_free_runtime_var_ids_inner_chirho(
+    expr_chirho: &CoreExprChirho,
+    known_func_ids_chirho: &HashSet<haskelujah_core_chirho::expr_chirho::CoreIdChirho>,
+    bound_ids_chirho: &mut HashSet<haskelujah_core_chirho::expr_chirho::CoreIdChirho>,
+    seen_ids_chirho: &mut HashSet<haskelujah_core_chirho::expr_chirho::CoreIdChirho>,
+    free_ids_chirho: &mut Vec<haskelujah_core_chirho::expr_chirho::CoreIdChirho>,
+) {
+    match expr_chirho {
+        CoreExprChirho::VarChirho(id_chirho) => {
+            if !bound_ids_chirho.contains(id_chirho)
+                && !known_func_ids_chirho.contains(id_chirho)
+                && seen_ids_chirho.insert(*id_chirho)
+            {
+                free_ids_chirho.push(*id_chirho);
+            }
+        }
+        CoreExprChirho::LitChirho(_) => {}
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => {
+            collect_free_runtime_var_ids_inner_chirho(
+                fun_chirho,
+                known_func_ids_chirho,
+                bound_ids_chirho,
+                seen_ids_chirho,
+                free_ids_chirho,
+            );
+            collect_free_runtime_var_ids_inner_chirho(
+                arg_chirho,
+                known_func_ids_chirho,
+                bound_ids_chirho,
+                seen_ids_chirho,
+                free_ids_chirho,
+            );
+        }
+        CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } => {
+            let inserted_chirho = bound_ids_chirho.insert(binder_chirho.id_chirho);
+            collect_free_runtime_var_ids_inner_chirho(
+                body_chirho,
+                known_func_ids_chirho,
+                bound_ids_chirho,
+                seen_ids_chirho,
+                free_ids_chirho,
+            );
+            if inserted_chirho {
+                bound_ids_chirho.remove(&binder_chirho.id_chirho);
+            }
+        }
+        CoreExprChirho::LetChirho {
+            rec_chirho,
+            binds_chirho,
+            body_chirho,
+        } => {
+            let mut inserted_ids_chirho = Vec::new();
+            if *rec_chirho {
+                for (binder_chirho, _) in binds_chirho {
+                    if bound_ids_chirho.insert(binder_chirho.id_chirho) {
+                        inserted_ids_chirho.push(binder_chirho.id_chirho);
+                    }
+                }
+            }
+            for (binder_chirho, rhs_chirho) in binds_chirho {
+                collect_free_runtime_var_ids_inner_chirho(
+                    rhs_chirho,
+                    known_func_ids_chirho,
+                    bound_ids_chirho,
+                    seen_ids_chirho,
+                    free_ids_chirho,
+                );
+                if !*rec_chirho && bound_ids_chirho.insert(binder_chirho.id_chirho) {
+                    inserted_ids_chirho.push(binder_chirho.id_chirho);
+                }
+            }
+            collect_free_runtime_var_ids_inner_chirho(
+                body_chirho,
+                known_func_ids_chirho,
+                bound_ids_chirho,
+                seen_ids_chirho,
+                free_ids_chirho,
+            );
+            for inserted_id_chirho in inserted_ids_chirho {
+                bound_ids_chirho.remove(&inserted_id_chirho);
+            }
+        }
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho,
+            bind_chirho,
+            alts_chirho,
+            ..
+        } => {
+            collect_free_runtime_var_ids_inner_chirho(
+                scrutinee_chirho,
+                known_func_ids_chirho,
+                bound_ids_chirho,
+                seen_ids_chirho,
+                free_ids_chirho,
+            );
+            let case_inserted_chirho = bound_ids_chirho.insert(bind_chirho.id_chirho);
+            for alt_chirho in alts_chirho {
+                let mut alt_inserted_ids_chirho = Vec::new();
+                for binder_chirho in &alt_chirho.binders_chirho {
+                    if bound_ids_chirho.insert(binder_chirho.id_chirho) {
+                        alt_inserted_ids_chirho.push(binder_chirho.id_chirho);
+                    }
+                }
+                collect_free_runtime_var_ids_inner_chirho(
+                    &alt_chirho.rhs_chirho,
+                    known_func_ids_chirho,
+                    bound_ids_chirho,
+                    seen_ids_chirho,
+                    free_ids_chirho,
+                );
+                for inserted_id_chirho in alt_inserted_ids_chirho {
+                    bound_ids_chirho.remove(&inserted_id_chirho);
+                }
+            }
+            if case_inserted_chirho {
+                bound_ids_chirho.remove(&bind_chirho.id_chirho);
+            }
+        }
+        CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+            collect_free_runtime_var_ids_inner_chirho(
+                body_chirho,
+                known_func_ids_chirho,
+                bound_ids_chirho,
+                seen_ids_chirho,
+                free_ids_chirho,
+            );
+        }
+        CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
+            collect_free_runtime_var_ids_inner_chirho(
+                expr_chirho,
+                known_func_ids_chirho,
+                bound_ids_chirho,
+                seen_ids_chirho,
+                free_ids_chirho,
+            );
+        }
+        CoreExprChirho::PrimOpChirho { args_chirho, .. }
+        | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+            for arg_chirho in args_chirho {
+                collect_free_runtime_var_ids_inner_chirho(
+                    arg_chirho,
+                    known_func_ids_chirho,
+                    bound_ids_chirho,
+                    seen_ids_chirho,
+                    free_ids_chirho,
+                );
+            }
+        }
+    }
+}
+
+fn collect_free_runtime_var_ids_chirho(
+    expr_chirho: &CoreExprChirho,
+    imported_decl_map_chirho: &FuncDeclMapChirho,
+) -> Vec<haskelujah_core_chirho::expr_chirho::CoreIdChirho> {
+    let known_func_ids_chirho: HashSet<_> = imported_decl_map_chirho.keys().copied().collect();
+    let mut bound_ids_chirho = HashSet::new();
+    let mut seen_ids_chirho = HashSet::new();
+    let mut free_ids_chirho = Vec::new();
+    collect_free_runtime_var_ids_inner_chirho(
+        expr_chirho,
+        &known_func_ids_chirho,
+        &mut bound_ids_chirho,
+        &mut seen_ids_chirho,
+        &mut free_ids_chirho,
+    );
+    free_ids_chirho
+}
+
+fn bind_missing_param_aliases_chirho(
+    env_chirho: &mut VarEnvChirho,
+    param_binders_chirho: &[&BinderChirho],
+    block_params_chirho: &[cranelift_codegen::ir::Value],
+    body_chirho: &CoreExprChirho,
+    imported_decl_map_chirho: &FuncDeclMapChirho,
+) {
+    let free_ids_chirho = collect_free_runtime_var_ids_chirho(body_chirho, imported_decl_map_chirho);
+    let free_id_set_chirho: HashSet<_> = free_ids_chirho.iter().copied().collect();
+    let param_ids_chirho: HashSet<_> = param_binders_chirho
+        .iter()
+        .map(|binder_chirho| binder_chirho.id_chirho)
+        .collect();
+
+    let unresolved_ids_chirho: Vec<_> = free_ids_chirho
+        .iter()
+        .copied()
+        .filter(|id_chirho| !param_ids_chirho.contains(id_chirho))
+        .collect();
+    if unresolved_ids_chirho.is_empty() {
+        return;
+    }
+
+    let candidate_param_ids_chirho: Vec<_> = param_binders_chirho
+        .iter()
+        .filter(|binder_chirho| !is_dictionary_param_name_chirho(&binder_chirho.name_chirho))
+        .map(|binder_chirho| binder_chirho.id_chirho)
+        .filter(|id_chirho| !free_id_set_chirho.contains(id_chirho))
+        .collect();
+    if candidate_param_ids_chirho.is_empty() {
+        return;
+    }
+
+    let alias_pairs_chirho: Vec<_> = if candidate_param_ids_chirho.len() == 1 {
+        unresolved_ids_chirho
+            .iter()
+            .copied()
+            .map(|alias_id_chirho| (alias_id_chirho, candidate_param_ids_chirho[0]))
+            .collect()
+    } else if unresolved_ids_chirho.len() <= candidate_param_ids_chirho.len() {
+        unresolved_ids_chirho
+            .iter()
+            .copied()
+            .zip(candidate_param_ids_chirho.iter().copied())
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    if alias_pairs_chirho.is_empty() {
+        return;
+    }
+
+    let param_vals_by_id_chirho: HashMap<_, _> = param_binders_chirho
+        .iter()
+        .zip(block_params_chirho.iter())
+        .map(|(binder_chirho, block_param_chirho)| (binder_chirho.id_chirho, *block_param_chirho))
+        .collect();
+
+    for (alias_id_chirho, source_id_chirho) in alias_pairs_chirho {
+        if let Some(source_val_chirho) = param_vals_by_id_chirho.get(&source_id_chirho) {
+            env_chirho.bind_chirho(alias_id_chirho, *source_val_chirho);
+        }
+    }
+}
+
 fn define_function_body_chirho(
     module_chirho: &mut ObjModuleChirho,
     fb_ctx_chirho: &mut FuncBuilderCtxChirho,
@@ -461,6 +706,13 @@ fn define_function_body_chirho(
         {
             env_chirho.bind_chirho(binder_chirho.id_chirho, *param_val_chirho);
         }
+        bind_missing_param_aliases_chirho(
+            &mut env_chirho,
+            &param_binders_chirho,
+            &block_params_chirho,
+            body_chirho,
+            imported_decl_map_chirho,
+        );
 
         let mut next_var_idx_chirho: u32 = 0;
         let mut cl_vars_chirho: HashMap<

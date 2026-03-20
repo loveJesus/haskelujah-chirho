@@ -1377,6 +1377,22 @@ main = print (sumTo 10)
         assert_eq!(stdout_chirho, "55\n");
     }
 
+    #[test]
+    fn cranelift_round_trip_wildcard_first_column_safe_divide_output_chirho() {
+        let src_chirho = r#"module Main where
+safeDivide _ 0 = 0
+safeDivide a b = div a b
+main = print (safeDivide 10 2)
+"#;
+        let (exit_code_chirho, stdout_chirho) =
+            cranelift_round_trip_output_chirho(src_chirho).expect("wildcard safeDivide Cranelift round-trip");
+        assert_eq!(
+            exit_code_chirho, 0,
+            "wildcard-first-column Cranelift executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "5\n");
+    }
+
     // ---------------------------------------------------------------
     // §29 — Structured error messages with "did you mean?" suggestions
     // ---------------------------------------------------------------
