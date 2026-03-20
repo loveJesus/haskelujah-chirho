@@ -1702,3 +1702,97 @@ fn foreign_export_eval_still_works_chirho() {
         haskelujah_runtime_chirho::ValueChirho::IntChirho(42)
     );
 }
+
+#[test]
+fn cranelift_round_trip_nested_cons_pattern_chirho() {
+    let src_chirho = r#"module Main where
+headTwo :: [Int] -> Int
+headTwo (a:b:_) = a + b
+headTwo _ = 0
+main = print (headTwo [100, 200, 300])
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert!(
+            stdout_chirho.trim() == "300",
+            "headTwo [100,200,300] = 300, got: {stdout_chirho}"
+        );
+    }
+}
+
+#[test]
+fn cranelift_round_trip_quicksort_chirho() {
+    let src_chirho = r#"module Main where
+filter' :: (Int -> Bool) -> [Int] -> [Int]
+filter' f [] = []
+filter' f (x:xs) = if f x then x : filter' f xs else filter' f xs
+append :: [Int] -> [Int] -> [Int]
+append [] ys = ys
+append (x:xs) ys = x : append xs ys
+qsort :: [Int] -> [Int]
+qsort [] = []
+qsort (p:xs) = append (qsort (filter' (\x -> x < p) xs))
+                       (p : qsort (filter' (\x -> x >= p) xs))
+mySum :: [Int] -> Int
+mySum [] = 0
+mySum (x:xs) = x + mySum xs
+main = print (mySum (qsort [5,1,4,2,3]))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert!(
+            stdout_chirho.trim() == "15",
+            "sum of sorted [5,1,4,2,3] = 15, got: {stdout_chirho}"
+        );
+    }
+}
+
+#[test]
+fn cranelift_round_trip_abs_signum_chirho() {
+    let src_chirho = r#"module Main where
+main :: IO ()
+main = do
+  putStrLn (show (abs (-42)))
+  putStrLn (show (signum (-7)))
+  putStrLn (show (negate 10))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        let lines_chirho: Vec<&str> = stdout_chirho.trim().lines().collect();
+        assert_eq!(lines_chirho.len(), 3, "expected 3 lines");
+        assert_eq!(lines_chirho[0], "42", "abs(-42)");
+        assert_eq!(lines_chirho[1], "-1", "signum(-7)");
+        assert_eq!(lines_chirho[2], "-10", "negate(10)");
+    }
+}
+
+#[test]
+fn cranelift_round_trip_prime_sieve_chirho() {
+    let src_chirho = r#"module Main where
+range :: Int -> Int -> [Int]
+range lo hi = if lo > hi then [] else lo : range (lo + 1) hi
+removeMultiples :: Int -> [Int] -> [Int]
+removeMultiples _ [] = []
+removeMultiples p (x:xs) = if x `mod` p == 0
+                           then removeMultiples p xs
+                           else x : removeMultiples p xs
+sieve :: [Int] -> [Int]
+sieve [] = []
+sieve (p:xs) = p : sieve (removeMultiples p xs)
+countList :: [Int] -> Int
+countList [] = 0
+countList (_:xs) = 1 + countList xs
+main = print (countList (sieve (range 2 100)))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert!(
+            stdout_chirho.trim() == "25",
+            "25 primes up to 100, got: {stdout_chirho}"
+        );
+    }
+}
