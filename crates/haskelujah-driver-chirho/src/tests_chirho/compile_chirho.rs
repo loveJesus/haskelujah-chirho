@@ -2372,3 +2372,26 @@ main = do
         assert_eq!(stdout_chirho.trim(), "1\n0\n-1");
     }
 }
+
+#[test]
+fn llvm_round_trip_collatz_guards_where_chirho() {
+    // Collatz sequence: guards + where-clause + multi-equation + TCO
+    let src_chirho = r#"module Main where
+collatz :: Int -> Int
+collatz n = go n 0
+  where
+    go 1 steps = steps
+    go n steps
+      | n `mod` 2 == 0 = go (n `div` 2) (steps + 1)
+      | otherwise = go (3 * n + 1) (steps + 1)
+main :: IO ()
+main = do
+  print (collatz 27)
+  print (collatz 1)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "111\n0");
+    }
+}
