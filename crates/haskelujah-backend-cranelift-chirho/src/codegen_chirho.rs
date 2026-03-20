@@ -40,7 +40,9 @@ use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 use crate::lower_chirho::{
-    LowerCtxChirho, PapWrapperKeyChirho, VarEnvChirho, ensure_i64_chirho, lower_expr_chirho,
+    LowerCtxChirho, PapWrapperKeyChirho, VarEnvChirho,
+    emit_partial_application_closure_with_alloc_ref_chirho, ensure_i64_chirho,
+    lower_expr_chirho,
 };
 use crate::{NativeObjectChirho, TargetConfigChirho};
 
@@ -133,6 +135,7 @@ pub fn compile_core_to_object_chirho(
         print_int_func_id_chirho,
         append_str_func_id_chirho,
         alloc_func_id_chirho,
+        show_int_func_id_chirho,
     ) = {
         let mut put_str_ln_sig_chirho = obj_module_chirho.make_signature();
         put_str_ln_sig_chirho
@@ -197,11 +200,22 @@ pub fn compile_core_to_object_chirho(
             )
             .ok();
 
+        // show_int: i64 → i64 (pointer to NUL-terminated string)
+        let show_int_sig_chirho = put_str_ln_sig_chirho.clone(); // same sig: i64 → i64
+        let show_int_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_show_int_chirho",
+                LinkageChirho::Import,
+                &show_int_sig_chirho,
+            )
+            .ok();
+
         (
             put_str_ln_func_id_chirho,
             print_int_func_id_chirho,
             append_str_func_id_chirho,
             alloc_func_id_chirho,
+            show_int_func_id_chirho,
         )
     };
 
@@ -260,6 +274,7 @@ pub fn compile_core_to_object_chirho(
             print_int_func_id_chirho,
             append_str_func_id_chirho,
             alloc_func_id_chirho,
+            show_int_func_id_chirho,
             &string_data_ids_chirho,
         )?;
     }
@@ -295,6 +310,7 @@ struct PapWrapperBindingChirho {
     target_func_id_chirho: cranelift_module::FuncId,
     applied_arg_count_chirho: usize,
     remaining_arity_chirho: usize,
+    hidden_capture_count_chirho: usize,
     symbol_name_chirho: String,
 }
 
@@ -752,140 +768,42 @@ fn flatten_apps_codegen_chirho(
     (current_chirho, args_chirho)
 }
 
-fn collect_partial_application_sites_inner_chirho(
-    owner_id_chirho: haskelujah_core_chirho::expr_chirho::CoreIdChirho,
-    expr_chirho: &CoreExprChirho,
-    imported_decl_map_chirho: &FuncDeclMapChirho,
-    pap_wrappers_by_key_chirho: &mut HashMap<PapWrapperKeyChirho, PapWrapperBindingChirho>,
-) {
-    match expr_chirho {
-        CoreExprChirho::AppChirho {
-            fun_chirho,
-            arg_chirho,
-        } => {
-            let (callee_chirho, args_chirho) = flatten_apps_codegen_chirho(expr_chirho);
-            if let CoreExprChirho::VarChirho(target_id_chirho) = callee_chirho {
-                if let Some((target_func_id_chirho, total_arity_chirho)) =
-                    imported_decl_map_chirho.get(&target_id_chirho)
-                {
-                    let applied_arg_count_chirho = args_chirho.len();
-                    if applied_arg_count_chirho > 0
-                        && applied_arg_count_chirho < *total_arity_chirho
-                    {
-                        pap_wrappers_by_key_chirho
-                            .entry((*target_id_chirho, applied_arg_count_chirho))
-                            .or_insert_with(|| PapWrapperBindingChirho {
-                                target_id_chirho: *target_id_chirho,
-                                target_func_id_chirho: *target_func_id_chirho,
-                                applied_arg_count_chirho,
-                                remaining_arity_chirho: total_arity_chirho
-                                    - applied_arg_count_chirho,
-                                symbol_name_chirho: format!(
-                                    "haskelujah_pap_{}_{}_{}_chirho",
-                                    owner_id_chirho.0, target_id_chirho.0, applied_arg_count_chirho
-                                ),
-                            });
-                    }
-                }
-            }
-            collect_partial_application_sites_inner_chirho(
-                owner_id_chirho,
-                fun_chirho,
-                imported_decl_map_chirho,
-                pap_wrappers_by_key_chirho,
-            );
-            collect_partial_application_sites_inner_chirho(
-                owner_id_chirho,
-                arg_chirho,
-                imported_decl_map_chirho,
-                pap_wrappers_by_key_chirho,
-            );
-        }
-        CoreExprChirho::LamChirho { body_chirho, .. }
-        | CoreExprChirho::TyLamChirho { body_chirho, .. } => {
-            collect_partial_application_sites_inner_chirho(
-                owner_id_chirho,
-                body_chirho,
-                imported_decl_map_chirho,
-                pap_wrappers_by_key_chirho,
-            );
-        }
-        CoreExprChirho::LetChirho {
-            binds_chirho,
-            body_chirho,
-            ..
-        } => {
-            for (_binder_chirho, rhs_chirho) in binds_chirho {
-                collect_partial_application_sites_inner_chirho(
-                    owner_id_chirho,
-                    rhs_chirho,
-                    imported_decl_map_chirho,
-                    pap_wrappers_by_key_chirho,
-                );
-            }
-            collect_partial_application_sites_inner_chirho(
-                owner_id_chirho,
-                body_chirho,
-                imported_decl_map_chirho,
-                pap_wrappers_by_key_chirho,
-            );
-        }
-        CoreExprChirho::CaseChirho {
-            scrutinee_chirho,
-            alts_chirho,
-            ..
-        } => {
-            collect_partial_application_sites_inner_chirho(
-                owner_id_chirho,
-                scrutinee_chirho,
-                imported_decl_map_chirho,
-                pap_wrappers_by_key_chirho,
-            );
-            for alt_chirho in alts_chirho {
-                collect_partial_application_sites_inner_chirho(
-                    owner_id_chirho,
-                    &alt_chirho.rhs_chirho,
-                    imported_decl_map_chirho,
-                    pap_wrappers_by_key_chirho,
-                );
-            }
-        }
-        CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
-            collect_partial_application_sites_inner_chirho(
-                owner_id_chirho,
-                expr_chirho,
-                imported_decl_map_chirho,
-                pap_wrappers_by_key_chirho,
-            );
-        }
-        CoreExprChirho::PrimOpChirho { args_chirho, .. }
-        | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
-            for arg_chirho in args_chirho {
-                collect_partial_application_sites_inner_chirho(
-                    owner_id_chirho,
-                    arg_chirho,
-                    imported_decl_map_chirho,
-                    pap_wrappers_by_key_chirho,
-                );
-            }
-        }
-        CoreExprChirho::LitChirho(_) | CoreExprChirho::VarChirho(_) => {}
-    }
-}
-
 fn collect_partial_application_sites_chirho(
     owner_id_chirho: haskelujah_core_chirho::expr_chirho::CoreIdChirho,
-    exprs_chirho: &[&CoreExprChirho],
+    _exprs_chirho: &[&CoreExprChirho],
     imported_decl_map_chirho: &FuncDeclMapChirho,
+    lifted_capture_ids_map_chirho: &HashMap<
+        haskelujah_core_chirho::expr_chirho::CoreIdChirho,
+        Vec<haskelujah_core_chirho::expr_chirho::CoreIdChirho>,
+    >,
 ) -> Vec<PapWrapperBindingChirho> {
     let mut pap_wrappers_by_key_chirho = HashMap::new();
-    for expr_chirho in exprs_chirho {
-        collect_partial_application_sites_inner_chirho(
-            owner_id_chirho,
-            expr_chirho,
-            imported_decl_map_chirho,
-            &mut pap_wrappers_by_key_chirho,
-        );
+    for (target_id_chirho, (target_func_id_chirho, total_arity_chirho)) in imported_decl_map_chirho
+    {
+        let hidden_capture_count_chirho = lifted_capture_ids_map_chirho
+            .get(target_id_chirho)
+            .map_or(0, Vec::len);
+        if *total_arity_chirho == 0
+            || (*total_arity_chirho == 1 && hidden_capture_count_chirho == 0)
+        {
+            continue;
+        }
+        for applied_arg_count_chirho in 0..*total_arity_chirho {
+            pap_wrappers_by_key_chirho.insert(
+                (*target_id_chirho, applied_arg_count_chirho),
+                PapWrapperBindingChirho {
+                    target_id_chirho: *target_id_chirho,
+                    target_func_id_chirho: *target_func_id_chirho,
+                    applied_arg_count_chirho,
+                    remaining_arity_chirho: total_arity_chirho - applied_arg_count_chirho,
+                    hidden_capture_count_chirho,
+                    symbol_name_chirho: format!(
+                        "haskelujah_pap_{}_{}_{}_chirho",
+                        owner_id_chirho.0, target_id_chirho.0, applied_arg_count_chirho
+                    ),
+                },
+            );
+        }
     }
     let mut pap_wrappers_chirho: Vec<_> = pap_wrappers_by_key_chirho.into_values().collect();
     pap_wrappers_chirho.sort_by_key(|wrapper_chirho| {
@@ -903,10 +821,7 @@ fn declare_pap_wrappers_chirho(
 ) -> Result<HashMap<PapWrapperKeyChirho, cranelift_module::FuncId>, String> {
     let mut pap_wrapper_decl_map_chirho = HashMap::new();
     for pap_wrapper_chirho in pap_wrappers_chirho {
-        let sig_chirho = declare_function_signature_chirho(
-            module_chirho,
-            pap_wrapper_chirho.remaining_arity_chirho + 1,
-        );
+        let sig_chirho = declare_function_signature_chirho(module_chirho, 2);
         let func_id_chirho = module_chirho
             .declare_function(
                 &pap_wrapper_chirho.symbol_name_chirho,
@@ -1191,11 +1106,10 @@ fn define_pap_wrapper_body_chirho(
     fb_ctx_chirho: &mut FuncBuilderCtxChirho,
     wrapper_func_id_chirho: cranelift_module::FuncId,
     pap_wrapper_chirho: &PapWrapperBindingChirho,
+    pap_wrapper_decl_map_chirho: &HashMap<PapWrapperKeyChirho, cranelift_module::FuncId>,
+    alloc_func_id_chirho: Option<cranelift_module::FuncId>,
 ) -> Result<(), String> {
-    let sig_chirho = declare_function_signature_chirho(
-        module_chirho,
-        pap_wrapper_chirho.remaining_arity_chirho + 1,
-    );
+    let sig_chirho = declare_function_signature_chirho(module_chirho, 2);
     let mut func_chirho = ClFunctionChirho::with_name_signature(
         cranelift_codegen::ir::UserFuncName::user(0, wrapper_func_id_chirho.as_u32()),
         sig_chirho,
@@ -1217,26 +1131,69 @@ fn define_pap_wrapper_body_chirho(
         let ptr_mask_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, i64::MAX);
         let env_ptr_chirho = builder_chirho.ins().band(env_val_chirho, ptr_mask_chirho);
         let mem_flags_chirho = cranelift_codegen::ir::MemFlags::new();
+        let arg_val_chirho = block_params_chirho[1];
 
-        let mut call_args_chirho = Vec::with_capacity(
-            pap_wrapper_chirho.applied_arg_count_chirho + pap_wrapper_chirho.remaining_arity_chirho,
+        let mut stored_arg_vals_chirho = Vec::with_capacity(
+            pap_wrapper_chirho.applied_arg_count_chirho
+                + 1
+                + pap_wrapper_chirho.hidden_capture_count_chirho,
         );
         for arg_idx_chirho in 0..pap_wrapper_chirho.applied_arg_count_chirho {
             let offset_chirho = ((arg_idx_chirho + 1) * 8) as i32;
-            let captured_arg_chirho = builder_chirho.ins().load(
+            let applied_arg_chirho = builder_chirho.ins().load(
                 cl_types_chirho::I64,
                 mem_flags_chirho,
                 env_ptr_chirho,
                 offset_chirho,
             );
-            call_args_chirho.push(captured_arg_chirho);
+            stored_arg_vals_chirho.push(applied_arg_chirho);
         }
-        call_args_chirho.extend(block_params_chirho.iter().skip(1).copied());
+        stored_arg_vals_chirho.push(arg_val_chirho);
+        for hidden_capture_idx_chirho in 0..pap_wrapper_chirho.hidden_capture_count_chirho {
+            let offset_chirho = ((pap_wrapper_chirho.applied_arg_count_chirho
+                + hidden_capture_idx_chirho
+                + 1)
+                * 8) as i32;
+            let hidden_capture_val_chirho = builder_chirho.ins().load(
+                cl_types_chirho::I64,
+                mem_flags_chirho,
+                env_ptr_chirho,
+                offset_chirho,
+            );
+            stored_arg_vals_chirho.push(hidden_capture_val_chirho);
+        }
 
-        let call_inst_chirho = builder_chirho
-            .ins()
-            .call(target_func_ref_chirho, &call_args_chirho);
-        let result_chirho = builder_chirho.inst_results(call_inst_chirho)[0];
+        let result_chirho = if pap_wrapper_chirho.remaining_arity_chirho == 1 {
+            let call_inst_chirho = builder_chirho
+                .ins()
+                .call(target_func_ref_chirho, &stored_arg_vals_chirho);
+            builder_chirho.inst_results(call_inst_chirho)[0]
+        } else if let Some(alloc_func_id_chirho) = alloc_func_id_chirho {
+            let next_wrapper_func_id_chirho = pap_wrapper_decl_map_chirho
+                .get(&(
+                    pap_wrapper_chirho.target_id_chirho,
+                    pap_wrapper_chirho.applied_arg_count_chirho + 1,
+                ))
+                .ok_or_else(|| {
+                    format!(
+                        "missing PAP wrapper for target {} applied {}",
+                        pap_wrapper_chirho.target_id_chirho.0,
+                        pap_wrapper_chirho.applied_arg_count_chirho + 1
+                    )
+                })?;
+            let alloc_ref_chirho =
+                module_chirho.declare_func_in_func(alloc_func_id_chirho, builder_chirho.func);
+            let next_wrapper_ref_chirho =
+                module_chirho.declare_func_in_func(*next_wrapper_func_id_chirho, builder_chirho.func);
+            emit_partial_application_closure_with_alloc_ref_chirho(
+                &mut builder_chirho,
+                alloc_ref_chirho,
+                next_wrapper_ref_chirho,
+                &stored_arg_vals_chirho,
+            )
+        } else {
+            builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
+        };
         builder_chirho.ins().return_(&[result_chirho]);
         builder_chirho.finalize();
     }
@@ -1278,6 +1235,7 @@ fn define_function_body_chirho(
     print_int_func_id_chirho: Option<cranelift_module::FuncId>,
     append_str_func_id_chirho: Option<cranelift_module::FuncId>,
     alloc_func_id_chirho: Option<cranelift_module::FuncId>,
+    show_int_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let (param_binders_chirho, body_chirho) = peel_lambdas_chirho(rhs_chirho);
@@ -1353,6 +1311,8 @@ fn define_function_body_chirho(
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let alloc_fref_chirho = alloc_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let show_int_fref_chirho = show_int_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
 
         let mut string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue> =
             HashMap::new();
@@ -1374,6 +1334,7 @@ fn define_function_body_chirho(
             print_int_ref_chirho: print_int_fref_chirho,
             append_str_ref_chirho: append_str_fref_chirho,
             alloc_ref_chirho: alloc_fref_chirho,
+            show_int_ref_chirho: show_int_fref_chirho,
             string_globals_chirho,
         };
 
@@ -1498,6 +1459,7 @@ fn lower_binding_chirho(
     print_int_func_id_chirho: Option<cranelift_module::FuncId>,
     append_str_func_id_chirho: Option<cranelift_module::FuncId>,
     alloc_func_id_chirho: Option<cranelift_module::FuncId>,
+    show_int_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
@@ -1543,17 +1505,6 @@ fn lower_binding_chirho(
             (*core_id_chirho, (*local_func_id_chirho, *arity_chirho))
         },
     ));
-    let mut pap_scan_exprs_chirho = vec![&rewritten_rhs_chirho];
-    for lifted_binding_chirho in &lifted_bindings_chirho {
-        pap_scan_exprs_chirho.push(&lifted_binding_chirho.rhs_chirho);
-    }
-    let pap_wrappers_chirho = collect_partial_application_sites_chirho(
-        binding_chirho.binder_chirho.id_chirho,
-        &pap_scan_exprs_chirho,
-        &imported_decl_map_chirho,
-    );
-    let pap_wrapper_decl_map_chirho =
-        declare_pap_wrappers_chirho(module_chirho, &pap_wrappers_chirho)?;
     let lifted_capture_ids_map_chirho: HashMap<_, _> = lifted_bindings_chirho
         .iter()
         .map(|lifted_binding_chirho| {
@@ -1563,6 +1514,18 @@ fn lower_binding_chirho(
             )
         })
         .collect();
+    let mut pap_scan_exprs_chirho = vec![&rewritten_rhs_chirho];
+    for lifted_binding_chirho in &lifted_bindings_chirho {
+        pap_scan_exprs_chirho.push(&lifted_binding_chirho.rhs_chirho);
+    }
+    let pap_wrappers_chirho = collect_partial_application_sites_chirho(
+        binding_chirho.binder_chirho.id_chirho,
+        &pap_scan_exprs_chirho,
+        &imported_decl_map_chirho,
+        &lifted_capture_ids_map_chirho,
+    );
+    let pap_wrapper_decl_map_chirho =
+        declare_pap_wrappers_chirho(module_chirho, &pap_wrappers_chirho)?;
 
     let toplevel_names_chirho: HashMap<haskelujah_core_chirho::expr_chirho::CoreIdChirho, String> =
         core_module_chirho
@@ -1600,6 +1563,7 @@ fn lower_binding_chirho(
             print_int_func_id_chirho,
             append_str_func_id_chirho,
             alloc_func_id_chirho,
+            show_int_func_id_chirho,
             string_data_ids_chirho,
         )?;
     }
@@ -1619,6 +1583,7 @@ fn lower_binding_chirho(
         print_int_func_id_chirho,
         append_str_func_id_chirho,
         alloc_func_id_chirho,
+        show_int_func_id_chirho,
         string_data_ids_chirho,
     )?;
 
@@ -1639,6 +1604,8 @@ fn lower_binding_chirho(
             fb_ctx_chirho,
             *wrapper_func_id_chirho,
             pap_wrapper_chirho,
+            &pap_wrapper_decl_map_chirho,
+            alloc_func_id_chirho,
         )?;
     }
 
@@ -2983,5 +2950,77 @@ mod tests_chirho {
 
         let stdout_chirho = compile_and_run_stdout_chirho(&module_chirho);
         assert_eq!(stdout_chirho, "Hello World\n");
+    }
+
+    #[test]
+    fn run_curried_two_arg_function_value_chirho() {
+        let apply2_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("apply2Chirho", 0),
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: int_binder_chirho("fChirho", 1),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: int_binder_chirho("xChirho", 2),
+                    body_chirho: Box::new(CoreExprChirho::LamChirho {
+                        binder_chirho: int_binder_chirho("yChirho", 3),
+                        body_chirho: Box::new(CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(1))),
+                                arg_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(2))),
+                            }),
+                            arg_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(3))),
+                        }),
+                    }),
+                }),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let add_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("addChirho", 4),
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: int_binder_chirho("lhsChirho", 5),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: int_binder_chirho("rhsChirho", 6),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "+#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(CoreIdChirho(5)),
+                            CoreExprChirho::VarChirho(CoreIdChirho(6)),
+                        ],
+                    }),
+                }),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let main_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("main", 7),
+            rhs_chirho: CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                            apply2_binding_chirho.binder_chirho.id_chirho,
+                        )),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                            add_binding_chirho.binder_chirho.id_chirho,
+                        )),
+                    }),
+                    arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(3))),
+                }),
+                arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(4))),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "CurriedFunctionValue".to_string(),
+            bindings_chirho: vec![apply2_binding_chirho, add_binding_chirho, main_binding_chirho],
+            names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let exit_code_chirho = compile_and_run_exit_code_chirho(&module_chirho);
+        assert_eq!(exit_code_chirho, 7);
     }
 }

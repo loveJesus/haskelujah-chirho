@@ -92,6 +92,8 @@ pub struct LowerCtxChirho<'a> {
     pub append_str_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_alloc_chirho` (boxed constructors)
     pub alloc_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_show_int_chirho` (int → string)
+    pub show_int_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
     pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
 }
@@ -167,24 +169,16 @@ pub fn lower_expr_chirho(
             } else if let Some(val_chirho) = ctx_chirho.env_chirho.lookup_chirho(*id_chirho) {
                 // Function parameters are stored directly as SSA values.
                 val_chirho
-            } else if let Some((func_ref_chirho, _arity_chirho)) =
+            } else if let Some((func_ref_chirho, arity_chirho)) =
                 ctx_chirho.func_ref_map_chirho.get(id_chirho)
             {
-                if *_arity_chirho == 0 {
-                    // Zero-arity top-level bindings are runtime values
-                    // (constants, dictionaries, thunks) in the executable
-                    // subset, so referencing them should evaluate the binding.
-                    let call_inst_chirho = builder_chirho.ins().call(*func_ref_chirho, &[]);
-                    builder_chirho.inst_results(call_inst_chirho)[0]
-                } else {
-                    // Non-zero-arity top-level functions can appear as
-                    // first-class values inside constructor payloads or be
-                    // passed to indirect calls. Materialize the function
-                    // address instead of the old zero placeholder.
-                    builder_chirho
-                        .ins()
-                        .func_addr(cl_types_chirho::I64, *func_ref_chirho)
-                }
+                lower_known_function_value_chirho(
+                    builder_chirho,
+                    ctx_chirho,
+                    *id_chirho,
+                    *func_ref_chirho,
+                    *arity_chirho,
+                )
             } else {
                 // Unresolved variable — emit 0 as a safe placeholder.
                 builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
@@ -328,12 +322,16 @@ fn lower_let_rhs_value_chirho(
 ) -> ClValueChirho {
     let lambda_arity_chirho = lambda_arity_chirho(rhs_chirho);
     if lambda_arity_chirho > 0 {
-        if let Some((func_ref_chirho, _arity_chirho)) =
+        if let Some((func_ref_chirho, arity_chirho)) =
             ctx_chirho.func_ref_map_chirho.get(&binder_id_chirho)
         {
-            return builder_chirho
-                .ins()
-                .func_addr(cl_types_chirho::I64, *func_ref_chirho);
+            return lower_known_function_value_chirho(
+                builder_chirho,
+                ctx_chirho,
+                binder_id_chirho,
+                *func_ref_chirho,
+                *arity_chirho,
+            );
         }
     }
     lower_expr_chirho(builder_chirho, ctx_chirho, rhs_chirho)
@@ -846,21 +844,28 @@ fn lower_app_chirho(
                     .pap_wrapper_ref_map_chirho
                     .get(&(*func_id_chirho, all_args_chirho.len()))
                 {
-                    let mut applied_arg_vals_chirho = Vec::with_capacity(all_args_chirho.len());
+                    let mut stored_arg_vals_chirho =
+                        Vec::with_capacity(all_args_chirho.len());
                     for arg_chirho in &all_args_chirho {
                         let arg_val_chirho =
                             lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
-                        applied_arg_vals_chirho.push(ensure_i64_chirho(
+                        stored_arg_vals_chirho.push(ensure_i64_chirho(
                             builder_chirho,
                             arg_val_chirho,
                             false,
                         ));
                     }
+                    append_lifted_capture_arg_vals_chirho(
+                        builder_chirho,
+                        ctx_chirho,
+                        *func_id_chirho,
+                        &mut stored_arg_vals_chirho,
+                    );
                     return emit_partial_application_closure_chirho(
                         builder_chirho,
                         ctx_chirho,
                         *wrapper_ref_chirho,
-                        &applied_arg_vals_chirho,
+                        &stored_arg_vals_chirho,
                     );
                 }
                 let fun_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, callee_chirho);
@@ -901,30 +906,42 @@ fn append_lifted_capture_arg_vals_chirho(
     func_id_chirho: CoreIdChirho,
     arg_vals_chirho: &mut Vec<ClValueChirho>,
 ) {
-    let Some(capture_ids_chirho) = ctx_chirho.lifted_capture_ids_chirho.get(&func_id_chirho) else {
-        return;
-    };
-    for capture_id_chirho in capture_ids_chirho {
-        let capture_val_chirho = lower_expr_chirho(
-            builder_chirho,
-            ctx_chirho,
-            &CoreExprChirho::VarChirho(*capture_id_chirho),
-        );
-        arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, capture_val_chirho, false));
-    }
+    arg_vals_chirho.extend(collect_lifted_capture_arg_vals_chirho(
+        builder_chirho,
+        ctx_chirho,
+        func_id_chirho,
+    ));
 }
 
-fn emit_partial_application_closure_chirho(
+fn collect_lifted_capture_arg_vals_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     ctx_chirho: &mut LowerCtxChirho<'_>,
-    wrapper_ref_chirho: cranelift_codegen::ir::FuncRef,
-    applied_arg_vals_chirho: &[ClValueChirho],
-) -> ClValueChirho {
-    let Some(alloc_ref_chirho) = ctx_chirho.alloc_ref_chirho else {
-        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    func_id_chirho: CoreIdChirho,
+) -> Vec<ClValueChirho> {
+    let Some(capture_ids_chirho) = ctx_chirho.lifted_capture_ids_chirho.get(&func_id_chirho) else {
+        return Vec::new();
     };
 
-    let alloc_size_chirho = ((applied_arg_vals_chirho.len() + 1) * 8) as i64;
+    capture_ids_chirho
+        .iter()
+        .map(|capture_id_chirho| {
+            let capture_val_chirho = lower_expr_chirho(
+                builder_chirho,
+                ctx_chirho,
+                &CoreExprChirho::VarChirho(*capture_id_chirho),
+            );
+            ensure_i64_chirho(builder_chirho, capture_val_chirho, false)
+        })
+        .collect()
+}
+
+pub fn emit_partial_application_closure_with_alloc_ref_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    alloc_ref_chirho: cranelift_codegen::ir::FuncRef,
+    wrapper_ref_chirho: cranelift_codegen::ir::FuncRef,
+    stored_arg_vals_chirho: &[ClValueChirho],
+) -> ClValueChirho {
+    let alloc_size_chirho = ((stored_arg_vals_chirho.len() + 1) * 8) as i64;
     let alloc_size_val_chirho = builder_chirho
         .ins()
         .iconst(cl_types_chirho::I64, alloc_size_chirho);
@@ -941,11 +958,11 @@ fn emit_partial_application_closure_chirho(
         .ins()
         .store(mem_flags_chirho, wrapper_bits_chirho, alloc_ptr_chirho, 0);
 
-    for (arg_idx_chirho, applied_arg_val_chirho) in applied_arg_vals_chirho.iter().enumerate() {
+    for (arg_idx_chirho, stored_arg_val_chirho) in stored_arg_vals_chirho.iter().enumerate() {
         let offset_chirho = ((arg_idx_chirho + 1) * 8) as i32;
         builder_chirho.ins().store(
             mem_flags_chirho,
-            *applied_arg_val_chirho,
+            *stored_arg_val_chirho,
             alloc_ptr_chirho,
             offset_chirho,
         );
@@ -955,6 +972,54 @@ fn emit_partial_application_closure_chirho(
     builder_chirho
         .ins()
         .bor(alloc_ptr_chirho, boxed_mask_chirho)
+}
+
+fn emit_partial_application_closure_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    wrapper_ref_chirho: cranelift_codegen::ir::FuncRef,
+    stored_arg_vals_chirho: &[ClValueChirho],
+) -> ClValueChirho {
+    let Some(alloc_ref_chirho) = ctx_chirho.alloc_ref_chirho else {
+        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    };
+    emit_partial_application_closure_with_alloc_ref_chirho(
+        builder_chirho,
+        alloc_ref_chirho,
+        wrapper_ref_chirho,
+        stored_arg_vals_chirho,
+    )
+}
+
+fn lower_known_function_value_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    func_id_chirho: CoreIdChirho,
+    func_ref_chirho: cranelift_codegen::ir::FuncRef,
+    arity_chirho: usize,
+) -> ClValueChirho {
+    if arity_chirho == 0 {
+        let call_inst_chirho = builder_chirho.ins().call(func_ref_chirho, &[]);
+        return builder_chirho.inst_results(call_inst_chirho)[0];
+    }
+
+    let hidden_capture_arg_vals_chirho =
+        collect_lifted_capture_arg_vals_chirho(builder_chirho, ctx_chirho, func_id_chirho);
+    if let Some(wrapper_ref_chirho) = ctx_chirho
+        .pap_wrapper_ref_map_chirho
+        .get(&(func_id_chirho, 0))
+    {
+        return emit_partial_application_closure_chirho(
+            builder_chirho,
+            ctx_chirho,
+            *wrapper_ref_chirho,
+            &hidden_capture_arg_vals_chirho,
+        );
+    }
+
+    builder_chirho
+        .ins()
+        .func_addr(cl_types_chirho::I64, func_ref_chirho)
 }
 
 fn lower_indirect_call_with_sig_chirho(
@@ -1088,12 +1153,12 @@ pub fn lower_primop_chirho(
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
             builder_chirho.ins().imul(lhs_chirho, rhs_chirho)
         }
-        "div#" | "quot#" => {
+        "div#" | "quot#" | "divInt#" | "quotInt#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
             builder_chirho.ins().sdiv(lhs_chirho, rhs_chirho)
         }
-        "mod#" | "rem#" => {
+        "mod#" | "rem#" | "modInt#" | "remInt#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
             builder_chirho.ins().srem(lhs_chirho, rhs_chirho)
@@ -1101,6 +1166,75 @@ pub fn lower_primop_chirho(
         "negate#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             builder_chirho.ins().ineg(lhs_chirho)
+        }
+        "absInt#" => {
+            let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let neg_chirho = builder_chirho.ins().ineg(lhs_chirho);
+            let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+            let is_neg_chirho = builder_chirho.ins().icmp(
+                IntCcChirho::SignedLessThan,
+                lhs_chirho,
+                zero_chirho,
+            );
+            builder_chirho
+                .ins()
+                .select(is_neg_chirho, neg_chirho, lhs_chirho)
+        }
+        "signumInt#" => {
+            let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+            let one_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 1);
+            let neg_one_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, -1i64);
+            let is_neg_chirho = builder_chirho.ins().icmp(
+                IntCcChirho::SignedLessThan,
+                lhs_chirho,
+                zero_chirho,
+            );
+            let is_zero_chirho =
+                builder_chirho
+                    .ins()
+                    .icmp(IntCcChirho::Equal, lhs_chirho, zero_chirho);
+            let neg_or_pos_chirho =
+                builder_chirho
+                    .ins()
+                    .select(is_neg_chirho, neg_one_chirho, one_chirho);
+            builder_chirho
+                .ins()
+                .select(is_zero_chirho, zero_chirho, neg_or_pos_chirho)
+        }
+        "minInt#" => {
+            let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
+            let cmp_chirho = builder_chirho.ins().icmp(
+                IntCcChirho::SignedLessThan,
+                lhs_chirho,
+                rhs_chirho,
+            );
+            builder_chirho
+                .ins()
+                .select(cmp_chirho, lhs_chirho, rhs_chirho)
+        }
+        "maxInt#" => {
+            let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
+            let cmp_chirho = builder_chirho.ins().icmp(
+                IntCcChirho::SignedGreaterThan,
+                lhs_chirho,
+                rhs_chirho,
+            );
+            builder_chirho
+                .ins()
+                .select(cmp_chirho, lhs_chirho, rhs_chirho)
+        }
+        "showInt#" => {
+            // Call RTS haskelujah_show_int_chirho(i64) -> ptr
+            let val_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            if let Some(show_ref_chirho) = ctx_chirho.show_int_ref_chirho {
+                let call_chirho = builder_chirho.ins().call(show_ref_chirho, &[val_chirho]);
+                builder_chirho.inst_results(call_chirho)[0]
+            } else {
+                builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
+            }
         }
         "^#" => {
             // Integer power — simplified: return lhs^rhs via repeated multiply
