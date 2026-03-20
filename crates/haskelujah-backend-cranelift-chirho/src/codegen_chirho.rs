@@ -1827,8 +1827,8 @@ fn lower_binding_chirho(
             put_str_func_id_chirho,
             get_line_func_id_chirho,
             write_file_func_id_chirho,
-            unpack_string_func_id_chirho,
             read_file_func_id_chirho,
+            unpack_string_func_id_chirho,
             string_data_ids_chirho,
         )?;
     }
@@ -1855,9 +1855,9 @@ fn lower_binding_chirho(
         show_float_func_id_chirho,
         put_str_func_id_chirho,
         get_line_func_id_chirho,
-            unpack_string_func_id_chirho,
         write_file_func_id_chirho,
         read_file_func_id_chirho,
+        unpack_string_func_id_chirho,
         string_data_ids_chirho,
     )?;
 
