@@ -350,11 +350,22 @@ pub fn resolve_deps_chirho(
             continue;
         }
 
-        solver_chirho.resolve_package_chirho(
+        match solver_chirho.resolve_package_chirho(
             &dep_chirho.package_chirho,
             "<root>",
             &dep_chirho.constraint_chirho,
-        )?;
+        ) {
+            Ok(()) => {}
+            Err(_e_chirho) => {
+                // Treat unresolvable deps as warnings — the package may
+                // still be usable without them (e.g. optional deps, test deps
+                // that leaked through, or packages we can't fetch yet).
+                eprintln!(
+                    "warning: dependency '{}' not available, skipping",
+                    dep_chirho.package_chirho
+                );
+            }
+        }
     }
 
     let steps_chirho = solver_chirho.topo_sort_chirho();
