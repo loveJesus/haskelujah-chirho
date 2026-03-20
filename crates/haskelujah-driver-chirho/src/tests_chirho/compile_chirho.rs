@@ -2720,3 +2720,61 @@ main = do
         assert_eq!(stdout_chirho.trim(), "6\n75");
     }
 }
+
+#[test]
+fn llvm_round_trip_foldl_at_scale_chirho() {
+    // foldl with 2-arg HOF at 10K elements
+    let src_chirho = r#"module Main where
+myFoldl :: (Int -> Int -> Int) -> Int -> [Int] -> Int
+myFoldl _ acc [] = acc
+myFoldl f acc (x:xs) = myFoldl f (f acc x) xs
+enumFromTo :: Int -> Int -> [Int]
+enumFromTo lo hi = if lo > hi then [] else lo : enumFromTo (lo + 1) hi
+add :: Int -> Int -> Int
+add x y = x + y
+main :: IO ()
+main = print (myFoldl add 0 (enumFromTo 1 10000))
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "50005000");
+    }
+}
+
+#[test]
+fn llvm_round_trip_merge_sort_chirho() {
+    // Full merge sort with take/drop/merge
+    let src_chirho = r#"module Main where
+merge :: [Int] -> [Int] -> [Int]
+merge [] ys = ys
+merge xs [] = xs
+merge (x:xs) (y:ys) = if x <= y then x : merge xs (y:ys) else y : merge (x:xs) ys
+myTake :: Int -> [Int] -> [Int]
+myTake 0 _ = []
+myTake _ [] = []
+myTake n (x:xs) = x : myTake (n - 1) xs
+myDrop :: Int -> [Int] -> [Int]
+myDrop 0 xs = xs
+myDrop _ [] = []
+myDrop n (_:xs) = myDrop (n - 1) xs
+myLength :: [Int] -> Int
+myLength [] = 0
+myLength (_:xs) = 1 + myLength xs
+msort :: [Int] -> [Int]
+msort [] = []
+msort (x:[]) = [x]
+msort xs = merge (msort (myTake half xs)) (msort (myDrop half xs))
+  where half = myLength xs `div` 2
+sumList :: [Int] -> Int
+sumList [] = 0
+sumList (x:xs) = x + sumList xs
+main :: IO ()
+main = print (sumList (msort [9, 3, 7, 1, 8, 2, 6, 4, 5]))
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "45");
+    }
+}
