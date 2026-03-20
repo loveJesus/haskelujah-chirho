@@ -34,7 +34,7 @@ fi
 BACKEND_MATURITY_CHIRHO='{
   "llvm_chirho": "beta",
   "wasm_chirho": "beta",
-  "cranelift_chirho": "experimental",
+  "cranelift_chirho": "beta",
   "jvm_chirho": "research",
   "beam_chirho": "research"
 }'
