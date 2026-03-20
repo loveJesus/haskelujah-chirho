@@ -1627,6 +1627,11 @@ impl DesugarCtxChirho {
             .into_iter()
             .map(|(con_chirho, arms_chirho)| {
                 self.push_scope_chirho();
+                self.bind_prior_default_pat_vars_to_params_chirho(
+                    arms_chirho[0],
+                    param_binders_chirho,
+                    pat_idx_chirho,
+                );
                 // Guard: if pat_idx is out of bounds (malformed input), fall
                 // through to default alt with the RHS of the first arm.
                 if arms_chirho[0].pats_chirho.len() <= pat_idx_chirho {
@@ -1861,6 +1866,34 @@ impl DesugarCtxChirho {
         };
         self.pop_scope_chirho();
         result_chirho
+    }
+
+    fn bind_prior_default_pat_vars_to_params_chirho(
+        &mut self,
+        arm_chirho: &MatchArmChirho,
+        param_binders_chirho: &[BinderChirho],
+        pat_idx_chirho: usize,
+    ) {
+        for (prior_idx_chirho, prior_pat_chirho) in arm_chirho
+            .pats_chirho
+            .iter()
+            .take(pat_idx_chirho)
+            .enumerate()
+        {
+            if !matches!(
+                self.pat_to_alt_con_chirho(prior_pat_chirho),
+                AltConChirho::DefaultChirho
+            ) {
+                continue;
+            }
+            let Some(param_binder_chirho) = param_binders_chirho.get(prior_idx_chirho) else {
+                continue;
+            };
+            self.bind_var_pat_to_case_binder_chirho(
+                prior_pat_chirho,
+                param_binder_chirho.id_chirho,
+            );
+        }
     }
 
     /// Pre-bind where-clause names for specific indices (fun-binds only).

@@ -135,3 +135,11 @@ fn cranelift_round_trip_nested_singleton_pattern_var_fallback_chirho() {
     );
     assert_eq!(stdout_chirho, "2\n");
 }
+
+#[test]
+fn cranelift_round_trip_merge_sort_preserves_all_elements_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nmerge [] ys = ys\nmerge xs [] = xs\nmerge (x:xs) (y:ys) = if x <= y then x : merge xs (y:ys) else y : merge (x:xs) ys\nmsort [] = []\nmsort (x:[]) = [x]\nmsort xs = merge (msort (take (div (length xs) 2) xs)) (msort (drop (div (length xs) 2) xs))\nprintList [] = putStrLn \"\"\nprintList (x:xs) = do print x; printList xs\nmain = printList (msort [5,3,8,1,9,2,7,4,6])\n",
+    );
+    assert_eq!(stdout_chirho, "1\n2\n3\n4\n5\n6\n7\n8\n9\n\n");
+}
