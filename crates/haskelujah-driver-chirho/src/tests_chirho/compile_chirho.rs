@@ -1838,3 +1838,25 @@ main = do
         assert_eq!(lines_chirho[2], "abs = 42", "show Int via abs");
     }
 }
+
+#[test]
+fn cranelift_round_trip_tco_euler1_chirho() {
+    let src_chirho = r#"module Main where
+euler1 :: Int -> Int
+euler1 limit = go 0 0
+  where go acc n = if n >= limit then acc
+                   else if n `mod` 3 == 0 || n `mod` 5 == 0
+                        then go (acc + n) (n + 1)
+                        else go acc (n + 1)
+main = print (euler1 1000000)
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "TCO euler1 should not stack overflow");
+        assert_eq!(
+            stdout_chirho.trim(),
+            "233333166668",
+            "euler1(1000000) = 233333166668"
+        );
+    }
+}
