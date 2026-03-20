@@ -110,6 +110,8 @@ pub struct LowerCtxChirho<'a> {
     pub read_file_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_unpack_string_chirho`
     pub unpack_string_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_pack_string_chirho`
+    pub pack_string_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
     pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
     /// Current function Core id, used for self-tail-call elimination.
@@ -1936,21 +1938,12 @@ pub fn lower_primop_chirho(
         // ── pack# — convert [Char] cons-list to C string ────────────────
         "pack#" => {
             let val_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
-            // Reuse unpack_string_ref since pack has the same signature (i64 → i64)
-            // We need a separate FuncRef for pack. For now, use call_indirect.
-            let mut sig_chirho = builder_chirho.func.stencil.signature.clone();
-            sig_chirho.params.clear();
-            sig_chirho.returns.clear();
-            sig_chirho
-                .params
-                .push(cranelift_codegen::ir::AbiParam::new(cl_types_chirho::I64));
-            sig_chirho
-                .returns
-                .push(cranelift_codegen::ir::AbiParam::new(cl_types_chirho::I64));
-            // Try to find the pack function by searching for it
-            // For now, just return the input as-is (strings and char lists are both i64)
-            // TODO: wire haskelujah_pack_string_chirho FuncRef properly
-            val_chirho
+            if let Some(pack_ref_chirho) = ctx_chirho.pack_string_ref_chirho {
+                let call_chirho = builder_chirho.ins().call(pack_ref_chirho, &[val_chirho]);
+                builder_chirho.inst_results(call_chirho)[0]
+            } else {
+                val_chirho // fallback: return input as-is
+            }
         }
 
         // ── Unknown primop ─────────────────────────────────────────────────
