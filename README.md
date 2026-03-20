@@ -12,10 +12,10 @@ Haskelujah Chirho is a Haskell compiler written in Rust, aiming to be a drop-in 
 
 | Metric | Value |
 |---|---|
-| GHC Compat | **858/938 (91.5%)** typecheck/should_compile |
+| GHC Compat | **859/938 (91.6%)** typecheck/should_compile |
 | Tests | **2,121 passing**, 0 failures |
-| Workspace | 21 crates, 129 Rust source files |
-| Codebase | ~140,000 lines of Rust |
+| Workspace | 21 crates, 131 Rust source files |
+| Codebase | ~150,000 lines of Rust |
 | Module interfaces | 280 synthetic Haskell modules |
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |
@@ -194,9 +194,9 @@ haskelujah clean .          # Remove build artifacts
 
 | Feature | GHC | Haskelujah Chirho |
 |---------|-----|-------------------|
-| Type checking | Reference | 91.5% compatible (858/938) |
+| Type checking | Reference | 91.6% compatible (859/938) |
 | Compilation speed | ~1-5s for small files | ~0.2-0.4s |
-| Runtime (fib 40) | 0.39s (-O2) | 0.32s (18% faster) |
+| Runtime (fib 40) | 0.39s (-O2) | 0.32s (Cranelift 0.35s, LLVM 0.32s) |
 | Native code | Via NCG or LLVM | Cranelift (default) or LLVM + clang |
 | WebAssembly | Via Asterius/GHCJS | Built-in (beta) |
 | Package manager | cabal-install / Stack | Built-in `build` command |
