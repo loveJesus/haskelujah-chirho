@@ -2157,6 +2157,23 @@ main = print (myLen (range 1 10000))
 }
 
 #[test]
+fn cranelift_round_trip_range_100000_chirho() {
+    let src_chirho = r#"module Main where
+range :: Int -> Int -> [Int]
+range lo hi = if lo > hi then [] else lo : range (lo + 1) hi
+myLen :: [Int] -> Int
+myLen [] = 0
+myLen (_:xs) = 1 + myLen xs
+main = print (myLen (range 1 100000))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "range 100000 should work");
+        assert_eq!(stdout_chirho.trim(), "100000", "len of range 1..100000");
+    }
+}
+
+#[test]
 fn cranelift_round_trip_put_str_no_newline_chirho() {
     let src_chirho = r#"module Main where
 main :: IO ()
