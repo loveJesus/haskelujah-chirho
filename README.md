@@ -120,6 +120,8 @@ haskelujah build my-project/
 
 # Compile and run (LLVM native, falls back to STG interpreter)
 haskelujah run MyModule.hs
+# Or simply (implicit run for .hs files — works as shebang)
+haskelujah MyModule.hs
 
 # Type-check a Haskell source file
 haskelujah check MyModule.hs
@@ -135,6 +137,9 @@ haskelujah compile MyModule.hs --cranelift -o main
 
 # Start the REPL
 haskelujah repl
+
+# Use as shebang interpreter
+#!/usr/bin/env haskelujah
 ```
 
 **REPL commands:** `:type <expr>`, `:info <name>`, `:load <file>`, `:reload`, `:let <decl>`, `:clear`, `:{`/`:}` (multi-line), `:quit`
