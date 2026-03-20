@@ -196,9 +196,18 @@ fn main_chirho() -> ExitCode {
         "init" => init_command_chirho(path_chirho),
         "clean" => clean_command_chirho(path_chirho),
         _ => {
-            eprintln!("unknown command `{command_chirho}`");
-            print_usage_chirho(program_name_chirho);
-            ExitCode::from(2)
+            // If the "command" looks like a .hs file, treat as implicit `run`
+            if command_chirho.ends_with(".hs") && std::path::Path::new(command_chirho).exists() {
+                run_command_chirho(
+                    program_name_chirho,
+                    Some(command_chirho.to_string()),
+                    &flags_chirho,
+                )
+            } else {
+                eprintln!("unknown command `{command_chirho}`");
+                print_usage_chirho(program_name_chirho);
+                ExitCode::from(2)
+            }
         }
     }
 }
