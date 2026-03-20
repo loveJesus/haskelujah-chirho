@@ -589,26 +589,30 @@
 		letter-spacing: -0.03em;
 		line-height: 1.1;
 		margin-bottom: 1rem;
+		padding: 0.5rem 1.5rem;
+		display: inline-block;
+		background: rgba(10, 8, 5, 0.55);
+		border-radius: 16px;
 		text-shadow:
-			0 -4px 20px rgba(246, 190, 96, 0.4),
-			0 -8px 40px rgba(246, 190, 96, 0.2),
-			0 2px 8px rgba(0, 0, 0, 0.5);
+			0 -4px 20px rgba(246, 190, 96, 0.5),
+			0 -8px 40px rgba(246, 190, 96, 0.25),
+			0 2px 8px rgba(0, 0, 0, 0.7);
 	}
 
 	.hero-accent-chirho {
-		background: linear-gradient(135deg, #ffd700, #f6be60, #ffeaa7, #71d7d1);
+		background: linear-gradient(135deg, #ffd700, #ffcc33, #ffeaa7, #71d7d1);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
-		filter: drop-shadow(0 -3px 12px rgba(255, 215, 0, 0.35));
+		filter: drop-shadow(0 -3px 16px rgba(255, 215, 0, 0.5)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
 	}
 
 	.hero-subtitle-chirho {
 		font-size: 1.35rem;
-		color: var(--text-soft-chirho);
-		font-weight: 400;
+		color: #fff;
+		font-weight: 500;
 		margin-bottom: 1.5rem;
-		text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+		text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 2px 12px rgba(0, 0, 0, 0.6);
 	}
 
 	.hero-description-chirho {
