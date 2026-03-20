@@ -22,6 +22,7 @@ use haskelujah_span_chirho::SourceMapChirho;
 
 // Keep CLI linking on the same unoptimized path the LLVM round-trip tests verify.
 const CLANG_OPT_LEVEL_CHIRHO: &str = "-O0";
+const LINKER_STACK_SIZE_ARG_CHIRHO: &str = "-Wl,-stack_size,0x10000000";
 
 fn main() -> ExitCode {
     main_chirho()
@@ -700,6 +701,7 @@ fn link_llvm_file_chirho(
         "-o",
         output_path_str_chirho,
         llvm_path_str_chirho,
+        LINKER_STACK_SIZE_ARG_CHIRHO,
     ]);
     append_rts_link_args_chirho(&mut clang_command_chirho, &rts_lib_dir_chirho);
     if suppress_stderr_chirho {
@@ -752,8 +754,8 @@ fn link_cranelift_object_file_chirho(
         output_path_str_chirho,
         obj_path_str_chirho,
         "-Wl,-no_fixup_chains",
-        // 32MB stack for deeper recursion (non-TCO list operations)
-        "-Wl,-stack_size,0x2000000",
+        // 256MB stack for deeper non-tail-recursive list workloads.
+        LINKER_STACK_SIZE_ARG_CHIRHO,
     ]);
     append_rts_link_args_chirho(&mut linker_command_chirho, &rts_lib_dir_chirho);
     let linker_status_chirho = linker_command_chirho.status().map_err(|error_chirho| {
