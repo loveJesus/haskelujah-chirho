@@ -1410,6 +1410,22 @@ main = do
         assert_eq!(stdout_chirho, "42\n");
     }
 
+    #[test]
+    fn cranelift_round_trip_where_capture_output_chirho() {
+        let src_chirho = r#"module Main where
+f x = go 0 where
+  go n = if n >= x then n else go (n + 1)
+main = print (f 5)
+"#;
+        let (exit_code_chirho, stdout_chirho) =
+            cranelift_round_trip_output_chirho(src_chirho).expect("where capture Cranelift round-trip");
+        assert_eq!(
+            exit_code_chirho, 0,
+            "where-capture Cranelift executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "5\n");
+    }
+
     // ---------------------------------------------------------------
     // §29 — Structured error messages with "did you mean?" suggestions
     // ---------------------------------------------------------------

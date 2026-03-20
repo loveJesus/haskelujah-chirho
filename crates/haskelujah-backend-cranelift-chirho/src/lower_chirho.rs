@@ -74,6 +74,10 @@ pub struct LowerCtxChirho<'a> {
     /// This includes top-level bindings and lifted local lambdas, each already
     /// imported into the current function via `declare_func_in_func`.
     pub func_ref_map_chirho: &'a HashMap<CoreIdChirho, (cranelift_codegen::ir::FuncRef, usize)>,
+    /// Captured outer runtime ids for lifted local functions. Top-level
+    /// functions are absent; lifted helpers list the extra values that must be
+    /// appended to direct calls in declaration order.
+    pub lifted_capture_ids_chirho: &'a HashMap<CoreIdChirho, Vec<CoreIdChirho>>,
     /// Map of (target CoreId, applied arg count) → wrapper FuncRef for boxed
     /// partial applications.
     pub pap_wrapper_ref_map_chirho:
@@ -818,6 +822,12 @@ fn lower_app_chirho(
                         false,
                     ));
                 }
+                append_lifted_capture_arg_vals_chirho(
+                    builder_chirho,
+                    ctx_chirho,
+                    *func_id_chirho,
+                    &mut direct_arg_vals_chirho,
+                );
                 let direct_call_inst_chirho = builder_chirho
                     .ins()
                     .call(*func_ref_chirho, &direct_arg_vals_chirho);
@@ -865,6 +875,12 @@ fn lower_app_chirho(
                 let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, a_chirho);
                 arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, val_chirho, false));
             }
+            append_lifted_capture_arg_vals_chirho(
+                builder_chirho,
+                ctx_chirho,
+                *func_id_chirho,
+                &mut arg_vals_chirho,
+            );
 
             let call_inst_chirho = builder_chirho
                 .ins()
@@ -875,6 +891,25 @@ fn lower_app_chirho(
 
     let fun_ptr_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, fun_chirho);
     lower_indirect_app_chirho(builder_chirho, ctx_chirho, fun_ptr_chirho, &[arg_chirho])
+}
+
+fn append_lifted_capture_arg_vals_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    func_id_chirho: CoreIdChirho,
+    arg_vals_chirho: &mut Vec<ClValueChirho>,
+) {
+    let Some(capture_ids_chirho) = ctx_chirho.lifted_capture_ids_chirho.get(&func_id_chirho) else {
+        return;
+    };
+    for capture_id_chirho in capture_ids_chirho {
+        let capture_val_chirho = lower_expr_chirho(
+            builder_chirho,
+            ctx_chirho,
+            &CoreExprChirho::VarChirho(*capture_id_chirho),
+        );
+        arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, capture_val_chirho, false));
+    }
 }
 
 fn emit_partial_application_closure_chirho(

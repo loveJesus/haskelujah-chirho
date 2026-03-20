@@ -258,6 +258,7 @@ struct LocalLiftedBindingChirho {
     rhs_chirho: CoreExprChirho,
     symbol_name_chirho: String,
     arity_chirho: usize,
+    captured_ids_chirho: Vec<haskelujah_core_chirho::expr_chirho::CoreIdChirho>,
 }
 
 #[derive(Debug, Clone)]
@@ -298,6 +299,7 @@ fn collect_local_lambda_bindings_chirho(
                         rhs_chirho: rhs_chirho.clone(),
                         symbol_name_chirho,
                         arity_chirho,
+                        captured_ids_chirho: Vec::new(),
                     });
                 }
                 collect_local_lambda_bindings_chirho(
@@ -405,8 +407,10 @@ fn declare_local_lifted_bindings_chirho(
 ) -> Result<FuncDeclMapChirho, String> {
     let mut local_decl_map_chirho = HashMap::new();
     for lifted_binding_chirho in lifted_bindings_chirho {
-        let sig_chirho =
-            declare_function_signature_chirho(module_chirho, lifted_binding_chirho.arity_chirho);
+        let sig_chirho = declare_function_signature_chirho(
+            module_chirho,
+            lifted_binding_chirho.arity_chirho + lifted_binding_chirho.captured_ids_chirho.len(),
+        );
         let func_id_chirho = module_chirho
             .declare_function(
                 &lifted_binding_chirho.symbol_name_chirho,
@@ -788,12 +792,19 @@ fn collect_free_runtime_var_ids_chirho(
     imported_decl_map_chirho: &FuncDeclMapChirho,
 ) -> Vec<haskelujah_core_chirho::expr_chirho::CoreIdChirho> {
     let known_func_ids_chirho: HashSet<_> = imported_decl_map_chirho.keys().copied().collect();
+    collect_free_runtime_var_ids_with_known_ids_chirho(expr_chirho, &known_func_ids_chirho)
+}
+
+fn collect_free_runtime_var_ids_with_known_ids_chirho(
+    expr_chirho: &CoreExprChirho,
+    known_func_ids_chirho: &HashSet<haskelujah_core_chirho::expr_chirho::CoreIdChirho>,
+) -> Vec<haskelujah_core_chirho::expr_chirho::CoreIdChirho> {
     let mut bound_ids_chirho = HashSet::new();
     let mut seen_ids_chirho = HashSet::new();
     let mut free_ids_chirho = Vec::new();
     collect_free_runtime_var_ids_inner_chirho(
         expr_chirho,
-        &known_func_ids_chirho,
+        known_func_ids_chirho,
         &mut bound_ids_chirho,
         &mut seen_ids_chirho,
         &mut free_ids_chirho,
@@ -862,6 +873,9 @@ fn bind_missing_param_aliases_chirho(
         .collect();
 
     for (alias_id_chirho, source_id_chirho) in alias_pairs_chirho {
+        if env_chirho.lookup_chirho(alias_id_chirho).is_some() {
+            continue;
+        }
         if let Some(source_val_chirho) = param_vals_by_id_chirho.get(&source_id_chirho) {
             env_chirho.bind_chirho(alias_id_chirho, *source_val_chirho);
         }
@@ -948,7 +962,12 @@ fn define_function_body_chirho(
     func_id_chirho: cranelift_module::FuncId,
     debug_name_chirho: &str,
     rhs_chirho: &CoreExprChirho,
+    current_capture_ids_chirho: &[haskelujah_core_chirho::expr_chirho::CoreIdChirho],
     imported_decl_map_chirho: &FuncDeclMapChirho,
+    lifted_capture_ids_map_chirho: &HashMap<
+        haskelujah_core_chirho::expr_chirho::CoreIdChirho,
+        Vec<haskelujah_core_chirho::expr_chirho::CoreIdChirho>,
+    >,
     pap_wrapper_decl_map_chirho: &HashMap<PapWrapperKeyChirho, cranelift_module::FuncId>,
     toplevel_names_chirho: &HashMap<haskelujah_core_chirho::expr_chirho::CoreIdChirho, String>,
     put_str_ln_func_id_chirho: Option<cranelift_module::FuncId>,
@@ -957,7 +976,10 @@ fn define_function_body_chirho(
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let (param_binders_chirho, body_chirho) = peel_lambdas_chirho(rhs_chirho);
-    let sig_chirho = declare_function_signature_chirho(module_chirho, param_binders_chirho.len());
+    let sig_chirho = declare_function_signature_chirho(
+        module_chirho,
+        param_binders_chirho.len() + current_capture_ids_chirho.len(),
+    );
 
     let mut func_chirho = ClFunctionChirho::with_name_signature(
         cranelift_codegen::ir::UserFuncName::user(0, func_id_chirho.as_u32()),
@@ -997,6 +1019,14 @@ fn define_function_body_chirho(
         {
             env_chirho.bind_chirho(binder_chirho.id_chirho, *param_val_chirho);
         }
+        for (capture_idx_chirho, capture_id_chirho) in current_capture_ids_chirho.iter().enumerate()
+        {
+            if let Some(capture_val_chirho) =
+                block_params_chirho.get(param_binders_chirho.len() + capture_idx_chirho)
+            {
+                env_chirho.bind_chirho(*capture_id_chirho, *capture_val_chirho);
+            }
+        }
         bind_missing_param_aliases_chirho(
             &mut env_chirho,
             &param_binders_chirho,
@@ -1030,6 +1060,7 @@ fn define_function_body_chirho(
             next_var_idx_chirho: &mut next_var_idx_chirho,
             cl_vars_chirho: &mut cl_vars_chirho,
             func_ref_map_chirho: &func_ref_map_chirho,
+            lifted_capture_ids_chirho: lifted_capture_ids_map_chirho,
             pap_wrapper_ref_map_chirho: &pap_wrapper_ref_map_chirho,
             toplevel_names_chirho,
             put_str_ln_ref_chirho: put_str_ln_fref_chirho,
@@ -1169,6 +1200,19 @@ fn lower_binding_chirho(
         &mut next_local_idx_chirho,
         &mut lifted_bindings_chirho,
     );
+    let mut known_func_ids_chirho: HashSet<_> = func_decl_map_chirho.keys().copied().collect();
+    known_func_ids_chirho.extend(
+        lifted_bindings_chirho
+            .iter()
+            .map(|lifted_binding_chirho| lifted_binding_chirho.binder_chirho.id_chirho),
+    );
+    for lifted_binding_chirho in &mut lifted_bindings_chirho {
+        lifted_binding_chirho.captured_ids_chirho =
+            collect_free_runtime_var_ids_with_known_ids_chirho(
+                &lifted_binding_chirho.rhs_chirho,
+                &known_func_ids_chirho,
+            );
+    }
     let local_decl_map_chirho =
         declare_local_lifted_bindings_chirho(module_chirho, &lifted_bindings_chirho)?;
 
@@ -1189,6 +1233,15 @@ fn lower_binding_chirho(
     );
     let pap_wrapper_decl_map_chirho =
         declare_pap_wrappers_chirho(module_chirho, &pap_wrappers_chirho)?;
+    let lifted_capture_ids_map_chirho: HashMap<_, _> = lifted_bindings_chirho
+        .iter()
+        .map(|lifted_binding_chirho| {
+            (
+                lifted_binding_chirho.binder_chirho.id_chirho,
+                lifted_binding_chirho.captured_ids_chirho.clone(),
+            )
+        })
+        .collect();
 
     let toplevel_names_chirho: HashMap<haskelujah_core_chirho::expr_chirho::CoreIdChirho, String> =
         core_module_chirho
@@ -1217,7 +1270,9 @@ fn lower_binding_chirho(
             *lifted_func_id_chirho,
             &lifted_binding_chirho.symbol_name_chirho,
             &lifted_binding_chirho.rhs_chirho,
+            &lifted_binding_chirho.captured_ids_chirho,
             &imported_decl_map_chirho,
+            &lifted_capture_ids_map_chirho,
             &pap_wrapper_decl_map_chirho,
             &toplevel_names_chirho,
             put_str_ln_func_id_chirho,
@@ -1233,7 +1288,9 @@ fn lower_binding_chirho(
         func_id_chirho,
         name_chirho,
         &binding_chirho.rhs_chirho,
+        &[],
         &imported_decl_map_chirho,
+        &lifted_capture_ids_map_chirho,
         &pap_wrapper_decl_map_chirho,
         &toplevel_names_chirho,
         put_str_ln_func_id_chirho,
