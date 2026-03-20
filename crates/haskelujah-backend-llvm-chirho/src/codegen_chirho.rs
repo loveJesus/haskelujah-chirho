@@ -1564,6 +1564,39 @@ impl LlvmCodegenChirho {
         }
     }
 
+    /// Check if an expression references a specific CoreId (for dependency sorting).
+    fn expr_references_id_chirho(&self, expr_chirho: &CoreExprChirho, target_chirho: CoreIdChirho) -> bool {
+        match expr_chirho {
+            CoreExprChirho::VarChirho(id_chirho) => *id_chirho == target_chirho,
+            CoreExprChirho::AppChirho { fun_chirho, arg_chirho, .. } => {
+                self.expr_references_id_chirho(fun_chirho, target_chirho)
+                    || self.expr_references_id_chirho(arg_chirho, target_chirho)
+            }
+            CoreExprChirho::LamChirho { body_chirho, .. } => {
+                self.expr_references_id_chirho(body_chirho, target_chirho)
+            }
+            CoreExprChirho::LetChirho { binds_chirho, body_chirho, .. } => {
+                binds_chirho.iter().any(|(_, rhs_chirho)| self.expr_references_id_chirho(rhs_chirho, target_chirho))
+                    || self.expr_references_id_chirho(body_chirho, target_chirho)
+            }
+            CoreExprChirho::CaseChirho { scrutinee_chirho, alts_chirho, .. } => {
+                self.expr_references_id_chirho(scrutinee_chirho, target_chirho)
+                    || alts_chirho.iter().any(|alt_chirho| self.expr_references_id_chirho(&alt_chirho.rhs_chirho, target_chirho))
+            }
+            CoreExprChirho::PrimOpChirho { args_chirho, .. }
+            | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+                args_chirho.iter().any(|a_chirho| self.expr_references_id_chirho(a_chirho, target_chirho))
+            }
+            CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+                self.expr_references_id_chirho(body_chirho, target_chirho)
+            }
+            CoreExprChirho::TyAppChirho { expr_chirho: inner_chirho, .. } => {
+                self.expr_references_id_chirho(inner_chirho, target_chirho)
+            }
+            _ => false,
+        }
+    }
+
     /// Compile a Core expression, returning the LLVM value name holding the result.
     fn compile_expr_chirho(&mut self, expr_chirho: &CoreExprChirho) -> String {
         match expr_chirho {

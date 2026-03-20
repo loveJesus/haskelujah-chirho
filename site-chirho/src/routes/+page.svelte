@@ -550,9 +550,9 @@
 		inset: 0;
 		background: linear-gradient(
 			180deg,
-			rgba(18, 15, 11, 0.55) 0%,
-			rgba(18, 15, 11, 0.70) 50%,
-			rgba(18, 15, 11, 0.85) 100%
+			rgba(18, 15, 11, 0.30) 0%,
+			rgba(18, 15, 11, 0.45) 40%,
+			rgba(18, 15, 11, 0.75) 100%
 		);
 		z-index: 0;
 	}
@@ -589,14 +589,18 @@
 		letter-spacing: -0.03em;
 		line-height: 1.1;
 		margin-bottom: 1rem;
-		text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 1px 3px rgba(0, 0, 0, 0.4);
+		text-shadow:
+			0 -4px 20px rgba(246, 190, 96, 0.4),
+			0 -8px 40px rgba(246, 190, 96, 0.2),
+			0 2px 8px rgba(0, 0, 0, 0.5);
 	}
 
 	.hero-accent-chirho {
-		background: linear-gradient(135deg, var(--accent-gold-chirho), var(--accent-cyan-chirho));
+		background: linear-gradient(135deg, #ffd700, #f6be60, #ffeaa7, #71d7d1);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
+		filter: drop-shadow(0 -3px 12px rgba(255, 215, 0, 0.35));
 	}
 
 	.hero-subtitle-chirho {
