@@ -2395,3 +2395,28 @@ main = do
         assert_eq!(stdout_chirho.trim(), "111\n0");
     }
 }
+
+#[test]
+fn llvm_round_trip_adt_constructor_fields_chirho() {
+    // ADT constructor field extraction + Maybe pattern matching
+    let src_chirho = r#"module Main where
+data Shape = Circle Int | Rectangle Int Int
+area :: Shape -> Int
+area (Circle r) = r * r
+area (Rectangle w h) = w * h
+fromMaybe :: Int -> Maybe Int -> Int
+fromMaybe def Nothing = def
+fromMaybe _ (Just x) = x
+main :: IO ()
+main = do
+  print (area (Circle 7))
+  print (area (Rectangle 3 4))
+  print (fromMaybe 0 (Just 42))
+  print (fromMaybe (-1) Nothing)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "49\n12\n42\n-1");
+    }
+}
