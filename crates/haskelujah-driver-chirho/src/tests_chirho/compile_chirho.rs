@@ -2571,3 +2571,34 @@ main = do
         assert_eq!(stdout_chirho.trim(), "7");
     }
 }
+
+#[test]
+fn llvm_round_trip_list_map_filter_sum_chirho() {
+    // List operations: enumFromTo, map with lambda, filter, sum
+    let src_chirho = r#"module Main where
+enumFromTo :: Int -> Int -> [Int]
+enumFromTo lo hi = if lo > hi then [] else lo : enumFromTo (lo + 1) hi
+myMap :: (Int -> Int) -> [Int] -> [Int]
+myMap _ [] = []
+myMap f (x:xs) = f x : myMap f xs
+myFilter :: (Int -> Bool) -> [Int] -> [Int]
+myFilter _ [] = []
+myFilter p (x:xs) = if p x then x : myFilter p xs else myFilter p xs
+sumList :: [Int] -> Int
+sumList [] = 0
+sumList (x:xs) = x + sumList xs
+isEven :: Int -> Bool
+isEven n = n `mod` 2 == 0
+main :: IO ()
+main = do
+  let xs = enumFromTo 1 10
+  print (sumList xs)
+  print (sumList (myFilter isEven xs))
+  print (sumList (myMap (\x -> x * x) (enumFromTo 1 5)))
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "55\n30\n55");
+    }
+}
