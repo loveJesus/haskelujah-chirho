@@ -223,6 +223,14 @@ fn cranelift_round_trip_show_derived_enum_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_print_derived_enum_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\ndata Color = Red | Green | Blue deriving (Show)\nmain = print Green\n",
+    );
+    assert_eq!(stdout_chirho, "Green\n");
+}
+
+#[test]
 fn cranelift_round_trip_otherwise_guard_output_chirho() {
     let stdout_chirho = cranelift_round_trip_stdout_chirho(
         "module Main where\nclassify n\n  | n < 0 = \"neg\"\n  | n == 0 = \"zero\"\n  | otherwise = \"pos\"\nmain = do\n  putStrLn (classify (-1))\n  putStrLn (classify 0)\n  putStrLn (classify 1)\n",

@@ -1229,6 +1229,27 @@ fn lower_app_chirho(
             }
             // print :: Show a => a -> IO () — use RTS haskelujah_print_int
             if matches!(name_chirho.as_str(), "print" | "print#") {
+                if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                    if let Some(con_name_chirho) =
+                        classify_nullary_constructor_print_name_chirho(ctx_chirho, arg_expr_chirho)
+                    {
+                        if let Some(put_str_ln_ref_chirho) = ctx_chirho.put_str_ln_ref_chirho {
+                            if let Some(global_chirho) = ctx_chirho
+                                .string_globals_chirho
+                                .get(con_name_chirho.as_str())
+                                .copied()
+                            {
+                                let str_ptr_chirho = builder_chirho
+                                    .ins()
+                                    .global_value(cl_types_chirho::I64, global_chirho);
+                                builder_chirho
+                                    .ins()
+                                    .call(put_str_ln_ref_chirho, &[str_ptr_chirho]);
+                                return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+                            }
+                        }
+                    }
+                }
                 if let Some(print_int_ref_chirho) = ctx_chirho.print_int_ref_chirho {
                     if let Some(arg_expr_chirho) = all_args_chirho.last() {
                         let arg_val_chirho =
@@ -2034,6 +2055,35 @@ fn infer_show_int_arg_kind_chirho(expr_chirho: &CoreExprChirho) -> Option<ShowIn
         CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
             infer_show_int_arg_kind_chirho(expr_chirho)
         }
+        _ => None,
+    }
+}
+
+fn strip_runtime_tyapps_chirho(mut expr_chirho: &CoreExprChirho) -> &CoreExprChirho {
+    while let CoreExprChirho::TyAppChirho {
+        expr_chirho: inner_expr_chirho,
+        ..
+    } = expr_chirho
+    {
+        expr_chirho = inner_expr_chirho;
+    }
+    expr_chirho
+}
+
+fn classify_nullary_constructor_print_name_chirho(
+    ctx_chirho: &LowerCtxChirho<'_>,
+    expr_chirho: &CoreExprChirho,
+) -> Option<String> {
+    match strip_runtime_tyapps_chirho(expr_chirho) {
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } if args_chirho.is_empty() => Some(con_name_chirho.clone()),
+        CoreExprChirho::VarChirho(id_chirho) => ctx_chirho
+            .toplevel_names_chirho
+            .get(id_chirho)
+            .filter(|name_chirho| looks_like_data_constructor_name_chirho(name_chirho))
+            .cloned(),
         _ => None,
     }
 }

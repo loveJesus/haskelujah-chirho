@@ -1665,7 +1665,70 @@ fn collect_string_literals_chirho(
     module_chirho: &CoreModuleChirho,
     callback_chirho: &mut dyn FnMut(&str),
 ) {
-    fn walk_expr_chirho(expr_chirho: &CoreExprChirho, cb_chirho: &mut dyn FnMut(&str)) {
+    fn strip_runtime_tyapps_chirho(mut expr_chirho: &CoreExprChirho) -> &CoreExprChirho {
+        while let CoreExprChirho::TyAppChirho {
+            expr_chirho: inner_expr_chirho,
+            ..
+        } = expr_chirho
+        {
+            expr_chirho = inner_expr_chirho;
+        }
+        expr_chirho
+    }
+
+    fn collect_print_constructor_name_chirho(
+        expr_chirho: &CoreExprChirho,
+        names_chirho: &HashMap<CoreIdChirho, String>,
+        cb_chirho: &mut dyn FnMut(&str),
+    ) {
+        let mut app_args_chirho = Vec::new();
+        let mut head_expr_chirho = strip_runtime_tyapps_chirho(expr_chirho);
+        while let CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } = head_expr_chirho
+        {
+            app_args_chirho.push(arg_chirho.as_ref());
+            head_expr_chirho = strip_runtime_tyapps_chirho(fun_chirho);
+        }
+        let CoreExprChirho::VarChirho(func_id_chirho) = head_expr_chirho else {
+            return;
+        };
+        let Some(func_name_chirho) = names_chirho.get(func_id_chirho) else {
+            return;
+        };
+        if !matches!(func_name_chirho.as_str(), "print" | "print#") {
+            return;
+        }
+        let Some(arg_expr_chirho) = app_args_chirho.first().copied() else {
+            return;
+        };
+        match strip_runtime_tyapps_chirho(arg_expr_chirho) {
+            CoreExprChirho::ConAppChirho {
+                con_name_chirho,
+                args_chirho,
+            } if args_chirho.is_empty() => cb_chirho(con_name_chirho),
+            CoreExprChirho::VarChirho(con_id_chirho) => {
+                if let Some(con_name_chirho) = names_chirho.get(con_id_chirho) {
+                    if con_name_chirho
+                        .chars()
+                        .next()
+                        .is_some_and(|ch_chirho| ch_chirho.is_ascii_uppercase() || ch_chirho == ':')
+                    {
+                        cb_chirho(con_name_chirho);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn walk_expr_chirho(
+        expr_chirho: &CoreExprChirho,
+        names_chirho: &HashMap<CoreIdChirho, String>,
+        cb_chirho: &mut dyn FnMut(&str),
+    ) {
+        collect_print_constructor_name_chirho(expr_chirho, names_chirho, cb_chirho);
         match expr_chirho {
             CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(s_chirho)) => {
                 cb_chirho(s_chirho);
@@ -1674,11 +1737,11 @@ fn collect_string_literals_chirho(
                 fun_chirho,
                 arg_chirho,
             } => {
-                walk_expr_chirho(fun_chirho, cb_chirho);
-                walk_expr_chirho(arg_chirho, cb_chirho);
+                walk_expr_chirho(fun_chirho, names_chirho, cb_chirho);
+                walk_expr_chirho(arg_chirho, names_chirho, cb_chirho);
             }
             CoreExprChirho::LamChirho { body_chirho, .. } => {
-                walk_expr_chirho(body_chirho, cb_chirho);
+                walk_expr_chirho(body_chirho, names_chirho, cb_chirho);
             }
             CoreExprChirho::LetChirho {
                 binds_chirho,
@@ -1686,34 +1749,38 @@ fn collect_string_literals_chirho(
                 ..
             } => {
                 for (_, rhs_chirho) in binds_chirho {
-                    walk_expr_chirho(rhs_chirho, cb_chirho);
+                    walk_expr_chirho(rhs_chirho, names_chirho, cb_chirho);
                 }
-                walk_expr_chirho(body_chirho, cb_chirho);
+                walk_expr_chirho(body_chirho, names_chirho, cb_chirho);
             }
             CoreExprChirho::CaseChirho {
                 scrutinee_chirho,
                 alts_chirho,
                 ..
             } => {
-                walk_expr_chirho(scrutinee_chirho, cb_chirho);
+                walk_expr_chirho(scrutinee_chirho, names_chirho, cb_chirho);
                 for alt_chirho in alts_chirho {
-                    walk_expr_chirho(&alt_chirho.rhs_chirho, cb_chirho);
+                    walk_expr_chirho(&alt_chirho.rhs_chirho, names_chirho, cb_chirho);
                 }
             }
             CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
-                walk_expr_chirho(expr_chirho, cb_chirho);
+                walk_expr_chirho(expr_chirho, names_chirho, cb_chirho);
             }
             CoreExprChirho::PrimOpChirho { args_chirho, .. }
             | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
                 for arg_chirho in args_chirho {
-                    walk_expr_chirho(arg_chirho, cb_chirho);
+                    walk_expr_chirho(arg_chirho, names_chirho, cb_chirho);
                 }
             }
             _ => {}
         }
     }
     for binding_chirho in &module_chirho.bindings_chirho {
-        walk_expr_chirho(&binding_chirho.rhs_chirho, callback_chirho);
+        walk_expr_chirho(
+            &binding_chirho.rhs_chirho,
+            &module_chirho.names_chirho,
+            callback_chirho,
+        );
     }
 }
 
