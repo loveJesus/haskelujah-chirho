@@ -87,6 +87,67 @@ fn cranelift_round_trip_stdout_chirho(src_chirho: &str) -> String {
     String::from_utf8(output_chirho.stdout).expect("stdout should be UTF-8")
 }
 
+fn cranelift_round_trip_stdout_with_input_chirho(
+    src_chirho: &str,
+    stdin_chirho: &str,
+) -> String {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let compile_result_chirho =
+        compile_source_chirho(src_chirho, &mut source_map_chirho, "Main.hs")
+            .expect("source should compile");
+    let config_chirho = TargetConfigChirho::default();
+    let obj_chirho = compile_core_to_object_executable_chirho(
+        &compile_result_chirho.core_chirho,
+        &config_chirho,
+    )
+    .expect("Cranelift object generation should succeed");
+
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should be created");
+    let object_path_chirho = temp_dir_chirho.path().join("main.o");
+    let exe_path_chirho = temp_dir_chirho.path().join("main");
+    std::fs::write(&object_path_chirho, &obj_chirho.object_bytes_chirho)
+        .expect("object file should be written");
+
+    let rts_lib_dir_chirho = ensure_rts_staticlib_for_cranelift_tests_chirho();
+    let link_status_chirho = Command::new("cc")
+        .arg("-o")
+        .arg(&exe_path_chirho)
+        .arg(&object_path_chirho)
+        .arg("-Wl,-no_fixup_chains")
+        .arg("-L")
+        .arg(&rts_lib_dir_chirho)
+        .arg("-lhaskelujah_rts_chirho")
+        .status()
+        .expect("linker should run");
+    assert!(
+        link_status_chirho.success(),
+        "linker failed with exit code {:?}",
+        link_status_chirho.code()
+    );
+
+    let mut child_chirho = Command::new(&exe_path_chirho)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .expect("compiled executable should run");
+    use std::io::Write;
+    child_chirho
+        .stdin
+        .as_mut()
+        .expect("stdin pipe should exist")
+        .write_all(stdin_chirho.as_bytes())
+        .expect("stdin should be writable");
+    let output_chirho = child_chirho
+        .wait_with_output()
+        .expect("compiled executable should finish");
+    assert!(
+        output_chirho.status.success(),
+        "compiled executable failed with exit code {:?}",
+        output_chirho.status.code()
+    );
+    String::from_utf8(output_chirho.stdout).expect("stdout should be UTF-8")
+}
+
 fn haskell_string_literal_chirho(text_chirho: &str) -> String {
     let mut out_chirho = String::with_capacity(text_chirho.len() + 2);
     out_chirho.push('"');
@@ -145,6 +206,15 @@ fn cranelift_round_trip_show_bool_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = putStrLn (show True)\n");
     assert_eq!(stdout_chirho, "True\n");
+}
+
+#[test]
+fn cranelift_round_trip_getline_read_int_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_with_input_chirho(
+        "module Main where\nmain = do\n  line <- getLine\n  print (((read line) :: Int) + 1)\n",
+        "41\n",
+    );
+    assert_eq!(stdout_chirho, "42\n");
 }
 
 #[test]

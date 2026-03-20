@@ -1146,6 +1146,23 @@ fn llvm_round_trip_get_line_output_chirho() {
 }
 
 #[test]
+fn llvm_round_trip_get_line_read_int_output_chirho() {
+    let src_chirho =
+        "module Main where\nmain = do\n  line <- getLine\n  print (((read line) :: Int) + 1)\n";
+    if let Some((exit_code_chirho, stdout_chirho)) =
+        llvm_round_trip_output_with_input_chirho(src_chirho, "41\n")
+    {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "getLine+read executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "42\n");
+    } else {
+        panic!("LLVM getLine+read round-trip failed");
+    }
+}
+
+#[test]
 fn llvm_round_trip_write_file_output_chirho() {
     let temp_dir_chirho = tempfile::tempdir().expect("temp dir should exist");
     let file_path_chirho = temp_dir_chirho.path().join("write-file-llvm-chirho.txt");
