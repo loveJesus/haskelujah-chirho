@@ -1860,3 +1860,36 @@ main = print (euler1 1000000)
         );
     }
 }
+
+#[test]
+fn cranelift_round_trip_qsort_random_500_chirho() {
+    let src_chirho = r#"module Main where
+filter' :: (Int -> Bool) -> [Int] -> [Int]
+filter' f [] = []
+filter' f (x:xs) = if f x then x : filter' f xs else filter' f xs
+append :: [Int] -> [Int] -> [Int]
+append [] ys = ys
+append (x:xs) ys = x : append xs ys
+qsort :: [Int] -> [Int]
+qsort [] = []
+qsort (p:xs) = append (qsort (filter' (\x -> x < p) xs))
+                       (p : qsort (filter' (\x -> x >= p) xs))
+mySum :: [Int] -> Int
+mySum [] = 0
+mySum (x:xs) = x + mySum xs
+lcg :: Int -> Int -> [Int]
+lcg seed 0 = []
+lcg seed n = let next = (seed * 1103515245 + 12345) `mod` 2147483648
+             in (next `mod` 1000) : lcg next (n - 1)
+main = print (mySum (qsort (lcg 42 500)))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "quicksort 500 random should work");
+        assert_eq!(
+            stdout_chirho.trim(),
+            "256218",
+            "sum of sorted 500 random elements"
+        );
+    }
+}
