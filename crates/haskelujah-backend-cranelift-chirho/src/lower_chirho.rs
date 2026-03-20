@@ -1922,6 +1922,17 @@ pub fn lower_primop_chirho(
             builder_chirho.inst_results(append_call_chirho)[0]
         }
 
+        // ── unpack# — convert C string to [Char] cons-list ───────────────
+        "unpack#" => {
+            let val_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            if let Some(unpack_ref_chirho) = ctx_chirho.unpack_string_ref_chirho {
+                let call_chirho = builder_chirho.ins().call(unpack_ref_chirho, &[val_chirho]);
+                builder_chirho.inst_results(call_chirho)[0]
+            } else {
+                builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
+            }
+        }
+
         // ── Unknown primop ─────────────────────────────────────────────────
         _ => builder_chirho.ins().iconst(cl_types_chirho::I64, 0),
     }
