@@ -36,10 +36,8 @@ fn builds_a_check_summary_for_batch_mode_chirho() {
             .runtime_plan_chirho
             .incremental_session_chirho
     );
-    assert!(
-        render_summary_chirho(&check_summary_chirho)
-            .contains("llvm_preview: ; haskelujah llvm stub")
-    );
+    assert!(render_summary_chirho(&check_summary_chirho)
+        .contains("llvm_preview: ; haskelujah llvm stub"));
 }
 
 #[test]
@@ -434,22 +432,16 @@ executable hello-app
         result_chirho.executables_chirho[0].compilation_order_chirho,
         vec!["Lib".to_string(), "Main".to_string()]
     );
-    assert!(
-        !result_chirho.executables_chirho[0]
-            .core_chirho
-            .bindings_chirho
-            .is_empty()
-    );
-    assert!(
-        result_chirho.executables_chirho[0]
-            .llvm_ir_chirho
-            .contains("define i32 @main()")
-    );
-    assert!(
-        result_chirho.executables_chirho[0]
-            .llvm_ir_chirho
-            .contains("@haskelujah_main")
-    );
+    assert!(!result_chirho.executables_chirho[0]
+        .core_chirho
+        .bindings_chirho
+        .is_empty());
+    assert!(result_chirho.executables_chirho[0]
+        .llvm_ir_chirho
+        .contains("define i32 @main()"));
+    assert!(result_chirho.executables_chirho[0]
+        .llvm_ir_chirho
+        .contains("@haskelujah_main"));
 
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
 }
@@ -458,7 +450,7 @@ executable hello-app
 fn cabal_project_cranelift_dedups_duplicate_prelude_bindings_chirho() {
     use crate::build_cabal_project_chirho;
     use haskelujah_backend_cranelift_chirho::{
-        TargetConfigChirho, compile_core_to_object_executable_chirho,
+        compile_core_to_object_executable_chirho, TargetConfigChirho,
     };
     use std::io::Write;
 
@@ -867,6 +859,58 @@ fn llvm_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)> {
     Some((exit_code_chirho, stdout_chirho))
 }
 
+fn llvm_round_trip_output_with_input_chirho(
+    src_chirho: &str,
+    input_chirho: &str,
+) -> Option<(i32, String)> {
+    use std::io::Write as _;
+    use std::process::Stdio;
+
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
+
+    let exec_ir_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
+        &result_chirho.core_chirho,
+    );
+
+    let tmp_dir_chirho = tempfile::tempdir().ok()?;
+    let ll_path_chirho = tmp_dir_chirho.path().join("main.ll");
+    let bin_path_chirho = tmp_dir_chirho.path().join("main");
+    std::fs::write(&ll_path_chirho, &exec_ir_chirho).ok()?;
+    let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
+
+    let compile_output_chirho = std::process::Command::new("clang")
+        .arg("-O0")
+        .arg("-o")
+        .arg(&bin_path_chirho)
+        .arg(&ll_path_chirho)
+        .arg("-L")
+        .arg(&rts_lib_dir_chirho)
+        .arg("-lhaskelujah_rts_chirho")
+        .output()
+        .ok()?;
+
+    if !compile_output_chirho.status.success() {
+        return None;
+    }
+
+    let mut child_chirho = std::process::Command::new(&bin_path_chirho)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .ok()?;
+    child_chirho
+        .stdin
+        .as_mut()?
+        .write_all(input_chirho.as_bytes())
+        .ok()?;
+    let run_output_chirho = child_chirho.wait_with_output().ok()?;
+
+    let exit_code_chirho = run_output_chirho.status.code()?;
+    let stdout_chirho = String::from_utf8(run_output_chirho.stdout).ok()?;
+    Some((exit_code_chirho, stdout_chirho))
+}
+
 /// Helper: compile source to LLVM IR executable, link with clang, run, return exit code.
 fn llvm_round_trip_chirho(src_chirho: &str) -> Option<i32> {
     llvm_round_trip_output_chirho(src_chirho)
@@ -1047,6 +1091,38 @@ fn llvm_round_trip_put_str_ln_output_chirho() {
             "putStrLn executable should exit successfully"
         );
         assert_eq!(stdout_chirho, "Hello from Haskelujah!\n");
+    }
+}
+
+#[test]
+fn llvm_round_trip_put_str_output_chirho() {
+    let src_chirho =
+        "module Main where\nmain = do\n  putStr \"Hello\"\n  putStr \" from\"\n  putStrLn \" Haskelujah!\"\n";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "putStr executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "Hello from Haskelujah!\n");
+    } else {
+        panic!("LLVM putStr round-trip failed");
+    }
+}
+
+#[test]
+fn llvm_round_trip_get_line_output_chirho() {
+    let src_chirho =
+        "module Main where\nmain = do\n  name <- getLine\n  putStr \"Hello, \"\n  putStrLn name\n";
+    if let Some((exit_code_chirho, stdout_chirho)) =
+        llvm_round_trip_output_with_input_chirho(src_chirho, "Alice\n")
+    {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "getLine executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "Hello, Alice\n");
+    } else {
+        panic!("LLVM getLine round-trip failed");
     }
 }
 
