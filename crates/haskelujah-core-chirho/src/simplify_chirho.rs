@@ -943,7 +943,7 @@ pub fn elide_dicts_chirho(
 
     if let CoreExprChirho::VarChirho(sel_id_chirho) = callee_chirho {
         if let Some(name_chirho) = resolve_name_for_id_chirho(sel_id_chirho, all_bindings_chirho) {
-            // $sel_Show_show dict x → showInt# x (for Int show)
+            // $sel_Show_show dict x → showInt# x
             if name_chirho == "$sel_Show_show" && all_args_chirho.len() >= 2 {
                 let simplified_chirho =
                     elide_dicts_chirho(all_args_chirho[1], all_bindings_chirho);

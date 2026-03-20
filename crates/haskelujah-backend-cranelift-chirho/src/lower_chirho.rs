@@ -807,6 +807,21 @@ fn lower_app_chirho(
                     }
                 }
             }
+            // show :: Show a => a -> String — use RTS haskelujah_show_int
+            if matches!(name_chirho.as_str(), "show" | "show#") {
+                if let Some(show_int_ref_chirho) = ctx_chirho.show_int_ref_chirho {
+                    if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                        let arg_val_chirho =
+                            lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                        let arg_i64_chirho =
+                            ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                        let call_chirho = builder_chirho
+                            .ins()
+                            .call(show_int_ref_chirho, &[arg_i64_chirho]);
+                        return builder_chirho.inst_results(call_chirho)[0];
+                    }
+                }
+            }
         }
 
         if let Some((func_ref_chirho, _arity_chirho)) =
@@ -1227,6 +1242,19 @@ pub fn lower_primop_chirho(
                 .select(cmp_chirho, lhs_chirho, rhs_chirho)
         }
         "showInt#" => {
+            if let Some(arg_kind_chirho) = args_chirho
+                .first()
+                .and_then(infer_show_int_arg_kind_chirho)
+            {
+                return match arg_kind_chirho {
+                    ShowIntArgKindChirho::BoolChirho => {
+                        lower_show_bool_primop_chirho(builder_chirho, ctx_chirho, lhs_raw_chirho)
+                    }
+                    ShowIntArgKindChirho::StringChirho => {
+                        lower_show_str_primop_chirho(builder_chirho, ctx_chirho, lhs_raw_chirho)
+                    }
+                };
+            }
             // Call RTS haskelujah_show_int_chirho(i64) -> ptr
             let val_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             if let Some(show_ref_chirho) = ctx_chirho.show_int_ref_chirho {
@@ -1235,6 +1263,12 @@ pub fn lower_primop_chirho(
             } else {
                 builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
             }
+        }
+        "showBool#" => {
+            lower_show_bool_primop_chirho(builder_chirho, ctx_chirho, lhs_raw_chirho)
+        }
+        "showStr#" => {
+            lower_show_str_primop_chirho(builder_chirho, ctx_chirho, lhs_raw_chirho)
         }
         "^#" => {
             // Integer power — simplified: return lhs^rhs via repeated multiply
@@ -1368,6 +1402,92 @@ pub fn lower_primop_chirho(
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy)]
+enum ShowIntArgKindChirho {
+    BoolChirho,
+    StringChirho,
+}
+
+fn infer_show_int_arg_kind_chirho(expr_chirho: &CoreExprChirho) -> Option<ShowIntArgKindChirho> {
+    match expr_chirho {
+        CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(_)) => {
+            Some(ShowIntArgKindChirho::StringChirho)
+        }
+        CoreExprChirho::ConAppChirho { con_name_chirho, .. }
+            if matches!(con_name_chirho.as_str(), "True" | "False") =>
+        {
+            Some(ShowIntArgKindChirho::BoolChirho)
+        }
+        CoreExprChirho::PrimOpChirho { name_chirho, .. } => match name_chirho.as_str() {
+            "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#" | "eqFloat#" | "<.#"
+            | ">.#" | "readBool#" | "showStr#" | "++#" | "eqStr#" => {
+                Some(if matches!(name_chirho.as_str(), "showStr#" | "++#") {
+                    ShowIntArgKindChirho::StringChirho
+                } else {
+                    ShowIntArgKindChirho::BoolChirho
+                })
+            }
+            _ => None,
+        },
+        CoreExprChirho::TyLamChirho { body_chirho, .. } => infer_show_int_arg_kind_chirho(body_chirho),
+        CoreExprChirho::TyAppChirho { expr_chirho, .. } => infer_show_int_arg_kind_chirho(expr_chirho),
+        _ => None,
+    }
+}
+
+fn lower_show_bool_primop_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    raw_bool_chirho: ClValueChirho,
+) -> ClValueChirho {
+    let val_chirho = ensure_i64_chirho(builder_chirho, raw_bool_chirho, false);
+    let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    let is_true_chirho =
+        builder_chirho
+            .ins()
+            .icmp(IntCcChirho::NotEqual, val_chirho, zero_chirho);
+    let Some(true_global_chirho) = ctx_chirho.string_globals_chirho.get("True").copied() else {
+        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    };
+    let Some(false_global_chirho) = ctx_chirho.string_globals_chirho.get("False").copied() else {
+        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    };
+    let true_ptr_chirho = builder_chirho
+        .ins()
+        .global_value(cl_types_chirho::I64, true_global_chirho);
+    let false_ptr_chirho = builder_chirho
+        .ins()
+        .global_value(cl_types_chirho::I64, false_global_chirho);
+    builder_chirho
+        .ins()
+        .select(is_true_chirho, true_ptr_chirho, false_ptr_chirho)
+}
+
+fn lower_show_str_primop_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    raw_str_chirho: ClValueChirho,
+) -> ClValueChirho {
+    let val_chirho = ensure_i64_chirho(builder_chirho, raw_str_chirho, false);
+    let Some(append_str_ref_chirho) = ctx_chirho.append_str_ref_chirho else {
+        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    };
+    let Some(quote_global_chirho) = ctx_chirho.string_globals_chirho.get("\"").copied() else {
+        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    };
+    let quote_ptr_chirho = builder_chirho
+        .ins()
+        .global_value(cl_types_chirho::I64, quote_global_chirho);
+    let quoted_prefix_call_chirho = builder_chirho
+        .ins()
+        .call(append_str_ref_chirho, &[quote_ptr_chirho, val_chirho]);
+    let quoted_prefix_ptr_chirho = builder_chirho.inst_results(quoted_prefix_call_chirho)[0];
+    let quoted_full_call_chirho = builder_chirho
+        .ins()
+        .call(append_str_ref_chirho, &[quoted_prefix_ptr_chirho, quote_ptr_chirho]);
+    builder_chirho.inst_results(quoted_full_call_chirho)[0]
+}
 
 /// Emit an integer comparison, returning the boolean result as 0 or 1 in i64.
 fn icmp_to_i64_chirho(
