@@ -1,0 +1,107 @@
+// For God so loved the world that he gave his only begotten Son, that whoever
+// believes in him should not perish but have eternal life. — John 3:16
+
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::sync::OnceLock;
+
+use haskelujah_backend_cranelift_chirho::{
+    TargetConfigChirho, compile_core_to_object_executable_chirho,
+};
+use haskelujah_driver_chirho::compile_source_chirho;
+use haskelujah_span_chirho::SourceMapChirho;
+
+fn workspace_root_chirho() -> PathBuf {
+    let crate_dir_chirho = Path::new(env!("CARGO_MANIFEST_DIR"));
+    crate_dir_chirho
+        .parent()
+        .and_then(Path::parent)
+        .expect("driver crate should live under workspace/crates")
+        .to_path_buf()
+}
+
+fn ensure_rts_staticlib_for_cranelift_tests_chirho() -> PathBuf {
+    static RTS_LIB_DIR_CHIRHO: OnceLock<PathBuf> = OnceLock::new();
+    RTS_LIB_DIR_CHIRHO
+        .get_or_init(|| {
+            let workspace_root_chirho = workspace_root_chirho();
+            let cargo_status_chirho = Command::new("cargo")
+                .current_dir(&workspace_root_chirho)
+                .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+                .status()
+                .expect("should invoke cargo to build RTS");
+            assert!(
+                cargo_status_chirho.success(),
+                "cargo build -p haskelujah-rts-chirho failed with exit code {:?}",
+                cargo_status_chirho.code()
+            );
+            workspace_root_chirho.join("target").join("debug")
+        })
+        .clone()
+}
+
+fn cranelift_round_trip_stdout_chirho(src_chirho: &str) -> String {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let compile_result_chirho = compile_source_chirho(src_chirho, &mut source_map_chirho, "Main.hs")
+        .expect("source should compile");
+    let config_chirho = TargetConfigChirho::default();
+    let obj_chirho =
+        compile_core_to_object_executable_chirho(&compile_result_chirho.core_chirho, &config_chirho)
+            .expect("Cranelift object generation should succeed");
+
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should be created");
+    let object_path_chirho = temp_dir_chirho.path().join("main.o");
+    let exe_path_chirho = temp_dir_chirho.path().join("main");
+    std::fs::write(&object_path_chirho, &obj_chirho.object_bytes_chirho)
+        .expect("object file should be written");
+
+    let rts_lib_dir_chirho = ensure_rts_staticlib_for_cranelift_tests_chirho();
+    let link_status_chirho = Command::new("cc")
+        .arg("-o")
+        .arg(&exe_path_chirho)
+        .arg(&object_path_chirho)
+        .arg("-Wl,-no_fixup_chains")
+        .arg("-L")
+        .arg(&rts_lib_dir_chirho)
+        .arg("-lhaskelujah_rts_chirho")
+        .status()
+        .expect("linker should run");
+    assert!(
+        link_status_chirho.success(),
+        "linker failed with exit code {:?}",
+        link_status_chirho.code()
+    );
+
+    let output_chirho = Command::new(&exe_path_chirho)
+        .output()
+        .expect("compiled executable should run");
+    assert!(
+        output_chirho.status.success(),
+        "compiled executable failed with exit code {:?}",
+        output_chirho.status.code()
+    );
+    String::from_utf8(output_chirho.stdout).expect("stdout should be UTF-8")
+}
+
+#[test]
+fn cranelift_round_trip_sum_range_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nmain = print (sum [1..10])\n",
+    );
+    assert_eq!(stdout_chirho, "55\n");
+}
+
+#[test]
+fn cranelift_round_trip_show_bool_output_chirho() {
+    let stdout_chirho =
+        cranelift_round_trip_stdout_chirho("module Main where\nmain = putStrLn (show True)\n");
+    assert_eq!(stdout_chirho, "True\n");
+}
+
+#[test]
+fn cranelift_round_trip_otherwise_guard_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nclassify n\n  | n < 0 = \"neg\"\n  | n == 0 = \"zero\"\n  | otherwise = \"pos\"\nmain = do\n  putStrLn (classify (-1))\n  putStrLn (classify 0)\n  putStrLn (classify 1)\n",
+    );
+    assert_eq!(stdout_chirho, "neg\nzero\npos\n");
+}
