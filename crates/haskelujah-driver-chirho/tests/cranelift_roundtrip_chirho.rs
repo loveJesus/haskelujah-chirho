@@ -99,6 +99,20 @@ fn cranelift_round_trip_show_bool_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_show_char_output_chirho() {
+    let stdout_chirho =
+        cranelift_round_trip_stdout_chirho("module Main where\nmain = putStrLn (show 'A')\n");
+    assert_eq!(stdout_chirho, "'A'\n");
+}
+
+#[test]
+fn cranelift_round_trip_show_float_output_chirho() {
+    let stdout_chirho =
+        cranelift_round_trip_stdout_chirho("module Main where\nmain = putStrLn (show 3.14)\n");
+    assert_eq!(stdout_chirho, "3.14\n");
+}
+
+#[test]
 fn cranelift_round_trip_otherwise_guard_output_chirho() {
     let stdout_chirho = cranelift_round_trip_stdout_chirho(
         "module Main where\nclassify n\n  | n < 0 = \"neg\"\n  | n == 0 = \"zero\"\n  | otherwise = \"pos\"\nmain = do\n  putStrLn (classify (-1))\n  putStrLn (classify 0)\n  putStrLn (classify 1)\n",

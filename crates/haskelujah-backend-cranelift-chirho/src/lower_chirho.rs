@@ -96,6 +96,10 @@ pub struct LowerCtxChirho<'a> {
     pub show_int_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_show_bool_chirho` (bool → string)
     pub show_bool_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_show_char_chirho` (char → string)
+    pub show_char_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_show_float_chirho` (f64 bits → string)
+    pub show_float_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
     pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
 }
@@ -1286,6 +1290,26 @@ pub fn lower_primop_chirho(
         }
         "showBool#" => {
             lower_show_bool_primop_chirho(builder_chirho, ctx_chirho, lhs_raw_chirho)
+        }
+        "showChar#" => {
+            let val_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            if let Some(show_char_ref_chirho) = ctx_chirho.show_char_ref_chirho {
+                let call_chirho = builder_chirho.ins().call(show_char_ref_chirho, &[val_chirho]);
+                builder_chirho.inst_results(call_chirho)[0]
+            } else {
+                builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
+            }
+        }
+        "showFloat#" => {
+            let val_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, true);
+            if let Some(show_float_ref_chirho) = ctx_chirho.show_float_ref_chirho {
+                let call_chirho = builder_chirho
+                    .ins()
+                    .call(show_float_ref_chirho, &[val_chirho]);
+                builder_chirho.inst_results(call_chirho)[0]
+            } else {
+                builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
+            }
         }
         "showStr#" => {
             lower_show_str_primop_chirho(builder_chirho, ctx_chirho, lhs_raw_chirho)

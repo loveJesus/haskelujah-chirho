@@ -286,6 +286,24 @@ pub extern "C" fn haskelujah_show_bool_chirho(value_chirho: i64) -> u64 {
     alloc_c_string_chirho(text_chirho)
 }
 
+/// Convert a character codepoint to a heap-allocated NUL-terminated Haskell
+/// `show` representation like `'A'`.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_show_char_chirho(value_chirho: i64) -> u64 {
+    let char_chirho = char::from_u32(value_chirho as u32).unwrap_or(char::REPLACEMENT_CHARACTER);
+    let text_chirho = format!("{char_chirho:?}");
+    alloc_c_string_chirho(text_chirho.as_bytes())
+}
+
+/// Convert an f64 bit-pattern to a heap-allocated NUL-terminated decimal
+/// string for Haskell `show`.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_show_float_chirho(bits_chirho: i64) -> u64 {
+    let value_chirho = f64::from_bits(bits_chirho as u64);
+    let text_chirho = format!("{value_chirho}");
+    alloc_c_string_chirho(text_chirho.as_bytes())
+}
+
 /// Print a NUL-terminated UTF-8 string followed by a newline using the same
 /// stdout implementation as `haskelujah_print_int_chirho`, keeping IO order
 /// stable for Cranelift executables.
@@ -479,6 +497,44 @@ mod tests_chirho {
         };
         assert_eq!(true_text_chirho.to_bytes(), b"True");
         assert_eq!(false_text_chirho.to_bytes(), b"False");
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+    }
+
+    #[test]
+    fn show_char_allocates_quoted_character_string_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let ptr_bits_chirho = haskelujah_show_char_chirho('A' as i64);
+        assert_ne!(ptr_bits_chirho, 0);
+        let text_chirho =
+            unsafe { CStr::from_ptr(ptr_bits_chirho as usize as *const std::ffi::c_char) };
+        assert_eq!(text_chirho.to_bytes(), b"'A'");
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+    }
+
+    #[test]
+    fn show_float_allocates_decimal_string_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let ptr_bits_chirho = haskelujah_show_float_chirho(3.14f64.to_bits() as i64);
+        assert_ne!(ptr_bits_chirho, 0);
+        let text_chirho =
+            unsafe { CStr::from_ptr(ptr_bits_chirho as usize as *const std::ffi::c_char) };
+        assert_eq!(text_chirho.to_bytes(), b"3.14");
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
         runtime_chirho.reset_chirho();
