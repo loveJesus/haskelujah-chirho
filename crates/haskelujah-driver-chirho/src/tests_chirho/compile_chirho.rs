@@ -1163,7 +1163,7 @@ euler1 limit = go 0 0 where
         else if mod n 5 == 0
           then go (acc + n) (n + 1)
           else go acc (n + 1)
-main = print (euler1 500000)
+main = print (euler1 1000000)
 "#;
     let (exit_code_chirho, stdout_chirho) =
         llvm_round_trip_output_chirho(src_chirho).expect("tail-recursive LLVM round-trip");
@@ -1171,7 +1171,7 @@ main = print (euler1 500000)
         exit_code_chirho, 0,
         "tail-recursive LLVM executable should exit successfully"
     );
-    assert_eq!(stdout_chirho, "58332916668\n");
+    assert_eq!(stdout_chirho, "233333166668\n");
 }
 
 #[test]

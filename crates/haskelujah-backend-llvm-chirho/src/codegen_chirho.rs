@@ -1657,48 +1657,17 @@ impl LlvmCodegenChirho {
                     return scrut_val_chirho;
                 }
 
-                // For literal case: use switch instruction
-                // For data constructor case: use comparison chains
-                let result_tmp_chirho = self.fresh_tmp_chirho();
-                let end_label_chirho = self.fresh_label_chirho("case.end");
-
-                // Allocate a stack slot for the result
-                writeln!(
-                    self.output_chirho,
-                    "  {result_tmp_chirho}.addr = alloca i64"
-                )
-                .unwrap();
-
                 // Check if we have literal alts
                 let has_lit_alts_chirho = alts_chirho
                     .iter()
                     .any(|a_chirho| matches!(a_chirho.con_chirho, AltConChirho::LitConChirho(_)));
 
                 if has_lit_alts_chirho {
-                    self.compile_case_lit_chirho(
-                        &scrut_val_chirho,
-                        alts_chirho,
-                        &result_tmp_chirho,
-                        &end_label_chirho,
-                    );
+                    self.compile_case_lit_chirho(&scrut_val_chirho, alts_chirho)
                 } else {
                     // Data constructor or default-only: compile each alt as a branch
-                    self.compile_case_data_chirho(
-                        &scrut_val_chirho,
-                        alts_chirho,
-                        &result_tmp_chirho,
-                        &end_label_chirho,
-                    );
+                    self.compile_case_data_chirho(&scrut_val_chirho, alts_chirho)
                 }
-
-                writeln!(self.output_chirho, "{end_label_chirho}:").unwrap();
-                let load_tmp_chirho = self.fresh_tmp_chirho();
-                writeln!(
-                    self.output_chirho,
-                    "  {load_tmp_chirho} = load i64, ptr {result_tmp_chirho}.addr"
-                )
-                .unwrap();
-                load_tmp_chirho
             }
 
             CoreExprChirho::TyLamChirho { body_chirho, .. } => {
@@ -2908,10 +2877,9 @@ impl LlvmCodegenChirho {
         &mut self,
         scrut_val_chirho: &str,
         alts_chirho: &[CoreAltChirho],
-        result_tmp_chirho: &str,
-        end_label_chirho: &str,
-    ) {
+    ) -> String {
         // Build a switch on the scrutinee for literal alts
+        let end_label_chirho = self.fresh_label_chirho("case.end");
         let default_label_chirho = self.fresh_label_chirho("case.default");
 
         let mut switch_arms_chirho = Vec::new();
@@ -2942,15 +2910,23 @@ impl LlvmCodegenChirho {
         }
         writeln!(self.output_chirho, "  ]").unwrap();
 
+        let mut incoming_values_chirho = Vec::new();
         // Emit each alt block
         for (label_chirho, alt_chirho) in &alt_labels_chirho {
             writeln!(self.output_chirho, "{label_chirho}:").unwrap();
+            if alt_chirho.con_chirho == AltConChirho::DefaultChirho {
+                for binder_chirho in &alt_chirho.binders_chirho {
+                    self.remember_local_binder_chirho(binder_chirho);
+                    writeln!(
+                        self.output_chirho,
+                        "  %v{} = add i64 0, {scrut_val_chirho}",
+                        binder_chirho.id_chirho.0
+                    )
+                    .unwrap();
+                }
+            }
             let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
-            writeln!(
-                self.output_chirho,
-                "  store i64 {val_chirho}, ptr {result_tmp_chirho}.addr"
-            )
-            .unwrap();
+            incoming_values_chirho.push((label_chirho.clone(), val_chirho));
             writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
         }
 
@@ -2962,6 +2938,20 @@ impl LlvmCodegenChirho {
             writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
             writeln!(self.output_chirho, "  unreachable").unwrap();
         }
+
+        writeln!(self.output_chirho, "{end_label_chirho}:").unwrap();
+        let phi_tmp_chirho = self.fresh_tmp_chirho();
+        let phi_args_chirho = incoming_values_chirho
+            .iter()
+            .map(|(label_chirho, value_chirho)| format!("[{value_chirho}, %{label_chirho}]"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        writeln!(
+            self.output_chirho,
+            "  {phi_tmp_chirho} = phi i64 {phi_args_chirho}"
+        )
+        .unwrap();
+        phi_tmp_chirho
     }
 
     fn compile_case_lit_tail_chirho(
@@ -3042,9 +3032,8 @@ impl LlvmCodegenChirho {
         &mut self,
         scrut_val_chirho: &str,
         alts_chirho: &[CoreAltChirho],
-        result_tmp_chirho: &str,
-        end_label_chirho: &str,
-    ) {
+    ) -> String {
+        let end_label_chirho = self.fresh_label_chirho("case.end");
         // For data constructors, we use the tag (encoded as i64) to branch.
         // For now, handle default-only case by just compiling the default RHS.
         if alts_chirho.len() == 1 && alts_chirho[0].con_chirho == AltConChirho::DefaultChirho {
@@ -3058,20 +3047,14 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
             }
-            let val_chirho = self.compile_expr_chirho(&alts_chirho[0].rhs_chirho);
-            writeln!(
-                self.output_chirho,
-                "  store i64 {val_chirho}, ptr {result_tmp_chirho}.addr"
-            )
-            .unwrap();
-            writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
-            return;
+            return self.compile_expr_chirho(&alts_chirho[0].rhs_chirho);
         }
 
         // Multi-alt with data constructors: use tag comparison chain
         // Each constructor gets a tag (True=1, False=0, etc.)
         let default_label_chirho = self.fresh_label_chirho("case.default");
         let scrut_tag_tmp_chirho = self.load_constructor_tag_chirho(scrut_val_chirho);
+        let mut incoming_values_chirho = Vec::new();
 
         for (i_chirho, alt_chirho) in alts_chirho.iter().enumerate() {
             match &alt_chirho.con_chirho {
@@ -3102,11 +3085,7 @@ impl LlvmCodegenChirho {
                         &alt_chirho.binders_chirho,
                     );
                     let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
-                    writeln!(
-                        self.output_chirho,
-                        "  store i64 {val_chirho}, ptr {result_tmp_chirho}.addr"
-                    )
-                    .unwrap();
+                    incoming_values_chirho.push((then_label_chirho, val_chirho));
                     writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
 
                     if i_chirho + 1 < alts_chirho.len() {
@@ -3125,11 +3104,7 @@ impl LlvmCodegenChirho {
                         .unwrap();
                     }
                     let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
-                    writeln!(
-                        self.output_chirho,
-                        "  store i64 {val_chirho}, ptr {result_tmp_chirho}.addr"
-                    )
-                    .unwrap();
+                    incoming_values_chirho.push((default_label_chirho.clone(), val_chirho));
                     writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
                 }
                 _ => {}
@@ -3144,6 +3119,20 @@ impl LlvmCodegenChirho {
             writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
             writeln!(self.output_chirho, "  unreachable").unwrap();
         }
+
+        writeln!(self.output_chirho, "{end_label_chirho}:").unwrap();
+        let phi_tmp_chirho = self.fresh_tmp_chirho();
+        let phi_args_chirho = incoming_values_chirho
+            .iter()
+            .map(|(label_chirho, value_chirho)| format!("[{value_chirho}, %{label_chirho}]"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        writeln!(
+            self.output_chirho,
+            "  {phi_tmp_chirho} = phi i64 {phi_args_chirho}"
+        )
+        .unwrap();
+        phi_tmp_chirho
     }
 
     fn compile_case_data_tail_chirho(
