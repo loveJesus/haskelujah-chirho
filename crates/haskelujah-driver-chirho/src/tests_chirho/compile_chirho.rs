@@ -1356,6 +1356,19 @@ main = print (sumTo 10)
 }
 
 #[test]
+fn llvm_round_trip_where_sibling_cross_reference_output_chirho() {
+    let src_chirho =
+        "module Main where\nf x = result where result = a + b; a = x * 2; b = x * 3\nmain = print (f 5)";
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(src_chirho).expect("where sibling LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "where sibling LLVM executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "25\n");
+}
+
+#[test]
 fn llvm_round_trip_euler1_tail_recursion_no_stack_overflow_chirho() {
     let src_chirho = r#"module Main where
 euler1 limit = go 0 0 where
@@ -1715,6 +1728,19 @@ main = print (sumTo 10)
         "nested where Cranelift executable should exit successfully"
     );
     assert_eq!(stdout_chirho, "55\n");
+}
+
+#[test]
+fn cranelift_round_trip_where_sibling_cross_reference_output_chirho() {
+    let src_chirho =
+        "module Main where\nf x = result where result = a + b; a = x * 2; b = x * 3\nmain = print (f 5)";
+    let (exit_code_chirho, stdout_chirho) =
+        cranelift_round_trip_output_chirho(src_chirho).expect("where sibling Cranelift round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "where sibling Cranelift executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "25\n");
 }
 
 #[test]

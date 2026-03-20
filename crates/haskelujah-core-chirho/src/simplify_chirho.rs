@@ -439,10 +439,27 @@ fn simplify_expr_chirho(expr_chirho: &CoreExprChirho) -> CoreExprChirho {
                 // All bindings dead — just return the body
                 body_simplified_chirho
             } else {
-                CoreExprChirho::LetChirho {
-                    rec_chirho: *rec_chirho,
-                    binds_chirho: simplified_binds_chirho,
-                    body_chirho: Box::new(body_simplified_chirho),
+                if *rec_chirho {
+                    if let Some(ordered_binds_chirho) =
+                        reorder_acyclic_rec_let_binds_chirho(&simplified_binds_chirho)
+                    {
+                        nest_nonrec_let_binds_chirho(
+                            ordered_binds_chirho,
+                            body_simplified_chirho,
+                        )
+                    } else {
+                        CoreExprChirho::LetChirho {
+                            rec_chirho: true,
+                            binds_chirho: simplified_binds_chirho,
+                            body_chirho: Box::new(body_simplified_chirho),
+                        }
+                    }
+                } else {
+                    CoreExprChirho::LetChirho {
+                        rec_chirho: false,
+                        binds_chirho: simplified_binds_chirho,
+                        body_chirho: Box::new(body_simplified_chirho),
+                    }
                 }
             }
         }
@@ -576,6 +593,70 @@ fn simplify_expr_chirho(expr_chirho: &CoreExprChirho) -> CoreExprChirho {
         // Vars and Lits are already simple
         CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => expr_chirho.clone(),
     }
+}
+
+fn reorder_acyclic_rec_let_binds_chirho(
+    binds_chirho: &[(BinderChirho, CoreExprChirho)],
+) -> Option<Vec<(BinderChirho, CoreExprChirho)>> {
+    let binder_ids_chirho: HashSet<CoreIdChirho> = binds_chirho
+        .iter()
+        .map(|(binder_chirho, _)| binder_chirho.id_chirho)
+        .collect();
+    let mut remaining_ids_chirho: Vec<CoreIdChirho> = binds_chirho
+        .iter()
+        .map(|(binder_chirho, _)| binder_chirho.id_chirho)
+        .collect();
+    let bind_map_chirho: HashMap<CoreIdChirho, (BinderChirho, CoreExprChirho)> = binds_chirho
+        .iter()
+        .cloned()
+        .map(|(binder_chirho, rhs_chirho)| (binder_chirho.id_chirho, (binder_chirho, rhs_chirho)))
+        .collect();
+    let mut deps_by_id_chirho: HashMap<CoreIdChirho, HashSet<CoreIdChirho>> = binds_chirho
+        .iter()
+        .map(|(binder_chirho, rhs_chirho)| {
+            let deps_chirho = free_vars_chirho(rhs_chirho)
+                .into_iter()
+                .filter(|dep_id_chirho| binder_ids_chirho.contains(dep_id_chirho))
+                .collect();
+            (binder_chirho.id_chirho, deps_chirho)
+        })
+        .collect();
+    let mut ordered_binds_chirho = Vec::with_capacity(binds_chirho.len());
+
+    while !remaining_ids_chirho.is_empty() {
+        let Some(next_idx_chirho) = remaining_ids_chirho.iter().position(|binder_id_chirho| {
+            deps_by_id_chirho
+                .get(binder_id_chirho)
+                .is_some_and(HashSet::is_empty)
+        }) else {
+            return None;
+        };
+        let next_id_chirho = remaining_ids_chirho.remove(next_idx_chirho);
+        if let Some(bind_pair_chirho) = bind_map_chirho.get(&next_id_chirho).cloned() {
+            ordered_binds_chirho.push(bind_pair_chirho);
+        }
+        for deps_chirho in deps_by_id_chirho.values_mut() {
+            deps_chirho.remove(&next_id_chirho);
+        }
+    }
+
+    Some(ordered_binds_chirho)
+}
+
+fn nest_nonrec_let_binds_chirho(
+    binds_chirho: Vec<(BinderChirho, CoreExprChirho)>,
+    body_chirho: CoreExprChirho,
+) -> CoreExprChirho {
+    binds_chirho
+        .into_iter()
+        .rev()
+        .fold(body_chirho, |inner_body_chirho, bind_chirho| {
+            CoreExprChirho::LetChirho {
+                rec_chirho: false,
+                binds_chirho: vec![bind_chirho],
+                body_chirho: Box::new(inner_body_chirho),
+            }
+        })
 }
 
 /// Substitute all occurrences of `var_id` with `replacement` in `expr`.
@@ -3642,6 +3723,102 @@ mod tests_chirho {
         } else {
             panic!("expected LetChirho");
         }
+    }
+
+    #[test]
+    fn simplify_reorders_acyclic_rec_let_binds_chirho() {
+        let result_binder_chirho = dummy_binder_chirho("result", 1);
+        let a_binder_chirho = dummy_binder_chirho("a", 2);
+        let b_binder_chirho = dummy_binder_chirho("b", 3);
+        let expr_chirho = CoreExprChirho::LetChirho {
+            rec_chirho: true,
+            binds_chirho: vec![
+                (
+                    result_binder_chirho.clone(),
+                    CoreExprChirho::PrimOpChirho {
+                        name_chirho: "+#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(a_binder_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(b_binder_chirho.id_chirho),
+                        ],
+                    },
+                ),
+                (
+                    a_binder_chirho.clone(),
+                    CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(10)),
+                ),
+                (
+                    b_binder_chirho.clone(),
+                    CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(15)),
+                ),
+            ],
+            body_chirho: Box::new(CoreExprChirho::VarChirho(result_binder_chirho.id_chirho)),
+        };
+
+        let simplified_chirho = simplify_expr_chirho(&expr_chirho);
+        let mut bind_order_chirho = Vec::new();
+        let mut cursor_chirho = &simplified_chirho;
+        loop {
+            match cursor_chirho {
+                CoreExprChirho::LetChirho {
+                    rec_chirho,
+                    binds_chirho,
+                    body_chirho,
+                } => {
+                    assert!(
+                        !rec_chirho,
+                        "acyclic letrec should become nested non-rec lets"
+                    );
+                    assert_eq!(
+                        binds_chirho.len(),
+                        1,
+                        "acyclic letrec should lower to one binding per let"
+                    );
+                    bind_order_chirho.push(binds_chirho[0].0.id_chirho);
+                    cursor_chirho = body_chirho;
+                }
+                CoreExprChirho::VarChirho(id_chirho) => {
+                    assert_eq!(*id_chirho, result_binder_chirho.id_chirho);
+                    break;
+                }
+                _ => panic!("expected nested let chain ending in result var"),
+            }
+        }
+        assert_eq!(
+            bind_order_chirho,
+            vec![
+                a_binder_chirho.id_chirho,
+                b_binder_chirho.id_chirho,
+                result_binder_chirho.id_chirho
+            ]
+        );
+    }
+
+    #[test]
+    fn simplify_preserves_recursive_let_cycle_chirho() {
+        let f_binder_chirho = dummy_binder_chirho("f", 10);
+        let expr_chirho = CoreExprChirho::LetChirho {
+            rec_chirho: true,
+            binds_chirho: vec![(
+                f_binder_chirho.clone(),
+                CoreExprChirho::LamChirho {
+                    binder_chirho: dummy_binder_chirho("x", 11),
+                    body_chirho: Box::new(CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(f_binder_chirho.id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                            0,
+                        ))),
+                    }),
+                },
+            )],
+            body_chirho: Box::new(CoreExprChirho::VarChirho(f_binder_chirho.id_chirho)),
+        };
+
+        let simplified_chirho = simplify_expr_chirho(&expr_chirho);
+        let CoreExprChirho::LetChirho { rec_chirho, .. } = simplified_chirho else {
+            panic!("expected LetChirho");
+        };
+        assert!(rec_chirho, "true recursive lets should stay recursive");
     }
 
     #[test]
