@@ -2481,3 +2481,48 @@ main = do
         assert_eq!(stdout_chirho.trim(), "10\n3");
     }
 }
+
+#[test]
+fn llvm_round_trip_partial_application_chirho() {
+    let src_chirho = r#"module Main where
+add :: Int -> Int -> Int
+add x y = x + y
+add5 :: Int -> Int
+add5 = add 5
+mul :: Int -> Int -> Int
+mul x y = x * y
+double :: Int -> Int
+double = mul 2
+main :: IO ()
+main = do
+  print (add5 37)
+  print (double 21)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "42\n42");
+    }
+}
+
+#[test]
+fn llvm_round_trip_number_theory_chirho() {
+    // GCD + power + nth prime — comprehensive test
+    let src_chirho = r#"module Main where
+gcd' :: Int -> Int -> Int
+gcd' a 0 = a
+gcd' a b = gcd' b (a `mod` b)
+power :: Int -> Int -> Int
+power _ 0 = 1
+power base exp = base * power base (exp - 1)
+main :: IO ()
+main = do
+  print (gcd' 252 105)
+  print (power 2 10)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "21\n1024");
+    }
+}
