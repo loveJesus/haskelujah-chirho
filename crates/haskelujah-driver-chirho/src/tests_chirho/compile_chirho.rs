@@ -1652,6 +1652,36 @@ main = putStrLn ("answer: " ++ show 42)
 }
 
 #[test]
+fn llvm_round_trip_string_equality_output_chirho() {
+    let src_chirho = r#"module Main where
+main = do
+  print ("hello" == "hello")
+  print ("hello" == "world")
+"#;
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(exit_code_chirho, 0);
+        assert_eq!(stdout_chirho, "True\nFalse\n");
+    }
+}
+
+#[test]
+fn llvm_round_trip_string_case_and_read_int_output_chirho() {
+    let src_chirho = r#"module Main where
+classifyChirho s = case s of
+  "hello" -> 1
+  "world" -> 2
+  _ -> 3
+main = do
+  print (classifyChirho "hello")
+  print ((read "42") :: Int)
+"#;
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(exit_code_chirho, 0);
+        assert_eq!(stdout_chirho, "1\n42\n");
+    }
+}
+
+#[test]
 fn llvm_round_trip_take_zero_matches_first_equation_chirho() {
     let src_chirho = r#"module Main where
 myTakeChirho 0 _ = []
@@ -2430,6 +2460,38 @@ main = print (myLen (range 1 100000))
     if let Some((code_chirho, stdout_chirho)) = result_chirho {
         assert_eq!(code_chirho, 0, "range 100000 should work");
         assert_eq!(stdout_chirho.trim(), "100000", "len of range 1..100000");
+    }
+}
+
+#[test]
+fn cranelift_round_trip_string_equality_output_chirho() {
+    let src_chirho = r#"module Main where
+main = do
+  print ("hello" == "hello")
+  print ("hello" == "world")
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho, "True\nFalse\n");
+    }
+}
+
+#[test]
+fn cranelift_round_trip_string_case_and_read_int_output_chirho() {
+    let src_chirho = r#"module Main where
+classifyChirho s = case s of
+  "hello" -> 1
+  "world" -> 2
+  _ -> 3
+main = do
+  print (classifyChirho "hello")
+  print ((read "42") :: Int)
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho, "1\n42\n");
     }
 }
 

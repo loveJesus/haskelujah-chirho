@@ -110,6 +110,8 @@ pub struct LowerCtxChirho<'a> {
     pub write_file_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_read_file_chirho`
     pub read_file_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_read_int_chirho`
+    pub read_int_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_unpack_string_chirho`
     pub unpack_string_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_pack_string_chirho`
@@ -1896,6 +1898,17 @@ pub fn lower_primop_chirho(
             }
         }
         "showStr#" => lower_show_str_primop_chirho(builder_chirho, ctx_chirho, lhs_raw_chirho),
+        "readInt#" => {
+            let val_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            if let Some(read_int_ref_chirho) = ctx_chirho.read_int_ref_chirho {
+                let call_chirho = builder_chirho
+                    .ins()
+                    .call(read_int_ref_chirho, &[val_chirho]);
+                builder_chirho.inst_results(call_chirho)[0]
+            } else {
+                builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
+            }
+        }
         "^#" => {
             // Integer power — simplified: return lhs^rhs via repeated multiply
             // (not emitted here; return placeholder i64 0 for now).

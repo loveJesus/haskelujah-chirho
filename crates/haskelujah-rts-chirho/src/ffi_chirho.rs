@@ -542,6 +542,18 @@ pub extern "C" fn haskelujah_read_file_chirho(path_bits_chirho: u64) -> u64 {
     }
 }
 
+/// Parse a NUL-terminated UTF-8 string as an `Int`.
+/// Returns 0 on parse failure.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_read_int_chirho(text_bits_chirho: u64) -> i64 {
+    if text_bits_chirho == 0 {
+        return 0;
+    }
+    let ptr_chirho = text_bits_chirho as usize as *const std::ffi::c_char;
+    let text_chirho = unsafe { CStr::from_ptr(ptr_chirho) }.to_string_lossy();
+    text_chirho.trim().parse::<i64>().unwrap_or(0)
+}
+
 /// Convert a Haskell [Char] cons-list back to a NUL-terminated C string.
 /// Traverses the cons list collecting character codepoints into a buffer.
 #[unsafe(no_mangle)]
@@ -752,6 +764,23 @@ mod tests_chirho {
         let text_chirho =
             unsafe { CStr::from_ptr(ptr_bits_chirho as usize as *const std::ffi::c_char) };
         assert_eq!(text_chirho.to_bytes(), b"3.14");
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+    }
+
+    #[test]
+    fn read_int_parses_trimmed_decimal_string_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let ptr_bits_chirho = alloc_c_string_chirho(b"  -42  ");
+        assert_ne!(ptr_bits_chirho, 0);
+        assert_eq!(haskelujah_read_int_chirho(ptr_bits_chirho), -42);
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
         runtime_chirho.reset_chirho();

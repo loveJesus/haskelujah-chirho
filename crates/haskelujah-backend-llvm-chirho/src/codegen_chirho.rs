@@ -1262,6 +1262,11 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(
             self.output_chirho,
+            "declare i64 @haskelujah_read_int_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
             "declare i64 @haskelujah_main_with_large_stack_chirho(i64)"
         )
         .unwrap();
@@ -2141,13 +2146,14 @@ impl LlvmCodegenChirho {
                 } else if args_chirho.len() == 1
                     && matches!(
                         name_chirho.as_str(),
-                        "showInt#" | "showBool#" | "showChar#" | "showFloat#"
+                        "showInt#" | "showBool#" | "showChar#" | "showFloat#" | "readInt#"
                     )
                 {
                     let rts_fn_chirho = match name_chirho.as_str() {
                         "showBool#" => "haskelujah_show_bool_chirho",
                         "showChar#" => "haskelujah_show_char_chirho",
                         "showFloat#" => "haskelujah_show_float_chirho",
+                        "readInt#" => "haskelujah_read_int_chirho",
                         _ => "haskelujah_show_int_chirho",
                     };
                     let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
