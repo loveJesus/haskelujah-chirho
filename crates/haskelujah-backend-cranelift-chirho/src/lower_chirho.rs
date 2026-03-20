@@ -197,6 +197,16 @@ pub fn lower_expr_chirho(
                     *func_ref_chirho,
                     *arity_chirho,
                 )
+            } else if let Some(name_chirho) = ctx_chirho.toplevel_names_chirho.get(id_chirho) {
+                // Check for 0-arg IO actions that should be called immediately
+                if matches!(name_chirho.as_str(), "getLine" | "getLine#") {
+                    if let Some(get_line_ref_chirho) = ctx_chirho.get_line_ref_chirho {
+                        let call_chirho = builder_chirho.ins().call(get_line_ref_chirho, &[]);
+                        return builder_chirho.inst_results(call_chirho)[0];
+                    }
+                }
+                // Other unresolved named variables — emit 0 as placeholder
+                builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
             } else {
                 // Unresolved variable — emit 0 as a safe placeholder.
                 builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
