@@ -2420,3 +2420,51 @@ main = do
         assert_eq!(stdout_chirho.trim(), "49\n12\n42\n-1");
     }
 }
+
+#[test]
+fn llvm_round_trip_recursive_adt_expr_evaluator_chirho() {
+    // 4-constructor recursive expression ADT with nested patterns
+    let src_chirho = r#"module Main where
+data Expr = Lit Int | Add Expr Expr | Mul Expr Expr | Neg Expr
+eval :: Expr -> Int
+eval (Lit n) = n
+eval (Add a b) = eval a + eval b
+eval (Mul a b) = eval a * eval b
+eval (Neg e) = 0 - eval e
+main :: IO ()
+main = do
+  print (eval (Mul (Add (Lit 3) (Lit 4)) (Lit 2)))
+  print (eval (Neg (Add (Lit 5) (Lit 3))))
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "14\n-8");
+    }
+}
+
+#[test]
+fn llvm_round_trip_recursive_tree_sum_depth_chirho() {
+    // Recursive binary tree with sum and depth
+    let src_chirho = r#"module Main where
+data Tree = Leaf Int | Node Tree Tree
+sumTree :: Tree -> Int
+sumTree (Leaf n) = n
+sumTree (Node l r) = sumTree l + sumTree r
+max' :: Int -> Int -> Int
+max' a b = if a >= b then a else b
+depth :: Tree -> Int
+depth (Leaf _) = 1
+depth (Node l r) = 1 + max' (depth l) (depth r)
+main :: IO ()
+main = do
+  let t = Node (Node (Leaf 1) (Leaf 2)) (Node (Leaf 3) (Leaf 4))
+  print (sumTree t)
+  print (depth t)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "10\n3");
+    }
+}
