@@ -962,9 +962,15 @@ pub fn elide_dicts_chirho(
                 return simplified_chirho;
             }
 
-            // $sel_Num_+ dict x y → +# x y (and similar binary/unary primops)
+            // $sel_Num_+ dict x y → +# x y (binary)
+            // $sel_Num_abs dict x → absInt# x (unary)
             if let Some(primop_chirho) = selector_primop_chirho(&name_chirho) {
-                if all_args_chirho.len() >= 3 {
+                let is_unary_chirho = matches!(
+                    primop_chirho,
+                    "absInt#" | "signumInt#" | "negate#"
+                );
+                let min_args_chirho = if is_unary_chirho { 2 } else { 3 };
+                if all_args_chirho.len() >= min_args_chirho {
                     let real_args_chirho: Vec<CoreExprChirho> = all_args_chirho[1..]
                         .iter()
                         .map(|a_chirho| elide_dicts_chirho(a_chirho, all_bindings_chirho))
