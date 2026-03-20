@@ -66,6 +66,14 @@ pub struct LlvmCodegenChirho {
     lifted_local_arities_chirho: HashMap<CoreIdChirho, usize>,
     /// Maps let/where-bound lambda CoreIds to the outer locals they capture.
     lifted_local_capture_ids_chirho: HashMap<CoreIdChirho, Vec<CoreIdChirho>>,
+    /// Core id of the function currently eligible for self-tail-call elimination.
+    current_tco_self_id_chirho: Option<CoreIdChirho>,
+    /// Loop label for the current self-tail-call-eliminated function.
+    current_tco_loop_label_chirho: Option<String>,
+    /// Mutable parameter slots used to rebind arguments on self-tail jumps.
+    current_tco_param_slots_chirho: HashMap<CoreIdChirho, String>,
+    /// Original parameter order for self-tail-call slot rebinding.
+    current_tco_param_order_chirho: Vec<CoreIdChirho>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -75,6 +83,11 @@ enum ShowBuiltinKindChirho {
     CharChirho,
     DoubleChirho,
     ListChirho(Box<ShowBuiltinKindChirho>),
+}
+
+enum TailCompileOutcomeChirho {
+    ValueChirho(String),
+    TerminatedChirho,
 }
 
 impl LlvmCodegenChirho {
@@ -98,6 +111,10 @@ impl LlvmCodegenChirho {
             lifted_local_names_chirho: HashMap::new(),
             lifted_local_arities_chirho: HashMap::new(),
             lifted_local_capture_ids_chirho: HashMap::new(),
+            current_tco_self_id_chirho: None,
+            current_tco_loop_label_chirho: None,
+            current_tco_param_slots_chirho: HashMap::new(),
+            current_tco_param_order_chirho: Vec::new(),
         }
     }
 
@@ -660,7 +677,7 @@ impl LlvmCodegenChirho {
                 });
         let mut params_vec_chirho = param_binders_chirho
             .iter()
-            .map(|binder_chirho| format!("i64 %v{}", binder_chirho.id_chirho.0))
+            .map(|binder_chirho| format!("i64 %v{}.entry_chirho", binder_chirho.id_chirho.0))
             .collect::<Vec<_>>();
         if !captured_ids_chirho.is_empty() {
             params_vec_chirho.insert(0, "i64 %env_chirho".to_string());
@@ -718,13 +735,60 @@ impl LlvmCodegenChirho {
             .unwrap();
         }
 
-        let result_chirho = inner_codegen_chirho.compile_expr_chirho(body_chirho);
-
+        let loop_label_chirho = inner_codegen_chirho.fresh_label_chirho("tail.loop");
+        let mut param_slots_chirho = HashMap::new();
+        for binder_chirho in &param_binders_chirho {
+            let slot_tmp_chirho = inner_codegen_chirho.fresh_tmp_chirho();
+            writeln!(
+                inner_codegen_chirho.output_chirho,
+                "  {slot_tmp_chirho} = alloca i64"
+            )
+            .unwrap();
+            writeln!(
+                inner_codegen_chirho.output_chirho,
+                "  store i64 %v{}.entry_chirho, ptr {slot_tmp_chirho}",
+                binder_chirho.id_chirho.0
+            )
+            .unwrap();
+            param_slots_chirho.insert(binder_chirho.id_chirho, slot_tmp_chirho);
+        }
         writeln!(
             inner_codegen_chirho.output_chirho,
-            "  ret i64 {result_chirho}"
+            "  br label %{loop_label_chirho}"
         )
         .unwrap();
+        writeln!(inner_codegen_chirho.output_chirho, "{loop_label_chirho}:").unwrap();
+        for binder_chirho in &param_binders_chirho {
+            let slot_tmp_chirho = param_slots_chirho
+                .get(&binder_chirho.id_chirho)
+                .expect("lifted lambda param slot");
+            writeln!(
+                inner_codegen_chirho.output_chirho,
+                "  %v{} = load i64, ptr {slot_tmp_chirho}",
+                binder_chirho.id_chirho.0
+            )
+            .unwrap();
+        }
+        inner_codegen_chirho.emit_missing_param_aliases_chirho(&param_binders_chirho, body_chirho);
+
+        inner_codegen_chirho.current_tco_self_id_chirho = self_binder_id_chirho;
+        inner_codegen_chirho.current_tco_loop_label_chirho = Some(loop_label_chirho);
+        inner_codegen_chirho.current_tco_param_slots_chirho = param_slots_chirho;
+        inner_codegen_chirho.current_tco_param_order_chirho = param_binders_chirho
+            .iter()
+            .map(|binder_chirho| binder_chirho.id_chirho)
+            .collect();
+
+        match inner_codegen_chirho.compile_tail_expr_chirho(body_chirho) {
+            TailCompileOutcomeChirho::ValueChirho(result_chirho) => {
+                writeln!(
+                    inner_codegen_chirho.output_chirho,
+                    "  ret i64 {result_chirho}"
+                )
+                .unwrap();
+            }
+            TailCompileOutcomeChirho::TerminatedChirho => {}
+        }
         writeln!(inner_codegen_chirho.output_chirho, "}}").unwrap();
 
         self.next_string_chirho = inner_codegen_chirho.next_string_chirho;
@@ -1088,19 +1152,63 @@ impl LlvmCodegenChirho {
 
         writeln!(
             self.output_chirho,
-            "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
+            "define i64 @{fn_name_chirho}({}) {{",
+            param_binders_chirho
+                .iter()
+                .map(|binder_chirho| format!("i64 %v{}.entry_chirho", binder_chirho.id_chirho.0))
+                .collect::<Vec<_>>()
+                .join(", ")
         )
         .unwrap();
         writeln!(self.output_chirho, "entry:").unwrap();
 
         // Reset temporaries for this function
         self.next_tmp_chirho = 0;
+        let loop_label_chirho = self.fresh_label_chirho("tail.loop");
+        let mut param_slots_chirho = HashMap::new();
+        for binder_chirho in &param_binders_chirho {
+            let slot_tmp_chirho = self.fresh_tmp_chirho();
+            writeln!(self.output_chirho, "  {slot_tmp_chirho} = alloca i64").unwrap();
+            writeln!(
+                self.output_chirho,
+                "  store i64 %v{}.entry_chirho, ptr {slot_tmp_chirho}",
+                binder_chirho.id_chirho.0
+            )
+            .unwrap();
+            param_slots_chirho.insert(binder_chirho.id_chirho, slot_tmp_chirho);
+        }
+        writeln!(self.output_chirho, "  br label %{loop_label_chirho}").unwrap();
+        writeln!(self.output_chirho, "{loop_label_chirho}:").unwrap();
+        for binder_chirho in &param_binders_chirho {
+            let slot_tmp_chirho = param_slots_chirho
+                .get(&binder_chirho.id_chirho)
+                .expect("top-level param slot");
+            writeln!(
+                self.output_chirho,
+                "  %v{} = load i64, ptr {slot_tmp_chirho}",
+                binder_chirho.id_chirho.0
+            )
+            .unwrap();
+        }
         self.emit_missing_param_aliases_chirho(&param_binders_chirho, body_chirho);
+        self.current_tco_self_id_chirho = Some(binding_chirho.binder_chirho.id_chirho);
+        self.current_tco_loop_label_chirho = Some(loop_label_chirho);
+        self.current_tco_param_slots_chirho = param_slots_chirho;
+        self.current_tco_param_order_chirho = param_binders_chirho
+            .iter()
+            .map(|binder_chirho| binder_chirho.id_chirho)
+            .collect();
 
-        // Compile the body
-        let result_chirho = self.compile_expr_chirho(body_chirho);
-
-        writeln!(self.output_chirho, "  ret i64 {result_chirho}").unwrap();
+        match self.compile_tail_expr_chirho(body_chirho) {
+            TailCompileOutcomeChirho::ValueChirho(result_chirho) => {
+                writeln!(self.output_chirho, "  ret i64 {result_chirho}").unwrap();
+            }
+            TailCompileOutcomeChirho::TerminatedChirho => {}
+        }
+        self.current_tco_self_id_chirho = None;
+        self.current_tco_loop_label_chirho = None;
+        self.current_tco_param_slots_chirho.clear();
+        self.current_tco_param_order_chirho.clear();
         writeln!(self.output_chirho, "}}").unwrap();
         writeln!(self.output_chirho).unwrap();
     }
@@ -1706,6 +1814,172 @@ impl LlvmCodegenChirho {
                 args_chirho,
             } => self.compile_constructor_app_chirho(con_name_chirho, args_chirho),
         }
+    }
+
+    fn compile_tail_expr_chirho(
+        &mut self,
+        expr_chirho: &CoreExprChirho,
+    ) -> TailCompileOutcomeChirho {
+        match expr_chirho {
+            CoreExprChirho::AppChirho { .. } => {
+                let (callee_chirho, args_chirho) = flatten_app_chirho(expr_chirho);
+                if self.try_compile_self_tail_call_chirho(callee_chirho, &args_chirho) {
+                    TailCompileOutcomeChirho::TerminatedChirho
+                } else {
+                    TailCompileOutcomeChirho::ValueChirho(self.compile_expr_chirho(expr_chirho))
+                }
+            }
+            CoreExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
+                let lifted_let_bound_ids_chirho: HashSet<CoreIdChirho> = binds_chirho
+                    .iter()
+                    .filter_map(|(binder_chirho, rhs_chirho)| {
+                        if is_runtime_lambda_chirho(rhs_chirho) {
+                            Some(binder_chirho.id_chirho)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                for (binder_chirho, rhs_chirho) in binds_chirho {
+                    if is_runtime_lambda_chirho(rhs_chirho) {
+                        let lifted_name_chirho = self.fresh_lifted_name_chirho();
+                        self.lifted_local_names_chirho
+                            .insert(binder_chirho.id_chirho, lifted_name_chirho);
+                        self.lifted_local_arities_chirho.insert(
+                            binder_chirho.id_chirho,
+                            collect_lambda_params_chirho(rhs_chirho).0.len(),
+                        );
+                        self.lifted_local_capture_ids_chirho.insert(
+                            binder_chirho.id_chirho,
+                            self.collect_captured_local_ids_chirho(
+                                rhs_chirho,
+                                &lifted_let_bound_ids_chirho,
+                            ),
+                        );
+                    }
+                }
+
+                for (binder_chirho, rhs_chirho) in binds_chirho {
+                    self.remember_local_binder_chirho(binder_chirho);
+                    let val_chirho = if let Some(lifted_name_chirho) = self
+                        .lifted_local_names_chirho
+                        .get(&binder_chirho.id_chirho)
+                        .cloned()
+                    {
+                        self.lifted_local_capture_ids_chirho.insert(
+                            binder_chirho.id_chirho,
+                            self.collect_captured_local_ids_chirho(
+                                rhs_chirho,
+                                &lifted_let_bound_ids_chirho,
+                            ),
+                        );
+                        self.compile_lifted_lambda_value_chirho(
+                            &lifted_name_chirho,
+                            rhs_chirho,
+                            &lifted_let_bound_ids_chirho,
+                        )
+                    } else {
+                        self.compile_expr_chirho(rhs_chirho)
+                    };
+                    writeln!(
+                        self.output_chirho,
+                        "  ; let {} = {}",
+                        binder_chirho.name_chirho, val_chirho
+                    )
+                    .unwrap();
+                    writeln!(
+                        self.output_chirho,
+                        "  %v{} = add i64 0, {val_chirho}",
+                        binder_chirho.id_chirho.0
+                    )
+                    .unwrap();
+                }
+                self.compile_tail_expr_chirho(body_chirho)
+            }
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                bind_chirho,
+                alts_chirho,
+                ..
+            } => {
+                let scrut_val_chirho = self.compile_expr_chirho(scrutinee_chirho);
+                self.remember_local_binder_chirho(bind_chirho);
+                writeln!(
+                    self.output_chirho,
+                    "  %v{} = add i64 0, {scrut_val_chirho}",
+                    bind_chirho.id_chirho.0
+                )
+                .unwrap();
+
+                if alts_chirho.is_empty() {
+                    return TailCompileOutcomeChirho::ValueChirho(scrut_val_chirho);
+                }
+
+                let has_lit_alts_chirho = alts_chirho
+                    .iter()
+                    .any(|a_chirho| matches!(a_chirho.con_chirho, AltConChirho::LitConChirho(_)));
+                if has_lit_alts_chirho {
+                    self.compile_case_lit_tail_chirho(&scrut_val_chirho, alts_chirho)
+                } else {
+                    self.compile_case_data_tail_chirho(&scrut_val_chirho, alts_chirho)
+                }
+            }
+            CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+                self.compile_tail_expr_chirho(body_chirho)
+            }
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => self.compile_tail_expr_chirho(inner_chirho),
+            _ => TailCompileOutcomeChirho::ValueChirho(self.compile_expr_chirho(expr_chirho)),
+        }
+    }
+
+    fn try_compile_self_tail_call_chirho(
+        &mut self,
+        callee_chirho: &CoreExprChirho,
+        args_chirho: &[&CoreExprChirho],
+    ) -> bool {
+        let Some(self_id_chirho) = self.current_tco_self_id_chirho else {
+            return false;
+        };
+        let Some(loop_label_chirho) = self.current_tco_loop_label_chirho.clone() else {
+            return false;
+        };
+        let CoreExprChirho::VarChirho(callee_id_chirho) = callee_chirho else {
+            return false;
+        };
+        if *callee_id_chirho != self_id_chirho {
+            return false;
+        }
+
+        let param_ids_chirho = self.current_tco_param_order_chirho.clone();
+        if args_chirho.len() != param_ids_chirho.len() {
+            return false;
+        }
+
+        let arg_vals_chirho: Vec<String> = args_chirho
+            .iter()
+            .map(|arg_chirho| self.compile_expr_chirho(arg_chirho))
+            .collect();
+        for (param_id_chirho, arg_val_chirho) in param_ids_chirho.iter().zip(arg_vals_chirho.iter())
+        {
+            let Some(slot_tmp_chirho) = self.current_tco_param_slots_chirho.get(param_id_chirho)
+            else {
+                return false;
+            };
+            writeln!(
+                self.output_chirho,
+                "  store i64 {arg_val_chirho}, ptr {slot_tmp_chirho}"
+            )
+            .unwrap();
+        }
+        writeln!(self.output_chirho, "  br label %{loop_label_chirho}").unwrap();
+        true
     }
 
     fn compile_lit_chirho(&mut self, lit_chirho: &CoreLitChirho) -> String {
@@ -2690,6 +2964,86 @@ impl LlvmCodegenChirho {
         }
     }
 
+    fn compile_case_lit_tail_chirho(
+        &mut self,
+        scrut_val_chirho: &str,
+        alts_chirho: &[CoreAltChirho],
+    ) -> TailCompileOutcomeChirho {
+        let result_tmp_chirho = self.fresh_tmp_chirho();
+        let end_label_chirho = self.fresh_label_chirho("case.end");
+        writeln!(
+            self.output_chirho,
+            "  {result_tmp_chirho}.addr = alloca i64"
+        )
+        .unwrap();
+
+        let default_label_chirho = self.fresh_label_chirho("case.default");
+        let mut switch_arms_chirho = Vec::new();
+        let mut alt_labels_chirho = Vec::new();
+
+        for alt_chirho in alts_chirho {
+            match &alt_chirho.con_chirho {
+                AltConChirho::LitConChirho(CoreLitChirho::IntChirho(v_chirho)) => {
+                    let label_chirho = self.fresh_label_chirho("case.lit");
+                    switch_arms_chirho.push(format!("    i64 {v_chirho}, label %{label_chirho}"));
+                    alt_labels_chirho.push((label_chirho, alt_chirho));
+                }
+                AltConChirho::DefaultChirho => {
+                    alt_labels_chirho.push((default_label_chirho.clone(), alt_chirho));
+                }
+                _ => {}
+            }
+        }
+
+        writeln!(
+            self.output_chirho,
+            "  switch i64 {scrut_val_chirho}, label %{default_label_chirho} ["
+        )
+        .unwrap();
+        for arm_chirho in &switch_arms_chirho {
+            writeln!(self.output_chirho, "{arm_chirho}").unwrap();
+        }
+        writeln!(self.output_chirho, "  ]").unwrap();
+
+        let mut has_value_branch_chirho = false;
+        for (label_chirho, alt_chirho) in &alt_labels_chirho {
+            writeln!(self.output_chirho, "{label_chirho}:").unwrap();
+            match self.compile_tail_expr_chirho(&alt_chirho.rhs_chirho) {
+                TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
+                    has_value_branch_chirho = true;
+                    writeln!(
+                        self.output_chirho,
+                        "  store i64 {val_chirho}, ptr {result_tmp_chirho}.addr"
+                    )
+                    .unwrap();
+                    writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
+                }
+                TailCompileOutcomeChirho::TerminatedChirho => {}
+            }
+        }
+
+        if !alts_chirho
+            .iter()
+            .any(|a_chirho| a_chirho.con_chirho == AltConChirho::DefaultChirho)
+        {
+            writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
+            writeln!(self.output_chirho, "  unreachable").unwrap();
+        }
+
+        if has_value_branch_chirho {
+            writeln!(self.output_chirho, "{end_label_chirho}:").unwrap();
+            let load_tmp_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {load_tmp_chirho} = load i64, ptr {result_tmp_chirho}.addr"
+            )
+            .unwrap();
+            TailCompileOutcomeChirho::ValueChirho(load_tmp_chirho)
+        } else {
+            TailCompileOutcomeChirho::TerminatedChirho
+        }
+    }
+
     fn compile_case_data_chirho(
         &mut self,
         scrut_val_chirho: &str,
@@ -2795,6 +3149,136 @@ impl LlvmCodegenChirho {
         {
             writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
             writeln!(self.output_chirho, "  unreachable").unwrap();
+        }
+    }
+
+    fn compile_case_data_tail_chirho(
+        &mut self,
+        scrut_val_chirho: &str,
+        alts_chirho: &[CoreAltChirho],
+    ) -> TailCompileOutcomeChirho {
+        let result_tmp_chirho = self.fresh_tmp_chirho();
+        let end_label_chirho = self.fresh_label_chirho("case.end");
+        writeln!(
+            self.output_chirho,
+            "  {result_tmp_chirho}.addr = alloca i64"
+        )
+        .unwrap();
+
+        if alts_chirho.len() == 1 && alts_chirho[0].con_chirho == AltConChirho::DefaultChirho {
+            for binder_chirho in &alts_chirho[0].binders_chirho {
+                self.remember_local_binder_chirho(binder_chirho);
+                writeln!(
+                    self.output_chirho,
+                    "  %v{} = add i64 0, {scrut_val_chirho}",
+                    binder_chirho.id_chirho.0
+                )
+                .unwrap();
+            }
+            return match self.compile_tail_expr_chirho(&alts_chirho[0].rhs_chirho) {
+                TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
+                    TailCompileOutcomeChirho::ValueChirho(val_chirho)
+                }
+                TailCompileOutcomeChirho::TerminatedChirho => {
+                    TailCompileOutcomeChirho::TerminatedChirho
+                }
+            };
+        }
+
+        let default_label_chirho = self.fresh_label_chirho("case.default");
+        let scrut_tag_tmp_chirho = self.load_constructor_tag_chirho(scrut_val_chirho);
+        let mut has_value_branch_chirho = false;
+
+        for (i_chirho, alt_chirho) in alts_chirho.iter().enumerate() {
+            match &alt_chirho.con_chirho {
+                AltConChirho::DataConChirho(name_chirho) => {
+                    let tag_chirho = constructor_tag_chirho(name_chirho);
+                    let cmp_tmp_chirho = self.fresh_tmp_chirho();
+                    let then_label_chirho = self.fresh_label_chirho("case.con");
+                    let else_label_chirho = if i_chirho + 1 < alts_chirho.len() {
+                        self.fresh_label_chirho("case.next")
+                    } else {
+                        default_label_chirho.clone()
+                    };
+                    writeln!(
+                        self.output_chirho,
+                        "  {cmp_tmp_chirho} = icmp eq i64 {scrut_tag_tmp_chirho}, {tag_chirho}"
+                    )
+                    .unwrap();
+                    writeln!(
+                        self.output_chirho,
+                        "  br i1 {cmp_tmp_chirho}, label %{then_label_chirho}, label %{else_label_chirho}"
+                    )
+                    .unwrap();
+
+                    writeln!(self.output_chirho, "{then_label_chirho}:").unwrap();
+                    self.bind_constructor_fields_chirho(
+                        scrut_val_chirho,
+                        &alt_chirho.binders_chirho,
+                    );
+                    match self.compile_tail_expr_chirho(&alt_chirho.rhs_chirho) {
+                        TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
+                            has_value_branch_chirho = true;
+                            writeln!(
+                                self.output_chirho,
+                                "  store i64 {val_chirho}, ptr {result_tmp_chirho}.addr"
+                            )
+                            .unwrap();
+                            writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
+                        }
+                        TailCompileOutcomeChirho::TerminatedChirho => {}
+                    }
+
+                    if i_chirho + 1 < alts_chirho.len() {
+                        writeln!(self.output_chirho, "{else_label_chirho}:").unwrap();
+                    }
+                }
+                AltConChirho::DefaultChirho => {
+                    for binder_chirho in &alt_chirho.binders_chirho {
+                        self.remember_local_binder_chirho(binder_chirho);
+                        writeln!(
+                            self.output_chirho,
+                            "  %v{} = add i64 0, {scrut_val_chirho}",
+                            binder_chirho.id_chirho.0
+                        )
+                        .unwrap();
+                    }
+                    match self.compile_tail_expr_chirho(&alt_chirho.rhs_chirho) {
+                        TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
+                            has_value_branch_chirho = true;
+                            writeln!(
+                                self.output_chirho,
+                                "  store i64 {val_chirho}, ptr {result_tmp_chirho}.addr"
+                            )
+                            .unwrap();
+                            writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
+                        }
+                        TailCompileOutcomeChirho::TerminatedChirho => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if !alts_chirho
+            .iter()
+            .any(|a_chirho| a_chirho.con_chirho == AltConChirho::DefaultChirho)
+        {
+            writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
+            writeln!(self.output_chirho, "  unreachable").unwrap();
+        }
+
+        if has_value_branch_chirho {
+            writeln!(self.output_chirho, "{end_label_chirho}:").unwrap();
+            let load_tmp_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {load_tmp_chirho} = load i64, ptr {result_tmp_chirho}.addr"
+            )
+            .unwrap();
+            TailCompileOutcomeChirho::ValueChirho(load_tmp_chirho)
+        } else {
+            TailCompileOutcomeChirho::TerminatedChirho
         }
     }
 
@@ -3442,7 +3926,8 @@ mod tests_chirho {
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
-        assert!(ir_chirho.contains("define i64 @haskelujah_f(i64 %v0)"));
+        assert!(ir_chirho.contains("define i64 @haskelujah_f(i64 %v0.entry_chirho)"));
+        assert!(ir_chirho.contains("tail.loop."));
         assert!(ir_chirho.contains("ret i64 %v0"));
     }
 
@@ -3851,7 +4336,7 @@ mod tests_chirho {
         };
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
-        assert!(ir_chirho.contains("define i64 @haskelujah_lambda_0(i64 %v0)"));
+        assert!(ir_chirho.contains("define i64 @haskelujah_lambda_0(i64 %v0.entry_chirho)"));
         assert!(ir_chirho.contains("ptrtoint ptr @haskelujah_lambda_0 to i64"));
         assert!(
             !ir_chirho.contains("inttoptr i64 %v1 to ptr"),
@@ -4334,7 +4819,9 @@ mod tests_chirho {
         let module_chirho = wildcard_first_column_safe_divide_module_chirho();
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
-        assert!(ir_chirho.contains("define i64 @haskelujah_safeDivideChirho(i64 %v2, i64 %v3)"));
+        assert!(ir_chirho.contains(
+            "define i64 @haskelujah_safeDivideChirho(i64 %v2.entry_chirho, i64 %v3.entry_chirho)"
+        ));
         assert!(ir_chirho.contains("%v8 = add i64 0, %v2"));
         assert!(ir_chirho.contains("sdiv i64 %v8, %v3"));
     }
@@ -4651,8 +5138,9 @@ mod tests_chirho {
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
         assert!(
-            ir_chirho
-                .contains("define i64 @haskelujah__u0024sel_Num_fromInteger(i64 %v1, i64 %v2)")
+            ir_chirho.contains(
+                "define i64 @haskelujah__u0024sel_Num_fromInteger(i64 %v1.entry_chirho, i64 %v2.entry_chirho)"
+            )
         );
         assert!(ir_chirho.contains("ret i64 %v2"));
     }

@@ -36,10 +36,8 @@ fn builds_a_check_summary_for_batch_mode_chirho() {
             .runtime_plan_chirho
             .incremental_session_chirho
     );
-    assert!(
-        render_summary_chirho(&check_summary_chirho)
-            .contains("llvm_preview: ; haskelujah llvm stub")
-    );
+    assert!(render_summary_chirho(&check_summary_chirho)
+        .contains("llvm_preview: ; haskelujah llvm stub"));
 }
 
 #[test]
@@ -434,22 +432,16 @@ executable hello-app
         result_chirho.executables_chirho[0].compilation_order_chirho,
         vec!["Lib".to_string(), "Main".to_string()]
     );
-    assert!(
-        !result_chirho.executables_chirho[0]
-            .core_chirho
-            .bindings_chirho
-            .is_empty()
-    );
-    assert!(
-        result_chirho.executables_chirho[0]
-            .llvm_ir_chirho
-            .contains("define i32 @main()")
-    );
-    assert!(
-        result_chirho.executables_chirho[0]
-            .llvm_ir_chirho
-            .contains("@haskelujah_main")
-    );
+    assert!(!result_chirho.executables_chirho[0]
+        .core_chirho
+        .bindings_chirho
+        .is_empty());
+    assert!(result_chirho.executables_chirho[0]
+        .llvm_ir_chirho
+        .contains("define i32 @main()"));
+    assert!(result_chirho.executables_chirho[0]
+        .llvm_ir_chirho
+        .contains("@haskelujah_main"));
 
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
 }
@@ -1160,6 +1152,29 @@ main = print (sumTo 10)
 }
 
 #[test]
+fn llvm_round_trip_euler1_tail_recursion_no_stack_overflow_chirho() {
+    let src_chirho = r#"module Main where
+euler1 limit = go 0 0 where
+  go acc n =
+    if n >= limit
+      then acc
+      else if mod n 3 == 0
+        then go (acc + n) (n + 1)
+        else if mod n 5 == 0
+          then go (acc + n) (n + 1)
+          else go acc (n + 1)
+main = print (euler1 100000)
+"#;
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(src_chirho).expect("tail-recursive LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "tail-recursive LLVM executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "2333316668\n");
+}
+
+#[test]
 fn llvm_round_trip_put_str_ln_show_int_output_chirho() {
     let src_chirho = "module Main where\nmain = putStrLn (show 42)";
     if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
@@ -1813,7 +1828,11 @@ main = do
     if let Some((code_chirho, stdout_chirho)) = result_chirho {
         assert_eq!(code_chirho, 0);
         let lines_chirho: Vec<&str> = stdout_chirho.trim().lines().collect();
-        assert!(lines_chirho.len() >= 3, "expected 3 lines, got {}", lines_chirho.len());
+        assert!(
+            lines_chirho.len() >= 3,
+            "expected 3 lines, got {}",
+            lines_chirho.len()
+        );
         assert_eq!(lines_chirho[0], "sum = 6", "show Int after sum");
         assert_eq!(lines_chirho[1], "bool = True", "show Bool");
         assert_eq!(lines_chirho[2], "abs = 42", "show Int via abs");
