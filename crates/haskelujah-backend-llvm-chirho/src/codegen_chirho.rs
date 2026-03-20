@@ -3256,7 +3256,12 @@ impl LlvmCodegenChirho {
                         &alt_chirho.binders_chirho,
                     );
                     let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
-                    incoming_values_chirho.push((then_label_chirho, val_chirho));
+                    // Use a landing pad label so the phi references the
+                    // correct predecessor (compile_expr may emit many blocks).
+                    let landing_chirho = self.fresh_label_chirho("case.con.land");
+                    writeln!(self.output_chirho, "  br label %{landing_chirho}").unwrap();
+                    writeln!(self.output_chirho, "{landing_chirho}:").unwrap();
+                    incoming_values_chirho.push((landing_chirho, val_chirho));
                     writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
 
                     if i_chirho + 1 < alts_chirho.len() {
@@ -3275,7 +3280,12 @@ impl LlvmCodegenChirho {
                         .unwrap();
                     }
                     let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
-                    incoming_values_chirho.push((default_label_chirho.clone(), val_chirho));
+                    // Use a landing pad label so the phi references the
+                    // correct predecessor (compile_expr may emit many blocks).
+                    let landing_chirho = self.fresh_label_chirho("case.def.land");
+                    writeln!(self.output_chirho, "  br label %{landing_chirho}").unwrap();
+                    writeln!(self.output_chirho, "{landing_chirho}:").unwrap();
+                    incoming_values_chirho.push((landing_chirho, val_chirho));
                     writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
                 }
                 _ => {}
@@ -3368,7 +3378,12 @@ impl LlvmCodegenChirho {
             self.bind_constructor_fields_chirho(scrut_val_chirho, &alt_chirho.binders_chirho);
             match self.compile_tail_expr_chirho(&alt_chirho.rhs_chirho) {
                 TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
-                    incoming_values_chirho.push((then_label_chirho, val_chirho));
+                    // Landing pad: compile_tail_expr may emit many blocks,
+                    // so the phi must reference the actual predecessor.
+                    let landing_chirho = self.fresh_label_chirho("case.con.land");
+                    writeln!(self.output_chirho, "  br label %{landing_chirho}").unwrap();
+                    writeln!(self.output_chirho, "{landing_chirho}:").unwrap();
+                    incoming_values_chirho.push((landing_chirho, val_chirho));
                     writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
                 }
                 TailCompileOutcomeChirho::TerminatedChirho => {}
@@ -3395,7 +3410,11 @@ impl LlvmCodegenChirho {
             }
             match self.compile_tail_expr_chirho(&default_alt_chirho.rhs_chirho) {
                 TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
-                    incoming_values_chirho.push((default_label_chirho.clone(), val_chirho));
+                    // Landing pad for default alt phi predecessor.
+                    let landing_chirho = self.fresh_label_chirho("case.def.land");
+                    writeln!(self.output_chirho, "  br label %{landing_chirho}").unwrap();
+                    writeln!(self.output_chirho, "{landing_chirho}:").unwrap();
+                    incoming_values_chirho.push((landing_chirho, val_chirho));
                     writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
                 }
                 TailCompileOutcomeChirho::TerminatedChirho => {}
