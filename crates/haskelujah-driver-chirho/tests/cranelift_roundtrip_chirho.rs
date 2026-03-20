@@ -6,8 +6,9 @@ use std::process::Command;
 use std::sync::OnceLock;
 
 use haskelujah_backend_cranelift_chirho::{
-    TargetConfigChirho, compile_core_to_object_executable_chirho,
+    compile_core_to_object_executable_chirho, TargetConfigChirho,
 };
+use haskelujah_core_chirho::{elide_dicts_and_filter_chirho, pretty_module_chirho};
 use haskelujah_driver_chirho::compile_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
@@ -91,6 +92,35 @@ fn cranelift_round_trip_sum_range_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = print (sum [1..10])\n");
     assert_eq!(stdout_chirho, "55\n");
+}
+
+#[test]
+fn cranelift_round_trip_user_range_large_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nrange lo hi = if lo > hi then [] else lo : range (lo + 1) hi\nmain = print (sum (range 1 10000))\n",
+    );
+    assert_eq!(stdout_chirho, "50005000\n");
+}
+
+#[test]
+fn cranelift_user_range_filtered_core_has_no_num_selectors_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let compile_result_chirho = compile_source_chirho(
+        "module Main where\nrange lo hi = if lo > hi then [] else lo : range (lo + 1) hi\nmain = print (sum (range 1 10))\n",
+        &mut source_map_chirho,
+        "Main.hs",
+    )
+    .expect("source should compile");
+    let filtered_core_chirho = elide_dicts_and_filter_chirho(&compile_result_chirho.core_chirho);
+    let pretty_core_chirho = pretty_module_chirho(&filtered_core_chirho);
+    assert!(
+        !pretty_core_chirho.contains("$sel_Num_+"),
+        "filtered core should not retain $sel_Num_+:\n{pretty_core_chirho}"
+    );
+    assert!(
+        !pretty_core_chirho.contains("$sel_Num_fromInteger"),
+        "filtered core should not retain $sel_Num_fromInteger:\n{pretty_core_chirho}"
+    );
 }
 
 #[test]
