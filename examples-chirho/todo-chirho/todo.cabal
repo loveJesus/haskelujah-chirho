@@ -1,0 +1,8 @@
+cabal-version: 2.4
+name: todo
+version: 0.1.0.0
+
+executable todo
+  main-is: Main.hs
+  build-depends: base
+  default-language: Haskell2010
