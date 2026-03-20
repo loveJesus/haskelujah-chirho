@@ -356,6 +356,22 @@ fn cranelift_round_trip_otherwise_guard_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_guard_where_binding_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nf x\n  | a > 0 = a\n  | otherwise = 0\n  where\n    a = x - 5\nmain = do\n  print (f 7)\n  print (f 4)\n",
+    );
+    assert_eq!(stdout_chirho, "2\n0\n");
+}
+
+#[test]
+fn cranelift_round_trip_case_inside_do_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nmain = do\n  putStrLn \"start\"\n  case Just 3 of\n    Just n -> print (n + 1)\n    Nothing -> print 0\n  putStrLn \"done\"\n",
+    );
+    assert_eq!(stdout_chirho, "start\n4\ndone\n");
+}
+
+#[test]
 fn cranelift_round_trip_nested_singleton_pattern_falls_through_chirho() {
     let stdout_chirho = cranelift_round_trip_stdout_chirho(
         "module Main where\nisSingle (x:[]) = 1\nisSingle _ = 2\nmain = print (isSingle [1,2])\n",

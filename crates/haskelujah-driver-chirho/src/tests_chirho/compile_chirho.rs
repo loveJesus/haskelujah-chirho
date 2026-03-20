@@ -2740,6 +2740,45 @@ main = do
 }
 
 #[test]
+fn llvm_round_trip_guard_where_binding_output_chirho() {
+    let src_chirho = r#"module Main where
+f :: Int -> Int
+f x
+  | a > 0 = a
+  | otherwise = 0
+  where
+    a = x - 5
+main :: IO ()
+main = do
+  print (f 7)
+  print (f 4)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "2\n0");
+    }
+}
+
+#[test]
+fn llvm_round_trip_case_inside_do_output_chirho() {
+    let src_chirho = r#"module Main where
+main :: IO ()
+main = do
+  putStrLn "start"
+  case Just 3 of
+    Just n -> print (n + 1)
+    Nothing -> print 0
+  putStrLn "done"
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "start\n4\ndone");
+    }
+}
+
+#[test]
 fn llvm_round_trip_adt_constructor_fields_chirho() {
     // ADT constructor field extraction + Maybe pattern matching
     let src_chirho = r#"module Main where
