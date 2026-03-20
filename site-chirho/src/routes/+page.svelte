@@ -6,7 +6,7 @@
 	const statsChirho = [
 		{ labelChirho: 'GHC Compatibility', valueChirho: '91.8%', detailChirho: '861 / 938 tests' },
 		{ labelChirho: 'Rust Code', valueChirho: '150K+', detailChirho: '21 crates, 132 source files' },
-		{ labelChirho: 'Passing Tests', valueChirho: '2,131+', detailChirho: '50/50 curated, 57 LLVM round-trips' },
+		{ labelChirho: 'Passing Tests', valueChirho: '2,200+', detailChirho: '170/170 curated, 1378 driver green' },
 		{ labelChirho: 'Compiler Targets', valueChirho: '3', detailChirho: 'Cranelift, LLVM, Wasm' }
 	];
 
@@ -68,6 +68,12 @@
 			descriptionChirho:
 				'Mark-sweep garbage collector via a Rust-based runtime system. Heap allocation tracking, automatic collection, and C ABI interop out of the box.',
 			iconChirho: 'M'
+		},
+		{
+			titleChirho: 'Scripting',
+			descriptionChirho:
+				'Run Haskell files directly with a shebang. Write #!/usr/bin/env haskelujah at the top, chmod once, and use Haskelujah like a scripting runtime.',
+			iconChirho: 'S'
 		}
 	];
 </script>
@@ -135,8 +141,8 @@
 			<div class="hero-proof-chirho">
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Latest proof</span>
-					<strong>2,131+ passing tests</strong>
-					<p>Compiler, driver, parser, runtimes, and backend round trips all green.</p>
+					<strong>2,200+ passing tests</strong>
+					<p>170/170 curated plus STG, LLVM, Cranelift, parser, driver, and runtime suites all green.</p>
 				</div>
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Developer experience</span>
@@ -361,6 +367,13 @@ main = putStrLn "Hello from a script!"</span>
 					<div class="feature-text-chirho">
 						<h3>Single Binary</h3>
 						<p>One self-contained executable. No runtime dependencies, no GHC installation, no LLVM toolchain (unless you opt in). Install with <code>cargo install haskelujah</code>, then run binaries or scripts with <code>#!/usr/bin/env haskelujah</code>.</p>
+					</div>
+				</div>
+				<div class="feature-card-chirho">
+					<div class="feature-icon-chirho">I</div>
+					<div class="feature-text-chirho">
+						<h3>Interactive I/O</h3>
+						<p><code>putStrLn</code>, <code>putStr</code>, <code>getLine</code>, and <code>read</code> all work in compiled programs. Interactive prompts, scripting, and stdin-driven tools run end to end on both native backends.</p>
 					</div>
 				</div>
 				<div class="feature-card-chirho">
