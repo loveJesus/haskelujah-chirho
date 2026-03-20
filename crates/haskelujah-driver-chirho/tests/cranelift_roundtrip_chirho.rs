@@ -185,6 +185,22 @@ fn cranelift_round_trip_read_file_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_write_then_read_file_output_chirho() {
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should exist");
+    let file_path_chirho = temp_dir_chirho.path().join("write-read-file-chirho.txt");
+    let file_path_literal_chirho =
+        haskell_string_literal_chirho(&file_path_chirho.display().to_string());
+    let src_chirho = format!(
+        "module Main where\nmain = do\n  writeFile {file_path_literal_chirho} \"hello from combined cranelift\"\n  contentsChirho <- readFile {file_path_literal_chirho}\n  putStr contentsChirho\n"
+    );
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(&src_chirho);
+    assert_eq!(stdout_chirho, "hello from combined cranelift");
+    let file_contents_chirho =
+        std::fs::read_to_string(&file_path_chirho).expect("combined file IO should create file");
+    assert_eq!(file_contents_chirho, "hello from combined cranelift");
+}
+
+#[test]
 fn cranelift_round_trip_show_char_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = putStrLn (show 'A')\n");
