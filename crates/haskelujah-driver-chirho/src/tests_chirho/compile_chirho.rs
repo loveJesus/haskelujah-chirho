@@ -1369,6 +1369,36 @@ fn llvm_round_trip_where_sibling_cross_reference_output_chirho() {
 }
 
 #[test]
+fn llvm_round_trip_let_inside_where_output_chirho() {
+    let src_chirho =
+        "module Main where\nf x = a where a = let sq = x * x in sq + 1\nmain = print (f 5)";
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(src_chirho).expect("let-in-where LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "let-in-where LLVM executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "26\n");
+}
+
+#[test]
+fn llvm_round_trip_derived_eq_runtime_output_chirho() {
+    let src_chirho = r#"module Main where
+data Color = Red | Green | Blue deriving (Eq, Show)
+main = do
+  print (Red == Red)
+  print (Red == Blue)
+"#;
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(src_chirho).expect("derived Eq LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "derived Eq LLVM executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "True\nFalse\n");
+}
+
+#[test]
 fn llvm_round_trip_euler1_tail_recursion_no_stack_overflow_chirho() {
     let src_chirho = r#"module Main where
 euler1 limit = go 0 0 where
@@ -1741,6 +1771,36 @@ fn cranelift_round_trip_where_sibling_cross_reference_output_chirho() {
         "where sibling Cranelift executable should exit successfully"
     );
     assert_eq!(stdout_chirho, "25\n");
+}
+
+#[test]
+fn cranelift_round_trip_let_inside_where_output_chirho() {
+    let src_chirho =
+        "module Main where\nf x = a where a = let sq = x * x in sq + 1\nmain = print (f 5)";
+    let (exit_code_chirho, stdout_chirho) =
+        cranelift_round_trip_output_chirho(src_chirho).expect("let-in-where Cranelift round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "let-in-where Cranelift executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "26\n");
+}
+
+#[test]
+fn cranelift_round_trip_derived_eq_runtime_output_chirho() {
+    let src_chirho = r#"module Main where
+data Color = Red | Green | Blue deriving (Eq, Show)
+main = do
+  print (Red == Red)
+  print (Red == Blue)
+"#;
+    let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
+        .expect("derived Eq Cranelift round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "derived Eq Cranelift executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "True\nFalse\n");
 }
 
 #[test]
