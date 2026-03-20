@@ -2526,3 +2526,48 @@ main = do
         assert_eq!(stdout_chirho.trim(), "21\n1024");
     }
 }
+
+#[test]
+fn llvm_round_trip_mutual_recursion_chirho() {
+    let src_chirho = r#"module Main where
+isEven :: Int -> Int
+isEven 0 = 1
+isEven n = isOdd (n - 1)
+isOdd :: Int -> Int
+isOdd 0 = 0
+isOdd n = isEven (n - 1)
+main :: IO ()
+main = do
+  print (isEven 10)
+  print (isOdd 3)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "1\n1");
+    }
+}
+
+#[test]
+fn llvm_round_trip_adt_with_field_constructor_chirho() {
+    // Stack machine: 4-constructor ADT with fields + tuple return
+    let src_chirho = r#"module Main where
+data Instr = Push Int | Add | Mul | Neg
+eval :: Instr -> Int -> Int -> (Int, Int)
+eval (Push n) a b = (n, a)
+eval Add a b = (a + b, 0)
+eval Mul a b = (a * b, 0)
+eval Neg a b = (0 - a, b)
+main :: IO ()
+main = do
+  let (a1, _) = eval (Push 3) 0 0
+  let (a2, _) = eval (Push 4) a1 0
+  let (r, _) = eval Add a2 a1
+  print r
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "7");
+    }
+}
