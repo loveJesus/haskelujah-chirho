@@ -2805,3 +2805,41 @@ main = print (sumList (msort [9, 3, 7, 1, 8, 2, 6, 4, 5]))
         assert_eq!(stdout_chirho.trim(), "45");
     }
 }
+
+#[test]
+fn llvm_round_trip_comprehensive_demo_chirho() {
+    // Comprehensive: filter, foldl with lambda, primes, show++
+    let src_chirho = r#"module Main where
+myFilter :: (Int -> Bool) -> [Int] -> [Int]
+myFilter _ [] = []
+myFilter p (x:xs) = if p x then x : myFilter p xs else myFilter p xs
+myFoldl :: (Int -> Int -> Int) -> Int -> [Int] -> Int
+myFoldl _ acc [] = acc
+myFoldl f acc (x:xs) = myFoldl f (f acc x) xs
+myLength :: [Int] -> Int
+myLength [] = 0
+myLength (_:xs) = 1 + myLength xs
+enumFromTo :: Int -> Int -> [Int]
+enumFromTo lo hi = if lo > hi then [] else lo : enumFromTo (lo + 1) hi
+isPrime :: Int -> Bool
+isPrime n
+  | n < 2 = False
+  | otherwise = go 2
+  where
+    go d
+      | d * d > n = True
+      | n `mod` d == 0 = False
+      | otherwise = go (d + 1)
+main :: IO ()
+main = do
+  let primes = myFilter isPrime (enumFromTo 2 100)
+  putStrLn ("primes: " ++ show (myLength primes))
+  let sq = myFoldl (\acc x -> acc + x * x) 0 (enumFromTo 1 10)
+  putStrLn ("sumsq: " ++ show sq)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "primes: 25\nsumsq: 385");
+    }
+}
