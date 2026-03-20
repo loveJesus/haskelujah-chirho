@@ -1075,20 +1075,39 @@ fn elide_dicts_with_locals_chirho(
                     all_bindings_chirho,
                     local_names_chirho,
                 );
-                if let Some(dict_name_chirho) =
-                    selector_dict_name_chirho(&all_args_chirho, all_bindings_chirho, local_names_chirho)
-                {
-                    if let Some(show_primop_chirho) =
-                        builtin_show_primop_for_dict_name_chirho(&dict_name_chirho)
-                    {
+                // Check if the dict is a non-builtin (derived) Show instance.
+                // If so, don't elide — let runtime handle it.
+                let dict_name_opt_chirho = selector_dict_name_chirho(
+                    &all_args_chirho, all_bindings_chirho, local_names_chirho,
+                );
+                if let Some(ref dn_chirho) = dict_name_opt_chirho {
+                    if builtin_show_primop_for_dict_name_chirho(dn_chirho).is_none() {
+                        // Non-builtin dict (e.g., $fShowColor) — don't elide
+                    } else {
+                        // Builtin dict. Detect from VALUE first (authoritative
+                        // for known literals/constructors). For unknown values
+                        // (computed results), we can't trust the dict name
+                        // because merged Core may share dicts incorrectly.
+                        // Default to showInt# for computed values.
+                        let show_primop_chirho = match &simplified_chirho {
+                            CoreExprChirho::ConAppChirho {
+                                con_name_chirho, ..
+                            } if con_name_chirho == "True" || con_name_chirho == "False" => {
+                                "showBool#"
+                            }
+                            CoreExprChirho::LitChirho(CoreLitChirho::CharChirho(_)) => "showChar#",
+                            CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(_)) => "showFloat#",
+                            // For computed values, default to showInt#.
+                            // Dict names may be unreliable in merged Core.
+                            _ => "showInt#",
+                        };
                         return CoreExprChirho::PrimOpChirho {
                             name_chirho: show_primop_chirho.to_string(),
                             args_chirho: vec![simplified_chirho],
                         };
                     }
                 } else {
-                    // No explicit dict survived into this selector call,
-                    // so preserve the old heuristic for builtin literals.
+                    // No dict found — use value-based heuristic
                     let show_primop_chirho = match &simplified_chirho {
                         CoreExprChirho::ConAppChirho {
                             con_name_chirho, ..
