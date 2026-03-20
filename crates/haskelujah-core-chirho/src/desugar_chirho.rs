@@ -2442,12 +2442,15 @@ impl DesugarCtxChirho {
                     }
                 }
             }
-            // List pattern: recurse into each element to bind variables.
-            // Empty list `[]` has no variables. Non-empty `[a, b, c]` are
-            // treated as head `a` plus tail `[b, c]` recursively.
+            // List pattern: only nested constructor/list elements need
+            // explicit prebinding here. Plain variables are already handled
+            // by `pat_to_binders_chirho`, and rebinding them here would
+            // overwrite the real outer binder IDs (for example `[x]`).
             PatChirho::ListChirho { elements_chirho, .. } => {
                 for elem_chirho in elements_chirho {
-                    self.prebind_nested_pat_vars_chirho(elem_chirho);
+                    if Self::is_nested_con_pat_chirho(elem_chirho) {
+                        self.prebind_nested_pat_vars_chirho(elem_chirho);
+                    }
                 }
             }
             PatChirho::AsChirho { pattern_chirho, .. } => {

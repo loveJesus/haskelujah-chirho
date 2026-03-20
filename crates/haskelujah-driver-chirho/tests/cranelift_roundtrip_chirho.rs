@@ -255,6 +255,14 @@ fn cranelift_round_trip_nested_adt_list_pattern_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_non_tail_recursive_list_fold_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nmyMax [x] = x\nmyMax (x:xs) = if x > myMax xs then x else myMax xs\nmain = print (myMax [5,3,9,2])\n",
+    );
+    assert_eq!(stdout_chirho, "9\n");
+}
+
+#[test]
 fn cranelift_round_trip_print_int_list_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = print [1,2,3]\n");

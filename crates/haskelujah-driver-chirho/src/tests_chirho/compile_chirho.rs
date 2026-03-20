@@ -1549,6 +1549,19 @@ fn llvm_round_trip_nested_adt_list_pattern_output_chirho() {
 }
 
 #[test]
+fn llvm_round_trip_non_tail_recursive_list_fold_output_chirho() {
+    let src_chirho =
+        "module Main where\nmyMax [x] = x\nmyMax (x:xs) = if x > myMax xs then x else myMax xs\nmain = print (myMax [5,3,9,2])";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "non-tail recursive list executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "9\n");
+    }
+}
+
+#[test]
 fn llvm_round_trip_print_sum_list_output_chirho() {
     let src_chirho = "module Main where\nmain = print (sum [1,2,3])";
     let (exit_code_chirho, stdout_chirho) =
