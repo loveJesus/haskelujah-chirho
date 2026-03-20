@@ -1536,6 +1536,19 @@ fn llvm_round_trip_print_derived_field_constructor_output_chirho() {
 }
 
 #[test]
+fn llvm_round_trip_nested_adt_list_pattern_output_chirho() {
+    let src_chirho =
+        "module Main where\ndata Value = VInt Int | VList [Value]\nscore (VList [VInt n]) = n\nscore (VList (_:_)) = 1\nscore _ = 2\nmain = print (score (VList [VInt 7]))";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "nested ADT/list pattern executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "7\n");
+    }
+}
+
+#[test]
 fn llvm_round_trip_print_sum_list_output_chirho() {
     let src_chirho = "module Main where\nmain = print (sum [1,2,3])";
     let (exit_code_chirho, stdout_chirho) =

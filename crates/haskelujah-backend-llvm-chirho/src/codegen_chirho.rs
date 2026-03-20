@@ -60,6 +60,8 @@ pub struct LlvmCodegenChirho {
     local_scope_chirho: HashSet<CoreIdChirho>,
     /// Known basic runtime kinds for local binders in the current function scope.
     local_value_kinds_chirho: HashMap<CoreIdChirho, ShowBuiltinKindChirho>,
+    /// Current LLVM SSA name for a local Core id when it has been rebound from a case/let path.
+    local_value_names_chirho: HashMap<CoreIdChirho, String>,
     /// Maps let/where-bound lambda CoreIds to their lifted LLVM symbol names.
     lifted_local_names_chirho: HashMap<CoreIdChirho, String>,
     /// Maps let/where-bound lambda CoreIds to their runtime arity.
@@ -109,6 +111,7 @@ impl LlvmCodegenChirho {
             toplevel_value_kinds_chirho: HashMap::new(),
             local_scope_chirho: HashSet::new(),
             local_value_kinds_chirho: HashMap::new(),
+            local_value_names_chirho: HashMap::new(),
             lifted_local_names_chirho: HashMap::new(),
             lifted_local_arities_chirho: HashMap::new(),
             lifted_local_capture_ids_chirho: HashMap::new(),
@@ -156,6 +159,22 @@ impl LlvmCodegenChirho {
         } else {
             self.local_value_kinds_chirho.remove(&alias_id_chirho);
         }
+    }
+
+    fn bind_local_value_name_chirho(
+        &mut self,
+        binder_chirho: &BinderChirho,
+        value_chirho: &str,
+    ) {
+        self.remember_local_binder_chirho(binder_chirho);
+        let alias_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {alias_tmp_chirho} = add i64 0, {value_chirho}"
+        )
+        .unwrap();
+        self.local_value_names_chirho
+            .insert(binder_chirho.id_chirho, alias_tmp_chirho);
     }
 
     fn should_entry_alias_free_id_chirho(&self, id_chirho: CoreIdChirho) -> bool {
@@ -1344,6 +1363,7 @@ impl LlvmCodegenChirho {
         // Track local scope: lambda parameters are local
         self.local_scope_chirho.clear();
         self.local_value_kinds_chirho.clear();
+        self.local_value_names_chirho.clear();
         self.lifted_local_names_chirho.clear();
         self.lifted_local_arities_chirho.clear();
         self.lifted_local_capture_ids_chirho.clear();
@@ -1742,7 +1762,10 @@ impl LlvmCodegenChirho {
             CoreExprChirho::VarChirho(id_chirho) => {
                 if self.local_scope_chirho.contains(id_chirho) {
                     // Local variable (parameter, let-bound, case binder)
-                    format!("%v{}", id_chirho.0)
+                    self.local_value_names_chirho
+                        .get(id_chirho)
+                        .cloned()
+                        .unwrap_or_else(|| format!("%v{}", id_chirho.0))
                 } else if let Some(lifted_name_chirho) =
                     self.lifted_local_names_chirho.get(id_chirho).cloned()
                 {
@@ -2020,13 +2043,7 @@ impl LlvmCodegenChirho {
                 let scrut_val_chirho = self.compile_expr_chirho(scrutinee_chirho);
 
                 // Bind the case binder to the scrutinee value so %v{id} is defined
-                self.remember_local_binder_chirho(bind_chirho);
-                let case_binder_var_chirho = format!("%v{}", bind_chirho.id_chirho.0);
-                writeln!(
-                    self.output_chirho,
-                    "  {case_binder_var_chirho} = add i64 0, {scrut_val_chirho}"
-                )
-                .unwrap();
+                self.bind_local_value_name_chirho(bind_chirho, &scrut_val_chirho);
 
                 if alts_chirho.is_empty() {
                     return scrut_val_chirho;
@@ -2261,13 +2278,7 @@ impl LlvmCodegenChirho {
                 ..
             } => {
                 let scrut_val_chirho = self.compile_expr_chirho(scrutinee_chirho);
-                self.remember_local_binder_chirho(bind_chirho);
-                writeln!(
-                    self.output_chirho,
-                    "  %v{} = add i64 0, {scrut_val_chirho}",
-                    bind_chirho.id_chirho.0
-                )
-                .unwrap();
+                self.bind_local_value_name_chirho(bind_chirho, &scrut_val_chirho);
 
                 if alts_chirho.is_empty() {
                     return TailCompileOutcomeChirho::ValueChirho(scrut_val_chirho);
@@ -3344,13 +3355,7 @@ impl LlvmCodegenChirho {
             writeln!(self.output_chirho, "{label_chirho}:").unwrap();
             if alt_chirho.con_chirho == AltConChirho::DefaultChirho {
                 for binder_chirho in &alt_chirho.binders_chirho {
-                    self.remember_local_binder_chirho(binder_chirho);
-                    writeln!(
-                        self.output_chirho,
-                        "  %v{} = add i64 0, {scrut_val_chirho}",
-                        binder_chirho.id_chirho.0
-                    )
-                    .unwrap();
+                    self.bind_local_value_name_chirho(binder_chirho, scrut_val_chirho);
                 }
             }
             let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
@@ -3477,13 +3482,7 @@ impl LlvmCodegenChirho {
         if alts_chirho.len() == 1 && alts_chirho[0].con_chirho == AltConChirho::DefaultChirho {
             // Bind any alt binders to scrutinee
             for binder_chirho in &alts_chirho[0].binders_chirho {
-                self.remember_local_binder_chirho(binder_chirho);
-                let binder_var_chirho = format!("%v{}", binder_chirho.id_chirho.0);
-                writeln!(
-                    self.output_chirho,
-                    "  {binder_var_chirho} = add i64 0, {scrut_val_chirho}"
-                )
-                .unwrap();
+                self.bind_local_value_name_chirho(binder_chirho, scrut_val_chirho);
             }
             return self.compile_expr_chirho(&alts_chirho[0].rhs_chirho);
         }
@@ -3538,13 +3537,7 @@ impl LlvmCodegenChirho {
                 AltConChirho::DefaultChirho => {
                     // Bind any alt binders to scrutinee
                     for binder_chirho in &alt_chirho.binders_chirho {
-                        self.remember_local_binder_chirho(binder_chirho);
-                        let binder_var_chirho = format!("%v{}", binder_chirho.id_chirho.0);
-                        writeln!(
-                            self.output_chirho,
-                            "  {binder_var_chirho} = add i64 0, {scrut_val_chirho}"
-                        )
-                        .unwrap();
+                        self.bind_local_value_name_chirho(binder_chirho, scrut_val_chirho);
                     }
                     let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
                     // Use a landing pad label so the phi references the
@@ -3592,13 +3585,7 @@ impl LlvmCodegenChirho {
 
         if alts_chirho.len() == 1 && alts_chirho[0].con_chirho == AltConChirho::DefaultChirho {
             for binder_chirho in &alts_chirho[0].binders_chirho {
-                self.remember_local_binder_chirho(binder_chirho);
-                writeln!(
-                    self.output_chirho,
-                    "  %v{} = add i64 0, {scrut_val_chirho}",
-                    binder_chirho.id_chirho.0
-                )
-                .unwrap();
+                self.bind_local_value_name_chirho(binder_chirho, scrut_val_chirho);
             }
             return match self.compile_tail_expr_chirho(&alts_chirho[0].rhs_chirho) {
                 TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
@@ -3667,13 +3654,7 @@ impl LlvmCodegenChirho {
         {
             writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
             for binder_chirho in &default_alt_chirho.binders_chirho {
-                self.remember_local_binder_chirho(binder_chirho);
-                writeln!(
-                    self.output_chirho,
-                    "  %v{} = add i64 0, {scrut_val_chirho}",
-                    binder_chirho.id_chirho.0
-                )
-                .unwrap();
+                self.bind_local_value_name_chirho(binder_chirho, scrut_val_chirho);
             }
             match self.compile_tail_expr_chirho(&default_alt_chirho.rhs_chirho) {
                 TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
@@ -3782,7 +3763,6 @@ impl LlvmCodegenChirho {
 
         let boxed_ptr_tmp_chirho = self.decode_boxed_constructor_ptr_chirho(scrut_val_chirho);
         for (field_idx_chirho, binder_chirho) in binders_chirho.iter().enumerate() {
-            self.remember_local_binder_chirho(binder_chirho);
             let field_ptr_tmp_chirho = self.fresh_tmp_chirho();
             writeln!(
                 self.output_chirho,
@@ -3796,12 +3776,7 @@ impl LlvmCodegenChirho {
                 "  {field_val_tmp_chirho} = load i64, ptr {field_ptr_tmp_chirho}"
             )
             .unwrap();
-            let binder_var_chirho = format!("%v{}", binder_chirho.id_chirho.0);
-            writeln!(
-                self.output_chirho,
-                "  {binder_var_chirho} = add i64 0, {field_val_tmp_chirho}"
-            )
-            .unwrap();
+            self.bind_local_value_name_chirho(binder_chirho, &field_val_tmp_chirho);
         }
     }
 }

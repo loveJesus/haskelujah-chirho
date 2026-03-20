@@ -247,6 +247,14 @@ fn cranelift_round_trip_show_derived_field_constructor_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_nested_adt_list_pattern_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\ndata Value = VInt Int | VList [Value]\nscore (VList [VInt n]) = n\nscore (VList (_:_)) = 1\nscore _ = 2\nmain = print (score (VList [VInt 7]))\n",
+    );
+    assert_eq!(stdout_chirho, "7\n");
+}
+
+#[test]
 fn cranelift_round_trip_print_int_list_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = print [1,2,3]\n");

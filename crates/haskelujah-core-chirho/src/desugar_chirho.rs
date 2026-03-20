@@ -2572,18 +2572,35 @@ impl DesugarCtxChirho {
     }
 
     /// Get the sub-patterns of an outer constructor pattern.
-    fn outer_sub_pats_chirho(pat_chirho: &PatChirho) -> Vec<&PatChirho> {
+    fn outer_sub_pats_chirho(pat_chirho: &PatChirho) -> Vec<PatChirho> {
         match pat_chirho {
-            PatChirho::ConChirho { args_chirho, .. } => args_chirho.iter().collect(),
+            PatChirho::ConChirho { args_chirho, .. } => args_chirho.clone(),
             PatChirho::InfixConChirho {
                 left_chirho,
                 right_chirho,
                 ..
-            } => vec![left_chirho.as_ref(), right_chirho.as_ref()],
+            } => vec![left_chirho.as_ref().clone(), right_chirho.as_ref().clone()],
+            PatChirho::ListChirho {
+                elements_chirho,
+                span_chirho,
+            } => {
+                if elements_chirho.is_empty() {
+                    vec![]
+                } else {
+                    let tail_pat_chirho = PatChirho::ListChirho {
+                        elements_chirho: elements_chirho[1..].to_vec(),
+                        span_chirho: *span_chirho,
+                    };
+                    vec![elements_chirho[0].clone(), tail_pat_chirho]
+                }
+            }
             PatChirho::TupleChirho {
                 elements_chirho, ..
-            } => elements_chirho.iter().collect(),
-            PatChirho::RecordChirho { fields_chirho, .. } => fields_chirho.iter().map(|f_chirho| &f_chirho.pattern_chirho).collect(),
+            } => elements_chirho.clone(),
+            PatChirho::RecordChirho { fields_chirho, .. } => fields_chirho
+                .iter()
+                .map(|f_chirho| f_chirho.pattern_chirho.clone())
+                .collect(),
             PatChirho::AsChirho { pattern_chirho, .. } => Self::outer_sub_pats_chirho(pattern_chirho),
             PatChirho::ParenChirho { inner_chirho, .. } => Self::outer_sub_pats_chirho(inner_chirho),
             PatChirho::BangChirho { inner_chirho, .. } => Self::outer_sub_pats_chirho(inner_chirho),
@@ -2951,7 +2968,7 @@ impl DesugarCtxChirho {
         let sub_pats_chirho = Self::outer_sub_pats_chirho(pat_chirho);
         sub_pats_chirho
             .into_iter()
-            .map(|p_chirho| self.nested_single_binder_chirho(p_chirho))
+            .map(|p_chirho| self.nested_single_binder_chirho(&p_chirho))
             .collect()
     }
 
