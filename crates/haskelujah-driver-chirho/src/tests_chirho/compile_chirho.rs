@@ -1961,3 +1961,19 @@ main = print (mySum (qsort (lcg 42 500)))
         );
     }
 }
+
+#[test]
+fn cranelift_round_trip_put_str_no_newline_chirho() {
+    let src_chirho = r#"module Main where
+main :: IO ()
+main = do
+  putStr "Hello "
+  putStr "World"
+  putStrLn "!"
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "putStr should exit 0");
+        assert_eq!(stdout_chirho, "Hello World!\n", "putStr concatenates without newlines");
+    }
+}
