@@ -225,6 +225,14 @@ fn cranelift_round_trip_getline_read_int_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_recursive_io_return_unit_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nprintTodos [] = return ()\nprintTodos (x:xs) = do\n  putStrLn x\n  printTodos xs\nmain = printTodos [\"a\",\"b\"]\n",
+    );
+    assert_eq!(stdout_chirho, "a\nb\n");
+}
+
+#[test]
 fn cranelift_round_trip_put_str_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = do\n  putStr \"Hello\"\n  putStr \" from\"\n  putStr \" Haskelujah!\"\n");

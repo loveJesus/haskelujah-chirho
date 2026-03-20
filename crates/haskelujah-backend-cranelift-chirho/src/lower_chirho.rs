@@ -1062,8 +1062,15 @@ fn lower_app_chirho(
 
     // Try direct call for known functions via pre-imported FuncRefs.
     if let CoreExprChirho::VarChirho(func_id_chirho) = callee_chirho {
-        // Check for Prelude IO functions (putStrLn, print)
+        // Check for Prelude IO functions (putStrLn, print, return)
         if let Some(name_chirho) = ctx_chirho.toplevel_names_chirho.get(func_id_chirho) {
+            // return/pure: identity for IO — just return the argument
+            if matches!(name_chirho.as_str(), "return" | "pure") {
+                if let Some(arg_chirho) = all_args_chirho.last() {
+                    return lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+                }
+                return builder_chirho.ins().iconst(cranelift_codegen::ir::types::I64, 0);
+            }
             if looks_like_data_constructor_name_chirho(name_chirho) {
                 let constructor_expr_chirho = CoreExprChirho::ConAppChirho {
                     con_name_chirho: name_chirho.clone(),
@@ -1078,6 +1085,31 @@ fn lower_app_chirho(
                     name_chirho,
                     &constructor_expr_chirho,
                 );
+            }
+            // return/pure :: a -> IO a
+            if matches!(name_chirho.as_str(), "return" | "pure" | "returnIO#") {
+                if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                    return lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                }
+            }
+            // (>>) :: IO a -> IO b -> IO b
+            if matches!(name_chirho.as_str(), ">>" | "thenIO#") {
+                if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                    return lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                }
+            }
+            // (>>=) :: IO a -> (a -> IO b) -> IO b
+            if matches!(name_chirho.as_str(), ">>=" | "bindIO#") {
+                if all_args_chirho.len() >= 2 {
+                    let cont_val_chirho =
+                        lower_expr_chirho(builder_chirho, ctx_chirho, all_args_chirho[1]);
+                    return lower_indirect_app_chirho(
+                        builder_chirho,
+                        ctx_chirho,
+                        cont_val_chirho,
+                        &all_args_chirho[..1],
+                    );
+                }
             }
             // putStr :: String -> IO () (no trailing newline)
             if matches!(name_chirho.as_str(), "putStr" | "putStr#") {
