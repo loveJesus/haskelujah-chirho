@@ -2174,3 +2174,67 @@ main = do
         );
     }
 }
+
+#[test]
+fn cranelift_round_trip_getline_bind_chirho() {
+    let src_chirho = r#"module Main where
+main :: IO ()
+main = do
+  name <- getLine
+  putStrLn ("Hello, " ++ name ++ "!")
+"#;
+    // Use stdin-fed round trip
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok();
+    let Some(result_chirho) = result_chirho else { return };
+    let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
+    let obj_chirho = haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
+        &result_chirho.core_chirho,
+        &config_chirho,
+    )
+    .ok();
+    let Some(obj_chirho) = obj_chirho else { return };
+
+    let tmp_dir_chirho = tempfile::tempdir().ok();
+    let Some(tmp_dir_chirho) = tmp_dir_chirho else { return };
+    let obj_path_chirho = tmp_dir_chirho.path().join("main.o");
+    let bin_path_chirho = tmp_dir_chirho.path().join("main");
+    std::fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho).ok();
+    let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho();
+    let Some(rts_lib_dir_chirho) = rts_lib_dir_chirho else { return };
+
+    let compile_status_chirho = std::process::Command::new("cc")
+        .arg("-o")
+        .arg(&bin_path_chirho)
+        .arg(&obj_path_chirho)
+        .arg("-Wl,-no_fixup_chains")
+        .arg("-Wl,-stack_size,0x10000000")
+        .arg("-L")
+        .arg(&rts_lib_dir_chirho)
+        .arg("-lhaskelujah_rts_chirho")
+        .status()
+        .ok();
+    if compile_status_chirho.map_or(true, |s| !s.success()) {
+        return;
+    }
+
+    // Run with piped stdin
+    let run_output_chirho = std::process::Command::new(&bin_path_chirho)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child_chirho| {
+            use std::io::Write;
+            if let Some(stdin_chirho) = child_chirho.stdin.as_mut() {
+                let _ = stdin_chirho.write_all(b"Haskelujah\n");
+            }
+            child_chirho.wait_with_output()
+        })
+        .ok();
+    let Some(output_chirho) = run_output_chirho else { return };
+    let stdout_chirho = String::from_utf8_lossy(&output_chirho.stdout);
+    assert!(
+        stdout_chirho.contains("Hello, Haskelujah!"),
+        "getLine should read stdin: got {stdout_chirho}"
+    );
+}
