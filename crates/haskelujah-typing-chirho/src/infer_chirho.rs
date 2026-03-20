@@ -4111,6 +4111,42 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
+    // toUpper :: Char -> Char
+    env_chirho.bind_chirho(
+        "toUpper".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::char_chirho(),
+            TyChirho::char_chirho(),
+        )),
+    );
+
+    // toLower :: Char -> Char
+    env_chirho.bind_chirho(
+        "toLower".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::char_chirho(),
+            TyChirho::char_chirho(),
+        )),
+    );
+
+    // isDigit :: Char -> Bool
+    env_chirho.bind_chirho(
+        "isDigit".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::char_chirho(),
+            TyChirho::bool_chirho(),
+        )),
+    );
+
+    // isAlpha :: Char -> Bool
+    env_chirho.bind_chirho(
+        "isAlpha".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::char_chirho(),
+            TyChirho::bool_chirho(),
+        )),
+    );
+
     // compare :: forall a. Ord a => a -> a -> Ordering
     let cmp_v_chirho = TyVarChirho(1350);
     env_chirho.bind_chirho(

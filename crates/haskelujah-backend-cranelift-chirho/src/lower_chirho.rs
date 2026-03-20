@@ -1111,6 +1111,68 @@ fn lower_app_chirho(
                     }
                 }
             }
+            // toUpper :: Char -> Char
+            if matches!(name_chirho.as_str(), "toUpper" | "toUpper#") {
+                if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                    let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                    let v_chirho = ensure_i64_chirho(builder_chirho, val_chirho, false);
+                    let c97_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 97);
+                    let c122_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 122);
+                    let c32_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 32);
+                    let is_lower_chirho = builder_chirho.ins().icmp(IntCcChirho::SignedGreaterThanOrEqual, v_chirho, c97_chirho);
+                    let is_lower_end_chirho = builder_chirho.ins().icmp(IntCcChirho::SignedLessThanOrEqual, v_chirho, c122_chirho);
+                    let in_range_chirho = builder_chirho.ins().band(is_lower_chirho, is_lower_end_chirho);
+                    let upper_chirho = builder_chirho.ins().isub(v_chirho, c32_chirho);
+                    return builder_chirho.ins().select(in_range_chirho, upper_chirho, v_chirho);
+                }
+            }
+            // toLower :: Char -> Char
+            if matches!(name_chirho.as_str(), "toLower" | "toLower#") {
+                if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                    let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                    let v_chirho = ensure_i64_chirho(builder_chirho, val_chirho, false);
+                    let c65_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 65);
+                    let c90_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 90);
+                    let c32_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 32);
+                    let is_upper_chirho = builder_chirho.ins().icmp(IntCcChirho::SignedGreaterThanOrEqual, v_chirho, c65_chirho);
+                    let is_upper_end_chirho = builder_chirho.ins().icmp(IntCcChirho::SignedLessThanOrEqual, v_chirho, c90_chirho);
+                    let in_range_chirho = builder_chirho.ins().band(is_upper_chirho, is_upper_end_chirho);
+                    let lower_chirho = builder_chirho.ins().iadd(v_chirho, c32_chirho);
+                    return builder_chirho.ins().select(in_range_chirho, lower_chirho, v_chirho);
+                }
+            }
+            // isDigit :: Char -> Bool
+            if matches!(name_chirho.as_str(), "isDigit" | "isDigit#") {
+                if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                    let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                    let v_chirho = ensure_i64_chirho(builder_chirho, val_chirho, false);
+                    let c48_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 48);
+                    let c57_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 57);
+                    let ge_chirho = builder_chirho.ins().icmp(IntCcChirho::SignedGreaterThanOrEqual, v_chirho, c48_chirho);
+                    let le_chirho = builder_chirho.ins().icmp(IntCcChirho::SignedLessThanOrEqual, v_chirho, c57_chirho);
+                    let result_chirho = builder_chirho.ins().band(ge_chirho, le_chirho);
+                    return builder_chirho.ins().uextend(cl_types_chirho::I64, result_chirho);
+                }
+            }
+            // isAlpha :: Char -> Bool
+            if matches!(name_chirho.as_str(), "isAlpha" | "isAlpha#") {
+                if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                    let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                    let v_chirho = ensure_i64_chirho(builder_chirho, val_chirho, false);
+                    let c65_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 65);
+                    let c90_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 90);
+                    let c97_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 97);
+                    let c122_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 122);
+                    let upper_chirho = builder_chirho.ins().icmp(IntCcChirho::SignedGreaterThanOrEqual, v_chirho, c65_chirho);
+                    let upper_end_chirho = builder_chirho.ins().icmp(IntCcChirho::SignedLessThanOrEqual, v_chirho, c90_chirho);
+                    let is_upper_chirho = builder_chirho.ins().band(upper_chirho, upper_end_chirho);
+                    let lower_chirho = builder_chirho.ins().icmp(IntCcChirho::SignedGreaterThanOrEqual, v_chirho, c97_chirho);
+                    let lower_end_chirho = builder_chirho.ins().icmp(IntCcChirho::SignedLessThanOrEqual, v_chirho, c122_chirho);
+                    let is_lower_chirho = builder_chirho.ins().band(lower_chirho, lower_end_chirho);
+                    let result_chirho = builder_chirho.ins().bor(is_upper_chirho, is_lower_chirho);
+                    return builder_chirho.ins().uextend(cl_types_chirho::I64, result_chirho);
+                }
+            }
             // ord :: Char -> Int, chr :: Int -> Char — identity at runtime
             if matches!(name_chirho.as_str(), "ord" | "chr" | "ord#" | "chr#") {
                 if let Some(arg_expr_chirho) = all_args_chirho.last() {
