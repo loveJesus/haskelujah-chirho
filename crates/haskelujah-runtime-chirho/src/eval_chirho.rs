@@ -3403,27 +3403,33 @@ impl MachineChirho {
             }
         }
 
-        // Resolve HeapPtr arguments to their underlying values when
-        // they point to nullary constructors (e.g. True, False, Nothing).
-        // This allows primops like showBool# to receive a concrete value
-        // instead of a raw heap address.
-        let resolved_args_chirho: Vec<ValueChirho> = args_chirho
+        // Force primitive operands before dispatch so string/list thunks used by
+        // desugared string equality reach EqInt# as StringChirho values.
+        let mut resolved_args_chirho: Vec<ValueChirho> = args_chirho
             .iter()
-            .map(|v_chirho| {
-                if let ValueChirho::HeapPtrChirho(addr_chirho) = v_chirho {
-                    let resolved_addr_chirho = self.heap_chirho.follow_ind_chirho(*addr_chirho);
-                    let closure_chirho = self.heap_chirho.read_chirho(resolved_addr_chirho).clone();
-                    let name_chirho = &closure_chirho.info_chirho.name_chirho;
-                    match name_chirho.as_str() {
-                        "True" => ValueChirho::BoolChirho(true),
-                        "False" => ValueChirho::BoolChirho(false),
-                        _ => v_chirho.clone(),
-                    }
-                } else {
-                    v_chirho.clone()
-                }
-            })
+            .cloned()
+            .map(|v_chirho| self.force_to_prim_chirho(v_chirho))
             .collect();
+
+        let is_string_compare_primop_chirho = matches!(
+            op_chirho,
+            PrimOpKindChirho::EqIntChirho
+                | PrimOpKindChirho::NeIntChirho
+                | PrimOpKindChirho::LtIntChirho
+                | PrimOpKindChirho::LeIntChirho
+                | PrimOpKindChirho::GtIntChirho
+                | PrimOpKindChirho::GeIntChirho
+        );
+        if is_string_compare_primop_chirho && resolved_args_chirho.len() == 2 {
+            let left_str_chirho = self.try_resolve_value_to_string_chirho(&resolved_args_chirho[0])?;
+            let right_str_chirho = self.try_resolve_value_to_string_chirho(&resolved_args_chirho[1])?;
+            if let (Some(left_str_chirho), Some(right_str_chirho)) =
+                (left_str_chirho, right_str_chirho)
+            {
+                resolved_args_chirho[0] = ValueChirho::StringChirho(left_str_chirho);
+                resolved_args_chirho[1] = ValueChirho::StringChirho(right_str_chirho);
+            }
+        }
 
         match resolved_args_chirho.len() {
             2 => apply_prim_binop_chirho(op_chirho, &resolved_args_chirho[0], &resolved_args_chirho[1])
@@ -3850,6 +3856,33 @@ impl MachineChirho {
             ValueChirho::StringChirho(s_chirho) => Ok(s_chirho.clone()),
             ValueChirho::HeapPtrChirho(addr_chirho) => self.resolve_string_arg_chirho(*addr_chirho),
             other_chirho => Ok(format!("{}", other_chirho)),
+        }
+    }
+
+    fn try_resolve_value_to_string_chirho(
+        &mut self,
+        val_chirho: &ValueChirho,
+    ) -> Result<Option<String>, EvalErrorChirho> {
+        match val_chirho {
+            ValueChirho::StringChirho(s_chirho) => Ok(Some(s_chirho.clone())),
+            ValueChirho::HeapPtrChirho(addr_chirho) => {
+                let resolved_addr_chirho = self.force_addr_to_whnf_chirho(*addr_chirho)?;
+                let closure_chirho = self.heap_chirho.read_chirho(resolved_addr_chirho).clone();
+                let is_string_like_chirho = matches!(
+                    closure_chirho.info_chirho.name_chirho.as_str(),
+                    "Addr#" | ":" | "[]"
+                ) || matches!(
+                    closure_chirho.payload_chirho.first(),
+                    Some(ValueChirho::StringChirho(_))
+                );
+                if is_string_like_chirho {
+                    self.resolve_string_arg_chirho(resolved_addr_chirho)
+                        .map(Some)
+                } else {
+                    Ok(None)
+                }
+            }
+            _ => Ok(None),
         }
     }
 
