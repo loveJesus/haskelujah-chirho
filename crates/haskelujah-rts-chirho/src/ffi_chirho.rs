@@ -22,7 +22,7 @@ use std::thread;
 
 /// GC threshold: collect after this many allocations.
 const GC_THRESHOLD_CHIRHO: u64 = 65536;
-const NATIVE_MAIN_STACK_SIZE_CHIRHO: usize = 256 * 1024 * 1024;
+const NATIVE_MAIN_STACK_SIZE_CHIRHO: usize = 1024 * 1024 * 1024;
 
 type NativeEntryFnChirho = unsafe extern "C" fn() -> i64;
 
