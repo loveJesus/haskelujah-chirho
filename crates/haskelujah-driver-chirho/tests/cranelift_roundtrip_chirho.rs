@@ -231,6 +231,14 @@ fn cranelift_round_trip_print_derived_enum_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_print_derived_field_constructor_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\ndata Pair = MkPair Int Int deriving (Show)\nmain = print (MkPair 3 4)\n",
+    );
+    assert_eq!(stdout_chirho, "MkPair 3 4\n");
+}
+
+#[test]
 fn cranelift_round_trip_print_int_list_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = print [1,2,3]\n");

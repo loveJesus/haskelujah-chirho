@@ -943,6 +943,27 @@ impl LlvmCodegenChirho {
         writeln!(self.output_chirho, "  call i32 @puts(ptr {ptr_tmp_chirho})").unwrap();
     }
 
+    fn emit_print_via_show_fallback_chirho(&mut self, arg_value_chirho: &str) {
+        let shown_i64_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {shown_i64_tmp_chirho} = call i64 @{}(i64 {arg_value_chirho})",
+            mangle_name_chirho("show")
+        )
+        .unwrap();
+        let shown_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {shown_ptr_tmp_chirho} = inttoptr i64 {shown_i64_tmp_chirho} to ptr"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  call i32 @puts(ptr {shown_ptr_tmp_chirho})"
+        )
+        .unwrap();
+    }
+
     fn emit_print_nullary_constructor_chirho(&mut self, con_name_chirho: &str) {
         let global_name_chirho = self.intern_string_global_name_chirho(con_name_chirho);
         writeln!(self.output_chirho, "  call i32 @puts(ptr @{global_name_chirho})").unwrap();
@@ -1449,8 +1470,6 @@ impl LlvmCodegenChirho {
                 let Some(arg_id_chirho) = params_chirho.last() else {
                     return false;
                 };
-                let print_kind_chirho = classify_print_builtin_kind_chirho(param_binders_chirho)
-                    .unwrap_or(ShowBuiltinKindChirho::IntChirho);
                 writeln!(
                     self.output_chirho,
                     "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
@@ -1459,7 +1478,13 @@ impl LlvmCodegenChirho {
                 writeln!(self.output_chirho, "entry:").unwrap();
                 self.next_tmp_chirho = 0;
                 let arg_value_chirho = format!("%v{}", arg_id_chirho.0);
-                self.emit_print_value_chirho(&arg_value_chirho, print_kind_chirho);
+                if let Some(print_kind_chirho) =
+                    classify_print_builtin_kind_chirho(param_binders_chirho)
+                {
+                    self.emit_print_value_chirho(&arg_value_chirho, print_kind_chirho);
+                } else {
+                    self.emit_print_via_show_fallback_chirho(&arg_value_chirho);
+                }
                 writeln!(self.output_chirho, "  ret i64 0").unwrap();
                 writeln!(self.output_chirho, "}}").unwrap();
                 true

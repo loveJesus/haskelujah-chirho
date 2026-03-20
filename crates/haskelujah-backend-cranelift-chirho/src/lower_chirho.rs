@@ -1293,17 +1293,48 @@ fn lower_app_chirho(
                             return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
                         }
                     }
+                    if let Some(put_str_ln_ref_chirho) = ctx_chirho.put_str_ln_ref_chirho {
+                        if let Some(shown_ptr_chirho) =
+                            lower_show_expr_ptr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho)
+                        {
+                            let shown_i64_chirho =
+                                ensure_i64_chirho(builder_chirho, shown_ptr_chirho, false);
+                            builder_chirho
+                                .ins()
+                                .call(put_str_ln_ref_chirho, &[shown_i64_chirho]);
+                            return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+                        }
+                    }
+                }
+                if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                    if expr_is_int_literalish_chirho(arg_expr_chirho) {
+                        if let Some(print_int_ref_chirho) = ctx_chirho.print_int_ref_chirho {
+                            let arg_val_chirho =
+                                lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                            let arg_i64_chirho =
+                                ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                            builder_chirho
+                                .ins()
+                                .call(print_int_ref_chirho, &[arg_i64_chirho]);
+                            return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+                        }
+                    }
                 }
                 if let Some(print_int_ref_chirho) = ctx_chirho.print_int_ref_chirho {
                     if let Some(arg_expr_chirho) = all_args_chirho.last() {
-                        let arg_val_chirho =
-                            lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
-                        let arg_i64_chirho =
-                            ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
-                        builder_chirho
-                            .ins()
-                            .call(print_int_ref_chirho, &[arg_i64_chirho]);
-                        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+                        if matches!(
+                            strip_runtime_tyapps_chirho(arg_expr_chirho),
+                            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(_))
+                        ) {
+                            let arg_val_chirho =
+                                lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                            let arg_i64_chirho =
+                                ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                            builder_chirho
+                                .ins()
+                                .call(print_int_ref_chirho, &[arg_i64_chirho]);
+                            return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+                        }
                     }
                 }
             }
@@ -2317,6 +2348,126 @@ fn lower_show_int_list_primop_chirho(
         builder_chirho.inst_results(call_inst_chirho)[0]
     } else {
         builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
+    }
+}
+
+fn lower_show_constructor_app_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    con_name_chirho: &str,
+    args_chirho: &[CoreExprChirho],
+) -> Option<ClValueChirho> {
+    let append_str_ref_chirho = ctx_chirho.append_str_ref_chirho?;
+    let con_global_chirho = ctx_chirho
+        .string_globals_chirho
+        .get(con_name_chirho)
+        .copied()?;
+    let space_global_chirho = ctx_chirho.string_globals_chirho.get(" ").copied()?;
+    let mut result_ptr_chirho = builder_chirho
+        .ins()
+        .global_value(cl_types_chirho::I64, con_global_chirho);
+    let space_ptr_chirho = builder_chirho
+        .ins()
+        .global_value(cl_types_chirho::I64, space_global_chirho);
+
+    for arg_expr_chirho in args_chirho {
+        let with_space_call_chirho = builder_chirho
+            .ins()
+            .call(append_str_ref_chirho, &[result_ptr_chirho, space_ptr_chirho]);
+        result_ptr_chirho = builder_chirho.inst_results(with_space_call_chirho)[0];
+        let shown_arg_ptr_chirho =
+            lower_show_expr_ptr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho)?;
+        let append_arg_call_chirho = builder_chirho
+            .ins()
+            .call(append_str_ref_chirho, &[result_ptr_chirho, shown_arg_ptr_chirho]);
+        result_ptr_chirho = builder_chirho.inst_results(append_arg_call_chirho)[0];
+    }
+
+    Some(result_ptr_chirho)
+}
+
+fn lower_show_expr_ptr_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    expr_chirho: &CoreExprChirho,
+) -> Option<ClValueChirho> {
+    match strip_runtime_tyapps_chirho(expr_chirho) {
+        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(_)) => {
+            let show_int_ref_chirho = ctx_chirho.show_int_ref_chirho?;
+            let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, expr_chirho);
+            let arg_i64_chirho = ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+            let call_chirho = builder_chirho.ins().call(show_int_ref_chirho, &[arg_i64_chirho]);
+            Some(builder_chirho.inst_results(call_chirho)[0])
+        }
+        CoreExprChirho::LitChirho(CoreLitChirho::CharChirho(_)) => {
+            let show_char_ref_chirho = ctx_chirho.show_char_ref_chirho?;
+            let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, expr_chirho);
+            let arg_i64_chirho = ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+            let call_chirho = builder_chirho
+                .ins()
+                .call(show_char_ref_chirho, &[arg_i64_chirho]);
+            Some(builder_chirho.inst_results(call_chirho)[0])
+        }
+        CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(_)) => {
+            let show_float_ref_chirho = ctx_chirho.show_float_ref_chirho?;
+            let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, expr_chirho);
+            let arg_i64_chirho = ensure_i64_chirho(builder_chirho, arg_val_chirho, true);
+            let call_chirho = builder_chirho
+                .ins()
+                .call(show_float_ref_chirho, &[arg_i64_chirho]);
+            Some(builder_chirho.inst_results(call_chirho)[0])
+        }
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } if args_chirho.is_empty() => {
+            let global_chirho = ctx_chirho
+                .string_globals_chirho
+                .get(con_name_chirho.as_str())
+                .copied()?;
+            Some(
+                builder_chirho
+                    .ins()
+                    .global_value(cl_types_chirho::I64, global_chirho),
+            )
+        }
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } => lower_show_constructor_app_chirho(
+            builder_chirho,
+            ctx_chirho,
+            con_name_chirho,
+            args_chirho,
+        ),
+        _ => infer_print_arg_kind_chirho(ctx_chirho, expr_chirho).map(|arg_kind_chirho| {
+            let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, expr_chirho);
+            match arg_kind_chirho {
+                ShowIntArgKindChirho::BoolChirho => {
+                    lower_show_bool_primop_chirho(builder_chirho, ctx_chirho, arg_val_chirho)
+                }
+                ShowIntArgKindChirho::OrderingChirho => {
+                    lower_show_ordering_primop_chirho(builder_chirho, ctx_chirho, arg_val_chirho)
+                }
+                ShowIntArgKindChirho::StringChirho => {
+                    lower_show_str_primop_chirho(builder_chirho, ctx_chirho, arg_val_chirho)
+                }
+                ShowIntArgKindChirho::IntListChirho => {
+                    lower_show_int_list_primop_chirho(builder_chirho, ctx_chirho, arg_val_chirho)
+                }
+            }
+        }).or_else(|| {
+            if expr_is_int_literalish_chirho(expr_chirho) {
+                let show_int_ref_chirho = ctx_chirho.show_int_ref_chirho?;
+                let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, expr_chirho);
+                let arg_i64_chirho = ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                let call_chirho =
+                    builder_chirho.ins().call(show_int_ref_chirho, &[arg_i64_chirho]);
+                Some(builder_chirho.inst_results(call_chirho)[0])
+            } else {
+                None
+            }
+        }),
     }
 }
 

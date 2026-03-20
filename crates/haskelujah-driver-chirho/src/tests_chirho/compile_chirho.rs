@@ -1523,6 +1523,19 @@ fn llvm_round_trip_print_derived_enum_output_chirho() {
 }
 
 #[test]
+fn llvm_round_trip_print_derived_field_constructor_output_chirho() {
+    let src_chirho =
+        "module Main where\ndata Pair = MkPair Int Int deriving (Show)\nmain = print (MkPair 3 4)";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "print derived field constructor executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "MkPair 3 4\n");
+    }
+}
+
+#[test]
 fn llvm_round_trip_print_sum_list_output_chirho() {
     let src_chirho = "module Main where\nmain = print (sum [1,2,3])";
     let (exit_code_chirho, stdout_chirho) =
