@@ -3011,3 +3011,49 @@ main = do
         assert_eq!(stdout_chirho.trim(), "primes: 25\nsumsq: 385");
     }
 }
+
+#[test]
+fn llvm_round_trip_polymorphic_map_multi_use_output_chirho() {
+    let src_chirho = r#"module Main where
+myMap :: (a -> b) -> [a] -> [b]
+myMap _ [] = []
+myMap f (x:xs) = f x : myMap f xs
+sumList :: [Int] -> Int
+sumList [] = 0
+sumList (x:xs) = x + sumList xs
+countTrue :: [Bool] -> Int
+countTrue [] = 0
+countTrue (x:xs) = if x then 1 + countTrue xs else countTrue xs
+isOddChirho :: Int -> Bool
+isOddChirho n = mod n 2 == 1
+main :: IO ()
+main = do
+  print (sumList (myMap (\x -> x + 1) [1,2,3]))
+  print (countTrue (myMap isOddChirho [1,2,3,4,5]))
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "9\n3");
+    }
+}
+
+#[test]
+fn llvm_round_trip_zip_tuple_list_output_chirho() {
+    let src_chirho = r#"module Main where
+myZip :: [a] -> [b] -> [(a, b)]
+myZip [] _ = []
+myZip _ [] = []
+myZip (x:xs) (y:ys) = (x, y) : myZip xs ys
+sumPairs :: [(Int, Int)] -> Int
+sumPairs [] = 0
+sumPairs ((x, y):xys) = x + y + sumPairs xys
+main :: IO ()
+main = print (sumPairs (myZip [1,2,3,4,5] [10,11,12,13,14]))
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "75");
+    }
+}

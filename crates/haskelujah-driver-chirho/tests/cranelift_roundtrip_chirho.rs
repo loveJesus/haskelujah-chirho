@@ -342,3 +342,19 @@ fn cranelift_round_trip_ackermann_multi_equation_pattern_match_chirho() {
     );
     assert_eq!(stdout_chirho, "1021\n");
 }
+
+#[test]
+fn cranelift_round_trip_polymorphic_map_multi_use_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nmyMap :: (a -> b) -> [a] -> [b]\nmyMap _ [] = []\nmyMap f (x:xs) = f x : myMap f xs\nsumList :: [Int] -> Int\nsumList [] = 0\nsumList (x:xs) = x + sumList xs\ncountTrue :: [Bool] -> Int\ncountTrue [] = 0\ncountTrue (x:xs) = if x then 1 + countTrue xs else countTrue xs\nisOddChirho :: Int -> Bool\nisOddChirho n = mod n 2 == 1\nmain = do\n  print (sumList (myMap (\\x -> x + 1) [1,2,3]))\n  print (countTrue (myMap isOddChirho [1,2,3,4,5]))\n",
+    );
+    assert_eq!(stdout_chirho, "9\n3\n");
+}
+
+#[test]
+fn cranelift_round_trip_zip_tuple_list_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nmyZip :: [a] -> [b] -> [(a, b)]\nmyZip [] _ = []\nmyZip _ [] = []\nmyZip (x:xs) (y:ys) = (x, y) : myZip xs ys\nsumPairs :: [(Int, Int)] -> Int\nsumPairs [] = 0\nsumPairs ((x, y):xys) = x + y + sumPairs xys\nmain = print (sumPairs (myZip [1,2,3,4,5] [10,11,12,13,14]))\n",
+    );
+    assert_eq!(stdout_chirho, "75\n");
+}
