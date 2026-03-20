@@ -959,11 +959,19 @@ pub fn elide_dicts_chirho(
             // $sel_Show_show dict x → showInt#/showBool#/showChar#/showFloat# x
             // Determine the show variant from the dict argument name.
             if name_chirho == "$sel_Show_show" && all_args_chirho.len() >= 2 {
+                // Determine show variant from dict name. Only match
+                // specific instance dictionary names like $fShowBool,
+                // $fShowChar, $fShowDouble. Default to showInt#.
                 let show_primop_chirho = if let CoreExprChirho::VarChirho(dict_id_chirho) =
                     all_args_chirho[0]
                 {
                     resolve_name_for_id_chirho(dict_id_chirho, all_bindings_chirho)
                         .and_then(|dn_chirho| {
+                            // Only match $fShow* or $dShow* dict names
+                            if !dn_chirho.starts_with("$fShow") && !dn_chirho.starts_with("$dShow")
+                            {
+                                return None;
+                            }
                             if dn_chirho.contains("Bool") {
                                 Some("showBool#")
                             } else if dn_chirho.contains("Char") {
@@ -973,7 +981,7 @@ pub fn elide_dicts_chirho(
                             {
                                 Some("showFloat#")
                             } else {
-                                None
+                                None // $fShowInt or unknown → default
                             }
                         })
                         .unwrap_or("showInt#")
