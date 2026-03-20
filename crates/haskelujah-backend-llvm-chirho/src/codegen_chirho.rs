@@ -926,6 +926,24 @@ impl LlvmCodegenChirho {
         writeln!(self.output_chirho, "  call i32 @puts(ptr {ptr_tmp_chirho})").unwrap();
     }
 
+    fn emit_print_nullary_constructor_chirho(&mut self, con_name_chirho: &str) {
+        let global_name_chirho = self.intern_string_global_name_chirho(con_name_chirho);
+        writeln!(self.output_chirho, "  call i32 @puts(ptr @{global_name_chirho})").unwrap();
+    }
+
+    fn classify_nullary_constructor_print_name_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+    ) -> Option<String> {
+        match strip_runtime_tyapps_chirho(expr_chirho) {
+            CoreExprChirho::ConAppChirho {
+                con_name_chirho,
+                args_chirho,
+            } if args_chirho.is_empty() => Some(con_name_chirho.clone()),
+            _ => None,
+        }
+    }
+
     fn resolve_builtin_runtime_function_chirho(
         &mut self,
         name_chirho: &str,
@@ -1647,6 +1665,12 @@ impl LlvmCodegenChirho {
                                         &arg_value_chirho,
                                         show_kind_chirho,
                                     );
+                                    return "0".to_string();
+                                }
+                                if let Some(con_name_chirho) = self
+                                    .classify_nullary_constructor_print_name_chirho(arg_expr_chirho)
+                                {
+                                    self.emit_print_nullary_constructor_chirho(&con_name_chirho);
                                     return "0".to_string();
                                 }
                             }
