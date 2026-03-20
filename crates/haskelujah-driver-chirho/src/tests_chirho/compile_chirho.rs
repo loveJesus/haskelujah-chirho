@@ -870,6 +870,23 @@ fn llvm_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)> {
     Some((exit_code_chirho, stdout_chirho))
 }
 
+fn haskell_string_literal_chirho(text_chirho: &str) -> String {
+    let mut out_chirho = String::with_capacity(text_chirho.len() + 2);
+    out_chirho.push('"');
+    for ch_chirho in text_chirho.chars() {
+        match ch_chirho {
+            '\\' => out_chirho.push_str("\\\\"),
+            '"' => out_chirho.push_str("\\\""),
+            '\n' => out_chirho.push_str("\\n"),
+            '\r' => out_chirho.push_str("\\r"),
+            '\t' => out_chirho.push_str("\\t"),
+            _ => out_chirho.push(ch_chirho),
+        }
+    }
+    out_chirho.push('"');
+    out_chirho
+}
+
 fn llvm_round_trip_output_with_input_chirho(
     src_chirho: &str,
     input_chirho: &str,
@@ -1134,6 +1151,47 @@ fn llvm_round_trip_get_line_output_chirho() {
     } else {
         panic!("LLVM getLine round-trip failed");
     }
+}
+
+#[test]
+fn llvm_round_trip_write_file_output_chirho() {
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should exist");
+    let file_path_chirho = temp_dir_chirho.path().join("write-file-llvm-chirho.txt");
+    let file_path_literal_chirho =
+        haskell_string_literal_chirho(&file_path_chirho.display().to_string());
+    let src_chirho = format!(
+        "module Main where\nmain = do\n  writeFile {file_path_literal_chirho} \"hello from llvm\"\n  putStr \"ok\"\n"
+    );
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(&src_chirho).expect("writeFile LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "writeFile executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "ok");
+    let file_contents_chirho =
+        std::fs::read_to_string(&file_path_chirho).expect("writeFile should create file");
+    assert_eq!(file_contents_chirho, "hello from llvm");
+}
+
+#[test]
+fn llvm_round_trip_read_file_output_chirho() {
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should exist");
+    let file_path_chirho = temp_dir_chirho.path().join("read-file-llvm-chirho.txt");
+    std::fs::write(&file_path_chirho, "hello from llvm disk")
+        .expect("fixture file should be written");
+    let file_path_literal_chirho =
+        haskell_string_literal_chirho(&file_path_chirho.display().to_string());
+    let src_chirho = format!(
+        "module Main where\nmain = do\n  contentsChirho <- readFile {file_path_literal_chirho}\n  putStr contentsChirho\n"
+    );
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(&src_chirho).expect("readFile LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "readFile executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "hello from llvm disk");
 }
 
 #[test]
