@@ -4093,6 +4093,24 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(">=".to_string(), ord_cmp_chirho.clone());
     env_chirho.bind_chirho("<=".to_string(), ord_cmp_chirho);
 
+    // ord :: Char -> Int
+    env_chirho.bind_chirho(
+        "ord".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::char_chirho(),
+            TyChirho::int_chirho(),
+        )),
+    );
+
+    // chr :: Int -> Char
+    env_chirho.bind_chirho(
+        "chr".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::char_chirho(),
+        )),
+    );
+
     // compare :: forall a. Ord a => a -> a -> Ordering
     let cmp_v_chirho = TyVarChirho(1350);
     env_chirho.bind_chirho(

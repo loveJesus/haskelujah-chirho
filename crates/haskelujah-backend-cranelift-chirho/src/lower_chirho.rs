@@ -1111,6 +1111,12 @@ fn lower_app_chirho(
                     }
                 }
             }
+            // ord :: Char -> Int, chr :: Int -> Char — identity at runtime
+            if matches!(name_chirho.as_str(), "ord" | "chr" | "ord#" | "chr#") {
+                if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                    return lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                }
+            }
             // readFile :: FilePath -> IO String
             if matches!(name_chirho.as_str(), "readFile" | "readFile#") {
                 if let Some(read_file_ref_chirho) = ctx_chirho.read_file_ref_chirho {
