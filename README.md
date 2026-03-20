@@ -151,19 +151,20 @@ cd my-project
 cat > Main.hs << 'EOF'
 module Main where
 
-fib :: Int -> Int
-fib 0 = 0
-fib 1 = 1
-fib n = fib (n - 1) + fib (n - 2)
+fib_chirho :: Int -> Int
+fib_chirho 0 = 0
+fib_chirho 1 = 1
+fib_chirho n = fib_chirho (n - 1) + fib_chirho (n - 2)
 
 main :: IO ()
 main = do
   putStrLn "Fibonacci numbers:"
-  print (fib 10)
-  print (fib 20)
+  print (fib_chirho 10)
+  print (fib_chirho 20)
 EOF
 
-# 3. Build and run
+# 3. Build and run — produces a self-contained native executable
+#    No LLVM, no GHC, no external tools needed!
 haskelujah build-run .
 ```
 

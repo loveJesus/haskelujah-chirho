@@ -2,6 +2,11 @@
 
 [package]
 name = "haskelujah-cli-chirho"
+description = "A Haskell compiler in Rust — GHC-compatible, self-contained, faster than GHC"
+repository = "https://github.com/loveJesus/haskelujah-chirho"
+homepage = "https://haskelujah.org"
+keywords = ["haskell", "compiler", "cranelift", "functional-programming"]
+categories = ["compilers", "development-tools"]
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
