@@ -3069,7 +3069,10 @@ impl<'src> ParserChirho<'src> {
             }
             self.eat_trivia_chirho();
 
-            self.parse_lpat_chirho();
+            // Use parse_pat_chirho (not parse_lpat_chirho) so that chained
+            // infix constructor patterns like `x:y:zs` are right-associative:
+            // parsed as `x:(y:zs)` instead of `(x:y):zs`.
+            self.parse_pat_chirho();
             self.builder_chirho.finish_node_chirho();
         }
     }
