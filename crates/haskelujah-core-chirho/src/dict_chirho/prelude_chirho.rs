@@ -8929,6 +8929,102 @@ impl DictPassCtxChirho {
             });
         }
 
+        // toUpper :: Char -> Char
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("toUpper");
+            let c_chirho = self.fresh_binder_chirho("c", TyChirho::char_chirho());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: c_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "toUpper#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(c_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "toUpper".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(TyChirho::char_chirho(), TyChirho::char_chirho()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // toLower :: Char -> Char
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("toLower");
+            let c_chirho = self.fresh_binder_chirho("c", TyChirho::char_chirho());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: c_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "toLower#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(c_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "toLower".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(TyChirho::char_chirho(), TyChirho::char_chirho()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // isDigit :: Char -> Bool
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("isDigit");
+            let c_chirho = self.fresh_binder_chirho("c", TyChirho::char_chirho());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: c_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "isDigit#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(c_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "isDigit".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(TyChirho::char_chirho(), TyChirho::bool_chirho()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // isAlpha :: Char -> Bool
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("isAlpha");
+            let c_chirho = self.fresh_binder_chirho("c", TyChirho::char_chirho());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: c_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "isAlpha#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(c_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "isAlpha".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(TyChirho::char_chirho(), TyChirho::bool_chirho()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
         // print :: a -> IO ()
         // Simplified: print x = putStrLn (show x)
         // Uses showInt# as default; the dict pass handles type-specific dispatch
