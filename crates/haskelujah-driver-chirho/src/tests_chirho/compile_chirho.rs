@@ -2602,3 +2602,26 @@ main = do
         assert_eq!(stdout_chirho.trim(), "55\n30\n55");
     }
 }
+
+#[test]
+fn llvm_round_trip_multi_arg_hof_and_foldr_chirho() {
+    // Regression: 2-arg HOF + foldr (was SIGBUS before multi-arg fix)
+    let src_chirho = r#"module Main where
+myFoldr :: (Int -> Int -> Int) -> Int -> [Int] -> Int
+myFoldr _ z [] = z
+myFoldr f z (x:xs) = f x (myFoldr f z xs)
+add :: Int -> Int -> Int
+add x y = x + y
+mul :: Int -> Int -> Int
+mul x y = x * y
+main :: IO ()
+main = do
+  print (myFoldr add 0 [1, 2, 3, 4, 5])
+  print (myFoldr mul 1 [1, 2, 3, 4, 5, 6])
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "15\n720");
+    }
+}
