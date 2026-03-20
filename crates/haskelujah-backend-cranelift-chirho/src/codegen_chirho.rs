@@ -33,8 +33,11 @@ use cranelift_module::{Linkage as LinkageChirho, Module as ModuleTraitChirho};
 use cranelift_object::{ObjectBuilder as ObjBuilderChirho, ObjectModule as ObjModuleChirho};
 
 use haskelujah_core_chirho::expr_chirho::{
-    BinderChirho, CoreBindingChirho, CoreExprChirho, CoreLitChirho, CoreModuleChirho,
+    BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho,
+    CoreModuleChirho,
 };
+use haskelujah_span_chirho::SpanChirho;
+use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 use crate::lower_chirho::{
     LowerCtxChirho, PapWrapperKeyChirho, VarEnvChirho, ensure_i64_chirho, lower_expr_chirho,
@@ -272,6 +275,282 @@ struct PapWrapperBindingChirho {
 
 fn is_runtime_lambda_chirho(expr_chirho: &CoreExprChirho) -> bool {
     !peel_lambdas_chirho(expr_chirho).0.is_empty()
+}
+
+#[derive(Clone, Copy)]
+enum InlineLambdaRewriteModeChirho {
+    NormalChirho,
+    PreserveLambdaRootChirho,
+}
+
+fn fresh_inline_lambda_binder_chirho(next_inline_id_chirho: &mut u32) -> BinderChirho {
+    let inline_id_chirho = CoreIdChirho(*next_inline_id_chirho);
+    *next_inline_id_chirho += 1;
+    BinderChirho {
+        id_chirho: inline_id_chirho,
+        name_chirho: format!("haskelujah_inline_lambda_{}_chirho", inline_id_chirho.0),
+        // The native backends only need the binder id/name here; the precise
+        // Core function type is irrelevant once runtime lowering starts.
+        ty_chirho: TyChirho::int_chirho(),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+fn rewrite_inline_lambda_values_chirho(
+    expr_chirho: &CoreExprChirho,
+    next_inline_id_chirho: &mut u32,
+    mode_chirho: InlineLambdaRewriteModeChirho,
+) -> CoreExprChirho {
+    if matches!(mode_chirho, InlineLambdaRewriteModeChirho::NormalChirho)
+        && is_runtime_lambda_chirho(expr_chirho)
+    {
+        let binder_chirho = fresh_inline_lambda_binder_chirho(next_inline_id_chirho);
+        let lifted_rhs_chirho = rewrite_inline_lambda_values_chirho(
+            expr_chirho,
+            next_inline_id_chirho,
+            InlineLambdaRewriteModeChirho::PreserveLambdaRootChirho,
+        );
+        return CoreExprChirho::LetChirho {
+            rec_chirho: false,
+            binds_chirho: vec![(binder_chirho.clone(), lifted_rhs_chirho)],
+            body_chirho: Box::new(CoreExprChirho::VarChirho(binder_chirho.id_chirho)),
+        };
+    }
+
+    match expr_chirho {
+        CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => expr_chirho.clone(),
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(rewrite_inline_lambda_values_chirho(
+                fun_chirho,
+                next_inline_id_chirho,
+                InlineLambdaRewriteModeChirho::NormalChirho,
+            )),
+            arg_chirho: Box::new(rewrite_inline_lambda_values_chirho(
+                arg_chirho,
+                next_inline_id_chirho,
+                InlineLambdaRewriteModeChirho::NormalChirho,
+            )),
+        },
+        CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } => {
+            let body_mode_chirho = if matches!(
+                mode_chirho,
+                InlineLambdaRewriteModeChirho::PreserveLambdaRootChirho
+            ) {
+                InlineLambdaRewriteModeChirho::PreserveLambdaRootChirho
+            } else {
+                InlineLambdaRewriteModeChirho::NormalChirho
+            };
+            CoreExprChirho::LamChirho {
+                binder_chirho: binder_chirho.clone(),
+                body_chirho: Box::new(rewrite_inline_lambda_values_chirho(
+                    body_chirho,
+                    next_inline_id_chirho,
+                    body_mode_chirho,
+                )),
+            }
+        }
+        CoreExprChirho::LetChirho {
+            rec_chirho,
+            binds_chirho,
+            body_chirho,
+        } => CoreExprChirho::LetChirho {
+            rec_chirho: *rec_chirho,
+            binds_chirho: binds_chirho
+                .iter()
+                .map(|(binder_chirho, rhs_chirho)| {
+                    let rhs_mode_chirho = if is_runtime_lambda_chirho(rhs_chirho) {
+                        InlineLambdaRewriteModeChirho::PreserveLambdaRootChirho
+                    } else {
+                        InlineLambdaRewriteModeChirho::NormalChirho
+                    };
+                    (
+                        binder_chirho.clone(),
+                        rewrite_inline_lambda_values_chirho(
+                            rhs_chirho,
+                            next_inline_id_chirho,
+                            rhs_mode_chirho,
+                        ),
+                    )
+                })
+                .collect(),
+            body_chirho: Box::new(rewrite_inline_lambda_values_chirho(
+                body_chirho,
+                next_inline_id_chirho,
+                InlineLambdaRewriteModeChirho::NormalChirho,
+            )),
+        },
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho,
+            bind_chirho,
+            result_ty_chirho,
+            alts_chirho,
+        } => CoreExprChirho::CaseChirho {
+            scrutinee_chirho: Box::new(rewrite_inline_lambda_values_chirho(
+                scrutinee_chirho,
+                next_inline_id_chirho,
+                InlineLambdaRewriteModeChirho::NormalChirho,
+            )),
+            bind_chirho: bind_chirho.clone(),
+            result_ty_chirho: result_ty_chirho.clone(),
+            alts_chirho: alts_chirho
+                .iter()
+                .map(|alt_chirho| haskelujah_core_chirho::expr_chirho::CoreAltChirho {
+                    con_chirho: alt_chirho.con_chirho.clone(),
+                    binders_chirho: alt_chirho.binders_chirho.clone(),
+                    rhs_chirho: rewrite_inline_lambda_values_chirho(
+                        &alt_chirho.rhs_chirho,
+                        next_inline_id_chirho,
+                        InlineLambdaRewriteModeChirho::NormalChirho,
+                    ),
+                })
+                .collect(),
+        },
+        CoreExprChirho::TyLamChirho {
+            ty_var_chirho,
+            body_chirho,
+        } => {
+            let body_mode_chirho = if matches!(
+                mode_chirho,
+                InlineLambdaRewriteModeChirho::PreserveLambdaRootChirho
+            ) {
+                InlineLambdaRewriteModeChirho::PreserveLambdaRootChirho
+            } else {
+                InlineLambdaRewriteModeChirho::NormalChirho
+            };
+            CoreExprChirho::TyLamChirho {
+                ty_var_chirho: ty_var_chirho.clone(),
+                body_chirho: Box::new(rewrite_inline_lambda_values_chirho(
+                    body_chirho,
+                    next_inline_id_chirho,
+                    body_mode_chirho,
+                )),
+            }
+        }
+        CoreExprChirho::TyAppChirho {
+            expr_chirho: inner_chirho,
+            ty_chirho,
+        } => CoreExprChirho::TyAppChirho {
+            expr_chirho: Box::new(rewrite_inline_lambda_values_chirho(
+                inner_chirho,
+                next_inline_id_chirho,
+                InlineLambdaRewriteModeChirho::NormalChirho,
+            )),
+            ty_chirho: ty_chirho.clone(),
+        },
+        CoreExprChirho::PrimOpChirho {
+            name_chirho,
+            args_chirho,
+        } => CoreExprChirho::PrimOpChirho {
+            name_chirho: name_chirho.clone(),
+            args_chirho: args_chirho
+                .iter()
+                .map(|arg_chirho| {
+                    rewrite_inline_lambda_values_chirho(
+                        arg_chirho,
+                        next_inline_id_chirho,
+                        InlineLambdaRewriteModeChirho::NormalChirho,
+                    )
+                })
+                .collect(),
+        },
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } => CoreExprChirho::ConAppChirho {
+            con_name_chirho: con_name_chirho.clone(),
+            args_chirho: args_chirho
+                .iter()
+                .map(|arg_chirho| {
+                    rewrite_inline_lambda_values_chirho(
+                        arg_chirho,
+                        next_inline_id_chirho,
+                        InlineLambdaRewriteModeChirho::NormalChirho,
+                    )
+                })
+                .collect(),
+        },
+    }
+}
+
+fn max_core_id_in_expr_chirho(expr_chirho: &CoreExprChirho, max_id_chirho: &mut u32) {
+    match expr_chirho {
+        CoreExprChirho::VarChirho(id_chirho) => {
+            *max_id_chirho = (*max_id_chirho).max(id_chirho.0);
+        }
+        CoreExprChirho::LitChirho(_) => {}
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => {
+            max_core_id_in_expr_chirho(fun_chirho, max_id_chirho);
+            max_core_id_in_expr_chirho(arg_chirho, max_id_chirho);
+        }
+        CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } => {
+            *max_id_chirho = (*max_id_chirho).max(binder_chirho.id_chirho.0);
+            max_core_id_in_expr_chirho(body_chirho, max_id_chirho);
+        }
+        CoreExprChirho::LetChirho {
+            binds_chirho,
+            body_chirho,
+            ..
+        } => {
+            for (binder_chirho, rhs_chirho) in binds_chirho {
+                *max_id_chirho = (*max_id_chirho).max(binder_chirho.id_chirho.0);
+                max_core_id_in_expr_chirho(rhs_chirho, max_id_chirho);
+            }
+            max_core_id_in_expr_chirho(body_chirho, max_id_chirho);
+        }
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho,
+            bind_chirho,
+            alts_chirho,
+            ..
+        } => {
+            *max_id_chirho = (*max_id_chirho).max(bind_chirho.id_chirho.0);
+            max_core_id_in_expr_chirho(scrutinee_chirho, max_id_chirho);
+            for alt_chirho in alts_chirho {
+                for binder_chirho in &alt_chirho.binders_chirho {
+                    *max_id_chirho = (*max_id_chirho).max(binder_chirho.id_chirho.0);
+                }
+                max_core_id_in_expr_chirho(&alt_chirho.rhs_chirho, max_id_chirho);
+            }
+        }
+        CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+            max_core_id_in_expr_chirho(body_chirho, max_id_chirho);
+        }
+        CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
+            max_core_id_in_expr_chirho(expr_chirho, max_id_chirho);
+        }
+        CoreExprChirho::PrimOpChirho { args_chirho, .. }
+        | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+            for arg_chirho in args_chirho {
+                max_core_id_in_expr_chirho(arg_chirho, max_id_chirho);
+            }
+        }
+    }
+}
+
+fn next_inline_core_id_chirho(module_chirho: &CoreModuleChirho) -> u32 {
+    let mut max_id_chirho = module_chirho
+        .names_chirho
+        .keys()
+        .map(|id_chirho| id_chirho.0)
+        .max()
+        .unwrap_or(0);
+    for binding_chirho in &module_chirho.bindings_chirho {
+        max_id_chirho = max_id_chirho.max(binding_chirho.binder_chirho.id_chirho.0);
+        max_core_id_in_expr_chirho(&binding_chirho.rhs_chirho, &mut max_id_chirho);
+    }
+    max_id_chirho.saturating_add(1)
 }
 
 fn collect_local_lambda_bindings_chirho(
@@ -1186,7 +1465,13 @@ fn lower_binding_chirho(
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
-    let (_param_binders_chirho, body_chirho) = peel_lambdas_chirho(&binding_chirho.rhs_chirho);
+    let mut next_inline_id_chirho = next_inline_core_id_chirho(core_module_chirho);
+    let rewritten_rhs_chirho = rewrite_inline_lambda_values_chirho(
+        &binding_chirho.rhs_chirho,
+        &mut next_inline_id_chirho,
+        InlineLambdaRewriteModeChirho::PreserveLambdaRootChirho,
+    );
+    let (_param_binders_chirho, body_chirho) = peel_lambdas_chirho(&rewritten_rhs_chirho);
     let (func_id_chirho, _arity_chirho) = func_decl_map_chirho
         .get(&binding_chirho.binder_chirho.id_chirho)
         .ok_or_else(|| format!("function '{name_chirho}' not pre-declared"))?;
@@ -1222,7 +1507,7 @@ fn lower_binding_chirho(
             (*core_id_chirho, (*local_func_id_chirho, *arity_chirho))
         },
     ));
-    let mut pap_scan_exprs_chirho = vec![&binding_chirho.rhs_chirho];
+    let mut pap_scan_exprs_chirho = vec![&rewritten_rhs_chirho];
     for lifted_binding_chirho in &lifted_bindings_chirho {
         pap_scan_exprs_chirho.push(&lifted_binding_chirho.rhs_chirho);
     }
@@ -1287,7 +1572,7 @@ fn lower_binding_chirho(
         fb_ctx_chirho,
         func_id_chirho,
         name_chirho,
-        &binding_chirho.rhs_chirho,
+        &rewritten_rhs_chirho,
         &[],
         &imported_decl_map_chirho,
         &lifted_capture_ids_map_chirho,
@@ -2492,6 +2777,59 @@ mod tests_chirho {
                 get_inc_binding_chirho,
                 main_binding_chirho,
             ],
+            names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let exit_code_chirho = compile_and_run_exit_code_chirho(&module_chirho);
+        assert_eq!(exit_code_chirho, 42);
+    }
+
+    #[test]
+    fn run_inline_lambda_argument_value_chirho() {
+        let apply_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("applyChirho", 0),
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: int_binder_chirho("funChirho", 1),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: int_binder_chirho("argChirho", 2),
+                    body_chirho: Box::new(CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(1))),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(2))),
+                    }),
+                }),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let inline_arg_binder_chirho = int_binder_chirho("inlineArgChirho", 3);
+        let main_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("main", 4),
+            rhs_chirho: CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                        apply_binding_chirho.binder_chirho.id_chirho,
+                    )),
+                    arg_chirho: Box::new(CoreExprChirho::LamChirho {
+                        binder_chirho: inline_arg_binder_chirho.clone(),
+                        body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                            name_chirho: "+#".to_string(),
+                            args_chirho: vec![
+                                CoreExprChirho::VarChirho(inline_arg_binder_chirho.id_chirho),
+                                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+                            ],
+                        }),
+                    }),
+                }),
+                arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(41))),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "InlineLambdaArg".to_string(),
+            bindings_chirho: vec![apply_binding_chirho, main_binding_chirho],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
