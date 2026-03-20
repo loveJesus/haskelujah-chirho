@@ -87,6 +87,23 @@ fn cranelift_round_trip_stdout_chirho(src_chirho: &str) -> String {
     String::from_utf8(output_chirho.stdout).expect("stdout should be UTF-8")
 }
 
+fn haskell_string_literal_chirho(text_chirho: &str) -> String {
+    let mut out_chirho = String::with_capacity(text_chirho.len() + 2);
+    out_chirho.push('"');
+    for ch_chirho in text_chirho.chars() {
+        match ch_chirho {
+            '\\' => out_chirho.push_str("\\\\"),
+            '"' => out_chirho.push_str("\\\""),
+            '\n' => out_chirho.push_str("\\n"),
+            '\r' => out_chirho.push_str("\\r"),
+            '\t' => out_chirho.push_str("\\t"),
+            _ => out_chirho.push(ch_chirho),
+        }
+    }
+    out_chirho.push('"');
+    out_chirho
+}
+
 #[test]
 fn cranelift_round_trip_sum_range_output_chirho() {
     let stdout_chirho =
@@ -135,6 +152,36 @@ fn cranelift_round_trip_put_str_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = do\n  putStr \"Hello\"\n  putStr \" from\"\n  putStr \" Haskelujah!\"\n");
     assert_eq!(stdout_chirho, "Hello from Haskelujah!");
+}
+
+#[test]
+fn cranelift_round_trip_write_file_output_chirho() {
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should exist");
+    let file_path_chirho = temp_dir_chirho.path().join("write-file-chirho.txt");
+    let file_path_literal_chirho =
+        haskell_string_literal_chirho(&file_path_chirho.display().to_string());
+    let src_chirho = format!(
+        "module Main where\nmain = do\n  writeFile {file_path_literal_chirho} \"hello from cranelift\"\n  putStr \"ok\"\n"
+    );
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(&src_chirho);
+    assert_eq!(stdout_chirho, "ok");
+    let file_contents_chirho =
+        std::fs::read_to_string(&file_path_chirho).expect("writeFile should create file");
+    assert_eq!(file_contents_chirho, "hello from cranelift");
+}
+
+#[test]
+fn cranelift_round_trip_read_file_output_chirho() {
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should exist");
+    let file_path_chirho = temp_dir_chirho.path().join("read-file-chirho.txt");
+    std::fs::write(&file_path_chirho, "hello from disk").expect("fixture file should be written");
+    let file_path_literal_chirho =
+        haskell_string_literal_chirho(&file_path_chirho.display().to_string());
+    let src_chirho = format!(
+        "module Main where\nmain = do\n  contentsChirho <- readFile {file_path_literal_chirho}\n  putStr contentsChirho\n"
+    );
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(&src_chirho);
+    assert_eq!(stdout_chirho, "hello from disk");
 }
 
 #[test]

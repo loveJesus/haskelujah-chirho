@@ -104,6 +104,10 @@ pub struct LowerCtxChirho<'a> {
     pub put_str_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_get_line_chirho` (read stdin)
     pub get_line_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_write_file_chirho`
+    pub write_file_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_read_file_chirho`
+    pub read_file_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
     pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
     /// Current function Core id, used for self-tail-call elimination.
@@ -1075,6 +1079,41 @@ fn lower_app_chirho(
                 if let Some(get_line_ref_chirho) = ctx_chirho.get_line_ref_chirho {
                     let call_chirho = builder_chirho.ins().call(get_line_ref_chirho, &[]);
                     return builder_chirho.inst_results(call_chirho)[0];
+                }
+            }
+            // writeFile :: FilePath -> String -> IO ()
+            if matches!(name_chirho.as_str(), "writeFile" | "writeFile#") {
+                if let Some(write_file_ref_chirho) = ctx_chirho.write_file_ref_chirho {
+                    if all_args_chirho.len() >= 2 {
+                        let path_val_chirho =
+                            lower_expr_chirho(builder_chirho, ctx_chirho, all_args_chirho[0]);
+                        let content_val_chirho =
+                            lower_expr_chirho(builder_chirho, ctx_chirho, all_args_chirho[1]);
+                        let path_i64_chirho =
+                            ensure_i64_chirho(builder_chirho, path_val_chirho, false);
+                        let content_i64_chirho =
+                            ensure_i64_chirho(builder_chirho, content_val_chirho, false);
+                        builder_chirho.ins().call(
+                            write_file_ref_chirho,
+                            &[path_i64_chirho, content_i64_chirho],
+                        );
+                        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+                    }
+                }
+            }
+            // readFile :: FilePath -> IO String
+            if matches!(name_chirho.as_str(), "readFile" | "readFile#") {
+                if let Some(read_file_ref_chirho) = ctx_chirho.read_file_ref_chirho {
+                    if let Some(path_expr_chirho) = all_args_chirho.last() {
+                        let path_val_chirho =
+                            lower_expr_chirho(builder_chirho, ctx_chirho, path_expr_chirho);
+                        let path_i64_chirho =
+                            ensure_i64_chirho(builder_chirho, path_val_chirho, false);
+                        let call_chirho = builder_chirho
+                            .ins()
+                            .call(read_file_ref_chirho, &[path_i64_chirho]);
+                        return builder_chirho.inst_results(call_chirho)[0];
+                    }
                 }
             }
             if matches!(name_chirho.as_str(), "putStrLn" | "putStrLn#") {

@@ -39,9 +39,9 @@ use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 use crate::lower_chirho::{
-    LowerCtxChirho, PapWrapperKeyChirho, TailLowerOutcomeChirho, VarEnvChirho,
     emit_partial_application_closure_with_alloc_ref_chirho, ensure_i64_chirho,
-    lower_tail_expr_chirho,
+    lower_tail_expr_chirho, LowerCtxChirho, PapWrapperKeyChirho, TailLowerOutcomeChirho,
+    VarEnvChirho,
 };
 use crate::{NativeObjectChirho, TargetConfigChirho};
 
@@ -151,6 +151,8 @@ fn compile_core_to_object_inner_chirho(
         show_float_func_id_chirho,
         put_str_func_id_chirho,
         get_line_func_id_chirho,
+        write_file_func_id_chirho,
+        read_file_func_id_chirho,
         main_with_large_stack_func_id_chirho,
     ) = {
         let mut put_str_ln_sig_chirho = obj_module_chirho.make_signature();
@@ -272,6 +274,39 @@ fn compile_core_to_object_inner_chirho(
             )
             .ok();
 
+        let mut write_file_sig_chirho = obj_module_chirho.make_signature();
+        write_file_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        write_file_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        write_file_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        let write_file_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_write_file_chirho",
+                LinkageChirho::Import,
+                &write_file_sig_chirho,
+            )
+            .ok();
+
+        let mut read_file_sig_chirho = obj_module_chirho.make_signature();
+        read_file_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        read_file_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        let read_file_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_read_file_chirho",
+                LinkageChirho::Import,
+                &read_file_sig_chirho,
+            )
+            .ok();
+
         let mut main_with_large_stack_sig_chirho = obj_module_chirho.make_signature();
         main_with_large_stack_sig_chirho
             .params
@@ -298,6 +333,8 @@ fn compile_core_to_object_inner_chirho(
             show_float_func_id_chirho,
             put_str_func_id_chirho,
             get_line_func_id_chirho,
+            write_file_func_id_chirho,
+            read_file_func_id_chirho,
             main_with_large_stack_func_id_chirho,
         )
     };
@@ -363,6 +400,8 @@ fn compile_core_to_object_inner_chirho(
             show_float_func_id_chirho,
             put_str_func_id_chirho,
             get_line_func_id_chirho,
+            write_file_func_id_chirho,
+            read_file_func_id_chirho,
             &string_data_ids_chirho,
         )?;
     }
@@ -1334,6 +1373,8 @@ fn define_function_body_chirho(
     show_float_func_id_chirho: Option<cranelift_module::FuncId>,
     put_str_func_id_chirho: Option<cranelift_module::FuncId>,
     get_line_func_id_chirho: Option<cranelift_module::FuncId>,
+    write_file_func_id_chirho: Option<cranelift_module::FuncId>,
+    read_file_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let (param_binders_chirho, body_chirho) = peel_lambdas_chirho(rhs_chirho);
@@ -1431,6 +1472,10 @@ fn define_function_body_chirho(
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let get_line_fref_chirho = get_line_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let write_file_fref_chirho = write_file_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let read_file_fref_chirho = read_file_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
 
         let mut string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue> =
             HashMap::new();
@@ -1458,6 +1503,8 @@ fn define_function_body_chirho(
             show_float_ref_chirho: show_float_fref_chirho,
             put_str_ref_chirho: put_str_fref_chirho,
             get_line_ref_chirho: get_line_fref_chirho,
+            write_file_ref_chirho: write_file_fref_chirho,
+            read_file_ref_chirho: read_file_fref_chirho,
             string_globals_chirho,
             tco_self_id_chirho: Some(current_core_id_chirho),
             tco_loop_block_chirho: Some(loop_block_chirho),
@@ -1654,6 +1701,8 @@ fn lower_binding_chirho(
     show_float_func_id_chirho: Option<cranelift_module::FuncId>,
     put_str_func_id_chirho: Option<cranelift_module::FuncId>,
     get_line_func_id_chirho: Option<cranelift_module::FuncId>,
+    write_file_func_id_chirho: Option<cranelift_module::FuncId>,
+    read_file_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
@@ -1721,17 +1770,13 @@ fn lower_binding_chirho(
     let pap_wrapper_decl_map_chirho =
         declare_pap_wrappers_chirho(module_chirho, &pap_wrappers_chirho)?;
 
-    let toplevel_names_chirho: HashMap<haskelujah_core_chirho::expr_chirho::CoreIdChirho, String> =
-        core_module_chirho
-            .bindings_chirho
-            .iter()
-            .map(|b_chirho| {
-                (
-                    b_chirho.binder_chirho.id_chirho,
-                    b_chirho.binder_chirho.name_chirho.clone(),
-                )
-            })
-            .collect();
+    let mut toplevel_names_chirho = core_module_chirho.names_chirho.clone();
+    for binding_chirho in &core_module_chirho.bindings_chirho {
+        toplevel_names_chirho.insert(
+            binding_chirho.binder_chirho.id_chirho,
+            binding_chirho.binder_chirho.name_chirho.clone(),
+        );
+    }
 
     for lifted_binding_chirho in &lifted_bindings_chirho {
         let (lifted_func_id_chirho, _) = local_decl_map_chirho
@@ -1764,6 +1809,8 @@ fn lower_binding_chirho(
             show_float_func_id_chirho,
             put_str_func_id_chirho,
             get_line_func_id_chirho,
+            write_file_func_id_chirho,
+            read_file_func_id_chirho,
             string_data_ids_chirho,
         )?;
     }
@@ -1790,6 +1837,8 @@ fn lower_binding_chirho(
         show_float_func_id_chirho,
         put_str_func_id_chirho,
         get_line_func_id_chirho,
+        write_file_func_id_chirho,
+        read_file_func_id_chirho,
         string_data_ids_chirho,
     )?;
 
