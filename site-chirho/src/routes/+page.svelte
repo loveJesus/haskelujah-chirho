@@ -99,8 +99,8 @@
 	<section class="hero-chirho">
 		<div class="hero-content-chirho">
 			<p class="scripture-chirho">
-				"For God so loved the world, that He gave His only begotten Son, that all who believe
-				in Him should not perish but have everlasting life."
+				"For God so loved the world that he gave his only begotten Son, that whoever
+				believes in him should not perish but have eternal life."
 				<span class="scripture-ref-chirho">-- John 3:16</span>
 			</p>
 
@@ -427,8 +427,8 @@
 			</div>
 			<div class="footer-center-chirho">
 				<p class="footer-scripture-chirho">
-					"For God so loved the world, that He gave His only begotten Son, that all who
-					believe in Him should not perish but have everlasting life." -- John 3:16
+					"For God so loved the world that he gave his only begotten Son, that whoever
+					believes in him should not perish but have eternal life." -- John 3:16
 				</p>
 			</div>
 			<div class="footer-right-chirho">
@@ -447,6 +447,9 @@
 	/* Page Layout */
 	.page-chirho {
 		min-height: 100vh;
+		background:
+			linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(246, 190, 96, 0.03) 100%),
+			transparent;
 	}
 
 	.section-inner-chirho {
@@ -462,9 +465,9 @@
 		left: 0;
 		right: 0;
 		z-index: 100;
-		background: rgba(10, 14, 23, 0.85);
+		background: rgba(18, 15, 11, 0.84);
 		backdrop-filter: blur(12px);
-		border-bottom: 1px solid rgba(125, 211, 252, 0.08);
+		border-bottom: 1px solid var(--line-chirho);
 	}
 
 	.nav-inner-chirho {
@@ -490,9 +493,9 @@
 		justify-content: center;
 		width: 36px;
 		height: 36px;
-		background: linear-gradient(135deg, #7dd3fc, #a78bfa);
-		color: #0a0e17;
-		font-family: 'Inter', serif;
+		background: linear-gradient(135deg, var(--accent-gold-chirho), var(--accent-cyan-chirho));
+		color: #120f0b;
+		font-family: 'Space Grotesk', serif;
 		font-weight: 700;
 		font-size: 1.1rem;
 		border-radius: 8px;
@@ -501,7 +504,7 @@
 	.logo-text-chirho {
 		font-weight: 600;
 		font-size: 1.15rem;
-		color: #e2e8f0;
+		color: var(--text-main-chirho);
 	}
 
 	.nav-links-chirho {
@@ -512,24 +515,24 @@
 
 	.nav-links-chirho a {
 		font-size: 0.9rem;
-		color: #94a3b8;
+		color: var(--text-muted-chirho);
 		font-weight: 400;
 	}
 
 	.nav-links-chirho a:hover {
-		color: #e2e8f0;
+		color: var(--text-main-chirho);
 	}
 
 	.nav-github-chirho {
 		padding: 0.4rem 1rem;
-		border: 1px solid rgba(125, 211, 252, 0.3);
+		border: 1px solid rgba(246, 190, 96, 0.3);
 		border-radius: 6px;
 		font-weight: 500;
-		color: #7dd3fc !important;
+		color: var(--accent-gold-chirho) !important;
 	}
 
 	.nav-github-chirho:hover {
-		background: rgba(125, 211, 252, 0.08);
+		background: rgba(246, 190, 96, 0.08);
 	}
 
 	/* Hero */
@@ -538,6 +541,20 @@
 		padding: 10rem 2rem 6rem;
 		text-align: center;
 		overflow: hidden;
+		background: url('/hero-bg-chirho.png') center center / cover no-repeat;
+	}
+
+	.hero-chirho::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(
+			180deg,
+			rgba(18, 15, 11, 0.55) 0%,
+			rgba(18, 15, 11, 0.70) 50%,
+			rgba(18, 15, 11, 0.85) 100%
+		);
+		z-index: 0;
 	}
 
 	.hero-content-chirho {
@@ -550,10 +567,11 @@
 	.scripture-chirho {
 		font-size: 0.95rem;
 		font-style: italic;
-		color: #64748b;
+		color: var(--text-muted-chirho);
 		max-width: 600px;
 		margin: 0 auto 3rem;
 		line-height: 1.8;
+		text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 	}
 
 	.scripture-ref-chirho {
@@ -561,7 +579,7 @@
 		margin-top: 0.5rem;
 		font-style: normal;
 		font-weight: 500;
-		color: #7dd3fc;
+		color: var(--accent-cyan-chirho);
 		opacity: 0.7;
 	}
 
@@ -571,10 +589,11 @@
 		letter-spacing: -0.03em;
 		line-height: 1.1;
 		margin-bottom: 1rem;
+		text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 1px 3px rgba(0, 0, 0, 0.4);
 	}
 
 	.hero-accent-chirho {
-		background: linear-gradient(135deg, #7dd3fc, #a78bfa);
+		background: linear-gradient(135deg, var(--accent-gold-chirho), var(--accent-cyan-chirho));
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
@@ -582,16 +601,37 @@
 
 	.hero-subtitle-chirho {
 		font-size: 1.35rem;
-		color: #94a3b8;
+		color: var(--text-soft-chirho);
 		font-weight: 400;
 		margin-bottom: 1.5rem;
+		text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
 	}
 
 	.hero-description-chirho {
 		font-size: 1.05rem;
-		color: #64748b;
-		margin-bottom: 2.5rem;
+		color: var(--text-muted-chirho);
+		margin-bottom: 1.5rem;
 		line-height: 1.8;
+		text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+	}
+
+	.hero-pill-row-chirho {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.75rem;
+		margin: 0 auto 2.5rem;
+		max-width: 760px;
+	}
+
+	.hero-pill-chirho {
+		padding: 0.5rem 0.85rem;
+		border-radius: 999px;
+		border: 1px solid rgba(246, 190, 96, 0.16);
+		background: rgba(246, 190, 96, 0.06);
+		color: var(--text-soft-chirho);
+		font-size: 0.82rem;
+		letter-spacing: 0.02em;
 	}
 
 	.hero-actions-chirho {
@@ -605,8 +645,8 @@
 		display: inline-flex;
 		align-items: center;
 		padding: 0.75rem 2rem;
-		background: linear-gradient(135deg, #7dd3fc, #a78bfa);
-		color: #0a0e17;
+		background: linear-gradient(135deg, var(--accent-gold-chirho), #f0d37a);
+		color: #120f0b;
 		font-weight: 600;
 		border-radius: 8px;
 		font-size: 1rem;
@@ -615,15 +655,15 @@
 
 	.btn-primary-chirho:hover {
 		opacity: 0.9;
-		color: #0a0e17;
+		color: #120f0b;
 	}
 
 	.btn-secondary-chirho {
 		display: inline-flex;
 		align-items: center;
 		padding: 0.75rem 2rem;
-		border: 1px solid rgba(125, 211, 252, 0.3);
-		color: #7dd3fc;
+		border: 1px solid rgba(113, 215, 209, 0.3);
+		color: var(--accent-cyan-chirho);
 		font-weight: 500;
 		border-radius: 8px;
 		font-size: 1rem;
@@ -631,8 +671,46 @@
 	}
 
 	.btn-secondary-chirho:hover {
-		background: rgba(125, 211, 252, 0.08);
-		color: #bae6fd;
+		background: rgba(113, 215, 209, 0.08);
+		color: #b7f0ec;
+	}
+
+	.hero-proof-chirho {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 1rem;
+		margin-top: 2.25rem;
+	}
+
+	.hero-proof-card-chirho {
+		padding: 1.15rem 1.2rem;
+		text-align: left;
+		border-radius: 16px;
+		border: 1px solid var(--line-chirho);
+		background: linear-gradient(180deg, rgba(35, 28, 18, 0.9), rgba(18, 15, 11, 0.92));
+		box-shadow: var(--shadow-chirho);
+	}
+
+	.hero-proof-card-chirho strong {
+		display: block;
+		font-size: 1.05rem;
+		margin-bottom: 0.35rem;
+		color: var(--text-main-chirho);
+	}
+
+	.hero-proof-card-chirho p {
+		color: var(--text-muted-chirho);
+		font-size: 0.9rem;
+	}
+
+	.hero-proof-label-chirho {
+		display: inline-block;
+		margin-bottom: 0.6rem;
+		color: var(--accent-gold-chirho);
+		font-family: 'IBM Plex Mono', monospace;
+		font-size: 0.73rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 	}
 
 	.hero-glow-chirho {
@@ -642,16 +720,16 @@
 		transform: translateX(-50%);
 		width: 600px;
 		height: 600px;
-		background: radial-gradient(circle, rgba(125, 211, 252, 0.06) 0%, transparent 70%);
+		background: radial-gradient(circle, rgba(246, 190, 96, 0.08) 0%, transparent 70%);
 		pointer-events: none;
 	}
 
 	/* Stats */
 	.stats-chirho {
 		padding: 3rem 2rem;
-		background: rgba(125, 211, 252, 0.02);
-		border-top: 1px solid rgba(125, 211, 252, 0.06);
-		border-bottom: 1px solid rgba(125, 211, 252, 0.06);
+		background: rgba(246, 190, 96, 0.025);
+		border-top: 1px solid var(--line-chirho);
+		border-bottom: 1px solid var(--line-chirho);
 	}
 
 	.stats-inner-chirho {
@@ -672,7 +750,7 @@
 	.stat-value-chirho {
 		font-size: 2.25rem;
 		font-weight: 700;
-		background: linear-gradient(135deg, #7dd3fc, #a78bfa);
+		background: linear-gradient(135deg, var(--accent-gold-chirho), var(--accent-cyan-chirho));
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
@@ -680,13 +758,13 @@
 
 	.stat-label-chirho {
 		font-size: 0.95rem;
-		color: #e2e8f0;
+		color: var(--text-main-chirho);
 		font-weight: 500;
 	}
 
 	.stat-detail-chirho {
 		font-size: 0.8rem;
-		color: #64748b;
+		color: var(--text-muted-chirho);
 	}
 
 	/* Features */
@@ -704,7 +782,7 @@
 
 	.section-subtitle-chirho {
 		text-align: center;
-		color: #64748b;
+		color: var(--text-muted-chirho);
 		font-size: 1.1rem;
 		margin-bottom: 3.5rem;
 	}
@@ -720,15 +798,19 @@
 		flex-direction: row;
 		align-items: flex-start;
 		gap: 1.25rem;
-		background: rgba(255, 255, 255, 0.02);
-		border: 1px solid rgba(125, 211, 252, 0.08);
-		border-radius: 12px;
+		background: var(--panel-chirho);
+		border: 1px solid var(--line-chirho);
+		border-radius: 18px;
 		padding: 1.5rem;
-		transition: border-color 0.2s;
+		transition:
+			border-color 0.2s,
+			transform 0.2s ease;
+		box-shadow: var(--shadow-chirho);
 	}
 
 	.feature-card-chirho:hover {
-		border-color: rgba(125, 211, 252, 0.2);
+		border-color: rgba(246, 190, 96, 0.28);
+		transform: translateY(-3px);
 	}
 
 	.feature-icon-chirho {
@@ -738,8 +820,8 @@
 		flex-shrink: 0;
 		width: 44px;
 		height: 44px;
-		background: rgba(125, 211, 252, 0.1);
-		color: #7dd3fc;
+		background: rgba(246, 190, 96, 0.09);
+		color: var(--accent-gold-chirho);
 		border-radius: 10px;
 		font-weight: 700;
 		font-size: 1.1rem;
@@ -748,34 +830,22 @@
 	.feature-text-chirho h3 {
 		margin: 0 0 0.35rem;
 		font-size: 1.05rem;
-		color: #e2e8f0;
+		color: var(--text-main-chirho);
 	}
 
 	.feature-text-chirho p {
 		margin: 0;
 		font-size: 0.9rem;
-		color: #94a3b8;
+		color: var(--text-soft-chirho);
 		line-height: 1.6;
-	}
-
-	.feature-title-chirho {
-		font-size: 1.1rem;
-		font-weight: 600;
-		margin-bottom: 0.5rem;
-	}
-
-	.feature-desc-chirho {
-		font-size: 0.9rem;
-		color: #94a3b8;
-		line-height: 1.7;
 	}
 
 	/* Performance */
 	.performance-chirho {
 		padding: 6rem 0;
-		background: rgba(125, 211, 252, 0.02);
-		border-top: 1px solid rgba(125, 211, 252, 0.06);
-		border-bottom: 1px solid rgba(125, 211, 252, 0.06);
+		background: rgba(113, 215, 209, 0.025);
+		border-top: 1px solid var(--line-chirho);
+		border-bottom: 1px solid var(--line-chirho);
 	}
 
 	.benchmarks-chirho {
@@ -804,10 +874,10 @@
 	}
 
 	.benchmark-time-chirho {
-		font-family: 'JetBrains Mono', monospace;
+		font-family: 'IBM Plex Mono', monospace;
 		font-weight: 600;
 		font-size: 1rem;
-		color: #7dd3fc;
+		color: var(--accent-cyan-chirho);
 	}
 
 	.benchmark-bar-outer-chirho {
@@ -826,7 +896,7 @@
 	.benchmark-note-chirho {
 		text-align: center;
 		font-size: 0.85rem;
-		color: #64748b;
+		color: var(--text-muted-chirho);
 		margin-top: 2rem;
 	}
 
@@ -838,8 +908,8 @@
 		font-size: 0.9rem;
 	}
 	.bench-table-chirho th {
-		background: rgba(125, 211, 252, 0.08);
-		color: #7dd3fc;
+		background: rgba(246, 190, 96, 0.08);
+		color: var(--accent-gold-chirho);
 		padding: 0.75rem 1rem;
 		text-align: left;
 		border-bottom: 1px solid rgba(125, 211, 252, 0.2);
@@ -847,10 +917,10 @@
 	.bench-table-chirho td {
 		padding: 0.6rem 1rem;
 		border-bottom: 1px solid rgba(125, 211, 252, 0.06);
-		color: #cbd5e1;
+		color: var(--text-soft-chirho);
 	}
 	.bench-table-chirho tr:hover td {
-		background: rgba(125, 211, 252, 0.04);
+		background: rgba(246, 190, 96, 0.04);
 	}
 
 	/* Get Started */
@@ -861,10 +931,11 @@
 	.code-block-chirho {
 		max-width: 700px;
 		margin: 0 auto;
-		background: #0f1521;
-		border: 1px solid rgba(125, 211, 252, 0.1);
-		border-radius: 12px;
+		background: #15110c;
+		border: 1px solid var(--line-chirho);
+		border-radius: 18px;
 		overflow: hidden;
+		box-shadow: var(--shadow-chirho);
 	}
 
 	.code-header-chirho {
@@ -872,8 +943,8 @@
 		align-items: center;
 		gap: 6px;
 		padding: 0.75rem 1rem;
-		background: rgba(255, 255, 255, 0.02);
-		border-bottom: 1px solid rgba(125, 211, 252, 0.06);
+		background: rgba(246, 190, 96, 0.04);
+		border-bottom: 1px solid var(--line-chirho);
 	}
 
 	.code-dot-chirho {
@@ -901,8 +972,8 @@
 	.code-title-chirho {
 		margin-left: 0.5rem;
 		font-size: 0.8rem;
-		color: #64748b;
-		font-family: 'JetBrains Mono', monospace;
+		color: var(--text-muted-chirho);
+		font-family: 'IBM Plex Mono', monospace;
 	}
 
 	.code-content-chirho {
@@ -913,7 +984,7 @@
 	}
 
 	.code-content-chirho code {
-		color: #e2e8f0;
+		color: var(--text-main-chirho);
 	}
 
 	:global(.code-comment-chirho) {
@@ -921,7 +992,7 @@
 	}
 
 	:global(.code-prompt-chirho) {
-		color: #7dd3fc;
+		color: var(--accent-cyan-chirho);
 		font-weight: 600;
 	}
 
@@ -930,12 +1001,12 @@
 	}
 
 	:global(.code-keyword-chirho) {
-		color: #a78bfa;
+		color: var(--accent-gold-chirho);
 		font-weight: 600;
 	}
 
 	:global(.code-type-chirho) {
-		color: #7dd3fc;
+		color: var(--accent-cyan-chirho);
 	}
 
 	:global(.code-fn-chirho) {
@@ -949,15 +1020,8 @@
 	/* Architecture */
 	.architecture-chirho {
 		padding: 6rem 0;
-		background: rgba(125, 211, 252, 0.02);
-		border-top: 1px solid rgba(125, 211, 252, 0.06);
-	}
-
-	.pipeline-chirho {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		align-items: center;
+		background: rgba(246, 190, 96, 0.025);
+		border-top: 1px solid var(--line-chirho);
 	}
 
 	.pipeline-vertical-chirho {
@@ -973,31 +1037,31 @@
 		gap: 1rem;
 		width: 100%;
 		padding: 0.6rem 1.5rem;
-		background: rgba(125, 211, 252, 0.04);
-		border: 1px solid rgba(125, 211, 252, 0.1);
+		background: rgba(246, 190, 96, 0.05);
+		border: 1px solid var(--line-chirho);
 		border-radius: 8px;
 	}
 	.pipeline-num-chirho {
 		font-weight: 600;
-		color: #7dd3fc;
+		color: var(--accent-gold-chirho);
 		font-size: 0.85rem;
 		min-width: 120px;
-		font-family: 'JetBrains Mono', monospace;
+		font-family: 'IBM Plex Mono', monospace;
 	}
 	.pipeline-detail-chirho {
 		font-size: 0.85rem;
-		color: #94a3b8;
+		color: var(--text-soft-chirho);
 	}
 	.pipeline-vline-chirho {
 		width: 2px;
 		height: 8px;
-		background: rgba(125, 211, 252, 0.15);
+		background: rgba(246, 190, 96, 0.15);
 	}
 
 	/* Footer */
 	.footer-chirho {
 		padding: 3rem 2rem;
-		border-top: 1px solid rgba(125, 211, 252, 0.06);
+		border-top: 1px solid var(--line-chirho);
 	}
 
 	.footer-inner-chirho {
@@ -1014,7 +1078,7 @@
 		align-items: center;
 		gap: 0.75rem;
 		font-weight: 500;
-		color: #94a3b8;
+		color: var(--text-soft-chirho);
 	}
 
 	.footer-logo-chirho {
@@ -1031,7 +1095,7 @@
 	.footer-scripture-chirho {
 		font-size: 0.8rem;
 		font-style: italic;
-		color: #475569;
+		color: var(--text-muted-chirho);
 		max-width: 500px;
 		margin: 0 auto;
 		line-height: 1.6;
@@ -1044,11 +1108,11 @@
 
 	.footer-right-chirho a {
 		font-size: 0.9rem;
-		color: #64748b;
+		color: var(--text-muted-chirho);
 	}
 
 	.footer-right-chirho a:hover {
-		color: #7dd3fc;
+		color: var(--accent-cyan-chirho);
 	}
 
 	/* Responsive */
@@ -1084,13 +1148,13 @@
 	/* Ecosystem Section */
 	.ecosystem-chirho {
 		padding: 5rem 2rem;
-		background: rgba(10, 14, 23, 0.6);
+		background: rgba(18, 15, 11, 0.42);
 	}
 
 	/* Limitations Section */
 	.limitations-chirho {
 		padding: 5rem 2rem;
-		background: rgba(15, 20, 30, 0.8);
+		background: rgba(25, 20, 14, 0.86);
 	}
 
 	.limitation-list-chirho {
@@ -1102,19 +1166,19 @@
 
 	.limitation-list-chirho li {
 		padding: 0.75rem 0;
-		border-bottom: 1px solid rgba(125, 211, 252, 0.08);
-		color: #94a3b8;
+		border-bottom: 1px solid var(--line-chirho);
+		color: var(--text-soft-chirho);
 		line-height: 1.6;
 	}
 
 	.limitation-list-chirho li strong {
-		color: #e2e8f0;
+		color: var(--text-main-chirho);
 	}
 
 	/* Roadmap Section */
 	.roadmap-chirho {
 		padding: 5rem 2rem;
-		background: rgba(10, 14, 23, 0.6);
+		background: rgba(18, 15, 11, 0.42);
 	}
 
 	.roadmap-grid-chirho {
@@ -1125,22 +1189,28 @@
 	}
 
 	.roadmap-item-chirho {
-		background: rgba(30, 41, 59, 0.5);
-		border: 1px solid rgba(125, 211, 252, 0.1);
+		background: var(--panel-strong-chirho);
+		border: 1px solid var(--line-chirho);
 		border-radius: 12px;
 		padding: 1.5rem;
 	}
 
 	.roadmap-item-chirho h3 {
-		color: #7dd3fc;
+		color: var(--accent-gold-chirho);
 		margin: 0 0 0.5rem;
 		font-size: 1.1rem;
 	}
 
 	.roadmap-item-chirho p {
-		color: #94a3b8;
+		color: var(--text-soft-chirho);
 		margin: 0;
 		line-height: 1.5;
 		font-size: 0.95rem;
+	}
+
+	@media (max-width: 768px) {
+		.hero-proof-chirho {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>
