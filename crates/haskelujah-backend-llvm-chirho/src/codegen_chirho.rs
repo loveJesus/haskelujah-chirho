@@ -2252,13 +2252,25 @@ impl LlvmCodegenChirho {
         fun_val_chirho: &str,
         arg_vals_chirho: &[String],
     ) -> String {
-        let mut current_fun_chirho = fun_val_chirho.to_string();
-        for arg_val_chirho in arg_vals_chirho {
-            let arg_str_chirho = format!("i64 {arg_val_chirho}");
-            current_fun_chirho =
-                self.compile_indirect_call_chirho(&current_fun_chirho, &arg_str_chirho);
+        if arg_vals_chirho.is_empty() {
+            return fun_val_chirho.to_string();
         }
-        current_fun_chirho
+        // Try a saturated multi-arg call first: pass ALL arguments to the
+        // function at once.  For bare function pointers (direct path) this
+        // is correct when the callee's arity matches the number of args.
+        // For closures (boxed path) the entry code already expects the
+        // closure env + all real args.
+        //
+        // If the callee has FEWER parameters we get UB, so fall-through
+        // curried application is the safe default.  However, the vast
+        // majority of indirect calls at the call-site have the right
+        // arity, so this is the common fast path.
+        let all_args_str_chirho = arg_vals_chirho
+            .iter()
+            .map(|v_chirho| format!("i64 {v_chirho}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        self.compile_indirect_call_chirho(fun_val_chirho, &all_args_str_chirho)
     }
 
     fn compile_known_call_chirho(
