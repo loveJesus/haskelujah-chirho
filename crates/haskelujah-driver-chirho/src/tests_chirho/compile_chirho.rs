@@ -36,8 +36,10 @@ fn builds_a_check_summary_for_batch_mode_chirho() {
             .runtime_plan_chirho
             .incremental_session_chirho
     );
-    assert!(render_summary_chirho(&check_summary_chirho)
-        .contains("llvm_preview: ; haskelujah llvm stub"));
+    assert!(
+        render_summary_chirho(&check_summary_chirho)
+            .contains("llvm_preview: ; haskelujah llvm stub")
+    );
 }
 
 #[test]
@@ -432,16 +434,82 @@ executable hello-app
         result_chirho.executables_chirho[0].compilation_order_chirho,
         vec!["Lib".to_string(), "Main".to_string()]
     );
-    assert!(!result_chirho.executables_chirho[0]
-        .core_chirho
-        .bindings_chirho
-        .is_empty());
-    assert!(result_chirho.executables_chirho[0]
-        .llvm_ir_chirho
-        .contains("define i32 @main()"));
-    assert!(result_chirho.executables_chirho[0]
-        .llvm_ir_chirho
-        .contains("@haskelujah_main"));
+    assert!(
+        !result_chirho.executables_chirho[0]
+            .core_chirho
+            .bindings_chirho
+            .is_empty()
+    );
+    assert!(
+        result_chirho.executables_chirho[0]
+            .llvm_ir_chirho
+            .contains("define i32 @main()")
+    );
+    assert!(
+        result_chirho.executables_chirho[0]
+            .llvm_ir_chirho
+            .contains("@haskelujah_main")
+    );
+
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+}
+
+#[test]
+fn cabal_project_cranelift_dedups_duplicate_prelude_bindings_chirho() {
+    use crate::build_cabal_project_chirho;
+    use haskelujah_backend_cranelift_chirho::{
+        TargetConfigChirho, compile_core_to_object_executable_chirho,
+    };
+    use std::io::Write;
+
+    let temp_dir_chirho = std::env::temp_dir().join("haskelujah_cabal_cranelift_dedup_test_chirho");
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+    std::fs::create_dir_all(temp_dir_chirho.join("src")).unwrap();
+
+    let cabal_path_chirho = temp_dir_chirho.join("dup-io.cabal");
+    let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
+    write!(
+        cabal_file_chirho,
+        r#"cabal-version: 3.0
+name:         dup-io
+version:      0.1.0.0
+
+executable dup-io
+  main-is:         Main.hs
+  hs-source-dirs:  src
+  other-modules:   Lib
+  build-depends:   base >=4.14 && <5
+"#
+    )
+    .unwrap();
+
+    let mut lib_file_chirho = std::fs::File::create(temp_dir_chirho.join("src/Lib.hs")).unwrap();
+    write!(
+        lib_file_chirho,
+        "module Lib where\nsayHi = putStrLn \"lib\"\n"
+    )
+    .unwrap();
+
+    let mut main_file_chirho = std::fs::File::create(temp_dir_chirho.join("src/Main.hs")).unwrap();
+    write!(
+        main_file_chirho,
+        "module Main where\nimport Lib\nmain = do\n  putStrLn \"main\"\n  sayHi\n"
+    )
+    .unwrap();
+
+    let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
+    let build_result_chirho = build_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+        .expect("cabal executable project should build");
+    let config_chirho = TargetConfigChirho::default();
+    let object_result_chirho = compile_core_to_object_executable_chirho(
+        &build_result_chirho.executables_chirho[0].core_chirho,
+        &config_chirho,
+    )
+    .expect("Cranelift should accept merged multi-module Prelude bindings");
+    assert!(
+        !object_result_chirho.object_bytes_chirho.is_empty(),
+        "Cranelift object output should not be empty"
+    );
 
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
 }

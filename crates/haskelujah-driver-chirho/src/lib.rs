@@ -12,26 +12,25 @@ pub mod stg_lower_chirho;
 use std::path::{Path, PathBuf};
 
 use haskelujah_ast_chirho::ModuleChirho;
-use haskelujah_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_chirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
-use haskelujah_backend_wasm_chirho::compile_to_wasm_stub_chirho;
+use haskelujah_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_chirho;
+use haskelujah_backend_wasm_chirho::compile_to_wasm_stub_chirho;
 use haskelujah_core_chirho::{
-    desugar_module_chirho, simplify_module_chirho,
-    CoreModuleChirho, SimplifyConfigChirho,
+    CoreModuleChirho, SimplifyConfigChirho, desugar_module_chirho, simplify_module_chirho,
 };
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
+use haskelujah_naming_chirho::iface_chirho::{ModuleIfaceChirho, build_iface_with_imports_chirho};
 use haskelujah_naming_chirho::resolve_chirho::resolve_module_with_imports_chirho;
-use haskelujah_naming_chirho::iface_chirho::{build_iface_with_imports_chirho, ModuleIfaceChirho};
-use haskelujah_typing_chirho::infer_chirho::{
-    InferResultChirho, infer_module_chirho, infer_module_with_imports_chirho,
-};
 use haskelujah_parser_chirho::cst_parser_chirho::ParserChirho;
 use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
 use haskelujah_runtime_chirho::{ExecutionModeChirho, RuntimePlanChirho};
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
+use haskelujah_typing_chirho::infer_chirho::{
+    InferResultChirho, infer_module_chirho, infer_module_with_imports_chirho,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackendPlanChirho {
@@ -86,7 +85,10 @@ pub fn run_frontend_chirho(
     source_chirho: &str,
     file_id_chirho: haskelujah_span_chirho::FileIdChirho,
     ifaces_chirho: &[ModuleIfaceChirho],
-    imported_types_chirho: &std::collections::HashMap<String, haskelujah_typing_chirho::SchemeChirho>,
+    imported_types_chirho: &std::collections::HashMap<
+        String,
+        haskelujah_typing_chirho::SchemeChirho,
+    >,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
     // Check for -fdefer-type-errors / -fdefer-out-of-scope-variables
     // These GHC flags cause type errors to be deferred as warnings.
@@ -109,9 +111,8 @@ pub fn run_frontend_chirho(
     // Phase 2.2: Template Haskell splice expansion
     // Process SpliceDeclChirho entries before name resolution so that
     // generated declarations participate in the normal compilation pipeline.
-    let splice_result_chirho = splice_chirho::expand_splices_chirho(
-        std::mem::take(&mut module_chirho.decls_chirho),
-    );
+    let splice_result_chirho =
+        splice_chirho::expand_splices_chirho(std::mem::take(&mut module_chirho.decls_chirho));
     module_chirho.decls_chirho = splice_result_chirho.decls_chirho;
     let splice_warnings_chirho = splice_result_chirho.warnings_chirho;
 
@@ -120,8 +121,7 @@ pub fn run_frontend_chirho(
         haskelujah_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
 
     // Phase 3: Name resolution
-    let resolve_result_chirho =
-        resolve_module_with_imports_chirho(&module_chirho, ifaces_chirho);
+    let resolve_result_chirho = resolve_module_with_imports_chirho(&module_chirho, ifaces_chirho);
     if !defer_errors_chirho && resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(resolve_result_chirho.diagnostics_chirho);
     }
@@ -131,8 +131,7 @@ pub fn run_frontend_chirho(
         haskelujah_naming_chirho::check_orphan_instances_chirho(&module_chirho);
 
     // Phase 3.5: Kind inference
-    let kind_result_chirho =
-        haskelujah_typing_chirho::infer_module_kinds_chirho(&module_chirho);
+    let kind_result_chirho = haskelujah_typing_chirho::infer_module_kinds_chirho(&module_chirho);
     if !defer_errors_chirho && kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(kind_result_chirho.diagnostics_chirho);
     }
@@ -149,10 +148,11 @@ pub fn run_frontend_chirho(
             .find(|m_chirho| m_chirho.name_chirho == module_name_chirho)
         {
             // Collect which names this import brings in.
-            let names_chirho = haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho(
-                &iface_chirho.exports_chirho,
-                &import_chirho.spec_chirho,
-            );
+            let names_chirho =
+                haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho(
+                    &iface_chirho.exports_chirho,
+                    &import_chirho.spec_chirho,
+                );
             for (name_chirho, ns_chirho, _span_chirho) in &names_chirho {
                 if ns_chirho == &haskelujah_naming_chirho::env_chirho::NamespaceChirho::ValueChirho
                     && !merged_imported_types_chirho.contains_key(name_chirho)
@@ -253,31 +253,38 @@ pub fn run_frontend_chirho(
 /// - the module already has an explicit `import Prelude`.
 fn inject_prelude_import_chirho(module_chirho: &mut ModuleChirho) {
     // Check for NoImplicitPrelude extension
-    if module_chirho.extensions_chirho.iter().any(|e_chirho| e_chirho == "NoImplicitPrelude") {
+    if module_chirho
+        .extensions_chirho
+        .iter()
+        .any(|e_chirho| e_chirho == "NoImplicitPrelude")
+    {
         return;
     }
 
     // Check if Prelude is already explicitly imported
-    let has_prelude_import_chirho = module_chirho.imports_chirho.iter().any(|imp_chirho| {
-        imp_chirho.module_chirho.text_chirho() == "Prelude"
-    });
+    let has_prelude_import_chirho = module_chirho
+        .imports_chirho
+        .iter()
+        .any(|imp_chirho| imp_chirho.module_chirho.text_chirho() == "Prelude");
     if has_prelude_import_chirho {
         return;
     }
 
     // Inject implicit Prelude import (unqualified, import everything)
-    module_chirho.imports_chirho.push(haskelujah_ast_chirho::module_chirho::ImportDeclChirho {
-        module_chirho: haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
-            haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
-                "Prelude",
-                haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+    module_chirho
+        .imports_chirho
+        .push(haskelujah_ast_chirho::module_chirho::ImportDeclChirho {
+            module_chirho: haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
+                haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+                    "Prelude",
+                    haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+                ),
             ),
-        ),
-        qualified_chirho: false,
-        alias_chirho: None,
-        spec_chirho: None,
-        span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
-    });
+            qualified_chirho: false,
+            alias_chirho: None,
+            spec_chirho: None,
+            span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+        });
 }
 
 /// Check linearity constraints when the `LinearTypes` extension is enabled.
@@ -366,27 +373,26 @@ fn check_module_linearity_chirho(
             for arm_chirho in matches_chirho {
                 let mut param_names_chirho: Vec<(String, bool)> = Vec::new();
                 for (i_chirho, pat_chirho) in arm_chirho.pats_chirho.iter().enumerate() {
-                    let is_linear_chirho =
-                        linear_positions_chirho.get(i_chirho).copied().unwrap_or(false);
+                    let is_linear_chirho = linear_positions_chirho
+                        .get(i_chirho)
+                        .copied()
+                        .unwrap_or(false);
                     for name_chirho in pat_bound_names_chirho(pat_chirho) {
                         param_names_chirho.push((name_chirho, is_linear_chirho));
                     }
                 }
 
                 let body_expr_chirho = match &arm_chirho.rhs_chirho {
-                    haskelujah_ast_chirho::expr_chirho::RhsChirho::UnguardedChirho(
-                        e_chirho,
-                    ) => e_chirho,
+                    haskelujah_ast_chirho::expr_chirho::RhsChirho::UnguardedChirho(e_chirho) => {
+                        e_chirho
+                    }
                     haskelujah_ast_chirho::expr_chirho::RhsChirho::GuardedChirho(_) => {
                         continue;
                     }
                 };
 
-                let violations_chirho = check_linearity_chirho(
-                    &param_names_chirho,
-                    body_expr_chirho,
-                    *span_chirho,
-                );
+                let violations_chirho =
+                    check_linearity_chirho(&param_names_chirho, body_expr_chirho, *span_chirho);
 
                 for v_chirho in &violations_chirho {
                     match v_chirho {
@@ -424,13 +430,14 @@ pub fn check_source_path_chirho(
 ) -> Result<CheckSummaryChirho, DiagnosticBundleChirho> {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_file_chirho =
-        SourceFileChirho::from_path_with_map_chirho(&mut source_map_chirho, &path_chirho)
-            .map_err(|error_chirho| {
+        SourceFileChirho::from_path_with_map_chirho(&mut source_map_chirho, &path_chirho).map_err(
+            |error_chirho| {
                 DiagnosticChirho::error_no_span_chirho(format!(
                     "unable to read `{}`: {error_chirho}",
                     path_chirho.as_ref().display()
                 ))
-            })?;
+            },
+        )?;
 
     check_source_file_chirho(source_file_chirho, execution_mode_chirho)
 }
@@ -508,7 +515,9 @@ fn extract_first_fun_arg_chirho(
 /// Build a mapping from data constructor names to their parent type name.
 /// Used by the dictionary-passing transform to select the correct instance
 /// dictionary when a class method is applied to a constructor value.
-fn build_con_type_map_chirho(module_chirho: &ModuleChirho) -> std::collections::HashMap<String, String> {
+fn build_con_type_map_chirho(
+    module_chirho: &ModuleChirho,
+) -> std::collections::HashMap<String, String> {
     let mut map_chirho = std::collections::HashMap::new();
     for decl_chirho in &module_chirho.decls_chirho {
         if let haskelujah_ast_chirho::decl_chirho::DeclChirho::DataDeclChirho {
@@ -637,8 +646,11 @@ pub fn frontend_warnings_chirho(
     source_map_chirho: &mut SourceMapChirho,
     file_name_chirho: &str,
 ) -> Result<Vec<String>, DiagnosticBundleChirho> {
-    let source_file_chirho =
-        SourceFileChirho::from_source_map_chirho(source_map_chirho, file_name_chirho, source_chirho);
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        source_map_chirho,
+        file_name_chirho,
+        source_chirho,
+    );
     let file_id_chirho = source_file_chirho.file_id_chirho();
 
     let builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
@@ -662,8 +674,11 @@ pub fn compile_source_chirho(
     source_map_chirho: &mut SourceMapChirho,
     file_name_chirho: &str,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
-    let source_file_chirho =
-        SourceFileChirho::from_source_map_chirho(source_map_chirho, file_name_chirho, source_chirho);
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        source_map_chirho,
+        file_name_chirho,
+        source_chirho,
+    );
     let file_id_chirho = source_file_chirho.file_id_chirho();
 
     let builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
@@ -693,8 +708,11 @@ pub fn compile_source_with_search_path_chirho(
     file_name_chirho: &str,
     search_dir_chirho: &Path,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
-    let source_file_chirho =
-        SourceFileChirho::from_source_map_chirho(source_map_chirho, file_name_chirho, source_chirho);
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        source_map_chirho,
+        file_name_chirho,
+        source_chirho,
+    );
     let file_id_chirho = source_file_chirho.file_id_chirho();
 
     let mut all_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
@@ -704,8 +722,12 @@ pub fn compile_source_with_search_path_chirho(
         if let Ok(entries_chirho) = std::fs::read_dir(search_dir_chirho) {
             for entry_chirho in entries_chirho.flatten() {
                 let p_chirho = entry_chirho.path();
-                if p_chirho.extension().is_some_and(|e_chirho| e_chirho == "hs")
-                    && p_chirho.file_name().map(|n_chirho| n_chirho.to_string_lossy().to_string())
+                if p_chirho
+                    .extension()
+                    .is_some_and(|e_chirho| e_chirho == "hs")
+                    && p_chirho
+                        .file_name()
+                        .map(|n_chirho| n_chirho.to_string_lossy().to_string())
                         != Some(file_name_chirho.to_string())
                 {
                     if let Ok(sibling_source_chirho) = std::fs::read_to_string(&p_chirho) {
@@ -722,8 +744,8 @@ pub fn compile_source_with_search_path_chirho(
                         let sibling_fid_chirho = sibling_file_chirho.file_id_chirho();
                         // Quick parse to get module name and exports.
                         // Wrap in catch_unwind to handle panics in complex files.
-                        let iface_result_chirho = std::panic::catch_unwind(
-                            std::panic::AssertUnwindSafe(|| {
+                        let iface_result_chirho =
+                            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                                 let parser_chirho = ParserChirho::new_chirho(
                                     &sibling_source_chirho,
                                     sibling_fid_chirho,
@@ -735,8 +757,7 @@ pub fn compile_source_with_search_path_chirho(
                                     &sibling_module_chirho,
                                     &all_ifaces_chirho,
                                 )
-                            }),
-                        );
+                            }));
                         if let Ok(iface_chirho) = iface_result_chirho {
                             all_ifaces_chirho.push(iface_chirho);
                         }
@@ -825,8 +846,10 @@ pub fn compile_modules_chirho(
     // Accumulated type schemes from all previously-compiled modules,
     // keyed by unqualified name. Downstream modules receive all upstream
     // exports so that type inference can resolve cross-module references.
-    let mut imported_types_chirho: std::collections::HashMap<String, haskelujah_typing_chirho::SchemeChirho> =
-        std::collections::HashMap::new();
+    let mut imported_types_chirho: std::collections::HashMap<
+        String,
+        haskelujah_typing_chirho::SchemeChirho,
+    > = std::collections::HashMap::new();
 
     for (file_name_chirho, source_chirho) in sources_chirho {
         let source_file_chirho = SourceFileChirho::from_source_map_chirho(
@@ -852,8 +875,7 @@ pub fn compile_modules_chirho(
 
         // Build interface for downstream modules before consuming module_chirho.
         // Use import-aware variant so `module Foo` re-exports work.
-        let iface_chirho =
-            build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+        let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
 
         // Extract type schemes for exported names and accumulate them
         // so downstream modules can type-check cross-module references.
@@ -865,7 +887,10 @@ pub fn compile_modules_chirho(
         for (_name_chirho, ty_info_chirho) in &iface_chirho.exports_chirho.types_chirho {
             // Export the type constructors' data constructor schemes
             for con_name_chirho in &ty_info_chirho.constructors_chirho {
-                if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(con_name_chirho) {
+                if let Some(scheme_chirho) = infer_result_chirho
+                    .env_chirho
+                    .lookup_chirho(con_name_chirho)
+                {
                     imported_types_chirho.insert(con_name_chirho.clone(), scheme_chirho.clone());
                 }
             }
@@ -890,8 +915,7 @@ pub fn eval_modules_chirho(
     entry_name_chirho: Option<&str>,
 ) -> Result<haskelujah_runtime_chirho::ValueChirho, String> {
     use haskelujah_core_chirho::expr_chirho::{
-        CoreExprChirho,
-        CoreIdChirho, CoreModuleChirho as CoreModChirho,
+        CoreExprChirho, CoreIdChirho, CoreModuleChirho as CoreModChirho,
     };
 
     let results_chirho = compile_modules_chirho(sources_chirho, source_map_chirho)
@@ -923,22 +947,37 @@ pub fn eval_modules_chirho(
                 *id_chirho = offset_id_chirho(*id_chirho, off_chirho);
             }
             CoreExprChirho::LitChirho(_) => {}
-            CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
                 offset_expr_chirho(fun_chirho, off_chirho);
                 offset_expr_chirho(arg_chirho, off_chirho);
             }
-            CoreExprChirho::LamChirho { binder_chirho, body_chirho } => {
+            CoreExprChirho::LamChirho {
+                binder_chirho,
+                body_chirho,
+            } => {
                 offset_binder_chirho(binder_chirho, off_chirho);
                 offset_expr_chirho(body_chirho, off_chirho);
             }
-            CoreExprChirho::LetChirho { binds_chirho, body_chirho, .. } => {
+            CoreExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
                 for (b_chirho, rhs_chirho) in binds_chirho {
                     offset_binder_chirho(b_chirho, off_chirho);
                     offset_expr_chirho(rhs_chirho, off_chirho);
                 }
                 offset_expr_chirho(body_chirho, off_chirho);
             }
-            CoreExprChirho::CaseChirho { scrutinee_chirho, bind_chirho, alts_chirho, .. } => {
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                bind_chirho,
+                alts_chirho,
+                ..
+            } => {
                 offset_binder_chirho(bind_chirho, off_chirho);
                 offset_expr_chirho(scrutinee_chirho, off_chirho);
                 for alt_chirho in alts_chirho {
@@ -951,14 +990,21 @@ pub fn eval_modules_chirho(
             CoreExprChirho::TyLamChirho { body_chirho, .. } => {
                 offset_expr_chirho(body_chirho, off_chirho);
             }
-            CoreExprChirho::TyAppChirho { expr_chirho: inner_chirho, .. } => {
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => {
                 offset_expr_chirho(inner_chirho, off_chirho);
             }
             CoreExprChirho::PrimOpChirho { args_chirho, .. } => {
-                for a_chirho in args_chirho { offset_expr_chirho(a_chirho, off_chirho); }
+                for a_chirho in args_chirho {
+                    offset_expr_chirho(a_chirho, off_chirho);
+                }
             }
             CoreExprChirho::ConAppChirho { args_chirho, .. } => {
-                for a_chirho in args_chirho { offset_expr_chirho(a_chirho, off_chirho); }
+                for a_chirho in args_chirho {
+                    offset_expr_chirho(a_chirho, off_chirho);
+                }
             }
         }
     }
@@ -974,20 +1020,31 @@ pub fn eval_modules_chirho(
                 }
             }
             CoreExprChirho::LitChirho(_) => {}
-            CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
                 remap_expr_chirho(fun_chirho, remap_chirho);
                 remap_expr_chirho(arg_chirho, remap_chirho);
             }
             CoreExprChirho::LamChirho { body_chirho, .. } => {
                 remap_expr_chirho(body_chirho, remap_chirho);
             }
-            CoreExprChirho::LetChirho { binds_chirho, body_chirho, .. } => {
+            CoreExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
                 for (_b_chirho, rhs_chirho) in binds_chirho {
                     remap_expr_chirho(rhs_chirho, remap_chirho);
                 }
                 remap_expr_chirho(body_chirho, remap_chirho);
             }
-            CoreExprChirho::CaseChirho { scrutinee_chirho, alts_chirho, .. } => {
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                alts_chirho,
+                ..
+            } => {
                 remap_expr_chirho(scrutinee_chirho, remap_chirho);
                 for alt_chirho in alts_chirho {
                     remap_expr_chirho(&mut alt_chirho.rhs_chirho, remap_chirho);
@@ -996,14 +1053,21 @@ pub fn eval_modules_chirho(
             CoreExprChirho::TyLamChirho { body_chirho, .. } => {
                 remap_expr_chirho(body_chirho, remap_chirho);
             }
-            CoreExprChirho::TyAppChirho { expr_chirho: inner_chirho, .. } => {
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => {
                 remap_expr_chirho(inner_chirho, remap_chirho);
             }
             CoreExprChirho::PrimOpChirho { args_chirho, .. } => {
-                for a_chirho in args_chirho { remap_expr_chirho(a_chirho, remap_chirho); }
+                for a_chirho in args_chirho {
+                    remap_expr_chirho(a_chirho, remap_chirho);
+                }
             }
             CoreExprChirho::ConAppChirho { args_chirho, .. } => {
-                for a_chirho in args_chirho { remap_expr_chirho(a_chirho, remap_chirho); }
+                for a_chirho in args_chirho {
+                    remap_expr_chirho(a_chirho, remap_chirho);
+                }
             }
         }
     }
@@ -1038,7 +1102,9 @@ pub fn eval_modules_chirho(
         merged_newtype_cons_chirho.extend(result_chirho.newtype_cons_chirho.clone());
 
         // Advance the offset past this module's ID range.
-        let max_id_chirho = result_chirho.core_chirho.names_chirho
+        let max_id_chirho = result_chirho
+            .core_chirho
+            .names_chirho
             .keys()
             .map(|id_chirho| id_chirho.0)
             .max()
@@ -1067,22 +1133,37 @@ pub fn eval_modules_chirho(
     ) {
         match expr_chirho {
             CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => {}
-            CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
                 collect_binder_ids_chirho(fun_chirho, set_chirho);
                 collect_binder_ids_chirho(arg_chirho, set_chirho);
             }
-            CoreExprChirho::LamChirho { binder_chirho, body_chirho } => {
+            CoreExprChirho::LamChirho {
+                binder_chirho,
+                body_chirho,
+            } => {
                 set_chirho.insert(binder_chirho.id_chirho);
                 collect_binder_ids_chirho(body_chirho, set_chirho);
             }
-            CoreExprChirho::LetChirho { binds_chirho, body_chirho, .. } => {
+            CoreExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
                 for (b_chirho, rhs_chirho) in binds_chirho {
                     set_chirho.insert(b_chirho.id_chirho);
                     collect_binder_ids_chirho(rhs_chirho, set_chirho);
                 }
                 collect_binder_ids_chirho(body_chirho, set_chirho);
             }
-            CoreExprChirho::CaseChirho { scrutinee_chirho, bind_chirho, alts_chirho, .. } => {
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                bind_chirho,
+                alts_chirho,
+                ..
+            } => {
                 set_chirho.insert(bind_chirho.id_chirho);
                 collect_binder_ids_chirho(scrutinee_chirho, set_chirho);
                 for alt_chirho in alts_chirho {
@@ -1095,14 +1176,21 @@ pub fn eval_modules_chirho(
             CoreExprChirho::TyLamChirho { body_chirho, .. } => {
                 collect_binder_ids_chirho(body_chirho, set_chirho);
             }
-            CoreExprChirho::TyAppChirho { expr_chirho: inner_chirho, .. } => {
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => {
                 collect_binder_ids_chirho(inner_chirho, set_chirho);
             }
             CoreExprChirho::PrimOpChirho { args_chirho, .. } => {
-                for a_chirho in args_chirho { collect_binder_ids_chirho(a_chirho, set_chirho); }
+                for a_chirho in args_chirho {
+                    collect_binder_ids_chirho(a_chirho, set_chirho);
+                }
             }
             CoreExprChirho::ConAppChirho { args_chirho, .. } => {
-                for a_chirho in args_chirho { collect_binder_ids_chirho(a_chirho, set_chirho); }
+                for a_chirho in args_chirho {
+                    collect_binder_ids_chirho(a_chirho, set_chirho);
+                }
             }
         }
     }
@@ -1132,7 +1220,13 @@ pub fn eval_modules_chirho(
     }
 
     let merged_core_chirho = CoreModChirho {
-        name_chirho: results_chirho.last().unwrap().module_chirho.name_chirho.text_chirho().to_string(),
+        name_chirho: results_chirho
+            .last()
+            .unwrap()
+            .module_chirho
+            .name_chirho
+            .text_chirho()
+            .to_string(),
         bindings_chirho: merged_bindings_chirho,
         names_chirho: merged_names_chirho,
         specialize_pragmas_chirho: std::collections::HashMap::new(),
@@ -1171,13 +1265,16 @@ pub fn eval_source_with_machine_chirho(
     source_map_chirho: &mut SourceMapChirho,
     file_name_chirho: &str,
     entry_name_chirho: Option<&str>,
-) -> Result<(haskelujah_runtime_chirho::ValueChirho, haskelujah_runtime_chirho::eval_chirho::MachineChirho), String> {
-    let compile_result_chirho = compile_source_chirho(
-        source_chirho,
-        source_map_chirho,
-        file_name_chirho,
-    )
-    .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
+) -> Result<
+    (
+        haskelujah_runtime_chirho::ValueChirho,
+        haskelujah_runtime_chirho::eval_chirho::MachineChirho,
+    ),
+    String,
+> {
+    let compile_result_chirho =
+        compile_source_chirho(source_chirho, source_map_chirho, file_name_chirho)
+            .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
 
     stg_lower_chirho::lower_and_run_chirho(
         &compile_result_chirho.core_chirho,
@@ -1193,13 +1290,16 @@ pub fn eval_source_with_input_chirho(
     file_name_chirho: &str,
     entry_name_chirho: Option<&str>,
     input_lines_chirho: &[&str],
-) -> Result<(haskelujah_runtime_chirho::ValueChirho, haskelujah_runtime_chirho::eval_chirho::MachineChirho), String> {
-    let compile_result_chirho = compile_source_chirho(
-        source_chirho,
-        source_map_chirho,
-        file_name_chirho,
-    )
-    .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
+) -> Result<
+    (
+        haskelujah_runtime_chirho::ValueChirho,
+        haskelujah_runtime_chirho::eval_chirho::MachineChirho,
+    ),
+    String,
+> {
+    let compile_result_chirho =
+        compile_source_chirho(source_chirho, source_map_chirho, file_name_chirho)
+            .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
 
     stg_lower_chirho::lower_and_run_with_input_chirho(
         &compile_result_chirho.core_chirho,
@@ -1217,13 +1317,16 @@ pub fn eval_source_with_step_limit_chirho(
     file_name_chirho: &str,
     entry_name_chirho: Option<&str>,
     step_limit_chirho: u64,
-) -> Result<(haskelujah_runtime_chirho::ValueChirho, haskelujah_runtime_chirho::eval_chirho::MachineChirho), String> {
-    let compile_result_chirho = compile_source_chirho(
-        source_chirho,
-        source_map_chirho,
-        file_name_chirho,
-    )
-    .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
+) -> Result<
+    (
+        haskelujah_runtime_chirho::ValueChirho,
+        haskelujah_runtime_chirho::eval_chirho::MachineChirho,
+    ),
+    String,
+> {
+    let compile_result_chirho =
+        compile_source_chirho(source_chirho, source_map_chirho, file_name_chirho)
+            .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
 
     stg_lower_chirho::lower_and_run_with_step_limit_chirho(
         &compile_result_chirho.core_chirho,
@@ -1333,8 +1436,7 @@ pub fn compile_modules_incremental_chirho(
         } = frontend_result_chirho;
 
         // Build and register the module interface for downstream modules.
-        let iface_chirho =
-            build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+        let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
 
         if recompiled_chirho {
             // Record compilation fingerprint for incremental tracking.
@@ -1398,7 +1500,10 @@ fn discover_hs_files_chirho(dir_chirho: &Path) -> Vec<PathBuf> {
                 {
                     stack_chirho.push(path_chirho);
                 }
-            } else if path_chirho.extension().map_or(false, |ext_chirho| ext_chirho == "hs") {
+            } else if path_chirho
+                .extension()
+                .map_or(false, |ext_chirho| ext_chirho == "hs")
+            {
                 files_chirho.push(path_chirho);
             }
         }
@@ -1471,8 +1576,17 @@ fn parse_boot_iface_chirho(
     source_map_chirho: &mut SourceMapChirho,
     boot_path_chirho: &str,
     existing_ifaces_chirho: &[ModuleIfaceChirho],
-    existing_types_chirho: &std::collections::HashMap<String, haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
-) -> Result<(ModuleIfaceChirho, std::collections::HashMap<String, haskelujah_typing_chirho::ty_chirho::SchemeChirho>), String> {
+    existing_types_chirho: &std::collections::HashMap<
+        String,
+        haskelujah_typing_chirho::ty_chirho::SchemeChirho,
+    >,
+) -> Result<
+    (
+        ModuleIfaceChirho,
+        std::collections::HashMap<String, haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
+    ),
+    String,
+> {
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
         source_map_chirho,
         boot_path_chirho,
@@ -1505,7 +1619,10 @@ fn parse_boot_iface_chirho(
     }
     for (_name_chirho, ty_info_chirho) in &iface_chirho.exports_chirho.types_chirho {
         for con_name_chirho in &ty_info_chirho.constructors_chirho {
-            if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(con_name_chirho) {
+            if let Some(scheme_chirho) = infer_result_chirho
+                .env_chirho
+                .lookup_chirho(con_name_chirho)
+            {
                 types_chirho.insert(con_name_chirho.clone(), scheme_chirho.clone());
             }
         }
@@ -1554,7 +1671,8 @@ pub fn compile_project_dir_chirho(
         .collect();
 
     for (module_name_chirho, _, source_chirho) in &module_sources_chirho {
-        let fp_chirho = haskelujah_incremental_chirho::FingerprintChirho::from_str_chirho(source_chirho);
+        let fp_chirho =
+            haskelujah_incremental_chirho::FingerprintChirho::from_str_chirho(source_chirho);
         dep_graph_chirho.add_module_chirho(module_name_chirho, fp_chirho);
         let imports_chirho = extract_imports_chirho(source_chirho);
         for imported_chirho in &imports_chirho {
@@ -1650,9 +1768,13 @@ pub fn compile_project_dir_chirho(
             );
             let file_id_chirho = source_file_chirho.file_id_chirho();
 
-            let frontend_result_chirho =
-                run_frontend_chirho(source_chirho, file_id_chirho, &ifaces_chirho, &imported_types_chirho)
-                    .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
+            let frontend_result_chirho = run_frontend_chirho(
+                source_chirho,
+                file_id_chirho,
+                &ifaces_chirho,
+                &imported_types_chirho,
+            )
+            .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
 
             let FrontendResultChirho {
                 module_chirho,
@@ -1663,12 +1785,13 @@ pub fn compile_project_dir_chirho(
             all_warnings_chirho.extend(warnings_chirho);
 
             // Build interface for downstream modules
-            let iface_chirho =
-                build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+            let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
 
             // Accumulate exported type schemes
             for (name_chirho, val_chirho) in &iface_chirho.exports_chirho.values_chirho {
-                if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(name_chirho) {
+                if let Some(scheme_chirho) =
+                    infer_result_chirho.env_chirho.lookup_chirho(name_chirho)
+                {
                     imported_types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
                 }
                 let _ = val_chirho;
@@ -1677,9 +1800,10 @@ pub fn compile_project_dir_chirho(
             ifaces_chirho.push(iface_chirho);
 
             // Backend compilation
-            let compile_result_chirho =
-                compile_backend_chirho(module_chirho, infer_result_chirho)
-                    .map_err(|e_chirho| format!("Backend error for {}: {}", module_name_chirho, e_chirho))?;
+            let compile_result_chirho = compile_backend_chirho(module_chirho, infer_result_chirho)
+                .map_err(|e_chirho| {
+                    format!("Backend error for {}: {}", module_name_chirho, e_chirho)
+                })?;
 
             results_chirho.push(compile_result_chirho);
             order_chirho.push(module_name_chirho.clone());
@@ -1823,15 +1947,19 @@ pub fn build_cabal_project_chirho(
 
     let mut executables_chirho = Vec::new();
     for executable_chirho in &package_chirho.executables_chirho {
-        let target_modules_chirho =
-            discover_executable_modules_chirho(&package_chirho, executable_chirho, project_dir_chirho);
+        let target_modules_chirho = discover_executable_modules_chirho(
+            &package_chirho,
+            executable_chirho,
+            project_dir_chirho,
+        );
         let mut source_map_chirho = SourceMapChirho::new_chirho();
         let project_compile_result_chirho = compile_module_files_in_dependency_order_chirho(
             &target_modules_chirho,
             &mut source_map_chirho,
         )?;
-        let merged_core_chirho =
-            merge_compile_results_core_chirho(&project_compile_result_chirho.module_results_chirho)?;
+        let merged_core_chirho = merge_compile_results_core_chirho(
+            &project_compile_result_chirho.module_results_chirho,
+        )?;
         let llvm_ir_chirho = compile_core_to_llvm_executable_chirho(&merged_core_chirho);
         executables_chirho.push(CabalExecutableBuildResultChirho {
             name_chirho: executable_chirho.name_chirho.clone(),
@@ -1996,8 +2124,7 @@ fn compile_module_sources_in_dependency_order_chirho(
 
             all_warnings_chirho.extend(warnings_chirho);
 
-            let iface_chirho =
-                build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+            let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
             for (name_chirho, _val_chirho) in &iface_chirho.exports_chirho.values_chirho {
                 if let Some(scheme_chirho) =
                     infer_result_chirho.env_chirho.lookup_chirho(name_chirho)
@@ -2008,7 +2135,9 @@ fn compile_module_sources_in_dependency_order_chirho(
             ifaces_chirho.push(iface_chirho);
 
             let compile_result_chirho = compile_backend_chirho(module_chirho, infer_result_chirho)
-                .map_err(|e_chirho| format!("Backend error for {}: {}", module_name_chirho, e_chirho))?;
+                .map_err(|e_chirho| {
+                    format!("Backend error for {}: {}", module_name_chirho, e_chirho)
+                })?;
 
             results_chirho.push(compile_result_chirho);
             order_chirho.push(module_name_chirho.clone());
@@ -2026,6 +2155,7 @@ fn merge_compile_results_core_chirho(
     results_chirho: &[CompileResultChirho],
 ) -> Result<CoreModuleChirho, String> {
     use haskelujah_core_chirho::expr_chirho::{CoreExprChirho, CoreIdChirho};
+    use std::collections::{HashMap, HashSet};
 
     if results_chirho.is_empty() {
         return Err("no compiled modules to merge".to_string());
@@ -2167,7 +2297,7 @@ fn merge_compile_results_core_chirho(
 
     fn collect_binder_ids_chirho(
         expr_chirho: &CoreExprChirho,
-        ids_chirho: &mut std::collections::HashSet<CoreIdChirho>,
+        ids_chirho: &mut HashSet<CoreIdChirho>,
     ) {
         match expr_chirho {
             CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => {}
@@ -2229,9 +2359,277 @@ fn merge_compile_results_core_chirho(
         }
     }
 
+    fn canonical_binder_ty_chirho(
+        binder_chirho: &haskelujah_core_chirho::expr_chirho::BinderChirho,
+    ) -> String {
+        binder_chirho.ty_chirho.to_string()
+    }
+
+    fn canonical_expr_chirho(
+        expr_chirho: &CoreExprChirho,
+        names_chirho: &HashMap<CoreIdChirho, String>,
+        local_ids_chirho: &mut HashMap<CoreIdChirho, usize>,
+        next_local_id_chirho: &mut usize,
+    ) -> String {
+        match expr_chirho {
+            CoreExprChirho::VarChirho(id_chirho) => {
+                if let Some(local_id_chirho) = local_ids_chirho.get(id_chirho) {
+                    format!("local:{local_id_chirho}")
+                } else if let Some(name_chirho) = names_chirho.get(id_chirho) {
+                    format!("global:{name_chirho}")
+                } else {
+                    format!("unresolved:{}", id_chirho.0)
+                }
+            }
+            CoreExprChirho::LitChirho(lit_chirho) => format!("lit:{lit_chirho:?}"),
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => format!(
+                "app({},{})",
+                canonical_expr_chirho(
+                    fun_chirho,
+                    names_chirho,
+                    local_ids_chirho,
+                    next_local_id_chirho,
+                ),
+                canonical_expr_chirho(
+                    arg_chirho,
+                    names_chirho,
+                    local_ids_chirho,
+                    next_local_id_chirho,
+                )
+            ),
+            CoreExprChirho::LamChirho {
+                binder_chirho,
+                body_chirho,
+            } => {
+                let local_slot_chirho = *next_local_id_chirho;
+                *next_local_id_chirho += 1;
+                let previous_local_chirho =
+                    local_ids_chirho.insert(binder_chirho.id_chirho, local_slot_chirho);
+                let body_key_chirho = canonical_expr_chirho(
+                    body_chirho,
+                    names_chirho,
+                    local_ids_chirho,
+                    next_local_id_chirho,
+                );
+                if let Some(prev_local_chirho) = previous_local_chirho {
+                    local_ids_chirho.insert(binder_chirho.id_chirho, prev_local_chirho);
+                } else {
+                    local_ids_chirho.remove(&binder_chirho.id_chirho);
+                }
+                format!(
+                    "lam({}:{})",
+                    canonical_binder_ty_chirho(binder_chirho),
+                    body_key_chirho
+                )
+            }
+            CoreExprChirho::LetChirho {
+                rec_chirho,
+                binds_chirho,
+                body_chirho,
+            } => {
+                let let_binder_ids_chirho: Vec<CoreIdChirho> = binds_chirho
+                    .iter()
+                    .map(|(binder_chirho, _)| binder_chirho.id_chirho)
+                    .collect();
+                let mut previous_ids_chirho = Vec::with_capacity(let_binder_ids_chirho.len());
+                for binder_id_chirho in &let_binder_ids_chirho {
+                    let local_slot_chirho = *next_local_id_chirho;
+                    *next_local_id_chirho += 1;
+                    previous_ids_chirho.push((
+                        *binder_id_chirho,
+                        local_ids_chirho.insert(*binder_id_chirho, local_slot_chirho),
+                    ));
+                }
+                let binds_key_chirho = binds_chirho
+                    .iter()
+                    .map(|(binder_chirho, rhs_chirho)| {
+                        format!(
+                            "{}={}",
+                            canonical_binder_ty_chirho(binder_chirho),
+                            canonical_expr_chirho(
+                                rhs_chirho,
+                                names_chirho,
+                                local_ids_chirho,
+                                next_local_id_chirho,
+                            )
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(";");
+                let body_key_chirho = canonical_expr_chirho(
+                    body_chirho,
+                    names_chirho,
+                    local_ids_chirho,
+                    next_local_id_chirho,
+                );
+                for (binder_id_chirho, previous_local_chirho) in previous_ids_chirho {
+                    if let Some(prev_local_chirho) = previous_local_chirho {
+                        local_ids_chirho.insert(binder_id_chirho, prev_local_chirho);
+                    } else {
+                        local_ids_chirho.remove(&binder_id_chirho);
+                    }
+                }
+                format!("let(rec={rec_chirho};binds=[{binds_key_chirho}];body={body_key_chirho})")
+            }
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                bind_chirho,
+                result_ty_chirho,
+                alts_chirho,
+            } => {
+                let scrut_key_chirho = canonical_expr_chirho(
+                    scrutinee_chirho,
+                    names_chirho,
+                    local_ids_chirho,
+                    next_local_id_chirho,
+                );
+                let bind_slot_chirho = *next_local_id_chirho;
+                *next_local_id_chirho += 1;
+                let previous_bind_chirho =
+                    local_ids_chirho.insert(bind_chirho.id_chirho, bind_slot_chirho);
+                let alt_keys_chirho = alts_chirho
+                    .iter()
+                    .map(|alt_chirho| {
+                        let alt_binder_ids_chirho: Vec<CoreIdChirho> = alt_chirho
+                            .binders_chirho
+                            .iter()
+                            .map(|binder_chirho| binder_chirho.id_chirho)
+                            .collect();
+                        let mut previous_alt_ids_chirho =
+                            Vec::with_capacity(alt_binder_ids_chirho.len());
+                        for binder_id_chirho in &alt_binder_ids_chirho {
+                            let local_slot_chirho = *next_local_id_chirho;
+                            *next_local_id_chirho += 1;
+                            previous_alt_ids_chirho.push((
+                                *binder_id_chirho,
+                                local_ids_chirho.insert(*binder_id_chirho, local_slot_chirho),
+                            ));
+                        }
+                        let binders_key_chirho = alt_chirho
+                            .binders_chirho
+                            .iter()
+                            .map(canonical_binder_ty_chirho)
+                            .collect::<Vec<_>>()
+                            .join(",");
+                        let rhs_key_chirho = canonical_expr_chirho(
+                            &alt_chirho.rhs_chirho,
+                            names_chirho,
+                            local_ids_chirho,
+                            next_local_id_chirho,
+                        );
+                        for (binder_id_chirho, previous_local_chirho) in previous_alt_ids_chirho {
+                            if let Some(prev_local_chirho) = previous_local_chirho {
+                                local_ids_chirho.insert(binder_id_chirho, prev_local_chirho);
+                            } else {
+                                local_ids_chirho.remove(&binder_id_chirho);
+                            }
+                        }
+                        format!(
+                            "alt({:?};{};{})",
+                            alt_chirho.con_chirho, binders_key_chirho, rhs_key_chirho
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(";");
+                if let Some(prev_local_chirho) = previous_bind_chirho {
+                    local_ids_chirho.insert(bind_chirho.id_chirho, prev_local_chirho);
+                } else {
+                    local_ids_chirho.remove(&bind_chirho.id_chirho);
+                }
+                format!(
+                    "case({};{};{};alts=[{}])",
+                    scrut_key_chirho, bind_slot_chirho, result_ty_chirho, alt_keys_chirho
+                )
+            }
+            CoreExprChirho::TyLamChirho {
+                ty_var_chirho,
+                body_chirho,
+            } => format!(
+                "tylam({};{})",
+                ty_var_chirho,
+                canonical_expr_chirho(
+                    body_chirho,
+                    names_chirho,
+                    local_ids_chirho,
+                    next_local_id_chirho,
+                )
+            ),
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ty_chirho,
+            } => format!(
+                "tyapp({};{})",
+                canonical_expr_chirho(
+                    inner_chirho,
+                    names_chirho,
+                    local_ids_chirho,
+                    next_local_id_chirho,
+                ),
+                ty_chirho
+            ),
+            CoreExprChirho::PrimOpChirho {
+                name_chirho,
+                args_chirho,
+            } => format!(
+                "primop({};[{}])",
+                name_chirho,
+                args_chirho
+                    .iter()
+                    .map(|arg_chirho| canonical_expr_chirho(
+                        arg_chirho,
+                        names_chirho,
+                        local_ids_chirho,
+                        next_local_id_chirho,
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
+            CoreExprChirho::ConAppChirho {
+                con_name_chirho,
+                args_chirho,
+            } => format!(
+                "con({};[{}])",
+                con_name_chirho,
+                args_chirho
+                    .iter()
+                    .map(|arg_chirho| canonical_expr_chirho(
+                        arg_chirho,
+                        names_chirho,
+                        local_ids_chirho,
+                        next_local_id_chirho,
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
+        }
+    }
+
+    fn canonical_binding_key_chirho(
+        binding_chirho: &haskelujah_core_chirho::expr_chirho::CoreBindingChirho,
+        names_chirho: &HashMap<CoreIdChirho, String>,
+    ) -> String {
+        let mut local_ids_chirho = HashMap::new();
+        let mut next_local_id_chirho = 0usize;
+        format!(
+            "binding({};{};rec={};inline={:?};{})",
+            binding_chirho.binder_chirho.name_chirho,
+            canonical_binder_ty_chirho(&binding_chirho.binder_chirho),
+            binding_chirho.is_rec_chirho,
+            binding_chirho.inline_chirho,
+            canonical_expr_chirho(
+                &binding_chirho.rhs_chirho,
+                names_chirho,
+                &mut local_ids_chirho,
+                &mut next_local_id_chirho,
+            )
+        )
+    }
+
     let mut merged_bindings_chirho = Vec::new();
-    let mut merged_names_chirho: std::collections::HashMap<CoreIdChirho, String> =
-        std::collections::HashMap::new();
+    let mut merged_names_chirho: HashMap<CoreIdChirho, String> = HashMap::new();
     let mut id_offset_chirho: u32 = 0;
 
     for result_chirho in results_chirho {
@@ -2259,23 +2657,20 @@ fn merge_compile_results_core_chirho(
         id_offset_chirho += max_id_chirho + 1;
     }
 
-    let mut def_name_to_id_chirho: std::collections::HashMap<String, CoreIdChirho> =
-        std::collections::HashMap::new();
+    let mut def_name_to_id_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
     for binding_chirho in &merged_bindings_chirho {
         def_name_to_id_chirho
             .entry(binding_chirho.binder_chirho.name_chirho.clone())
             .or_insert(binding_chirho.binder_chirho.id_chirho);
     }
 
-    let mut all_binder_ids_chirho: std::collections::HashSet<CoreIdChirho> =
-        std::collections::HashSet::new();
+    let mut all_binder_ids_chirho: HashSet<CoreIdChirho> = HashSet::new();
     for binding_chirho in &merged_bindings_chirho {
         all_binder_ids_chirho.insert(binding_chirho.binder_chirho.id_chirho);
         collect_binder_ids_chirho(&binding_chirho.rhs_chirho, &mut all_binder_ids_chirho);
     }
 
-    let mut remap_chirho: std::collections::HashMap<CoreIdChirho, CoreIdChirho> =
-        std::collections::HashMap::new();
+    let mut remap_chirho: HashMap<CoreIdChirho, CoreIdChirho> = HashMap::new();
     for (id_chirho, name_chirho) in &merged_names_chirho {
         if all_binder_ids_chirho.contains(id_chirho) {
             continue;
@@ -2293,12 +2688,46 @@ fn merge_compile_results_core_chirho(
         }
     }
 
+    let mut canonical_binding_to_id_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
+    let mut deduped_bindings_chirho = Vec::with_capacity(merged_bindings_chirho.len());
+    let mut removed_binding_ids_chirho = HashSet::new();
+    let mut duplicate_binding_remap_chirho: HashMap<CoreIdChirho, CoreIdChirho> = HashMap::new();
+    for binding_chirho in merged_bindings_chirho {
+        let canonical_key_chirho =
+            canonical_binding_key_chirho(&binding_chirho, &merged_names_chirho);
+        if let Some(&kept_id_chirho) = canonical_binding_to_id_chirho.get(&canonical_key_chirho) {
+            duplicate_binding_remap_chirho
+                .insert(binding_chirho.binder_chirho.id_chirho, kept_id_chirho);
+            removed_binding_ids_chirho.insert(binding_chirho.binder_chirho.id_chirho);
+        } else {
+            canonical_binding_to_id_chirho
+                .insert(canonical_key_chirho, binding_chirho.binder_chirho.id_chirho);
+            deduped_bindings_chirho.push(binding_chirho);
+        }
+    }
+
+    if !duplicate_binding_remap_chirho.is_empty() {
+        for binding_chirho in &mut deduped_bindings_chirho {
+            remap_expr_chirho(
+                &mut binding_chirho.rhs_chirho,
+                &duplicate_binding_remap_chirho,
+            );
+        }
+        merged_names_chirho.retain(|id_chirho, _| !removed_binding_ids_chirho.contains(id_chirho));
+    }
+
     Ok(CoreModuleChirho {
         name_chirho: results_chirho
             .last()
-            .map(|result_chirho| result_chirho.module_chirho.name_chirho.text_chirho().to_string())
+            .map(|result_chirho| {
+                result_chirho
+                    .module_chirho
+                    .name_chirho
+                    .text_chirho()
+                    .to_string()
+            })
             .unwrap_or_else(|| "Main".to_string()),
-        bindings_chirho: merged_bindings_chirho,
+        bindings_chirho: deduped_bindings_chirho,
         names_chirho: merged_names_chirho,
         specialize_pragmas_chirho: std::collections::HashMap::new(),
         foreign_exports_chirho: vec![],
@@ -2317,7 +2746,11 @@ pub fn discover_modules_chirho(
     let mut seen_chirho = std::collections::HashSet::new();
 
     if let Some(lib_chirho) = &package_chirho.library_chirho {
-        let src_dirs_chirho = if lib_chirho.build_info_chirho.hs_source_dirs_chirho.is_empty() {
+        let src_dirs_chirho = if lib_chirho
+            .build_info_chirho
+            .hs_source_dirs_chirho
+            .is_empty()
+        {
             vec![".".to_string()]
         } else {
             lib_chirho.build_info_chirho.hs_source_dirs_chirho.clone()
@@ -2339,7 +2772,11 @@ pub fn discover_modules_chirho(
     }
 
     for exe_chirho in &package_chirho.executables_chirho {
-        let src_dirs_chirho = if exe_chirho.build_info_chirho.hs_source_dirs_chirho.is_empty() {
+        let src_dirs_chirho = if exe_chirho
+            .build_info_chirho
+            .hs_source_dirs_chirho
+            .is_empty()
+        {
             vec![".".to_string()]
         } else {
             exe_chirho.build_info_chirho.hs_source_dirs_chirho.clone()
@@ -2388,18 +2825,20 @@ pub fn discover_modules_chirho(
 
             if let Some(path_chirho) = main_path_chirho {
                 let mod_name_chirho = "Main".to_string();
-                if seen_chirho
-                    .insert(format!("test:{}:{}", ts_chirho.name_chirho, mod_name_chirho))
-                {
+                if seen_chirho.insert(format!(
+                    "test:{}:{}",
+                    ts_chirho.name_chirho, mod_name_chirho
+                )) {
                     modules_chirho.push((mod_name_chirho, path_chirho));
                 }
             }
         }
 
         for mod_name_chirho in &ts_chirho.other_modules_chirho {
-            if seen_chirho
-                .insert(format!("test:{}:{}", ts_chirho.name_chirho, mod_name_chirho))
-            {
+            if seen_chirho.insert(format!(
+                "test:{}:{}",
+                ts_chirho.name_chirho, mod_name_chirho
+            )) {
                 if let Some(path_chirho) =
                     find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
                 {
@@ -2431,7 +2870,9 @@ fn find_module_file_chirho(
     let relative_path_chirho = module_name_chirho.replace('.', "/") + ".hs";
 
     for dir_chirho in src_dirs_chirho {
-        let full_path_chirho = project_dir_chirho.join(dir_chirho).join(&relative_path_chirho);
+        let full_path_chirho = project_dir_chirho
+            .join(dir_chirho)
+            .join(&relative_path_chirho);
         if full_path_chirho.exists() {
             return Some(full_path_chirho);
         }
@@ -2507,12 +2948,21 @@ pub fn install_package_chirho(
     use std::collections::BTreeSet;
 
     // Step 1: Download the tarball.
-    let tarball_chirho = download_tarball_chirho(name_chirho, version_chirho)
-        .map_err(|e_chirho| format!("failed to download {}-{}: {}", name_chirho, version_chirho, e_chirho))?;
+    let tarball_chirho =
+        download_tarball_chirho(name_chirho, version_chirho).map_err(|e_chirho| {
+            format!(
+                "failed to download {}-{}: {}",
+                name_chirho, version_chirho, e_chirho
+            )
+        })?;
 
     // Step 2: Extract.
-    extract_tarball_chirho(&tarball_chirho, install_dir_chirho)
-        .map_err(|e_chirho| format!("failed to extract {}-{}: {}", name_chirho, version_chirho, e_chirho))?;
+    extract_tarball_chirho(&tarball_chirho, install_dir_chirho).map_err(|e_chirho| {
+        format!(
+            "failed to extract {}-{}: {}",
+            name_chirho, version_chirho, e_chirho
+        )
+    })?;
 
     // Step 3: Find and parse .cabal file.
     let pkg_dir_chirho = install_dir_chirho.join(format!("{}-{}", name_chirho, version_chirho));
@@ -2585,20 +3035,26 @@ pub fn install_package_chirho(
             lib_chirho
                 .exposed_modules_chirho
                 .iter()
-                .map(|m_chirho| haskelujah_package_chirho::InstalledModuleChirho {
-                    module_name_chirho: m_chirho.clone(),
-                    iface_path_chirho: PathBuf::from(format!("{}.rhi", m_chirho.replace('.', "/"))),
-                    object_path_chirho: None,
-                })
+                .map(
+                    |m_chirho| haskelujah_package_chirho::InstalledModuleChirho {
+                        module_name_chirho: m_chirho.clone(),
+                        iface_path_chirho: PathBuf::from(format!(
+                            "{}.rhi",
+                            m_chirho.replace('.', "/")
+                        )),
+                        object_path_chirho: None,
+                    },
+                )
                 .collect()
         } else {
             Vec::new()
         };
 
-    let dep_tuples_chirho: Vec<(String, haskelujah_package_chirho::VersionChirho)> = all_deps_chirho
-        .iter()
-        .map(|d_chirho| (d_chirho.package_chirho.clone(), version_chirho.clone()))
-        .collect();
+    let dep_tuples_chirho: Vec<(String, haskelujah_package_chirho::VersionChirho)> =
+        all_deps_chirho
+            .iter()
+            .map(|d_chirho| (d_chirho.package_chirho.clone(), version_chirho.clone()))
+            .collect();
 
     let installed_pkg_chirho = haskelujah_package_chirho::InstalledPkgChirho {
         name_chirho: name_chirho.to_string(),
@@ -2622,7 +3078,11 @@ pub fn install_package_chirho(
 fn find_cabal_in_dir_chirho(dir_chirho: &Path) -> Option<PathBuf> {
     if let Ok(entries_chirho) = std::fs::read_dir(dir_chirho) {
         for entry_chirho in entries_chirho.flatten() {
-            if entry_chirho.path().extension().is_some_and(|ext_chirho| ext_chirho == "cabal") {
+            if entry_chirho
+                .path()
+                .extension()
+                .is_some_and(|ext_chirho| ext_chirho == "cabal")
+            {
                 return Some(entry_chirho.path());
             }
         }
@@ -2635,16 +3095,21 @@ pub fn render_summary_chirho(check_summary_chirho: &CheckSummaryChirho) -> Strin
         "source: {}\nmodule: {}\nmode: {:?}\nincremental_session: {}\nllvm_preview: {}\nwasm_stub_size: {}",
         check_summary_chirho.source_path_chirho.display(),
         check_summary_chirho.module_name_chirho,
-        check_summary_chirho.runtime_plan_chirho.execution_mode_chirho,
-        check_summary_chirho.runtime_plan_chirho.incremental_session_chirho,
+        check_summary_chirho
+            .runtime_plan_chirho
+            .execution_mode_chirho,
+        check_summary_chirho
+            .runtime_plan_chirho
+            .incremental_session_chirho,
         check_summary_chirho
             .backend_plan_chirho
             .llvm_preview_chirho
             .trim_end(),
-        check_summary_chirho.backend_plan_chirho.wasm_stub_size_chirho,
+        check_summary_chirho
+            .backend_plan_chirho
+            .wasm_stub_size_chirho,
     )
 }
-
 
 #[cfg(test)]
 mod tests_chirho;
