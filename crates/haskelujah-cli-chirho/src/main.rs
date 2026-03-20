@@ -1007,18 +1007,19 @@ fn install_command_chirho(program_name_chirho: &str, positional_chirho: &[&str])
 
 fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("Haskelujah Chirho — A Haskell compiler in Rust");
-    eprintln!("GHC compatibility: 858/938 (91.5%)");
+    eprintln!("GHC compatibility: 861/938 (91.8%)");
     eprintln!();
     eprintln!("usage: {program_name_chirho} <command> [args] [options]");
     eprintln!();
     eprintln!("commands:");
-    eprintln!("  init     [name]                 create a new project with .cabal scaffold");
-    eprintln!("  build    [dir]                  compile a Cabal project to native executable");
-    eprintln!("  run      <file.hs>              compile via LLVM and execute (STG fallback)");
-    eprintln!("  check    <file.hs>              type-check without code generation");
-    eprintln!("  compile  <file.hs> -o <exe>     compile to native executable via LLVM");
-    eprintln!("  clean    [dir]                  remove build artifacts (dist-chirho/)");
-    eprintln!("  install  <package> <version>    fetch from Hackage, compile, register");
+    eprintln!("  init      [name]                create a new project with .cabal scaffold");
+    eprintln!("  build     [dir]                 compile a Cabal project to native executable");
+    eprintln!("  build-run [dir]                 build and run in one step");
+    eprintln!("  run       <file.hs>             compile and execute (LLVM, STG fallback)");
+    eprintln!("  check     <file.hs>             type-check without code generation");
+    eprintln!("  compile   <file.hs> -o <exe>    compile to native executable");
+    eprintln!("  clean     [dir]                 remove build artifacts (dist-chirho/)");
+    eprintln!("  install   <package> <version>   fetch from Hackage and register");
     eprintln!("  repl                            interactive REPL");
     eprintln!();
     eprintln!("flags:");
