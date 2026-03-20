@@ -100,6 +100,10 @@ pub struct LowerCtxChirho<'a> {
     pub show_char_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_show_float_chirho` (f64 bits → string)
     pub show_float_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_put_str_chirho` (no newline)
+    pub put_str_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_get_line_chirho` (read stdin)
+    pub get_line_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
     pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
     /// Current function Core id, used for self-tail-call elimination.
@@ -1050,6 +1054,28 @@ fn lower_app_chirho(
                     name_chirho,
                     &constructor_expr_chirho,
                 );
+            }
+            // putStr :: String -> IO () (no trailing newline)
+            if matches!(name_chirho.as_str(), "putStr" | "putStr#") {
+                if let Some(put_str_ref_chirho) = ctx_chirho.put_str_ref_chirho {
+                    if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                        let arg_val_chirho =
+                            lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                        let arg_i64_chirho =
+                            ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                        builder_chirho
+                            .ins()
+                            .call(put_str_ref_chirho, &[arg_i64_chirho]);
+                        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+                    }
+                }
+            }
+            // getLine :: IO String
+            if matches!(name_chirho.as_str(), "getLine" | "getLine#") {
+                if let Some(get_line_ref_chirho) = ctx_chirho.get_line_ref_chirho {
+                    let call_chirho = builder_chirho.ins().call(get_line_ref_chirho, &[]);
+                    return builder_chirho.inst_results(call_chirho)[0];
+                }
             }
             if matches!(name_chirho.as_str(), "putStrLn" | "putStrLn#") {
                 if let Some(put_str_ln_ref_chirho) = ctx_chirho.put_str_ln_ref_chirho {

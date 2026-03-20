@@ -138,6 +138,8 @@ pub fn compile_core_to_object_chirho(
         show_bool_func_id_chirho,
         show_char_func_id_chirho,
         show_float_func_id_chirho,
+        put_str_func_id_chirho,
+        get_line_func_id_chirho,
     ) = {
         let mut put_str_ln_sig_chirho = obj_module_chirho.make_signature();
         put_str_ln_sig_chirho
@@ -236,6 +238,28 @@ pub fn compile_core_to_object_chirho(
             )
             .ok();
 
+        // putStr: same sig as putStrLn (i64 → i64)
+        let put_str_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_put_str_chirho",
+                LinkageChirho::Import,
+                &put_str_ln_sig_chirho,
+            )
+            .ok();
+
+        // getLine: () → i64 (returns heap string pointer)
+        let mut get_line_sig_chirho = obj_module_chirho.make_signature();
+        get_line_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        let get_line_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_get_line_chirho",
+                LinkageChirho::Import,
+                &get_line_sig_chirho,
+            )
+            .ok();
+
         (
             put_str_ln_func_id_chirho,
             print_int_func_id_chirho,
@@ -245,6 +269,8 @@ pub fn compile_core_to_object_chirho(
             show_bool_func_id_chirho,
             show_char_func_id_chirho,
             show_float_func_id_chirho,
+            put_str_func_id_chirho,
+            get_line_func_id_chirho,
         )
     };
 
@@ -307,6 +333,8 @@ pub fn compile_core_to_object_chirho(
             show_bool_func_id_chirho,
             show_char_func_id_chirho,
             show_float_func_id_chirho,
+            put_str_func_id_chirho,
+            get_line_func_id_chirho,
             &string_data_ids_chirho,
         )?;
     }
@@ -1256,6 +1284,8 @@ fn define_function_body_chirho(
     show_bool_func_id_chirho: Option<cranelift_module::FuncId>,
     show_char_func_id_chirho: Option<cranelift_module::FuncId>,
     show_float_func_id_chirho: Option<cranelift_module::FuncId>,
+    put_str_func_id_chirho: Option<cranelift_module::FuncId>,
+    get_line_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let (param_binders_chirho, body_chirho) = peel_lambdas_chirho(rhs_chirho);
@@ -1349,6 +1379,10 @@ fn define_function_body_chirho(
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let show_float_fref_chirho = show_float_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let put_str_fref_chirho = put_str_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let get_line_fref_chirho = get_line_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
 
         let mut string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue> =
             HashMap::new();
@@ -1374,6 +1408,8 @@ fn define_function_body_chirho(
             show_bool_ref_chirho: show_bool_fref_chirho,
             show_char_ref_chirho: show_char_fref_chirho,
             show_float_ref_chirho: show_float_fref_chirho,
+            put_str_ref_chirho: put_str_fref_chirho,
+            get_line_ref_chirho: get_line_fref_chirho,
             string_globals_chirho,
             tco_self_id_chirho: Some(current_core_id_chirho),
             tco_loop_block_chirho: Some(loop_block_chirho),
@@ -1510,6 +1546,8 @@ fn lower_binding_chirho(
     show_bool_func_id_chirho: Option<cranelift_module::FuncId>,
     show_char_func_id_chirho: Option<cranelift_module::FuncId>,
     show_float_func_id_chirho: Option<cranelift_module::FuncId>,
+    put_str_func_id_chirho: Option<cranelift_module::FuncId>,
+    get_line_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
@@ -1618,6 +1656,8 @@ fn lower_binding_chirho(
             show_bool_func_id_chirho,
             show_char_func_id_chirho,
             show_float_func_id_chirho,
+            put_str_func_id_chirho,
+            get_line_func_id_chirho,
             string_data_ids_chirho,
         )?;
     }
@@ -1642,6 +1682,8 @@ fn lower_binding_chirho(
         show_bool_func_id_chirho,
         show_char_func_id_chirho,
         show_float_func_id_chirho,
+        put_str_func_id_chirho,
+        get_line_func_id_chirho,
         string_data_ids_chirho,
     )?;
 
