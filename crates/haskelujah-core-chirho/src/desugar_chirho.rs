@@ -1675,6 +1675,33 @@ impl DesugarCtxChirho {
                     )
                 };
 
+                let fallback_rhs_chirho = if con_chirho != AltConChirho::DefaultChirho {
+                    let mut fallback_arms_chirho: Vec<MatchArmChirho> = arms_chirho
+                        .iter()
+                        .skip(1)
+                        .map(|arm_chirho| (*arm_chirho).clone())
+                        .collect();
+                    fallback_arms_chirho.extend(
+                        default_arms_chirho
+                            .iter()
+                            .map(|arm_chirho| (*arm_chirho).clone()),
+                    );
+                    if fallback_arms_chirho.is_empty() {
+                        None
+                    } else {
+                        self.push_scope_chirho();
+                        let fallback_rhs_chirho = self.compile_multi_pattern_case_chirho(
+                            &fallback_arms_chirho,
+                            param_binders_chirho,
+                            pat_idx_chirho,
+                        );
+                        self.pop_scope_chirho();
+                        Some(fallback_rhs_chirho)
+                    }
+                } else {
+                    None
+                };
+
                 // Wrap with nested case expressions for nested patterns
                 // (e.g. `f (Just x) = ...` where `x` is bound inside the
                 // constructor pattern at this column).
@@ -1682,6 +1709,7 @@ impl DesugarCtxChirho {
                     rhs_chirho,
                     &binders_chirho,
                     pat_ref_chirho,
+                    fallback_rhs_chirho.as_ref(),
                 );
                 // Wrap with as-pattern let-bindings if applicable.
                 let rhs_as_chirho = self.wrap_as_bindings_chirho(
@@ -2422,6 +2450,7 @@ impl DesugarCtxChirho {
         rhs_chirho: CoreExprChirho,
         binders_chirho: &[BinderChirho],
         outer_pat_chirho: &PatChirho,
+        fallback_rhs_chirho: Option<&CoreExprChirho>,
     ) -> CoreExprChirho {
         let sub_pats_chirho = Self::outer_sub_pats_chirho(outer_pat_chirho);
         if sub_pats_chirho.len() != binders_chirho.len() {
@@ -2447,6 +2476,7 @@ impl DesugarCtxChirho {
                 result_chirho,
                 &nested_binders_chirho,
                 sub_pat_chirho,
+                fallback_rhs_chirho,
             );
 
             let wild_chirho = self.fresh_binder_chirho(
@@ -2461,6 +2491,14 @@ impl DesugarCtxChirho {
                 binders_chirho: nested_binders_chirho,
                 rhs_chirho: inner_rhs_chirho,
             };
+            let mut alts_chirho = vec![alt_chirho];
+            if let Some(fallback_rhs_chirho) = fallback_rhs_chirho {
+                alts_chirho.push(CoreAltChirho {
+                    con_chirho: AltConChirho::DefaultChirho,
+                    binders_chirho: vec![],
+                    rhs_chirho: fallback_rhs_chirho.clone(),
+                });
+            }
             result_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
                     binder_chirho.id_chirho,
@@ -2469,7 +2507,7 @@ impl DesugarCtxChirho {
                 result_ty_chirho: TyChirho::VarChirho(
                     haskelujah_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
                 ),
-                alts_chirho: vec![alt_chirho],
+                alts_chirho,
             };
         }
         result_chirho

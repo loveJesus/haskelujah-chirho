@@ -105,3 +105,19 @@ fn cranelift_round_trip_otherwise_guard_output_chirho() {
     );
     assert_eq!(stdout_chirho, "neg\nzero\npos\n");
 }
+
+#[test]
+fn cranelift_round_trip_nested_singleton_pattern_falls_through_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nisSingle (x:[]) = 1\nisSingle _ = 2\nmain = print (isSingle [1,2])\n",
+    );
+    assert_eq!(stdout_chirho, "2\n");
+}
+
+#[test]
+fn cranelift_round_trip_nested_singleton_pattern_var_fallback_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nsingletonOrLength (x:[]) = 1\nsingletonOrLength ys = length ys\nmain = print (singletonOrLength [1,2])\n",
+    );
+    assert_eq!(stdout_chirho, "2\n");
+}
