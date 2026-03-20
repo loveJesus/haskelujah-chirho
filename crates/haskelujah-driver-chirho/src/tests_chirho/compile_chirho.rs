@@ -2049,6 +2049,56 @@ main = print (mySum (qsort (lcg 42 500)))
 }
 
 #[test]
+fn cranelift_round_trip_qsort_random_1000_chirho() {
+    let src_chirho = r#"module Main where
+filter' :: (Int -> Bool) -> [Int] -> [Int]
+filter' f [] = []
+filter' f (x:xs) = if f x then x : filter' f xs else filter' f xs
+append :: [Int] -> [Int] -> [Int]
+append [] ys = ys
+append (x:xs) ys = x : append xs ys
+qsort :: [Int] -> [Int]
+qsort [] = []
+qsort (p:xs) = append (qsort (filter' (\x -> x < p) xs))
+                       (p : qsort (filter' (\x -> x >= p) xs))
+mySum :: [Int] -> Int
+mySum [] = 0
+mySum (x:xs) = x + mySum xs
+lcg :: Int -> Int -> [Int]
+lcg seed 0 = []
+lcg seed n = let next = (seed * 1103515245 + 12345) `mod` 2147483648
+             in (next `mod` 1000) : lcg next (n - 1)
+main = print (mySum (qsort (lcg 42 1000)))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "quicksort 1000 random should work");
+        assert_eq!(
+            stdout_chirho.trim(),
+            "507468",
+            "sum of sorted 1000 random elements"
+        );
+    }
+}
+
+#[test]
+fn cranelift_round_trip_range_10000_chirho() {
+    let src_chirho = r#"module Main where
+range :: Int -> Int -> [Int]
+range lo hi = if lo > hi then [] else lo : range (lo + 1) hi
+myLen :: [Int] -> Int
+myLen [] = 0
+myLen (_:xs) = 1 + myLen xs
+main = print (myLen (range 1 10000))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "range 10000 should work");
+        assert_eq!(stdout_chirho.trim(), "10000", "len of range 1..10000");
+    }
+}
+
+#[test]
 fn cranelift_round_trip_put_str_no_newline_chirho() {
     let src_chirho = r#"module Main where
 main :: IO ()
