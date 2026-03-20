@@ -1547,6 +1547,39 @@ impl DesugarCtxChirho {
             SpanChirho::DUMMY_CHIRHO,
         );
 
+        if let Some(first_arm_chirho) = matches_chirho.first() {
+            if let Some(first_pat_chirho) = first_arm_chirho.pats_chirho.get(pat_idx_chirho) {
+                if self.is_unconditional_default_pat_chirho(first_pat_chirho) {
+                    self.push_scope_chirho();
+                    self.bind_var_pat_to_case_binder_chirho(
+                        first_pat_chirho,
+                        scrut_id_chirho,
+                    );
+                    let result_chirho = if pat_idx_chirho + 1 >= arity_chirho {
+                        self.desugar_arm_rhs_chirho(first_arm_chirho)
+                    } else {
+                        self.compile_multi_pattern_case_chirho(
+                            matches_chirho,
+                            param_binders_chirho,
+                            pat_idx_chirho + 1,
+                        )
+                    };
+                    let result_chirho = self.wrap_as_bindings_chirho(
+                        result_chirho,
+                        first_pat_chirho,
+                        scrut_id_chirho,
+                    );
+                    let result_chirho = self.wrap_view_pat_chirho(
+                        result_chirho,
+                        first_pat_chirho,
+                        scrut_id_chirho,
+                    );
+                    self.pop_scope_chirho();
+                    return result_chirho;
+                }
+            }
+        }
+
         // Group arms by the constructor at pat_idx_chirho.
         // Preserve ordering: each group is (AltCon, Vec<&MatchArm>).
         let mut groups_chirho: Vec<(AltConChirho, Vec<&MatchArmChirho>)> = Vec::new();
@@ -2299,6 +2332,24 @@ impl DesugarCtxChirho {
             }
             // Constructor/Literal/Wildcard patterns don't bind to the case binder.
             _ => {}
+        }
+    }
+
+    fn is_unconditional_default_pat_chirho(&self, pat_chirho: &PatChirho) -> bool {
+        match pat_chirho {
+            PatChirho::VarChirho(_) | PatChirho::WildcardChirho(_) => true,
+            PatChirho::AsChirho { pattern_chirho, .. } => {
+                self.is_unconditional_default_pat_chirho(pattern_chirho)
+            }
+            PatChirho::ParenChirho { inner_chirho, .. }
+            | PatChirho::BangChirho { inner_chirho, .. }
+            | PatChirho::LazyChirho { inner_chirho, .. } => {
+                self.is_unconditional_default_pat_chirho(inner_chirho)
+            }
+            PatChirho::TypeAnnotChirho { pat_chirho, .. } => {
+                self.is_unconditional_default_pat_chirho(pat_chirho)
+            }
+            _ => false,
         }
     }
 

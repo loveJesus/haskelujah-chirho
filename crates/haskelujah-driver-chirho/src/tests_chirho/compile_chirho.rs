@@ -1514,6 +1514,25 @@ main = putStrLn (describe [1,2,3])
     }
 }
 
+#[test]
+fn llvm_round_trip_take_zero_matches_first_equation_chirho() {
+    let src_chirho = r#"module Main where
+myTakeChirho 0 _ = []
+myTakeChirho _ [] = []
+myTakeChirho nChirho (xChirho:xsChirho) = xChirho : myTakeChirho (nChirho - 1) xsChirho
+myLenChirho [] = 0
+myLenChirho (_:xsChirho) = 1 + myLenChirho xsChirho
+main = print (myLenChirho (myTakeChirho 0 [1,2,3]))
+"#;
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "take 0 literal-first executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "0\n");
+    }
+}
+
 // ── Cranelift backend driver integration tests ────────────────────────
 
 #[test]
@@ -1892,6 +1911,23 @@ main = print (foldr' (\x acc -> x + acc) 0 (filter' (\x -> x `mod` 2 == 0) [1,2,
             stdout_chirho.trim() == "30",
             "sum of evens in [1..10] = 30, got: {stdout_chirho}"
         );
+    }
+}
+
+#[test]
+fn cranelift_round_trip_take_zero_matches_first_equation_chirho() {
+    let src_chirho = r#"module Main where
+myTakeChirho 0 _ = []
+myTakeChirho _ [] = []
+myTakeChirho nChirho (xChirho:xsChirho) = xChirho : myTakeChirho (nChirho - 1) xsChirho
+myLenChirho [] = 0
+myLenChirho (_:xsChirho) = 1 + myLenChirho xsChirho
+main = print (myLenChirho (myTakeChirho 0 [1,2,3]))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "should exit 0");
+        assert_eq!(stdout_chirho, "0\n");
     }
 }
 
