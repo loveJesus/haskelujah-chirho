@@ -196,7 +196,8 @@ haskelujah clean .          # Remove build artifacts
 |---------|-----|-------------------|
 | Type checking | Reference | 91.8% compatible (861/938) |
 | Compilation speed | ~1-5s for small files | ~0.2-0.4s |
-| Runtime (fib 40) | 0.39s (-O2) | 0.32s (Cranelift 0.35s, LLVM 0.32s) |
+| Runtime (fib 42) | 1.10s (-O2) | 0.91s Cranelift (**20% faster**) |
+| Tail call optimization | Full | Both backends (100M+ iterations) |
 | Native code | Via NCG or LLVM | Cranelift (default) or LLVM + clang |
 | WebAssembly | Via Asterius/GHCJS | Built-in (beta) |
 | Package manager | cabal-install / Stack | Built-in `build` command |
