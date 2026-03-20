@@ -1478,6 +1478,30 @@ fn llvm_round_trip_put_str_ln_show_true_output_chirho() {
 }
 
 #[test]
+fn llvm_round_trip_put_str_ln_show_negative_int_output_chirho() {
+    let src_chirho = "module Main where\nmain = putStrLn (show (-42))";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "show negative Int executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "-42\n");
+    }
+}
+
+#[test]
+fn llvm_round_trip_print_bool_list_output_chirho() {
+    let src_chirho = "module Main where\nmain = print [True,False,True]";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "print bool list executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "[True,False,True]\n");
+    }
+}
+
+#[test]
 fn llvm_round_trip_put_str_ln_show_false_output_chirho() {
     let src_chirho = "module Main where\nmain = putStrLn (show False)";
     if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {

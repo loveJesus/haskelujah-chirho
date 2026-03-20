@@ -209,6 +209,13 @@ fn cranelift_round_trip_show_bool_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_show_negative_int_output_chirho() {
+    let stdout_chirho =
+        cranelift_round_trip_stdout_chirho("module Main where\nmain = putStrLn (show (-42))\n");
+    assert_eq!(stdout_chirho, "-42\n");
+}
+
+#[test]
 fn cranelift_round_trip_getline_read_int_output_chirho() {
     let stdout_chirho = cranelift_round_trip_stdout_with_input_chirho(
         "module Main where\nmain = do\n  line <- getLine\n  print (((read line) :: Int) + 1)\n",
@@ -345,6 +352,13 @@ fn cranelift_round_trip_print_int_list_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = print [1,2,3]\n");
     assert_eq!(stdout_chirho, "[1,2,3]\n");
+}
+
+#[test]
+fn cranelift_round_trip_print_bool_list_output_chirho() {
+    let stdout_chirho =
+        cranelift_round_trip_stdout_chirho("module Main where\nmain = print [True,False,True]\n");
+    assert_eq!(stdout_chirho, "[True,False,True]\n");
 }
 
 #[test]

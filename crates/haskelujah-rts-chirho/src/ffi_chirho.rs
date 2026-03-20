@@ -376,6 +376,42 @@ pub extern "C" fn haskelujah_show_int_list_chirho(list_bits_chirho: u64) -> u64 
     alloc_c_string_chirho(text_chirho.as_bytes())
 }
 
+/// Convert a Haskell `[Bool]` cons-list to a heap-allocated string like
+/// `[True,False,True]`.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_show_bool_list_chirho(list_bits_chirho: u64) -> u64 {
+    let mut text_chirho = String::from("[");
+    let mut current_chirho = list_bits_chirho;
+    let mut first_elem_chirho = true;
+
+    loop {
+        if current_chirho == 0 {
+            break;
+        }
+        if current_chirho & (1u64 << 63) == 0 {
+            break;
+        }
+
+        let ptr_chirho = (current_chirho & 0x7FFFFFFFFFFFFFFF) as *const u64;
+        let tag_chirho = unsafe { *ptr_chirho };
+        if tag_chirho != 1 {
+            break;
+        }
+
+        let head_chirho = unsafe { *ptr_chirho.add(1) };
+        let tail_chirho = unsafe { *ptr_chirho.add(2) };
+        if !first_elem_chirho {
+            text_chirho.push(',');
+        }
+        first_elem_chirho = false;
+        text_chirho.push_str(if head_chirho == 0 { "False" } else { "True" });
+        current_chirho = tail_chirho;
+    }
+
+    text_chirho.push(']');
+    alloc_c_string_chirho(text_chirho.as_bytes())
+}
+
 /// Print a NUL-terminated UTF-8 string followed by a newline using the same
 /// stdout implementation as `haskelujah_print_int_chirho`, keeping IO order
 /// stable for Cranelift executables.
@@ -823,6 +859,48 @@ mod tests_chirho {
         let shown_text_chirho =
             unsafe { CStr::from_ptr(shown_ptr_bits_chirho as usize as *const std::ffi::c_char) };
         assert_eq!(shown_text_chirho.to_bytes(), b"[1,2,3]");
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+    }
+
+    #[test]
+    fn show_bool_list_allocates_bracketed_values_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let nil_chirho = 0u64;
+        let cell3_ptr_chirho = haskelujah_alloc_chirho(24);
+        let cell2_ptr_chirho = haskelujah_alloc_chirho(24);
+        let cell1_ptr_chirho = haskelujah_alloc_chirho(24);
+        assert!(!cell1_ptr_chirho.is_null());
+        assert!(!cell2_ptr_chirho.is_null());
+        assert!(!cell3_ptr_chirho.is_null());
+
+        unsafe {
+            *(cell3_ptr_chirho as *mut u64) = 1;
+            *(cell3_ptr_chirho.add(8) as *mut u64) = 1;
+            *(cell3_ptr_chirho.add(16) as *mut u64) = nil_chirho;
+
+            *(cell2_ptr_chirho as *mut u64) = 1;
+            *(cell2_ptr_chirho.add(8) as *mut u64) = 0;
+            *(cell2_ptr_chirho.add(16) as *mut u64) = (cell3_ptr_chirho as u64) | (1u64 << 63);
+
+            *(cell1_ptr_chirho as *mut u64) = 1;
+            *(cell1_ptr_chirho.add(8) as *mut u64) = 1;
+            *(cell1_ptr_chirho.add(16) as *mut u64) = (cell2_ptr_chirho as u64) | (1u64 << 63);
+        }
+
+        let shown_ptr_bits_chirho =
+            haskelujah_show_bool_list_chirho((cell1_ptr_chirho as u64) | (1u64 << 63));
+        assert_ne!(shown_ptr_bits_chirho, 0);
+        let shown_text_chirho =
+            unsafe { CStr::from_ptr(shown_ptr_bits_chirho as usize as *const std::ffi::c_char) };
+        assert_eq!(shown_text_chirho.to_bytes(), b"[True,False,True]");
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
         runtime_chirho.reset_chirho();

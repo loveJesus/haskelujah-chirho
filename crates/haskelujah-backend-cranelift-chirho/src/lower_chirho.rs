@@ -102,6 +102,8 @@ pub struct LowerCtxChirho<'a> {
     pub show_float_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_show_int_list_chirho` ([Int] → string)
     pub show_int_list_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_show_bool_list_chirho` ([Bool] → string)
+    pub show_bool_list_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_put_str_chirho` (no newline)
     pub put_str_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_get_line_chirho` (read stdin)
@@ -1286,6 +1288,13 @@ fn lower_app_chirho(
                                         arg_val_chirho,
                                     )
                                 }
+                                ShowIntArgKindChirho::BoolListChirho => {
+                                    lower_show_bool_list_primop_chirho(
+                                        builder_chirho,
+                                        ctx_chirho,
+                                        arg_val_chirho,
+                                    )
+                                }
                             };
                             let shown_i64_chirho =
                                 ensure_i64_chirho(builder_chirho, shown_ptr_chirho, false);
@@ -1863,6 +1872,13 @@ pub fn lower_primop_chirho(
                             lhs_raw_chirho,
                         )
                     }
+                    ShowIntArgKindChirho::BoolListChirho => {
+                        lower_show_bool_list_primop_chirho(
+                            builder_chirho,
+                            ctx_chirho,
+                            lhs_raw_chirho,
+                        )
+                    }
                 };
             }
             // Call RTS haskelujah_show_int_chirho(i64) -> ptr
@@ -2118,6 +2134,7 @@ enum ShowIntArgKindChirho {
     OrderingChirho,
     StringChirho,
     IntListChirho,
+    BoolListChirho,
 }
 
 fn infer_show_int_arg_kind_chirho(expr_chirho: &CoreExprChirho) -> Option<ShowIntArgKindChirho> {
@@ -2125,27 +2142,8 @@ fn infer_show_int_arg_kind_chirho(expr_chirho: &CoreExprChirho) -> Option<ShowIn
         CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(_)) => {
             Some(ShowIntArgKindChirho::StringChirho)
         }
-        CoreExprChirho::ConAppChirho {
-            con_name_chirho,
-            args_chirho,
-        } if con_name_chirho == "[]" && args_chirho.is_empty() => {
-            Some(ShowIntArgKindChirho::IntListChirho)
-        }
-        CoreExprChirho::ConAppChirho {
-            con_name_chirho,
-            args_chirho,
-        } if con_name_chirho == ":" && args_chirho.len() == 2 => {
-            let head_is_int_chirho = expr_is_int_literalish_chirho(&args_chirho[0]);
-            let tail_is_list_chirho = matches!(
-                infer_show_int_arg_kind_chirho(&args_chirho[1]),
-                Some(ShowIntArgKindChirho::IntListChirho)
-            );
-            if head_is_int_chirho && tail_is_list_chirho {
-                Some(ShowIntArgKindChirho::IntListChirho)
-            } else {
-                None
-            }
-        }
+        _ if expr_is_bool_listish_chirho(expr_chirho) => Some(ShowIntArgKindChirho::BoolListChirho),
+        _ if expr_is_int_listish_chirho(expr_chirho) => Some(ShowIntArgKindChirho::IntListChirho),
         CoreExprChirho::ConAppChirho {
             con_name_chirho, ..
         } if matches!(con_name_chirho.as_str(), "True" | "False") => {
@@ -2352,6 +2350,22 @@ fn lower_show_int_list_primop_chirho(
     }
 }
 
+fn lower_show_bool_list_primop_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    raw_list_chirho: ClValueChirho,
+) -> ClValueChirho {
+    let val_chirho = ensure_i64_chirho(builder_chirho, raw_list_chirho, false);
+    if let Some(show_bool_list_ref_chirho) = ctx_chirho.show_bool_list_ref_chirho {
+        let call_inst_chirho = builder_chirho
+            .ins()
+            .call(show_bool_list_ref_chirho, &[val_chirho]);
+        builder_chirho.inst_results(call_inst_chirho)[0]
+    } else {
+        builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
+    }
+}
+
 fn lower_show_constructor_app_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     ctx_chirho: &mut LowerCtxChirho<'_>,
@@ -2456,6 +2470,9 @@ fn lower_show_expr_ptr_chirho(
                 ShowIntArgKindChirho::IntListChirho => {
                     lower_show_int_list_primop_chirho(builder_chirho, ctx_chirho, arg_val_chirho)
                 }
+                ShowIntArgKindChirho::BoolListChirho => {
+                    lower_show_bool_list_primop_chirho(builder_chirho, ctx_chirho, arg_val_chirho)
+                }
             }
         }).or_else(|| {
             if expr_is_int_literalish_chirho(expr_chirho) {
@@ -2479,6 +2496,54 @@ fn expr_is_int_literalish_chirho(expr_chirho: &CoreExprChirho) -> bool {
             name_chirho.as_str(),
             "+#" | "-#" | "*#" | "div#" | "mod#" | "negate#" | "abs#" | "signum#"
         ),
+        _ => false,
+    }
+}
+
+fn expr_is_bool_literalish_chirho(expr_chirho: &CoreExprChirho) -> bool {
+    match strip_runtime_tyapps_chirho(expr_chirho) {
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho, ..
+        } => matches!(con_name_chirho.as_str(), "True" | "False"),
+        CoreExprChirho::PrimOpChirho { name_chirho, .. } => matches!(
+            name_chirho.as_str(),
+            "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#" | "eqFloat#" | "<.#" | ">.#"
+                | "readBool#" | "eqStr#"
+        ),
+        _ => false,
+    }
+}
+
+fn expr_is_int_listish_chirho(expr_chirho: &CoreExprChirho) -> bool {
+    match strip_runtime_tyapps_chirho(expr_chirho) {
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } if con_name_chirho == "[]" && args_chirho.is_empty() => true,
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } if con_name_chirho == ":" && args_chirho.len() == 2 => {
+            expr_is_int_literalish_chirho(&args_chirho[0])
+                && expr_is_int_listish_chirho(&args_chirho[1])
+        }
+        _ => false,
+    }
+}
+
+fn expr_is_bool_listish_chirho(expr_chirho: &CoreExprChirho) -> bool {
+    match strip_runtime_tyapps_chirho(expr_chirho) {
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } if con_name_chirho == "[]" && args_chirho.is_empty() => true,
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } if con_name_chirho == ":" && args_chirho.len() == 2 => {
+            expr_is_bool_literalish_chirho(&args_chirho[0])
+                && expr_is_bool_listish_chirho(&args_chirho[1])
+        }
         _ => false,
     }
 }
