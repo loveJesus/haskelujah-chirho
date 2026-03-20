@@ -969,6 +969,94 @@ impl LlvmCodegenChirho {
         writeln!(self.output_chirho, "  call i32 @puts(ptr @{global_name_chirho})").unwrap();
     }
 
+    fn emit_show_expr_i64_direct_chirho(&mut self, expr_chirho: &CoreExprChirho) -> Option<String> {
+        if let Some(show_kind_chirho) = self.classify_expr_show_kind_chirho(expr_chirho) {
+            let arg_value_chirho = self.compile_expr_chirho(expr_chirho);
+            let ptr_tmp_chirho = self.emit_show_value_ptr_chirho(&arg_value_chirho, show_kind_chirho);
+            let ptr_i64_tmp_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {ptr_i64_tmp_chirho} = ptrtoint ptr {ptr_tmp_chirho} to i64"
+            )
+            .unwrap();
+            return Some(ptr_i64_tmp_chirho);
+        }
+
+        match strip_runtime_tyapps_chirho(expr_chirho) {
+            CoreExprChirho::ConAppChirho {
+                con_name_chirho,
+                args_chirho,
+            } if !args_chirho.is_empty() => self.emit_show_constructor_expr_i64_chirho(
+                con_name_chirho,
+                args_chirho,
+            ),
+            _ => None,
+        }
+    }
+
+    fn emit_show_constructor_expr_i64_chirho(
+        &mut self,
+        con_name_chirho: &str,
+        args_chirho: &[CoreExprChirho],
+    ) -> Option<String> {
+        let con_global_name_chirho = self.intern_string_global_name_chirho(con_name_chirho);
+        let con_i64_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {con_i64_tmp_chirho} = ptrtoint ptr @{con_global_name_chirho} to i64"
+        )
+        .unwrap();
+        let space_global_name_chirho = self.intern_string_global_name_chirho(" ");
+        let space_i64_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {space_i64_tmp_chirho} = ptrtoint ptr @{space_global_name_chirho} to i64"
+        )
+        .unwrap();
+
+        let mut current_i64_tmp_chirho = con_i64_tmp_chirho;
+        for arg_expr_chirho in args_chirho {
+            let with_space_tmp_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {with_space_tmp_chirho} = call i64 @haskelujah_append_str_chirho(i64 {current_i64_tmp_chirho}, i64 {space_i64_tmp_chirho})"
+            )
+            .unwrap();
+            let shown_arg_i64_tmp_chirho =
+                self.emit_show_expr_i64_direct_chirho(arg_expr_chirho)?;
+            let appended_arg_tmp_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {appended_arg_tmp_chirho} = call i64 @haskelujah_append_str_chirho(i64 {with_space_tmp_chirho}, i64 {shown_arg_i64_tmp_chirho})"
+            )
+            .unwrap();
+            current_i64_tmp_chirho = appended_arg_tmp_chirho;
+        }
+
+        Some(current_i64_tmp_chirho)
+    }
+
+    fn emit_print_direct_constructor_expr_chirho(
+        &mut self,
+        expr_chirho: &CoreExprChirho,
+    ) -> bool {
+        let Some(shown_i64_tmp_chirho) = self.emit_show_expr_i64_direct_chirho(expr_chirho) else {
+            return false;
+        };
+        let shown_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {shown_ptr_tmp_chirho} = inttoptr i64 {shown_i64_tmp_chirho} to ptr"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  call i32 @puts(ptr {shown_ptr_tmp_chirho})"
+        )
+        .unwrap();
+        true
+    }
+
     fn classify_nullary_constructor_print_name_chirho(
         &self,
         expr_chirho: &CoreExprChirho,
@@ -1740,7 +1828,7 @@ impl LlvmCodegenChirho {
                             return result_chirho;
                         }
                     }
-                    if let Some(name_chirho) = self.toplevel_names_chirho.get(id_chirho) {
+                    if let Some(name_chirho) = self.toplevel_names_chirho.get(id_chirho).cloned() {
                         if matches!(name_chirho.as_str(), "print" | "print#") {
                             if let Some(arg_expr_chirho) = args_chirho.last() {
                                 if let Some(show_kind_chirho) =
@@ -1752,6 +1840,13 @@ impl LlvmCodegenChirho {
                                         &arg_value_chirho,
                                         show_kind_chirho,
                                     );
+                                    return "0".to_string();
+                                }
+                                if matches!(
+                                    strip_runtime_tyapps_chirho(arg_expr_chirho),
+                                    CoreExprChirho::ConAppChirho { args_chirho, .. } if !args_chirho.is_empty()
+                                ) && self.emit_print_direct_constructor_expr_chirho(arg_expr_chirho)
+                                {
                                     return "0".to_string();
                                 }
                                 if let Some(con_name_chirho) = self
@@ -1790,7 +1885,7 @@ impl LlvmCodegenChirho {
                                 }
                             }
                         }
-                        let fn_ref_chirho = format!("@{}", mangle_name_chirho(name_chirho));
+                        let fn_ref_chirho = format!("@{}", mangle_name_chirho(&name_chirho));
                         let arity_chirho = self
                             .toplevel_arities_chirho
                             .get(id_chirho)
