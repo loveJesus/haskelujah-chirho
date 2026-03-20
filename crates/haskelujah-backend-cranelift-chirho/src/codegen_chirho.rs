@@ -149,6 +149,7 @@ fn compile_core_to_object_inner_chirho(
         show_bool_func_id_chirho,
         show_char_func_id_chirho,
         show_float_func_id_chirho,
+        show_int_list_func_id_chirho,
         put_str_func_id_chirho,
         get_line_func_id_chirho,
         write_file_func_id_chirho,
@@ -254,6 +255,14 @@ fn compile_core_to_object_inner_chirho(
             )
             .ok();
 
+        let show_int_list_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_show_int_list_chirho",
+                LinkageChirho::Import,
+                &show_int_sig_chirho,
+            )
+            .ok();
+
         // putStr: same sig as putStrLn (i64 → i64)
         let put_str_func_id_chirho = obj_module_chirho
             .declare_function(
@@ -351,6 +360,7 @@ fn compile_core_to_object_inner_chirho(
             show_bool_func_id_chirho,
             show_char_func_id_chirho,
             show_float_func_id_chirho,
+            show_int_list_func_id_chirho,
             put_str_func_id_chirho,
             get_line_func_id_chirho,
             write_file_func_id_chirho,
@@ -420,6 +430,7 @@ fn compile_core_to_object_inner_chirho(
             show_bool_func_id_chirho,
             show_char_func_id_chirho,
             show_float_func_id_chirho,
+            show_int_list_func_id_chirho,
             put_str_func_id_chirho,
             get_line_func_id_chirho,
             write_file_func_id_chirho,
@@ -1395,6 +1406,7 @@ fn define_function_body_chirho(
     show_bool_func_id_chirho: Option<cranelift_module::FuncId>,
     show_char_func_id_chirho: Option<cranelift_module::FuncId>,
     show_float_func_id_chirho: Option<cranelift_module::FuncId>,
+    show_int_list_func_id_chirho: Option<cranelift_module::FuncId>,
     put_str_func_id_chirho: Option<cranelift_module::FuncId>,
     get_line_func_id_chirho: Option<cranelift_module::FuncId>,
     write_file_func_id_chirho: Option<cranelift_module::FuncId>,
@@ -1494,6 +1506,8 @@ fn define_function_body_chirho(
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let show_float_fref_chirho = show_float_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let show_int_list_fref_chirho = show_int_list_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let put_str_fref_chirho = put_str_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let get_line_fref_chirho = get_line_func_id_chirho
@@ -1531,6 +1545,7 @@ fn define_function_body_chirho(
             show_bool_ref_chirho: show_bool_fref_chirho,
             show_char_ref_chirho: show_char_fref_chirho,
             show_float_ref_chirho: show_float_fref_chirho,
+            show_int_list_ref_chirho: show_int_list_fref_chirho,
             put_str_ref_chirho: put_str_fref_chirho,
             get_line_ref_chirho: get_line_fref_chirho,
             write_file_ref_chirho: write_file_fref_chirho,
@@ -1798,6 +1813,7 @@ fn lower_binding_chirho(
     show_bool_func_id_chirho: Option<cranelift_module::FuncId>,
     show_char_func_id_chirho: Option<cranelift_module::FuncId>,
     show_float_func_id_chirho: Option<cranelift_module::FuncId>,
+    show_int_list_func_id_chirho: Option<cranelift_module::FuncId>,
     put_str_func_id_chirho: Option<cranelift_module::FuncId>,
     get_line_func_id_chirho: Option<cranelift_module::FuncId>,
     write_file_func_id_chirho: Option<cranelift_module::FuncId>,
@@ -1908,6 +1924,7 @@ fn lower_binding_chirho(
             show_bool_func_id_chirho,
             show_char_func_id_chirho,
             show_float_func_id_chirho,
+            show_int_list_func_id_chirho,
             put_str_func_id_chirho,
             get_line_func_id_chirho,
             write_file_func_id_chirho,
@@ -1938,6 +1955,7 @@ fn lower_binding_chirho(
         show_bool_func_id_chirho,
         show_char_func_id_chirho,
         show_float_func_id_chirho,
+        show_int_list_func_id_chirho,
         put_str_func_id_chirho,
         get_line_func_id_chirho,
         write_file_func_id_chirho,
