@@ -2256,3 +2256,31 @@ main = do
     );
 }
 
+#[test]
+fn cranelift_round_trip_text_processing_chirho() {
+    let src_chirho = r#"module Main where
+myMapChar :: (Char -> Char) -> [Char] -> [Char]
+myMapChar f [] = []
+myMapChar f (c:cs) = f c : myMapChar f cs
+myFilterChar :: (Char -> Bool) -> [Char] -> [Char]
+myFilterChar f [] = []
+myFilterChar f (c:cs) = if f c then c : myFilterChar f cs else myFilterChar f cs
+myLen :: [Char] -> Int
+myLen [] = 0
+myLen (_:xs) = 1 + myLen xs
+main :: IO ()
+main = do
+  putStrLn (pack (myMapChar toUpper (unpack "hello")))
+  putStrLn (pack (myFilterChar isAlpha (unpack "Hi 123")))
+  print (myLen (unpack "test"))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        let lines_chirho: Vec<&str> = stdout_chirho.trim().lines().collect();
+        assert_eq!(lines_chirho[0], "HELLO", "toUpper via unpack/pack");
+        assert_eq!(lines_chirho[1], "Hi", "filterChar isAlpha");
+        assert_eq!(lines_chirho[2], "4", "myLen unpack");
+    }
+}
+
