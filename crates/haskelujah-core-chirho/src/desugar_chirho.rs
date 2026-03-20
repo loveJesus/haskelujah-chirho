@@ -1606,6 +1606,45 @@ impl DesugarCtxChirho {
             }
         }
 
+        // Variable rule: if the FIRST match arm at this column has a
+        // wildcard/variable pattern, it matches everything — no case
+        // expression needed. Just bind the variable and recurse/desugar.
+        // This preserves Haskell's top-to-bottom equation ordering:
+        // `myTake 0 _ = []; myTake _ [] = []` — after matching the literal
+        // 0, the wildcard `_` at column 1 of eq1 must fire before eq2's
+        // constructor pattern `[]`.
+        if let Some(first_arm_chirho) = matches_chirho.first() {
+            if pat_idx_chirho < first_arm_chirho.pats_chirho.len() {
+                let first_con_chirho = self.pat_to_alt_con_chirho(
+                    &first_arm_chirho.pats_chirho[pat_idx_chirho],
+                );
+                if first_con_chirho == AltConChirho::DefaultChirho
+                    && matches_chirho.len() > 1
+                    && !groups_chirho.iter().all(|(c_chirho, _)| *c_chirho == AltConChirho::DefaultChirho)
+                {
+                    // First arm is wildcard but there are constructor arms too.
+                    // Bind the variable and use the first arm's RHS directly.
+                    match &first_arm_chirho.pats_chirho[pat_idx_chirho] {
+                        PatChirho::VarChirho(n_chirho) => {
+                            self.bind_in_scope_chirho(n_chirho.text_chirho(), scrut_id_chirho);
+                        }
+                        _ => {}
+                    }
+                    return if pat_idx_chirho + 1 >= arity_chirho {
+                        self.desugar_arm_rhs_chirho(first_arm_chirho)
+                    } else {
+                        // Recurse with ONLY the first arm — it's a wildcard match
+                        let sub_arms_chirho = vec![first_arm_chirho.clone()];
+                        self.compile_multi_pattern_case_chirho(
+                            &sub_arms_chirho,
+                            param_binders_chirho,
+                            pat_idx_chirho + 1,
+                        )
+                    };
+                }
+            }
+        }
+
         // Optimization: if ALL groups at this pattern column are DefaultChirho
         // (every arm has a Var/Wildcard pattern), skip generating a case
         // expression entirely. Just bind the variable names to the scrutinee
