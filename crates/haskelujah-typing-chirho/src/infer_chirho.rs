@@ -1120,7 +1120,19 @@ impl InferCtxChirho {
                                 span_chirho,
                             );
                             // Add "did you mean?" suggestions from the type env.
-                            let candidates_chirho = self.env_chirho.all_names_chirho();
+                            // Filter candidates: if the target is alphanumeric,
+                            // don't suggest operator symbols (and vice versa).
+                            let is_alpha_chirho = text_chirho.chars().next().is_some_and(|c_chirho| c_chirho.is_alphanumeric() || c_chirho == '_');
+                            let candidates_chirho: Vec<&str> = self.env_chirho.all_names_chirho()
+                                .into_iter()
+                                .filter(|c_chirho| {
+                                    if is_alpha_chirho {
+                                        c_chirho.chars().next().is_some_and(|ch_chirho| ch_chirho.is_alphanumeric() || ch_chirho == '_')
+                                    } else {
+                                        true
+                                    }
+                                })
+                                .collect();
                             let max_dist_chirho = haskelujah_diagnostics_chirho::suggest_chirho::default_max_distance_chirho(text_chirho.len());
                             let suggestions_chirho = haskelujah_diagnostics_chirho::suggest_chirho::suggest_similar_names_chirho(
                                 text_chirho,
