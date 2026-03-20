@@ -88,13 +88,30 @@ pub fn apply_prim_binop_chirho(
             }
         }),
 
-        // Integer comparisons
-        PrimOpKindChirho::EqIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
-            Ok(ValueChirho::BoolChirho(a_chirho == b_chirho))
-        }),
-        PrimOpKindChirho::NeIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
-            Ok(ValueChirho::BoolChirho(a_chirho != b_chirho))
-        }),
+        // Integer/string comparisons
+        PrimOpKindChirho::EqIntChirho => {
+            // Handle string equality (from string case desugaring)
+            if let (ValueChirho::StringChirho(a_chirho), ValueChirho::StringChirho(b_chirho)) =
+                (left_chirho, right_chirho)
+            {
+                Ok(ValueChirho::BoolChirho(a_chirho == b_chirho))
+            } else {
+                int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
+                    Ok(ValueChirho::BoolChirho(a_chirho == b_chirho))
+                })
+            }
+        }
+        PrimOpKindChirho::NeIntChirho => {
+            if let (ValueChirho::StringChirho(a_chirho), ValueChirho::StringChirho(b_chirho)) =
+                (left_chirho, right_chirho)
+            {
+                Ok(ValueChirho::BoolChirho(a_chirho != b_chirho))
+            } else {
+                int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
+                    Ok(ValueChirho::BoolChirho(a_chirho != b_chirho))
+                })
+            }
+        }
         PrimOpKindChirho::LtIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             Ok(ValueChirho::BoolChirho(a_chirho < b_chirho))
         }),
