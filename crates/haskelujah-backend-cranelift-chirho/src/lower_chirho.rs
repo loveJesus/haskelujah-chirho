@@ -102,6 +102,10 @@ pub struct LowerCtxChirho<'a> {
     pub show_float_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
     pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
+    /// Current function Core id, used for self-tail-call elimination.
+    pub tco_self_id_chirho: Option<CoreIdChirho>,
+    /// Optional loop-header block for self-tail-call elimination.
+    pub tco_loop_block_chirho: Option<cranelift_codegen::ir::Block>,
 }
 
 impl<'a> LowerCtxChirho<'a> {
@@ -258,6 +262,70 @@ pub fn lower_expr_chirho(
     }
 }
 
+pub enum TailLowerOutcomeChirho {
+    ValueChirho(ClValueChirho),
+    TerminatedChirho,
+}
+
+pub fn lower_tail_expr_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    expr_chirho: &CoreExprChirho,
+) -> TailLowerOutcomeChirho {
+    match expr_chirho {
+        CoreExprChirho::LetChirho {
+            rec_chirho,
+            binds_chirho,
+            body_chirho,
+        } => lower_tail_let_chirho(
+            builder_chirho,
+            ctx_chirho,
+            *rec_chirho,
+            binds_chirho,
+            body_chirho,
+        ),
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho,
+            bind_chirho,
+            alts_chirho,
+            ..
+        } => lower_tail_case_chirho(
+            builder_chirho,
+            ctx_chirho,
+            scrutinee_chirho,
+            bind_chirho,
+            alts_chirho,
+        ),
+        CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+            lower_tail_expr_chirho(builder_chirho, ctx_chirho, body_chirho)
+        }
+        CoreExprChirho::TyAppChirho {
+            expr_chirho: inner_chirho,
+            ..
+        } => lower_tail_expr_chirho(builder_chirho, ctx_chirho, inner_chirho),
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => {
+            if lower_self_tail_call_chirho(builder_chirho, ctx_chirho, fun_chirho, arg_chirho) {
+                TailLowerOutcomeChirho::TerminatedChirho
+            } else {
+                TailLowerOutcomeChirho::ValueChirho(lower_app_chirho(
+                    builder_chirho,
+                    ctx_chirho,
+                    fun_chirho,
+                    arg_chirho,
+                ))
+            }
+        }
+        _ => TailLowerOutcomeChirho::ValueChirho(lower_expr_chirho(
+            builder_chirho,
+            ctx_chirho,
+            expr_chirho,
+        )),
+    }
+}
+
 // ─── Let lowering ─────────────────────────────────────────────────────────────
 
 fn lower_let_chirho(
@@ -310,6 +378,51 @@ fn lower_let_chirho(
     }
 
     lower_expr_chirho(builder_chirho, ctx_chirho, body_chirho)
+}
+
+fn lower_tail_let_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    rec_chirho: bool,
+    binds_chirho: &[(
+        haskelujah_core_chirho::expr_chirho::BinderChirho,
+        CoreExprChirho,
+    )],
+    body_chirho: &CoreExprChirho,
+) -> TailLowerOutcomeChirho {
+    if rec_chirho {
+        let mut cl_vars_chirho: Vec<ClVariableChirho> = Vec::with_capacity(binds_chirho.len());
+        for (binder_chirho, _) in binds_chirho {
+            let var_chirho = ctx_chirho.fresh_var_chirho(binder_chirho.id_chirho, builder_chirho);
+            let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+            builder_chirho.def_var(var_chirho, zero_chirho);
+            cl_vars_chirho.push(var_chirho);
+        }
+        for (idx_chirho, (binder_chirho, rhs_chirho)) in binds_chirho.iter().enumerate() {
+            let val_chirho = lower_let_rhs_value_chirho(
+                builder_chirho,
+                ctx_chirho,
+                binder_chirho.id_chirho,
+                rhs_chirho,
+            );
+            let val_i64_chirho = ensure_i64_chirho(builder_chirho, val_chirho, false);
+            builder_chirho.def_var(cl_vars_chirho[idx_chirho], val_i64_chirho);
+        }
+    } else {
+        for (binder_chirho, rhs_chirho) in binds_chirho {
+            let val_chirho = lower_let_rhs_value_chirho(
+                builder_chirho,
+                ctx_chirho,
+                binder_chirho.id_chirho,
+                rhs_chirho,
+            );
+            let val_i64_chirho = ensure_i64_chirho(builder_chirho, val_chirho, false);
+            let var_chirho = ctx_chirho.fresh_var_chirho(binder_chirho.id_chirho, builder_chirho);
+            builder_chirho.def_var(var_chirho, val_i64_chirho);
+        }
+    }
+
+    lower_tail_expr_chirho(builder_chirho, ctx_chirho, body_chirho)
 }
 
 fn lambda_arity_chirho(expr_chirho: &CoreExprChirho) -> usize {
@@ -550,6 +663,159 @@ fn lower_case_chirho(
     builder_chirho.block_params(merge_block_chirho)[0]
 }
 
+fn lower_tail_case_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    scrutinee_chirho: &CoreExprChirho,
+    bind_chirho: &haskelujah_core_chirho::expr_chirho::BinderChirho,
+    alts_chirho: &[CoreAltChirho],
+) -> TailLowerOutcomeChirho {
+    let scrut_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, scrutinee_chirho);
+    let scrut_i64_chirho = ensure_i64_chirho(builder_chirho, scrut_val_chirho, false);
+    let needs_constructor_tags_chirho = concrete_alts_need_constructor_tag_chirho(alts_chirho);
+    let scrut_cmp_i64_chirho = if needs_constructor_tags_chirho {
+        load_constructor_tag_chirho(builder_chirho, scrut_i64_chirho)
+    } else {
+        scrut_i64_chirho
+    };
+
+    ctx_chirho
+        .env_chirho
+        .bind_chirho(bind_chirho.id_chirho, scrut_i64_chirho);
+
+    if alts_chirho.is_empty() {
+        return TailLowerOutcomeChirho::ValueChirho(
+            builder_chirho.ins().iconst(cl_types_chirho::I64, 0),
+        );
+    }
+
+    let merge_block_chirho = builder_chirho.create_block();
+    builder_chirho.append_block_param(merge_block_chirho, cl_types_chirho::I64);
+
+    let (default_alts_chirho, concrete_alts_chirho): (Vec<_>, Vec<_>) = alts_chirho
+        .iter()
+        .partition(|alt_chirho| matches!(alt_chirho.con_chirho, AltConChirho::DefaultChirho));
+
+    let check_blocks_chirho: Vec<cranelift_codegen::ir::Block> = concrete_alts_chirho
+        .iter()
+        .map(|_| builder_chirho.create_block())
+        .collect();
+    let alt_body_blocks_chirho: Vec<cranelift_codegen::ir::Block> = concrete_alts_chirho
+        .iter()
+        .map(|_| builder_chirho.create_block())
+        .collect();
+    let default_block_chirho = builder_chirho.create_block();
+
+    if check_blocks_chirho.is_empty() {
+        builder_chirho.ins().jump(default_block_chirho, &[]);
+    } else {
+        builder_chirho.ins().jump(check_blocks_chirho[0], &[]);
+    }
+
+    for (idx_chirho, (alt_chirho, &check_block_chirho)) in concrete_alts_chirho
+        .iter()
+        .zip(check_blocks_chirho.iter())
+        .enumerate()
+    {
+        builder_chirho.switch_to_block(check_block_chirho);
+        builder_chirho.seal_block(check_block_chirho);
+
+        let no_match_block_chirho = if idx_chirho + 1 < check_blocks_chirho.len() {
+            check_blocks_chirho[idx_chirho + 1]
+        } else {
+            default_block_chirho
+        };
+        let alt_body_block_chirho = alt_body_blocks_chirho[idx_chirho];
+
+        let expected_val_chirho = alt_expected_value_chirho(builder_chirho, &alt_chirho.con_chirho);
+        let eq_val_chirho = builder_chirho.ins().icmp(
+            IntCcChirho::Equal,
+            scrut_cmp_i64_chirho,
+            expected_val_chirho,
+        );
+        builder_chirho.ins().brif(
+            eq_val_chirho,
+            alt_body_block_chirho,
+            &[],
+            no_match_block_chirho,
+            &[],
+        );
+    }
+
+    let mut merge_incoming_count_chirho = 0usize;
+    for (alt_chirho, &alt_body_block_chirho) in concrete_alts_chirho
+        .iter()
+        .zip(alt_body_blocks_chirho.iter())
+    {
+        builder_chirho.switch_to_block(alt_body_block_chirho);
+        builder_chirho.seal_block(alt_body_block_chirho);
+
+        if matches!(alt_chirho.con_chirho, AltConChirho::DataConChirho(_)) {
+            for (field_idx_chirho, binder_chirho) in alt_chirho.binders_chirho.iter().enumerate() {
+                let field_val_chirho = load_constructor_field_chirho(
+                    builder_chirho,
+                    scrut_i64_chirho,
+                    field_idx_chirho,
+                );
+                ctx_chirho
+                    .env_chirho
+                    .bind_chirho(binder_chirho.id_chirho, field_val_chirho);
+            }
+        } else {
+            for binder_chirho in &alt_chirho.binders_chirho {
+                ctx_chirho
+                    .env_chirho
+                    .bind_chirho(binder_chirho.id_chirho, scrut_i64_chirho);
+            }
+        }
+
+        match lower_tail_expr_chirho(builder_chirho, ctx_chirho, &alt_chirho.rhs_chirho) {
+            TailLowerOutcomeChirho::ValueChirho(result_val_chirho) => {
+                let result_i64_chirho = ensure_i64_chirho(builder_chirho, result_val_chirho, false);
+                builder_chirho
+                    .ins()
+                    .jump(merge_block_chirho, &[result_i64_chirho]);
+                merge_incoming_count_chirho += 1;
+            }
+            TailLowerOutcomeChirho::TerminatedChirho => {}
+        }
+    }
+
+    builder_chirho.switch_to_block(default_block_chirho);
+    builder_chirho.seal_block(default_block_chirho);
+
+    if let Some(default_alt_chirho) = default_alts_chirho.first() {
+        for binder_chirho in &default_alt_chirho.binders_chirho {
+            ctx_chirho
+                .env_chirho
+                .bind_chirho(binder_chirho.id_chirho, scrut_i64_chirho);
+        }
+        match lower_tail_expr_chirho(builder_chirho, ctx_chirho, &default_alt_chirho.rhs_chirho) {
+            TailLowerOutcomeChirho::ValueChirho(default_val_chirho) => {
+                let default_i64_chirho =
+                    ensure_i64_chirho(builder_chirho, default_val_chirho, false);
+                builder_chirho
+                    .ins()
+                    .jump(merge_block_chirho, &[default_i64_chirho]);
+                merge_incoming_count_chirho += 1;
+            }
+            TailLowerOutcomeChirho::TerminatedChirho => {}
+        }
+    } else {
+        builder_chirho
+            .ins()
+            .trap(cranelift_codegen::ir::TrapCode::unwrap_user(1));
+    }
+
+    if merge_incoming_count_chirho == 0 {
+        return TailLowerOutcomeChirho::TerminatedChirho;
+    }
+
+    builder_chirho.switch_to_block(merge_block_chirho);
+    builder_chirho.seal_block(merge_block_chirho);
+    TailLowerOutcomeChirho::ValueChirho(builder_chirho.block_params(merge_block_chirho)[0])
+}
+
 fn lower_constructor_app_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     ctx_chirho: &mut LowerCtxChirho<'_>,
@@ -764,6 +1030,7 @@ fn lower_app_chirho(
         arg_chirho: Box::new(arg_chirho.clone()),
     };
     let (callee_chirho, all_args_chirho) = flatten_apps_chirho(&full_expr_chirho);
+    let callee_chirho = strip_runtime_wrappers_chirho(callee_chirho);
 
     // Try direct call for known functions via pre-imported FuncRefs.
     if let CoreExprChirho::VarChirho(func_id_chirho) = callee_chirho {
@@ -865,8 +1132,7 @@ fn lower_app_chirho(
                     .pap_wrapper_ref_map_chirho
                     .get(&(*func_id_chirho, all_args_chirho.len()))
                 {
-                    let mut stored_arg_vals_chirho =
-                        Vec::with_capacity(all_args_chirho.len());
+                    let mut stored_arg_vals_chirho = Vec::with_capacity(all_args_chirho.len());
                     for arg_chirho in &all_args_chirho {
                         let arg_val_chirho =
                             lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
@@ -919,6 +1185,69 @@ fn lower_app_chirho(
 
     let fun_ptr_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, fun_chirho);
     lower_indirect_app_chirho(builder_chirho, ctx_chirho, fun_ptr_chirho, &[arg_chirho])
+}
+
+fn lower_self_tail_call_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    fun_chirho: &CoreExprChirho,
+    arg_chirho: &CoreExprChirho,
+) -> bool {
+    let (Some(tco_self_id_chirho), Some(tco_loop_block_chirho)) = (
+        ctx_chirho.tco_self_id_chirho,
+        ctx_chirho.tco_loop_block_chirho,
+    ) else {
+        return false;
+    };
+
+    let full_expr_chirho = CoreExprChirho::AppChirho {
+        fun_chirho: Box::new(fun_chirho.clone()),
+        arg_chirho: Box::new(arg_chirho.clone()),
+    };
+    let (callee_chirho, all_args_chirho) = flatten_apps_chirho(&full_expr_chirho);
+    let callee_chirho = strip_runtime_wrappers_chirho(callee_chirho);
+    let CoreExprChirho::VarChirho(callee_id_chirho) = callee_chirho else {
+        return false;
+    };
+    if *callee_id_chirho != tco_self_id_chirho {
+        return false;
+    }
+
+    let Some((_, arity_chirho)) = ctx_chirho.func_ref_map_chirho.get(&tco_self_id_chirho) else {
+        return false;
+    };
+    if *arity_chirho != all_args_chirho.len() {
+        return false;
+    }
+
+    let mut jump_arg_vals_chirho = Vec::with_capacity(*arity_chirho);
+    for arg_expr_chirho in &all_args_chirho {
+        let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+        jump_arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, arg_val_chirho, false));
+    }
+    append_lifted_capture_arg_vals_chirho(
+        builder_chirho,
+        ctx_chirho,
+        tco_self_id_chirho,
+        &mut jump_arg_vals_chirho,
+    );
+    builder_chirho
+        .ins()
+        .jump(tco_loop_block_chirho, &jump_arg_vals_chirho);
+    true
+}
+
+fn strip_runtime_wrappers_chirho<'a>(expr_chirho: &'a CoreExprChirho) -> &'a CoreExprChirho {
+    match expr_chirho {
+        CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+            strip_runtime_wrappers_chirho(body_chirho)
+        }
+        CoreExprChirho::TyAppChirho {
+            expr_chirho: inner_chirho,
+            ..
+        } => strip_runtime_wrappers_chirho(inner_chirho),
+        _ => expr_chirho,
+    }
 }
 
 fn append_lifted_capture_arg_vals_chirho(
@@ -1210,11 +1539,10 @@ pub fn lower_primop_chirho(
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let neg_chirho = builder_chirho.ins().ineg(lhs_chirho);
             let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
-            let is_neg_chirho = builder_chirho.ins().icmp(
-                IntCcChirho::SignedLessThan,
-                lhs_chirho,
-                zero_chirho,
-            );
+            let is_neg_chirho =
+                builder_chirho
+                    .ins()
+                    .icmp(IntCcChirho::SignedLessThan, lhs_chirho, zero_chirho);
             builder_chirho
                 .ins()
                 .select(is_neg_chirho, neg_chirho, lhs_chirho)
@@ -1224,11 +1552,10 @@ pub fn lower_primop_chirho(
             let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
             let one_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 1);
             let neg_one_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, -1i64);
-            let is_neg_chirho = builder_chirho.ins().icmp(
-                IntCcChirho::SignedLessThan,
-                lhs_chirho,
-                zero_chirho,
-            );
+            let is_neg_chirho =
+                builder_chirho
+                    .ins()
+                    .icmp(IntCcChirho::SignedLessThan, lhs_chirho, zero_chirho);
             let is_zero_chirho =
                 builder_chirho
                     .ins()
@@ -1244,11 +1571,10 @@ pub fn lower_primop_chirho(
         "minInt#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
-            let cmp_chirho = builder_chirho.ins().icmp(
-                IntCcChirho::SignedLessThan,
-                lhs_chirho,
-                rhs_chirho,
-            );
+            let cmp_chirho =
+                builder_chirho
+                    .ins()
+                    .icmp(IntCcChirho::SignedLessThan, lhs_chirho, rhs_chirho);
             builder_chirho
                 .ins()
                 .select(cmp_chirho, lhs_chirho, rhs_chirho)
@@ -1256,19 +1582,17 @@ pub fn lower_primop_chirho(
         "maxInt#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
-            let cmp_chirho = builder_chirho.ins().icmp(
-                IntCcChirho::SignedGreaterThan,
-                lhs_chirho,
-                rhs_chirho,
-            );
+            let cmp_chirho =
+                builder_chirho
+                    .ins()
+                    .icmp(IntCcChirho::SignedGreaterThan, lhs_chirho, rhs_chirho);
             builder_chirho
                 .ins()
                 .select(cmp_chirho, lhs_chirho, rhs_chirho)
         }
         "showInt#" => {
-            if let Some(arg_kind_chirho) = args_chirho
-                .first()
-                .and_then(infer_show_int_arg_kind_chirho)
+            if let Some(arg_kind_chirho) =
+                args_chirho.first().and_then(infer_show_int_arg_kind_chirho)
             {
                 return match arg_kind_chirho {
                     ShowIntArgKindChirho::BoolChirho => {
@@ -1288,13 +1612,13 @@ pub fn lower_primop_chirho(
                 builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
             }
         }
-        "showBool#" => {
-            lower_show_bool_primop_chirho(builder_chirho, ctx_chirho, lhs_raw_chirho)
-        }
+        "showBool#" => lower_show_bool_primop_chirho(builder_chirho, ctx_chirho, lhs_raw_chirho),
         "showChar#" => {
             let val_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             if let Some(show_char_ref_chirho) = ctx_chirho.show_char_ref_chirho {
-                let call_chirho = builder_chirho.ins().call(show_char_ref_chirho, &[val_chirho]);
+                let call_chirho = builder_chirho
+                    .ins()
+                    .call(show_char_ref_chirho, &[val_chirho]);
                 builder_chirho.inst_results(call_chirho)[0]
             } else {
                 builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
@@ -1311,9 +1635,7 @@ pub fn lower_primop_chirho(
                 builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
             }
         }
-        "showStr#" => {
-            lower_show_str_primop_chirho(builder_chirho, ctx_chirho, lhs_raw_chirho)
-        }
+        "showStr#" => lower_show_str_primop_chirho(builder_chirho, ctx_chirho, lhs_raw_chirho),
         "^#" => {
             // Integer power — simplified: return lhs^rhs via repeated multiply
             // (not emitted here; return placeholder i64 0 for now).
@@ -1458,14 +1780,14 @@ fn infer_show_int_arg_kind_chirho(expr_chirho: &CoreExprChirho) -> Option<ShowIn
         CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(_)) => {
             Some(ShowIntArgKindChirho::StringChirho)
         }
-        CoreExprChirho::ConAppChirho { con_name_chirho, .. }
-            if matches!(con_name_chirho.as_str(), "True" | "False") =>
-        {
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho, ..
+        } if matches!(con_name_chirho.as_str(), "True" | "False") => {
             Some(ShowIntArgKindChirho::BoolChirho)
         }
         CoreExprChirho::PrimOpChirho { name_chirho, .. } => match name_chirho.as_str() {
-            "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#" | "eqFloat#" | "<.#"
-            | ">.#" | "readBool#" | "showStr#" | "++#" | "eqStr#" => {
+            "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#" | "eqFloat#" | "<.#" | ">.#"
+            | "readBool#" | "showStr#" | "++#" | "eqStr#" => {
                 Some(if matches!(name_chirho.as_str(), "showStr#" | "++#") {
                     ShowIntArgKindChirho::StringChirho
                 } else {
@@ -1474,8 +1796,12 @@ fn infer_show_int_arg_kind_chirho(expr_chirho: &CoreExprChirho) -> Option<ShowIn
             }
             _ => None,
         },
-        CoreExprChirho::TyLamChirho { body_chirho, .. } => infer_show_int_arg_kind_chirho(body_chirho),
-        CoreExprChirho::TyAppChirho { expr_chirho, .. } => infer_show_int_arg_kind_chirho(expr_chirho),
+        CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+            infer_show_int_arg_kind_chirho(body_chirho)
+        }
+        CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
+            infer_show_int_arg_kind_chirho(expr_chirho)
+        }
         _ => None,
     }
 }
@@ -1493,10 +1819,9 @@ fn lower_show_bool_primop_chirho(
         return builder_chirho.inst_results(call_inst_chirho)[0];
     }
     let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
-    let is_true_chirho =
-        builder_chirho
-            .ins()
-            .icmp(IntCcChirho::NotEqual, val_chirho, zero_chirho);
+    let is_true_chirho = builder_chirho
+        .ins()
+        .icmp(IntCcChirho::NotEqual, val_chirho, zero_chirho);
     let Some(true_global_chirho) = ctx_chirho.string_globals_chirho.get("True").copied() else {
         return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
     };
@@ -1533,9 +1858,10 @@ fn lower_show_str_primop_chirho(
         .ins()
         .call(append_str_ref_chirho, &[quote_ptr_chirho, val_chirho]);
     let quoted_prefix_ptr_chirho = builder_chirho.inst_results(quoted_prefix_call_chirho)[0];
-    let quoted_full_call_chirho = builder_chirho
-        .ins()
-        .call(append_str_ref_chirho, &[quoted_prefix_ptr_chirho, quote_ptr_chirho]);
+    let quoted_full_call_chirho = builder_chirho.ins().call(
+        append_str_ref_chirho,
+        &[quoted_prefix_ptr_chirho, quote_ptr_chirho],
+    );
     builder_chirho.inst_results(quoted_full_call_chirho)[0]
 }
 

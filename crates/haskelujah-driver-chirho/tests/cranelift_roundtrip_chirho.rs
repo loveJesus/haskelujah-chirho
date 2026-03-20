@@ -42,12 +42,15 @@ fn ensure_rts_staticlib_for_cranelift_tests_chirho() -> PathBuf {
 
 fn cranelift_round_trip_stdout_chirho(src_chirho: &str) -> String {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let compile_result_chirho = compile_source_chirho(src_chirho, &mut source_map_chirho, "Main.hs")
-        .expect("source should compile");
+    let compile_result_chirho =
+        compile_source_chirho(src_chirho, &mut source_map_chirho, "Main.hs")
+            .expect("source should compile");
     let config_chirho = TargetConfigChirho::default();
-    let obj_chirho =
-        compile_core_to_object_executable_chirho(&compile_result_chirho.core_chirho, &config_chirho)
-            .expect("Cranelift object generation should succeed");
+    let obj_chirho = compile_core_to_object_executable_chirho(
+        &compile_result_chirho.core_chirho,
+        &config_chirho,
+    )
+    .expect("Cranelift object generation should succeed");
 
     let temp_dir_chirho = tempfile::tempdir().expect("temp dir should be created");
     let object_path_chirho = temp_dir_chirho.path().join("main.o");
@@ -85,9 +88,8 @@ fn cranelift_round_trip_stdout_chirho(src_chirho: &str) -> String {
 
 #[test]
 fn cranelift_round_trip_sum_range_output_chirho() {
-    let stdout_chirho = cranelift_round_trip_stdout_chirho(
-        "module Main where\nmain = print (sum [1..10])\n",
-    );
+    let stdout_chirho =
+        cranelift_round_trip_stdout_chirho("module Main where\nmain = print (sum [1..10])\n");
     assert_eq!(stdout_chirho, "55\n");
 }
 
@@ -142,4 +144,20 @@ fn cranelift_round_trip_merge_sort_preserves_all_elements_chirho() {
         "module Main where\nmerge [] ys = ys\nmerge xs [] = xs\nmerge (x:xs) (y:ys) = if x <= y then x : merge xs (y:ys) else y : merge (x:xs) ys\nmsort [] = []\nmsort (x:[]) = [x]\nmsort xs = merge (msort (take (div (length xs) 2) xs)) (msort (drop (div (length xs) 2) xs))\nprintList [] = putStrLn \"\"\nprintList (x:xs) = do print x; printList xs\nmain = printList (msort [5,3,8,1,9,2,7,4,6])\n",
     );
     assert_eq!(stdout_chirho, "1\n2\n3\n4\n5\n6\n7\n8\n9\n\n");
+}
+
+#[test]
+fn cranelift_round_trip_deep_tail_recursion_no_stack_overflow_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nsumTo limit = go 0 0 where go acc n = if n >= limit then acc else go (acc + n) (n + 1)\nmain = print (sumTo 200000)\n",
+    );
+    assert_eq!(stdout_chirho, "19999900000\n");
+}
+
+#[test]
+fn cranelift_round_trip_euler1_tail_recursion_no_stack_overflow_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\neuler1 limit = go 0 0 where\n  go acc n = if n >= limit then acc else if mod n 3 == 0 then go (acc + n) (n + 1) else if mod n 5 == 0 then go (acc + n) (n + 1) else go acc (n + 1)\nmain = print (euler1 100000)\n",
+    );
+    assert_eq!(stdout_chirho, "2333316668\n");
 }
