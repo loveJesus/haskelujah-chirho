@@ -423,6 +423,47 @@ pub extern "C" fn haskelujah_put_str_chirho(ptr_bits_chirho: u64) -> i64 {
     0
 }
 
+/// Write a NUL-terminated string to a file. Both path and content are
+/// NUL-terminated heap strings. Returns 0 on success.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_write_file_chirho(
+    path_bits_chirho: u64,
+    content_bits_chirho: u64,
+) -> i64 {
+    let path_chirho = if path_bits_chirho == 0 {
+        return -1;
+    } else {
+        let ptr_chirho = path_bits_chirho as usize as *const std::ffi::c_char;
+        unsafe { CStr::from_ptr(ptr_chirho) }.to_string_lossy().into_owned()
+    };
+    let content_chirho = if content_bits_chirho == 0 {
+        String::new()
+    } else {
+        let ptr_chirho = content_bits_chirho as usize as *const std::ffi::c_char;
+        unsafe { CStr::from_ptr(ptr_chirho) }.to_string_lossy().into_owned()
+    };
+    match std::fs::write(&path_chirho, &content_chirho) {
+        Ok(()) => 0,
+        Err(_) => -1,
+    }
+}
+
+/// Read an entire file into a heap-allocated NUL-terminated string.
+/// Returns 0 (null) on error.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_read_file_chirho(path_bits_chirho: u64) -> u64 {
+    let path_chirho = if path_bits_chirho == 0 {
+        return 0;
+    } else {
+        let ptr_chirho = path_bits_chirho as usize as *const std::ffi::c_char;
+        unsafe { CStr::from_ptr(ptr_chirho) }.to_string_lossy().into_owned()
+    };
+    match std::fs::read_to_string(&path_chirho) {
+        Ok(content_chirho) => alloc_c_string_chirho(content_chirho.as_bytes()),
+        Err(_) => 0,
+    }
+}
+
 /// Runtime panic for undefined/bottom values.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_undefined_chirho() {
