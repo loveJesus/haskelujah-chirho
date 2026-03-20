@@ -827,8 +827,14 @@ fn clean_command_chirho(path_arg_chirho: Option<String>) -> ExitCode {
 }
 
 fn init_command_chirho(name_arg_chirho: Option<String>) -> ExitCode {
-    let project_name_chirho = name_arg_chirho.unwrap_or_else(|| "my-project".to_string());
-    let project_dir_chirho = Path::new(&project_name_chirho);
+    let project_path_chirho = name_arg_chirho.unwrap_or_else(|| "my-project".to_string());
+    let project_dir_chirho = Path::new(&project_path_chirho);
+    // Use just the directory name (not the full path) as the cabal project name
+    let project_name_chirho = project_dir_chirho
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("my-project")
+        .to_string();
 
     if project_dir_chirho.exists() {
         eprintln!(
