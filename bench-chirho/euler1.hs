@@ -8,4 +8,4 @@ euler1 limit = go 0 0
                         then go (acc + n) (n + 1)
                         else go acc (n + 1)
 main :: IO ()
-main = print (euler1 10000000)
+main = print (euler1 100000000)

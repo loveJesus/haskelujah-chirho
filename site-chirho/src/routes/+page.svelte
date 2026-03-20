@@ -18,13 +18,12 @@
 	];
 
 	const benchmarkSuiteChirho = [
-		{ nameChirho: 'fib(42)', descChirho: 'Recursive Fibonacci', ghcChirho: '1.10s', clChirho: '0.91s', ratioChirho: '1.20x faster' },
-		{ nameChirho: 'ack(3,11)', descChirho: 'Ackermann function', ghcChirho: '0.23s', clChirho: '0.55s', ratioChirho: '0.42x' },
-		{ nameChirho: 'euler1(100M)', descChirho: '100M iterations (TCO)', ghcChirho: '0.09s', clChirho: '0.16s', ratioChirho: '0.56x' },
-		{ nameChirho: 'tak(30,20,10)', descChirho: 'Takeuchi function', ghcChirho: '0.10s', clChirho: '0.22s', ratioChirho: '0.45x' },
-		{ nameChirho: 'sum [1..500K]', descChirho: 'List build + fold', ghcChirho: '0.28s', clChirho: '0.48s', ratioChirho: '0.58x' },
-		{ nameChirho: 'qsort(1K)', descChirho: 'Quicksort random', ghcChirho: '0.22s', clChirho: '0.20s (LLVM 0.15s)', ratioChirho: '1.10x' },
-		{ nameChirho: 'primes(10K)', descChirho: 'Sieve of Eratosthenes', ghcChirho: '0.28s', clChirho: '0.59s (LLVM 0.18s)', ratioChirho: 'LLVM 1.56x' },
+		{ nameChirho: 'fib(42)', descChirho: 'Recursive Fibonacci', ghcChirho: '1.10s', clChirho: '0.91s', llvmChirho: '0.91s', ratioChirho: '1.21x faster' },
+		{ nameChirho: 'ack(3,10)', descChirho: 'Ackermann function', ghcChirho: '0.23s', clChirho: '0.14s', llvmChirho: '--', ratioChirho: '1.64x faster' },
+		{ nameChirho: 'euler1(100M)', descChirho: '100M iterations (TCO)', ghcChirho: '0.09s', clChirho: '0.15s', llvmChirho: '0.35s', ratioChirho: '0.60x' },
+		{ nameChirho: 'tak(30,20,10)', descChirho: 'Takeuchi function', ghcChirho: '0.10s', clChirho: '0.16s', llvmChirho: '0.27s', ratioChirho: '0.63x' },
+		{ nameChirho: 'qsort(1K)', descChirho: 'Quicksort random', ghcChirho: '0.22s', clChirho: '0.20s', llvmChirho: '0.15s', ratioChirho: 'LLVM 1.47x' },
+		{ nameChirho: 'primes(10K)', descChirho: 'Sieve of Eratosthenes', ghcChirho: '0.28s', clChirho: '0.59s', llvmChirho: '0.18s', ratioChirho: 'LLVM 1.56x' },
 	];
 
 	const featuresChirho = [
@@ -189,7 +188,7 @@
 			<h3 class="section-subtitle-chirho" style="margin-top: 2rem;">Full Benchmark Suite</h3>
 			<table class="bench-table-chirho">
 				<thead>
-					<tr><th>Benchmark</th><th>Problem</th><th>GHC 9.14 -O2</th><th>Cranelift</th><th>vs GHC</th></tr>
+					<tr><th>Benchmark</th><th>Problem</th><th>GHC 9.14 -O2</th><th>Cranelift</th><th>LLVM</th><th>Best vs GHC</th></tr>
 				</thead>
 				<tbody>
 					{#each benchmarkSuiteChirho as bChirho}
@@ -198,14 +197,15 @@
 							<td>{bChirho.descChirho}</td>
 							<td>{bChirho.ghcChirho}</td>
 							<td>{bChirho.clChirho}</td>
+							<td>{bChirho.llvmChirho}</td>
 							<td>{bChirho.ratioChirho}</td>
 						</tr>
 					{/each}
 				</tbody>
 			</table>
 			<p class="benchmark-note-chirho">
-				Benchmarks on Apple M-series. Cranelift beats GHC -O2 on recursive workloads.
-				GHC wins on deep call stacks thanks to tail-call optimization (TCO planned for Cranelift).
+				Benchmarks on Apple M-series. Both Cranelift and LLVM backends support tail-call optimization (TCO).
+				Cranelift beats GHC -O2 on recursive workloads; LLVM excels at list-heavy operations.
 			</p>
 		</div>
 	</section>
