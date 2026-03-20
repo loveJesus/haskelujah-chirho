@@ -52,10 +52,11 @@ showTodo (MkTodo name prio done) =
   "[" ++ (if done == 1 then "x" else " ") ++ "] "
   ++ prioName prio ++ ": " ++ name
 
-showTodos :: [Todo] -> String
-showTodos [] = ""
-showTodos (t:[]) = showTodo t
-showTodos (t:ts) = showTodo t ++ "\n" ++ showTodos ts
+printTodos :: [Todo] -> IO ()
+printTodos [] = return ()
+printTodos (t:ts) = do
+  putStrLn (showTodo t)
+  printTodos ts
 
 main :: IO ()
 main = do
@@ -69,7 +70,7 @@ main = do
               , MkTodo "Deploy v1.0" High 0
               ]
 
-  putStrLn (showTodos todos)
+  printTodos todos
   putStrLn ("Total: " ++ show (myLength todos))
   putStrLn ("Done: " ++ show (countDone todos))
   putStrLn ("High: " ++ show (countByPrio High todos))
