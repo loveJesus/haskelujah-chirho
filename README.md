@@ -239,6 +239,31 @@ See [AGENTS.md](AGENTS.md) for the full convention.
 - `spec-chirho/` -- specifications, progress database, phase archive
 - `AGENTS.md` -- authoritative project spec, naming convention, and priorities
 
+## Ecosystem
+
+- **Cabal support**: Reads standard `.cabal` files. Multi-module projects with library and executable components compile out of the box.
+- **Hackage packages**: `haskelujah install aeson` fetches from Hackage, resolves dependencies, extracts `.cabal` metadata. Auto-detects latest versions.
+- **Single binary**: One self-contained executable. No runtime dependencies, no GHC installation, no LLVM toolchain (unless you opt in). `cargo install haskelujah`.
+- **REPL**: `haskelujah repl` with `:type`, `:info`, `:load`, multi-line input, expression evaluation.
+
+## Current Limitations
+
+- **Lazy evaluation**: Compiled backends are strict-only. STG interpreter supports laziness. Thunks planned.
+- **Garbage collection**: Mark-sweep GC exists but is disabled (no root tracking). Programs leak memory on long runs.
+- **Type class dicts at runtime**: Type checking supports full typeclasses; compiled code uses simplified dictionary elision. Complex polymorphic dispatch is partial.
+- **String as [Char]**: String literals are C strings internally. `unpack`/`pack` works but isn't transparent.
+- **Template Haskell**: Basic splices and `makeLenses` work; full TH is incomplete.
+- **FFI**: Basic libc interop. Full C header parsing not yet implemented.
+
+## Roadmap
+
+- **Lazy evaluation** — thunks, lazy data structures, proper WHNF in compiled backends
+- **GC root tracking** — wire roots through codegen for safe memory reclamation
+- **Integrated IDE** — Zed-like editor extensible via Haskell (like Emacs uses Lisp), LSP support
+- **Cross-compilation** — target selection from CLI (Linux, macOS, Windows, embedded)
+- **Full Hackage** — compile real-world packages (aeson, lens, servant)
+- **Profiling** — cost-center annotation, heap/time profiling
+
 ## Design Goals
 
 - Practical Haskell compatibility rather than a toy subset

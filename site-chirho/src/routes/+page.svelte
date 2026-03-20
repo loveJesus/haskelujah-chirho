@@ -298,6 +298,87 @@
 		</div>
 	</section>
 
+	<!-- Ecosystem Section -->
+	<section class="ecosystem-chirho">
+		<div class="section-inner-chirho">
+			<h2 class="section-title-chirho">Ecosystem</h2>
+			<p class="section-subtitle-chirho">Built for compatibility with the Haskell ecosystem.</p>
+
+			<div class="feature-grid-chirho">
+				<div class="feature-card-chirho">
+					<div class="feature-icon-chirho">P</div>
+					<h3>Cabal Support</h3>
+					<p>Reads standard <code>.cabal</code> files. Multi-module projects with library and executable components compile out of the box.</p>
+				</div>
+				<div class="feature-card-chirho">
+					<div class="feature-icon-chirho">H</div>
+					<h3>Hackage Packages</h3>
+					<p><code>haskelujah install aeson</code> fetches packages from Hackage, resolves dependencies, and extracts <code>.cabal</code> metadata. Auto-detects latest versions.</p>
+				</div>
+				<div class="feature-card-chirho">
+					<div class="feature-icon-chirho">1</div>
+					<h3>Single Binary</h3>
+					<p>One self-contained executable. No runtime dependencies, no GHC installation, no LLVM toolchain (unless you opt in). Just <code>cargo install haskelujah</code>.</p>
+				</div>
+				<div class="feature-card-chirho">
+					<div class="feature-icon-chirho">R</div>
+					<h3>REPL</h3>
+					<p><code>haskelujah repl</code> gives you an interactive environment with <code>:type</code>, <code>:info</code>, <code>:load</code>, multi-line input, and expression evaluation.</p>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Limitations Section -->
+	<section class="limitations-chirho">
+		<div class="section-inner-chirho">
+			<h2 class="section-title-chirho">Current Limitations</h2>
+			<p class="section-subtitle-chirho">Where we still fall short of GHC.</p>
+			<ul class="limitation-list-chirho">
+				<li><strong>Lazy evaluation:</strong> Compilation is strict-only. The STG interpreter supports laziness, but compiled backends evaluate strictly. Thunks and lazy data structures are planned.</li>
+				<li><strong>Garbage collection:</strong> Mark-sweep GC exists in the RTS but is currently disabled (no root tracking). Programs leak memory on long runs.</li>
+				<li><strong>Type class dictionaries at runtime:</strong> Type checking supports full typeclasses, but compiled code uses simplified dictionary elision. Complex polymorphic dispatch is partial.</li>
+				<li><strong>String as [Char]:</strong> String literals are C strings internally. <code>unpack</code>/<code>pack</code> conversion works but isn't transparent like GHC's representation.</li>
+				<li><strong>Template Haskell:</strong> Basic splices and <code>makeLenses</code> work; full TH (typed splices, reify) is incomplete.</li>
+				<li><strong>FFI:</strong> Basic libc interop (puts, printf, malloc). Full C header parsing and foreign exports are not yet implemented.</li>
+			</ul>
+		</div>
+	</section>
+
+	<!-- Roadmap Section -->
+	<section class="roadmap-chirho">
+		<div class="section-inner-chirho">
+			<h2 class="section-title-chirho">Roadmap</h2>
+			<p class="section-subtitle-chirho">Where we're headed, God willing.</p>
+			<div class="roadmap-grid-chirho">
+				<div class="roadmap-item-chirho">
+					<h3>Lazy Evaluation</h3>
+					<p>Thunks, lazy data structures, and proper WHNF semantics in compiled backends.</p>
+				</div>
+				<div class="roadmap-item-chirho">
+					<h3>GC Root Tracking</h3>
+					<p>Wire GC roots through codegen so the mark-sweep collector can safely reclaim memory.</p>
+				</div>
+				<div class="roadmap-item-chirho">
+					<h3>Integrated IDE</h3>
+					<p>A Zed-like editor extensible via Haskell (like Emacs uses Lisp). LSP support with hover types, go-to-definition, and diagnostics.</p>
+				</div>
+				<div class="roadmap-item-chirho">
+					<h3>Cross-Compilation</h3>
+					<p>Target selection from CLI: compile to Linux, macOS, Windows, or embedded targets from a single machine.</p>
+				</div>
+				<div class="roadmap-item-chirho">
+					<h3>Full Hackage</h3>
+					<p>Compile real-world packages like aeson, lens, and servant. Bridge the gap from toy programs to production Haskell.</p>
+				</div>
+				<div class="roadmap-item-chirho">
+					<h3>Profiling</h3>
+					<p>Cost-center annotation, heap profiling, and time profiling for performance optimization.</p>
+				</div>
+			</div>
+		</div>
+	</section>
+
 	<!-- Footer -->
 	<footer class="footer-chirho">
 		<div class="footer-inner-chirho">
@@ -942,5 +1023,68 @@
 		.nav-links-chirho a:not(.nav-github-chirho) {
 			display: none;
 		}
+	}
+
+	/* Ecosystem Section */
+	.ecosystem-chirho {
+		padding: 5rem 2rem;
+		background: rgba(10, 14, 23, 0.6);
+	}
+
+	/* Limitations Section */
+	.limitations-chirho {
+		padding: 5rem 2rem;
+		background: rgba(15, 20, 30, 0.8);
+	}
+
+	.limitation-list-chirho {
+		list-style: none;
+		padding: 0;
+		max-width: 800px;
+		margin: 2rem auto;
+	}
+
+	.limitation-list-chirho li {
+		padding: 0.75rem 0;
+		border-bottom: 1px solid rgba(125, 211, 252, 0.08);
+		color: #94a3b8;
+		line-height: 1.6;
+	}
+
+	.limitation-list-chirho li strong {
+		color: #e2e8f0;
+	}
+
+	/* Roadmap Section */
+	.roadmap-chirho {
+		padding: 5rem 2rem;
+		background: rgba(10, 14, 23, 0.6);
+	}
+
+	.roadmap-grid-chirho {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+		gap: 1.5rem;
+		margin-top: 2rem;
+	}
+
+	.roadmap-item-chirho {
+		background: rgba(30, 41, 59, 0.5);
+		border: 1px solid rgba(125, 211, 252, 0.1);
+		border-radius: 12px;
+		padding: 1.5rem;
+	}
+
+	.roadmap-item-chirho h3 {
+		color: #7dd3fc;
+		margin: 0 0 0.5rem;
+		font-size: 1.1rem;
+	}
+
+	.roadmap-item-chirho p {
+		color: #94a3b8;
+		margin: 0;
+		line-height: 1.5;
+		font-size: 0.95rem;
 	}
 </style>
