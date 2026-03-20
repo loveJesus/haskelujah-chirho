@@ -752,6 +752,8 @@ fn link_cranelift_object_file_chirho(
         output_path_str_chirho,
         obj_path_str_chirho,
         "-Wl,-no_fixup_chains",
+        // 32MB stack for deeper recursion (non-TCO list operations)
+        "-Wl,-stack_size,0x2000000",
     ]);
     append_rts_link_args_chirho(&mut linker_command_chirho, &rts_lib_dir_chirho);
     let linker_status_chirho = linker_command_chirho.status().map_err(|error_chirho| {
