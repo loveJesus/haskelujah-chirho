@@ -63,25 +63,49 @@ impl Default for SimplifyConfigChirho {
 pub fn expr_size_chirho(expr_chirho: &CoreExprChirho) -> usize {
     match expr_chirho {
         CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => 1,
-        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
-            1 + expr_size_chirho(fun_chirho) + expr_size_chirho(arg_chirho)
-        }
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => 1 + expr_size_chirho(fun_chirho) + expr_size_chirho(arg_chirho),
         CoreExprChirho::LamChirho { body_chirho, .. } => 1 + expr_size_chirho(body_chirho),
-        CoreExprChirho::LetChirho { binds_chirho, body_chirho, .. } => {
-            1 + binds_chirho.iter().map(|(_, rhs_chirho)| expr_size_chirho(rhs_chirho)).sum::<usize>()
+        CoreExprChirho::LetChirho {
+            binds_chirho,
+            body_chirho,
+            ..
+        } => {
+            1 + binds_chirho
+                .iter()
+                .map(|(_, rhs_chirho)| expr_size_chirho(rhs_chirho))
+                .sum::<usize>()
                 + expr_size_chirho(body_chirho)
         }
-        CoreExprChirho::CaseChirho { scrutinee_chirho, alts_chirho, .. } => {
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho,
+            alts_chirho,
+            ..
+        } => {
             1 + expr_size_chirho(scrutinee_chirho)
-                + alts_chirho.iter().map(|a_chirho| expr_size_chirho(&a_chirho.rhs_chirho)).sum::<usize>()
+                + alts_chirho
+                    .iter()
+                    .map(|a_chirho| expr_size_chirho(&a_chirho.rhs_chirho))
+                    .sum::<usize>()
         }
         CoreExprChirho::TyLamChirho { body_chirho, .. } => 1 + expr_size_chirho(body_chirho),
-        CoreExprChirho::TyAppChirho { expr_chirho: inner_chirho, .. } => 1 + expr_size_chirho(inner_chirho),
+        CoreExprChirho::TyAppChirho {
+            expr_chirho: inner_chirho,
+            ..
+        } => 1 + expr_size_chirho(inner_chirho),
         CoreExprChirho::PrimOpChirho { args_chirho, .. } => {
-            1 + args_chirho.iter().map(|a_chirho| expr_size_chirho(a_chirho)).sum::<usize>()
+            1 + args_chirho
+                .iter()
+                .map(|a_chirho| expr_size_chirho(a_chirho))
+                .sum::<usize>()
         }
         CoreExprChirho::ConAppChirho { args_chirho, .. } => {
-            1 + args_chirho.iter().map(|a_chirho| expr_size_chirho(a_chirho)).sum::<usize>()
+            1 + args_chirho
+                .iter()
+                .map(|a_chirho| expr_size_chirho(a_chirho))
+                .sum::<usize>()
         }
     }
 }
@@ -133,9 +157,7 @@ fn build_inline_env_chirho(
             }
             // No annotation — auto-inline only trivial expressions (Var/Lit)
             InlineAnnotationChirho::NoneChirho => {
-                if !binding_chirho.is_rec_chirho
-                    && is_trivial_chirho(&binding_chirho.rhs_chirho)
-                {
+                if !binding_chirho.is_rec_chirho && is_trivial_chirho(&binding_chirho.rhs_chirho) {
                     env_chirho.insert(
                         binding_chirho.binder_chirho.id_chirho,
                         binding_chirho.rhs_chirho.clone(),
@@ -161,11 +183,17 @@ fn inline_expr_chirho(
             }
         }
         CoreExprChirho::LitChirho(_) => expr_chirho.clone(),
-        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => CoreExprChirho::AppChirho {
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => CoreExprChirho::AppChirho {
             fun_chirho: Box::new(inline_expr_chirho(fun_chirho, env_chirho)),
             arg_chirho: Box::new(inline_expr_chirho(arg_chirho, env_chirho)),
         },
-        CoreExprChirho::LamChirho { binder_chirho, body_chirho } => {
+        CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } => {
             // If the lambda binder shadows an inline candidate, remove it from env
             let mut env2_chirho = env_chirho.clone();
             env2_chirho.remove(&binder_chirho.id_chirho);
@@ -174,54 +202,90 @@ fn inline_expr_chirho(
                 body_chirho: Box::new(inline_expr_chirho(body_chirho, &env2_chirho)),
             }
         }
-        CoreExprChirho::LetChirho { rec_chirho, binds_chirho, body_chirho } => {
+        CoreExprChirho::LetChirho {
+            rec_chirho,
+            binds_chirho,
+            body_chirho,
+        } => {
             let mut env2_chirho = env_chirho.clone();
             for (b_chirho, _) in binds_chirho {
                 env2_chirho.remove(&b_chirho.id_chirho);
             }
             CoreExprChirho::LetChirho {
                 rec_chirho: *rec_chirho,
-                binds_chirho: binds_chirho.iter().map(|(b_chirho, rhs_chirho)| {
-                    (b_chirho.clone(), inline_expr_chirho(rhs_chirho, &env2_chirho))
-                }).collect(),
+                binds_chirho: binds_chirho
+                    .iter()
+                    .map(|(b_chirho, rhs_chirho)| {
+                        (
+                            b_chirho.clone(),
+                            inline_expr_chirho(rhs_chirho, &env2_chirho),
+                        )
+                    })
+                    .collect(),
                 body_chirho: Box::new(inline_expr_chirho(body_chirho, &env2_chirho)),
             }
         }
-        CoreExprChirho::CaseChirho { scrutinee_chirho, bind_chirho, result_ty_chirho, alts_chirho } => {
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho,
+            bind_chirho,
+            result_ty_chirho,
+            alts_chirho,
+        } => {
             let mut env2_chirho = env_chirho.clone();
             env2_chirho.remove(&bind_chirho.id_chirho);
             CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(inline_expr_chirho(scrutinee_chirho, env_chirho)),
                 bind_chirho: bind_chirho.clone(),
                 result_ty_chirho: result_ty_chirho.clone(),
-                alts_chirho: alts_chirho.iter().map(|alt_chirho| {
-                    let mut alt_env_chirho = env2_chirho.clone();
-                    for b_chirho in &alt_chirho.binders_chirho {
-                        alt_env_chirho.remove(&b_chirho.id_chirho);
-                    }
-                    CoreAltChirho {
-                        con_chirho: alt_chirho.con_chirho.clone(),
-                        binders_chirho: alt_chirho.binders_chirho.clone(),
-                        rhs_chirho: inline_expr_chirho(&alt_chirho.rhs_chirho, &alt_env_chirho),
-                    }
-                }).collect(),
+                alts_chirho: alts_chirho
+                    .iter()
+                    .map(|alt_chirho| {
+                        let mut alt_env_chirho = env2_chirho.clone();
+                        for b_chirho in &alt_chirho.binders_chirho {
+                            alt_env_chirho.remove(&b_chirho.id_chirho);
+                        }
+                        CoreAltChirho {
+                            con_chirho: alt_chirho.con_chirho.clone(),
+                            binders_chirho: alt_chirho.binders_chirho.clone(),
+                            rhs_chirho: inline_expr_chirho(&alt_chirho.rhs_chirho, &alt_env_chirho),
+                        }
+                    })
+                    .collect(),
             }
         }
-        CoreExprChirho::TyLamChirho { ty_var_chirho, body_chirho } => CoreExprChirho::TyLamChirho {
+        CoreExprChirho::TyLamChirho {
+            ty_var_chirho,
+            body_chirho,
+        } => CoreExprChirho::TyLamChirho {
             ty_var_chirho: ty_var_chirho.clone(),
             body_chirho: Box::new(inline_expr_chirho(body_chirho, env_chirho)),
         },
-        CoreExprChirho::TyAppChirho { expr_chirho: inner_chirho, ty_chirho } => CoreExprChirho::TyAppChirho {
+        CoreExprChirho::TyAppChirho {
+            expr_chirho: inner_chirho,
+            ty_chirho,
+        } => CoreExprChirho::TyAppChirho {
             expr_chirho: Box::new(inline_expr_chirho(inner_chirho, env_chirho)),
             ty_chirho: ty_chirho.clone(),
         },
-        CoreExprChirho::PrimOpChirho { name_chirho, args_chirho } => CoreExprChirho::PrimOpChirho {
+        CoreExprChirho::PrimOpChirho {
+            name_chirho,
+            args_chirho,
+        } => CoreExprChirho::PrimOpChirho {
             name_chirho: name_chirho.clone(),
-            args_chirho: args_chirho.iter().map(|a_chirho| inline_expr_chirho(a_chirho, env_chirho)).collect(),
+            args_chirho: args_chirho
+                .iter()
+                .map(|a_chirho| inline_expr_chirho(a_chirho, env_chirho))
+                .collect(),
         },
-        CoreExprChirho::ConAppChirho { con_name_chirho, args_chirho } => CoreExprChirho::ConAppChirho {
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } => CoreExprChirho::ConAppChirho {
             con_name_chirho: con_name_chirho.clone(),
-            args_chirho: args_chirho.iter().map(|a_chirho| inline_expr_chirho(a_chirho, env_chirho)).collect(),
+            args_chirho: args_chirho
+                .iter()
+                .map(|a_chirho| inline_expr_chirho(a_chirho, env_chirho))
+                .collect(),
         },
     }
 }
@@ -242,20 +306,24 @@ pub fn simplify_module_chirho(
 
     for _ in 0..config_chirho.max_iterations_chirho {
         // Phase 1: Build inline environment and inline variables
-        let inline_env_chirho = build_inline_env_chirho(&bindings_chirho, config_chirho.inline_threshold_chirho);
+        let inline_env_chirho =
+            build_inline_env_chirho(&bindings_chirho, config_chirho.inline_threshold_chirho);
         if !inline_env_chirho.is_empty() {
-            bindings_chirho = bindings_chirho.into_iter().map(|mut b_chirho| {
-                b_chirho.rhs_chirho = inline_expr_chirho(&b_chirho.rhs_chirho, &inline_env_chirho);
-                b_chirho
-            }).collect();
+            bindings_chirho = bindings_chirho
+                .into_iter()
+                .map(|mut b_chirho| {
+                    b_chirho.rhs_chirho =
+                        inline_expr_chirho(&b_chirho.rhs_chirho, &inline_env_chirho);
+                    b_chirho
+                })
+                .collect();
         }
 
         // Phase 2: Standard simplification
         let new_bindings_chirho: Vec<CoreBindingChirho> = bindings_chirho
             .into_iter()
             .map(|mut binding_chirho| {
-                binding_chirho.rhs_chirho =
-                    simplify_expr_chirho(&binding_chirho.rhs_chirho);
+                binding_chirho.rhs_chirho = simplify_expr_chirho(&binding_chirho.rhs_chirho);
                 binding_chirho
             })
             .collect();
@@ -324,8 +392,11 @@ fn simplify_expr_chirho(expr_chirho: &CoreExprChirho) -> CoreExprChirho {
             } = &fun_simplified_chirho
             {
                 // Beta-reduce: substitute the argument for the binder in the body
-                let substituted_chirho =
-                    subst_var_chirho(&body_chirho, binder_chirho.id_chirho, &arg_simplified_chirho);
+                let substituted_chirho = subst_var_chirho(
+                    &body_chirho,
+                    binder_chirho.id_chirho,
+                    &arg_simplified_chirho,
+                );
                 simplify_expr_chirho(&substituted_chirho)
             } else {
                 CoreExprChirho::AppChirho {
@@ -528,8 +599,16 @@ fn subst_var_chirho(
             fun_chirho,
             arg_chirho,
         } => CoreExprChirho::AppChirho {
-            fun_chirho: Box::new(subst_var_chirho(fun_chirho, var_id_chirho, replacement_chirho)),
-            arg_chirho: Box::new(subst_var_chirho(arg_chirho, var_id_chirho, replacement_chirho)),
+            fun_chirho: Box::new(subst_var_chirho(
+                fun_chirho,
+                var_id_chirho,
+                replacement_chirho,
+            )),
+            arg_chirho: Box::new(subst_var_chirho(
+                arg_chirho,
+                var_id_chirho,
+                replacement_chirho,
+            )),
         },
 
         CoreExprChirho::LamChirho {
@@ -806,12 +885,29 @@ fn resolve_name_for_id_chirho(
 /// Map known typeclass selector names to their primop equivalents.
 fn selector_primop_chirho(name_chirho: &str) -> Option<&'static str> {
     match name_chirho {
+        // Num
         "$sel_Num_+" => Some("+#"),
         "$sel_Num_-" => Some("-#"),
         "$sel_Num_*" => Some("*#"),
         "$sel_Num_negate" => Some("negate#"),
+        "$sel_Num_abs" => Some("absInt#"),
+        "$sel_Num_signum" => Some("signumInt#"),
+        // Eq
         "$sel_Eq_==" => Some("==#"),
+        "$sel_Eq_/=" => Some("/=#"),
+        // Ord
         "$sel_Ord_compare" => Some("compare#"),
+        "$sel_Ord_<" => Some("<#"),
+        "$sel_Ord_>" => Some(">#"),
+        "$sel_Ord_<=" => Some("<=#"),
+        "$sel_Ord_>=" => Some(">=#"),
+        "$sel_Ord_min" => Some("minInt#"),
+        "$sel_Ord_max" => Some("maxInt#"),
+        // Integral
+        "$sel_Integral_div" => Some("divInt#"),
+        "$sel_Integral_mod" => Some("modInt#"),
+        "$sel_Integral_quot" => Some("quotInt#"),
+        "$sel_Integral_rem" => Some("remInt#"),
         _ => None,
     }
 }
@@ -847,6 +943,16 @@ pub fn elide_dicts_chirho(
 
     if let CoreExprChirho::VarChirho(sel_id_chirho) = callee_chirho {
         if let Some(name_chirho) = resolve_name_for_id_chirho(sel_id_chirho, all_bindings_chirho) {
+            // $sel_Show_show dict x → showInt# x (for Int show)
+            if name_chirho == "$sel_Show_show" && all_args_chirho.len() >= 2 {
+                let simplified_chirho =
+                    elide_dicts_chirho(all_args_chirho[1], all_bindings_chirho);
+                return CoreExprChirho::PrimOpChirho {
+                    name_chirho: "showInt#".to_string(),
+                    args_chirho: vec![simplified_chirho],
+                };
+            }
+
             // $sel_Num_fromInteger dict lit → lit
             if name_chirho == "$sel_Num_fromInteger" && all_args_chirho.len() >= 2 {
                 let simplified_chirho = elide_dicts_chirho(all_args_chirho[1], all_bindings_chirho);
@@ -873,7 +979,11 @@ pub fn elide_dicts_chirho(
     }
 
     // Strip dict lambda parameters (\$dXxx -> body)
-    if let CoreExprChirho::LamChirho { binder_chirho, body_chirho } = expr_chirho {
+    if let CoreExprChirho::LamChirho {
+        binder_chirho,
+        body_chirho,
+    } = expr_chirho
+    {
         if binder_chirho.name_chirho.starts_with("$d") {
             return elide_dicts_chirho(body_chirho, all_bindings_chirho);
         }
@@ -881,7 +991,10 @@ pub fn elide_dicts_chirho(
 
     // Recurse
     match expr_chirho {
-        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => {
             let sf_chirho = elide_dicts_chirho(fun_chirho, all_bindings_chirho);
             let sa_chirho = elide_dicts_chirho(arg_chirho, all_bindings_chirho);
             // Skip dict arguments ($f-prefixed binding refs)
@@ -897,20 +1010,35 @@ pub fn elide_dicts_chirho(
                 arg_chirho: Box::new(sa_chirho),
             }
         }
-        CoreExprChirho::LamChirho { binder_chirho, body_chirho } => CoreExprChirho::LamChirho {
+        CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } => CoreExprChirho::LamChirho {
             binder_chirho: binder_chirho.clone(),
             body_chirho: Box::new(elide_dicts_chirho(body_chirho, all_bindings_chirho)),
         },
-        CoreExprChirho::LetChirho { rec_chirho, binds_chirho, body_chirho } => CoreExprChirho::LetChirho {
+        CoreExprChirho::LetChirho {
+            rec_chirho,
+            binds_chirho,
+            body_chirho,
+        } => CoreExprChirho::LetChirho {
             rec_chirho: *rec_chirho,
             binds_chirho: binds_chirho
                 .iter()
-                .map(|(b_chirho, r_chirho)| (b_chirho.clone(), elide_dicts_chirho(r_chirho, all_bindings_chirho)))
+                .map(|(b_chirho, r_chirho)| {
+                    (
+                        b_chirho.clone(),
+                        elide_dicts_chirho(r_chirho, all_bindings_chirho),
+                    )
+                })
                 .collect(),
             body_chirho: Box::new(elide_dicts_chirho(body_chirho, all_bindings_chirho)),
         },
         CoreExprChirho::CaseChirho {
-            scrutinee_chirho, bind_chirho, result_ty_chirho, alts_chirho,
+            scrutinee_chirho,
+            bind_chirho,
+            result_ty_chirho,
+            alts_chirho,
         } => CoreExprChirho::CaseChirho {
             scrutinee_chirho: Box::new(elide_dicts_chirho(scrutinee_chirho, all_bindings_chirho)),
             bind_chirho: bind_chirho.clone(),
@@ -924,7 +1052,10 @@ pub fn elide_dicts_chirho(
                 })
                 .collect(),
         },
-        CoreExprChirho::PrimOpChirho { name_chirho, args_chirho } => CoreExprChirho::PrimOpChirho {
+        CoreExprChirho::PrimOpChirho {
+            name_chirho,
+            args_chirho,
+        } => CoreExprChirho::PrimOpChirho {
             name_chirho: name_chirho.clone(),
             args_chirho: args_chirho
                 .iter()
@@ -1033,7 +1164,8 @@ fn cse_top_level_chirho(bindings_chirho: Vec<CoreBindingChirho>) -> Vec<CoreBind
             }
             // Skip if either binding has INLINE/INLINABLE annotation
             if bindings_chirho[j_chirho].inline_chirho == InlineAnnotationChirho::AlwaysChirho
-                || bindings_chirho[j_chirho].inline_chirho == InlineAnnotationChirho::InlinableChirho
+                || bindings_chirho[j_chirho].inline_chirho
+                    == InlineAnnotationChirho::InlinableChirho
             {
                 continue;
             }
@@ -1060,7 +1192,8 @@ fn cse_top_level_chirho(bindings_chirho: Vec<CoreBindingChirho>) -> Vec<CoreBind
                 b_chirho.rhs_chirho = CoreExprChirho::VarChirho(*canonical_chirho);
             } else {
                 // Rewrite references in this binding's RHS
-                b_chirho.rhs_chirho = apply_cse_redirects_chirho(&b_chirho.rhs_chirho, &redirect_chirho);
+                b_chirho.rhs_chirho =
+                    apply_cse_redirects_chirho(&b_chirho.rhs_chirho, &redirect_chirho);
             }
             b_chirho
         })
@@ -1081,33 +1214,47 @@ fn apply_cse_redirects_chirho(
             }
         }
         CoreExprChirho::LitChirho(_) => expr_chirho.clone(),
-        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => CoreExprChirho::AppChirho {
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => CoreExprChirho::AppChirho {
             fun_chirho: Box::new(apply_cse_redirects_chirho(fun_chirho, redirects_chirho)),
             arg_chirho: Box::new(apply_cse_redirects_chirho(arg_chirho, redirects_chirho)),
         },
-        CoreExprChirho::LamChirho { binder_chirho, body_chirho } => CoreExprChirho::LamChirho {
+        CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } => CoreExprChirho::LamChirho {
             binder_chirho: binder_chirho.clone(),
             body_chirho: Box::new(apply_cse_redirects_chirho(body_chirho, redirects_chirho)),
         },
-        CoreExprChirho::LetChirho { rec_chirho, binds_chirho, body_chirho } => {
-            CoreExprChirho::LetChirho {
-                rec_chirho: *rec_chirho,
-                binds_chirho: binds_chirho
-                    .iter()
-                    .map(|(b_chirho, e_chirho)| {
-                        (b_chirho.clone(), apply_cse_redirects_chirho(e_chirho, redirects_chirho))
-                    })
-                    .collect(),
-                body_chirho: Box::new(apply_cse_redirects_chirho(body_chirho, redirects_chirho)),
-            }
-        }
+        CoreExprChirho::LetChirho {
+            rec_chirho,
+            binds_chirho,
+            body_chirho,
+        } => CoreExprChirho::LetChirho {
+            rec_chirho: *rec_chirho,
+            binds_chirho: binds_chirho
+                .iter()
+                .map(|(b_chirho, e_chirho)| {
+                    (
+                        b_chirho.clone(),
+                        apply_cse_redirects_chirho(e_chirho, redirects_chirho),
+                    )
+                })
+                .collect(),
+            body_chirho: Box::new(apply_cse_redirects_chirho(body_chirho, redirects_chirho)),
+        },
         CoreExprChirho::CaseChirho {
             scrutinee_chirho,
             bind_chirho,
             result_ty_chirho,
             alts_chirho,
         } => CoreExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(apply_cse_redirects_chirho(scrutinee_chirho, redirects_chirho)),
+            scrutinee_chirho: Box::new(apply_cse_redirects_chirho(
+                scrutinee_chirho,
+                redirects_chirho,
+            )),
             bind_chirho: bind_chirho.clone(),
             result_ty_chirho: result_ty_chirho.clone(),
             alts_chirho: alts_chirho
@@ -1115,38 +1262,47 @@ fn apply_cse_redirects_chirho(
                 .map(|alt_chirho| CoreAltChirho {
                     con_chirho: alt_chirho.con_chirho.clone(),
                     binders_chirho: alt_chirho.binders_chirho.clone(),
-                    rhs_chirho: apply_cse_redirects_chirho(&alt_chirho.rhs_chirho, redirects_chirho),
+                    rhs_chirho: apply_cse_redirects_chirho(
+                        &alt_chirho.rhs_chirho,
+                        redirects_chirho,
+                    ),
                 })
                 .collect(),
         },
-        CoreExprChirho::TyLamChirho { ty_var_chirho, body_chirho } => {
-            CoreExprChirho::TyLamChirho {
-                ty_var_chirho: ty_var_chirho.clone(),
-                body_chirho: Box::new(apply_cse_redirects_chirho(body_chirho, redirects_chirho)),
-            }
-        }
-        CoreExprChirho::TyAppChirho { expr_chirho: inner_chirho, ty_chirho } => {
-            CoreExprChirho::TyAppChirho {
-                expr_chirho: Box::new(apply_cse_redirects_chirho(inner_chirho, redirects_chirho)),
-                ty_chirho: ty_chirho.clone(),
-            }
-        }
-        CoreExprChirho::PrimOpChirho { name_chirho, args_chirho } => CoreExprChirho::PrimOpChirho {
+        CoreExprChirho::TyLamChirho {
+            ty_var_chirho,
+            body_chirho,
+        } => CoreExprChirho::TyLamChirho {
+            ty_var_chirho: ty_var_chirho.clone(),
+            body_chirho: Box::new(apply_cse_redirects_chirho(body_chirho, redirects_chirho)),
+        },
+        CoreExprChirho::TyAppChirho {
+            expr_chirho: inner_chirho,
+            ty_chirho,
+        } => CoreExprChirho::TyAppChirho {
+            expr_chirho: Box::new(apply_cse_redirects_chirho(inner_chirho, redirects_chirho)),
+            ty_chirho: ty_chirho.clone(),
+        },
+        CoreExprChirho::PrimOpChirho {
+            name_chirho,
+            args_chirho,
+        } => CoreExprChirho::PrimOpChirho {
             name_chirho: name_chirho.clone(),
             args_chirho: args_chirho
                 .iter()
                 .map(|a_chirho| apply_cse_redirects_chirho(a_chirho, redirects_chirho))
                 .collect(),
         },
-        CoreExprChirho::ConAppChirho { con_name_chirho, args_chirho } => {
-            CoreExprChirho::ConAppChirho {
-                con_name_chirho: con_name_chirho.clone(),
-                args_chirho: args_chirho
-                    .iter()
-                    .map(|a_chirho| apply_cse_redirects_chirho(a_chirho, redirects_chirho))
-                    .collect(),
-            }
-        }
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } => CoreExprChirho::ConAppChirho {
+            con_name_chirho: con_name_chirho.clone(),
+            args_chirho: args_chirho
+                .iter()
+                .map(|a_chirho| apply_cse_redirects_chirho(a_chirho, redirects_chirho))
+                .collect(),
+        },
     }
 }
 
@@ -1180,7 +1336,8 @@ fn cse_expr_chirho(expr_chirho: &CoreExprChirho) -> CoreExprChirho {
                     if is_trivial_chirho(&simplified_binds_chirho[i_chirho].1) {
                         continue;
                     }
-                    if redirect_chirho.contains_key(&simplified_binds_chirho[i_chirho].0.id_chirho) {
+                    if redirect_chirho.contains_key(&simplified_binds_chirho[i_chirho].0.id_chirho)
+                    {
                         continue;
                     }
                     for j_chirho in (i_chirho + 1)..simplified_binds_chirho.len() {
@@ -1204,8 +1361,7 @@ fn cse_expr_chirho(expr_chirho: &CoreExprChirho) -> CoreExprChirho {
                     let new_binds_chirho: Vec<_> = simplified_binds_chirho
                         .into_iter()
                         .map(|(b_chirho, e_chirho)| {
-                            if let Some(canonical_chirho) =
-                                redirect_chirho.get(&b_chirho.id_chirho)
+                            if let Some(canonical_chirho) = redirect_chirho.get(&b_chirho.id_chirho)
                             {
                                 (b_chirho, CoreExprChirho::VarChirho(*canonical_chirho))
                             } else {
@@ -1234,11 +1390,17 @@ fn cse_expr_chirho(expr_chirho: &CoreExprChirho) -> CoreExprChirho {
         }
 
         // Recurse into all subexpressions
-        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => CoreExprChirho::AppChirho {
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => CoreExprChirho::AppChirho {
             fun_chirho: Box::new(cse_expr_chirho(fun_chirho)),
             arg_chirho: Box::new(cse_expr_chirho(arg_chirho)),
         },
-        CoreExprChirho::LamChirho { binder_chirho, body_chirho } => CoreExprChirho::LamChirho {
+        CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } => CoreExprChirho::LamChirho {
             binder_chirho: binder_chirho.clone(),
             body_chirho: Box::new(cse_expr_chirho(body_chirho)),
         },
@@ -1260,28 +1422,40 @@ fn cse_expr_chirho(expr_chirho: &CoreExprChirho) -> CoreExprChirho {
                 })
                 .collect(),
         },
-        CoreExprChirho::TyLamChirho { ty_var_chirho, body_chirho } => {
-            CoreExprChirho::TyLamChirho {
-                ty_var_chirho: ty_var_chirho.clone(),
-                body_chirho: Box::new(cse_expr_chirho(body_chirho)),
-            }
-        }
-        CoreExprChirho::TyAppChirho { expr_chirho: inner_chirho, ty_chirho } => {
-            CoreExprChirho::TyAppChirho {
-                expr_chirho: Box::new(cse_expr_chirho(inner_chirho)),
-                ty_chirho: ty_chirho.clone(),
-            }
-        }
-        CoreExprChirho::PrimOpChirho { name_chirho, args_chirho } => CoreExprChirho::PrimOpChirho {
-            name_chirho: name_chirho.clone(),
-            args_chirho: args_chirho.iter().map(|a_chirho| cse_expr_chirho(a_chirho)).collect(),
+        CoreExprChirho::TyLamChirho {
+            ty_var_chirho,
+            body_chirho,
+        } => CoreExprChirho::TyLamChirho {
+            ty_var_chirho: ty_var_chirho.clone(),
+            body_chirho: Box::new(cse_expr_chirho(body_chirho)),
         },
-        CoreExprChirho::ConAppChirho { con_name_chirho, args_chirho } => {
-            CoreExprChirho::ConAppChirho {
-                con_name_chirho: con_name_chirho.clone(),
-                args_chirho: args_chirho.iter().map(|a_chirho| cse_expr_chirho(a_chirho)).collect(),
-            }
-        }
+        CoreExprChirho::TyAppChirho {
+            expr_chirho: inner_chirho,
+            ty_chirho,
+        } => CoreExprChirho::TyAppChirho {
+            expr_chirho: Box::new(cse_expr_chirho(inner_chirho)),
+            ty_chirho: ty_chirho.clone(),
+        },
+        CoreExprChirho::PrimOpChirho {
+            name_chirho,
+            args_chirho,
+        } => CoreExprChirho::PrimOpChirho {
+            name_chirho: name_chirho.clone(),
+            args_chirho: args_chirho
+                .iter()
+                .map(|a_chirho| cse_expr_chirho(a_chirho))
+                .collect(),
+        },
+        CoreExprChirho::ConAppChirho {
+            con_name_chirho,
+            args_chirho,
+        } => CoreExprChirho::ConAppChirho {
+            con_name_chirho: con_name_chirho.clone(),
+            args_chirho: args_chirho
+                .iter()
+                .map(|a_chirho| cse_expr_chirho(a_chirho))
+                .collect(),
+        },
         // Leaves — no transformation needed
         CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => expr_chirho.clone(),
     }
@@ -1311,34 +1485,44 @@ fn specialize_bindings_chirho(
     // for future type-aware specialization that needs to look up binder names)
     let _id_to_name_chirho: HashMap<CoreIdChirho, &str> = bindings_chirho
         .iter()
-        .map(|b_chirho| (b_chirho.binder_chirho.id_chirho, b_chirho.binder_chirho.name_chirho.as_str()))
-        .chain(names_chirho.iter().map(|(id_chirho, name_chirho)| (*id_chirho, name_chirho.as_str())))
+        .map(|b_chirho| {
+            (
+                b_chirho.binder_chirho.id_chirho,
+                b_chirho.binder_chirho.name_chirho.as_str(),
+            )
+        })
+        .chain(
+            names_chirho
+                .iter()
+                .map(|(id_chirho, name_chirho)| (*id_chirho, name_chirho.as_str())),
+        )
         .collect();
 
     let mut new_bindings_chirho = Vec::new();
 
     for (func_name_chirho, spec_types_chirho) in specialize_pragmas_chirho {
         // Find the original binding
-        let idx_chirho = if let Some(&idx_chirho) = name_to_idx_chirho.get(func_name_chirho.as_str()) {
-            idx_chirho
-        } else {
-            continue; // Binding not found, skip
-        };
+        let idx_chirho =
+            if let Some(&idx_chirho) = name_to_idx_chirho.get(func_name_chirho.as_str()) {
+                idx_chirho
+            } else {
+                continue; // Binding not found, skip
+            };
 
         let original_chirho = &bindings_chirho[idx_chirho];
 
         for (spec_idx_chirho, spec_type_chirho) in spec_types_chirho.iter().enumerate() {
             // Create a unique name for the specialized binding
-            let spec_name_chirho = format!(
-                "$spec_{}_{}",
-                func_name_chirho,
-                spec_idx_chirho
-            );
+            let spec_name_chirho = format!("$spec_{}_{}", func_name_chirho, spec_idx_chirho);
 
             // Generate a new CoreId for the specialized binding
             // Use a high offset to avoid collisions
             let spec_id_chirho = CoreIdChirho(
-                original_chirho.binder_chirho.id_chirho.0.wrapping_add(10000 + spec_idx_chirho as u32)
+                original_chirho
+                    .binder_chirho
+                    .id_chirho
+                    .0
+                    .wrapping_add(10000 + spec_idx_chirho as u32),
             );
 
             // Clone the original binding with a new name and INLINE annotation
@@ -1355,7 +1539,11 @@ fn specialize_bindings_chirho(
                 inline_chirho: InlineAnnotationChirho::AlwaysChirho,
             };
 
-            new_bindings_chirho.push((spec_name_chirho, spec_type_chirho.clone(), spec_binding_chirho));
+            new_bindings_chirho.push((
+                spec_name_chirho,
+                spec_type_chirho.clone(),
+                spec_binding_chirho,
+            ));
         }
     }
 
@@ -1491,9 +1679,7 @@ fn is_used_strictly_chirho(var_id_chirho: &CoreIdChirho, expr_chirho: &CoreExprC
 ///
 /// In practice, the wrapper inserts `case` forcing for strict args before
 /// calling the worker, and the worker skips the redundant `case` on those args.
-pub fn worker_wrapper_chirho(
-    bindings_chirho: Vec<CoreBindingChirho>,
-) -> Vec<CoreBindingChirho> {
+pub fn worker_wrapper_chirho(bindings_chirho: Vec<CoreBindingChirho>) -> Vec<CoreBindingChirho> {
     let mut result_chirho = Vec::new();
     let mut next_id_chirho = bindings_chirho
         .iter()
@@ -1507,7 +1693,10 @@ pub fn worker_wrapper_chirho(
         if binding_chirho.is_rec_chirho
             || binding_chirho.inline_chirho == InlineAnnotationChirho::NeverChirho
             || binding_chirho.binder_chirho.name_chirho.starts_with("$w")
-            || binding_chirho.binder_chirho.name_chirho.starts_with("$spec_")
+            || binding_chirho
+                .binder_chirho
+                .name_chirho
+                .starts_with("$spec_")
         {
             result_chirho.push(binding_chirho.clone());
             continue;
@@ -1546,16 +1735,13 @@ pub fn worker_wrapper_chirho(
         };
 
         // Create wrapper: re-bind with case forcing for strict args, then call worker
-        let mut wrapper_body_chirho =
-            build_worker_call_chirho(worker_id_chirho, &demands_chirho);
+        let mut wrapper_body_chirho = build_worker_call_chirho(worker_id_chirho, &demands_chirho);
         // Wrap in case-forcing for strict args (innermost first)
         for (binder_chirho, demand_chirho) in demands_chirho.iter().rev() {
             if *demand_chirho == DemandChirho::StrictChirho {
                 // case x of { _ -> <inner> }
                 wrapper_body_chirho = CoreExprChirho::CaseChirho {
-                    scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
-                        binder_chirho.id_chirho,
-                    )),
+                    scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(binder_chirho.id_chirho)),
                     bind_chirho: BinderChirho {
                         id_chirho: CoreIdChirho(next_id_chirho),
                         name_chirho: "_ww".to_string(),
@@ -1626,7 +1812,10 @@ pub enum UsageChirho {
 }
 
 /// Count how many times a variable is used in an expression.
-pub fn count_usage_chirho(var_id_chirho: &CoreIdChirho, expr_chirho: &CoreExprChirho) -> UsageChirho {
+pub fn count_usage_chirho(
+    var_id_chirho: &CoreIdChirho,
+    expr_chirho: &CoreExprChirho,
+) -> UsageChirho {
     let count_chirho = count_var_occurrences_chirho(var_id_chirho, expr_chirho);
     match count_chirho {
         0 => UsageChirho::AbsentChirho,
@@ -1636,17 +1825,30 @@ pub fn count_usage_chirho(var_id_chirho: &CoreIdChirho, expr_chirho: &CoreExprCh
 }
 
 /// Count raw occurrences of a variable in a Core expression.
-fn count_var_occurrences_chirho(var_id_chirho: &CoreIdChirho, expr_chirho: &CoreExprChirho) -> usize {
+fn count_var_occurrences_chirho(
+    var_id_chirho: &CoreIdChirho,
+    expr_chirho: &CoreExprChirho,
+) -> usize {
     match expr_chirho {
         CoreExprChirho::VarChirho(id_chirho) => {
-            if id_chirho == var_id_chirho { 1 } else { 0 }
+            if id_chirho == var_id_chirho {
+                1
+            } else {
+                0
+            }
         }
         CoreExprChirho::LitChirho(_) => 0,
-        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => {
             count_var_occurrences_chirho(var_id_chirho, fun_chirho)
                 + count_var_occurrences_chirho(var_id_chirho, arg_chirho)
         }
-        CoreExprChirho::LamChirho { binder_chirho, body_chirho } => {
+        CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } => {
             // If the lambda shadows our variable, stop counting
             if binder_chirho.id_chirho == *var_id_chirho {
                 0
@@ -1654,9 +1856,15 @@ fn count_var_occurrences_chirho(var_id_chirho: &CoreIdChirho, expr_chirho: &Core
                 count_var_occurrences_chirho(var_id_chirho, body_chirho)
             }
         }
-        CoreExprChirho::LetChirho { binds_chirho, body_chirho, rec_chirho } => {
+        CoreExprChirho::LetChirho {
+            binds_chirho,
+            body_chirho,
+            rec_chirho,
+        } => {
             let mut total_chirho = 0;
-            let shadowed_in_body_chirho = binds_chirho.iter().any(|(b_chirho, _)| b_chirho.id_chirho == *var_id_chirho);
+            let shadowed_in_body_chirho = binds_chirho
+                .iter()
+                .any(|(b_chirho, _)| b_chirho.id_chirho == *var_id_chirho);
             // In non-rec let, binders scope over body only (not RHS).
             // In rec let, binders scope over both body and all RHSes.
             if !shadowed_in_body_chirho {
@@ -1671,30 +1879,41 @@ fn count_var_occurrences_chirho(var_id_chirho: &CoreIdChirho, expr_chirho: &Core
             }
             total_chirho
         }
-        CoreExprChirho::CaseChirho { scrutinee_chirho, bind_chirho, alts_chirho, .. } => {
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho,
+            bind_chirho,
+            alts_chirho,
+            ..
+        } => {
             let mut total_chirho = count_var_occurrences_chirho(var_id_chirho, scrutinee_chirho);
             if bind_chirho.id_chirho != *var_id_chirho {
                 for alt_chirho in alts_chirho {
-                    let shadowed_chirho = alt_chirho.binders_chirho.iter().any(|b_chirho| b_chirho.id_chirho == *var_id_chirho);
+                    let shadowed_chirho = alt_chirho
+                        .binders_chirho
+                        .iter()
+                        .any(|b_chirho| b_chirho.id_chirho == *var_id_chirho);
                     if !shadowed_chirho {
-                        total_chirho += count_var_occurrences_chirho(var_id_chirho, &alt_chirho.rhs_chirho);
+                        total_chirho +=
+                            count_var_occurrences_chirho(var_id_chirho, &alt_chirho.rhs_chirho);
                     }
                 }
             }
             total_chirho
         }
-        CoreExprChirho::PrimOpChirho { args_chirho, .. } => {
-            args_chirho.iter().map(|a_chirho| count_var_occurrences_chirho(var_id_chirho, a_chirho)).sum()
-        }
+        CoreExprChirho::PrimOpChirho { args_chirho, .. } => args_chirho
+            .iter()
+            .map(|a_chirho| count_var_occurrences_chirho(var_id_chirho, a_chirho))
+            .sum(),
         CoreExprChirho::TyLamChirho { body_chirho, .. } => {
             count_var_occurrences_chirho(var_id_chirho, body_chirho)
         }
         CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
             count_var_occurrences_chirho(var_id_chirho, expr_chirho)
         }
-        CoreExprChirho::ConAppChirho { args_chirho, .. } => {
-            args_chirho.iter().map(|a_chirho| count_var_occurrences_chirho(var_id_chirho, a_chirho)).sum()
-        }
+        CoreExprChirho::ConAppChirho { args_chirho, .. } => args_chirho
+            .iter()
+            .map(|a_chirho| count_var_occurrences_chirho(var_id_chirho, a_chirho))
+            .sum(),
     }
 }
 
@@ -1710,7 +1929,11 @@ fn collect_lambda_usage_chirho(
     expr_chirho: &CoreExprChirho,
     result_chirho: &mut Vec<(BinderChirho, UsageChirho)>,
 ) {
-    if let CoreExprChirho::LamChirho { binder_chirho, body_chirho } = expr_chirho {
+    if let CoreExprChirho::LamChirho {
+        binder_chirho,
+        body_chirho,
+    } = expr_chirho
+    {
         let usage_chirho = count_usage_in_full_body_chirho(&binder_chirho.id_chirho, body_chirho);
         result_chirho.push((binder_chirho.clone(), usage_chirho));
         collect_lambda_usage_chirho(body_chirho, result_chirho);
@@ -1718,10 +1941,17 @@ fn collect_lambda_usage_chirho(
 }
 
 /// Count usage looking through nested lambdas (for multi-arg function analysis).
-fn count_usage_in_full_body_chirho(var_id_chirho: &CoreIdChirho, expr_chirho: &CoreExprChirho) -> UsageChirho {
+fn count_usage_in_full_body_chirho(
+    var_id_chirho: &CoreIdChirho,
+    expr_chirho: &CoreExprChirho,
+) -> UsageChirho {
     // Peel off remaining lambdas and count in the innermost body
     let mut body_chirho = expr_chirho;
-    while let CoreExprChirho::LamChirho { binder_chirho, body_chirho: inner_chirho } = body_chirho {
+    while let CoreExprChirho::LamChirho {
+        binder_chirho,
+        body_chirho: inner_chirho,
+    } = body_chirho
+    {
         if binder_chirho.id_chirho == *var_id_chirho {
             return UsageChirho::AbsentChirho; // shadowed
         }
@@ -1749,8 +1979,14 @@ pub fn dead_arg_elimination_chirho(
             if binding_chirho.is_rec_chirho
                 || binding_chirho.inline_chirho == InlineAnnotationChirho::NeverChirho
                 || binding_chirho.binder_chirho.name_chirho.starts_with("$w")
-                || binding_chirho.binder_chirho.name_chirho.starts_with("$spec_")
-                || binding_chirho.binder_chirho.name_chirho.starts_with("$dae_")
+                || binding_chirho
+                    .binder_chirho
+                    .name_chirho
+                    .starts_with("$spec_")
+                || binding_chirho
+                    .binder_chirho
+                    .name_chirho
+                    .starts_with("$dae_")
             {
                 return binding_chirho;
             }
@@ -1767,7 +2003,8 @@ pub fn dead_arg_elimination_chirho(
             }
 
             // Rebuild the lambda chain, dropping absent parameters
-            let inner_body_chirho = peel_lambdas_chirho(&binding_chirho.rhs_chirho, usage_chirho.len());
+            let inner_body_chirho =
+                peel_lambdas_chirho(&binding_chirho.rhs_chirho, usage_chirho.len());
             let mut new_body_chirho = inner_body_chirho.clone();
 
             // Wrap back in lambdas for non-absent params (in reverse order)
@@ -1838,9 +2075,7 @@ struct CallPatternChirho {
 /// For each recursive binding, analyze its case alternatives to find
 /// arguments that are always passed as known-constructor values at
 /// recursive call sites. Create specialized copies for those patterns.
-pub fn spec_constr_chirho(
-    bindings_chirho: Vec<CoreBindingChirho>,
-) -> Vec<CoreBindingChirho> {
+pub fn spec_constr_chirho(bindings_chirho: Vec<CoreBindingChirho>) -> Vec<CoreBindingChirho> {
     let mut result_chirho = Vec::new();
     let mut next_id_chirho = bindings_chirho
         .iter()
@@ -1862,7 +2097,11 @@ pub fn spec_constr_chirho(
         // Collect lambda parameters
         let mut params_chirho = Vec::new();
         let mut body_chirho = &binding_chirho.rhs_chirho;
-        while let CoreExprChirho::LamChirho { binder_chirho, body_chirho: inner_chirho } = body_chirho {
+        while let CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho: inner_chirho,
+        } = body_chirho
+        {
             params_chirho.push(binder_chirho.clone());
             body_chirho = inner_chirho;
         }
@@ -1891,7 +2130,8 @@ pub fn spec_constr_chirho(
 
         for pattern_chirho in &patterns_chirho {
             let spec_name_chirho = format!(
-                "$sc_{}_{}", binding_chirho.binder_chirho.name_chirho, pattern_chirho.con_name_chirho
+                "$sc_{}_{}",
+                binding_chirho.binder_chirho.name_chirho, pattern_chirho.con_name_chirho
             );
             let spec_id_chirho = CoreIdChirho(next_id_chirho);
             next_id_chirho += 1;
@@ -1955,7 +2195,12 @@ fn find_call_patterns_chirho(
     body_chirho: &CoreExprChirho,
 ) -> Vec<CallPatternChirho> {
     let mut patterns_chirho = Vec::new();
-    find_patterns_in_expr_chirho(func_id_chirho, params_chirho, body_chirho, &mut patterns_chirho);
+    find_patterns_in_expr_chirho(
+        func_id_chirho,
+        params_chirho,
+        body_chirho,
+        &mut patterns_chirho,
+    );
     // Deduplicate by arg index
     patterns_chirho.sort_by_key(|p_chirho| p_chirho.arg_idx_chirho);
     patterns_chirho.dedup_by_key(|p_chirho| p_chirho.arg_idx_chirho);
@@ -1968,10 +2213,18 @@ fn find_patterns_in_expr_chirho(
     expr_chirho: &CoreExprChirho,
     patterns_chirho: &mut Vec<CallPatternChirho>,
 ) {
-    if let CoreExprChirho::CaseChirho { scrutinee_chirho, alts_chirho, .. } = expr_chirho {
+    if let CoreExprChirho::CaseChirho {
+        scrutinee_chirho,
+        alts_chirho,
+        ..
+    } = expr_chirho
+    {
         // Check if scrutinee is one of our parameters
         if let CoreExprChirho::VarChirho(scrut_id_chirho) = scrutinee_chirho.as_ref() {
-            if let Some(param_idx_chirho) = params_chirho.iter().position(|p_chirho| p_chirho.id_chirho == *scrut_id_chirho) {
+            if let Some(param_idx_chirho) = params_chirho
+                .iter()
+                .position(|p_chirho| p_chirho.id_chirho == *scrut_id_chirho)
+            {
                 // Check each constructor alternative
                 for alt_chirho in alts_chirho {
                     if let AltConChirho::DataConChirho(con_name_chirho) = &alt_chirho.con_chirho {
@@ -1995,23 +2248,60 @@ fn find_patterns_in_expr_chirho(
         }
         // Also recurse into alt bodies
         for alt_chirho in alts_chirho {
-            find_patterns_in_expr_chirho(func_id_chirho, params_chirho, &alt_chirho.rhs_chirho, patterns_chirho);
+            find_patterns_in_expr_chirho(
+                func_id_chirho,
+                params_chirho,
+                &alt_chirho.rhs_chirho,
+                patterns_chirho,
+            );
         }
     }
     // Recurse into other expression forms
     match expr_chirho {
-        CoreExprChirho::LetChirho { binds_chirho, body_chirho, .. } => {
+        CoreExprChirho::LetChirho {
+            binds_chirho,
+            body_chirho,
+            ..
+        } => {
             for (_b_chirho, rhs_chirho) in binds_chirho {
-                find_patterns_in_expr_chirho(func_id_chirho, params_chirho, rhs_chirho, patterns_chirho);
+                find_patterns_in_expr_chirho(
+                    func_id_chirho,
+                    params_chirho,
+                    rhs_chirho,
+                    patterns_chirho,
+                );
             }
-            find_patterns_in_expr_chirho(func_id_chirho, params_chirho, body_chirho, patterns_chirho);
+            find_patterns_in_expr_chirho(
+                func_id_chirho,
+                params_chirho,
+                body_chirho,
+                patterns_chirho,
+            );
         }
-        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
-            find_patterns_in_expr_chirho(func_id_chirho, params_chirho, fun_chirho, patterns_chirho);
-            find_patterns_in_expr_chirho(func_id_chirho, params_chirho, arg_chirho, patterns_chirho);
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => {
+            find_patterns_in_expr_chirho(
+                func_id_chirho,
+                params_chirho,
+                fun_chirho,
+                patterns_chirho,
+            );
+            find_patterns_in_expr_chirho(
+                func_id_chirho,
+                params_chirho,
+                arg_chirho,
+                patterns_chirho,
+            );
         }
         CoreExprChirho::LamChirho { body_chirho, .. } => {
-            find_patterns_in_expr_chirho(func_id_chirho, params_chirho, body_chirho, patterns_chirho);
+            find_patterns_in_expr_chirho(
+                func_id_chirho,
+                params_chirho,
+                body_chirho,
+                patterns_chirho,
+            );
         }
         _ => {}
     }
@@ -2034,7 +2324,10 @@ fn has_recursive_call_with_alt_binder_chirho(
             if id_chirho == func_id_chirho && args_chirho.len() > param_idx_chirho {
                 // Check if the arg at param_idx is one of the alt binders
                 if let CoreExprChirho::VarChirho(arg_id_chirho) = &args_chirho[param_idx_chirho] {
-                    if alt_binders_chirho.iter().any(|b_chirho| b_chirho.id_chirho == *arg_id_chirho) {
+                    if alt_binders_chirho
+                        .iter()
+                        .any(|b_chirho| b_chirho.id_chirho == *arg_id_chirho)
+                    {
                         return true;
                     }
                 }
@@ -2044,39 +2337,88 @@ fn has_recursive_call_with_alt_binder_chirho(
 
     // Recurse into subexpressions
     match expr_chirho {
-        CoreExprChirho::LetChirho { binds_chirho, body_chirho, .. } => {
+        CoreExprChirho::LetChirho {
+            binds_chirho,
+            body_chirho,
+            ..
+        } => {
             for (_b_chirho, rhs_chirho) in binds_chirho {
-                if has_recursive_call_with_alt_binder_chirho(func_id_chirho, param_idx_chirho, alt_binders_chirho, rhs_chirho) {
+                if has_recursive_call_with_alt_binder_chirho(
+                    func_id_chirho,
+                    param_idx_chirho,
+                    alt_binders_chirho,
+                    rhs_chirho,
+                ) {
                     return true;
                 }
             }
-            has_recursive_call_with_alt_binder_chirho(func_id_chirho, param_idx_chirho, alt_binders_chirho, body_chirho)
+            has_recursive_call_with_alt_binder_chirho(
+                func_id_chirho,
+                param_idx_chirho,
+                alt_binders_chirho,
+                body_chirho,
+            )
         }
-        CoreExprChirho::CaseChirho { scrutinee_chirho, alts_chirho, .. } => {
-            if has_recursive_call_with_alt_binder_chirho(func_id_chirho, param_idx_chirho, alt_binders_chirho, scrutinee_chirho) {
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho,
+            alts_chirho,
+            ..
+        } => {
+            if has_recursive_call_with_alt_binder_chirho(
+                func_id_chirho,
+                param_idx_chirho,
+                alt_binders_chirho,
+                scrutinee_chirho,
+            ) {
                 return true;
             }
             alts_chirho.iter().any(|alt_chirho| {
-                has_recursive_call_with_alt_binder_chirho(func_id_chirho, param_idx_chirho, alt_binders_chirho, &alt_chirho.rhs_chirho)
+                has_recursive_call_with_alt_binder_chirho(
+                    func_id_chirho,
+                    param_idx_chirho,
+                    alt_binders_chirho,
+                    &alt_chirho.rhs_chirho,
+                )
             })
         }
-        CoreExprChirho::LamChirho { body_chirho, .. } => {
-            has_recursive_call_with_alt_binder_chirho(func_id_chirho, param_idx_chirho, alt_binders_chirho, body_chirho)
+        CoreExprChirho::LamChirho { body_chirho, .. } => has_recursive_call_with_alt_binder_chirho(
+            func_id_chirho,
+            param_idx_chirho,
+            alt_binders_chirho,
+            body_chirho,
+        ),
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => {
+            has_recursive_call_with_alt_binder_chirho(
+                func_id_chirho,
+                param_idx_chirho,
+                alt_binders_chirho,
+                fun_chirho,
+            ) || has_recursive_call_with_alt_binder_chirho(
+                func_id_chirho,
+                param_idx_chirho,
+                alt_binders_chirho,
+                arg_chirho,
+            )
         }
-        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
-            has_recursive_call_with_alt_binder_chirho(func_id_chirho, param_idx_chirho, alt_binders_chirho, fun_chirho)
-                || has_recursive_call_with_alt_binder_chirho(func_id_chirho, param_idx_chirho, alt_binders_chirho, arg_chirho)
-        }
-        CoreExprChirho::PrimOpChirho { args_chirho, .. } => {
-            args_chirho.iter().any(|a_chirho| {
-                has_recursive_call_with_alt_binder_chirho(func_id_chirho, param_idx_chirho, alt_binders_chirho, a_chirho)
-            })
-        }
-        CoreExprChirho::ConAppChirho { args_chirho, .. } => {
-            args_chirho.iter().any(|a_chirho| {
-                has_recursive_call_with_alt_binder_chirho(func_id_chirho, param_idx_chirho, alt_binders_chirho, a_chirho)
-            })
-        }
+        CoreExprChirho::PrimOpChirho { args_chirho, .. } => args_chirho.iter().any(|a_chirho| {
+            has_recursive_call_with_alt_binder_chirho(
+                func_id_chirho,
+                param_idx_chirho,
+                alt_binders_chirho,
+                a_chirho,
+            )
+        }),
+        CoreExprChirho::ConAppChirho { args_chirho, .. } => args_chirho.iter().any(|a_chirho| {
+            has_recursive_call_with_alt_binder_chirho(
+                func_id_chirho,
+                param_idx_chirho,
+                alt_binders_chirho,
+                a_chirho,
+            )
+        }),
         _ => false,
     }
 }
@@ -2089,7 +2431,11 @@ fn collect_apps_chirho<'a>(
     // Try to flatten this expression as an application chain
     let mut head_chirho = expr_chirho;
     let mut args_chirho = Vec::new();
-    while let CoreExprChirho::AppChirho { fun_chirho, arg_chirho } = head_chirho {
+    while let CoreExprChirho::AppChirho {
+        fun_chirho,
+        arg_chirho,
+    } = head_chirho
+    {
         args_chirho.push(arg_chirho.as_ref());
         head_chirho = fun_chirho;
     }
@@ -2285,7 +2631,7 @@ mod tests_chirho {
                     arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42))),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
@@ -2395,7 +2741,10 @@ mod tests_chirho {
 
     #[test]
     fn expr_size_lit_chirho() {
-        assert_eq!(expr_size_chirho(&CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42))), 1);
+        assert_eq!(
+            expr_size_chirho(&CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42))),
+            1
+        );
     }
 
     #[test]
@@ -2867,8 +3216,14 @@ mod tests_chirho {
         let result_chirho = cse_expr_chirho(&expr_chirho);
         if let CoreExprChirho::LetChirho { binds_chirho, .. } = &result_chirho {
             // Both should keep their original RHS
-            assert!(matches!(binds_chirho[0].1, CoreExprChirho::PrimOpChirho { .. }));
-            assert!(matches!(binds_chirho[1].1, CoreExprChirho::PrimOpChirho { .. }));
+            assert!(matches!(
+                binds_chirho[0].1,
+                CoreExprChirho::PrimOpChirho { .. }
+            ));
+            assert!(matches!(
+                binds_chirho[1].1,
+                CoreExprChirho::PrimOpChirho { .. }
+            ));
         } else {
             panic!("expected LetChirho");
         }
@@ -2907,7 +3262,10 @@ mod tests_chirho {
         } = &result_chirho
         {
             // y's RHS redirected to x
-            assert_eq!(binds_chirho[1].1, CoreExprChirho::VarChirho(CoreIdChirho(300)));
+            assert_eq!(
+                binds_chirho[1].1,
+                CoreExprChirho::VarChirho(CoreIdChirho(300))
+            );
             // body's reference to y redirected to x
             assert_eq!(**body_chirho, CoreExprChirho::VarChirho(CoreIdChirho(300)));
         } else {
@@ -2944,18 +3302,24 @@ mod tests_chirho {
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
         // Should have 2 bindings: original f + $spec_f_0
         assert_eq!(result_chirho.bindings_chirho.len(), 2);
-        assert_eq!(result_chirho.bindings_chirho[1].binder_chirho.name_chirho, "$spec_f_0");
-        assert_eq!(result_chirho.bindings_chirho[1].inline_chirho, InlineAnnotationChirho::AlwaysChirho);
+        assert_eq!(
+            result_chirho.bindings_chirho[1].binder_chirho.name_chirho,
+            "$spec_f_0"
+        );
+        assert_eq!(
+            result_chirho.bindings_chirho[1].inline_chirho,
+            InlineAnnotationChirho::AlwaysChirho
+        );
     }
 
     #[test]
     fn specialize_multiple_types_chirho() {
         // f = \x -> x, with two specializations
         let mut spec_map_chirho = std::collections::HashMap::new();
-        spec_map_chirho.insert("f".to_string(), vec![
-            "Int -> Int".to_string(),
-            "Double -> Double".to_string(),
-        ]);
+        spec_map_chirho.insert(
+            "f".to_string(),
+            vec!["Int -> Int".to_string(), "Double -> Double".to_string()],
+        );
 
         let module_chirho = CoreModuleChirho {
             name_chirho: "Test".to_string(),
@@ -2976,8 +3340,14 @@ mod tests_chirho {
         let result_chirho = super::simplify_module_chirho(&module_chirho, &config_chirho);
         // Should have 3 bindings: original f + $spec_f_0 + $spec_f_1
         assert_eq!(result_chirho.bindings_chirho.len(), 3);
-        assert_eq!(result_chirho.bindings_chirho[1].binder_chirho.name_chirho, "$spec_f_0");
-        assert_eq!(result_chirho.bindings_chirho[2].binder_chirho.name_chirho, "$spec_f_1");
+        assert_eq!(
+            result_chirho.bindings_chirho[1].binder_chirho.name_chirho,
+            "$spec_f_0"
+        );
+        assert_eq!(
+            result_chirho.bindings_chirho[2].binder_chirho.name_chirho,
+            "$spec_f_1"
+        );
     }
 
     #[test]
@@ -3131,8 +3501,16 @@ mod tests_chirho {
         };
         let demands_chirho = analyze_demand_chirho(&expr_chirho);
         assert_eq!(demands_chirho.len(), 2);
-        assert_eq!(demands_chirho[0].1, DemandChirho::StrictChirho, "x should be strict");
-        assert_eq!(demands_chirho[1].1, DemandChirho::LazyChirho, "y should be lazy");
+        assert_eq!(
+            demands_chirho[0].1,
+            DemandChirho::StrictChirho,
+            "x should be strict"
+        );
+        assert_eq!(
+            demands_chirho[1].1,
+            DemandChirho::LazyChirho,
+            "y should be lazy"
+        );
     }
 
     #[test]
@@ -3166,8 +3544,14 @@ mod tests_chirho {
 
         let result_chirho = worker_wrapper_chirho(vec![binding_chirho]);
         assert_eq!(result_chirho.len(), 2, "should have wrapper + worker");
-        assert_eq!(result_chirho[0].binder_chirho.name_chirho, "f", "first should be wrapper");
-        assert_eq!(result_chirho[1].binder_chirho.name_chirho, "$wf", "second should be worker");
+        assert_eq!(
+            result_chirho[0].binder_chirho.name_chirho, "f",
+            "first should be wrapper"
+        );
+        assert_eq!(
+            result_chirho[1].binder_chirho.name_chirho, "$wf",
+            "second should be worker"
+        );
         assert_eq!(
             result_chirho[1].inline_chirho,
             InlineAnnotationChirho::AlwaysChirho,
@@ -3194,7 +3578,11 @@ mod tests_chirho {
         };
 
         let result_chirho = worker_wrapper_chirho(vec![binding_chirho]);
-        assert_eq!(result_chirho.len(), 1, "lazy-only function should not be split");
+        assert_eq!(
+            result_chirho.len(),
+            1,
+            "lazy-only function should not be split"
+        );
     }
 
     #[test]
@@ -3227,7 +3615,11 @@ mod tests_chirho {
         };
 
         let result_chirho = worker_wrapper_chirho(vec![binding_chirho]);
-        assert_eq!(result_chirho.len(), 1, "NOINLINE function should not be split");
+        assert_eq!(
+            result_chirho.len(),
+            1,
+            "NOINLINE function should not be split"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -3297,9 +3689,17 @@ mod tests_chirho {
         };
         let usage_chirho = analyze_usage_chirho(&expr_chirho);
         assert_eq!(usage_chirho.len(), 3);
-        assert_eq!(usage_chirho[0].1, UsageChirho::UsedOnceChirho, "x used once");
+        assert_eq!(
+            usage_chirho[0].1,
+            UsageChirho::UsedOnceChirho,
+            "x used once"
+        );
         assert_eq!(usage_chirho[1].1, UsageChirho::AbsentChirho, "y absent");
-        assert_eq!(usage_chirho[2].1, UsageChirho::UsedOnceChirho, "z used once");
+        assert_eq!(
+            usage_chirho[2].1,
+            UsageChirho::UsedOnceChirho,
+            "z used once"
+        );
     }
 
     #[test]
@@ -3309,8 +3709,10 @@ mod tests_chirho {
             binder_chirho: BinderChirho {
                 id_chirho: CoreIdChirho(100),
                 name_chirho: "f".to_string(),
-                ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(),
-                    TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho())),
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho()),
+                ),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             rhs_chirho: CoreExprChirho::LamChirho {
@@ -3327,9 +3729,16 @@ mod tests_chirho {
         let result_chirho = dead_arg_elimination_chirho(vec![binding_chirho]);
         assert_eq!(result_chirho.len(), 1);
         // Should be \x -> x (y removed)
-        if let CoreExprChirho::LamChirho { binder_chirho, body_chirho } = &result_chirho[0].rhs_chirho {
+        if let CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } = &result_chirho[0].rhs_chirho
+        {
             assert_eq!(binder_chirho.name_chirho, "x");
-            assert!(matches!(body_chirho.as_ref(), CoreExprChirho::VarChirho(CoreIdChirho(0))));
+            assert!(matches!(
+                body_chirho.as_ref(),
+                CoreExprChirho::VarChirho(CoreIdChirho(0))
+            ));
         } else {
             panic!("expected lambda after dead arg elim");
         }
@@ -3425,10 +3834,21 @@ mod tests_chirho {
         let result_chirho = dead_arg_elimination_chirho(vec![binding_chirho]);
         assert_eq!(result_chirho.len(), 1);
         // Should be \x -> \z -> x +# z (y removed)
-        if let CoreExprChirho::LamChirho { binder_chirho: b1_chirho, body_chirho } = &result_chirho[0].rhs_chirho {
+        if let CoreExprChirho::LamChirho {
+            binder_chirho: b1_chirho,
+            body_chirho,
+        } = &result_chirho[0].rhs_chirho
+        {
             assert_eq!(b1_chirho.name_chirho, "x");
-            if let CoreExprChirho::LamChirho { binder_chirho: b2_chirho, .. } = body_chirho.as_ref() {
-                assert_eq!(b2_chirho.name_chirho, "z", "y should be eliminated, z remains");
+            if let CoreExprChirho::LamChirho {
+                binder_chirho: b2_chirho,
+                ..
+            } = body_chirho.as_ref()
+            {
+                assert_eq!(
+                    b2_chirho.name_chirho, "z",
+                    "y should be eliminated, z remains"
+                );
             } else {
                 panic!("expected second lambda for z");
             }
@@ -3499,11 +3919,8 @@ mod tests_chirho {
             ],
         };
 
-        let patterns_chirho = find_call_patterns_chirho(
-            &CoreIdChirho(100),
-            &[xs_chirho.clone()],
-            &body_chirho,
-        );
+        let patterns_chirho =
+            find_call_patterns_chirho(&CoreIdChirho(100), &[xs_chirho.clone()], &body_chirho);
         assert_eq!(patterns_chirho.len(), 1);
         assert_eq!(patterns_chirho[0].arg_idx_chirho, 0);
         assert_eq!(patterns_chirho[0].con_name_chirho, "Cons");
@@ -3544,8 +3961,12 @@ mod tests_chirho {
                                 args_chirho: vec![
                                     CoreExprChirho::VarChirho(CoreIdChirho(1)),
                                     CoreExprChirho::AppChirho {
-                                        fun_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(100))),
-                                        arg_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(2))),
+                                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            CoreIdChirho(100),
+                                        )),
+                                        arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            CoreIdChirho(2),
+                                        )),
                                     },
                                 ],
                             },
@@ -3562,8 +3983,14 @@ mod tests_chirho {
         assert_eq!(result_chirho.len(), 2, "should have original + specialized");
         assert_eq!(result_chirho[0].binder_chirho.name_chirho, "f");
         assert_eq!(result_chirho[1].binder_chirho.name_chirho, "$sc_f_Cons");
-        assert!(result_chirho[1].is_rec_chirho, "specialized copy should be recursive");
-        assert_eq!(result_chirho[1].inline_chirho, InlineAnnotationChirho::AlwaysChirho);
+        assert!(
+            result_chirho[1].is_rec_chirho,
+            "specialized copy should be recursive"
+        );
+        assert_eq!(
+            result_chirho[1].inline_chirho,
+            InlineAnnotationChirho::AlwaysChirho
+        );
     }
 
     #[test]

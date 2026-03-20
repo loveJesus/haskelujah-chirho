@@ -254,6 +254,24 @@ pub extern "C" fn haskelujah_print_int_chirho(value_chirho: i64) -> i64 {
     0
 }
 
+/// Convert an integer to a heap-allocated NUL-terminated decimal string.
+/// Returns a pointer that can be passed to `haskelujah_put_str_ln_chirho` or
+/// used as a Haskell `String` value.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_show_int_chirho(value_chirho: i64) -> u64 {
+    let s_chirho = format!("{value_chirho}");
+    let bytes_chirho = s_chirho.as_bytes();
+    let alloc_size_chirho = bytes_chirho.len() + 1; // +1 for NUL
+    let ptr_chirho = haskelujah_alloc_chirho(alloc_size_chirho as u64);
+    if !ptr_chirho.is_null() {
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes_chirho.as_ptr(), ptr_chirho, bytes_chirho.len());
+            *ptr_chirho.add(bytes_chirho.len()) = 0; // NUL terminator
+        }
+    }
+    ptr_chirho as u64
+}
+
 /// Print a NUL-terminated UTF-8 string followed by a newline using the same
 /// stdout implementation as `haskelujah_print_int_chirho`, keeping IO order
 /// stable for Cranelift executables.
