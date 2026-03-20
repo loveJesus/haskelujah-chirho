@@ -1007,6 +1007,33 @@ fn selector_real_args_chirho<'a>(
     }
 }
 
+fn selector_dict_name_chirho(
+    all_args_chirho: &[&CoreExprChirho],
+    all_bindings_chirho: &[CoreBindingChirho],
+    local_names_chirho: &HashMap<CoreIdChirho, String>,
+) -> Option<String> {
+    let dict_arg_chirho = all_args_chirho.first()?;
+    match strip_ty_apps_chirho(dict_arg_chirho) {
+        CoreExprChirho::VarChirho(id_chirho)
+            if expr_is_dict_var_chirho(dict_arg_chirho, all_bindings_chirho, local_names_chirho) =>
+        {
+            resolve_name_for_id_chirho(id_chirho, all_bindings_chirho, local_names_chirho)
+        }
+        _ => None,
+    }
+}
+
+fn builtin_show_primop_for_dict_name_chirho(dict_name_chirho: &str) -> Option<&'static str> {
+    match dict_name_chirho {
+        "$fShowInt" => Some("showInt#"),
+        "$fShowBool" => Some("showBool#"),
+        "$fShowChar" => Some("showChar#"),
+        "$fShowDouble" | "$fShowFloat" => Some("showFloat#"),
+        "$fShow[Char]" => Some("showStr#"),
+        _ => None,
+    }
+}
+
 /// Dictionary elision: replace typeclass selector+dict application patterns
 /// with direct PrimOp calls. Handles:
 /// - `$sel_Num_fromInteger dict lit` → `lit`
@@ -1048,23 +1075,35 @@ fn elide_dicts_with_locals_chirho(
                     all_bindings_chirho,
                     local_names_chirho,
                 );
-                // Check if the simplified value is a known Bool/Char literal
-                let show_primop_chirho = match &simplified_chirho {
-                    // Constructor names True/False → showBool#
-                    CoreExprChirho::ConAppChirho {
-                        con_name_chirho, ..
-                    } if con_name_chirho == "True" || con_name_chirho == "False" => "showBool#",
-                    // Char literal → showChar#
-                    CoreExprChirho::LitChirho(CoreLitChirho::CharChirho(_)) => "showChar#",
-                    // Float literal → showFloat#
-                    CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(_)) => "showFloat#",
-                    // Everything else (Int, computed values) → showInt#
-                    _ => "showInt#",
-                };
-                return CoreExprChirho::PrimOpChirho {
-                    name_chirho: show_primop_chirho.to_string(),
-                    args_chirho: vec![simplified_chirho],
-                };
+                if let Some(dict_name_chirho) =
+                    selector_dict_name_chirho(&all_args_chirho, all_bindings_chirho, local_names_chirho)
+                {
+                    if let Some(show_primop_chirho) =
+                        builtin_show_primop_for_dict_name_chirho(&dict_name_chirho)
+                    {
+                        return CoreExprChirho::PrimOpChirho {
+                            name_chirho: show_primop_chirho.to_string(),
+                            args_chirho: vec![simplified_chirho],
+                        };
+                    }
+                } else {
+                    // No explicit dict survived into this selector call,
+                    // so preserve the old heuristic for builtin literals.
+                    let show_primop_chirho = match &simplified_chirho {
+                        CoreExprChirho::ConAppChirho {
+                            con_name_chirho, ..
+                        } if con_name_chirho == "True" || con_name_chirho == "False" => {
+                            "showBool#"
+                        }
+                        CoreExprChirho::LitChirho(CoreLitChirho::CharChirho(_)) => "showChar#",
+                        CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(_)) => "showFloat#",
+                        _ => "showInt#",
+                    };
+                    return CoreExprChirho::PrimOpChirho {
+                        name_chirho: show_primop_chirho.to_string(),
+                        args_chirho: vec![simplified_chirho],
+                    };
+                }
             }
 
             // $sel_Num_fromInteger dict lit → lit

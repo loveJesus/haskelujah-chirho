@@ -1439,6 +1439,19 @@ fn llvm_round_trip_put_str_ln_show_float_output_chirho() {
 }
 
 #[test]
+fn llvm_round_trip_put_str_ln_show_derived_enum_output_chirho() {
+    let src_chirho =
+        "module Main where\ndata Color = Red | Green | Blue deriving (Show)\nmain = putStrLn (show Green)";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "show derived enum executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "Green\n");
+    }
+}
+
+#[test]
 fn llvm_round_trip_print_sum_list_output_chirho() {
     let src_chirho = "module Main where\nmain = print (sum [1,2,3])";
     let (exit_code_chirho, stdout_chirho) =

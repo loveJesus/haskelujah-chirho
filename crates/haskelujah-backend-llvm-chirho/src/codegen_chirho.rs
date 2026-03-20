@@ -1658,7 +1658,6 @@ impl LlvmCodegenChirho {
                                 | "showBool#"
                                 | "showChar#"
                                 | "showFloat#"
-                                | "$sel_Show_show"
                         ) {
                             if let Some(arg_expr_chirho) = args_chirho.last() {
                                 if let Some(show_kind_chirho) =
