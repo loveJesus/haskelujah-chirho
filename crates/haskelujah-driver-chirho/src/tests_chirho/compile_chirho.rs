@@ -36,10 +36,8 @@ fn builds_a_check_summary_for_batch_mode_chirho() {
             .runtime_plan_chirho
             .incremental_session_chirho
     );
-    assert!(
-        render_summary_chirho(&check_summary_chirho)
-            .contains("llvm_preview: ; haskelujah llvm stub")
-    );
+    assert!(render_summary_chirho(&check_summary_chirho)
+        .contains("llvm_preview: ; haskelujah llvm stub"));
 }
 
 #[test]
@@ -434,22 +432,16 @@ executable hello-app
         result_chirho.executables_chirho[0].compilation_order_chirho,
         vec!["Lib".to_string(), "Main".to_string()]
     );
-    assert!(
-        !result_chirho.executables_chirho[0]
-            .core_chirho
-            .bindings_chirho
-            .is_empty()
-    );
-    assert!(
-        result_chirho.executables_chirho[0]
-            .llvm_ir_chirho
-            .contains("define i32 @main()")
-    );
-    assert!(
-        result_chirho.executables_chirho[0]
-            .llvm_ir_chirho
-            .contains("@haskelujah_main")
-    );
+    assert!(!result_chirho.executables_chirho[0]
+        .core_chirho
+        .bindings_chirho
+        .is_empty());
+    assert!(result_chirho.executables_chirho[0]
+        .llvm_ir_chirho
+        .contains("define i32 @main()"));
+    assert!(result_chirho.executables_chirho[0]
+        .llvm_ir_chirho
+        .contains("@haskelujah_main"));
 
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
 }
@@ -458,7 +450,7 @@ executable hello-app
 fn cabal_project_cranelift_dedups_duplicate_prelude_bindings_chirho() {
     use crate::build_cabal_project_chirho;
     use haskelujah_backend_cranelift_chirho::{
-        TargetConfigChirho, compile_core_to_object_executable_chirho,
+        compile_core_to_object_executable_chirho, TargetConfigChirho,
     };
     use std::io::Write;
 
@@ -1485,6 +1477,30 @@ fn llvm_round_trip_foldr_sum_chirho() {
     }
 }
 
+#[test]
+fn llvm_round_trip_recursive_custom_list_instance_output_chirho() {
+    let src_chirho = r#"module Main where
+class Describable a where
+  describe :: a -> String
+
+instance Describable Int where
+  describe x = show x
+
+instance Describable a => Describable [a] where
+  describe [] = "[]"
+  describe (x:xs) = describe x ++ ":" ++ describe xs
+
+main = putStrLn (describe [1,2,3])
+"#;
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "llvm custom list instance should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "1:2:3:[]\n");
+    }
+}
+
 // ── Cranelift backend driver integration tests ────────────────────────
 
 #[test]
@@ -2174,6 +2190,28 @@ main = print (myLen (range 1 100000))
 }
 
 #[test]
+fn cranelift_round_trip_recursive_custom_list_instance_output_chirho() {
+    let src_chirho = r#"module Main where
+class Describable a where
+  describe :: a -> String
+
+instance Describable Int where
+  describe x = show x
+
+instance Describable a => Describable [a] where
+  describe [] = "[]"
+  describe (x:xs) = describe x ++ ":" ++ describe xs
+
+main = putStrLn (describe [1,2,3])
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "cranelift custom list instance should work");
+        assert_eq!(stdout_chirho, "1:2:3:[]\n");
+    }
+}
+
+#[test]
 fn cranelift_round_trip_put_str_no_newline_chirho() {
     let src_chirho = r#"module Main where
 main :: IO ()
@@ -2203,7 +2241,9 @@ main = do
     // Use stdin-fed round trip
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok();
-    let Some(result_chirho) = result_chirho else { return };
+    let Some(result_chirho) = result_chirho else {
+        return;
+    };
     let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
     let obj_chirho = haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
         &result_chirho.core_chirho,
@@ -2213,12 +2253,16 @@ main = do
     let Some(obj_chirho) = obj_chirho else { return };
 
     let tmp_dir_chirho = tempfile::tempdir().ok();
-    let Some(tmp_dir_chirho) = tmp_dir_chirho else { return };
+    let Some(tmp_dir_chirho) = tmp_dir_chirho else {
+        return;
+    };
     let obj_path_chirho = tmp_dir_chirho.path().join("main.o");
     let bin_path_chirho = tmp_dir_chirho.path().join("main");
     std::fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho).ok();
     let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho();
-    let Some(rts_lib_dir_chirho) = rts_lib_dir_chirho else { return };
+    let Some(rts_lib_dir_chirho) = rts_lib_dir_chirho else {
+        return;
+    };
 
     let compile_status_chirho = std::process::Command::new("cc")
         .arg("-o")
@@ -2248,7 +2292,9 @@ main = do
             child_chirho.wait_with_output()
         })
         .ok();
-    let Some(output_chirho) = run_output_chirho else { return };
+    let Some(output_chirho) = run_output_chirho else {
+        return;
+    };
     let stdout_chirho = String::from_utf8_lossy(&output_chirho.stdout);
     assert!(
         stdout_chirho.contains("Hello, Haskelujah!"),

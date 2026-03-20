@@ -11,11 +11,11 @@ use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
+use super::{DictLayoutChirho, DictPassCtxChirho};
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
     CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
 };
-use super::{DictPassCtxChirho, DictLayoutChirho};
 
 impl DictPassCtxChirho {
     pub fn generate_builtin_prim_bindings_chirho(&mut self) {
@@ -163,8 +163,10 @@ impl DictPassCtxChirho {
             };
 
         for (class_chirho, method_chirho, type_key_chirho, kind_chirho) in builtins_chirho {
-            let prim_name_chirho =
-                format!("$prim_{}_{}_{}",  class_chirho, method_chirho, type_key_chirho);
+            let prim_name_chirho = format!(
+                "$prim_{}_{}_{}",
+                class_chirho, method_chirho, type_key_chirho
+            );
 
             // Skip if this binding already exists (user may have provided one)
             let already_exists_chirho = self
@@ -196,7 +198,10 @@ impl DictPassCtxChirho {
             }
 
             // Special case: Show Either → use showEither# primop
-            if class_chirho == "Show" && method_chirho == "show" && type_key_chirho.starts_with("Either") {
+            if class_chirho == "Show"
+                && method_chirho == "show"
+                && type_key_chirho.starts_with("Either")
+            {
                 // For now all Either variants use the generic showEither# primop
                 // which delegates to show_value_as_string_chirho in the runtime.
             }
@@ -208,7 +213,8 @@ impl DictPassCtxChirho {
             }
 
             // Special case: Ord Ordering → case dispatch on constructor tag ordering
-            if class_chirho == "Ord" && method_chirho == "compare" && type_key_chirho == "Ordering" {
+            if class_chirho == "Ord" && method_chirho == "compare" && type_key_chirho == "Ordering"
+            {
                 self.generate_compare_ordering_binding_chirho(&prim_name_chirho);
                 continue;
             }
@@ -243,9 +249,7 @@ impl DictPassCtxChirho {
                         binder_chirho: x_chirho.clone(),
                         body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
                             name_chirho: op_chirho.to_string(),
-                            args_chirho: vec![
-                                CoreExprChirho::VarChirho(x_chirho.id_chirho),
-                            ],
+                            args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
                         }),
                     }
                 }
@@ -259,15 +263,12 @@ impl DictPassCtxChirho {
                 }
             };
 
-            let binder_chirho = self.fresh_binder_chirho(
-                &prim_name_chirho,
-                int_ty_chirho,
-            );
+            let binder_chirho = self.fresh_binder_chirho(&prim_name_chirho, int_ty_chirho);
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -308,7 +309,7 @@ impl DictPassCtxChirho {
             binder_chirho,
             rhs_chirho,
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
@@ -359,7 +360,7 @@ impl DictPassCtxChirho {
             binder_chirho,
             rhs_chirho,
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
@@ -481,7 +482,7 @@ impl DictPassCtxChirho {
             binder_chirho,
             rhs_chirho,
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
@@ -612,7 +613,7 @@ impl DictPassCtxChirho {
             binder_chirho,
             rhs_chirho,
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
@@ -640,9 +641,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![
                         CoreExprChirho::PrimOpChirho {
                             name_chirho: "showInt#".to_string(),
-                            args_chirho: vec![CoreExprChirho::VarChirho(
-                                tail_x_chirho.id_chirho,
-                            )],
+                            args_chirho: vec![CoreExprChirho::VarChirho(tail_x_chirho.id_chirho)],
                         },
                         CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::VarChirho(tail_fn_id_chirho)),
@@ -709,9 +708,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![
                         CoreExprChirho::PrimOpChirho {
                             name_chirho: "showInt#".to_string(),
-                            args_chirho: vec![CoreExprChirho::VarChirho(
-                                main_x_chirho.id_chirho,
-                            )],
+                            args_chirho: vec![CoreExprChirho::VarChirho(main_x_chirho.id_chirho)],
                         },
                         CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::VarChirho(tail_fn_id_chirho)),
@@ -757,15 +754,13 @@ impl DictPassCtxChirho {
             binder_chirho,
             rhs_chirho: main_fn_rhs_chirho,
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
     /// - `not = \x -> not# x`  (boolean negation)
     /// - `id = \x -> x`        (identity)
     /// - `const = \x y -> x`   (constant function)
-
-
 
     /// Generate instance dictionary bindings for ground instances.
     ///
@@ -775,10 +770,7 @@ impl DictPassCtxChirho {
     /// $fEqInt = $DictEq $prim_Eq_==_Int
     /// $fNumInt = $DictNum $fEqInt $fShowInt $prim_Num_+_Int ...
     /// ```
-    pub fn generate_instance_dicts_chirho(
-        &mut self,
-        class_env_chirho: &ClassEnvChirho,
-    ) {
+    pub fn generate_instance_dicts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
         // Two-pass approach to avoid dict id mismatch from HashMap
         // non-deterministic iteration order.  When a class with superclass
         // deps (e.g. Num → Eq) is processed before its superclass's
@@ -827,12 +819,25 @@ impl DictPassCtxChirho {
         // These are monomorphised instances for Show (Maybe Int), etc.
         if let Some(show_layout_chirho) = self.layouts_chirho.get("Show").cloned() {
             for type_key_chirho in &[
-                "Maybe Int", "Maybe String", "Maybe Double",
-                "(Int,Int)", "(Int,String)", "(String,Int)", "(String,String)",
-                "(Int,Bool)", "(Bool,Int)", "(Int,Double)", "(Double,Int)",
-                "(Bool,Bool)", "(Double,Double)", "(Bool,String)", "(String,Bool)",
+                "Maybe Int",
+                "Maybe String",
+                "Maybe Double",
+                "(Int,Int)",
+                "(Int,String)",
+                "(String,Int)",
+                "(String,String)",
+                "(Int,Bool)",
+                "(Bool,Int)",
+                "(Int,Double)",
+                "(Double,Int)",
+                "(Bool,Bool)",
+                "(Double,Double)",
+                "(Bool,String)",
+                "(String,Bool)",
             ] {
-                if !eligible_chirho.iter().any(|(c_chirho, t_chirho, _)| c_chirho == "Show" && t_chirho == *type_key_chirho) {
+                if !eligible_chirho.iter().any(|(c_chirho, t_chirho, _)| {
+                    c_chirho == "Show" && t_chirho == *type_key_chirho
+                }) {
                     eligible_chirho.push((
                         "Show".to_string(),
                         type_key_chirho.to_string(),
@@ -847,12 +852,9 @@ impl DictPassCtxChirho {
             Vec::new();
 
         for (class_name_chirho, type_key_chirho, layout_chirho) in eligible_chirho {
-            let dict_name_chirho =
-                format!("$f{}{}", class_name_chirho, type_key_chirho);
-            let dict_ty_chirho =
-                TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho));
-            let dict_binder_chirho =
-                self.fresh_binder_chirho(&dict_name_chirho, dict_ty_chirho);
+            let dict_name_chirho = format!("$f{}{}", class_name_chirho, type_key_chirho);
+            let dict_ty_chirho = TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho));
+            let dict_binder_chirho = self.fresh_binder_chirho(&dict_name_chirho, dict_ty_chirho);
 
             pre_registered_chirho.push((
                 class_name_chirho,
@@ -872,26 +874,19 @@ impl DictPassCtxChirho {
 
             // Superclass dictionary arguments
             for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-                let super_dict_name_chirho =
-                    format!("$f{}{}", super_name_chirho, type_key_chirho);
-                let super_dict_id_chirho =
-                    self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
-                field_args_chirho.push(CoreExprChirho::VarChirho(
-                    super_dict_id_chirho,
-                ));
+                let super_dict_name_chirho = format!("$f{}{}", super_name_chirho, type_key_chirho);
+                let super_dict_id_chirho = self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
+                field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
             }
 
             // Method implementation arguments (primitives)
             for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
                 let prim_name_chirho = format!(
-                    "$prim_{}_{}_{}", class_name_chirho,
-                    method_name_chirho, type_key_chirho
+                    "$prim_{}_{}_{}",
+                    class_name_chirho, method_name_chirho, type_key_chirho
                 );
-                let prim_id_chirho =
-                    self.resolve_or_fresh_id_chirho(&prim_name_chirho);
-                field_args_chirho.push(CoreExprChirho::VarChirho(
-                    prim_id_chirho,
-                ));
+                let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
+                field_args_chirho.push(CoreExprChirho::VarChirho(prim_id_chirho));
             }
 
             let dict_expr_chirho = CoreExprChirho::ConAppChirho {
@@ -905,13 +900,11 @@ impl DictPassCtxChirho {
                 binder_chirho: dict_binder_chirho,
                 rhs_chirho: dict_expr_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
-            self.instance_dicts_chirho.insert(
-                (class_name_chirho, type_key_chirho),
-                dict_id_chirho,
-            );
+            self.instance_dicts_chirho
+                .insert((class_name_chirho, type_key_chirho), dict_id_chirho);
         }
     }
 
@@ -921,10 +914,7 @@ impl DictPassCtxChirho {
     /// a newtype wrapping `Int`. For each method in the class, we generate a
     /// `$prim_Class_method_NewtypeKey` alias that points to the underlying
     /// type's prim binding, then construct the dictionary.
-    pub fn generate_gnd_dicts_chirho(
-        &mut self,
-        class_env_chirho: &ClassEnvChirho,
-    ) {
+    pub fn generate_gnd_dicts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
         // Collect GND-eligible instances: context is non-empty AND the
         // head type is a known newtype.
         let mut gnd_instances_chirho: Vec<(String, String, String, DictLayoutChirho)> = Vec::new();
@@ -969,12 +959,11 @@ impl DictPassCtxChirho {
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, underlying_key_chirho
                 );
-                let underlying_id_chirho =
-                    self.resolve_or_fresh_id_chirho(&underlying_prim_chirho);
-                let alias_binder_chirho =
-                    self.fresh_binder_chirho(&newtype_prim_chirho, TyChirho::VarChirho(
-                        TyVarChirho(self.next_id_chirho),
-                    ));
+                let underlying_id_chirho = self.resolve_or_fresh_id_chirho(&underlying_prim_chirho);
+                let alias_binder_chirho = self.fresh_binder_chirho(
+                    &newtype_prim_chirho,
+                    TyChirho::VarChirho(TyVarChirho(self.next_id_chirho)),
+                );
                 self.generated_bindings_chirho.push(CoreBindingChirho {
                     binder_chirho: alias_binder_chirho,
                     rhs_chirho: CoreExprChirho::VarChirho(underlying_id_chirho),
@@ -984,25 +973,21 @@ impl DictPassCtxChirho {
             }
 
             // Now build the dictionary (same as ground instances)
-            let dict_name_chirho =
-                format!("$f{}{}", class_name_chirho, type_key_chirho);
-            let dict_ty_chirho =
-                TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho));
-            let dict_binder_chirho =
-                self.fresh_binder_chirho(&dict_name_chirho, dict_ty_chirho);
+            let dict_name_chirho = format!("$f{}{}", class_name_chirho, type_key_chirho);
+            let dict_ty_chirho = TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho));
+            let dict_binder_chirho = self.fresh_binder_chirho(&dict_name_chirho, dict_ty_chirho);
 
             let con_name_chirho = format!("$Dict_{}", class_name_chirho);
             let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
             // Superclass dictionary arguments — reference the newtype's superclass dicts
             for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-                let super_dict_name_chirho =
-                    format!("$f{}{}", super_name_chirho, type_key_chirho);
+                let super_dict_name_chirho = format!("$f{}{}", super_name_chirho, type_key_chirho);
                 // Check if we already have this dict; if not, try underlying type
-                let super_id_chirho = if self.instance_dicts_chirho.contains_key(&(
-                    super_name_chirho.clone(),
-                    type_key_chirho.clone(),
-                )) {
+                let super_id_chirho = if self
+                    .instance_dicts_chirho
+                    .contains_key(&(super_name_chirho.clone(), type_key_chirho.clone()))
+                {
                     self.resolve_or_fresh_id_chirho(&super_dict_name_chirho)
                 } else {
                     let underlying_super_dict_chirho =
@@ -1015,11 +1000,10 @@ impl DictPassCtxChirho {
             // Method arguments — reference the newtype's prim bindings
             for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
                 let prim_name_chirho = format!(
-                    "$prim_{}_{}_{}", class_name_chirho,
-                    method_name_chirho, type_key_chirho
+                    "$prim_{}_{}_{}",
+                    class_name_chirho, method_name_chirho, type_key_chirho
                 );
-                let prim_id_chirho =
-                    self.resolve_or_fresh_id_chirho(&prim_name_chirho);
+                let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
                 field_args_chirho.push(CoreExprChirho::VarChirho(prim_id_chirho));
             }
 
@@ -1033,13 +1017,11 @@ impl DictPassCtxChirho {
                 binder_chirho: dict_binder_chirho,
                 rhs_chirho: dict_expr_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
-            self.instance_dicts_chirho.insert(
-                (class_name_chirho, type_key_chirho),
-                dict_id_chirho,
-            );
+            self.instance_dicts_chirho
+                .insert((class_name_chirho, type_key_chirho), dict_id_chirho);
         }
     }
 
@@ -1050,10 +1032,7 @@ impl DictPassCtxChirho {
     /// generate a ground `Eq [T]` dict with the appropriate method
     /// implementations. This avoids needing full parametric conditional
     /// dict support while covering common concrete list types.
-    pub fn generate_conditional_ground_dicts_chirho(
-        &mut self,
-        class_env_chirho: &ClassEnvChirho,
-    ) {
+    pub fn generate_conditional_ground_dicts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
         // Collect conditional list instances: (class, context_classes)
         let mut cond_list_instances_chirho: Vec<(String, Vec<String>)> = Vec::new();
 
@@ -1069,19 +1048,15 @@ impl DictPassCtxChirho {
                         .iter()
                         .map(|p_chirho| p_chirho.class_name_chirho.clone())
                         .collect();
-                    cond_list_instances_chirho.push((
-                        class_name_chirho.clone(),
-                        context_classes_chirho,
-                    ));
+                    cond_list_instances_chirho
+                        .push((class_name_chirho.clone(), context_classes_chirho));
                 }
             }
         }
 
         // For each conditional list instance, generate ground dicts
         // for known element types that have the required dicts.
-        let known_element_types_chirho = vec![
-            "Int", "Char", "Bool", "Double",
-        ];
+        let known_element_types_chirho = vec!["Int", "Char", "Bool", "Double"];
 
         for (class_name_chirho, context_classes_chirho) in &cond_list_instances_chirho {
             let layout_chirho = match self.layouts_chirho.get(class_name_chirho) {
@@ -1102,14 +1077,11 @@ impl DictPassCtxChirho {
 
                 // Check that all context classes have ground dicts
                 // for the element type
-                let all_context_satisfied_chirho = context_classes_chirho.iter().all(
-                    |ctx_class_chirho| {
-                        self.instance_dicts_chirho.contains_key(&(
-                            ctx_class_chirho.clone(),
-                            elem_type_chirho.to_string(),
-                        ))
-                    },
-                );
+                let all_context_satisfied_chirho =
+                    context_classes_chirho.iter().all(|ctx_class_chirho| {
+                        self.instance_dicts_chirho
+                            .contains_key(&(ctx_class_chirho.clone(), elem_type_chirho.to_string()))
+                    });
 
                 if !all_context_satisfied_chirho {
                     continue;
@@ -1122,6 +1094,7 @@ impl DictPassCtxChirho {
                     elem_type_chirho,
                     &list_type_key_chirho,
                     &layout_chirho,
+                    context_classes_chirho,
                 );
             }
         }
@@ -1133,10 +1106,19 @@ impl DictPassCtxChirho {
         elem_type_chirho: &str,
         list_type_key_chirho: &str,
         layout_chirho: &DictLayoutChirho,
+        context_classes_chirho: &[String],
     ) {
         match class_name_chirho {
-            "Eq" => self.generate_eq_list_dict_chirho(elem_type_chirho, list_type_key_chirho, layout_chirho),
-            "Show" => self.generate_show_list_dict_chirho(elem_type_chirho, list_type_key_chirho, layout_chirho),
+            "Eq" => self.generate_eq_list_dict_chirho(
+                elem_type_chirho,
+                list_type_key_chirho,
+                layout_chirho,
+            ),
+            "Show" => self.generate_show_list_dict_chirho(
+                elem_type_chirho,
+                list_type_key_chirho,
+                layout_chirho,
+            ),
             _ => {
                 // Generic handler for user-defined classes with conditional
                 // list instances.  Look up the user's $prim_ method bindings
@@ -1144,8 +1126,10 @@ impl DictPassCtxChirho {
                 // e.g. "[a]") and build a dict constructor referencing them.
                 self.generate_generic_list_dict_chirho(
                     class_name_chirho,
+                    elem_type_chirho,
                     list_type_key_chirho,
                     layout_chirho,
+                    context_classes_chirho,
                 );
             }
         }
@@ -1156,27 +1140,23 @@ impl DictPassCtxChirho {
     fn generate_generic_list_dict_chirho(
         &mut self,
         class_name_chirho: &str,
+        elem_type_chirho: &str,
         list_type_key_chirho: &str,
         layout_chirho: &DictLayoutChirho,
+        context_classes_chirho: &[String],
     ) {
         let con_name_chirho = format!("$Dict_{}", class_name_chirho);
-        let dict_name_chirho =
-            format!("$f{}{}", class_name_chirho, list_type_key_chirho);
-        let dict_ty_chirho =
-            TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho));
-        let dict_binder_chirho =
-            self.fresh_binder_chirho(&dict_name_chirho, dict_ty_chirho);
+        let dict_name_chirho = format!("$f{}{}", class_name_chirho, list_type_key_chirho);
+        let dict_ty_chirho = TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho));
+        let dict_binder_chirho = self.fresh_binder_chirho(&dict_name_chirho, dict_ty_chirho);
 
         let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
         // Superclass dict arguments
         for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-            let super_dict_name_chirho =
-                format!("$f{}{}", super_name_chirho, list_type_key_chirho);
-            let super_dict_id_chirho =
-                self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
-            field_args_chirho
-                .push(CoreExprChirho::VarChirho(super_dict_id_chirho));
+            let super_dict_name_chirho = format!("$f{}{}", super_name_chirho, list_type_key_chirho);
+            let super_dict_id_chirho = self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
+            field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
         }
 
         // Method arguments: find the user's $prim_ bindings.
@@ -1191,12 +1171,25 @@ impl DictPassCtxChirho {
             let mut found_chirho = false;
             for tk_chirho in &candidate_type_keys_chirho {
                 let prim_name_chirho = format!(
-                    "$prim_{}_{}_{}", class_name_chirho,
-                    method_name_chirho, tk_chirho
+                    "$prim_{}_{}_{}",
+                    class_name_chirho, method_name_chirho, tk_chirho
                 );
                 if let Some(prim_id_chirho) = self.lookup_name_id_chirho(&prim_name_chirho) {
-                    field_args_chirho
-                        .push(CoreExprChirho::VarChirho(prim_id_chirho));
+                    let mut method_expr_chirho = CoreExprChirho::VarChirho(prim_id_chirho);
+                    for context_class_chirho in context_classes_chirho {
+                        if let Some(context_dict_id_chirho) = self
+                            .instance_dicts_chirho
+                            .get(&(context_class_chirho.clone(), elem_type_chirho.to_string()))
+                        {
+                            method_expr_chirho = CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(method_expr_chirho),
+                                arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                    *context_dict_id_chirho,
+                                )),
+                            };
+                        }
+                    }
+                    field_args_chirho.push(method_expr_chirho);
                     found_chirho = true;
                     break;
                 }
@@ -1204,13 +1197,25 @@ impl DictPassCtxChirho {
             if !found_chirho {
                 // Fallback: create a fresh reference
                 let prim_name_chirho = format!(
-                    "$prim_{}_{}_{}", class_name_chirho,
-                    method_name_chirho, list_type_key_chirho
+                    "$prim_{}_{}_{}",
+                    class_name_chirho, method_name_chirho, list_type_key_chirho
                 );
-                let prim_id_chirho =
-                    self.resolve_or_fresh_id_chirho(&prim_name_chirho);
-                field_args_chirho
-                    .push(CoreExprChirho::VarChirho(prim_id_chirho));
+                let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
+                let mut method_expr_chirho = CoreExprChirho::VarChirho(prim_id_chirho);
+                for context_class_chirho in context_classes_chirho {
+                    if let Some(context_dict_id_chirho) = self
+                        .instance_dicts_chirho
+                        .get(&(context_class_chirho.clone(), elem_type_chirho.to_string()))
+                    {
+                        method_expr_chirho = CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(method_expr_chirho),
+                            arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                *context_dict_id_chirho,
+                            )),
+                        };
+                    }
+                }
+                field_args_chirho.push(method_expr_chirho);
             }
         }
 
@@ -1221,7 +1226,10 @@ impl DictPassCtxChirho {
         };
 
         self.instance_dicts_chirho.insert(
-            (class_name_chirho.to_string(), list_type_key_chirho.to_string()),
+            (
+                class_name_chirho.to_string(),
+                list_type_key_chirho.to_string(),
+            ),
             dict_binder_chirho.id_chirho,
         );
 
@@ -1229,7 +1237,7 @@ impl DictPassCtxChirho {
             binder_chirho: dict_binder_chirho,
             rhs_chirho: dict_body_chirho,
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
     }
 
@@ -1392,7 +1400,7 @@ impl DictPassCtxChirho {
             binder_chirho: fn_binder_chirho,
             rhs_chirho: fn_body_chirho,
             is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         // Now generate the prim binding that wraps this function
@@ -1402,7 +1410,7 @@ impl DictPassCtxChirho {
             binder_chirho: prim_binder_chirho,
             rhs_chirho: CoreExprChirho::VarChirho(fn_id_chirho),
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         // Generate the Eq dict for this list type
@@ -1416,18 +1424,15 @@ impl DictPassCtxChirho {
 
         // Superclass dicts (Eq has none)
         for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-            let super_dict_name_chirho =
-                format!("$f{}{}", super_name_chirho, list_type_key_chirho);
-            let super_dict_id_chirho =
-                self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
+            let super_dict_name_chirho = format!("$f{}{}", super_name_chirho, list_type_key_chirho);
+            let super_dict_id_chirho = self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
             field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
         }
 
         // Method implementations
         for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
-            let impl_name_chirho = format!(
-                "$prim_Eq_{}_{}", method_name_chirho, list_type_key_chirho
-            );
+            let impl_name_chirho =
+                format!("$prim_Eq_{}_{}", method_name_chirho, list_type_key_chirho);
             let impl_id_chirho = self.resolve_or_fresh_id_chirho(&impl_name_chirho);
             field_args_chirho.push(CoreExprChirho::VarChirho(impl_id_chirho));
         }
@@ -1441,7 +1446,7 @@ impl DictPassCtxChirho {
             binder_chirho: dict_binder_chirho,
             rhs_chirho: dict_expr_chirho,
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         self.instance_dicts_chirho.insert(
@@ -1486,9 +1491,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![
                         CoreExprChirho::PrimOpChirho {
                             name_chirho: elem_show_primop_chirho.to_string(),
-                            args_chirho: vec![CoreExprChirho::VarChirho(
-                                tail_x_chirho.id_chirho,
-                            )],
+                            args_chirho: vec![CoreExprChirho::VarChirho(tail_x_chirho.id_chirho)],
                         },
                         CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::VarChirho(tail_fn_id_chirho)),
@@ -1502,9 +1505,7 @@ impl DictPassCtxChirho {
         };
 
         let tail_body_chirho = CoreExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
-                tail_xs_chirho.id_chirho,
-            )),
+            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(tail_xs_chirho.id_chirho)),
             bind_chirho: self.fresh_binder_chirho("_t", str_ty_chirho.clone()),
             result_ty_chirho: TyChirho::string_chirho(),
             alts_chirho: vec![
@@ -1539,7 +1540,7 @@ impl DictPassCtxChirho {
             binder_chirho: tail_binder_chirho,
             rhs_chirho: tail_fn_rhs_chirho,
             is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         // Main show function:
@@ -1559,9 +1560,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![
                         CoreExprChirho::PrimOpChirho {
                             name_chirho: elem_show_primop_chirho.to_string(),
-                            args_chirho: vec![CoreExprChirho::VarChirho(
-                                main_x_chirho.id_chirho,
-                            )],
+                            args_chirho: vec![CoreExprChirho::VarChirho(main_x_chirho.id_chirho)],
                         },
                         CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::VarChirho(tail_fn_id_chirho)),
@@ -1575,9 +1574,7 @@ impl DictPassCtxChirho {
         };
 
         let main_body_chirho = CoreExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
-                main_xs_chirho.id_chirho,
-            )),
+            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(main_xs_chirho.id_chirho)),
             bind_chirho: self.fresh_binder_chirho("_m", str_ty_chirho.clone()),
             result_ty_chirho: TyChirho::string_chirho(),
             alts_chirho: vec![
@@ -1607,7 +1604,7 @@ impl DictPassCtxChirho {
             binder_chirho: prim_binder_chirho,
             rhs_chirho: main_fn_rhs_chirho,
             is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         // Generate the Show dict for this list type
@@ -1620,17 +1617,14 @@ impl DictPassCtxChirho {
         let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
         for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-            let super_dict_name_chirho =
-                format!("$f{}{}", super_name_chirho, list_type_key_chirho);
-            let super_dict_id_chirho =
-                self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
+            let super_dict_name_chirho = format!("$f{}{}", super_name_chirho, list_type_key_chirho);
+            let super_dict_id_chirho = self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
             field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
         }
 
         for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
-            let impl_name_chirho = format!(
-                "$prim_Show_{}_{}", method_name_chirho, list_type_key_chirho
-            );
+            let impl_name_chirho =
+                format!("$prim_Show_{}_{}", method_name_chirho, list_type_key_chirho);
             let impl_id_chirho = self.resolve_or_fresh_id_chirho(&impl_name_chirho);
             field_args_chirho.push(CoreExprChirho::VarChirho(impl_id_chirho));
         }
@@ -1644,7 +1638,7 @@ impl DictPassCtxChirho {
             binder_chirho: dict_binder_chirho,
             rhs_chirho: dict_expr_chirho,
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
 
         self.instance_dicts_chirho.insert(
@@ -1652,5 +1646,4 @@ impl DictPassCtxChirho {
             dict_id_chirho,
         );
     }
-
 }
