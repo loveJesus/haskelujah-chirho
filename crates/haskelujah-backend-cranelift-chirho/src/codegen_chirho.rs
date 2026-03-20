@@ -751,23 +751,6 @@ fn declare_local_lifted_bindings_chirho(
     Ok(local_decl_map_chirho)
 }
 
-fn flatten_apps_codegen_chirho(
-    expr_chirho: &CoreExprChirho,
-) -> (&CoreExprChirho, Vec<&CoreExprChirho>) {
-    let mut args_chirho = Vec::new();
-    let mut current_chirho = expr_chirho;
-    while let CoreExprChirho::AppChirho {
-        fun_chirho,
-        arg_chirho,
-    } = current_chirho
-    {
-        args_chirho.push(arg_chirho.as_ref());
-        current_chirho = fun_chirho;
-    }
-    args_chirho.reverse();
-    (current_chirho, args_chirho)
-}
-
 fn collect_partial_application_sites_chirho(
     owner_id_chirho: haskelujah_core_chirho::expr_chirho::CoreIdChirho,
     _exprs_chirho: &[&CoreExprChirho],
