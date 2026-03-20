@@ -1565,6 +1565,7 @@ impl LlvmCodegenChirho {
     }
 
     /// Check if an expression references a specific CoreId (for dependency sorting).
+    #[allow(dead_code)]
     fn expr_references_id_chirho(&self, expr_chirho: &CoreExprChirho, target_chirho: CoreIdChirho) -> bool {
         match expr_chirho {
             CoreExprChirho::VarChirho(id_chirho) => *id_chirho == target_chirho,
