@@ -1127,6 +1127,12 @@ impl LlvmCodegenChirho {
             "declare i64 @haskelujah_append_str_chirho(i64, i64)"
         )
         .unwrap();
+        // Fallback: if print's show call isn't elided, provide a default
+        writeln!(
+            self.output_chirho,
+            "@haskelujah_show = alias i64 (i64), ptr @haskelujah_show_int_chirho"
+        )
+        .unwrap();
         writeln!(
             self.output_chirho,
             "declare i64 @haskelujah_put_str_chirho(i64)"
