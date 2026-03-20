@@ -394,6 +394,35 @@ pub extern "C" fn haskelujah_print_bool_chirho(b_chirho: i64) {
     }
 }
 
+/// Read a line from stdin, returning a heap-allocated NUL-terminated string.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_get_line_chirho() -> u64 {
+    let mut line_chirho = String::new();
+    let _ = std::io::stdin().read_line(&mut line_chirho);
+    // Remove trailing newline
+    if line_chirho.ends_with('\n') {
+        line_chirho.pop();
+        if line_chirho.ends_with('\r') {
+            line_chirho.pop();
+        }
+    }
+    alloc_c_string_chirho(line_chirho.as_bytes())
+}
+
+/// Print a NUL-terminated string WITHOUT a trailing newline.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_put_str_chirho(ptr_bits_chirho: u64) -> i64 {
+    if ptr_bits_chirho == 0 {
+        return 0;
+    }
+    let ptr_chirho = ptr_bits_chirho as usize as *const std::ffi::c_char;
+    let c_str_chirho = unsafe { CStr::from_ptr(ptr_chirho) };
+    let text_chirho = c_str_chirho.to_string_lossy();
+    print!("{text_chirho}");
+    let _ = std::io::stdout().flush();
+    0
+}
+
 /// Runtime panic for undefined/bottom values.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_undefined_chirho() {
