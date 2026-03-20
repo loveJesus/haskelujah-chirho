@@ -2661,3 +2661,62 @@ main = do
         assert_eq!(stdout_chirho.trim(), "15\n720");
     }
 }
+
+#[test]
+fn llvm_round_trip_quicksort_chirho() {
+    // Quicksort with filter, append, lambda HOFs — comprehensive test
+    let src_chirho = r#"module Main where
+myFilter :: (Int -> Bool) -> [Int] -> [Int]
+myFilter _ [] = []
+myFilter p (x:xs) = if p x then x : myFilter p xs else myFilter p xs
+append :: [Int] -> [Int] -> [Int]
+append [] ys = ys
+append (x:xs) ys = x : append xs ys
+qsort :: [Int] -> [Int]
+qsort [] = []
+qsort (x:xs) = append (qsort (myFilter (\y -> y <= x) xs))
+                       (x : qsort (myFilter (\y -> y > x) xs))
+sumList :: [Int] -> Int
+sumList [] = 0
+sumList (x:xs) = x + sumList xs
+main :: IO ()
+main = print (sumList (qsort [5, 3, 8, 1, 9, 2, 7, 4, 6]))
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        // sum [1..9] = 45
+        assert_eq!(stdout_chirho.trim(), "45");
+    }
+}
+
+#[test]
+fn llvm_round_trip_take_zipwith_chirho() {
+    // take + zipWith: variable rule + multi-arg HOF combined
+    let src_chirho = r#"module Main where
+myTake :: Int -> [Int] -> [Int]
+myTake 0 _ = []
+myTake _ [] = []
+myTake n (x:xs) = x : myTake (n - 1) xs
+myZipWith :: (Int -> Int -> Int) -> [Int] -> [Int] -> [Int]
+myZipWith _ [] _ = []
+myZipWith _ _ [] = []
+myZipWith f (x:xs) (y:ys) = f x y : myZipWith f xs ys
+enumFromTo :: Int -> Int -> [Int]
+enumFromTo lo hi = if lo > hi then [] else lo : enumFromTo (lo + 1) hi
+sumList :: [Int] -> Int
+sumList [] = 0
+sumList (x:xs) = x + sumList xs
+add :: Int -> Int -> Int
+add x y = x + y
+main :: IO ()
+main = do
+  print (sumList (myTake 3 (enumFromTo 1 100)))
+  print (sumList (myZipWith add (enumFromTo 1 5) (enumFromTo 10 14)))
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "6\n75");
+    }
+}
