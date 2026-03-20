@@ -5,250 +5,258 @@
 
 #[allow(unused_imports)]
 use crate::{
-    eval_source_chirho,
-    eval_source_with_machine_chirho,
-    eval_source_with_input_chirho,
-    eval_source_with_step_limit_chirho,
-    compile_source_chirho,
-    check_source_file_chirho,
-    render_summary_chirho,
-    compile_modules_chirho,
-    eval_modules_chirho,
-    compile_modules_incremental_chirho,
-    discover_modules_chirho,
+    check_source_file_chirho, compile_modules_chirho, compile_modules_incremental_chirho,
+    compile_source_chirho, discover_modules_chirho, eval_modules_chirho, eval_source_chirho,
+    eval_source_with_input_chirho, eval_source_with_machine_chirho,
+    eval_source_with_step_limit_chirho, render_summary_chirho,
 };
+#[allow(unused_imports)]
+use haskelujah_runtime_chirho::{ExecutionModeChirho, ValueChirho};
 #[allow(unused_imports)]
 use haskelujah_span_chirho::SourceMapChirho;
 #[allow(unused_imports)]
-use haskelujah_runtime_chirho::{ValueChirho, ExecutionModeChirho};
-#[allow(unused_imports)]
 use haskelujah_syntax_chirho::SourceFileChirho;
 
-    #[test]
-    fn builds_a_check_summary_for_batch_mode_chirho() {
-        let mut source_map_chirho = SourceMapChirho::new_chirho();
-        let source_file_chirho = SourceFileChirho::from_source_map_chirho(
-            &mut source_map_chirho,
-            "BatchSampleChirho.hs",
-            "module BatchSampleChirho where\nvalueChirho = 1\n",
-        );
+#[test]
+fn builds_a_check_summary_for_batch_mode_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "BatchSampleChirho.hs",
+        "module BatchSampleChirho where\nvalueChirho = 1\n",
+    );
 
-        let check_summary_chirho =
-            check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho)
-                .expect("driver should accept a valid source file");
+    let check_summary_chirho =
+        check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho)
+            .expect("driver should accept a valid source file");
 
-        assert_eq!(check_summary_chirho.module_name_chirho, "BatchSampleChirho");
-        assert!(!check_summary_chirho.runtime_plan_chirho.incremental_session_chirho);
-        assert!(
-            render_summary_chirho(&check_summary_chirho).contains("llvm_preview: ; haskelujah llvm stub")
-        );
-    }
+    assert_eq!(check_summary_chirho.module_name_chirho, "BatchSampleChirho");
+    assert!(
+        !check_summary_chirho
+            .runtime_plan_chirho
+            .incremental_session_chirho
+    );
+    assert!(
+        render_summary_chirho(&check_summary_chirho)
+            .contains("llvm_preview: ; haskelujah llvm stub")
+    );
+}
 
+#[test]
+fn full_pipeline_parses_and_resolves_chirho() {
+    use crate::compile_source_chirho;
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module Test where\ndata Color = Red | Green\nf x = x\n",
+        &mut source_map_chirho,
+        "TestChirho.hs",
+    )
+    .expect("full pipeline should succeed");
 
-    #[test]
-    fn full_pipeline_parses_and_resolves_chirho() {
-        use crate::compile_source_chirho;
-        let mut source_map_chirho = SourceMapChirho::new_chirho();
-        let result_chirho = compile_source_chirho(
-            "module Test where\ndata Color = Red | Green\nf x = x\n",
-            &mut source_map_chirho,
-            "TestChirho.hs",
-        )
-        .expect("full pipeline should succeed");
+    assert_eq!(
+        result_chirho.module_chirho.name_chirho.text_chirho(),
+        "Test"
+    );
+    assert!(result_chirho.module_chirho.decls_chirho.len() >= 2);
+    // Core module was produced by desugaring
+    assert_eq!(result_chirho.core_chirho.name_chirho, "Test");
+    assert!(!result_chirho.core_chirho.bindings_chirho.is_empty());
+    // Backend output was produced
+    assert!(result_chirho.llvm_ir_chirho.contains("; ModuleID = 'Test'"));
+    assert_eq!(&result_chirho.wasm_bytes_chirho[0..4], b"\0asm");
+}
 
-        assert_eq!(result_chirho.module_chirho.name_chirho.text_chirho(), "Test");
-        assert!(result_chirho.module_chirho.decls_chirho.len() >= 2);
-        // Core module was produced by desugaring
-        assert_eq!(result_chirho.core_chirho.name_chirho, "Test");
-        assert!(!result_chirho.core_chirho.bindings_chirho.is_empty());
-        // Backend output was produced
-        assert!(result_chirho.llvm_ir_chirho.contains("; ModuleID = 'Test'"));
-        assert_eq!(&result_chirho.wasm_bytes_chirho[0..4], b"\0asm");
-    }
+#[test]
+fn script_mode_uses_incremental_runtime_plan_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "ScriptSampleChirho.hs",
+        "mainChirho = print 42\n",
+    );
 
+    let check_summary_chirho =
+        check_source_file_chirho(source_file_chirho, ExecutionModeChirho::ScriptChirho)
+            .expect("script mode should accept module-less files");
 
-    #[test]
-    fn script_mode_uses_incremental_runtime_plan_chirho() {
-        let mut source_map_chirho = SourceMapChirho::new_chirho();
-        let source_file_chirho = SourceFileChirho::from_source_map_chirho(
-            &mut source_map_chirho,
-            "ScriptSampleChirho.hs",
-            "mainChirho = print 42\n",
-        );
+    assert!(
+        check_summary_chirho
+            .runtime_plan_chirho
+            .incremental_session_chirho
+    );
+    assert_eq!(check_summary_chirho.module_name_chirho, "Main");
+}
 
-        let check_summary_chirho =
-            check_source_file_chirho(source_file_chirho, ExecutionModeChirho::ScriptChirho)
-                .expect("script mode should accept module-less files");
+#[test]
+fn multi_module_import_chirho() {
+    use crate::compile_modules_chirho;
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho: Vec<(&str, &str)> = vec![
+        (
+            "LibChirho.hs",
+            "module Lib where\ndata Color = Red | Green\nhelper x = x\n",
+        ),
+        (
+            "MainChirho.hs",
+            "module Main where\nimport Lib\nf x = case x of\n  Red -> 1\n  Green -> 2\n",
+        ),
+    ];
 
-        assert!(check_summary_chirho.runtime_plan_chirho.incremental_session_chirho);
-        assert_eq!(check_summary_chirho.module_name_chirho, "Main");
-    }
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho)
+        .expect("multi-module compilation should succeed");
 
+    assert_eq!(results_chirho.len(), 2);
+    assert_eq!(
+        results_chirho[0].module_chirho.name_chirho.text_chirho(),
+        "Lib"
+    );
+    assert_eq!(
+        results_chirho[1].module_chirho.name_chirho.text_chirho(),
+        "Main"
+    );
+}
 
-    #[test]
-    fn multi_module_import_chirho() {
-        use crate::compile_modules_chirho;
-        let mut source_map_chirho = SourceMapChirho::new_chirho();
-        let sources_chirho: Vec<(&str, &str)> = vec![
-            (
-                "LibChirho.hs",
-                "module Lib where\ndata Color = Red | Green\nhelper x = x\n",
-            ),
-            (
-                "MainChirho.hs",
-                "module Main where\nimport Lib\nf x = case x of\n  Red -> 1\n  Green -> 2\n",
-            ),
-        ];
+#[test]
+fn exhaustiveness_check_passes_for_complete_case_chirho() {
+    use crate::compile_source_chirho;
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    // data Color = Red | Green — case covers both constructors
+    let result_chirho = compile_source_chirho(
+        "module Test where\ndata Color = Red | Green\nf x = case x of\n  Red -> 1\n  Green -> 2\n",
+        &mut source_map_chirho,
+        "TestChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "complete case should pass exhaustiveness check"
+    );
+}
 
-        let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho)
-            .expect("multi-module compilation should succeed");
+#[test]
+fn exhaustiveness_check_warns_incomplete_case_chirho() {
+    use crate::compile_source_chirho;
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    // data Color = Red | Green | Blue — case only covers Red
+    // Non-exhaustive patterns are warnings, not errors (matches GHC behavior)
+    let result_chirho = compile_source_chirho(
+        "module Test where\ndata Color = Red | Green | Blue\nf x = case x of\n  Red -> 1\n",
+        &mut source_map_chirho,
+        "TestChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "incomplete case should succeed with warnings: {:?}",
+        result_chirho.err()
+    );
+}
 
-        assert_eq!(results_chirho.len(), 2);
-        assert_eq!(results_chirho[0].module_chirho.name_chirho.text_chirho(), "Lib");
-        assert_eq!(results_chirho[1].module_chirho.name_chirho.text_chirho(), "Main");
-    }
+#[test]
+fn incremental_compilation_marks_recompiled_chirho() {
+    use crate::compile_modules_incremental_chirho;
+    use haskelujah_incremental_chirho::IncrementalSessionChirho;
 
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let mut session_chirho = IncrementalSessionChirho::new_chirho();
 
-    #[test]
-    fn exhaustiveness_check_passes_for_complete_case_chirho() {
-        use crate::compile_source_chirho;
-        let mut source_map_chirho = SourceMapChirho::new_chirho();
-        // data Color = Red | Green — case covers both constructors
-        let result_chirho = compile_source_chirho(
-            "module Test where\ndata Color = Red | Green\nf x = case x of\n  Red -> 1\n  Green -> 2\n",
-            &mut source_map_chirho,
-            "TestChirho.hs",
-        );
-        assert!(
-            result_chirho.is_ok(),
-            "complete case should pass exhaustiveness check"
-        );
-    }
+    let sources_chirho: Vec<(&str, &str)> = vec![
+        (
+            "LibChirho.hs",
+            "module Lib where\ndata Color = Red | Green\nhelper x = x\n",
+        ),
+        ("MainChirho.hs", "module Main where\nimport Lib\nf x = x\n"),
+    ];
 
+    // First build: everything should be recompiled.
+    let results_chirho = compile_modules_incremental_chirho(
+        &sources_chirho,
+        &mut source_map_chirho,
+        &mut session_chirho,
+    )
+    .expect("incremental compilation should succeed");
 
-    #[test]
-    fn exhaustiveness_check_warns_incomplete_case_chirho() {
-        use crate::compile_source_chirho;
-        let mut source_map_chirho = SourceMapChirho::new_chirho();
-        // data Color = Red | Green | Blue — case only covers Red
-        // Non-exhaustive patterns are warnings, not errors (matches GHC behavior)
-        let result_chirho = compile_source_chirho(
-            "module Test where\ndata Color = Red | Green | Blue\nf x = case x of\n  Red -> 1\n",
-            &mut source_map_chirho,
-            "TestChirho.hs",
-        );
-        assert!(
-            result_chirho.is_ok(),
-            "incomplete case should succeed with warnings: {:?}",
-            result_chirho.err()
-        );
-    }
+    assert_eq!(results_chirho.len(), 2);
+    assert!(
+        results_chirho[0].1,
+        "Lib should be recompiled on first build"
+    );
+    assert!(
+        results_chirho[1].1,
+        "Main should be recompiled on first build"
+    );
 
+    // Second build with identical sources: nothing should be recompiled.
+    let mut source_map_chirho2 = SourceMapChirho::new_chirho();
+    let results2_chirho = compile_modules_incremental_chirho(
+        &sources_chirho,
+        &mut source_map_chirho2,
+        &mut session_chirho,
+    )
+    .expect("second incremental compilation should succeed");
 
-    #[test]
-    fn incremental_compilation_marks_recompiled_chirho() {
-        use crate::compile_modules_incremental_chirho;
-        use haskelujah_incremental_chirho::IncrementalSessionChirho;
+    assert_eq!(results2_chirho.len(), 2);
+    assert!(
+        !results2_chirho[0].1,
+        "Lib should NOT be recompiled when source unchanged"
+    );
+    assert!(
+        !results2_chirho[1].1,
+        "Main should NOT be recompiled when source unchanged"
+    );
+}
 
-        let mut source_map_chirho = SourceMapChirho::new_chirho();
-        let mut session_chirho = IncrementalSessionChirho::new_chirho();
+#[test]
+fn incremental_detects_source_change_chirho() {
+    use crate::compile_modules_incremental_chirho;
+    use haskelujah_incremental_chirho::IncrementalSessionChirho;
 
-        let sources_chirho: Vec<(&str, &str)> = vec![
-            (
-                "LibChirho.hs",
-                "module Lib where\ndata Color = Red | Green\nhelper x = x\n",
-            ),
-            (
-                "MainChirho.hs",
-                "module Main where\nimport Lib\nf x = x\n",
-            ),
-        ];
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let mut session_chirho = IncrementalSessionChirho::new_chirho();
 
-        // First build: everything should be recompiled.
-        let results_chirho =
-            compile_modules_incremental_chirho(&sources_chirho, &mut source_map_chirho, &mut session_chirho)
-                .expect("incremental compilation should succeed");
+    let sources_v1_chirho: Vec<(&str, &str)> =
+        vec![("TestChirho.hs", "module Test where\nf x = x\n")];
 
-        assert_eq!(results_chirho.len(), 2);
-        assert!(results_chirho[0].1, "Lib should be recompiled on first build");
-        assert!(results_chirho[1].1, "Main should be recompiled on first build");
+    let _ = compile_modules_incremental_chirho(
+        &sources_v1_chirho,
+        &mut source_map_chirho,
+        &mut session_chirho,
+    )
+    .expect("v1 should compile");
 
-        // Second build with identical sources: nothing should be recompiled.
-        let mut source_map_chirho2 = SourceMapChirho::new_chirho();
-        let results2_chirho =
-            compile_modules_incremental_chirho(&sources_chirho, &mut source_map_chirho2, &mut session_chirho)
-                .expect("second incremental compilation should succeed");
+    // Change the source.
+    let sources_v2_chirho: Vec<(&str, &str)> =
+        vec![("TestChirho.hs", "module Test where\nf x = x\ng y = y\n")];
 
-        assert_eq!(results2_chirho.len(), 2);
-        assert!(
-            !results2_chirho[0].1,
-            "Lib should NOT be recompiled when source unchanged"
-        );
-        assert!(
-            !results2_chirho[1].1,
-            "Main should NOT be recompiled when source unchanged"
-        );
-    }
+    let mut source_map2_chirho = SourceMapChirho::new_chirho();
+    let results_chirho = compile_modules_incremental_chirho(
+        &sources_v2_chirho,
+        &mut source_map2_chirho,
+        &mut session_chirho,
+    )
+    .expect("v2 should compile");
 
+    assert_eq!(results_chirho.len(), 1);
+    assert!(
+        results_chirho[0].1,
+        "Test should be recompiled when source changes"
+    );
+}
 
-    #[test]
-    fn incremental_detects_source_change_chirho() {
-        use crate::compile_modules_incremental_chirho;
-        use haskelujah_incremental_chirho::IncrementalSessionChirho;
+#[test]
+fn cabal_project_compilation_chirho() {
+    use crate::compile_cabal_project_chirho;
+    use std::io::Write;
 
-        let mut source_map_chirho = SourceMapChirho::new_chirho();
-        let mut session_chirho = IncrementalSessionChirho::new_chirho();
+    // Create a temp directory with a small Cabal project
+    let temp_dir_chirho = std::env::temp_dir().join("haskelujah_cabal_test_chirho");
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+    std::fs::create_dir_all(temp_dir_chirho.join("src")).unwrap();
 
-        let sources_v1_chirho: Vec<(&str, &str)> = vec![(
-            "TestChirho.hs",
-            "module Test where\nf x = x\n",
-        )];
-
-        let _ = compile_modules_incremental_chirho(
-            &sources_v1_chirho,
-            &mut source_map_chirho,
-            &mut session_chirho,
-        )
-        .expect("v1 should compile");
-
-        // Change the source.
-        let sources_v2_chirho: Vec<(&str, &str)> = vec![(
-            "TestChirho.hs",
-            "module Test where\nf x = x\ng y = y\n",
-        )];
-
-        let mut source_map2_chirho = SourceMapChirho::new_chirho();
-        let results_chirho = compile_modules_incremental_chirho(
-            &sources_v2_chirho,
-            &mut source_map2_chirho,
-            &mut session_chirho,
-        )
-        .expect("v2 should compile");
-
-        assert_eq!(results_chirho.len(), 1);
-        assert!(
-            results_chirho[0].1,
-            "Test should be recompiled when source changes"
-        );
-    }
-
-
-    #[test]
-    fn cabal_project_compilation_chirho() {
-        use crate::compile_cabal_project_chirho;
-        use std::io::Write;
-
-        // Create a temp directory with a small Cabal project
-        let temp_dir_chirho = std::env::temp_dir().join("haskelujah_cabal_test_chirho");
-        let _ = std::fs::remove_dir_all(&temp_dir_chirho);
-        std::fs::create_dir_all(temp_dir_chirho.join("src")).unwrap();
-
-        // Write .cabal file
-        let cabal_path_chirho = temp_dir_chirho.join("hello.cabal");
-        let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
-        write!(
-            cabal_file_chirho,
-            r#"cabal-version: 3.0
+    // Write .cabal file
+    let cabal_path_chirho = temp_dir_chirho.join("hello.cabal");
+    let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
+    write!(
+        cabal_file_chirho,
+        r#"cabal-version: 3.0
 name:         hello
 version:      0.1.0.0
 
@@ -258,55 +266,49 @@ library
   build-depends:   base >=4.14 && <5
   default-language: Haskell2010
 "#
-        )
-        .unwrap();
+    )
+    .unwrap();
 
-        // Write Haskell source
-        let lib_path_chirho = temp_dir_chirho.join("src").join("Lib.hs");
-        let mut lib_file_chirho = std::fs::File::create(&lib_path_chirho).unwrap();
-        write!(
-            lib_file_chirho,
-            "module Lib where\nf x = x\n"
-        )
-        .unwrap();
+    // Write Haskell source
+    let lib_path_chirho = temp_dir_chirho.join("src").join("Lib.hs");
+    let mut lib_file_chirho = std::fs::File::create(&lib_path_chirho).unwrap();
+    write!(lib_file_chirho, "module Lib where\nf x = x\n").unwrap();
 
-        // Create an empty package index (base is builtin, so no external deps needed)
-        let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
+    // Create an empty package index (base is builtin, so no external deps needed)
+    let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
 
-        let result_chirho =
-            compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
-                .expect("cabal project should compile");
+    let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+        .expect("cabal project should compile");
 
-        assert_eq!(result_chirho.package_chirho.name_chirho, "hello");
-        assert!(result_chirho.build_plan_chirho.steps_chirho.is_empty()); // only base (builtin)
-        assert_eq!(result_chirho.module_results_chirho.len(), 1);
-        assert_eq!(
-            result_chirho.module_results_chirho[0]
-                .module_chirho
-                .name_chirho
-                .text_chirho(),
-            "Lib"
-        );
+    assert_eq!(result_chirho.package_chirho.name_chirho, "hello");
+    assert!(result_chirho.build_plan_chirho.steps_chirho.is_empty()); // only base (builtin)
+    assert_eq!(result_chirho.module_results_chirho.len(), 1);
+    assert_eq!(
+        result_chirho.module_results_chirho[0]
+            .module_chirho
+            .name_chirho
+            .text_chirho(),
+        "Lib"
+    );
 
-        // Cleanup
-        let _ = std::fs::remove_dir_all(&temp_dir_chirho);
-    }
+    // Cleanup
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+}
 
+#[test]
+fn cabal_project_multi_module_chirho() {
+    use crate::compile_cabal_project_chirho;
+    use std::io::Write;
 
-    #[test]
-    fn cabal_project_multi_module_chirho() {
-        use crate::compile_cabal_project_chirho;
-        use std::io::Write;
+    let temp_dir_chirho = std::env::temp_dir().join("haskelujah_cabal_multi_test_chirho");
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+    std::fs::create_dir_all(temp_dir_chirho.join("src")).unwrap();
 
-        let temp_dir_chirho = std::env::temp_dir().join("haskelujah_cabal_multi_test_chirho");
-        let _ = std::fs::remove_dir_all(&temp_dir_chirho);
-        std::fs::create_dir_all(temp_dir_chirho.join("src")).unwrap();
-
-        let cabal_path_chirho = temp_dir_chirho.join("multi.cabal");
-        let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
-        write!(
-            cabal_file_chirho,
-            r#"cabal-version: 3.0
+    let cabal_path_chirho = temp_dir_chirho.join("multi.cabal");
+    let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
+    write!(
+        cabal_file_chirho,
+        r#"cabal-version: 3.0
 name:         multi
 version:      0.1.0.0
 
@@ -315,44 +317,41 @@ library
   hs-source-dirs:  src
   build-depends:   base >=4.14 && <5
 "#
-        )
-        .unwrap();
+    )
+    .unwrap();
 
-        let mut lib_chirho = std::fs::File::create(temp_dir_chirho.join("src/Lib.hs")).unwrap();
-        write!(lib_chirho, "module Lib where\nf x = x\n").unwrap();
+    let mut lib_chirho = std::fs::File::create(temp_dir_chirho.join("src/Lib.hs")).unwrap();
+    write!(lib_chirho, "module Lib where\nf x = x\n").unwrap();
 
-        let mut helper_chirho =
-            std::fs::File::create(temp_dir_chirho.join("src/Helper.hs")).unwrap();
-        write!(helper_chirho, "module Helper where\ng y = y\n").unwrap();
+    let mut helper_chirho = std::fs::File::create(temp_dir_chirho.join("src/Helper.hs")).unwrap();
+    write!(helper_chirho, "module Helper where\ng y = y\n").unwrap();
 
-        let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
+    let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
 
-        let result_chirho =
-            compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
-                .expect("multi-module cabal project should compile");
+    let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+        .expect("multi-module cabal project should compile");
 
-        assert_eq!(result_chirho.package_chirho.name_chirho, "multi");
-        assert_eq!(result_chirho.module_results_chirho.len(), 2);
+    assert_eq!(result_chirho.package_chirho.name_chirho, "multi");
+    assert_eq!(result_chirho.module_results_chirho.len(), 2);
 
-        // Cleanup
-        let _ = std::fs::remove_dir_all(&temp_dir_chirho);
-    }
+    // Cleanup
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+}
 
+#[test]
+fn cabal_project_missing_module_skipped_chirho() {
+    use crate::compile_cabal_project_chirho;
+    use std::io::Write;
 
-    #[test]
-    fn cabal_project_missing_module_skipped_chirho() {
-        use crate::compile_cabal_project_chirho;
-        use std::io::Write;
+    let temp_dir_chirho = std::env::temp_dir().join("haskelujah_cabal_missing_test_chirho");
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+    std::fs::create_dir_all(temp_dir_chirho.join("src")).unwrap();
 
-        let temp_dir_chirho = std::env::temp_dir().join("haskelujah_cabal_missing_test_chirho");
-        let _ = std::fs::remove_dir_all(&temp_dir_chirho);
-        std::fs::create_dir_all(temp_dir_chirho.join("src")).unwrap();
-
-        let cabal_path_chirho = temp_dir_chirho.join("miss.cabal");
-        let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
-        write!(
-            cabal_file_chirho,
-            r#"cabal-version: 3.0
+    let cabal_path_chirho = temp_dir_chirho.join("miss.cabal");
+    let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
+    write!(
+        cabal_file_chirho,
+        r#"cabal-version: 3.0
 name:         miss
 version:      0.1.0.0
 
@@ -361,41 +360,38 @@ library
   hs-source-dirs:  src
   build-depends:   base
 "#
-        )
-        .unwrap();
+    )
+    .unwrap();
 
-        // Only create Exists.hs, not DoesNotExist.hs
-        let mut exists_chirho =
-            std::fs::File::create(temp_dir_chirho.join("src/Exists.hs")).unwrap();
-        write!(exists_chirho, "module Exists where\nval = 42\n").unwrap();
+    // Only create Exists.hs, not DoesNotExist.hs
+    let mut exists_chirho = std::fs::File::create(temp_dir_chirho.join("src/Exists.hs")).unwrap();
+    write!(exists_chirho, "module Exists where\nval = 42\n").unwrap();
 
-        let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
+    let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
 
-        let result_chirho =
-            compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
-                .expect("should compile what exists");
+    let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+        .expect("should compile what exists");
 
-        // Only Exists should be compiled (DoesNotExist not found on disk)
-        assert_eq!(result_chirho.module_results_chirho.len(), 1);
+    // Only Exists should be compiled (DoesNotExist not found on disk)
+    assert_eq!(result_chirho.module_results_chirho.len(), 1);
 
-        let _ = std::fs::remove_dir_all(&temp_dir_chirho);
-    }
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+}
 
-    #[test]
-    fn cabal_project_builds_executable_llvm_plan_chirho() {
-        use crate::build_cabal_project_chirho;
-        use std::io::Write;
+#[test]
+fn cabal_project_builds_executable_llvm_plan_chirho() {
+    use crate::build_cabal_project_chirho;
+    use std::io::Write;
 
-        let temp_dir_chirho =
-            std::env::temp_dir().join("haskelujah_cabal_build_exec_test_chirho");
-        let _ = std::fs::remove_dir_all(&temp_dir_chirho);
-        std::fs::create_dir_all(temp_dir_chirho.join("src")).unwrap();
+    let temp_dir_chirho = std::env::temp_dir().join("haskelujah_cabal_build_exec_test_chirho");
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+    std::fs::create_dir_all(temp_dir_chirho.join("src")).unwrap();
 
-        let cabal_path_chirho = temp_dir_chirho.join("build-exec.cabal");
-        let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
-        write!(
-            cabal_file_chirho,
-            r#"cabal-version: 3.0
+    let cabal_path_chirho = temp_dir_chirho.join("build-exec.cabal");
+    let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
+    write!(
+        cabal_file_chirho,
+        r#"cabal-version: 3.0
 name:         build-exec
 version:      0.1.0.0
 
@@ -410,625 +406,653 @@ executable hello-app
   other-modules:   Lib
   build-depends:   base >=4.14 && <5, build-exec
 "#
-        )
-        .unwrap();
+    )
+    .unwrap();
 
-        let mut lib_file_chirho =
-            std::fs::File::create(temp_dir_chirho.join("src/Lib.hs")).unwrap();
-        write!(
-            lib_file_chirho,
-            "module Lib where\nmessage = \"Hello from Cabal build\"\n"
-        )
-        .unwrap();
+    let mut lib_file_chirho = std::fs::File::create(temp_dir_chirho.join("src/Lib.hs")).unwrap();
+    write!(
+        lib_file_chirho,
+        "module Lib where\nmessage = \"Hello from Cabal build\"\n"
+    )
+    .unwrap();
 
-        let mut main_file_chirho =
-            std::fs::File::create(temp_dir_chirho.join("src/Main.hs")).unwrap();
-        write!(
-            main_file_chirho,
-            "module Main where\nimport Lib\nmain = putStrLn message\n"
-        )
-        .unwrap();
+    let mut main_file_chirho = std::fs::File::create(temp_dir_chirho.join("src/Main.hs")).unwrap();
+    write!(
+        main_file_chirho,
+        "module Main where\nimport Lib\nmain = putStrLn message\n"
+    )
+    .unwrap();
 
-        let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
-        let result_chirho =
-            build_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
-                .expect("cabal executable project should build");
+    let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
+    let result_chirho = build_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+        .expect("cabal executable project should build");
 
-        assert_eq!(result_chirho.package_chirho.name_chirho, "build-exec");
-        assert_eq!(result_chirho.executables_chirho.len(), 1);
-        assert_eq!(result_chirho.executables_chirho[0].name_chirho, "hello-app");
-        assert_eq!(
-            result_chirho.executables_chirho[0].compilation_order_chirho,
-            vec!["Lib".to_string(), "Main".to_string()]
-        );
-        assert!(!result_chirho.executables_chirho[0]
+    assert_eq!(result_chirho.package_chirho.name_chirho, "build-exec");
+    assert_eq!(result_chirho.executables_chirho.len(), 1);
+    assert_eq!(result_chirho.executables_chirho[0].name_chirho, "hello-app");
+    assert_eq!(
+        result_chirho.executables_chirho[0].compilation_order_chirho,
+        vec!["Lib".to_string(), "Main".to_string()]
+    );
+    assert!(
+        !result_chirho.executables_chirho[0]
             .core_chirho
             .bindings_chirho
-            .is_empty());
-        assert!(result_chirho.executables_chirho[0]
+            .is_empty()
+    );
+    assert!(
+        result_chirho.executables_chirho[0]
             .llvm_ir_chirho
-            .contains("define i32 @main()"));
-        assert!(result_chirho.executables_chirho[0]
+            .contains("define i32 @main()")
+    );
+    assert!(
+        result_chirho.executables_chirho[0]
             .llvm_ir_chirho
-            .contains("@haskelujah_main"));
+            .contains("@haskelujah_main")
+    );
 
-        let _ = std::fs::remove_dir_all(&temp_dir_chirho);
-    }
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+}
 
-    // ── PrimOp / arithmetic end-to-end tests ────────────────────────────
+// ── PrimOp / arithmetic end-to-end tests ────────────────────────────
 
+#[test]
+fn compile_primop_to_llvm_chirho() {
+    use crate::compile_source_chirho;
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    // Use non-literal args so constant folding doesn't eliminate the primop
+    let result_chirho = compile_source_chirho(
+        "module Test where\nf x = x + 1\n",
+        &mut source_map_chirho,
+        "TestChirho.hs",
+    )
+    .expect("should compile");
+    // LLVM IR should contain an add instruction (not folded away because x is a variable)
+    assert!(
+        result_chirho.llvm_ir_chirho.contains("add i64"),
+        "LLVM IR should contain add instruction: {}",
+        result_chirho.llvm_ir_chirho
+    );
+}
 
-    #[test]
-    fn compile_primop_to_llvm_chirho() {
-        use crate::compile_source_chirho;
-        let mut source_map_chirho = SourceMapChirho::new_chirho();
-        // Use non-literal args so constant folding doesn't eliminate the primop
-        let result_chirho = compile_source_chirho(
-            "module Test where\nf x = x + 1\n",
-            &mut source_map_chirho,
-            "TestChirho.hs",
-        )
-        .expect("should compile");
-        // LLVM IR should contain an add instruction (not folded away because x is a variable)
-        assert!(
-            result_chirho.llvm_ir_chirho.contains("add i64"),
-            "LLVM IR should contain add instruction: {}",
-            result_chirho.llvm_ir_chirho
-        );
-    }
+#[test]
+fn compile_primop_to_wasm_chirho() {
+    use crate::compile_source_chirho;
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module Test where\nmain = 3 + 4\n",
+        &mut source_map_chirho,
+        "TestChirho.hs",
+    )
+    .expect("should compile");
+    // WASM binary should be a valid module
+    assert_eq!(&result_chirho.wasm_bytes_chirho[0..4], b"\0asm");
+    assert!(result_chirho.wasm_bytes_chirho.len() > 20);
+}
 
+#[test]
+fn discover_test_suite_modules_chirho() {
+    use haskelujah_package_chirho::{BuildInfoChirho, PackageDescChirho, TestSuiteChirho};
+    use std::fs;
+    use tempfile::tempdir;
 
-    #[test]
-    fn compile_primop_to_wasm_chirho() {
-        use crate::compile_source_chirho;
-        let mut source_map_chirho = SourceMapChirho::new_chirho();
-        let result_chirho = compile_source_chirho(
-            "module Test where\nmain = 3 + 4\n",
-            &mut source_map_chirho,
-            "TestChirho.hs",
-        )
-        .expect("should compile");
-        // WASM binary should be a valid module
-        assert_eq!(&result_chirho.wasm_bytes_chirho[0..4], b"\0asm");
-        assert!(result_chirho.wasm_bytes_chirho.len() > 20);
-    }
+    let dir_chirho = tempdir().unwrap();
+    let test_dir_chirho = dir_chirho.path().join("test");
+    fs::create_dir_all(&test_dir_chirho).unwrap();
+    fs::write(test_dir_chirho.join("Spec.hs"), "module Spec where\n").unwrap();
+    fs::write(test_dir_chirho.join("Main.hs"), "module Main where\n").unwrap();
 
+    let pkg_chirho = PackageDescChirho {
+        name_chirho: "test-pkg".to_string(),
+        version_chirho: None,
+        cabal_version_chirho: None,
+        license_chirho: None,
+        author_chirho: None,
+        maintainer_chirho: None,
+        synopsis_chirho: None,
+        description_chirho: None,
+        category_chirho: None,
+        homepage_chirho: None,
+        bug_reports_chirho: None,
+        build_type_chirho: None,
+        library_chirho: None,
+        executables_chirho: vec![],
+        test_suites_chirho: vec![TestSuiteChirho {
+            name_chirho: "my-tests".to_string(),
+            type_chirho: Some("exitcode-stdio-1.0".to_string()),
+            main_is_chirho: Some("Main.hs".to_string()),
+            other_modules_chirho: vec!["Spec".to_string()],
+            build_info_chirho: BuildInfoChirho {
+                build_depends_chirho: vec![],
+                hs_source_dirs_chirho: vec!["test".to_string()],
+                default_language_chirho: None,
+                ghc_options_chirho: vec![],
+                default_extensions_chirho: vec![],
+                other_extensions_chirho: vec![],
+                imports_chirho: vec![],
+            },
+        }],
+        benchmarks_chirho: vec![],
+        flags_chirho: vec![],
+        source_repos_chirho: vec![],
+        common_stanzas_chirho: vec![],
+        custom_setup_chirho: None,
+    };
 
-    #[test]
-    fn discover_test_suite_modules_chirho() {
-        use haskelujah_package_chirho::{
-            BuildInfoChirho, PackageDescChirho, TestSuiteChirho,
-        };
-        use std::fs;
-        use tempfile::tempdir;
+    let modules_chirho = crate::discover_modules_chirho(&pkg_chirho, dir_chirho.path());
+    let names_chirho: Vec<&str> = modules_chirho.iter().map(|(n, _)| n.as_str()).collect();
+    assert!(
+        names_chirho.contains(&"Main"),
+        "should discover test-suite Main"
+    );
+    assert!(
+        names_chirho.contains(&"Spec"),
+        "should discover test-suite other-module Spec"
+    );
+}
 
-        let dir_chirho = tempdir().unwrap();
-        let test_dir_chirho = dir_chirho.path().join("test");
-        fs::create_dir_all(&test_dir_chirho).unwrap();
-        fs::write(test_dir_chirho.join("Spec.hs"), "module Spec where\n").unwrap();
-        fs::write(test_dir_chirho.join("Main.hs"), "module Main where\n").unwrap();
+#[test]
+fn discover_setup_hs_chirho() {
+    use haskelujah_package_chirho::PackageDescChirho;
+    use std::fs;
+    use tempfile::tempdir;
 
-        let pkg_chirho = PackageDescChirho {
-            name_chirho: "test-pkg".to_string(),
-            version_chirho: None,
-            cabal_version_chirho: None,
-            license_chirho: None,
-            author_chirho: None,
-            maintainer_chirho: None,
-            synopsis_chirho: None,
-            description_chirho: None,
-            category_chirho: None,
-            homepage_chirho: None,
-            bug_reports_chirho: None,
-            build_type_chirho: None,
-            library_chirho: None,
-            executables_chirho: vec![],
-            test_suites_chirho: vec![TestSuiteChirho {
-                name_chirho: "my-tests".to_string(),
-                type_chirho: Some("exitcode-stdio-1.0".to_string()),
-                main_is_chirho: Some("Main.hs".to_string()),
-                other_modules_chirho: vec!["Spec".to_string()],
-                build_info_chirho: BuildInfoChirho {
-                    build_depends_chirho: vec![],
-                    hs_source_dirs_chirho: vec!["test".to_string()],
-                    default_language_chirho: None,
-                    ghc_options_chirho: vec![],
-                    default_extensions_chirho: vec![],
-                    other_extensions_chirho: vec![],
-                    imports_chirho: vec![],
-                },
-            }],
-            benchmarks_chirho: vec![],
-            flags_chirho: vec![],
-            source_repos_chirho: vec![],
-            common_stanzas_chirho: vec![],
-            custom_setup_chirho: None,
-        };
+    let dir_chirho = tempdir().unwrap();
+    fs::write(
+        dir_chirho.path().join("Setup.hs"),
+        "import Distribution.Simple\nmain = defaultMain\n",
+    )
+    .unwrap();
 
-        let modules_chirho = crate::discover_modules_chirho(&pkg_chirho, dir_chirho.path());
-        let names_chirho: Vec<&str> = modules_chirho.iter().map(|(n, _)| n.as_str()).collect();
-        assert!(names_chirho.contains(&"Main"), "should discover test-suite Main");
-        assert!(names_chirho.contains(&"Spec"), "should discover test-suite other-module Spec");
-    }
+    let pkg_chirho = PackageDescChirho {
+        name_chirho: "setup-pkg".to_string(),
+        version_chirho: None,
+        cabal_version_chirho: None,
+        license_chirho: None,
+        author_chirho: None,
+        maintainer_chirho: None,
+        synopsis_chirho: None,
+        description_chirho: None,
+        category_chirho: None,
+        homepage_chirho: None,
+        bug_reports_chirho: None,
+        build_type_chirho: None,
+        library_chirho: None,
+        executables_chirho: vec![],
+        test_suites_chirho: vec![],
+        benchmarks_chirho: vec![],
+        flags_chirho: vec![],
+        source_repos_chirho: vec![],
+        common_stanzas_chirho: vec![],
+        custom_setup_chirho: None,
+    };
 
+    let modules_chirho = crate::discover_modules_chirho(&pkg_chirho, dir_chirho.path());
+    let names_chirho: Vec<&str> = modules_chirho.iter().map(|(n, _)| n.as_str()).collect();
+    assert!(names_chirho.contains(&"Setup"), "should discover Setup.hs");
+}
 
-    #[test]
-    fn discover_setup_hs_chirho() {
-        use haskelujah_package_chirho::PackageDescChirho;
-        use std::fs;
-        use tempfile::tempdir;
+#[test]
+fn discover_hierarchical_module_chirho() {
+    use haskelujah_package_chirho::{BuildInfoChirho, LibraryChirho, PackageDescChirho};
+    use std::fs;
+    use tempfile::tempdir;
 
-        let dir_chirho = tempdir().unwrap();
-        fs::write(
-            dir_chirho.path().join("Setup.hs"),
-            "import Distribution.Simple\nmain = defaultMain\n",
-        )
-        .unwrap();
+    let dir_chirho = tempdir().unwrap();
+    let src_dir_chirho = dir_chirho.path().join("src").join("Data").join("Map");
+    fs::create_dir_all(&src_dir_chirho).unwrap();
+    fs::write(
+        src_dir_chirho.join("Internal.hs"),
+        "module Data.Map.Internal where\n",
+    )
+    .unwrap();
 
-        let pkg_chirho = PackageDescChirho {
-            name_chirho: "setup-pkg".to_string(),
-            version_chirho: None,
-            cabal_version_chirho: None,
-            license_chirho: None,
-            author_chirho: None,
-            maintainer_chirho: None,
-            synopsis_chirho: None,
-            description_chirho: None,
-            category_chirho: None,
-            homepage_chirho: None,
-            bug_reports_chirho: None,
-            build_type_chirho: None,
-            library_chirho: None,
-            executables_chirho: vec![],
-            test_suites_chirho: vec![],
-            benchmarks_chirho: vec![],
-            flags_chirho: vec![],
-            source_repos_chirho: vec![],
-            common_stanzas_chirho: vec![],
-            custom_setup_chirho: None,
-        };
+    let pkg_chirho = PackageDescChirho {
+        name_chirho: "hier-pkg".to_string(),
+        version_chirho: None,
+        cabal_version_chirho: None,
+        license_chirho: None,
+        author_chirho: None,
+        maintainer_chirho: None,
+        synopsis_chirho: None,
+        description_chirho: None,
+        category_chirho: None,
+        homepage_chirho: None,
+        bug_reports_chirho: None,
+        build_type_chirho: None,
+        library_chirho: Some(LibraryChirho {
+            exposed_modules_chirho: vec!["Data.Map.Internal".to_string()],
+            other_modules_chirho: vec![],
+            build_info_chirho: BuildInfoChirho {
+                build_depends_chirho: vec![],
+                hs_source_dirs_chirho: vec!["src".to_string()],
+                default_language_chirho: None,
+                ghc_options_chirho: vec![],
+                default_extensions_chirho: vec![],
+                other_extensions_chirho: vec![],
+                imports_chirho: vec![],
+            },
+        }),
+        executables_chirho: vec![],
+        test_suites_chirho: vec![],
+        benchmarks_chirho: vec![],
+        flags_chirho: vec![],
+        source_repos_chirho: vec![],
+        common_stanzas_chirho: vec![],
+        custom_setup_chirho: None,
+    };
 
-        let modules_chirho = crate::discover_modules_chirho(&pkg_chirho, dir_chirho.path());
-        let names_chirho: Vec<&str> = modules_chirho.iter().map(|(n, _)| n.as_str()).collect();
-        assert!(names_chirho.contains(&"Setup"), "should discover Setup.hs");
-    }
+    let modules_chirho = crate::discover_modules_chirho(&pkg_chirho, dir_chirho.path());
+    assert_eq!(modules_chirho.len(), 1);
+    assert_eq!(modules_chirho[0].0, "Data.Map.Internal");
+    assert!(modules_chirho[0].1.ends_with("Data/Map/Internal.hs"));
+}
 
+#[test]
+fn llvm_executable_constant_chirho() {
+    // main = 42 should produce LLVM IR with ret i64 42
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho("module Main where\nmain = 42", &mut sm_chirho, "Main.hs")
+            .expect("should compile");
 
-    #[test]
-    fn discover_hierarchical_module_chirho() {
-        use haskelujah_package_chirho::{BuildInfoChirho, LibraryChirho, PackageDescChirho};
-        use std::fs;
-        use tempfile::tempdir;
+    let exec_ir_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
+        &result_chirho.core_chirho,
+    );
+    assert!(exec_ir_chirho.contains("define i64 @haskelujah_main()"));
+    assert!(exec_ir_chirho.contains("ret i64 42"));
+    assert!(exec_ir_chirho.contains("define i32 @main()"));
+    assert!(exec_ir_chirho.contains("call i64 @haskelujah_main()"));
+}
 
-        let dir_chirho = tempdir().unwrap();
-        let src_dir_chirho = dir_chirho.path().join("src").join("Data").join("Map");
-        fs::create_dir_all(&src_dir_chirho).unwrap();
-        fs::write(
-            src_dir_chirho.join("Internal.hs"),
-            "module Data.Map.Internal where\n",
-        )
-        .unwrap();
+#[test]
+fn llvm_executable_arithmetic_chirho() {
+    // f x y = x + y; main = f 10 32 should produce correct LLVM IR
+    let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").expect("should compile");
 
-        let pkg_chirho = PackageDescChirho {
-            name_chirho: "hier-pkg".to_string(),
-            version_chirho: None,
-            cabal_version_chirho: None,
-            license_chirho: None,
-            author_chirho: None,
-            maintainer_chirho: None,
-            synopsis_chirho: None,
-            description_chirho: None,
-            category_chirho: None,
-            homepage_chirho: None,
-            bug_reports_chirho: None,
-            build_type_chirho: None,
-            library_chirho: Some(LibraryChirho {
-                exposed_modules_chirho: vec!["Data.Map.Internal".to_string()],
-                other_modules_chirho: vec![],
-                build_info_chirho: BuildInfoChirho {
-                    build_depends_chirho: vec![],
-                    hs_source_dirs_chirho: vec!["src".to_string()],
-                    default_language_chirho: None,
-                    ghc_options_chirho: vec![],
-                    default_extensions_chirho: vec![],
-                    other_extensions_chirho: vec![],
-                    imports_chirho: vec![],
-                },
-            }),
-            executables_chirho: vec![],
-            test_suites_chirho: vec![],
-            benchmarks_chirho: vec![],
-            flags_chirho: vec![],
-            source_repos_chirho: vec![],
-            common_stanzas_chirho: vec![],
-            custom_setup_chirho: None,
-        };
+    let exec_ir_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
+        &result_chirho.core_chirho,
+    );
+    // f should compile to an add instruction
+    assert!(exec_ir_chirho.contains("add i64"));
+    // main should call f with arguments
+    assert!(exec_ir_chirho.contains("call i64 @haskelujah_f(i64 10, i64 32)"));
+}
 
-        let modules_chirho = crate::discover_modules_chirho(&pkg_chirho, dir_chirho.path());
-        assert_eq!(modules_chirho.len(), 1);
-        assert_eq!(modules_chirho[0].0, "Data.Map.Internal");
-        assert!(modules_chirho[0].1.ends_with("Data/Map/Internal.hs"));
-    }
-
-    #[test]
-    fn llvm_executable_constant_chirho() {
-        // main = 42 should produce LLVM IR with ret i64 42
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_source_chirho("module Main where\nmain = 42", &mut sm_chirho, "Main.hs")
-                .expect("should compile");
-
-        let exec_ir_chirho =
-            haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
-                &result_chirho.core_chirho,
-            );
-        assert!(exec_ir_chirho.contains("define i64 @haskelujah_main()"));
-        assert!(exec_ir_chirho.contains("ret i64 42"));
-        assert!(exec_ir_chirho.contains("define i32 @main()"));
-        assert!(exec_ir_chirho.contains("call i64 @haskelujah_main()"));
-    }
-
-    #[test]
-    fn llvm_executable_arithmetic_chirho() {
-        // f x y = x + y; main = f 10 32 should produce correct LLVM IR
-        let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
-                .expect("should compile");
-
-        let exec_ir_chirho =
-            haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
-                &result_chirho.core_chirho,
-            );
-        // f should compile to an add instruction
-        assert!(exec_ir_chirho.contains("add i64"));
-        // main should call f with arguments
-        assert!(exec_ir_chirho.contains("call i64 @haskelujah_f(i64 10, i64 32)"));
-    }
-
-    #[test]
-    fn llvm_executable_fibonacci_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn llvm_executable_fibonacci_chirho() {
+    let src_chirho = r#"module Main where
 fib n = case n of
   0 -> 0
   1 -> 1
   _ -> fib (n - 1) + fib (n - 2)
 main = fib 10"#;
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
-                .expect("should compile");
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").expect("should compile");
 
-        let exec_ir_chirho =
-            haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
-                &result_chirho.core_chirho,
-            );
-        // Should have recursive fib function and main
-        assert!(exec_ir_chirho.contains("@haskelujah_fib"));
-        assert!(exec_ir_chirho.contains("define i32 @main()"));
-    }
+    let exec_ir_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
+        &result_chirho.core_chirho,
+    );
+    // Should have recursive fib function and main
+    assert!(exec_ir_chirho.contains("@haskelujah_fib"));
+    assert!(exec_ir_chirho.contains("define i32 @main()"));
+}
 
-    #[test]
-    fn wasm_executable_constant_chirho() {
-        // main = 42 should produce valid WASM with dict elision
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_source_chirho("module Main where\nmain = 42", &mut sm_chirho, "Main.hs")
-                .expect("should compile");
+#[test]
+fn wasm_executable_constant_chirho() {
+    // main = 42 should produce valid WASM with dict elision
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho("module Main where\nmain = 42", &mut sm_chirho, "Main.hs")
+            .expect("should compile");
 
-        let wasm_chirho =
-            haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
-                &result_chirho.core_chirho,
-            );
-        assert_eq!(&wasm_chirho[0..4], b"\0asm");
-        assert_eq!(&wasm_chirho[4..8], &[1, 0, 0, 0]);
-        assert!(wasm_chirho.len() > 20);
-    }
+    let wasm_chirho = haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
+        &result_chirho.core_chirho,
+    );
+    assert_eq!(&wasm_chirho[0..4], b"\0asm");
+    assert_eq!(&wasm_chirho[4..8], &[1, 0, 0, 0]);
+    assert!(wasm_chirho.len() > 20);
+}
 
-    #[test]
-    fn wasm_executable_arithmetic_chirho() {
-        // f x y = x + y; main = f 10 32 should produce WASM with call instruction
-        let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
-                .expect("should compile");
+#[test]
+fn wasm_executable_arithmetic_chirho() {
+    // f x y = x + y; main = f 10 32 should produce WASM with call instruction
+    let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").expect("should compile");
 
-        let wasm_chirho =
-            haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
-                &result_chirho.core_chirho,
-            );
-        assert_eq!(&wasm_chirho[0..4], b"\0asm");
-        // Should contain call opcode (0x10) for the function call f 10 32
-        assert!(
-            wasm_chirho.contains(&0x10_u8),
-            "WASM should contain call instruction"
-        );
-    }
+    let wasm_chirho = haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
+        &result_chirho.core_chirho,
+    );
+    assert_eq!(&wasm_chirho[0..4], b"\0asm");
+    // Should contain call opcode (0x10) for the function call f 10 32
+    assert!(
+        wasm_chirho.contains(&0x10_u8),
+        "WASM should contain call instruction"
+    );
+}
 
-    #[test]
-    fn wasm_executable_fibonacci_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn wasm_executable_fibonacci_chirho() {
+    let src_chirho = r#"module Main where
 fib n = case n of
   0 -> 0
   1 -> 1
   _ -> fib (n - 1) + fib (n - 2)
 main = fib 10"#;
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
-                .expect("should compile");
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").expect("should compile");
 
-        let wasm_chirho =
-            haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
-                &result_chirho.core_chirho,
-            );
-        assert_eq!(&wasm_chirho[0..4], b"\0asm");
-        // Should contain function call and case/if instructions
-        assert!(wasm_chirho.contains(&0x10_u8), "WASM should contain call instruction");
-        assert!(wasm_chirho.contains(&0x04_u8), "WASM should contain if instruction");
-    }
+    let wasm_chirho = haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
+        &result_chirho.core_chirho,
+    );
+    assert_eq!(&wasm_chirho[0..4], b"\0asm");
+    // Should contain function call and case/if instructions
+    assert!(
+        wasm_chirho.contains(&0x10_u8),
+        "WASM should contain call instruction"
+    );
+    assert!(
+        wasm_chirho.contains(&0x04_u8),
+        "WASM should contain if instruction"
+    );
+}
 
-    // ── LLVM round-trip smoke tests (§H.61) ──────────────────────────────
-    // These tests compile Haskell source to LLVM IR, invoke clang to produce
-    // a native binary, execute it, and compare the exit code to the STG
-    // interpreter result.
+// ── LLVM round-trip smoke tests (§H.61) ──────────────────────────────
+// These tests compile Haskell source to LLVM IR, invoke clang to produce
+// a native binary, execute it, and compare the exit code to the STG
+// interpreter result.
 
-    /// Helper: compile source to LLVM IR executable, link with clang, run,
-    /// and capture the exit code plus stdout.
-    fn llvm_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)> {
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
+/// Helper: compile source to LLVM IR executable, link with clang, run,
+/// and capture the exit code plus stdout.
+fn llvm_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)> {
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
 
-        let exec_ir_chirho =
-            haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(&result_chirho.core_chirho);
+    let exec_ir_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
+        &result_chirho.core_chirho,
+    );
 
-        let tmp_dir_chirho = tempfile::tempdir().ok()?;
-        let ll_path_chirho = tmp_dir_chirho.path().join("main.ll");
-        let bin_path_chirho = tmp_dir_chirho.path().join("main");
-        std::fs::write(&ll_path_chirho, &exec_ir_chirho).ok()?;
-        let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
+    let tmp_dir_chirho = tempfile::tempdir().ok()?;
+    let ll_path_chirho = tmp_dir_chirho.path().join("main.ll");
+    let bin_path_chirho = tmp_dir_chirho.path().join("main");
+    std::fs::write(&ll_path_chirho, &exec_ir_chirho).ok()?;
+    let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
 
-        let compile_output_chirho = std::process::Command::new("clang")
-            .arg("-O0")
-            .arg("-o")
-            .arg(&bin_path_chirho)
-            .arg(&ll_path_chirho)
-            .arg("-L")
-            .arg(&rts_lib_dir_chirho)
-            .arg("-lhaskelujah_rts_chirho")
-            .output()
-            .ok()?;
-
-        if !compile_output_chirho.status.success() {
-            return None;
-        }
-
-        let run_output_chirho = std::process::Command::new(&bin_path_chirho)
-            .output()
-            .ok()?;
-
-        let exit_code_chirho = run_output_chirho.status.code()?;
-        let stdout_chirho = String::from_utf8(run_output_chirho.stdout).ok()?;
-        Some((exit_code_chirho, stdout_chirho))
-    }
-
-    /// Helper: compile source to LLVM IR executable, link with clang, run, return exit code.
-    fn llvm_round_trip_chirho(src_chirho: &str) -> Option<i32> {
-        llvm_round_trip_output_chirho(src_chirho)
-            .map(|(exit_code_chirho, _stdout_chirho)| exit_code_chirho)
-    }
-
-    fn cranelift_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)> {
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
-        let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
-        let obj_chirho = haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
-            &result_chirho.core_chirho,
-            &config_chirho,
-        )
+    let compile_output_chirho = std::process::Command::new("clang")
+        .arg("-O0")
+        .arg("-o")
+        .arg(&bin_path_chirho)
+        .arg(&ll_path_chirho)
+        .arg("-L")
+        .arg(&rts_lib_dir_chirho)
+        .arg("-lhaskelujah_rts_chirho")
+        .output()
         .ok()?;
 
-        let tmp_dir_chirho = tempfile::tempdir().ok()?;
-        let obj_path_chirho = tmp_dir_chirho.path().join("main.o");
-        let bin_path_chirho = tmp_dir_chirho.path().join("main");
-        std::fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho).ok()?;
-        let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
-
-        let compile_status_chirho = std::process::Command::new("cc")
-            .arg("-o")
-            .arg(&bin_path_chirho)
-            .arg(&obj_path_chirho)
-            .arg("-Wl,-no_fixup_chains")
-            .arg("-L")
-            .arg(&rts_lib_dir_chirho)
-            .arg("-lhaskelujah_rts_chirho")
-            .status()
-            .ok()?;
-        if !compile_status_chirho.success() {
-            return None;
-        }
-
-        let run_output_chirho = std::process::Command::new(&bin_path_chirho)
-            .output()
-            .ok()?;
-        let exit_code_chirho = run_output_chirho.status.code()?;
-        let stdout_chirho = String::from_utf8(run_output_chirho.stdout).ok()?;
-        Some((exit_code_chirho, stdout_chirho))
+    if !compile_output_chirho.status.success() {
+        return None;
     }
 
-    fn cranelift_round_trip_chirho(src_chirho: &str) -> Option<i32> {
-        cranelift_round_trip_output_chirho(src_chirho)
-            .map(|(exit_code_chirho, _stdout_chirho)| exit_code_chirho)
+    let run_output_chirho = std::process::Command::new(&bin_path_chirho).output().ok()?;
+
+    let exit_code_chirho = run_output_chirho.status.code()?;
+    let stdout_chirho = String::from_utf8(run_output_chirho.stdout).ok()?;
+    Some((exit_code_chirho, stdout_chirho))
+}
+
+/// Helper: compile source to LLVM IR executable, link with clang, run, return exit code.
+fn llvm_round_trip_chirho(src_chirho: &str) -> Option<i32> {
+    llvm_round_trip_output_chirho(src_chirho)
+        .map(|(exit_code_chirho, _stdout_chirho)| exit_code_chirho)
+}
+
+fn cranelift_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)> {
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
+    let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
+    let obj_chirho = haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
+        &result_chirho.core_chirho,
+        &config_chirho,
+    )
+    .ok()?;
+
+    let tmp_dir_chirho = tempfile::tempdir().ok()?;
+    let obj_path_chirho = tmp_dir_chirho.path().join("main.o");
+    let bin_path_chirho = tmp_dir_chirho.path().join("main");
+    std::fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho).ok()?;
+    let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
+
+    let compile_status_chirho = std::process::Command::new("cc")
+        .arg("-o")
+        .arg(&bin_path_chirho)
+        .arg(&obj_path_chirho)
+        .arg("-Wl,-no_fixup_chains")
+        .arg("-L")
+        .arg(&rts_lib_dir_chirho)
+        .arg("-lhaskelujah_rts_chirho")
+        .status()
+        .ok()?;
+    if !compile_status_chirho.success() {
+        return None;
     }
 
-    fn ensure_rts_staticlib_for_tests_chirho() -> Option<std::path::PathBuf> {
-        let crate_dir_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-        let workspace_root_chirho = crate_dir_chirho.parent()?.parent()?.to_path_buf();
-        let cargo_status_chirho = std::process::Command::new("cargo")
-            .current_dir(&workspace_root_chirho)
-            .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
-            .status()
-            .ok()?;
-        if !cargo_status_chirho.success() {
-            return None;
-        }
-        Some(workspace_root_chirho.join("target").join("debug"))
-    }
+    let run_output_chirho = std::process::Command::new(&bin_path_chirho).output().ok()?;
+    let exit_code_chirho = run_output_chirho.status.code()?;
+    let stdout_chirho = String::from_utf8(run_output_chirho.stdout).ok()?;
+    Some((exit_code_chirho, stdout_chirho))
+}
 
-    #[test]
-    fn llvm_round_trip_constant_chirho() {
-        // main = 42 → exit code 42
-        let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 42");
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 42, "LLVM round-trip: main = 42 should exit with 42");
-        }
-        // If clang not available or linking fails, skip silently
-    }
+fn cranelift_round_trip_chirho(src_chirho: &str) -> Option<i32> {
+    cranelift_round_trip_output_chirho(src_chirho)
+        .map(|(exit_code_chirho, _stdout_chirho)| exit_code_chirho)
+}
 
-    #[test]
-    fn llvm_round_trip_arithmetic_chirho() {
-        // f x y = x + y; main = f 10 32 → exit code 42
-        let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
-        let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 42, "LLVM round-trip: f 10 32 should exit with 42");
-        }
+fn ensure_rts_staticlib_for_tests_chirho() -> Option<std::path::PathBuf> {
+    let crate_dir_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workspace_root_chirho = crate_dir_chirho.parent()?.parent()?.to_path_buf();
+    let cargo_status_chirho = std::process::Command::new("cargo")
+        .current_dir(&workspace_root_chirho)
+        .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+        .status()
+        .ok()?;
+    if !cargo_status_chirho.success() {
+        return None;
     }
+    Some(workspace_root_chirho.join("target").join("debug"))
+}
 
-    #[test]
-    fn llvm_round_trip_subtraction_chirho() {
-        let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 50 - 8");
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 42, "LLVM round-trip: 50 - 8 should exit with 42");
-        }
+#[test]
+fn llvm_round_trip_constant_chirho() {
+    // main = 42 → exit code 42
+    let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 42");
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(
+            code_chirho, 42,
+            "LLVM round-trip: main = 42 should exit with 42"
+        );
     }
+    // If clang not available or linking fails, skip silently
+}
 
-    #[test]
-    fn llvm_round_trip_multiplication_chirho() {
-        let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 6 * 7");
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 42, "LLVM round-trip: 6 * 7 should exit with 42");
-        }
+#[test]
+fn llvm_round_trip_arithmetic_chirho() {
+    // f x y = x + y; main = f 10 32 → exit code 42
+    let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
+    let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(
+            code_chirho, 42,
+            "LLVM round-trip: f 10 32 should exit with 42"
+        );
     }
+}
 
-    #[test]
-    fn llvm_round_trip_division_chirho() {
-        let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 84 `div` 2");
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 42, "LLVM round-trip: 84 `div` 2 should exit with 42");
-        }
+#[test]
+fn llvm_round_trip_subtraction_chirho() {
+    let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 50 - 8");
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(
+            code_chirho, 42,
+            "LLVM round-trip: 50 - 8 should exit with 42"
+        );
     }
+}
 
-    #[test]
-    fn llvm_round_trip_modulo_chirho() {
-        let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 127 `mod` 85");
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 42, "LLVM round-trip: 127 `mod` 85 should exit with 42");
-        }
+#[test]
+fn llvm_round_trip_multiplication_chirho() {
+    let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 6 * 7");
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(
+            code_chirho, 42,
+            "LLVM round-trip: 6 * 7 should exit with 42"
+        );
     }
+}
 
-    #[test]
-    fn llvm_round_trip_fibonacci_chirho() {
-        // fib 10 = 55 → exit code 55
-        let src_chirho = r#"module Main where
+#[test]
+fn llvm_round_trip_division_chirho() {
+    let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 84 `div` 2");
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(
+            code_chirho, 42,
+            "LLVM round-trip: 84 `div` 2 should exit with 42"
+        );
+    }
+}
+
+#[test]
+fn llvm_round_trip_modulo_chirho() {
+    let exit_code_chirho = llvm_round_trip_chirho("module Main where\nmain = 127 `mod` 85");
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(
+            code_chirho, 42,
+            "LLVM round-trip: 127 `mod` 85 should exit with 42"
+        );
+    }
+}
+
+#[test]
+fn llvm_round_trip_fibonacci_chirho() {
+    // fib 10 = 55 → exit code 55
+    let src_chirho = r#"module Main where
 fib n = case n of
   0 -> 0
   1 -> 1
   _ -> fib (n - 1) + fib (n - 2)
 main = fib 10"#;
-        let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 55, "LLVM round-trip: fib 10 should exit with 55");
-        }
+    let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(
+            code_chirho, 55,
+            "LLVM round-trip: fib 10 should exit with 55"
+        );
     }
+}
 
-    #[test]
-    fn llvm_round_trip_matches_stg_chirho() {
-        // Compare LLVM native execution with STG interpreter result
-        let src_chirho = "module Main where\nmain = 3 * 14";
-        // STG interpreter
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let stg_result_chirho = crate::eval_source_chirho(src_chirho, &mut sm_chirho, "Main.hs", None);
-        let stg_val_chirho = match stg_result_chirho {
-            Ok(ValueChirho::IntChirho(n_chirho)) => n_chirho,
-            _ => return, // skip if STG eval fails
-        };
+#[test]
+fn llvm_round_trip_matches_stg_chirho() {
+    // Compare LLVM native execution with STG interpreter result
+    let src_chirho = "module Main where\nmain = 3 * 14";
+    // STG interpreter
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let stg_result_chirho = crate::eval_source_chirho(src_chirho, &mut sm_chirho, "Main.hs", None);
+    let stg_val_chirho = match stg_result_chirho {
+        Ok(ValueChirho::IntChirho(n_chirho)) => n_chirho,
+        _ => return, // skip if STG eval fails
+    };
 
-        // LLVM native
-        let native_code_chirho = llvm_round_trip_chirho(src_chirho);
-        if let Some(code_chirho) = native_code_chirho {
-            assert_eq!(
-                code_chirho as i64, stg_val_chirho,
-                "LLVM native exit code should match STG interpreter result"
-            );
-        }
+    // LLVM native
+    let native_code_chirho = llvm_round_trip_chirho(src_chirho);
+    if let Some(code_chirho) = native_code_chirho {
+        assert_eq!(
+            code_chirho as i64, stg_val_chirho,
+            "LLVM native exit code should match STG interpreter result"
+        );
     }
+}
 
-    #[test]
-    fn llvm_round_trip_put_str_ln_output_chirho() {
-        let src_chirho = "module Main where\nmain = putStrLn \"Hello from Haskelujah!\"";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "putStrLn executable should exit successfully");
-            assert_eq!(stdout_chirho, "Hello from Haskelujah!\n");
-        }
+#[test]
+fn llvm_round_trip_put_str_ln_output_chirho() {
+    let src_chirho = "module Main where\nmain = putStrLn \"Hello from Haskelujah!\"";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "putStrLn executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "Hello from Haskelujah!\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_print_int_output_chirho() {
-        let src_chirho = "module Main where\nmain = print 42";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "print executable should exit successfully");
-            assert_eq!(stdout_chirho, "42\n");
-        }
+#[test]
+fn llvm_round_trip_print_int_output_chirho() {
+    let src_chirho = "module Main where\nmain = print 42";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "print executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "42\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_print_true_output_chirho() {
-        let src_chirho = "module Main where\nmain = print True";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "print True executable should exit successfully");
-            assert_eq!(stdout_chirho, "True\n");
-        }
+#[test]
+fn llvm_round_trip_print_true_output_chirho() {
+    let src_chirho = "module Main where\nmain = print True";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "print True executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "True\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_print_false_output_chirho() {
-        let src_chirho = "module Main where\nmain = print False";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "print False executable should exit successfully");
-            assert_eq!(stdout_chirho, "False\n");
-        }
+#[test]
+fn llvm_round_trip_print_false_output_chirho() {
+    let src_chirho = "module Main where\nmain = print False";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "print False executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "False\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_print_char_output_chirho() {
-        let src_chirho = "module Main where\nmain = print 'A'";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "print Char executable should exit successfully");
-            assert_eq!(stdout_chirho, "'A'\n");
-        }
+#[test]
+fn llvm_round_trip_print_char_output_chirho() {
+    let src_chirho = "module Main where\nmain = print 'A'";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "print Char executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "'A'\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_print_float_output_chirho() {
-        let src_chirho = "module Main where\nmain = print 3.14";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "print Float executable should exit successfully");
-            assert_eq!(stdout_chirho, "3.14\n");
-        }
+#[test]
+fn llvm_round_trip_print_float_output_chirho() {
+    let src_chirho = "module Main where\nmain = print 3.14";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "print Float executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "3.14\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_print_comparison_outputs_bool_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn llvm_round_trip_print_comparison_outputs_bool_chirho() {
+    let src_chirho = r#"module Main where
 main = do
   print (2 == 2)
   print (2 /= 3)
@@ -1036,68 +1060,69 @@ main = do
   print (3 > 2)
   print (2 <= 2)
   print (3 >= 3)"#;
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(
-                exit_code_chirho, 0,
-                "comparison executable should exit successfully"
-            );
-            assert_eq!(stdout_chirho, "True\nTrue\nTrue\nTrue\nTrue\nTrue\n");
-        }
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "comparison executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "True\nTrue\nTrue\nTrue\nTrue\nTrue\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_if_then_else_true_branch_output_chirho() {
-        let src_chirho =
-            "module Main where\nmain = if 2 + 3 == 5 then putStrLn \"yes\" else putStrLn \"no\"";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(
-                exit_code_chirho, 0,
-                "if-then-else executable should exit successfully"
-            );
-            assert_eq!(stdout_chirho, "yes\n");
-        }
+#[test]
+fn llvm_round_trip_if_then_else_true_branch_output_chirho() {
+    let src_chirho =
+        "module Main where\nmain = if 2 + 3 == 5 then putStrLn \"yes\" else putStrLn \"no\"";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "if-then-else executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "yes\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_if_then_else_false_branch_output_chirho() {
-        let src_chirho =
-            "module Main where\nmain = if 2 + 3 == 6 then putStrLn \"yes\" else putStrLn \"no\"";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(
-                exit_code_chirho, 0,
-                "if-then-else executable should exit successfully"
-            );
-            assert_eq!(stdout_chirho, "no\n");
-        }
+#[test]
+fn llvm_round_trip_if_then_else_false_branch_output_chirho() {
+    let src_chirho =
+        "module Main where\nmain = if 2 + 3 == 6 then putStrLn \"yes\" else putStrLn \"no\"";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "if-then-else executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "no\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_do_put_str_ln_then_print_output_chirho() {
-        let src_chirho =
-            "module Main where\nmain = do\n  putStrLn \"Hello from Haskelujah!\"\n  print 42\n";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "do block executable should exit successfully");
-            assert_eq!(stdout_chirho, "Hello from Haskelujah!\n42\n");
-        }
+#[test]
+fn llvm_round_trip_do_put_str_ln_then_print_output_chirho() {
+    let src_chirho =
+        "module Main where\nmain = do\n  putStrLn \"Hello from Haskelujah!\"\n  print 42\n";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "do block executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "Hello from Haskelujah!\n42\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_bind_return_print_output_chirho() {
-        let src_chirho = "module Main where\nmain = do\n  x <- return 42\n  print x\n";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "bind executable should exit successfully");
-            assert_eq!(stdout_chirho, "42\n");
-        }
+#[test]
+fn llvm_round_trip_bind_return_print_output_chirho() {
+    let src_chirho = "module Main where\nmain = do\n  x <- return 42\n  print x\n";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "bind executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "42\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_recursive_where_print_output_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn llvm_round_trip_recursive_where_print_output_chirho() {
+    let src_chirho = r#"module Main where
 main :: IO ()
 main = do
   putStrLn "Hello from Haskelujah Chirho!"
@@ -1107,472 +1132,573 @@ main = do
     factorial 0 = 1
     factorial n = n * factorial (n - 1)
 "#;
-        let (exit_code_chirho, stdout_chirho) =
-            llvm_round_trip_output_chirho(src_chirho).expect("recursive where LLVM round-trip");
-        assert_eq!(
-            exit_code_chirho, 0,
-            "recursive where executable should exit successfully"
-        );
-        assert_eq!(stdout_chirho, "Hello from Haskelujah Chirho!\n5\n3628800\n");
-    }
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(src_chirho).expect("recursive where LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "recursive where executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "Hello from Haskelujah Chirho!\n5\n3628800\n");
+}
 
-    #[test]
-    fn llvm_round_trip_nested_where_print_output_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn llvm_round_trip_nested_where_print_output_chirho() {
+    let src_chirho = r#"module Main where
 sumTo n = outer n where
   outer m = go m 0 where
     go 0 acc = acc
     go k acc = go (k - 1) (acc + k)
 main = print (sumTo 10)
 "#;
-        let (exit_code_chirho, stdout_chirho) =
-            llvm_round_trip_output_chirho(src_chirho).expect("nested where LLVM round-trip");
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(src_chirho).expect("nested where LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "nested where executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "55\n");
+}
+
+#[test]
+fn llvm_round_trip_put_str_ln_show_int_output_chirho() {
+    let src_chirho = "module Main where\nmain = putStrLn (show 42)";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
         assert_eq!(
             exit_code_chirho, 0,
-            "nested where executable should exit successfully"
+            "show executable should exit successfully"
         );
-        assert_eq!(stdout_chirho, "55\n");
+        assert_eq!(stdout_chirho, "42\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_put_str_ln_show_int_output_chirho() {
-        let src_chirho = "module Main where\nmain = putStrLn (show 42)";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "show executable should exit successfully");
-            assert_eq!(stdout_chirho, "42\n");
-        }
-    }
-
-    #[test]
-    fn llvm_round_trip_put_str_ln_show_true_output_chirho() {
-        let src_chirho = "module Main where\nmain = putStrLn (show True)";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "show True executable should exit successfully");
-            assert_eq!(stdout_chirho, "True\n");
-        }
-    }
-
-    #[test]
-    fn llvm_round_trip_put_str_ln_show_false_output_chirho() {
-        let src_chirho = "module Main where\nmain = putStrLn (show False)";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "show False executable should exit successfully");
-            assert_eq!(stdout_chirho, "False\n");
-        }
-    }
-
-    #[test]
-    fn llvm_round_trip_put_str_ln_show_char_output_chirho() {
-        let src_chirho = "module Main where\nmain = putStrLn (show 'A')";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "show Char executable should exit successfully");
-            assert_eq!(stdout_chirho, "'A'\n");
-        }
-    }
-
-    #[test]
-    fn llvm_round_trip_put_str_ln_show_float_output_chirho() {
-        let src_chirho = "module Main where\nmain = putStrLn (show 3.14)";
-        if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "show Float executable should exit successfully");
-            assert_eq!(stdout_chirho, "3.14\n");
-        }
-    }
-
-    #[test]
-    fn llvm_round_trip_print_sum_list_output_chirho() {
-        let src_chirho = "module Main where\nmain = print (sum [1,2,3])";
-        let (exit_code_chirho, stdout_chirho) =
-            llvm_round_trip_output_chirho(src_chirho).expect("sum list LLVM round-trip");
+#[test]
+fn llvm_round_trip_put_str_ln_show_true_output_chirho() {
+    let src_chirho = "module Main where\nmain = putStrLn (show True)";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
         assert_eq!(
             exit_code_chirho, 0,
-            "sum list executable should exit successfully"
+            "show True executable should exit successfully"
         );
-        assert_eq!(stdout_chirho, "6\n");
+        assert_eq!(stdout_chirho, "True\n");
     }
+}
 
-    #[test]
-    fn llvm_round_trip_map_lambda_sum_chirho() {
-        let src_chirho = "module Main where\nmain = sum (map (\\x -> x * 2) [1,2,3])";
-        let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 12, "map should compile through LLVM");
-        }
-    }
-
-    #[test]
-    fn llvm_round_trip_filter_sum_chirho() {
-        let src_chirho = "module Main where\nmain = sum (filter (> 2) [1,2,3,4])";
-        let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 7, "filter should compile through LLVM");
-        }
-    }
-
-    #[test]
-    fn llvm_round_trip_foldr_sum_chirho() {
-        let src_chirho = "module Main where\nmain = foldr (+) 0 [1,2,3]";
-        let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 6, "foldr should compile through LLVM");
-        }
-    }
-
-    // ── Cranelift backend driver integration tests ────────────────────────
-
-    #[test]
-    fn cranelift_executable_constant_chirho() {
-        // main = 42 should produce valid native object file
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_source_chirho("module Main where\nmain = 42", &mut sm_chirho, "Main.hs")
-                .expect("should compile");
-
-        let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
-        let obj_chirho =
-            haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
-                &result_chirho.core_chirho,
-                &config_chirho,
-            )
-            .expect("cranelift compilation should succeed");
-        assert!(
-            !obj_chirho.object_bytes_chirho.is_empty(),
-            "object file should not be empty"
+#[test]
+fn llvm_round_trip_put_str_ln_show_false_output_chirho() {
+    let src_chirho = "module Main where\nmain = putStrLn (show False)";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "show False executable should exit successfully"
         );
+        assert_eq!(stdout_chirho, "False\n");
     }
+}
 
-    #[test]
-    fn cranelift_executable_arithmetic_chirho() {
-        // f x y = x + y; main = f 10 32 should produce valid object with function call
-        let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
-                .expect("should compile");
-
-        let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
-        let obj_chirho =
-            haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
-                &result_chirho.core_chirho,
-                &config_chirho,
-            )
-            .expect("cranelift compilation should succeed");
-        assert!(
-            !obj_chirho.object_bytes_chirho.is_empty(),
-            "object file should not be empty"
+#[test]
+fn llvm_round_trip_put_str_ln_show_char_output_chirho() {
+    let src_chirho = "module Main where\nmain = putStrLn (show 'A')";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "show Char executable should exit successfully"
         );
+        assert_eq!(stdout_chirho, "'A'\n");
     }
+}
 
-    #[test]
-    fn cranelift_executable_fibonacci_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn llvm_round_trip_put_str_ln_show_float_output_chirho() {
+    let src_chirho = "module Main where\nmain = putStrLn (show 3.14)";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "show Float executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "3.14\n");
+    }
+}
+
+#[test]
+fn llvm_round_trip_print_sum_list_output_chirho() {
+    let src_chirho = "module Main where\nmain = print (sum [1,2,3])";
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(src_chirho).expect("sum list LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "sum list executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "6\n");
+}
+
+#[test]
+fn llvm_round_trip_map_lambda_sum_chirho() {
+    let src_chirho = "module Main where\nmain = sum (map (\\x -> x * 2) [1,2,3])";
+    let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(code_chirho, 12, "map should compile through LLVM");
+    }
+}
+
+#[test]
+fn llvm_round_trip_filter_sum_chirho() {
+    let src_chirho = "module Main where\nmain = sum (filter (> 2) [1,2,3,4])";
+    let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(code_chirho, 7, "filter should compile through LLVM");
+    }
+}
+
+#[test]
+fn llvm_round_trip_foldr_sum_chirho() {
+    let src_chirho = "module Main where\nmain = foldr (+) 0 [1,2,3]";
+    let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(code_chirho, 6, "foldr should compile through LLVM");
+    }
+}
+
+// ── Cranelift backend driver integration tests ────────────────────────
+
+#[test]
+fn cranelift_executable_constant_chirho() {
+    // main = 42 should produce valid native object file
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho("module Main where\nmain = 42", &mut sm_chirho, "Main.hs")
+            .expect("should compile");
+
+    let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
+    let obj_chirho = haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
+        &result_chirho.core_chirho,
+        &config_chirho,
+    )
+    .expect("cranelift compilation should succeed");
+    assert!(
+        !obj_chirho.object_bytes_chirho.is_empty(),
+        "object file should not be empty"
+    );
+}
+
+#[test]
+fn cranelift_executable_arithmetic_chirho() {
+    // f x y = x + y; main = f 10 32 should produce valid object with function call
+    let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").expect("should compile");
+
+    let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
+    let obj_chirho = haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
+        &result_chirho.core_chirho,
+        &config_chirho,
+    )
+    .expect("cranelift compilation should succeed");
+    assert!(
+        !obj_chirho.object_bytes_chirho.is_empty(),
+        "object file should not be empty"
+    );
+}
+
+#[test]
+fn cranelift_executable_fibonacci_chirho() {
+    let src_chirho = r#"module Main where
 fib n = case n of
   0 -> 0
   1 -> 1
   _ -> fib (n - 1) + fib (n - 2)
 main = fib 10"#;
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
-                .expect("should compile");
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").expect("should compile");
 
-        let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
-        let obj_chirho =
-            haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
-                &result_chirho.core_chirho,
-                &config_chirho,
-            )
-            .expect("cranelift compilation should succeed");
-        assert!(
-            !obj_chirho.object_bytes_chirho.is_empty(),
-            "cranelift fibonacci object file should not be empty"
-        );
-    }
+    let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
+    let obj_chirho = haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
+        &result_chirho.core_chirho,
+        &config_chirho,
+    )
+    .expect("cranelift compilation should succeed");
+    assert!(
+        !obj_chirho.object_bytes_chirho.is_empty(),
+        "cranelift fibonacci object file should not be empty"
+    );
+}
 
-    #[test]
-    fn cranelift_round_trip_payload_constructor_box_int_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn cranelift_round_trip_payload_constructor_box_int_chirho() {
+    let src_chirho = r#"module Main where
 data Box = Box Int
 unBox :: Box -> Int
 unBox (Box n) = n
 main = unBox (Box 42)
 "#;
-        let exit_code_chirho = cranelift_round_trip_chirho(src_chirho);
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 42, "Cranelift round-trip: Box Int should exit with 42");
-        }
+    let exit_code_chirho = cranelift_round_trip_chirho(src_chirho);
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(
+            code_chirho, 42,
+            "Cranelift round-trip: Box Int should exit with 42"
+        );
     }
+}
 
-    #[test]
-    fn cranelift_round_trip_payload_constructor_rect_area_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn cranelift_round_trip_payload_constructor_rect_area_chirho() {
+    let src_chirho = r#"module Main where
 data Shape = Circle Int | Rect Int Int
 area :: Shape -> Int
 area (Circle r) = 3 * r * r
 area (Rect w h) = w * h
 main = area (Rect 3 7)
 "#;
-        let exit_code_chirho = cranelift_round_trip_chirho(src_chirho);
-        if let Some(code_chirho) = exit_code_chirho {
-            assert_eq!(code_chirho, 21, "Cranelift round-trip: Rect 3 7 should exit with 21");
-        }
+    let exit_code_chirho = cranelift_round_trip_chirho(src_chirho);
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(
+            code_chirho, 21,
+            "Cranelift round-trip: Rect 3 7 should exit with 21"
+        );
     }
+}
 
-    #[test]
-    fn cranelift_round_trip_io_order_output_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn cranelift_round_trip_io_order_output_chirho() {
+    let src_chirho = r#"module Main where
 main = do
   putStrLn "hello"
   print 42
 "#;
-        if let Some((exit_code_chirho, stdout_chirho)) = cranelift_round_trip_output_chirho(src_chirho)
-        {
-            assert_eq!(exit_code_chirho, 0, "Cranelift IO program should exit successfully");
-            assert_eq!(
-                stdout_chirho,
-                "hello\n42\n",
-                "Cranelift should preserve source IO sequencing",
-            );
-        }
+    if let Some((exit_code_chirho, stdout_chirho)) = cranelift_round_trip_output_chirho(src_chirho)
+    {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "Cranelift IO program should exit successfully"
+        );
+        assert_eq!(
+            stdout_chirho, "hello\n42\n",
+            "Cranelift should preserve source IO sequencing",
+        );
     }
+}
 
-    #[test]
-    fn cranelift_round_trip_recursive_where_print_output_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn cranelift_round_trip_recursive_where_print_output_chirho() {
+    let src_chirho = r#"module Main where
 collatz n = go n 0
   where
     go 1 acc = acc
     go k acc = if mod k 2 == 0 then go (div k 2) (acc + 1) else go (3 * k + 1) (acc + 1)
 main = print (collatz 7)
 "#;
-        let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
-            .expect("recursive where Cranelift round-trip");
-        assert_eq!(
-            exit_code_chirho, 0,
-            "recursive where Cranelift executable should exit successfully"
-        );
-        assert_eq!(stdout_chirho, "16\n");
-    }
+    let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
+        .expect("recursive where Cranelift round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "recursive where Cranelift executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "16\n");
+}
 
-    #[test]
-    fn cranelift_round_trip_nested_where_print_output_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn cranelift_round_trip_nested_where_print_output_chirho() {
+    let src_chirho = r#"module Main where
 sumTo n = outer n where
   outer m = go m 0 where
     go 0 acc = acc
     go k acc = go (k - 1) (acc + k)
 main = print (sumTo 10)
 "#;
-        let (exit_code_chirho, stdout_chirho) =
-            cranelift_round_trip_output_chirho(src_chirho).expect("nested where Cranelift round-trip");
-        assert_eq!(
-            exit_code_chirho, 0,
-            "nested where Cranelift executable should exit successfully"
-        );
-        assert_eq!(stdout_chirho, "55\n");
-    }
+    let (exit_code_chirho, stdout_chirho) =
+        cranelift_round_trip_output_chirho(src_chirho).expect("nested where Cranelift round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "nested where Cranelift executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "55\n");
+}
 
-    #[test]
-    fn cranelift_round_trip_wildcard_first_column_safe_divide_output_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn cranelift_round_trip_wildcard_first_column_safe_divide_output_chirho() {
+    let src_chirho = r#"module Main where
 safeDivide _ 0 = 0
 safeDivide a b = div a b
 main = print (safeDivide 10 2)
 "#;
-        let (exit_code_chirho, stdout_chirho) =
-            cranelift_round_trip_output_chirho(src_chirho).expect("wildcard safeDivide Cranelift round-trip");
-        assert_eq!(
-            exit_code_chirho, 0,
-            "wildcard-first-column Cranelift executable should exit successfully"
-        );
-        assert_eq!(stdout_chirho, "5\n");
-    }
+    let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
+        .expect("wildcard safeDivide Cranelift round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "wildcard-first-column Cranelift executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "5\n");
+}
 
-    #[test]
-    fn cranelift_round_trip_partial_application_make_adder_output_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn cranelift_round_trip_partial_application_make_adder_output_chirho() {
+    let src_chirho = r#"module Main where
 makeAdder n = \x -> x + n
 main = do
   let add5 = makeAdder 5
   print (add5 37)
 "#;
-        let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
-            .expect("partial application makeAdder Cranelift round-trip");
-        assert_eq!(
-            exit_code_chirho, 0,
-            "partial application Cranelift executable should exit successfully"
-        );
-        assert_eq!(stdout_chirho, "42\n");
-    }
+    let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
+        .expect("partial application makeAdder Cranelift round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "partial application Cranelift executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "42\n");
+}
 
-    #[test]
-    fn cranelift_round_trip_where_capture_output_chirho() {
-        let src_chirho = r#"module Main where
+#[test]
+fn cranelift_round_trip_where_capture_output_chirho() {
+    let src_chirho = r#"module Main where
 f x = go 0 where
   go n = if n >= x then n else go (n + 1)
 main = print (f 5)
 "#;
-        let (exit_code_chirho, stdout_chirho) =
-            cranelift_round_trip_output_chirho(src_chirho).expect("where capture Cranelift round-trip");
-        assert_eq!(
-            exit_code_chirho, 0,
-            "where-capture Cranelift executable should exit successfully"
+    let (exit_code_chirho, stdout_chirho) =
+        cranelift_round_trip_output_chirho(src_chirho).expect("where capture Cranelift round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "where-capture Cranelift executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "5\n");
+}
+
+// ---------------------------------------------------------------
+// §29 — Structured error messages with "did you mean?" suggestions
+// ---------------------------------------------------------------
+
+#[test]
+fn unbound_var_suggests_similar_name_chirho() {
+    // Typo: "ad1" instead of "add1"
+    let src_chirho = "module Main where\nadd1 x = x + 1\nmain = ad1 41\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
+    assert!(result_chirho.is_err(), "should fail with unbound variable");
+    let diag_chirho = result_chirho.unwrap_err();
+    let rendered_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
+    assert!(
+        rendered_chirho.contains("did you mean"),
+        "error should contain 'did you mean' suggestion, got: {rendered_chirho}"
+    );
+    assert!(
+        rendered_chirho.contains("add1"),
+        "suggestion should include 'add1', got: {rendered_chirho}"
+    );
+}
+
+#[test]
+fn type_mismatch_shows_expected_found_chirho() {
+    let src_chirho = "module Main where\nf :: Int -> Int\nf x = x + 1\nmain = f True\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
+    assert!(result_chirho.is_err());
+    let diag_chirho = result_chirho.unwrap_err();
+    let rendered_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
+    assert!(
+        rendered_chirho.contains("type mismatch"),
+        "error should mention 'type mismatch', got: {rendered_chirho}"
+    );
+    assert!(
+        rendered_chirho.contains("expected type:") && rendered_chirho.contains("found type:"),
+        "error should show expected/found types, got: {rendered_chirho}"
+    );
+}
+
+#[test]
+fn error_rendered_with_source_snippet_chirho() {
+    let src_chirho = "module Main where\nmain = undefined_func 42\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
+    assert!(result_chirho.is_err());
+    let diag_chirho = result_chirho.unwrap_err();
+    let rendered_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
+    assert!(
+        rendered_chirho.contains("Main.hs"),
+        "error should reference file, got: {rendered_chirho}"
+    );
+    assert!(
+        rendered_chirho.contains("-->"),
+        "error should have --> source pointer, got: {rendered_chirho}"
+    );
+}
+
+#[test]
+fn error_rendered_with_color_chirho() {
+    let src_chirho = "module Main where\nmain = no_such_var\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
+    assert!(result_chirho.is_err());
+    let diag_chirho = result_chirho.unwrap_err();
+    let colored_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, true);
+    assert!(
+        colored_chirho.contains("\x1b["),
+        "colored output should contain ANSI escapes"
+    );
+    let plain_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
+    assert!(
+        !plain_chirho.contains("\x1b["),
+        "plain output should not contain ANSI escapes"
+    );
+}
+
+// ── §44 Foreign exports ──────────────────────────────────────────────
+
+#[test]
+fn foreign_export_parsed_and_reaches_core_chirho() {
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = concat!(
+        "module Test where\n",
+        "foreign export ccall addOne :: Int -> Int\n",
+        "addOne x = x + 1\n",
+        "main = addOne 41\n",
+    );
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ForeignExport.hs")
+        .expect("should compile with foreign export");
+    // The Core module should have the foreign export recorded
+    assert!(
+        !result_chirho.core_chirho.foreign_exports_chirho.is_empty(),
+        "foreign exports should be propagated to Core module"
+    );
+    let export_chirho = &result_chirho.core_chirho.foreign_exports_chirho[0];
+    assert_eq!(export_chirho.haskell_name_chirho, "addOne");
+    assert_eq!(export_chirho.foreign_name_chirho, "addOne");
+    assert_eq!(export_chirho.calling_conv_chirho, "ccall");
+}
+
+#[test]
+fn foreign_export_with_custom_c_name_chirho() {
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = concat!(
+        "module Test where\n",
+        "foreign export ccall \"hs_add_one\" addOne :: Int -> Int\n",
+        "addOne x = x + 1\n",
+        "main = addOne 41\n",
+    );
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ForeignExportName.hs")
+        .expect("should compile with custom C name");
+    let export_chirho = &result_chirho.core_chirho.foreign_exports_chirho[0];
+    assert_eq!(export_chirho.haskell_name_chirho, "addOne");
+    assert_eq!(export_chirho.foreign_name_chirho, "hs_add_one");
+}
+
+#[test]
+fn foreign_export_llvm_emits_wrapper_chirho() {
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = concat!(
+        "module Test where\n",
+        "foreign export ccall \"hs_val\" getVal :: Int\n",
+        "getVal = 42\n",
+        "main = getVal\n",
+    );
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ForeignExportLLVM.hs")
+        .expect("should compile");
+    assert!(
+        result_chirho.llvm_ir_chirho.contains("@hs_val"),
+        "LLVM IR should contain the foreign export wrapper: {}",
+        result_chirho.llvm_ir_chirho
+    );
+}
+
+#[test]
+fn cranelift_round_trip_show_concat_chirho() {
+    let src_chirho = r#"module Main where
+main :: IO ()
+main = putStrLn ("fib 10 = " ++ show (55))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "should exit 0");
+        assert!(
+            stdout_chirho.contains("fib 10 = 55"),
+            "expected 'fib 10 = 55', got: {stdout_chirho}"
         );
-        assert_eq!(stdout_chirho, "5\n");
     }
+}
 
-    // ---------------------------------------------------------------
-    // §29 — Structured error messages with "did you mean?" suggestions
-    // ---------------------------------------------------------------
+#[test]
+fn cranelift_round_trip_foldr_filter_chirho() {
+    let src_chirho = r#"module Main where
+filter' :: (Int -> Bool) -> [Int] -> [Int]
+filter' f [] = []
+filter' f (x:xs) = if f x then x : filter' f xs else filter' f xs
 
-    #[test]
-    fn unbound_var_suggests_similar_name_chirho() {
-        // Typo: "ad1" instead of "add1"
-        let src_chirho = "module Main where\nadd1 x = x + 1\nmain = ad1 41\n";
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
-        assert!(result_chirho.is_err(), "should fail with unbound variable");
-        let diag_chirho = result_chirho.unwrap_err();
-        let rendered_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
+foldr' :: (Int -> Int -> Int) -> Int -> [Int] -> Int
+foldr' f z [] = z
+foldr' f z (x:xs) = f x (foldr' f z xs)
+
+main = print (foldr' (\x acc -> x + acc) 0 (filter' (\x -> x `mod` 2 == 0) [1,2,3,4,5,6,7,8,9,10]))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "should exit 0");
         assert!(
-            rendered_chirho.contains("did you mean"),
-            "error should contain 'did you mean' suggestion, got: {rendered_chirho}"
-        );
-        assert!(
-            rendered_chirho.contains("add1"),
-            "suggestion should include 'add1', got: {rendered_chirho}"
+            stdout_chirho.trim() == "30",
+            "sum of evens in [1..10] = 30, got: {stdout_chirho}"
         );
     }
+}
 
-    #[test]
-    fn type_mismatch_shows_expected_found_chirho() {
-        let src_chirho = "module Main where\nf :: Int -> Int\nf x = x + 1\nmain = f True\n";
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
-        assert!(result_chirho.is_err());
-        let diag_chirho = result_chirho.unwrap_err();
-        let rendered_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
-        assert!(
-            rendered_chirho.contains("type mismatch"),
-            "error should mention 'type mismatch', got: {rendered_chirho}"
-        );
-        assert!(
-            rendered_chirho.contains("expected type:") && rendered_chirho.contains("found type:"),
-            "error should show expected/found types, got: {rendered_chirho}"
-        );
+#[test]
+fn cranelift_round_trip_comprehensive_chirho() {
+    let src_chirho = r#"module Main where
+
+fib :: Int -> Int
+fib 0 = 0
+fib 1 = 1
+fib n = fib (n - 1) + fib (n - 2)
+
+mySum :: [Int] -> Int
+mySum [] = 0
+mySum (x:xs) = x + mySum xs
+
+makeAdder :: Int -> Int -> Int
+makeAdder n x = n + x
+
+countUpTo :: Int -> Int
+countUpTo limit = go 0
+  where go n = if n >= limit then n else go (n + 1)
+
+data Shape = Circle Int | Rectangle Int Int
+
+area :: Shape -> Int
+area (Circle r) = r * r
+area (Rectangle w h) = w * h
+
+main :: IO ()
+main = do
+  putStrLn ("fib 20 = " ++ show (fib 20))
+  putStrLn ("sum [1..5] = " ++ show (mySum [1,2,3,4,5]))
+  let add10 = makeAdder 10
+  putStrLn ("add10 32 = " ++ show (add10 32))
+  putStrLn ("countUpTo 50 = " ++ show (countUpTo 50))
+  putStrLn ("area Circle 7 = " ++ show (area (Circle 7)))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "should exit 0");
+        assert!(stdout_chirho.contains("fib 20 = 6765"), "fib 20");
+        assert!(stdout_chirho.contains("sum [1..5] = 15"), "sum");
+        assert!(stdout_chirho.contains("add10 32 = 42"), "closure");
+        assert!(stdout_chirho.contains("countUpTo 50 = 50"), "where");
+        assert!(stdout_chirho.contains("area Circle 7 = 49"), "ADT");
     }
+}
 
-    #[test]
-    fn error_rendered_with_source_snippet_chirho() {
-        let src_chirho = "module Main where\nmain = undefined_func 42\n";
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
-        assert!(result_chirho.is_err());
-        let diag_chirho = result_chirho.unwrap_err();
-        let rendered_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
-        assert!(
-            rendered_chirho.contains("Main.hs"),
-            "error should reference file, got: {rendered_chirho}"
-        );
-        assert!(
-            rendered_chirho.contains("-->"),
-            "error should have --> source pointer, got: {rendered_chirho}"
-        );
-    }
-
-    #[test]
-    fn error_rendered_with_color_chirho() {
-        let src_chirho = "module Main where\nmain = no_such_var\n";
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs");
-        assert!(result_chirho.is_err());
-        let diag_chirho = result_chirho.unwrap_err();
-        let colored_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, true);
-        assert!(
-            colored_chirho.contains("\x1b["),
-            "colored output should contain ANSI escapes"
-        );
-        let plain_chirho = crate::render_diagnostics_chirho(&diag_chirho, &sm_chirho, false);
-        assert!(
-            !plain_chirho.contains("\x1b["),
-            "plain output should not contain ANSI escapes"
-        );
-    }
-
-    // ── §44 Foreign exports ──────────────────────────────────────────────
-
-    #[test]
-    fn foreign_export_parsed_and_reaches_core_chirho() {
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let src_chirho = concat!(
-            "module Test where\n",
-            "foreign export ccall addOne :: Int -> Int\n",
-            "addOne x = x + 1\n",
-            "main = addOne 41\n",
-        );
-        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ForeignExport.hs")
-            .expect("should compile with foreign export");
-        // The Core module should have the foreign export recorded
-        assert!(
-            !result_chirho.core_chirho.foreign_exports_chirho.is_empty(),
-            "foreign exports should be propagated to Core module"
-        );
-        let export_chirho = &result_chirho.core_chirho.foreign_exports_chirho[0];
-        assert_eq!(export_chirho.haskell_name_chirho, "addOne");
-        assert_eq!(export_chirho.foreign_name_chirho, "addOne");
-        assert_eq!(export_chirho.calling_conv_chirho, "ccall");
-    }
-
-    #[test]
-    fn foreign_export_with_custom_c_name_chirho() {
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let src_chirho = concat!(
-            "module Test where\n",
-            "foreign export ccall \"hs_add_one\" addOne :: Int -> Int\n",
-            "addOne x = x + 1\n",
-            "main = addOne 41\n",
-        );
-        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ForeignExportName.hs")
-            .expect("should compile with custom C name");
-        let export_chirho = &result_chirho.core_chirho.foreign_exports_chirho[0];
-        assert_eq!(export_chirho.haskell_name_chirho, "addOne");
-        assert_eq!(export_chirho.foreign_name_chirho, "hs_add_one");
-    }
-
-    #[test]
-    fn foreign_export_llvm_emits_wrapper_chirho() {
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let src_chirho = concat!(
-            "module Test where\n",
-            "foreign export ccall \"hs_val\" getVal :: Int\n",
-            "getVal = 42\n",
-            "main = getVal\n",
-        );
-        let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ForeignExportLLVM.hs")
-            .expect("should compile");
-        assert!(
-            result_chirho.llvm_ir_chirho.contains("@hs_val"),
-            "LLVM IR should contain the foreign export wrapper: {}",
-            result_chirho.llvm_ir_chirho
-        );
-    }
-
-    #[test]
-    fn foreign_export_eval_still_works_chirho() {
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let src_chirho = concat!(
-            "module Test where\n",
-            "foreign export ccall addOne :: Int -> Int\n",
-            "addOne x = x + 1\n",
-            "main = addOne 41\n",
-        );
-        let (val_chirho, _machine_chirho) = eval_source_with_machine_chirho(
-            src_chirho, &mut sm_chirho, "ForeignExportEval.hs", None,
-        ).expect("foreign export should not break evaluation");
-        assert_eq!(val_chirho, haskelujah_runtime_chirho::ValueChirho::IntChirho(42));
-    }
+#[test]
+fn foreign_export_eval_still_works_chirho() {
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = concat!(
+        "module Test where\n",
+        "foreign export ccall addOne :: Int -> Int\n",
+        "addOne x = x + 1\n",
+        "main = addOne 41\n",
+    );
+    let (val_chirho, _machine_chirho) =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "ForeignExportEval.hs", None)
+            .expect("foreign export should not break evaluation");
+    assert_eq!(
+        val_chirho,
+        haskelujah_runtime_chirho::ValueChirho::IntChirho(42)
+    );
+}
