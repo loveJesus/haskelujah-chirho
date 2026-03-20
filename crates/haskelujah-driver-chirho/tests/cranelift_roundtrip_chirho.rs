@@ -101,6 +101,13 @@ fn cranelift_round_trip_show_bool_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_put_str_output_chirho() {
+    let stdout_chirho =
+        cranelift_round_trip_stdout_chirho("module Main where\nmain = do\n  putStr \"Hello\"\n  putStr \" from\"\n  putStr \" Haskelujah!\"\n");
+    assert_eq!(stdout_chirho, "Hello from Haskelujah!");
+}
+
+#[test]
 fn cranelift_round_trip_show_char_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = putStrLn (show 'A')\n");
