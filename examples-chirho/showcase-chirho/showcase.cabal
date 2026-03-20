@@ -1,0 +1,10 @@
+cabal-version: 2.4
+name: showcase
+version: 0.1.0.0
+
+executable showcase
+  main-is: Main.hs
+  other-modules: MathChirho, ListChirho
+  hs-source-dirs: src
+  build-depends: base
+  default-language: Haskell2010
