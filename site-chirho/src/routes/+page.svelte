@@ -1,15 +1,20 @@
-<!-- For God so loved the world, that He gave His only begotten Son,
-     that all who believe in Him should not perish but have everlasting life. John 3:16 -->
+<!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. John 3:16 -->
 
 <script lang="ts">
-	// For God so loved the world, that He gave His only begotten Son,
-	// that all who believe in Him should not perish but have everlasting life. John 3:16
+	// For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. John 3:16
 
 	const statsChirho = [
 		{ labelChirho: 'GHC Compatibility', valueChirho: '91.8%', detailChirho: '861 / 938 tests' },
-		{ labelChirho: 'Lines of Rust', valueChirho: '150K+', detailChirho: '21 crates' },
-		{ labelChirho: 'Total Tests', valueChirho: '2,121', detailChirho: '0 failures' },
-		{ labelChirho: 'Backends', valueChirho: '3', detailChirho: 'Cranelift, LLVM, Wasm' }
+		{ labelChirho: 'Rust Code', valueChirho: '150K+', detailChirho: '21 crates, 132 source files' },
+		{ labelChirho: 'Passing Tests', valueChirho: '2,131', detailChirho: 'workspace green' },
+		{ labelChirho: 'Compiler Targets', valueChirho: '3', detailChirho: 'Cranelift, LLVM, Wasm' }
+	];
+
+	const heroPillsChirho = [
+		'cargo install haskelujah',
+		'Cranelift default backend',
+		'Single binary workflow',
+		'Cabal + Hackage direction'
 	];
 
 	const benchmarksChirho = [
@@ -102,12 +107,17 @@
 			<h1 class="hero-title-chirho">
 				<span class="hero-accent-chirho">Haskelujah</span> ☧
 			</h1>
-			<p class="hero-subtitle-chirho">A Haskell compiler written in Rust</p>
+			<p class="hero-subtitle-chirho">A self-contained Haskell compiler written in Rust</p>
 			<p class="hero-description-chirho">
-				Cranelift default backend. No LLVM required. WebAssembly built-in.
-				<br />
-				91.8% GHC test-suite compatibility. Faster than GHC.
+				Install one executable. Compile with Cranelift by default, switch to LLVM when you
+				want it, and keep moving without dragging a toolchain behind you.
 			</p>
+
+			<div class="hero-pill-row-chirho">
+				{#each heroPillsChirho as heroPillChirho}
+					<span class="hero-pill-chirho">{heroPillChirho}</span>
+				{/each}
+			</div>
 
 			<div class="hero-actions-chirho">
 				<a href="#get-started-chirho" class="btn-primary-chirho">Get Started</a>
@@ -119,6 +129,19 @@
 				>
 					View on GitHub
 				</a>
+			</div>
+
+			<div class="hero-proof-chirho">
+				<div class="hero-proof-card-chirho">
+					<span class="hero-proof-label-chirho">Latest proof</span>
+					<strong>2,131 passing tests</strong>
+					<p>Compiler, driver, parser, runtimes, and backend round trips all green.</p>
+				</div>
+				<div class="hero-proof-card-chirho">
+					<span class="hero-proof-label-chirho">Developer experience</span>
+					<strong>Cranelift first, LLVM optional</strong>
+					<p>No mandatory LLVM install for the default build path.</p>
+				</div>
 			</div>
 		</div>
 
@@ -149,8 +172,10 @@
 				{#each featuresChirho as featureChirho}
 					<div class="feature-card-chirho">
 						<div class="feature-icon-chirho">{featureChirho.iconChirho}</div>
-						<h3 class="feature-title-chirho">{featureChirho.titleChirho}</h3>
-						<p class="feature-desc-chirho">{featureChirho.descriptionChirho}</p>
+						<div class="feature-text-chirho">
+							<h3>{featureChirho.titleChirho}</h3>
+							<p>{featureChirho.descriptionChirho}</p>
+						</div>
 					</div>
 				{/each}
 			</div>
@@ -224,19 +249,21 @@
 					<span class="code-title-chirho">terminal</span>
 				</div>
 				<pre class="code-content-chirho"><code
-						><span class="code-comment-chirho"># Install Haskelujah</span>
-<span class="code-prompt-chirho">$</span> curl -fsSL https://haskelujah.org/install-chirho.sh | sh
+						><span class="code-comment-chirho"># Install the CLI</span>
+<span class="code-prompt-chirho">$</span> cargo install haskelujah
 
-<span class="code-comment-chirho"># Create a new project</span>
-<span class="code-prompt-chirho">$</span> haskelujah init my-project
-<span class="code-output-chirho">  Created my-project/
-  Created my-project/Main.hs
-  Created my-project/haskelujah.toml</span>
+<span class="code-comment-chirho"># Create a file</span>
+<span class="code-prompt-chirho">$</span> cat > Main.hs
+<span class="code-output-chirho">main = putStrLn "Hello from Haskelujah!"</span>
 
-<span class="code-comment-chirho"># Build and run</span>
-<span class="code-prompt-chirho">$</span> haskelujah build-run .
-<span class="code-output-chirho">  Compiling Main.hs ... done (0.04s)
-  Hello, world!</span>
+<span class="code-comment-chirho"># Compile with the default Cranelift backend</span>
+<span class="code-prompt-chirho">$</span> haskelujah build Main.hs
+<span class="code-output-chirho">  Compiling Main.hs ... done
+  Wrote ./main</span>
+
+<span class="code-comment-chirho"># Run it</span>
+<span class="code-prompt-chirho">$</span> ./main
+<span class="code-output-chirho">  Hello from Haskelujah!</span>
 </code></pre>
 			</div>
 
@@ -250,14 +277,18 @@
 				<pre class="code-content-chirho"><code
 						><span class="code-keyword-chirho">module</span> Main <span class="code-keyword-chirho">where</span>
 
-<span class="code-comment-chirho">-- Fibonacci with pattern matching</span>
-<span class="code-fn-chirho">fib_chirho</span> :: <span class="code-type-chirho">Int</span> -> <span class="code-type-chirho">Int</span>
-<span class="code-fn-chirho">fib_chirho</span> 0 = 0
-<span class="code-fn-chirho">fib_chirho</span> 1 = 1
-<span class="code-fn-chirho">fib_chirho</span> n = fib_chirho (n - 1) + fib_chirho (n - 2)
+<span class="code-comment-chirho">-- Tail-call optimized loop plus ordinary recursion</span>
+<span class="code-fn-chirho">euler1_chirho</span> :: <span class="code-type-chirho">Int</span> -> <span class="code-type-chirho">Int</span>
+<span class="code-fn-chirho">euler1_chirho</span> limit_chirho = go_chirho 0 0
+  <span class="code-keyword-chirho">where</span>
+    <span class="code-fn-chirho">go_chirho</span> acc_chirho n_chirho
+      | n_chirho >= limit_chirho = acc_chirho
+      | n_chirho <span class="code-keyword-chirho">mod</span> 3 == 0 || n_chirho <span class="code-keyword-chirho">mod</span> 5 == 0
+          = go_chirho (acc_chirho + n_chirho) (n_chirho + 1)
+      | <span class="code-keyword-chirho">otherwise</span> = go_chirho acc_chirho (n_chirho + 1)
 
 <span class="code-fn-chirho">main</span> :: <span class="code-type-chirho">IO</span> ()
-<span class="code-fn-chirho">main</span> = putStrLn (<span class="code-string-chirho">"fib 42 = "</span> ++ show (fib_chirho 42))
+<span class="code-fn-chirho">main</span> = print (euler1_chirho 1000)
 </code></pre>
 			</div>
 		</div>
@@ -307,23 +338,31 @@
 			<div class="feature-grid-chirho">
 				<div class="feature-card-chirho">
 					<div class="feature-icon-chirho">P</div>
-					<h3>Cabal Support</h3>
-					<p>Reads standard <code>.cabal</code> files. Multi-module projects with library and executable components compile out of the box.</p>
+					<div class="feature-text-chirho">
+						<h3>Cabal Support</h3>
+						<p>Reads standard <code>.cabal</code> files. Multi-module projects with library and executable components compile out of the box.</p>
+					</div>
 				</div>
 				<div class="feature-card-chirho">
 					<div class="feature-icon-chirho">H</div>
-					<h3>Hackage Packages</h3>
-					<p><code>haskelujah install aeson</code> fetches packages from Hackage, resolves dependencies, and extracts <code>.cabal</code> metadata. Auto-detects latest versions.</p>
+					<div class="feature-text-chirho">
+						<h3>Hackage Packages</h3>
+						<p><code>haskelujah install aeson</code> fetches packages from Hackage, resolves dependencies, and extracts <code>.cabal</code> metadata. Auto-detects latest versions.</p>
+					</div>
 				</div>
 				<div class="feature-card-chirho">
 					<div class="feature-icon-chirho">1</div>
-					<h3>Single Binary</h3>
-					<p>One self-contained executable. No runtime dependencies, no GHC installation, no LLVM toolchain (unless you opt in). Just <code>cargo install haskelujah</code>.</p>
+					<div class="feature-text-chirho">
+						<h3>Single Binary</h3>
+						<p>One self-contained executable. No runtime dependencies, no GHC installation, no LLVM toolchain (unless you opt in). Just <code>cargo install haskelujah</code>.</p>
+					</div>
 				</div>
 				<div class="feature-card-chirho">
 					<div class="feature-icon-chirho">R</div>
-					<h3>REPL</h3>
-					<p><code>haskelujah repl</code> gives you an interactive environment with <code>:type</code>, <code>:info</code>, <code>:load</code>, multi-line input, and expression evaluation.</p>
+					<div class="feature-text-chirho">
+						<h3>REPL</h3>
+						<p><code>haskelujah repl</code> gives you an interactive environment with <code>:type</code>, <code>:info</code>, <code>:load</code>, multi-line input, and expression evaluation.</p>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -677,10 +716,14 @@
 	}
 
 	.feature-card-chirho {
+		display: flex;
+		flex-direction: row;
+		align-items: flex-start;
+		gap: 1.25rem;
 		background: rgba(255, 255, 255, 0.02);
 		border: 1px solid rgba(125, 211, 252, 0.08);
 		border-radius: 12px;
-		padding: 2rem;
+		padding: 1.5rem;
 		transition: border-color 0.2s;
 	}
 
@@ -692,14 +735,27 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 40px;
-		height: 40px;
-		background: rgba(125, 211, 252, 0.08);
+		flex-shrink: 0;
+		width: 44px;
+		height: 44px;
+		background: rgba(125, 211, 252, 0.1);
 		color: #7dd3fc;
-		border-radius: 8px;
+		border-radius: 10px;
 		font-weight: 700;
-		font-size: 1rem;
-		margin-bottom: 1rem;
+		font-size: 1.1rem;
+	}
+
+	.feature-text-chirho h3 {
+		margin: 0 0 0.35rem;
+		font-size: 1.05rem;
+		color: #e2e8f0;
+	}
+
+	.feature-text-chirho p {
+		margin: 0;
+		font-size: 0.9rem;
+		color: #94a3b8;
+		line-height: 1.6;
 	}
 
 	.feature-title-chirho {
