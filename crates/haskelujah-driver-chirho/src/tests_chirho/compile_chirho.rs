@@ -2330,3 +2330,21 @@ main = do
     }
 }
 
+#[test]
+fn llvm_round_trip_ackermann_multi_equation_pattern_match_chirho() {
+    // Regression test for multi-equation pattern match ordering.
+    // ack 0 n = n+1 must take priority over ack m 0 when m=0, n=0.
+    let src_chirho = r#"module Main where
+ack :: Int -> Int -> Int
+ack 0 n = n + 1
+ack m 0 = ack (m - 1) 1
+ack m n = ack (m - 1) (ack m (n - 1))
+main :: IO ()
+main = print (ack 3 7)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "1021");
+    }
+}

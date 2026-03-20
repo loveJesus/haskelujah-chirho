@@ -261,3 +261,13 @@ fn cranelift_round_trip_euler1_tail_recursion_no_stack_overflow_chirho() {
     );
     assert_eq!(stdout_chirho, "2333316668\n");
 }
+
+#[test]
+fn cranelift_round_trip_ackermann_multi_equation_pattern_match_chirho() {
+    // Regression test for multi-equation pattern match ordering.
+    // ack 0 n = n+1 must take priority over ack m 0 when m=0, n=0.
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nack :: Int -> Int -> Int\nack 0 n = n + 1\nack m 0 = ack (m - 1) 1\nack m n = ack (m - 1) (ack m (n - 1))\nmain = print (ack 3 7)\n",
+    );
+    assert_eq!(stdout_chirho, "1021\n");
+}
