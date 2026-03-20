@@ -2434,6 +2434,26 @@ main = print (myLen (range 1 100000))
 }
 
 #[test]
+fn cranelift_round_trip_foldl_100000_chirho() {
+    let src_chirho = r#"module Main where
+myFoldl :: (Int -> Int -> Int) -> Int -> [Int] -> Int
+myFoldl _ acc [] = acc
+myFoldl f acc (x:xs) = myFoldl f (f acc x) xs
+enumFromTo :: Int -> Int -> [Int]
+enumFromTo lo hi = if lo > hi then [] else lo : enumFromTo (lo + 1) hi
+add :: Int -> Int -> Int
+add x y = x + y
+main :: IO ()
+main = print (myFoldl add 0 (enumFromTo 1 100000))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "foldl 100000 should not stack overflow");
+        assert_eq!(stdout_chirho.trim(), "5000050000");
+    }
+}
+
+#[test]
 fn cranelift_round_trip_recursive_custom_list_instance_output_chirho() {
     let src_chirho = r#"module Main where
 class Describable a where
@@ -2918,7 +2938,7 @@ main = do
 
 #[test]
 fn llvm_round_trip_foldl_at_scale_chirho() {
-    // foldl with 2-arg HOF at 10K elements
+    // foldl with 2-arg HOF at 100K elements
     let src_chirho = r#"module Main where
 myFoldl :: (Int -> Int -> Int) -> Int -> [Int] -> Int
 myFoldl _ acc [] = acc
@@ -2928,12 +2948,42 @@ enumFromTo lo hi = if lo > hi then [] else lo : enumFromTo (lo + 1) hi
 add :: Int -> Int -> Int
 add x y = x + y
 main :: IO ()
-main = print (myFoldl add 0 (enumFromTo 1 10000))
+main = print (myFoldl add 0 (enumFromTo 1 100000))
 "#;
     let result_chirho = llvm_round_trip_output_chirho(src_chirho);
     if let Some((code_chirho, stdout_chirho)) = result_chirho {
         assert_eq!(code_chirho, 0);
-        assert_eq!(stdout_chirho.trim(), "50005000");
+        assert_eq!(stdout_chirho.trim(), "5000050000");
+    }
+}
+
+#[test]
+fn llvm_round_trip_qsort_random_500_chirho() {
+    let src_chirho = r#"module Main where
+filter' :: (Int -> Bool) -> [Int] -> [Int]
+filter' f [] = []
+filter' f (x:xs) = if f x then x : filter' f xs else filter' f xs
+append :: [Int] -> [Int] -> [Int]
+append [] ys = ys
+append (x:xs) ys = x : append xs ys
+qsort :: [Int] -> [Int]
+qsort [] = []
+qsort (p:xs) = append (qsort (filter' (\x -> x < p) xs))
+                       (p : qsort (filter' (\x -> x >= p) xs))
+mySum :: [Int] -> Int
+mySum [] = 0
+mySum (x:xs) = x + mySum xs
+lcg :: Int -> Int -> [Int]
+lcg seed 0 = []
+lcg seed n = let next = (seed * 1103515245 + 12345) `mod` 2147483648
+             in (next `mod` 1000) : lcg next (n - 1)
+main :: IO ()
+main = print (mySum (qsort (lcg 42 500)))
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "quicksort 500 random should work on LLVM");
+        assert_eq!(stdout_chirho.trim(), "256218");
     }
 }
 
