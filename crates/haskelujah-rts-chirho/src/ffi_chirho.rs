@@ -273,6 +273,54 @@ pub extern "C" fn haskelujah_put_str_ln_chirho(ptr_bits_chirho: u64) -> i64 {
     0
 }
 
+/// Concatenate two NUL-terminated byte strings into a newly allocated
+/// NUL-terminated buffer owned by the native RTS allocator.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_append_str_chirho(
+    lhs_bits_chirho: u64,
+    rhs_bits_chirho: u64,
+) -> u64 {
+    let lhs_bytes_chirho: &[u8] = if lhs_bits_chirho == 0 {
+        &[]
+    } else {
+        let lhs_ptr_chirho = lhs_bits_chirho as usize as *const std::ffi::c_char;
+        unsafe { CStr::from_ptr(lhs_ptr_chirho) }.to_bytes()
+    };
+    let rhs_bytes_chirho: &[u8] = if rhs_bits_chirho == 0 {
+        &[]
+    } else {
+        let rhs_ptr_chirho = rhs_bits_chirho as usize as *const std::ffi::c_char;
+        unsafe { CStr::from_ptr(rhs_ptr_chirho) }.to_bytes()
+    };
+
+    let total_len_chirho = lhs_bytes_chirho
+        .len()
+        .saturating_add(rhs_bytes_chirho.len())
+        .saturating_add(1);
+    let out_ptr_chirho = haskelujah_alloc_chirho(total_len_chirho as u64);
+    if out_ptr_chirho.is_null() {
+        return 0;
+    }
+
+    unsafe {
+        std::ptr::copy_nonoverlapping(
+            lhs_bytes_chirho.as_ptr(),
+            out_ptr_chirho,
+            lhs_bytes_chirho.len(),
+        );
+        std::ptr::copy_nonoverlapping(
+            rhs_bytes_chirho.as_ptr(),
+            out_ptr_chirho.add(lhs_bytes_chirho.len()),
+            rhs_bytes_chirho.len(),
+        );
+        out_ptr_chirho
+            .add(lhs_bytes_chirho.len() + rhs_bytes_chirho.len())
+            .write(0);
+    }
+
+    out_ptr_chirho as usize as u64
+}
+
 // ---------------------------------------------------------------------------
 // Runtime error handling
 // ---------------------------------------------------------------------------

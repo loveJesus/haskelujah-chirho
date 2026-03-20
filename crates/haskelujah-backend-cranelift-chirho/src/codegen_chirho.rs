@@ -128,7 +128,12 @@ pub fn compile_core_to_object_chirho(
     }
 
     // ── Import RTS/native helpers for Prelude IO ────────────────────────
-    let (put_str_ln_func_id_chirho, print_int_func_id_chirho, alloc_func_id_chirho) = {
+    let (
+        put_str_ln_func_id_chirho,
+        print_int_func_id_chirho,
+        append_str_func_id_chirho,
+        alloc_func_id_chirho,
+    ) = {
         let mut put_str_ln_sig_chirho = obj_module_chirho.make_signature();
         put_str_ln_sig_chirho
             .params
@@ -159,6 +164,24 @@ pub fn compile_core_to_object_chirho(
             )
             .ok();
 
+        let mut append_str_sig_chirho = obj_module_chirho.make_signature();
+        append_str_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        append_str_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        append_str_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        let append_str_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_append_str_chirho",
+                LinkageChirho::Import,
+                &append_str_sig_chirho,
+            )
+            .ok();
+
         let mut alloc_sig_chirho = obj_module_chirho.make_signature();
         alloc_sig_chirho
             .params
@@ -177,6 +200,7 @@ pub fn compile_core_to_object_chirho(
         (
             put_str_ln_func_id_chirho,
             print_int_func_id_chirho,
+            append_str_func_id_chirho,
             alloc_func_id_chirho,
         )
     };
@@ -234,6 +258,7 @@ pub fn compile_core_to_object_chirho(
             module_chirho,
             put_str_ln_func_id_chirho,
             print_int_func_id_chirho,
+            append_str_func_id_chirho,
             alloc_func_id_chirho,
             &string_data_ids_chirho,
         )?;
@@ -1251,6 +1276,7 @@ fn define_function_body_chirho(
     toplevel_names_chirho: &HashMap<haskelujah_core_chirho::expr_chirho::CoreIdChirho, String>,
     put_str_ln_func_id_chirho: Option<cranelift_module::FuncId>,
     print_int_func_id_chirho: Option<cranelift_module::FuncId>,
+    append_str_func_id_chirho: Option<cranelift_module::FuncId>,
     alloc_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
@@ -1323,6 +1349,8 @@ fn define_function_body_chirho(
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let print_int_fref_chirho = print_int_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let append_str_fref_chirho = append_str_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let alloc_fref_chirho = alloc_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
 
@@ -1344,6 +1372,7 @@ fn define_function_body_chirho(
             toplevel_names_chirho,
             put_str_ln_ref_chirho: put_str_ln_fref_chirho,
             print_int_ref_chirho: print_int_fref_chirho,
+            append_str_ref_chirho: append_str_fref_chirho,
             alloc_ref_chirho: alloc_fref_chirho,
             string_globals_chirho,
         };
@@ -1445,6 +1474,12 @@ fn collect_string_literals_chirho(
             CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
                 walk_expr_chirho(expr_chirho, cb_chirho);
             }
+            CoreExprChirho::PrimOpChirho { args_chirho, .. }
+            | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+                for arg_chirho in args_chirho {
+                    walk_expr_chirho(arg_chirho, cb_chirho);
+                }
+            }
             _ => {}
         }
     }
@@ -1461,6 +1496,7 @@ fn lower_binding_chirho(
     core_module_chirho: &CoreModuleChirho,
     put_str_ln_func_id_chirho: Option<cranelift_module::FuncId>,
     print_int_func_id_chirho: Option<cranelift_module::FuncId>,
+    append_str_func_id_chirho: Option<cranelift_module::FuncId>,
     alloc_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
@@ -1562,6 +1598,7 @@ fn lower_binding_chirho(
             &toplevel_names_chirho,
             put_str_ln_func_id_chirho,
             print_int_func_id_chirho,
+            append_str_func_id_chirho,
             alloc_func_id_chirho,
             string_data_ids_chirho,
         )?;
@@ -1580,6 +1617,7 @@ fn lower_binding_chirho(
         &toplevel_names_chirho,
         put_str_ln_func_id_chirho,
         print_int_func_id_chirho,
+        append_str_func_id_chirho,
         alloc_func_id_chirho,
         string_data_ids_chirho,
     )?;
@@ -1755,6 +1793,61 @@ mod tests_chirho {
             .status()
             .expect("run executable");
         run_status_chirho.code().unwrap_or(-1)
+    }
+
+    fn compile_and_run_stdout_chirho(module_chirho: &CoreModuleChirho) -> String {
+        let object_bytes_chirho = compile_ok_chirho(module_chirho);
+        let unique_suffix_chirho = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos();
+        let temp_dir_chirho = std::env::temp_dir().join(format!(
+            "haskelujah-cranelift-stdout-test-{}-{unique_suffix_chirho}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&temp_dir_chirho).expect("create temp stdout dir");
+        let obj_path_chirho = temp_dir_chirho.join("test.o");
+        let exe_path_chirho = temp_dir_chirho.join("test-exe");
+        fs::write(&obj_path_chirho, object_bytes_chirho).expect("write object file");
+
+        let workspace_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(std::path::Path::parent)
+            .expect("backend crate should live under workspace/crates");
+        let cargo_status_chirho = Command::new("cargo")
+            .current_dir(workspace_root_chirho)
+            .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+            .status()
+            .expect("build RTS");
+        assert!(cargo_status_chirho.success(), "RTS build should succeed");
+
+        let link_status_chirho = Command::new("cc")
+            .args([
+                "-o",
+                exe_path_chirho.to_str().expect("utf8 exe path"),
+                obj_path_chirho.to_str().expect("utf8 obj path"),
+                "-Wl,-no_fixup_chains",
+                "-L",
+                workspace_root_chirho
+                    .join("target")
+                    .join("debug")
+                    .to_str()
+                    .expect("utf8 rts lib dir"),
+                "-lhaskelujah_rts_chirho",
+            ])
+            .status()
+            .expect("link executable");
+        assert!(link_status_chirho.success(), "link should succeed");
+
+        let run_output_chirho = Command::new(&exe_path_chirho)
+            .output()
+            .expect("run executable");
+        assert!(
+            run_output_chirho.status.success(),
+            "executable should succeed: {:?}",
+            run_output_chirho.status
+        );
+        String::from_utf8(run_output_chirho.stdout).expect("stdout should be utf8")
     }
 
     // ── Previously existing tests (kept passing) ──────────────────────────
@@ -2837,5 +2930,58 @@ mod tests_chirho {
 
         let exit_code_chirho = compile_and_run_exit_code_chirho(&module_chirho);
         assert_eq!(exit_code_chirho, 42);
+    }
+
+    #[test]
+    fn run_put_str_ln_concat_string_chirho() {
+        let put_str_ln_arg_binder_chirho = int_binder_chirho("putStrLnArgChirho", 1);
+        let put_str_ln_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("putStrLn", 0),
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: put_str_ln_arg_binder_chirho,
+                body_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let main_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("main", 2),
+            rhs_chirho: CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                    put_str_ln_binding_chirho.binder_chirho.id_chirho,
+                )),
+                arg_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "++#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::PrimOpChirho {
+                            name_chirho: "++#".to_string(),
+                            args_chirho: vec![
+                                CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                                    "Hello".to_string(),
+                                )),
+                                CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                                    " ".to_string(),
+                                )),
+                            ],
+                        },
+                        CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                            "World".to_string(),
+                        )),
+                    ],
+                }),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "ConcatString".to_string(),
+            bindings_chirho: vec![put_str_ln_binding_chirho, main_binding_chirho],
+            names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let stdout_chirho = compile_and_run_stdout_chirho(&module_chirho);
+        assert_eq!(stdout_chirho, "Hello World\n");
     }
 }

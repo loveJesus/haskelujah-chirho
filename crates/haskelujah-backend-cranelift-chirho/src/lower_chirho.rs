@@ -88,6 +88,8 @@ pub struct LowerCtxChirho<'a> {
     pub put_str_ln_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_print_int_chirho` (non-variadic print)
     pub print_int_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_append_str_chirho`
+    pub append_str_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_alloc_chirho` (boxed constructors)
     pub alloc_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
@@ -1213,6 +1215,17 @@ pub fn lower_primop_chirho(
             // not x = x XOR 1  (for 0/1 boolean representation)
             let one_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 1);
             builder_chirho.ins().bxor(lhs_chirho, one_chirho)
+        }
+        "++#" => {
+            let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
+            let Some(append_str_ref_chirho) = ctx_chirho.append_str_ref_chirho else {
+                return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+            };
+            let append_call_chirho = builder_chirho
+                .ins()
+                .call(append_str_ref_chirho, &[lhs_chirho, rhs_chirho]);
+            builder_chirho.inst_results(append_call_chirho)[0]
         }
 
         // ── Unknown primop ─────────────────────────────────────────────────
