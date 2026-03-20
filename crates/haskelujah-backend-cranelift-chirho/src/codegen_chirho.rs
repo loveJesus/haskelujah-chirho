@@ -374,7 +374,7 @@ fn compile_core_to_object_inner_chirho(
     // ── Pre-scan: embed string literals in data section ────────────────────
     let mut string_data_ids_chirho: HashMap<String, cranelift_module::DataId> = HashMap::new();
     // Always include printf format strings
-    let builtin_strings_chirho = ["%ld\n", "%s\n", "True", "False"];
+    let builtin_strings_chirho = ["%ld\n", "%s\n", "True", "False", "LT", "EQ", "GT"];
     {
         let mut string_counter_chirho = 0u32;
         let add_string_chirho = |s_chirho: &str,

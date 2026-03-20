@@ -1115,6 +1115,17 @@ fn builtin_show_primop_for_dict_name_chirho(dict_name_chirho: &str) -> Option<&'
     }
 }
 
+fn builtin_compare_primop_for_dict_name_chirho(dict_name_chirho: &str) -> Option<&'static str> {
+    match dict_name_chirho {
+        "$fOrdInt" => Some("compare#"),
+        "$fOrdBool" => Some("compare#"),
+        "$fOrdChar" => Some("compareChar#"),
+        "$fOrdDouble" | "$fOrdFloat" => Some("compareFloat#"),
+        "$fOrd[Char]" => Some("compareStr#"),
+        _ => None,
+    }
+}
+
 /// Dictionary elision: replace typeclass selector+dict application patterns
 /// with direct PrimOp calls. Handles:
 /// - `$sel_Num_fromInteger dict lit` → `lit`
@@ -1222,9 +1233,53 @@ fn elide_dicts_with_locals_chirho(
             // $sel_Num_+ dict x y → +# x y (binary)
             // $sel_Num_abs dict x → absInt# x (unary)
             if let Some(primop_chirho) = selector_primop_chirho(&name_chirho) {
-                let is_unary_chirho = matches!(primop_chirho, "absInt#" | "signumInt#" | "negate#");
+                let should_preserve_selector_chirho = if name_chirho == "$sel_Ord_compare" {
+                    selector_dict_name_chirho(
+                        &all_args_chirho,
+                        all_bindings_chirho,
+                        local_names_chirho,
+                    )
+                    .is_some_and(|dict_name_chirho| {
+                        builtin_compare_primop_for_dict_name_chirho(&dict_name_chirho).is_none()
+                    })
+                } else {
+                    false
+                };
+                if should_preserve_selector_chirho {
+                    // Preserve non-builtin/derived Ord dictionaries at runtime.
+                    // Eliding them to compare# loses user-defined enum ordering.
+                    // Fall through to normal recursive rebuilding below.
+                } else if name_chirho == "$sel_Ord_compare" {
+                    if let Some(dict_name_chirho) = selector_dict_name_chirho(
+                        &all_args_chirho,
+                        all_bindings_chirho,
+                        local_names_chirho,
+                    ) {
+                        let primop_name_chirho =
+                            builtin_compare_primop_for_dict_name_chirho(&dict_name_chirho)
+                                .unwrap_or(primop_chirho);
+                        let primop_args_chirho: Vec<CoreExprChirho> = real_args_chirho
+                            .iter()
+                            .take(2)
+                            .map(|a_chirho| {
+                                elide_dicts_with_locals_chirho(
+                                    a_chirho,
+                                    all_bindings_chirho,
+                                    local_names_chirho,
+                                )
+                            })
+                            .collect();
+                        return CoreExprChirho::PrimOpChirho {
+                            name_chirho: primop_name_chirho.to_string(),
+                            args_chirho: primop_args_chirho,
+                        };
+                    }
+                }
+                let is_unary_chirho =
+                    matches!(primop_chirho, "absInt#" | "signumInt#" | "negate#");
                 let min_real_args_chirho = if is_unary_chirho { 1 } else { 2 };
-                if real_args_chirho.len() >= min_real_args_chirho {
+                if !should_preserve_selector_chirho && real_args_chirho.len() >= min_real_args_chirho
+                {
                     let primop_args_chirho: Vec<CoreExprChirho> = real_args_chirho
                         .iter()
                         .take(min_real_args_chirho)
@@ -3140,6 +3195,61 @@ mod tests_chirho {
                     CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
                 ],
             }
+        );
+    }
+
+    #[test]
+    fn elide_dicts_preserves_nonbuiltin_ord_compare_selector_chirho() {
+        let ord_dict_binder_chirho = BinderChirho {
+            id_chirho: CoreIdChirho(21),
+            name_chirho: "$fOrdPrio".to_string(),
+            ty_chirho: TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let compare_sel_binder_chirho = dummy_binder_chirho("$sel_Ord_compare", 22);
+        let expr_chirho = CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                        compare_sel_binder_chirho.id_chirho,
+                    )),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(ord_dict_binder_chirho.id_chirho)),
+                }),
+                arg_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "High".to_string(),
+                    args_chirho: vec![],
+                }),
+            }),
+            arg_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                con_name_chirho: "Low".to_string(),
+                args_chirho: vec![],
+            }),
+        };
+        let all_bindings_chirho = vec![
+            CoreBindingChirho {
+                binder_chirho: compare_sel_binder_chirho.clone(),
+                rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            },
+            CoreBindingChirho {
+                binder_chirho: ord_dict_binder_chirho.clone(),
+                rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            },
+        ];
+
+        let result_chirho = elide_dicts_chirho(&expr_chirho, &all_bindings_chirho);
+        assert!(
+            !matches!(
+                result_chirho,
+                CoreExprChirho::PrimOpChirho {
+                    name_chirho,
+                    ..
+                } if name_chirho == "compare#"
+            ),
+            "derived Ord selector should not elide to compare#"
         );
     }
 

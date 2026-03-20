@@ -1399,6 +1399,21 @@ main = do
 }
 
 #[test]
+fn llvm_round_trip_derived_ord_runtime_output_chirho() {
+    let src_chirho = r#"module Main where
+data Prio = Low | Med | High deriving (Ord, Eq, Show)
+main = print (compare High Low)
+"#;
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(src_chirho).expect("derived Ord LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "derived Ord LLVM executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "GT\n");
+}
+
+#[test]
 fn llvm_round_trip_euler1_tail_recursion_no_stack_overflow_chirho() {
     let src_chirho = r#"module Main where
 euler1 limit = go 0 0 where
@@ -1801,6 +1816,21 @@ main = do
         "derived Eq Cranelift executable should exit successfully"
     );
     assert_eq!(stdout_chirho, "True\nFalse\n");
+}
+
+#[test]
+fn cranelift_round_trip_derived_ord_runtime_output_chirho() {
+    let src_chirho = r#"module Main where
+data Prio = Low | Med | High deriving (Ord, Eq, Show)
+main = print (compare High Low)
+"#;
+    let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
+        .expect("derived Ord Cranelift round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "derived Ord Cranelift executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "GT\n");
 }
 
 #[test]

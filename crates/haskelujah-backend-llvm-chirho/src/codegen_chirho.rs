@@ -80,6 +80,7 @@ pub struct LlvmCodegenChirho {
 enum ShowBuiltinKindChirho {
     IntChirho,
     BoolChirho,
+    OrderingChirho,
     CharChirho,
     DoubleChirho,
     ListChirho(Box<ShowBuiltinKindChirho>),
@@ -838,6 +839,16 @@ impl LlvmCodegenChirho {
             {
                 Some(ShowBuiltinKindChirho::BoolChirho)
             }
+            CoreExprChirho::PrimOpChirho {
+                name_chirho,
+                args_chirho: _,
+            } if matches!(
+                name_chirho.as_str(),
+                "compare#" | "compareChar#" | "compareFloat#" | "compareStr#"
+            ) =>
+            {
+                Some(ShowBuiltinKindChirho::OrderingChirho)
+            }
             CoreExprChirho::AppChirho {
                 fun_chirho: _,
                 arg_chirho: _,
@@ -857,6 +868,11 @@ impl LlvmCodegenChirho {
                                 | ("<=", 2)
                                 | (">", 2)
                                 | (">=", 2) => Some(ShowBuiltinKindChirho::BoolChirho),
+                                ("compare", 2)
+                                | ("$sel_Ord_compare", 2)
+                                | ("$sel_Ord_compare", 3) => {
+                                    Some(ShowBuiltinKindChirho::OrderingChirho)
+                                }
                                 _ => None,
                             },
                         ),
@@ -868,6 +884,7 @@ impl LlvmCodegenChirho {
                 args_chirho,
             } => match (con_name_chirho.as_str(), args_chirho.as_slice()) {
                 ("True", []) | ("False", []) => Some(ShowBuiltinKindChirho::BoolChirho),
+                ("LT", []) | ("EQ", []) | ("GT", []) => Some(ShowBuiltinKindChirho::OrderingChirho),
                 (":", [head_expr_chirho, tail_expr_chirho]) => {
                     let head_kind_chirho = self
                         .classify_expr_show_kind_chirho(head_expr_chirho)
@@ -2757,6 +2774,7 @@ impl LlvmCodegenChirho {
         match show_kind_chirho {
             ShowBuiltinKindChirho::IntChirho
             | ShowBuiltinKindChirho::BoolChirho
+            | ShowBuiltinKindChirho::OrderingChirho
             | ShowBuiltinKindChirho::CharChirho
             | ShowBuiltinKindChirho::DoubleChirho
             | ShowBuiltinKindChirho::ListChirho(_) => {
@@ -2809,6 +2827,36 @@ impl LlvmCodegenChirho {
                 writeln!(
                     self.output_chirho,
                     "  {ptr_tmp_chirho} = select i1 {cmp_tmp_chirho}, ptr @{true_name_chirho}, ptr @{false_name_chirho}"
+                )
+                .unwrap();
+                ptr_tmp_chirho
+            }
+            ShowBuiltinKindChirho::OrderingChirho => {
+                let lt_name_chirho = self.intern_string_global_name_chirho("LT");
+                let eq_name_chirho = self.intern_string_global_name_chirho("EQ");
+                let gt_name_chirho = self.intern_string_global_name_chirho("GT");
+                let is_lt_tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {is_lt_tmp_chirho} = icmp eq i64 {arg_value_chirho}, 0"
+                )
+                .unwrap();
+                let is_eq_tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {is_eq_tmp_chirho} = icmp eq i64 {arg_value_chirho}, 1"
+                )
+                .unwrap();
+                let eq_or_gt_ptr_tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {eq_or_gt_ptr_tmp_chirho} = select i1 {is_eq_tmp_chirho}, ptr @{eq_name_chirho}, ptr @{gt_name_chirho}"
+                )
+                .unwrap();
+                let ptr_tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {ptr_tmp_chirho} = select i1 {is_lt_tmp_chirho}, ptr @{lt_name_chirho}, ptr {eq_or_gt_ptr_tmp_chirho}"
                 )
                 .unwrap();
                 ptr_tmp_chirho
@@ -3733,6 +3781,9 @@ fn classify_basic_ty_chirho(ty_chirho: &TyChirho) -> Option<ShowBuiltinKindChirh
         TyChirho::ConChirho(name_chirho) if name_chirho == "Bool" => {
             Some(ShowBuiltinKindChirho::BoolChirho)
         }
+        TyChirho::ConChirho(name_chirho) if name_chirho == "Ordering" => {
+            Some(ShowBuiltinKindChirho::OrderingChirho)
+        }
         TyChirho::ConChirho(name_chirho) if name_chirho == "Char" => {
             Some(ShowBuiltinKindChirho::CharChirho)
         }
@@ -3755,6 +3806,7 @@ fn classify_show_builtin_kind_chirho(
     match binding_name_chirho {
         "showInt#" => Some(ShowBuiltinKindChirho::IntChirho),
         "showBool#" => Some(ShowBuiltinKindChirho::BoolChirho),
+        "showOrdering#" => Some(ShowBuiltinKindChirho::OrderingChirho),
         "showChar#" => Some(ShowBuiltinKindChirho::CharChirho),
         "showFloat#" => Some(ShowBuiltinKindChirho::DoubleChirho),
         "show" => {
