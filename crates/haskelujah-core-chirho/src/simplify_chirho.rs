@@ -956,12 +956,34 @@ pub fn elide_dicts_chirho(
 
     if let CoreExprChirho::VarChirho(sel_id_chirho) = callee_chirho {
         if let Some(name_chirho) = resolve_name_for_id_chirho(sel_id_chirho, all_bindings_chirho) {
-            // $sel_Show_show dict x → showInt# x
+            // $sel_Show_show dict x → showInt#/showBool#/showChar#/showFloat# x
+            // Determine the show variant from the dict argument name.
             if name_chirho == "$sel_Show_show" && all_args_chirho.len() >= 2 {
+                let show_primop_chirho = if let CoreExprChirho::VarChirho(dict_id_chirho) =
+                    all_args_chirho[0]
+                {
+                    resolve_name_for_id_chirho(dict_id_chirho, all_bindings_chirho)
+                        .and_then(|dn_chirho| {
+                            if dn_chirho.contains("Bool") {
+                                Some("showBool#")
+                            } else if dn_chirho.contains("Char") {
+                                Some("showChar#")
+                            } else if dn_chirho.contains("Float")
+                                || dn_chirho.contains("Double")
+                            {
+                                Some("showFloat#")
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or("showInt#")
+                } else {
+                    "showInt#"
+                };
                 let simplified_chirho =
                     elide_dicts_chirho(all_args_chirho[1], all_bindings_chirho);
                 return CoreExprChirho::PrimOpChirho {
-                    name_chirho: "showInt#".to_string(),
+                    name_chirho: show_primop_chirho.to_string(),
                     args_chirho: vec![simplified_chirho],
                 };
             }

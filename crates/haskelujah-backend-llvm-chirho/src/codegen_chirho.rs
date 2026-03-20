@@ -947,6 +947,21 @@ impl LlvmCodegenChirho {
             "declare i64 @haskelujah_show_int_chirho(i64)"
         )
         .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare i64 @haskelujah_show_bool_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare i64 @haskelujah_show_char_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare i64 @haskelujah_show_float_chirho(i64)"
+        )
+        .unwrap();
         writeln!(self.output_chirho, "declare i32 @fprintf(ptr, ...)").unwrap();
         writeln!(self.output_chirho, "declare ptr @fdopen(i32, ptr)").unwrap();
         writeln!(self.output_chirho).unwrap();
@@ -1645,13 +1660,23 @@ impl LlvmCodegenChirho {
                     )
                     .unwrap();
                     tmp_chirho
-                } else if args_chirho.len() == 1 && name_chirho == "showInt#" {
-                    // show for Int: call RTS haskelujah_show_int_chirho
+                } else if args_chirho.len() == 1
+                    && matches!(
+                        name_chirho.as_str(),
+                        "showInt#" | "showBool#" | "showChar#" | "showFloat#"
+                    )
+                {
+                    let rts_fn_chirho = match name_chirho.as_str() {
+                        "showBool#" => "haskelujah_show_bool_chirho",
+                        "showChar#" => "haskelujah_show_char_chirho",
+                        "showFloat#" => "haskelujah_show_float_chirho",
+                        _ => "haskelujah_show_int_chirho",
+                    };
                     let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
                     let tmp_chirho = self.fresh_tmp_chirho();
                     writeln!(
                         self.output_chirho,
-                        "  {tmp_chirho} = call i64 @haskelujah_show_int_chirho(i64 {operand_chirho})"
+                        "  {tmp_chirho} = call i64 @{rts_fn_chirho}(i64 {operand_chirho})"
                     )
                     .unwrap();
                     tmp_chirho
