@@ -12,6 +12,7 @@
 
 	const heroPillsChirho = [
 		'cargo install haskelujah',
+		'#!/usr/bin/env haskelujah',
 		'Cranelift default backend',
 		'Single binary workflow',
 		'Cabal + Hackage direction'
@@ -252,6 +253,11 @@
 						><span class="code-comment-chirho"># Install the CLI</span>
 <span class="code-prompt-chirho">$</span> cargo install haskelujah
 
+<span class="code-comment-chirho"># Or run a script directly</span>
+<span class="code-prompt-chirho">$</span> cat > hello-chirho.hs
+<span class="code-output-chirho">#!/usr/bin/env haskelujah
+main = putStrLn "Hello from a script!"</span>
+
 <span class="code-comment-chirho"># Create a file</span>
 <span class="code-prompt-chirho">$</span> cat > Main.hs
 <span class="code-output-chirho">main = putStrLn "Hello from Haskelujah!"</span>
@@ -354,7 +360,7 @@
 					<div class="feature-icon-chirho">1</div>
 					<div class="feature-text-chirho">
 						<h3>Single Binary</h3>
-						<p>One self-contained executable. No runtime dependencies, no GHC installation, no LLVM toolchain (unless you opt in). Just <code>cargo install haskelujah</code>.</p>
+						<p>One self-contained executable. No runtime dependencies, no GHC installation, no LLVM toolchain (unless you opt in). Install with <code>cargo install haskelujah</code>, then run binaries or scripts with <code>#!/usr/bin/env haskelujah</code>.</p>
 					</div>
 				</div>
 				<div class="feature-card-chirho">
