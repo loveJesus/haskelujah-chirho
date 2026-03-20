@@ -1718,6 +1718,13 @@ impl DesugarCtxChirho {
                 let pat_ref_chirho = &arms_chirho[0].pats_chirho[pat_idx_chirho];
                 let binders_chirho = self.pat_to_binders_chirho(pat_ref_chirho);
                 self.prebind_all_pat_vars_chirho(pat_ref_chirho);
+                if con_chirho != AltConChirho::DefaultChirho {
+                    self.bind_same_constructor_group_pat_vars_to_binders_chirho(
+                        &arms_chirho,
+                        pat_idx_chirho,
+                        &binders_chirho,
+                    );
+                }
 
                 // For Default alt with a VarChirho pattern, bind the variable
                 // name to the scrutinee ID so references in the RHS resolve to
@@ -1993,6 +2000,28 @@ impl DesugarCtxChirho {
                 prior_pat_chirho,
                 param_binder_chirho.id_chirho,
             );
+        }
+    }
+
+    fn bind_same_constructor_group_pat_vars_to_binders_chirho(
+        &mut self,
+        arms_chirho: &[&MatchArmChirho],
+        pat_idx_chirho: usize,
+        binders_chirho: &[BinderChirho],
+    ) {
+        for arm_chirho in arms_chirho.iter().skip(1) {
+            let Some(pat_chirho) = arm_chirho.pats_chirho.get(pat_idx_chirho) else {
+                continue;
+            };
+            let sub_pats_chirho = Self::outer_sub_pats_chirho(pat_chirho);
+            for (sub_pat_chirho, binder_chirho) in
+                sub_pats_chirho.iter().zip(binders_chirho.iter())
+            {
+                self.bind_var_pat_to_case_binder_chirho(
+                    sub_pat_chirho,
+                    binder_chirho.id_chirho,
+                );
+            }
         }
     }
 

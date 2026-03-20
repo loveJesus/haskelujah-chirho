@@ -1562,6 +1562,19 @@ fn llvm_round_trip_non_tail_recursive_list_fold_output_chirho() {
 }
 
 #[test]
+fn llvm_round_trip_inner_column_list_binder_output_chirho() {
+    let src_chirho =
+        "module Main where\nf (x:_) 0 = x\nf (_:xs) n = f xs (n-1)\nmain = print (f [5,6,7] 1)";
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "inner-column list binder executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "6\n");
+    }
+}
+
+#[test]
 fn llvm_round_trip_print_sum_list_output_chirho() {
     let src_chirho = "module Main where\nmain = print (sum [1,2,3])";
     let (exit_code_chirho, stdout_chirho) =

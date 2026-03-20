@@ -263,6 +263,14 @@ fn cranelift_round_trip_non_tail_recursive_list_fold_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_inner_column_list_binder_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nf (x:_) 0 = x\nf (_:xs) n = f xs (n-1)\nmain = print (f [5,6,7] 1)\n",
+    );
+    assert_eq!(stdout_chirho, "6\n");
+}
+
+#[test]
 fn cranelift_round_trip_print_int_list_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = print [1,2,3]\n");
