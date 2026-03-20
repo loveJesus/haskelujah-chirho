@@ -560,8 +560,14 @@
 	.hero-content-chirho {
 		position: relative;
 		z-index: 1;
-		max-width: 800px;
+		max-width: 860px;
 		margin: 0 auto;
+		background: rgba(10, 8, 5, 0.65);
+		backdrop-filter: blur(8px);
+		border-radius: 24px;
+		border: 1px solid rgba(246, 190, 96, 0.12);
+		padding: 3rem 2.5rem;
+		box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
 	}
 
 	.scripture-chirho {
@@ -589,14 +595,10 @@
 		letter-spacing: -0.03em;
 		line-height: 1.1;
 		margin-bottom: 1rem;
-		padding: 0.5rem 1.5rem;
-		display: inline-block;
-		background: rgba(10, 8, 5, 0.55);
-		border-radius: 16px;
 		text-shadow:
 			0 -4px 20px rgba(246, 190, 96, 0.5),
 			0 -8px 40px rgba(246, 190, 96, 0.25),
-			0 2px 8px rgba(0, 0, 0, 0.7);
+			0 2px 8px rgba(0, 0, 0, 0.5);
 	}
 
 	.hero-accent-chirho {
