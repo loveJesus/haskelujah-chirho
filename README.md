@@ -219,11 +219,14 @@ haskelujah clean .          # Remove build artifacts
 
 The `examples-chirho/` directory contains verified working programs:
 
+- **showcase**: Multi-module demo — fibonacci, collatz, GCD, primes, quicksort, foldl, filter
 - **hello-world**: Fibonacci, Collatz, Euler #1, closures, list operations
 - **multi-module**: Cross-module imports with library
 - **expr-eval**: Recursive algebraic expression evaluator
 - **bst**: Binary search tree with insertion and traversal
 - **euler**: Project Euler #1, #2, #6 with correct answers
+
+All examples produce correct output on both Cranelift and LLVM backends.
 
 **Diagnostic flags:** `--dump-core`, `--dump-stg`, `--dump-llvm`
 
