@@ -717,4 +717,37 @@ mod tests_chirho {
         );
         assert_eq!(result_chirho, 0);
     }
+
+    #[test]
+    fn unpack_string_builds_cons_list_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let test_str_chirho = b"Hi\0";
+        let result_chirho =
+            haskelujah_unpack_string_chirho(test_str_chirho.as_ptr() as u64);
+
+        // Result should be a boxed cons cell (high bit set)
+        assert_ne!(result_chirho, 0, "unpack should not return Nil for non-empty string");
+        assert!(
+            result_chirho & (1u64 << 63) != 0,
+            "result should be boxed (high bit set)"
+        );
+
+        // Decode first cons cell: tag=1, head='H'=72, tail=boxed
+        let ptr_chirho = (result_chirho & 0x7FFFFFFFFFFFFFFF) as *const u64;
+        unsafe {
+            let tag_chirho = *ptr_chirho;
+            let head_chirho = *ptr_chirho.add(1);
+            assert_eq!(tag_chirho, 1, "first cell tag should be Cons (1)");
+            assert_eq!(head_chirho, b'H' as u64, "first char should be 'H'");
+        }
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+    }
 }
