@@ -247,6 +247,14 @@ fn cranelift_round_trip_merge_sort_preserves_all_elements_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_middle_equation_list_fallback_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\ng [] ys = ys\ng xs [] = xs\ng (x:xs) (y:ys) = x : xs\nprintList [] = putStrLn \"\"\nprintList (x:xs) = do print x; printList xs\nmain = printList (g [1,2] [])\n",
+    );
+    assert_eq!(stdout_chirho, "1\n2\n\n");
+}
+
+#[test]
 fn cranelift_round_trip_deep_tail_recursion_no_stack_overflow_chirho() {
     let stdout_chirho = cranelift_round_trip_stdout_chirho(
         "module Main where\nsumTo limit = go 0 0 where go acc n = if n >= limit then acc else go (acc + n) (n + 1)\nmain = print (sumTo 200000)\n",

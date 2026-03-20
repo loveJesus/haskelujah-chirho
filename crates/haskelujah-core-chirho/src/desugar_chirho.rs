@@ -1664,32 +1664,43 @@ impl DesugarCtxChirho {
                     self.desugar_arm_rhs_chirho(arms_chirho[0])
                 } else {
                     // More pattern columns remain — recurse.
-                    // For non-default groups, append default arms as
-                    // fallthroughs so inner cases have catch-all alternatives.
-                    // BUT: only add defaults that have a variable/wildcard at
-                    // the NEXT pattern column. Defaults with a literal/constructor
-                    // pattern at the next column would violate source equation
-                    // ordering (e.g., `ack 0 n = n+1; ack m 0 = ...` — the
-                    // second equation's literal 0 should not compete with the
-                    // first equation's variable `n` in the inner case).
-                    let mut sub_arms_chirho: Vec<MatchArmChirho> =
-                        arms_chirho.iter().map(|a_chirho| (*a_chirho).clone()).collect();
-                    if con_chirho != AltConChirho::DefaultChirho {
-                        let next_idx_chirho = pat_idx_chirho + 1;
-                        for da_chirho in &default_arms_chirho {
-                            // Only include defaults whose next pattern is a
-                            // variable/wildcard — they serve as legitimate
-                            // catch-all alternatives without disrupting order.
-                            let is_var_next_chirho = next_idx_chirho < da_chirho.pats_chirho.len()
-                                && matches!(
-                                    &da_chirho.pats_chirho[next_idx_chirho],
-                                    PatChirho::VarChirho(_) | PatChirho::WildcardChirho(_)
-                                );
-                            if is_var_next_chirho {
-                                sub_arms_chirho.push((*da_chirho).clone());
-                            }
-                        }
-                    }
+                    // For constructor/literal groups, recurse with the full
+                    // source-ordered submatrix of rows that can still match
+                    // after the current column has matched this constructor:
+                    // rows for the same constructor, plus wildcard/variable
+                    // rows at this column. Appending defaults after the
+                    // explicit group loses source ordering for cases like:
+                    //   g [] ys = ys
+                    //   g xs [] = xs
+                    //   g (x:xs) (y:ys) = ...
+                    // where the second equation must still be considered
+                    // before the third once the first argument is known to be
+                    // `(:)`.
+                    let sub_arms_chirho: Vec<MatchArmChirho> = if con_chirho
+                        == AltConChirho::DefaultChirho
+                    {
+                        arms_chirho
+                            .iter()
+                            .map(|a_chirho| (*a_chirho).clone())
+                            .collect()
+                    } else {
+                        matches_chirho
+                            .iter()
+                            .filter(|arm_chirho| {
+                                let arm_con_chirho = if arm_chirho.pats_chirho.len() > pat_idx_chirho
+                                {
+                                    self.pat_to_alt_con_chirho(
+                                        &arm_chirho.pats_chirho[pat_idx_chirho],
+                                    )
+                                } else {
+                                    AltConChirho::DefaultChirho
+                                };
+                                arm_con_chirho == con_chirho
+                                    || arm_con_chirho == AltConChirho::DefaultChirho
+                            })
+                            .cloned()
+                            .collect()
+                    };
                     self.compile_multi_pattern_case_chirho(
                         &sub_arms_chirho,
                         param_binders_chirho,
