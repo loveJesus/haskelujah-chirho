@@ -94,6 +94,8 @@ pub struct LowerCtxChirho<'a> {
     pub alloc_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_show_int_chirho` (int → string)
     pub show_int_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_show_bool_chirho` (bool → string)
+    pub show_bool_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
     pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
 }
@@ -1460,6 +1462,12 @@ fn lower_show_bool_primop_chirho(
     raw_bool_chirho: ClValueChirho,
 ) -> ClValueChirho {
     let val_chirho = ensure_i64_chirho(builder_chirho, raw_bool_chirho, false);
+    if let Some(show_bool_ref_chirho) = ctx_chirho.show_bool_ref_chirho {
+        let call_inst_chirho = builder_chirho
+            .ins()
+            .call(show_bool_ref_chirho, &[val_chirho]);
+        return builder_chirho.inst_results(call_inst_chirho)[0];
+    }
     let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
     let is_true_chirho =
         builder_chirho

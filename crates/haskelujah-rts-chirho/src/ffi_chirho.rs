@@ -260,16 +260,30 @@ pub extern "C" fn haskelujah_print_int_chirho(value_chirho: i64) -> i64 {
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_show_int_chirho(value_chirho: i64) -> u64 {
     let s_chirho = format!("{value_chirho}");
-    let bytes_chirho = s_chirho.as_bytes();
-    let alloc_size_chirho = bytes_chirho.len() + 1; // +1 for NUL
+    alloc_c_string_chirho(s_chirho.as_bytes())
+}
+
+fn alloc_c_string_chirho(bytes_chirho: &[u8]) -> u64 {
+    let alloc_size_chirho = bytes_chirho.len() + 1;
     let ptr_chirho = haskelujah_alloc_chirho(alloc_size_chirho as u64);
     if !ptr_chirho.is_null() {
         unsafe {
             std::ptr::copy_nonoverlapping(bytes_chirho.as_ptr(), ptr_chirho, bytes_chirho.len());
-            *ptr_chirho.add(bytes_chirho.len()) = 0; // NUL terminator
+            *ptr_chirho.add(bytes_chirho.len()) = 0;
         }
     }
     ptr_chirho as u64
+}
+
+/// Convert a boolean to a heap-allocated NUL-terminated `True`/`False` string.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_show_bool_chirho(value_chirho: i64) -> u64 {
+    let text_chirho: &[u8] = if value_chirho != 0 {
+        b"True".as_slice()
+    } else {
+        b"False".as_slice()
+    };
+    alloc_c_string_chirho(text_chirho)
 }
 
 /// Print a NUL-terminated UTF-8 string followed by a newline using the same
@@ -294,10 +308,7 @@ pub extern "C" fn haskelujah_put_str_ln_chirho(ptr_bits_chirho: u64) -> i64 {
 /// Concatenate two NUL-terminated byte strings into a newly allocated
 /// NUL-terminated buffer owned by the native RTS allocator.
 #[unsafe(no_mangle)]
-pub extern "C" fn haskelujah_append_str_chirho(
-    lhs_bits_chirho: u64,
-    rhs_bits_chirho: u64,
-) -> u64 {
+pub extern "C" fn haskelujah_append_str_chirho(lhs_bits_chirho: u64, rhs_bits_chirho: u64) -> u64 {
     let lhs_bytes_chirho: &[u8] = if lhs_bits_chirho == 0 {
         &[]
     } else {
@@ -375,6 +386,7 @@ pub extern "C" fn haskelujah_undefined_chirho() {
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
+    use std::ffi::CStr;
 
     fn ffi_test_lock_chirho() -> &'static Mutex<()> {
         static FFI_TEST_LOCK_CHIRHO: OnceLock<Mutex<()>> = OnceLock::new();
@@ -442,6 +454,33 @@ mod tests_chirho {
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
         assert_eq!(runtime_chirho.allocation_count_chirho(), 0);
+        runtime_chirho.reset_chirho();
+    }
+
+    #[test]
+    fn show_bool_allocates_true_and_false_strings_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let true_ptr_bits_chirho = haskelujah_show_bool_chirho(1);
+        let false_ptr_bits_chirho = haskelujah_show_bool_chirho(0);
+        assert_ne!(true_ptr_bits_chirho, 0);
+        assert_ne!(false_ptr_bits_chirho, 0);
+
+        let true_text_chirho = unsafe {
+            CStr::from_ptr(true_ptr_bits_chirho as usize as *const std::ffi::c_char)
+        };
+        let false_text_chirho = unsafe {
+            CStr::from_ptr(false_ptr_bits_chirho as usize as *const std::ffi::c_char)
+        };
+        assert_eq!(true_text_chirho.to_bytes(), b"True");
+        assert_eq!(false_text_chirho.to_bytes(), b"False");
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
         runtime_chirho.reset_chirho();
     }
 }
