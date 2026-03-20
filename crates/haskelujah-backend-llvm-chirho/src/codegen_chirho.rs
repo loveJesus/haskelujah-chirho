@@ -1086,6 +1086,11 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(
             self.output_chirho,
+            "declare i64 @haskelujah_append_str_chirho(i64, i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
             "declare i64 @haskelujah_put_str_chirho(i64)"
         )
         .unwrap();
@@ -1883,6 +1888,15 @@ impl LlvmCodegenChirho {
                 if args_chirho.len() == 2 {
                     let lhs_chirho = self.compile_expr_chirho(&args_chirho[0]);
                     let rhs_chirho = self.compile_expr_chirho(&args_chirho[1]);
+                    if name_chirho == "++#" {
+                        let tmp_chirho = self.fresh_tmp_chirho();
+                        writeln!(
+                            self.output_chirho,
+                            "  {tmp_chirho} = call i64 @haskelujah_append_str_chirho(i64 {lhs_chirho}, i64 {rhs_chirho})"
+                        )
+                        .unwrap();
+                        return tmp_chirho;
+                    }
                     let tmp_chirho = self.fresh_tmp_chirho();
                     let op_chirho = match name_chirho.as_str() {
                         "+#" => "add",

@@ -1528,6 +1528,20 @@ main = putStrLn (describe [1,2,3])
 }
 
 #[test]
+fn llvm_round_trip_show_concat_output_chirho() {
+    let src_chirho = r#"module Main where
+main = putStrLn ("answer: " ++ show 42)
+"#;
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "show concat executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "answer: 42\n");
+    }
+}
+
+#[test]
 fn llvm_round_trip_take_zero_matches_first_equation_chirho() {
     let src_chirho = r#"module Main where
 myTakeChirho 0 _ = []
