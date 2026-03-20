@@ -928,6 +928,19 @@ fn flatten_apps_chirho(expr_chirho: &CoreExprChirho) -> (&CoreExprChirho, Vec<&C
     (cur_chirho, args_chirho)
 }
 
+fn expr_is_selector_var_chirho(
+    expr_chirho: &CoreExprChirho,
+    all_bindings_chirho: &[CoreBindingChirho],
+) -> bool {
+    match expr_chirho {
+        CoreExprChirho::VarChirho(id_chirho) => {
+            resolve_name_for_id_chirho(id_chirho, all_bindings_chirho)
+                .is_some_and(|name_chirho| name_chirho.starts_with("$sel_"))
+        }
+        _ => false,
+    }
+}
+
 /// Dictionary elision: replace typeclass selector+dict application patterns
 /// with direct PrimOp calls. Handles:
 /// - `$sel_Num_fromInteger dict lit` → `lit`
@@ -1007,6 +1020,15 @@ pub fn elide_dicts_chirho(
             if let CoreExprChirho::VarChirho(id_chirho) = &sa_chirho {
                 if let Some(n_chirho) = resolve_name_for_id_chirho(id_chirho, all_bindings_chirho) {
                     if n_chirho.starts_with("$f") || n_chirho.starts_with("$d") {
+                        // Selector value applications like `(-)` must keep the
+                        // concrete dictionary so they still project the method
+                        // closure after selector bodies are restored.
+                        if expr_is_selector_var_chirho(&sf_chirho, all_bindings_chirho) {
+                            return CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(sf_chirho),
+                                arg_chirho: Box::new(sa_chirho),
+                            };
+                        }
                         return sf_chirho;
                     }
                 }

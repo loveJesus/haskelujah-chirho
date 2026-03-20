@@ -1062,17 +1062,13 @@ fn lower_indirect_call_with_sig_chirho(
     builder_chirho.inst_results(call_inst_chirho)[0]
 }
 
-fn lower_indirect_app_chirho(
+fn lower_indirect_app_values_chirho(
     builder_chirho: &mut FuncBuilderChirho,
-    ctx_chirho: &mut LowerCtxChirho<'_>,
-    fun_ptr_chirho: ClValueChirho,
-    args_chirho: &[&CoreExprChirho],
+    fun_ptr_i64_chirho: ClValueChirho,
+    arg_vals_chirho: &[ClValueChirho],
 ) -> ClValueChirho {
-    let fun_ptr_i64_chirho = ensure_i64_chirho(builder_chirho, fun_ptr_chirho, false);
-    let mut arg_vals_chirho = Vec::with_capacity(args_chirho.len());
-    for arg_chirho in args_chirho {
-        let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
-        arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, arg_val_chirho, false));
+    if arg_vals_chirho.is_empty() {
+        return fun_ptr_i64_chirho;
     }
 
     let boxed_block_chirho = builder_chirho.create_block();
@@ -1095,7 +1091,7 @@ fn lower_indirect_app_chirho(
 
     builder_chirho.switch_to_block(direct_block_chirho);
     let direct_result_chirho =
-        lower_indirect_call_with_sig_chirho(builder_chirho, fun_ptr_i64_chirho, &arg_vals_chirho);
+        lower_indirect_call_with_sig_chirho(builder_chirho, fun_ptr_i64_chirho, arg_vals_chirho);
     builder_chirho
         .ins()
         .jump(join_block_chirho, &[direct_result_chirho]);
@@ -1109,22 +1105,44 @@ fn lower_indirect_app_chirho(
         boxed_ptr_chirho,
         0,
     );
-    let mut closure_arg_vals_chirho = Vec::with_capacity(arg_vals_chirho.len() + 1);
-    closure_arg_vals_chirho.push(fun_ptr_i64_chirho);
-    closure_arg_vals_chirho.extend(arg_vals_chirho.iter().copied());
+    let first_arg_chirho = arg_vals_chirho[0];
     let closure_result_chirho = lower_indirect_call_with_sig_chirho(
         builder_chirho,
         closure_fun_bits_chirho,
-        &closure_arg_vals_chirho,
+        &[fun_ptr_i64_chirho, first_arg_chirho],
     );
+    let boxed_result_chirho = if arg_vals_chirho.len() == 1 {
+        closure_result_chirho
+    } else {
+        lower_indirect_app_values_chirho(
+            builder_chirho,
+            closure_result_chirho,
+            &arg_vals_chirho[1..],
+        )
+    };
     builder_chirho
         .ins()
-        .jump(join_block_chirho, &[closure_result_chirho]);
+        .jump(join_block_chirho, &[boxed_result_chirho]);
     builder_chirho.seal_block(boxed_block_chirho);
 
     builder_chirho.switch_to_block(join_block_chirho);
     builder_chirho.seal_block(join_block_chirho);
     builder_chirho.block_params(join_block_chirho)[0]
+}
+
+fn lower_indirect_app_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    fun_ptr_chirho: ClValueChirho,
+    args_chirho: &[&CoreExprChirho],
+) -> ClValueChirho {
+    let fun_ptr_i64_chirho = ensure_i64_chirho(builder_chirho, fun_ptr_chirho, false);
+    let mut arg_vals_chirho = Vec::with_capacity(args_chirho.len());
+    for arg_chirho in args_chirho {
+        let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+        arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, arg_val_chirho, false));
+    }
+    lower_indirect_app_values_chirho(builder_chirho, fun_ptr_i64_chirho, &arg_vals_chirho)
 }
 
 // ─── Primitive operation lowering ─────────────────────────────────────────────

@@ -1745,6 +1745,63 @@ mod tests_chirho {
         run_status_chirho.code().unwrap_or(-1)
     }
 
+    fn compile_executable_and_run_exit_code_chirho(module_chirho: &CoreModuleChirho) -> i32 {
+        let config_chirho = TargetConfigChirho::default();
+        let result_chirho = compile_core_to_object_executable_chirho(module_chirho, &config_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "Executable compilation failed: {:?}",
+            result_chirho.err()
+        );
+        let object_bytes_chirho = result_chirho.unwrap().object_bytes_chirho;
+        let unique_suffix_chirho = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos();
+        let temp_dir_chirho = std::env::temp_dir().join(format!(
+            "haskelujah-cranelift-executable-test-{}-{unique_suffix_chirho}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&temp_dir_chirho).expect("create temp executable dir");
+        let obj_path_chirho = temp_dir_chirho.join("test.o");
+        let exe_path_chirho = temp_dir_chirho.join("test-exe");
+        fs::write(&obj_path_chirho, object_bytes_chirho).expect("write executable object file");
+
+        let workspace_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(std::path::Path::parent)
+            .expect("backend crate should live under workspace/crates");
+        let cargo_status_chirho = Command::new("cargo")
+            .current_dir(workspace_root_chirho)
+            .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+            .status()
+            .expect("build RTS");
+        assert!(cargo_status_chirho.success(), "RTS build should succeed");
+
+        let link_status_chirho = Command::new("cc")
+            .args([
+                "-o",
+                exe_path_chirho.to_str().expect("utf8 exe path"),
+                obj_path_chirho.to_str().expect("utf8 obj path"),
+                "-Wl,-no_fixup_chains",
+                "-L",
+                workspace_root_chirho
+                    .join("target")
+                    .join("debug")
+                    .to_str()
+                    .expect("utf8 rts lib dir"),
+                "-lhaskelujah_rts_chirho",
+            ])
+            .status()
+            .expect("link executable");
+        assert!(link_status_chirho.success(), "link should succeed");
+
+        let run_status_chirho = Command::new(&exe_path_chirho)
+            .status()
+            .expect("run executable");
+        run_status_chirho.code().unwrap_or(-1)
+    }
+
     fn compile_and_run_stdout_chirho(module_chirho: &CoreModuleChirho) -> String {
         let object_bytes_chirho = compile_ok_chirho(module_chirho);
         let unique_suffix_chirho = std::time::SystemTime::now()
@@ -3005,5 +3062,100 @@ mod tests_chirho {
 
         let exit_code_chirho = compile_and_run_exit_code_chirho(&module_chirho);
         assert_eq!(exit_code_chirho, 7);
+    }
+
+    #[test]
+    fn run_executable_selector_value_alias_preserves_dict_arg_chirho() {
+        let sub_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("$prim_Num_-_Int", 0),
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: int_binder_chirho("lhsChirho", 1),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: int_binder_chirho("rhsChirho", 2),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "-#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(CoreIdChirho(1)),
+                            CoreExprChirho::VarChirho(CoreIdChirho(2)),
+                        ],
+                    }),
+                }),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let dict_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("$fNumInt", 3),
+            rhs_chirho: CoreExprChirho::ConAppChirho {
+                con_name_chirho: "DictNumIntChirho".to_string(),
+                args_chirho: vec![CoreExprChirho::VarChirho(
+                    sub_binding_chirho.binder_chirho.id_chirho,
+                )],
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let dict_field_binder_chirho = int_binder_chirho("minusFieldChirho", 5);
+        let selector_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("$sel_Num_-", 4),
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: int_binder_chirho("dictArgChirho", 6),
+                body_chirho: Box::new(CoreExprChirho::CaseChirho {
+                    scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(6))),
+                    bind_chirho: int_binder_chirho("dictScrutChirho", 7),
+                    result_ty_chirho: TyChirho::int_chirho(),
+                    alts_chirho: vec![CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("DictNumIntChirho".to_string()),
+                        binders_chirho: vec![dict_field_binder_chirho.clone()],
+                        rhs_chirho: CoreExprChirho::VarChirho(dict_field_binder_chirho.id_chirho),
+                    }],
+                }),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let alias_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("minusAliasChirho", 8),
+            rhs_chirho: CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                    selector_binding_chirho.binder_chirho.id_chirho,
+                )),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                    dict_binding_chirho.binder_chirho.id_chirho,
+                )),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let main_binding_chirho = CoreBindingChirho {
+            binder_chirho: int_binder_chirho("main", 9),
+            rhs_chirho: CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                        alias_binding_chirho.binder_chirho.id_chirho,
+                    )),
+                    arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(3))),
+                }),
+                arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(2))),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "SelectorValueAlias".to_string(),
+            bindings_chirho: vec![
+                sub_binding_chirho,
+                dict_binding_chirho,
+                selector_binding_chirho,
+                alias_binding_chirho,
+                main_binding_chirho,
+            ],
+            names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let exit_code_chirho = compile_executable_and_run_exit_code_chirho(&module_chirho);
+        assert_eq!(exit_code_chirho, 1);
     }
 }
