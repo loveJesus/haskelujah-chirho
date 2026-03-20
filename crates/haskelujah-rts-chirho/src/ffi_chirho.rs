@@ -506,6 +506,43 @@ pub extern "C" fn haskelujah_read_file_chirho(path_bits_chirho: u64) -> u64 {
     }
 }
 
+/// Convert a Haskell [Char] cons-list back to a NUL-terminated C string.
+/// Traverses the cons list collecting character codepoints into a buffer.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_pack_string_chirho(list_bits_chirho: u64) -> u64 {
+    let mut chars_chirho: Vec<u8> = Vec::new();
+    let mut current_chirho = list_bits_chirho;
+
+    loop {
+        // Check if boxed (high bit set)
+        if current_chirho == 0 {
+            break; // Nil (immediate 0)
+        }
+        if current_chirho & (1u64 << 63) == 0 {
+            // Immediate value — tag 0 = Nil
+            break;
+        }
+        // Unbox: clear high bit to get real pointer
+        let ptr_chirho = (current_chirho & 0x7FFFFFFFFFFFFFFF) as *const u64;
+        let tag_chirho = unsafe { *ptr_chirho };
+        if tag_chirho != 1 {
+            break; // Not Cons
+        }
+        let head_chirho = unsafe { *ptr_chirho.add(1) };
+        let tail_chirho = unsafe { *ptr_chirho.add(2) };
+
+        // Head is a character codepoint
+        if head_chirho < 128 {
+            chars_chirho.push(head_chirho as u8);
+        } else {
+            chars_chirho.push(b'?'); // Non-ASCII placeholder
+        }
+        current_chirho = tail_chirho;
+    }
+
+    alloc_c_string_chirho(&chars_chirho)
+}
+
 /// Convert a NUL-terminated C string to a Haskell [Char] cons-list.
 /// Each character becomes a cons cell: tag=1, head=codepoint, tail=next.
 /// The empty string returns tag=0 (Nil).

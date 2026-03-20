@@ -1933,6 +1933,26 @@ pub fn lower_primop_chirho(
             }
         }
 
+        // ── pack# — convert [Char] cons-list to C string ────────────────
+        "pack#" => {
+            let val_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            // Reuse unpack_string_ref since pack has the same signature (i64 → i64)
+            // We need a separate FuncRef for pack. For now, use call_indirect.
+            let mut sig_chirho = builder_chirho.func.stencil.signature.clone();
+            sig_chirho.params.clear();
+            sig_chirho.returns.clear();
+            sig_chirho
+                .params
+                .push(cranelift_codegen::ir::AbiParam::new(cl_types_chirho::I64));
+            sig_chirho
+                .returns
+                .push(cranelift_codegen::ir::AbiParam::new(cl_types_chirho::I64));
+            // Try to find the pack function by searching for it
+            // For now, just return the input as-is (strings and char lists are both i64)
+            // TODO: wire haskelujah_pack_string_chirho FuncRef properly
+            val_chirho
+        }
+
         // ── Unknown primop ─────────────────────────────────────────────────
         _ => builder_chirho.ins().iconst(cl_types_chirho::I64, 0),
     }

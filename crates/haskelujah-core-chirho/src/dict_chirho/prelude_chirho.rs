@@ -8905,6 +8905,30 @@ impl DictPassCtxChirho {
             });
         }
 
+        // pack :: [Char] -> String
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("pack");
+            let s_chirho = self.fresh_binder_chirho("cs", string_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: s_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "pack#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(s_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "pack".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(string_ty_chirho.clone(), string_ty_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
         // print :: a -> IO ()
         // Simplified: print x = putStrLn (show x)
         // Uses showInt# as default; the dict pass handles type-specific dispatch
