@@ -50,6 +50,40 @@ pub fn hackage_preferred_url_chirho(name_chirho: &str) -> String {
     format!("{}/{}/preferred", HACKAGE_BASE_CHIRHO, name_chirho)
 }
 
+/// Fetch the latest non-deprecated version of a package from Hackage.
+pub fn fetch_latest_version_chirho(
+    name_chirho: &str,
+) -> Result<crate::version_chirho::VersionChirho, HackageErrorChirho> {
+    let url_chirho = hackage_preferred_url_chirho(name_chirho);
+    let mut response_chirho = ureq::get(&url_chirho)
+        .header("Accept", "application/json")
+        .call()
+        .map_err(|e_chirho| HackageErrorChirho::HttpChirho(e_chirho.to_string()))?;
+
+    let body_chirho = response_chirho
+        .body_mut()
+        .read_to_string()
+        .map_err(|e_chirho| HackageErrorChirho::HttpChirho(e_chirho.to_string()))?;
+
+    // Parse JSON: {"normal-version":["0.3.21","0.3.20",...]}
+    // Take the first normal version (latest)
+    if let Some(start_chirho) = body_chirho.find("\"normal-version\":[\"") {
+        let after_chirho = &body_chirho[start_chirho + 19..];
+        if let Some(end_chirho) = after_chirho.find('"') {
+            let version_str_chirho = &after_chirho[..end_chirho];
+            if let Some(version_chirho) =
+                crate::version_chirho::parse_version_chirho(version_str_chirho)
+            {
+                return Ok(version_chirho);
+            }
+        }
+    }
+
+    Err(HackageErrorChirho::HttpChirho(format!(
+        "could not find latest version for '{name_chirho}'"
+    )))
+}
+
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------

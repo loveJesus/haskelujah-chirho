@@ -356,15 +356,17 @@ pub fn resolve_deps_chirho(
             &dep_chirho.constraint_chirho,
         ) {
             Ok(()) => {}
-            Err(_e_chirho) => {
-                // Treat unresolvable deps as warnings — the package may
-                // still be usable without them (e.g. optional deps, test deps
+            Err(ResolveErrorChirho::PackageNotFoundChirho { .. })
+            | Err(ResolveErrorChirho::NoVersionSatisfiesChirho { .. }) => {
+                // Treat missing/unsatisfiable deps as warnings — the package
+                // may still be usable without them (optional deps, test deps
                 // that leaked through, or packages we can't fetch yet).
                 eprintln!(
                     "warning: dependency '{}' not available, skipping",
                     dep_chirho.package_chirho
                 );
             }
+            Err(e_chirho) => return Err(e_chirho),
         }
     }
 
@@ -581,17 +583,18 @@ mod tests_chirho {
 
     #[test]
     fn resolve_package_not_found_chirho() {
+        // Missing packages are soft-failed (skipped with warning), not errors.
         let index_chirho = PackageIndexChirho::new_chirho();
         let deps_chirho = vec![dep_any_chirho("nonexistent")];
         let result_chirho =
             resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho());
-        assert!(result_chirho.is_err());
-        let err_chirho = result_chirho.unwrap_err();
-        assert!(matches!(err_chirho, ResolveErrorChirho::PackageNotFoundChirho { .. }));
+        assert!(result_chirho.is_ok());
+        assert!(result_chirho.unwrap().steps_chirho.is_empty());
     }
 
     #[test]
     fn resolve_no_satisfying_version_chirho() {
+        // Unsatisfiable version constraints are soft-failed (skipped with warning).
         let mut index_chirho = PackageIndexChirho::new_chirho();
         index_chirho.add_package_chirho("text", v_chirho("1.0"), vec![]);
 
@@ -599,12 +602,8 @@ mod tests_chirho {
         let deps_chirho = vec![dep_ge_chirho("text", "2.0")];
         let result_chirho =
             resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho());
-        assert!(result_chirho.is_err());
-        let err_chirho = result_chirho.unwrap_err();
-        assert!(matches!(
-            err_chirho,
-            ResolveErrorChirho::NoVersionSatisfiesChirho { .. }
-        ));
+        assert!(result_chirho.is_ok());
+        assert!(result_chirho.unwrap().steps_chirho.is_empty());
     }
 
     #[test]

@@ -922,23 +922,32 @@ fn install_command_chirho(program_name_chirho: &str, positional_chirho: &[&str])
         }
     };
 
-    let version_str_chirho = match positional_chirho.get(2) {
-        Some(v_chirho) => *v_chirho,
-        None => {
-            eprintln!("missing version for `install`");
-            eprintln!(
-                "usage: {} install <package-name> <version>",
-                program_name_chirho
-            );
-            return ExitCode::from(2);
+    let version_chirho = if let Some(version_str_chirho) = positional_chirho.get(2) {
+        match haskelujah_package_chirho::parse_version_chirho(version_str_chirho) {
+            Some(v_chirho) => v_chirho,
+            None => {
+                eprintln!("invalid version: `{version_str_chirho}`");
+                return ExitCode::from(2);
+            }
         }
-    };
-
-    let version_chirho = match haskelujah_package_chirho::parse_version_chirho(version_str_chirho) {
-        Some(v_chirho) => v_chirho,
-        None => {
-            eprintln!("invalid version: `{version_str_chirho}`");
-            return ExitCode::from(2);
+    } else {
+        // No version specified — fetch latest from Hackage
+        eprintln!("Fetching latest version of {pkg_name_chirho}...");
+        match haskelujah_package_chirho::hackage_chirho::fetch_latest_version_chirho(
+            pkg_name_chirho,
+        ) {
+            Ok(v_chirho) => {
+                eprintln!("  latest: {v_chirho}");
+                v_chirho
+            }
+            Err(e_chirho) => {
+                eprintln!("error: could not fetch latest version: {e_chirho}");
+                eprintln!(
+                    "usage: {} install <package-name> [version]",
+                    program_name_chirho
+                );
+                return ExitCode::from(2);
+            }
         }
     };
 

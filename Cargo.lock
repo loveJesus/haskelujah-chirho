@@ -388,6 +388,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 
 [[package]]
+name = "haskelujah"
+version = "0.1.0"
+dependencies = [
+ "haskelujah-ast-chirho",
+ "haskelujah-backend-cranelift-chirho",
+ "haskelujah-backend-llvm-chirho",
+ "haskelujah-backend-wasm-chirho",
+ "haskelujah-core-chirho",
+ "haskelujah-driver-chirho",
+ "haskelujah-naming-chirho",
+ "haskelujah-package-chirho",
+ "haskelujah-runtime-chirho",
+ "haskelujah-span-chirho",
+ "haskelujah-syntax-chirho",
+ "haskelujah-typing-chirho",
+]
+
+[[package]]
 name = "haskelujah-ast-chirho"
 version = "0.1.0"
 dependencies = [
@@ -443,24 +461,6 @@ version = "0.1.0"
 dependencies = [
  "haskelujah-core-chirho",
  "haskelujah-span-chirho",
- "haskelujah-typing-chirho",
-]
-
-[[package]]
-name = "haskelujah-cli-chirho"
-version = "0.1.0"
-dependencies = [
- "haskelujah-ast-chirho",
- "haskelujah-backend-cranelift-chirho",
- "haskelujah-backend-llvm-chirho",
- "haskelujah-backend-wasm-chirho",
- "haskelujah-core-chirho",
- "haskelujah-driver-chirho",
- "haskelujah-naming-chirho",
- "haskelujah-package-chirho",
- "haskelujah-runtime-chirho",
- "haskelujah-span-chirho",
- "haskelujah-syntax-chirho",
  "haskelujah-typing-chirho",
 ]
 
