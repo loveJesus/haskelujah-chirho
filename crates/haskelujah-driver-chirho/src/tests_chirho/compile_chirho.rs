@@ -1393,6 +1393,23 @@ main = print (safeDivide 10 2)
         assert_eq!(stdout_chirho, "5\n");
     }
 
+    #[test]
+    fn cranelift_round_trip_partial_application_make_adder_output_chirho() {
+        let src_chirho = r#"module Main where
+makeAdder n = \x -> x + n
+main = do
+  let add5 = makeAdder 5
+  print (add5 37)
+"#;
+        let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
+            .expect("partial application makeAdder Cranelift round-trip");
+        assert_eq!(
+            exit_code_chirho, 0,
+            "partial application Cranelift executable should exit successfully"
+        );
+        assert_eq!(stdout_chirho, "42\n");
+    }
+
     // ---------------------------------------------------------------
     // §29 — Structured error messages with "did you mean?" suggestions
     // ---------------------------------------------------------------
