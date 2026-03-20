@@ -92,7 +92,7 @@ fn main_chirho() -> ExitCode {
 
     // Handle --version and --help as commands
     if command_chirho == "--version" || command_chirho == "-V" {
-        eprintln!("haskelujah-chirho 0.1.0 (GHC compat: 858/938, 91.5%)");
+        eprintln!("haskelujah-chirho 0.1.0 (GHC compat: 861/938, 91.8%)");
         return ExitCode::SUCCESS;
     }
     if command_chirho == "--help" || command_chirho == "-h" || command_chirho == "help" {
