@@ -13,13 +13,13 @@
 	];
 
 	const benchmarksChirho = [
-		{ nameChirho: 'Cranelift (default)', timeChirho: '0.91s', barChirho: 83, colorChirho: '#7dd3fc' },
-		{ nameChirho: 'GHC 9.14 -O2', timeChirho: '1.10s', barChirho: 100, colorChirho: '#64748b' }
+		{ nameChirho: 'Cranelift (default)', timeChirho: '0.91s', barChirho: 72, colorChirho: '#7dd3fc' },
+		{ nameChirho: 'GHC 9.14 -O2', timeChirho: '1.26s', barChirho: 100, colorChirho: '#64748b' }
 	];
 
 	const benchmarkSuiteChirho = [
-		{ nameChirho: 'fib(42)', descChirho: 'Recursive Fibonacci', ghcChirho: '1.10s', clChirho: '0.91s', llvmChirho: '0.91s', ratioChirho: '1.21x faster' },
-		{ nameChirho: 'ack(3,10)', descChirho: 'Ackermann function', ghcChirho: '0.23s', clChirho: '0.14s', llvmChirho: '--', ratioChirho: '1.64x faster' },
+		{ nameChirho: 'fib(42)', descChirho: 'Recursive Fibonacci', ghcChirho: '1.26s', clChirho: '0.91s', llvmChirho: '0.91s', ratioChirho: '1.38x faster' },
+		{ nameChirho: 'ack(3,11)', descChirho: 'Ackermann function', ghcChirho: '0.26s', clChirho: '0.62s', llvmChirho: '1.03s', ratioChirho: '0.42x' },
 		{ nameChirho: 'euler1(100M)', descChirho: '100M iterations (TCO)', ghcChirho: '0.09s', clChirho: '0.15s', llvmChirho: '0.35s', ratioChirho: '0.60x' },
 		{ nameChirho: 'tak(30,20,10)', descChirho: 'Takeuchi function', ghcChirho: '0.10s', clChirho: '0.16s', llvmChirho: '0.27s', ratioChirho: '0.63x' },
 		{ nameChirho: 'qsort(1K)', descChirho: 'Quicksort random', ghcChirho: '0.22s', clChirho: '0.20s', llvmChirho: '0.15s', ratioChirho: 'LLVM 1.47x' },

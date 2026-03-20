@@ -1666,11 +1666,28 @@ impl DesugarCtxChirho {
                     // More pattern columns remain — recurse.
                     // For non-default groups, append default arms as
                     // fallthroughs so inner cases have catch-all alternatives.
+                    // BUT: only add defaults that have a variable/wildcard at
+                    // the NEXT pattern column. Defaults with a literal/constructor
+                    // pattern at the next column would violate source equation
+                    // ordering (e.g., `ack 0 n = n+1; ack m 0 = ...` — the
+                    // second equation's literal 0 should not compete with the
+                    // first equation's variable `n` in the inner case).
                     let mut sub_arms_chirho: Vec<MatchArmChirho> =
                         arms_chirho.iter().map(|a_chirho| (*a_chirho).clone()).collect();
                     if con_chirho != AltConChirho::DefaultChirho {
+                        let next_idx_chirho = pat_idx_chirho + 1;
                         for da_chirho in &default_arms_chirho {
-                            sub_arms_chirho.push((*da_chirho).clone());
+                            // Only include defaults whose next pattern is a
+                            // variable/wildcard — they serve as legitimate
+                            // catch-all alternatives without disrupting order.
+                            let is_var_next_chirho = next_idx_chirho < da_chirho.pats_chirho.len()
+                                && matches!(
+                                    &da_chirho.pats_chirho[next_idx_chirho],
+                                    PatChirho::VarChirho(_) | PatChirho::WildcardChirho(_)
+                                );
+                            if is_var_next_chirho {
+                                sub_arms_chirho.push((*da_chirho).clone());
+                            }
                         }
                     }
                     self.compile_multi_pattern_case_chirho(
