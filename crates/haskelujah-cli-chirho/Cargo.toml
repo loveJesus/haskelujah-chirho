@@ -1,7 +1,7 @@
 # For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
 
 [package]
-name = "haskelujah-cli-chirho"
+name = "haskelujah"
 description = "A Haskell compiler in Rust — GHC-compatible, self-contained, faster than GHC"
 repository = "https://github.com/loveJesus/haskelujah-chirho"
 homepage = "https://haskelujah.org"
