@@ -1796,3 +1796,26 @@ main = print (countList (sieve (range 2 100)))
         );
     }
 }
+
+#[test]
+fn cranelift_round_trip_mixed_show_int_bool_chirho() {
+    let src_chirho = r#"module Main where
+mySum :: [Int] -> Int
+mySum [] = 0
+mySum (x:xs) = x + mySum xs
+main :: IO ()
+main = do
+  putStrLn ("sum = " ++ show (mySum [1,2,3]))
+  putStrLn ("bool = " ++ show True)
+  putStrLn ("abs = " ++ show (abs (-42)))
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        let lines_chirho: Vec<&str> = stdout_chirho.trim().lines().collect();
+        assert!(lines_chirho.len() >= 3, "expected 3 lines, got {}", lines_chirho.len());
+        assert_eq!(lines_chirho[0], "sum = 6", "show Int after sum");
+        assert_eq!(lines_chirho[1], "bool = True", "show Bool");
+        assert_eq!(lines_chirho[2], "abs = 42", "show Int via abs");
+    }
+}
