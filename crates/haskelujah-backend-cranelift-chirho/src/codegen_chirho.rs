@@ -153,6 +153,7 @@ fn compile_core_to_object_inner_chirho(
         get_line_func_id_chirho,
         write_file_func_id_chirho,
         read_file_func_id_chirho,
+        unpack_string_func_id_chirho,
         main_with_large_stack_func_id_chirho,
     ) = {
         let mut put_str_ln_sig_chirho = obj_module_chirho.make_signature();
@@ -307,6 +308,15 @@ fn compile_core_to_object_inner_chirho(
             )
             .ok();
 
+        // unpack_string: same sig as read_file (i64 → i64)
+        let unpack_string_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_unpack_string_chirho",
+                LinkageChirho::Import,
+                &read_file_sig_chirho,
+            )
+            .ok();
+
         let mut main_with_large_stack_sig_chirho = obj_module_chirho.make_signature();
         main_with_large_stack_sig_chirho
             .params
@@ -335,6 +345,7 @@ fn compile_core_to_object_inner_chirho(
             get_line_func_id_chirho,
             write_file_func_id_chirho,
             read_file_func_id_chirho,
+            unpack_string_func_id_chirho,
             main_with_large_stack_func_id_chirho,
         )
     };
@@ -402,6 +413,7 @@ fn compile_core_to_object_inner_chirho(
             get_line_func_id_chirho,
             write_file_func_id_chirho,
             read_file_func_id_chirho,
+            unpack_string_func_id_chirho,
             &string_data_ids_chirho,
         )?;
     }
@@ -1375,6 +1387,7 @@ fn define_function_body_chirho(
     get_line_func_id_chirho: Option<cranelift_module::FuncId>,
     write_file_func_id_chirho: Option<cranelift_module::FuncId>,
     read_file_func_id_chirho: Option<cranelift_module::FuncId>,
+    unpack_string_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let (param_binders_chirho, body_chirho) = peel_lambdas_chirho(rhs_chirho);
@@ -1476,6 +1489,8 @@ fn define_function_body_chirho(
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let read_file_fref_chirho = read_file_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let unpack_string_fref_chirho = unpack_string_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
 
         let mut string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue> =
             HashMap::new();
@@ -1505,6 +1520,7 @@ fn define_function_body_chirho(
             get_line_ref_chirho: get_line_fref_chirho,
             write_file_ref_chirho: write_file_fref_chirho,
             read_file_ref_chirho: read_file_fref_chirho,
+            unpack_string_ref_chirho: unpack_string_fref_chirho,
             string_globals_chirho,
             tco_self_id_chirho: Some(current_core_id_chirho),
             tco_loop_block_chirho: Some(loop_block_chirho),
@@ -1703,6 +1719,7 @@ fn lower_binding_chirho(
     get_line_func_id_chirho: Option<cranelift_module::FuncId>,
     write_file_func_id_chirho: Option<cranelift_module::FuncId>,
     read_file_func_id_chirho: Option<cranelift_module::FuncId>,
+    unpack_string_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
@@ -1810,6 +1827,7 @@ fn lower_binding_chirho(
             put_str_func_id_chirho,
             get_line_func_id_chirho,
             write_file_func_id_chirho,
+            unpack_string_func_id_chirho,
             read_file_func_id_chirho,
             string_data_ids_chirho,
         )?;
@@ -1837,6 +1855,7 @@ fn lower_binding_chirho(
         show_float_func_id_chirho,
         put_str_func_id_chirho,
         get_line_func_id_chirho,
+            unpack_string_func_id_chirho,
         write_file_func_id_chirho,
         read_file_func_id_chirho,
         string_data_ids_chirho,

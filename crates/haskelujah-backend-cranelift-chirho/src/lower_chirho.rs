@@ -108,6 +108,8 @@ pub struct LowerCtxChirho<'a> {
     pub write_file_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_read_file_chirho`
     pub read_file_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_unpack_string_chirho`
+    pub unpack_string_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
     pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
     /// Current function Core id, used for self-tail-call elimination.
@@ -1171,6 +1173,21 @@ fn lower_app_chirho(
                     let is_lower_chirho = builder_chirho.ins().band(lower_chirho, lower_end_chirho);
                     let result_chirho = builder_chirho.ins().bor(is_upper_chirho, is_lower_chirho);
                     return builder_chirho.ins().uextend(cl_types_chirho::I64, result_chirho);
+                }
+            }
+            // unpack :: String -> [Char] — convert C string to cons-list
+            if matches!(name_chirho.as_str(), "unpack" | "unpack#") {
+                if let Some(unpack_ref_chirho) = ctx_chirho.unpack_string_ref_chirho {
+                    if let Some(arg_expr_chirho) = all_args_chirho.last() {
+                        let arg_val_chirho =
+                            lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                        let arg_i64_chirho =
+                            ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                        let call_chirho = builder_chirho
+                            .ins()
+                            .call(unpack_ref_chirho, &[arg_i64_chirho]);
+                        return builder_chirho.inst_results(call_chirho)[0];
+                    }
                 }
             }
             // ord :: Char -> Int, chr :: Int -> Char — identity at runtime

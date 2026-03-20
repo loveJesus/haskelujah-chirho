@@ -4111,6 +4111,15 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
+    // unpack :: String -> [Char] (convert C string to cons-list)
+    env_chirho.bind_chirho(
+        "unpack".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::string_chirho(),
+            TyChirho::ListChirho(Box::new(TyChirho::char_chirho())),
+        )),
+    );
+
     // toUpper :: Char -> Char
     env_chirho.bind_chirho(
         "toUpper".to_string(),

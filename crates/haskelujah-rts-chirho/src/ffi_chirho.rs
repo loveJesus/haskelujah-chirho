@@ -506,6 +506,40 @@ pub extern "C" fn haskelujah_read_file_chirho(path_bits_chirho: u64) -> u64 {
     }
 }
 
+/// Convert a NUL-terminated C string to a Haskell [Char] cons-list.
+/// Each character becomes a cons cell: tag=1, head=codepoint, tail=next.
+/// The empty string returns tag=0 (Nil).
+/// Layout: [tag:i64, head:i64, tail:i64] per cons cell (24 bytes).
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_unpack_string_chirho(str_bits_chirho: u64) -> u64 {
+    if str_bits_chirho == 0 {
+        return 0; // Nil
+    }
+    let ptr_chirho = str_bits_chirho as usize as *const u8;
+    let c_str_chirho = unsafe { CStr::from_ptr(ptr_chirho as *const std::ffi::c_char) };
+    let bytes_chirho = c_str_chirho.to_bytes();
+
+    // Build the list from the END (so we can chain tails)
+    let mut tail_chirho: u64 = 0; // Nil tag
+    for &byte_chirho in bytes_chirho.iter().rev() {
+        let cell_ptr_chirho = haskelujah_alloc_chirho(24);
+        if cell_ptr_chirho.is_null() {
+            return 0;
+        }
+        unsafe {
+            // tag = 1 (Cons)
+            *(cell_ptr_chirho as *mut u64) = 1;
+            // head = character codepoint
+            *(cell_ptr_chirho.add(8) as *mut u64) = byte_chirho as u64;
+            // tail = previous cell (boxed) or 0 (Nil)
+            *(cell_ptr_chirho.add(16) as *mut u64) = tail_chirho;
+        }
+        // Box the pointer (set high bit)
+        tail_chirho = (cell_ptr_chirho as u64) | (1u64 << 63);
+    }
+    tail_chirho
+}
+
 /// Runtime panic for undefined/bottom values.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_undefined_chirho() {
