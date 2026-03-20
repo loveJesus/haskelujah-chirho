@@ -2622,9 +2622,20 @@ impl InferCtxChirho {
                     self.apply_subst_all_chirho(&s_chirho);
                 }
             }
-            // Don't unify per-eq result with overall result here —
-            // let the signature check handle it. This allows GADT
-            // equations to have different result types.
+            // Unify per-equation result with overall result type.
+            // For non-GADT cases this propagates the body type to the
+            // function result; for GADTs the signature check provides
+            // the authoritative type.
+            let eq_r_sub_chirho = subst_chirho.apply_ty_chirho(&eq_result_ty_chirho);
+            let r_sub_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
+            if let Ok(s_chirho) = self.unify_normalized_chirho(
+                &eq_r_sub_chirho,
+                &r_sub_chirho,
+                span_chirho,
+            ) {
+                subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+                self.apply_subst_all_chirho(&s_chirho);
+            }
 
             self.env_chirho.pop_scope_chirho();
         }
@@ -3241,13 +3252,28 @@ impl InferCtxChirho {
                                 self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
                             let inferred_sub_chirho =
                                 self.reduce_type_families_in_ty_chirho(&resolved_chirho);
-                            if let Ok(sig_s_chirho) = self.unify_normalized_chirho(
+                            match self.unify_normalized_chirho(
                                 &inferred_sub_chirho,
                                 &sig_ty_chirho,
                                 SpanChirho::DUMMY_CHIRHO,
                             ) {
-                                subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
-                                self.apply_subst_all_chirho(&sig_s_chirho);
+                                Ok(sig_s_chirho) => {
+                                    subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
+                                    self.apply_subst_all_chirho(&sig_s_chirho);
+                                }
+                                Err(_err_chirho) => {
+                                    self.diagnostics_chirho.push_chirho(
+                                        DiagnosticChirho::error_with_code_chirho(
+                                            ErrorCodeChirho::error_chirho(SIGNATURE_MISMATCH_CODE_CHIRHO),
+                                            format!(
+                                                "type signature mismatch for `{name_chirho}`: \
+                                                 inferred `{inferred_sub_chirho}`, \
+                                                 declared `{sig_ty_chirho}`"
+                                            ),
+                                            SpanChirho::DUMMY_CHIRHO,
+                                        ),
+                                    );
+                                }
                             }
                             // Use the signature scheme directly for proper
                             // polymorphism (e.g. `id1 :: a -> a; (id1) = id`)
@@ -12115,18 +12141,12 @@ mod tests_chirho {
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
-        // With per-equation fresh result types, `badChirho x = x` infers
-        // `a -> b` (overall result is fresh). The sig `Int -> Int -> Int`
-        // subsumes by unifying `a = Int`, `b = Int -> Int`, so no error.
-        // This reflects the new behavior where the per-equation result
-        // type is not unified with the overall result type.
-        // The function is still type-correct (it returns `x :: Int` which
-        // can unify with `Int -> Int` at the overall level).
-        // The key assertion is that the sig checking ran without crash.
+        // `badChirho x = x` infers `a -> a` but sig says `Int -> Int -> Int`.
+        // The per-equation result is now properly unified with the overall
+        // result, so the signature mismatch is correctly detected.
         assert!(
-            !result_chirho.diagnostics_chirho.has_errors_chirho(),
-            "With GADT per-equation fresh types, sig subsumption accepts this: {:?}",
-            result_chirho.diagnostics_chirho
+            result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "Signature mismatch should be detected for `badChirho :: Int -> Int -> Int; badChirho x = x`"
         );
     }
 
