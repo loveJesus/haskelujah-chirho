@@ -957,39 +957,27 @@ pub fn elide_dicts_chirho(
     if let CoreExprChirho::VarChirho(sel_id_chirho) = callee_chirho {
         if let Some(name_chirho) = resolve_name_for_id_chirho(sel_id_chirho, all_bindings_chirho) {
             // $sel_Show_show dict x → showInt#/showBool#/showChar#/showFloat# x
-            // Determine the show variant from the dict argument name.
+            // Determine the variant from the VALUE argument, not the dict,
+            // to avoid the mixed-show bug where dict sharing causes wrong
+            // show variant to be applied.
             if name_chirho == "$sel_Show_show" && all_args_chirho.len() >= 2 {
-                // Determine show variant from dict name. Only match
-                // specific instance dictionary names like $fShowBool,
-                // $fShowChar, $fShowDouble. Default to showInt#.
-                let show_primop_chirho = if let CoreExprChirho::VarChirho(dict_id_chirho) =
-                    all_args_chirho[0]
-                {
-                    resolve_name_for_id_chirho(dict_id_chirho, all_bindings_chirho)
-                        .and_then(|dn_chirho| {
-                            // Only match $fShow* or $dShow* dict names
-                            if !dn_chirho.starts_with("$fShow") && !dn_chirho.starts_with("$dShow")
-                            {
-                                return None;
-                            }
-                            if dn_chirho.contains("Bool") {
-                                Some("showBool#")
-                            } else if dn_chirho.contains("Char") {
-                                Some("showChar#")
-                            } else if dn_chirho.contains("Float")
-                                || dn_chirho.contains("Double")
-                            {
-                                Some("showFloat#")
-                            } else {
-                                None // $fShowInt or unknown → default
-                            }
-                        })
-                        .unwrap_or("showInt#")
-                } else {
-                    "showInt#"
-                };
                 let simplified_chirho =
                     elide_dicts_chirho(all_args_chirho[1], all_bindings_chirho);
+                // Check if the simplified value is a known Bool/Char literal
+                let show_primop_chirho = match &simplified_chirho {
+                    // Constructor names True/False → showBool#
+                    CoreExprChirho::ConAppChirho { con_name_chirho, .. }
+                        if con_name_chirho == "True" || con_name_chirho == "False" =>
+                    {
+                        "showBool#"
+                    }
+                    // Char literal → showChar#
+                    CoreExprChirho::LitChirho(CoreLitChirho::CharChirho(_)) => "showChar#",
+                    // Float literal → showFloat#
+                    CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(_)) => "showFloat#",
+                    // Everything else (Int, computed values) → showInt#
+                    _ => "showInt#",
+                };
                 return CoreExprChirho::PrimOpChirho {
                     name_chirho: show_primop_chirho.to_string(),
                     args_chirho: vec![simplified_chirho],
