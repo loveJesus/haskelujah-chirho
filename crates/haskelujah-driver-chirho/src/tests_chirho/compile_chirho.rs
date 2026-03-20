@@ -2348,3 +2348,27 @@ main = print (ack 3 7)
         assert_eq!(stdout_chirho.trim(), "1021");
     }
 }
+
+#[test]
+fn llvm_round_trip_guards_correct_branching_chirho() {
+    // Regression test for LLVM phi node predecessor fix.
+    // Guards produce nested case expressions whose phi nodes
+    // must reference the correct predecessor block.
+    let src_chirho = r#"module Main where
+sign :: Int -> Int
+sign n
+  | n > 0 = 1
+  | n == 0 = 0
+  | otherwise = -1
+main :: IO ()
+main = do
+  print (sign 5)
+  print (sign 0)
+  print (sign (-3))
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "1\n0\n-1");
+    }
+}
