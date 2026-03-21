@@ -1075,8 +1075,20 @@ fn lower_constructor_app_chirho(
         .store(mem_flags_chirho, tag_val_chirho, alloc_ptr_chirho, 0);
 
     for (field_idx_chirho, arg_chirho) in args_chirho.iter().enumerate() {
-        let field_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
-        let field_i64_chirho = ensure_i64_chirho(builder_chirho, field_val_chirho, false);
+        // Try to create a lazy thunk for function application arguments.
+        // This enables lazy constructor fields for infinite data structures.
+        // With low-bit tagging + primop forcing, thunk pointers are safely
+        // forced at all use sites (case scrutinees and primop args).
+        let field_i64_chirho =
+            if let Some(thunk_val_chirho) =
+                try_create_thunk_for_app_chirho(builder_chirho, ctx_chirho, arg_chirho)
+            {
+                thunk_val_chirho
+            } else {
+                let field_val_chirho =
+                    lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+                ensure_i64_chirho(builder_chirho, field_val_chirho, false)
+            };
         let offset_chirho = ((field_idx_chirho + 1) * 8) as i32;
         builder_chirho.ins().store(
             mem_flags_chirho,
@@ -2055,16 +2067,18 @@ pub fn lower_primop_chirho(
     name_chirho: &str,
     args_chirho: &[CoreExprChirho],
 ) -> ClValueChirho {
-    // Evaluate operands eagerly for now. Low-bit pointer tagging means odd
-    // integers no longer collide with boxed pointers during enter_thunk,
-    // because the RTS validates the de-tagged address before entering it.
+    // Evaluate operands and force any thunks. With low-bit pointer tagging,
+    // enter_thunk can safely distinguish heap pointers (bit 0 set) from
+    // unboxed integers (even or odd), so forcing is always safe here.
     let lhs_raw_chirho = if !args_chirho.is_empty() {
-        lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[0])
+        let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[0]);
+        force_if_thunk_chirho(builder_chirho, ctx_chirho, val_chirho)
     } else {
         builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
     };
     let rhs_raw_chirho = if args_chirho.len() > 1 {
-        lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[1])
+        let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[1]);
+        force_if_thunk_chirho(builder_chirho, ctx_chirho, val_chirho)
     } else {
         builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
     };
