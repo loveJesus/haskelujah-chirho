@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use haskelujah_parser_chirho::cst_parser_chirho::ParserChirho;
+use haskelujah_parser::cst_parser_chirho::ParserChirho;
 use haskelujah_span_chirho::FileIdChirho;
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenElementChirho, GreenNodeChirho};

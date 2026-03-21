@@ -9,9 +9,9 @@
 //! These tests only run if the `ghc-tests-chirho/` directory exists (it is
 //! gitignored and populated by a setup script).
 
-use haskelujah_parser_chirho::cst_parser_chirho::parse_to_cst_chirho;
-use haskelujah_parser_chirho::layout_chirho::apply_layout_chirho;
-use haskelujah_parser_chirho::lexer_chirho::LexerChirho;
+use haskelujah_parser::cst_parser_chirho::parse_to_cst_chirho;
+use haskelujah_parser::layout_chirho::apply_layout_chirho;
+use haskelujah_parser::lexer_chirho::LexerChirho;
 use haskelujah_span_chirho::FileIdChirho;
 use std::path::PathBuf;
 

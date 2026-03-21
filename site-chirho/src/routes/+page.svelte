@@ -5,9 +5,9 @@
 
 	const statsChirho = [
 		{ labelChirho: 'GHC Compatibility', valueChirho: '88.8%', detailChirho: '833 / 938 tests' },
-		{ labelChirho: 'Rust Code', valueChirho: '154K+', detailChirho: '21 crates, 133 source files' },
+		{ labelChirho: 'Rust Code', valueChirho: '161K+', detailChirho: '21 crates, 133 source files' },
 		{ labelChirho: 'Passing Tests', valueChirho: '2,500+', detailChirho: '513/513 curated, 43 CL + 82 LLVM roundtrips' },
-		{ labelChirho: 'Compiler Targets', valueChirho: '3', detailChirho: 'Cranelift, LLVM, Wasm' }
+		{ labelChirho: 'Hackage Packages', valueChirho: '13', detailChirho: 'aeson, lens, servant, containers compile' }
 	];
 
 	const heroPillsChirho = [
@@ -54,7 +54,7 @@
 		{
 			titleChirho: 'GHC Compatible',
 			descriptionChirho:
-				'91.8% compatibility with the GHC test suite. Type classes, GADTs, RankNTypes, ScopedTypeVariables, Template Haskell, and dozens more extensions.',
+				'88.8% compatibility with the GHC test suite (833/938). Type classes, GADTs, RankNTypes, ScopedTypeVariables, Template Haskell, and 40+ extensions.',
 			iconChirho: 'G'
 		},
 		{
@@ -141,13 +141,13 @@
 			<div class="hero-proof-chirho">
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Latest proof</span>
-					<strong>2,300+ passing tests</strong>
-					<p>340/340 curated plus STG, LLVM, Cranelift, parser, driver, runtime, and typing suites all green.</p>
+					<strong>2,500+ passing tests</strong>
+					<p>513/513 curated, 43 CL + 82 LLVM roundtrips, 833/938 GHC typecheck suite. All green.</p>
 				</div>
 				<div class="hero-proof-card-chirho">
-					<span class="hero-proof-label-chirho">Developer experience</span>
-					<strong>Cranelift first, LLVM optional</strong>
-					<p>No mandatory LLVM install for the default build path.</p>
+					<span class="hero-proof-label-chirho">Hackage packages</span>
+					<strong>13 packages compile</strong>
+					<p>aeson, lens (17/17 core modules), servant, containers, scientific, comonad, and more.</p>
 				</div>
 			</div>
 		</div>
@@ -359,7 +359,7 @@ main = putStrLn "Hello from a script!"</span>
 					<div class="feature-icon-chirho">H</div>
 					<div class="feature-text-chirho">
 						<h3>Hackage Packages</h3>
-						<p><code>haskelujah install aeson</code> fetches packages from Hackage, resolves dependencies, and extracts <code>.cabal</code> metadata. Auto-detects latest versions.</p>
+						<p><code>haskelujah install aeson</code> fetches from Hackage, resolves deps, extracts <code>.cabal</code> metadata. <strong>13 packages compile</strong> including aeson, lens (17/17 core), servant, containers, scientific, comonad, tagged, HUnit. 329 module interfaces.</p>
 					</div>
 				</div>
 				<div class="feature-card-chirho">
@@ -393,8 +393,8 @@ main = putStrLn "Hello from a script!"</span>
 			<h2 class="section-title-chirho">Current Limitations</h2>
 			<p class="section-subtitle-chirho">Where we still fall short of GHC.</p>
 			<ul class="limitation-list-chirho">
-				<li><strong>Lazy evaluation:</strong> Both Cranelift and LLVM backends support lazy constructor fields &mdash; infinite lists like <code>take 5 (repeat 42)</code> work! Let-bindings are still eager (strictness analysis planned).</li>
-				<li><strong>Garbage collection:</strong> Mark-sweep GC is active with root tracking at allocation sites. Programs reclaim unused heap memory automatically.</li>
+				<li><strong>Lazy evaluation:</strong> Both Cranelift and LLVM backends have full lazy semantics &mdash; thunk trampolines, lazy constructor fields, lazy let-bindings, and <code>seq#</code>. Infinite lists like <code>take 5 (repeat 42)</code>, lazy Fibonacci, Sieve of Eratosthenes, and Hamming numbers all work.</li>
+				<li><strong>Garbage collection:</strong> Mark-sweep GC is active (threshold 1000 allocations) with root tracking at all allocation sites. Programs reclaim unused heap memory automatically.</li>
 				<li><strong>Type class dictionaries at runtime:</strong> Type checking supports full typeclasses, but compiled code uses simplified dictionary elision. Complex polymorphic dispatch is partial.</li>
 				<li><strong>String as [Char]:</strong> String literals are C strings internally. <code>unpack</code>/<code>pack</code> conversion works but isn't transparent like GHC's representation.</li>
 				<li><strong>Template Haskell:</strong> Basic splices and <code>makeLenses</code> work; full TH (typed splices, reify) is incomplete.</li>
@@ -410,8 +410,8 @@ main = putStrLn "Hello from a script!"</span>
 			<p class="section-subtitle-chirho">Where we're headed, God willing.</p>
 			<div class="roadmap-grid-chirho">
 				<div class="roadmap-item-chirho">
-					<h3>Full Lazy Semantics</h3>
-					<p>Lazy let-bindings and strictness analysis for full GHC-compatible evaluation order.</p>
+					<h3>Rank-N Type Inference</h3>
+					<p>Full higher-rank polymorphism to unlock lens top-level module and advanced type-level patterns.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Strictness Analysis</h3>
@@ -427,7 +427,7 @@ main = putStrLn "Hello from a script!"</span>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Full Hackage</h3>
-					<p>Compile real-world packages like aeson, lens, and servant. Bridge the gap from toy programs to production Haskell.</p>
+					<p>13 packages compile today (aeson, lens, servant, containers). Next: mtl, transformers, parsec, QuickCheck, megaparsec, vector.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Profiling</h3>

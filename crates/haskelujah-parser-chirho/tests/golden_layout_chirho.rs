@@ -8,8 +8,8 @@
 //! only) is compared against a sibling `.layout.expected` file.
 //! Run with `BLESS_CHIRHO=1` to regenerate expected files.
 
-use haskelujah_parser_chirho::layout_chirho::apply_layout_chirho;
-use haskelujah_parser_chirho::lexer_chirho::LexerChirho;
+use haskelujah_parser::layout_chirho::apply_layout_chirho;
+use haskelujah_parser::lexer_chirho::LexerChirho;
 use haskelujah_span_chirho::FileIdChirho;
 use haskelujah_test_harness_chirho::{
     assert_golden_chirho, bless_golden_chirho, discover_golden_tests_chirho,
