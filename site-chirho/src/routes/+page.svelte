@@ -6,7 +6,7 @@
 	const statsChirho = [
 		{ labelChirho: 'GHC Compatibility', valueChirho: '91.8%', detailChirho: '861 / 938 tests' },
 		{ labelChirho: 'Rust Code', valueChirho: '150K+', detailChirho: '21 crates, 132 source files' },
-		{ labelChirho: 'Passing Tests', valueChirho: '2,200+', detailChirho: '170/170 curated, 1378 driver green' },
+		{ labelChirho: 'Passing Tests', valueChirho: '2,300+', detailChirho: '340/340 curated, 1389 driver green' },
 		{ labelChirho: 'Compiler Targets', valueChirho: '3', detailChirho: 'Cranelift, LLVM, Wasm' }
 	];
 
@@ -141,8 +141,8 @@
 			<div class="hero-proof-chirho">
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Latest proof</span>
-					<strong>2,200+ passing tests</strong>
-					<p>170/170 curated plus STG, LLVM, Cranelift, parser, driver, and runtime suites all green.</p>
+					<strong>2,300+ passing tests</strong>
+					<p>340/340 curated plus STG, LLVM, Cranelift, parser, driver, runtime, and typing suites all green.</p>
 				</div>
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Developer experience</span>

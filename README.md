@@ -13,7 +13,7 @@ Haskelujah Chirho is a Haskell compiler written in Rust, aiming to be a drop-in 
 | Metric | Value |
 |---|---|
 | GHC Compat | **861/938 (91.8%)** typecheck/should_compile |
-| Curated Tests | **337/337 (100%)** compile-and-run correctness tests |
+| Curated Tests | **340/340 (100%)** compile-and-run correctness tests |
 | Total Tests | **2,300+ passing**, 0 failures |
 | Workspace | 21 crates, 132 Rust source files |
 | Codebase | ~150,000 lines of Rust |
@@ -235,7 +235,7 @@ The `examples-chirho/` directory contains verified working programs:
 - **bst**: Binary search tree with insertion and traversal
 - **euler**: Project Euler #1, #2, #6 with correct answers
 
-All examples produce correct output on both Cranelift and LLVM backends.
+All 9 examples produce correct output on both Cranelift and LLVM backends.
 
 **Diagnostic flags:** `--dump-core`, `--dump-stg`, `--dump-llvm`
 
