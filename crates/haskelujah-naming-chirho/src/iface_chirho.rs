@@ -8871,6 +8871,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
     }
 
+    // Control.Monad.Instances (deprecated, empty — imports kept for compat)
+    {
+        let exports_chirho = IfaceExportsChirho::default();
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.Instances".to_string(),
+            exports_chirho,
+        });
+    }
+
     // GHC.SrcLoc
     {
         let mut exports_chirho = IfaceExportsChirho::default();
