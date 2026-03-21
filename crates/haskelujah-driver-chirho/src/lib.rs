@@ -13,6 +13,8 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_ast_chirho::ModuleChirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_chirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
@@ -31,8 +33,10 @@ use haskelujah_runtime_chirho::{ExecutionModeChirho, RuntimePlanChirho};
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 use haskelujah_typing_chirho::infer_chirho::{
-    InferResultChirho, infer_module_chirho, infer_module_with_imports_chirho,
+    InferResultChirho, infer_module_chirho, infer_module_with_imports_and_type_synonyms_chirho,
 };
+
+type ImportedTypeSynonymsChirho = std::collections::HashMap<String, (Vec<String>, TypeChirho)>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackendPlanChirho {
@@ -68,6 +72,41 @@ pub struct FrontendResultChirho {
     pub infer_result_chirho: InferResultChirho,
     /// Non-fatal warnings collected from deriving and exhaustiveness checking.
     pub warnings_chirho: Vec<String>,
+}
+
+fn exported_type_synonyms_from_module_chirho(
+    module_chirho: &ModuleChirho,
+    iface_chirho: &ModuleIfaceChirho,
+) -> ImportedTypeSynonymsChirho {
+    let mut exported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
+    for decl_chirho in &module_chirho.decls_chirho {
+        if let DeclChirho::TypeAliasDeclChirho {
+            name_chirho,
+            type_vars_chirho,
+            rhs_chirho,
+            ..
+        } = decl_chirho
+        {
+            let alias_name_chirho = name_chirho.text_chirho().to_string();
+            if iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key(&alias_name_chirho)
+            {
+                exported_type_synonyms_chirho.insert(
+                    alias_name_chirho,
+                    (
+                        type_vars_chirho
+                            .iter()
+                            .map(|ty_var_chirho| ty_var_chirho.text_chirho().to_string())
+                            .collect(),
+                        rhs_chirho.clone(),
+                    ),
+                );
+            }
+        }
+    }
+    exported_type_synonyms_chirho
 }
 
 const CPP_GLASGOW_HASKELL_VERSION_CHIRHO: &str = "810";
@@ -176,6 +215,25 @@ pub fn run_frontend_chirho(
         haskelujah_typing_chirho::SchemeChirho,
     >,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
+    run_frontend_with_type_synonyms_chirho(
+        source_chirho,
+        file_id_chirho,
+        ifaces_chirho,
+        imported_types_chirho,
+        &ImportedTypeSynonymsChirho::new(),
+    )
+}
+
+pub fn run_frontend_with_type_synonyms_chirho(
+    source_chirho: &str,
+    file_id_chirho: haskelujah_span_chirho::FileIdChirho,
+    ifaces_chirho: &[ModuleIfaceChirho],
+    imported_types_chirho: &std::collections::HashMap<
+        String,
+        haskelujah_typing_chirho::SchemeChirho,
+    >,
+    imported_type_synonyms_chirho: &ImportedTypeSynonymsChirho,
+) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
     // Check for -fdefer-type-errors / -fdefer-out-of-scope-variables
     // These GHC flags cause type errors to be deferred as warnings.
     let defer_errors_chirho = source_chirho.contains("-fdefer-type-errors")
@@ -267,10 +325,16 @@ pub fn run_frontend_chirho(
 
     // Phase 4: Type inference — use import-aware variant when upstream
     // type schemes are available, plain variant otherwise.
-    let infer_result_chirho = if merged_imported_types_chirho.is_empty() {
+    let infer_result_chirho = if merged_imported_types_chirho.is_empty()
+        && imported_type_synonyms_chirho.is_empty()
+    {
         infer_module_chirho(&module_chirho)
     } else {
-        infer_module_with_imports_chirho(&module_chirho, &merged_imported_types_chirho)
+        infer_module_with_imports_and_type_synonyms_chirho(
+            &module_chirho,
+            &merged_imported_types_chirho,
+            imported_type_synonyms_chirho,
+        )
     };
     if !defer_errors_chirho && infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(infer_result_chirho.diagnostics_chirho);
@@ -1195,6 +1259,7 @@ pub fn compile_modules_chirho(
         String,
         haskelujah_typing_chirho::SchemeChirho,
     > = std::collections::HashMap::new();
+    let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
 
     for (file_name_chirho, source_chirho) in sources_chirho {
         let source_file_chirho = SourceFileChirho::from_source_map_chirho(
@@ -1205,11 +1270,12 @@ pub fn compile_modules_chirho(
         let file_id_chirho = source_file_chirho.file_id_chirho();
 
         // Phases 1–4.5: shared front-end
-        let frontend_result_chirho = run_frontend_chirho(
+        let frontend_result_chirho = run_frontend_with_type_synonyms_chirho(
             source_chirho,
             file_id_chirho,
             &ifaces_chirho,
             &imported_types_chirho,
+            &imported_type_synonyms_chirho,
         )?;
 
         let FrontendResultChirho {
@@ -1240,6 +1306,11 @@ pub fn compile_modules_chirho(
                 }
             }
         }
+
+        imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
+            &module_chirho,
+            &iface_chirho,
+        ));
 
         ifaces_chirho.push(iface_chirho);
 
@@ -2043,6 +2114,7 @@ pub fn compile_project_dir_chirho(
         String,
         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
     > = std::collections::HashMap::new();
+    let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
 
     for scc_chirho in &sccs_chirho {
         if scc_chirho.len() > 1 {
@@ -2113,11 +2185,12 @@ pub fn compile_project_dir_chirho(
             );
             let file_id_chirho = source_file_chirho.file_id_chirho();
 
-            let frontend_result_chirho = run_frontend_chirho(
+            let frontend_result_chirho = run_frontend_with_type_synonyms_chirho(
                 source_chirho,
                 file_id_chirho,
                 &ifaces_chirho,
                 &imported_types_chirho,
+                &imported_type_synonyms_chirho,
             )
             .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
 
@@ -2141,6 +2214,11 @@ pub fn compile_project_dir_chirho(
                 }
                 let _ = val_chirho;
             }
+
+            imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
+                &module_chirho,
+                &iface_chirho,
+            ));
 
             ifaces_chirho.push(iface_chirho);
 
@@ -2573,6 +2651,7 @@ fn compile_module_sources_with_extra_ifaces_chirho(
         String,
         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
     > = std::collections::HashMap::new();
+    let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
     let mut order_chirho: Vec<String> = Vec::new();
 
     for scc_chirho in &sccs_chirho {
@@ -2589,11 +2668,12 @@ fn compile_module_sources_with_extra_ifaces_chirho(
             );
             let file_id_chirho = source_file_chirho.file_id_chirho();
 
-            let frontend_result_chirho = run_frontend_chirho(
+            let frontend_result_chirho = run_frontend_with_type_synonyms_chirho(
                 source_chirho,
                 file_id_chirho,
                 &ifaces_chirho,
                 &imported_types_chirho,
+                &imported_type_synonyms_chirho,
             )
             .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
 
@@ -2613,6 +2693,10 @@ fn compile_module_sources_with_extra_ifaces_chirho(
                     imported_types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
                 }
             }
+            imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
+                &module_chirho,
+                &iface_chirho,
+            ));
             ifaces_chirho.push(iface_chirho);
 
             let compile_result_chirho = compile_backend_chirho(module_chirho, infer_result_chirho)

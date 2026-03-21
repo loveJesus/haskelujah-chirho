@@ -711,21 +711,51 @@ impl<'src> ParserChirho<'src> {
             let outer_before_chirho = self.pos_chirho;
             self.builder_chirho
                 .start_node_chirho(SyntaxKindChirho::FieldDeclChirho);
+            let mut paren_depth_chirho = 0usize;
+            let mut bracket_depth_chirho = 0usize;
+            let mut brace_depth_chirho = 0usize;
 
             // field names, ::, type
-            while !self.at_chirho(RawTokenKindChirho::CommaChirho)
-                && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
-                && !self.at_decl_boundary_chirho()
-                && !self.at_eof_chirho()
-            {
+            while !self.at_decl_boundary_chirho() && !self.at_eof_chirho() {
                 self.eat_trivia_chirho();
-                if !self.at_chirho(RawTokenKindChirho::CommaChirho)
-                    && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
-                    && !self.at_decl_boundary_chirho()
-                    && !self.at_eof_chirho()
-                {
-                    self.bump_chirho();
+                if self.at_decl_boundary_chirho() || self.at_eof_chirho() {
+                    break;
                 }
+
+                let should_end_field_chirho = match self.current_chirho().map(|t_chirho| t_chirho.kind_chirho) {
+                    Some(RawTokenKindChirho::CommaChirho) => {
+                        paren_depth_chirho == 0
+                            && bracket_depth_chirho == 0
+                            && brace_depth_chirho == 0
+                    }
+                    Some(RawTokenKindChirho::RightBraceChirho) => {
+                        paren_depth_chirho == 0
+                            && bracket_depth_chirho == 0
+                            && brace_depth_chirho == 0
+                    }
+                    _ => false,
+                };
+                if should_end_field_chirho {
+                    break;
+                }
+
+                match self.current_chirho().map(|t_chirho| t_chirho.kind_chirho) {
+                    Some(RawTokenKindChirho::LeftParenChirho) => paren_depth_chirho += 1,
+                    Some(RawTokenKindChirho::RightParenChirho) => {
+                        paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                    }
+                    Some(RawTokenKindChirho::LeftBracketChirho) => bracket_depth_chirho += 1,
+                    Some(RawTokenKindChirho::RightBracketChirho) => {
+                        bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
+                    }
+                    Some(RawTokenKindChirho::LeftBraceChirho) => brace_depth_chirho += 1,
+                    Some(RawTokenKindChirho::RightBraceChirho) => {
+                        brace_depth_chirho = brace_depth_chirho.saturating_sub(1);
+                    }
+                    _ => {}
+                }
+
+                self.bump_chirho();
             }
 
             self.builder_chirho.finish_node_chirho();

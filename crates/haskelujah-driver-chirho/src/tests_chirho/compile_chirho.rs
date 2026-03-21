@@ -165,6 +165,64 @@ answer = withFrozenCallStack id (42 :: Int)
 }
 
 #[test]
+fn frontend_state_t_signature_composition_preserves_tuple_payload_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module StateMini where\nnewtype StateT s m a = StateT { runStateT :: s -> m (a,s) }\nstate :: (Monad m) => (s -> (a, s)) -> StateT s m a\nstate f = StateT (return . f)\n",
+        &mut source_map_chirho,
+        "StateMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "StateT (return . f) should type-check from source without losing tuple payload: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_writer_t_lift_callcc_and_catch_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module WriterMini where\n\
+type CallCC m a b = ((a -> m b) -> m a) -> m a\n\
+type Catch e m a = m a -> (e -> m a) -> m a\n\
+newtype WriterT w m a = WriterT { unWriterT :: w -> m (a,w) }\n\
+liftCallCC :: CallCC m (a, w) (b, w) -> CallCC (WriterT w m) a b\n\
+liftCallCC callCC f = WriterT $ \\ w -> callCC $ \\ c -> unWriterT (f (\\ a -> WriterT $ \\ _ -> c (a, w))) w\n\
+liftCatch :: Catch e m (a, w) -> Catch e (WriterT w m) a\n\
+liftCatch catchE m h = WriterT $ \\ w -> unWriterT m w `catchE` \\ e -> unWriterT (h e) w\n",
+        &mut source_map_chirho,
+        "WriterMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "WriterT higher-order callback lifting should type-check from source: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_writer_t_nested_dollar_callcc_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module WriterLazyMini where\n\
+type CallCC m a b = ((a -> m b) -> m a) -> m a\n\
+class Monoid w where\n\
+  mempty :: w\n\
+newtype WriterT w m a = WriterT { runWriterT :: m (a,w) }\n\
+liftCallCC :: (Monoid w) => CallCC m (a,w) (b,w) -> CallCC (WriterT w m) a b\n\
+liftCallCC callCC f = WriterT $ callCC $ \\ c -> runWriterT (f (\\ a -> WriterT (c (a, mempty))))\n",
+        &mut source_map_chirho,
+        "WriterLazyMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "nested $ callCC lifting should type-check without losing tuple payload: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn multi_module_import_chirho() {
     use crate::compile_modules_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();

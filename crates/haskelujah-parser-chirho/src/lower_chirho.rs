@@ -7144,11 +7144,20 @@ fn resolve_infix_precedence_chirho(
         let mut it_chirho = exprs_chirho.into_iter();
         let left_chirho = it_chirho.next().unwrap();
         let right_chirho = it_chirho.next().unwrap();
-        return ExprChirho::InfixChirho {
-            left_chirho: Box::new(left_chirho),
-            op_chirho: ops_chirho.into_iter().next().unwrap(),
-            right_chirho: Box::new(right_chirho),
-            span_chirho,
+        let split_op_chirho = ops_chirho.into_iter().next().unwrap();
+        return if split_op_chirho.text_chirho() == "$" {
+            ExprChirho::AppChirho {
+                fun_chirho: Box::new(left_chirho),
+                arg_chirho: Box::new(right_chirho),
+                span_chirho,
+            }
+        } else {
+            ExprChirho::InfixChirho {
+                left_chirho: Box::new(left_chirho),
+                op_chirho: split_op_chirho,
+                right_chirho: Box::new(right_chirho),
+                span_chirho,
+            }
         };
     }
 
@@ -7204,11 +7213,19 @@ fn resolve_infix_precedence_chirho(
     let right_chirho =
         resolve_infix_precedence_chirho(right_exprs_chirho, right_ops_chirho, span_chirho);
 
-    ExprChirho::InfixChirho {
-        left_chirho: Box::new(left_chirho),
-        op_chirho: split_op_chirho,
-        right_chirho: Box::new(right_chirho),
-        span_chirho,
+    if split_op_chirho.text_chirho() == "$" {
+        ExprChirho::AppChirho {
+            fun_chirho: Box::new(left_chirho),
+            arg_chirho: Box::new(right_chirho),
+            span_chirho,
+        }
+    } else {
+        ExprChirho::InfixChirho {
+            left_chirho: Box::new(left_chirho),
+            op_chirho: split_op_chirho,
+            right_chirho: Box::new(right_chirho),
+            span_chirho,
+        }
     }
 }
 
@@ -8008,6 +8025,179 @@ foo = 1
     }
 
     #[test]
+    fn lower_newtype_record_tuple_type_application_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nnewtype WriterTChirho wChirho mChirho aChirho = WriterTChirho { runWriterTChirho :: mChirho (aChirho, wChirho) }\n",
+        );
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::NewtypeDeclChirho {
+                constructor_chirho:
+                    ConDeclChirho::RecordChirho { fields_chirho, .. },
+                ..
+            } => {
+                assert_eq!(fields_chirho.len(), 1);
+                match &fields_chirho[0].ty_chirho {
+                    TypeChirho::AppChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    } => {
+                        assert_eq!(
+                            **fun_chirho,
+                            TypeChirho::VarChirho(NameChirho::RawChirho(
+                                RawNameChirho::unqualified_chirho(
+                                    "mChirho",
+                                    SpanChirho::DUMMY_CHIRHO,
+                                ),
+                            ))
+                        );
+                        match arg_chirho.as_ref() {
+                            TypeChirho::TupleChirho { elements_chirho, .. } => {
+                                assert_eq!(elements_chirho.len(), 2);
+                                assert_eq!(
+                                    elements_chirho[0],
+                                    TypeChirho::VarChirho(NameChirho::RawChirho(
+                                        RawNameChirho::unqualified_chirho(
+                                            "aChirho",
+                                            SpanChirho::DUMMY_CHIRHO,
+                                        ),
+                                    ))
+                                );
+                                assert_eq!(
+                                    elements_chirho[1],
+                                    TypeChirho::VarChirho(NameChirho::RawChirho(
+                                        RawNameChirho::unqualified_chirho(
+                                            "wChirho",
+                                            SpanChirho::DUMMY_CHIRHO,
+                                        ),
+                                    ))
+                                );
+                            }
+                            other_chirho => {
+                                panic!("expected tuple type arg, got {:?}", other_chirho)
+                            }
+                        }
+                    }
+                    other_chirho => panic!("expected type application, got {:?}", other_chirho),
+                }
+            }
+            other_chirho => panic!("expected record newtype, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_newtype_record_function_returning_tuple_application_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nnewtype StateTChirho sChirho mChirho aChirho = StateTChirho { runStateTChirho :: sChirho -> mChirho (aChirho, sChirho) }\n",
+        );
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::NewtypeDeclChirho {
+                constructor_chirho:
+                    ConDeclChirho::RecordChirho { fields_chirho, .. },
+                ..
+            } => {
+                assert_eq!(fields_chirho.len(), 1);
+                match &fields_chirho[0].ty_chirho {
+                    TypeChirho::FunChirho {
+                        arg_chirho,
+                        result_chirho,
+                        ..
+                    } => {
+                        assert_eq!(
+                            **arg_chirho,
+                            TypeChirho::VarChirho(NameChirho::RawChirho(
+                                RawNameChirho::unqualified_chirho(
+                                    "sChirho",
+                                    SpanChirho::DUMMY_CHIRHO,
+                                ),
+                            ))
+                        );
+                        match result_chirho.as_ref() {
+                            TypeChirho::AppChirho {
+                                fun_chirho,
+                                arg_chirho,
+                                ..
+                            } => {
+                                assert_eq!(
+                                    **fun_chirho,
+                                    TypeChirho::VarChirho(NameChirho::RawChirho(
+                                        RawNameChirho::unqualified_chirho(
+                                            "mChirho",
+                                            SpanChirho::DUMMY_CHIRHO,
+                                        ),
+                                    ))
+                                );
+                                match arg_chirho.as_ref() {
+                                    TypeChirho::TupleChirho { elements_chirho, .. } => {
+                                        assert_eq!(elements_chirho.len(), 2);
+                                        assert_eq!(
+                                            elements_chirho[0],
+                                            TypeChirho::VarChirho(NameChirho::RawChirho(
+                                                RawNameChirho::unqualified_chirho(
+                                                    "aChirho",
+                                                    SpanChirho::DUMMY_CHIRHO,
+                                                ),
+                                            ))
+                                        );
+                                        assert_eq!(
+                                            elements_chirho[1],
+                                            TypeChirho::VarChirho(NameChirho::RawChirho(
+                                                RawNameChirho::unqualified_chirho(
+                                                    "sChirho",
+                                                    SpanChirho::DUMMY_CHIRHO,
+                                                ),
+                                            ))
+                                        );
+                                    }
+                                    other_chirho => {
+                                        panic!("expected tuple type arg, got {:?}", other_chirho)
+                                    }
+                                }
+                            }
+                            other_chirho => {
+                                panic!("expected result application, got {:?}", other_chirho)
+                            }
+                        }
+                    }
+                    other_chirho => panic!("expected function type, got {:?}", other_chirho),
+                }
+            }
+            other_chirho => panic!("expected record newtype, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_state_constructor_composition_argument_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nnewtype StateTChirho sChirho mChirho aChirho = StateTChirho { runStateTChirho :: sChirho -> mChirho (aChirho, sChirho) }\nstateChirho fChirho = StateTChirho (return . fChirho)\n",
+        );
+        match &module_chirho.decls_chirho[1] {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => {
+                match &matches_chirho[0].rhs_chirho {
+                    RhsChirho::UnguardedChirho(ExprChirho::AppChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    }) => {
+                        assert!(matches!(
+                            fun_chirho.as_ref(),
+                            ExprChirho::ConChirho(name_chirho)
+                                if name_chirho.text_chirho() == "StateTChirho"
+                        ));
+                        assert!(matches!(
+                            arg_chirho.as_ref(),
+                            ExprChirho::InfixChirho { op_chirho, .. }
+                                if op_chirho.text_chirho() == "."
+                        ));
+                    }
+                    other_chirho => panic!("expected constructor application, got {:?}", other_chirho),
+                }
+            }
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
     fn lower_kind_sig_no_annotation_unchanged_chirho() {
         // data Maybe a = Nothing | Just a — no kind annotation, should be None
         let module_chirho =
@@ -8487,6 +8677,45 @@ class Describable a where
                 _ => panic!("expected OrdinaryChirho"),
             },
             _ => panic!("expected DataDeclChirho"),
+        }
+    }
+
+    #[test]
+    fn lower_nested_dollar_to_right_associated_apps_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nx = WriterT $ callCC $ \\c -> runWriterT (f (\\a -> WriterT (c (a, mempty))))\n",
+        );
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. } if name_chirho.text_chirho() == "x"))
+            .expect("expected x binding");
+        let rhs_expr_chirho = match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho {
+                RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+                other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+
+        match rhs_expr_chirho {
+            ExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                assert!(
+                    matches!(&**fun_chirho, ExprChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "WriterT"),
+                    "outer $ should lower to application of WriterT, got {:?}",
+                    fun_chirho
+                );
+                assert!(
+                    matches!(&**arg_chirho, ExprChirho::AppChirho { .. }),
+                    "nested $ chain should stay as right-associated applications, got {:?}",
+                    arg_chirho
+                );
+            }
+            other_chirho => panic!("expected application tree for nested $, got {:?}", other_chirho),
         }
     }
 }
