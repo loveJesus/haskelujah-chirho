@@ -12,11 +12,11 @@ Haskelujah Chirho is a Haskell compiler written in Rust, aiming to be a drop-in 
 
 | Metric | Value |
 |---|---|
-| GHC Compat | **861/938 (91.8%)** typecheck/should_compile |
-| Curated Tests | **500/500 (100%)** compile-and-run correctness tests |
+| GHC Compat | **833/938 (88.8%)** typecheck/should_compile |
+| Curated Tests | **513/513 (100%)** compile-and-run correctness tests |
 | Total Tests | **2,500+ passing**, 0 failures |
-| Workspace | 21 crates, 132 Rust source files |
-| Codebase | ~150,000 lines of Rust |
+| Workspace | 21 crates, 133 Rust source files |
+| Codebase | ~154,000 lines of Rust |
 | Module interfaces | 280 synthetic Haskell modules |
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |
@@ -201,7 +201,7 @@ haskelujah clean .          # Remove build artifacts
 
 | Feature | GHC | Haskelujah Chirho |
 |---------|-----|-------------------|
-| Type checking | Reference | 91.8% compatible (861/938) |
+| Type checking | Reference | 88.8% compatible (833/938) |
 | Compilation speed | ~1-5s for small files | ~0.2-0.4s |
 | Runtime (fib 42) | 1.26s (-O2) | 0.91s CL/LLVM (**38% faster**) |
 | Ackermann(3,11) | 0.26s | 0.62s CL, 1.03s LLVM |
@@ -214,8 +214,8 @@ haskelujah clean .          # Remove build artifacts
 | Package manager | cabal-install / Stack | Built-in `build` command |
 | Project scaffold | `cabal init` | `haskelujah init` |
 | REPL | GHCi | `haskelujah repl` |
-| Lazy evaluation | Full | Strict (LLVM), Lazy (STG interpreter) |
-| Garbage collection | Generational GC | Mark-sweep GC (Rust RTS staticlib) |
+| Lazy evaluation | Full | **Lazy** (Cranelift + STG), Strict (LLVM) |
+| Garbage collection | Generational GC | **Mark-sweep GC active** (Rust RTS staticlib) |
 | Type classes | Full dictionary passing | Type checking OK, runtime partial |
 | GADTs | Full | 91.5% type checking, compilation for simple cases |
 | Template Haskell | Full | Partial (makeLenses works) |
@@ -260,8 +260,8 @@ See [AGENTS.md](AGENTS.md) for the full convention.
 
 ## Current Limitations
 
-- **Lazy evaluation**: Compiled backends are strict-only. STG interpreter supports laziness. Thunks planned.
-- **Garbage collection**: Mark-sweep GC exists but is disabled (no root tracking). Programs leak memory on long runs.
+- **Lazy evaluation**: Cranelift backend has lazy constructor fields (infinite lists work!). LLVM backend is strict-only. STG interpreter has full laziness.
+- **Garbage collection**: Mark-sweep GC is active (threshold 1000 allocations). Root tracking via `gc_root_push` at allocation sites.
 - **Type class dicts at runtime**: Type checking supports full typeclasses; compiled code uses simplified dictionary elision. Complex polymorphic dispatch is partial.
 - **String as [Char]**: String literals are C strings internally. `unpack`/`pack` works but isn't transparent.
 - **Template Haskell**: Basic splices and `makeLenses` work; full TH is incomplete.
@@ -269,8 +269,8 @@ See [AGENTS.md](AGENTS.md) for the full convention.
 
 ## Roadmap
 
-- **Lazy evaluation** — thunks, lazy data structures, proper WHNF in compiled backends
-- **GC root tracking** — wire roots through codegen for safe memory reclamation
+- **Lazy evaluation (LLVM)** — mirror Cranelift lazy constructor fields in LLVM backend
+- **Lazy let-bindings** — thunkify non-recursive let-bound expressions for full GHC semantics
 - **Integrated IDE** — Zed-like editor extensible via Haskell (like Emacs uses Lisp), LSP support
 - **Cross-compilation** — target selection from CLI (Linux, macOS, Windows, embedded)
 - **Full Hackage** — compile real-world packages (aeson, lens, servant)

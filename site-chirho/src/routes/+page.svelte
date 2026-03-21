@@ -4,9 +4,9 @@
 	// For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. John 3:16
 
 	const statsChirho = [
-		{ labelChirho: 'GHC Compatibility', valueChirho: '91.8%', detailChirho: '861 / 938 tests' },
-		{ labelChirho: 'Rust Code', valueChirho: '150K+', detailChirho: '21 crates, 132 source files' },
-		{ labelChirho: 'Passing Tests', valueChirho: '2,300+', detailChirho: '340/340 curated, 1389 driver green' },
+		{ labelChirho: 'GHC Compatibility', valueChirho: '88.8%', detailChirho: '833 / 938 tests' },
+		{ labelChirho: 'Rust Code', valueChirho: '154K+', detailChirho: '21 crates, 133 source files' },
+		{ labelChirho: 'Passing Tests', valueChirho: '2,500+', detailChirho: '513/513 curated, 43 CL + 82 LLVM roundtrips' },
 		{ labelChirho: 'Compiler Targets', valueChirho: '3', detailChirho: 'Cranelift, LLVM, Wasm' }
 	];
 
@@ -393,8 +393,8 @@ main = putStrLn "Hello from a script!"</span>
 			<h2 class="section-title-chirho">Current Limitations</h2>
 			<p class="section-subtitle-chirho">Where we still fall short of GHC.</p>
 			<ul class="limitation-list-chirho">
-				<li><strong>Lazy evaluation:</strong> Compilation is strict-only. The STG interpreter supports laziness, but compiled backends evaluate strictly. Thunks and lazy data structures are planned.</li>
-				<li><strong>Garbage collection:</strong> Mark-sweep GC exists in the RTS but is currently disabled (no root tracking). Programs leak memory on long runs.</li>
+				<li><strong>Lazy evaluation:</strong> Cranelift backend now supports lazy constructor fields &mdash; infinite lists like <code>take 5 (repeat 42)</code> work! LLVM backend is still strict. STG interpreter has full laziness.</li>
+				<li><strong>Garbage collection:</strong> Mark-sweep GC is active with root tracking at allocation sites. Programs reclaim unused heap memory automatically.</li>
 				<li><strong>Type class dictionaries at runtime:</strong> Type checking supports full typeclasses, but compiled code uses simplified dictionary elision. Complex polymorphic dispatch is partial.</li>
 				<li><strong>String as [Char]:</strong> String literals are C strings internally. <code>unpack</code>/<code>pack</code> conversion works but isn't transparent like GHC's representation.</li>
 				<li><strong>Template Haskell:</strong> Basic splices and <code>makeLenses</code> work; full TH (typed splices, reify) is incomplete.</li>
@@ -410,12 +410,12 @@ main = putStrLn "Hello from a script!"</span>
 			<p class="section-subtitle-chirho">Where we're headed, God willing.</p>
 			<div class="roadmap-grid-chirho">
 				<div class="roadmap-item-chirho">
-					<h3>Lazy Evaluation</h3>
-					<p>Thunks, lazy data structures, and proper WHNF semantics in compiled backends.</p>
+					<h3>Lazy Evaluation (LLVM)</h3>
+					<p>Mirror Cranelift's lazy constructor fields in the LLVM backend. Add lazy let-bindings for full GHC semantics.</p>
 				</div>
 				<div class="roadmap-item-chirho">
-					<h3>GC Root Tracking</h3>
-					<p>Wire GC roots through codegen so the mark-sweep collector can safely reclaim memory.</p>
+					<h3>Strictness Analysis</h3>
+					<p>Demand analysis to avoid unnecessary thunk creation. Worker-wrapper transform for strict arguments.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Integrated IDE</h3>
