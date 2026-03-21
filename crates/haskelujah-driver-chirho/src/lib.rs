@@ -3183,14 +3183,8 @@ pub fn discover_modules_chirho(
         }
     }
 
-    // Setup.hs / Setup.lhs at project root
-    let setup_hs_chirho = project_dir_chirho.join("Setup.hs");
-    let setup_lhs_chirho = project_dir_chirho.join("Setup.lhs");
-    if setup_hs_chirho.exists() && seen_chirho.insert("Setup".to_string()) {
-        modules_chirho.push(("Setup".to_string(), setup_hs_chirho));
-    } else if setup_lhs_chirho.exists() && seen_chirho.insert("Setup".to_string()) {
-        modules_chirho.push(("Setup".to_string(), setup_lhs_chirho));
-    }
+    // Skip Setup.hs / Setup.lhs — these are Cabal build system files
+    // that import Distribution.Simple and are not part of the package itself.
 
     modules_chirho
 }
