@@ -136,6 +136,30 @@ impl LlvmCodegenChirho {
         label_chirho
     }
 
+    fn emit_gc_root_push_i64_chirho(&mut self, value_chirho: &str) {
+        let root_ptr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {root_ptr_tmp_chirho} = inttoptr i64 {value_chirho} to ptr"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  call void @haskelujah_gc_root_push_chirho(ptr {root_ptr_tmp_chirho})"
+        )
+        .unwrap();
+    }
+
+    fn emit_gc_root_pop_count_chirho(&mut self, count_chirho: usize) {
+        for _ in 0..count_chirho {
+            writeln!(
+                self.output_chirho,
+                "  call void @haskelujah_gc_root_pop_chirho()"
+            )
+            .unwrap();
+        }
+    }
+
     fn remember_local_binder_chirho(&mut self, binder_chirho: &BinderChirho) {
         self.local_scope_chirho.insert(binder_chirho.id_chirho);
         if let Some(value_kind_chirho) = classify_basic_ty_chirho(&binder_chirho.ty_chirho) {
@@ -1237,6 +1261,16 @@ impl LlvmCodegenChirho {
         writeln!(
             self.output_chirho,
             "declare ptr @haskelujah_alloc_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare void @haskelujah_gc_root_push_chirho(ptr)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare void @haskelujah_gc_root_pop_chirho()"
         )
         .unwrap();
         writeln!(self.output_chirho, "declare void @abort() noreturn").unwrap();
@@ -2712,6 +2746,9 @@ impl LlvmCodegenChirho {
         lifted_name_chirho: &str,
         captured_vals_chirho: &[String],
     ) -> String {
+        for captured_val_chirho in captured_vals_chirho {
+            self.emit_gc_root_push_i64_chirho(captured_val_chirho);
+        }
         let alloc_size_chirho = ((captured_vals_chirho.len() + 1) * 8) as i64;
         let closure_ptr_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
@@ -2762,6 +2799,7 @@ impl LlvmCodegenChirho {
             "  {tagged_closure_tmp_chirho} = or i64 {closure_bits_tmp_chirho}, {BOXED_CONSTRUCTOR_TAG_MASK_CHIRHO}"
         )
         .unwrap();
+        self.emit_gc_root_pop_count_chirho(captured_vals_chirho.len());
         tagged_closure_tmp_chirho
     }
 
@@ -2880,6 +2918,9 @@ impl LlvmCodegenChirho {
             .iter()
             .map(|arg_chirho| self.compile_expr_chirho(arg_chirho))
             .collect();
+        for field_val_chirho in &field_vals_chirho {
+            self.emit_gc_root_push_i64_chirho(field_val_chirho);
+        }
         let alloc_tmp_chirho = self.fresh_tmp_chirho();
         let alloc_size_chirho = ((field_vals_chirho.len() + 1) * 8) as i64;
         writeln!(
@@ -2927,6 +2968,7 @@ impl LlvmCodegenChirho {
             "  {tagged_ptr_tmp_chirho} = or i64 {ptr_i64_tmp_chirho}, {BOXED_CONSTRUCTOR_TAG_MASK_CHIRHO}"
         )
         .unwrap();
+        self.emit_gc_root_pop_count_chirho(field_vals_chirho.len());
         tagged_ptr_tmp_chirho
     }
 
@@ -4599,6 +4641,9 @@ mod tests_chirho {
             "expected closure env in IR:\n{ir_chirho}"
         );
         assert!(ir_chirho.contains("call ptr @haskelujah_alloc_chirho(i64 16)"));
+        assert!(ir_chirho.contains("declare void @haskelujah_gc_root_push_chirho(ptr)"));
+        assert!(ir_chirho.contains("call void @haskelujah_gc_root_push_chirho(ptr"));
+        assert!(ir_chirho.contains("call void @haskelujah_gc_root_pop_chirho()"));
         assert!(ir_chirho.contains("tail call i64 @haskelujah_lambda_"));
         assert!(
             ir_chirho.contains(", i64 1)"),
@@ -4738,7 +4783,7 @@ mod tests_chirho {
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
         assert!(ir_chirho.contains("define i64 @haskelujah_lambda_1(i64 %env_chirho"));
-        assert!(ir_chirho.contains("store i64 %v1, ptr %t3"));
+        assert!(ir_chirho.contains("store i64 %v1, ptr %t"));
         assert!(ir_chirho.contains("tail call i64 @haskelujah_lambda_1(i64 %v3, i64 1)"));
     }
 
@@ -4971,6 +5016,8 @@ mod tests_chirho {
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
         assert!(ir_chirho.contains("declare ptr @haskelujah_alloc_chirho(i64)"));
         assert!(ir_chirho.contains("call ptr @haskelujah_alloc_chirho(i64 24)"));
+        assert!(ir_chirho.contains("call void @haskelujah_gc_root_push_chirho(ptr"));
+        assert!(ir_chirho.contains("call void @haskelujah_gc_root_pop_chirho()"));
         assert!(ir_chirho.contains("phi i64"));
         assert!(ir_chirho.contains("load i64, ptr"));
         // The +# primop produces an add on the constructor fields.
