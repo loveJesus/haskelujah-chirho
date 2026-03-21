@@ -2700,6 +2700,60 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Bifoldable
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "bifold", "bifoldMap", "bifoldr", "bifoldl", "bifoldl'",
+            "bifoldr'", "biList", "biany", "biall", "biconcat",
+            "biconcatMap", "bitraverse_", "bifor_", "bimapM_",
+            "bisequenceA_", "bisequence_", "binull", "bilength",
+            "bielem", "bimaximum", "biminimum", "bisum", "biproduct",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Bifoldable", &[]); exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Bifoldable".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Bitraversable
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "bitraverse", "bisequenceA", "bimapM", "bifor",
+            "bimapDefault", "bifoldMapDefault",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Bitraversable", &[]); exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Bitraversable".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Foldable1
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "foldMap1", "fold1", "toNonEmpty", "maximum1", "minimum1",
+            "head1", "last1", "foldrMap1", "foldlMap1",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Foldable1", &[]); exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Foldable1".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Prelude.Experimental
     {
         let mut exports_chirho = IfaceExportsChirho::default();
