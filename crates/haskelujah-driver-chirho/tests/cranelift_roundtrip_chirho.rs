@@ -457,6 +457,30 @@ fn cranelift_round_trip_case_inside_do_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_where_div_mod_binding_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nscore x = result where q = div x 3; r = mod x 3; result = q * 10 + r\nmain = print (score 17)\n",
+    );
+    assert_eq!(stdout_chirho, "52\n");
+}
+
+#[test]
+fn cranelift_round_trip_case_on_function_result_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nstep 0 = Nothing\nstep n = Just (n + 1)\nclassify n = case step n of\n  Just x -> x\n  Nothing -> 0\nmain = do\n  print (classify 0)\n  print (classify 4)\n",
+    );
+    assert_eq!(stdout_chirho, "0\n5\n");
+}
+
+#[test]
+fn cranelift_round_trip_multiple_do_blocks_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nsayTwice x = do\n  putStrLn x\n  putStrLn x\nmain = do\n  sayTwice \"a\"\n  sayTwice \"b\"\n",
+    );
+    assert_eq!(stdout_chirho, "a\na\nb\nb\n");
+}
+
+#[test]
 fn cranelift_round_trip_nested_singleton_pattern_falls_through_chirho() {
     let stdout_chirho = cranelift_round_trip_stdout_chirho(
         "module Main where\nisSingle (x:[]) = 1\nisSingle _ = 2\nmain = print (isSingle [1,2])\n",

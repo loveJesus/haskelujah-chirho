@@ -2820,6 +2820,66 @@ main = do
 }
 
 #[test]
+fn llvm_round_trip_where_div_mod_binding_output_chirho() {
+    let src_chirho = r#"module Main where
+score :: Int -> Int
+score x = result
+  where
+    q = div x 3
+    r = mod x 3
+    result = q * 10 + r
+main :: IO ()
+main = print (score 17)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "52");
+    }
+}
+
+#[test]
+fn llvm_round_trip_case_on_function_result_output_chirho() {
+    let src_chirho = r#"module Main where
+step :: Int -> Maybe Int
+step 0 = Nothing
+step n = Just (n + 1)
+classify :: Int -> Int
+classify n = case step n of
+  Just x -> x
+  Nothing -> 0
+main :: IO ()
+main = do
+  print (classify 0)
+  print (classify 4)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "0\n5");
+    }
+}
+
+#[test]
+fn llvm_round_trip_multiple_do_blocks_output_chirho() {
+    let src_chirho = r#"module Main where
+sayTwice :: String -> IO ()
+sayTwice x = do
+  putStrLn x
+  putStrLn x
+main :: IO ()
+main = do
+  sayTwice "a"
+  sayTwice "b"
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "a\na\nb\nb");
+    }
+}
+
+#[test]
 fn llvm_round_trip_adt_constructor_fields_chirho() {
     // ADT constructor field extraction + Maybe pattern matching
     let src_chirho = r#"module Main where
