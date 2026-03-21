@@ -1,7 +1,7 @@
 # For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
 
 [package]
-name = "haskelujah-driver-chirho"
+name = "haskelujah-driver"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -11,23 +11,23 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-haskelujah-ast-chirho = { path = "../haskelujah-ast-chirho" }
-haskelujah-backend-llvm-chirho = { path = "../haskelujah-backend-llvm-chirho" }
-haskelujah-core-chirho = { path = "../haskelujah-core-chirho" }
-haskelujah-backend-wasm-chirho = { path = "../haskelujah-backend-wasm-chirho" }
-haskelujah-backend-cranelift-chirho = { path = "../haskelujah-backend-cranelift-chirho" }
-haskelujah-diagnostics-chirho = { path = "../haskelujah-diagnostics-chirho" }
-haskelujah-naming-chirho = { path = "../haskelujah-naming-chirho" }
-haskelujah-parser-chirho = { path = "../haskelujah-parser-chirho" }
-haskelujah-runtime-chirho = { path = "../haskelujah-runtime-chirho" }
-haskelujah-span-chirho = { path = "../haskelujah-span-chirho" }
-haskelujah-syntax-chirho = { path = "../haskelujah-syntax-chirho" }
-haskelujah-typing-chirho = { path = "../haskelujah-typing-chirho" }
-haskelujah-th-chirho = { path = "../haskelujah-th-chirho" }
-haskelujah-incremental-chirho = { path = "../haskelujah-incremental-chirho" }
-haskelujah-package-chirho = { path = "../haskelujah-package-chirho" }
+haskelujah-ast-chirho = { package = "haskelujah-ast", path = "../haskelujah-ast-chirho", version = "0.1.0" }
+haskelujah-backend-llvm-chirho = { package = "haskelujah-backend-llvm", path = "../haskelujah-backend-llvm-chirho", version = "0.1.0" }
+haskelujah-core-chirho = { package = "haskelujah-core", path = "../haskelujah-core-chirho", version = "0.1.0" }
+haskelujah-backend-wasm-chirho = { package = "haskelujah-backend-wasm", path = "../haskelujah-backend-wasm-chirho", version = "0.1.0" }
+haskelujah-backend-cranelift-chirho = { package = "haskelujah-backend-cranelift", path = "../haskelujah-backend-cranelift-chirho", version = "0.1.0" }
+haskelujah-diagnostics-chirho = { package = "haskelujah-diagnostics", path = "../haskelujah-diagnostics-chirho", version = "0.1.0" }
+haskelujah-naming-chirho = { package = "haskelujah-naming", path = "../haskelujah-naming-chirho", version = "0.1.0" }
+haskelujah-parser-chirho = { package = "haskelujah-parser", path = "../haskelujah-parser-chirho", version = "0.1.0" }
+haskelujah-runtime-chirho = { package = "haskelujah-runtime", path = "../haskelujah-runtime-chirho", version = "0.1.0" }
+haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.0" }
+haskelujah-syntax-chirho = { package = "haskelujah-syntax", path = "../haskelujah-syntax-chirho", version = "0.1.0" }
+haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskelujah-typing-chirho", version = "0.1.0" }
+haskelujah-th-chirho = { package = "haskelujah-th", path = "../haskelujah-th-chirho", version = "0.1.0" }
+haskelujah-incremental-chirho = { package = "haskelujah-incremental", path = "../haskelujah-incremental-chirho", version = "0.1.0" }
+haskelujah-package-chirho = { package = "haskelujah-package", path = "../haskelujah-package-chirho", version = "0.1.0" }
 
 [dev-dependencies]
 tempfile = "3"
 proptest = "1"
-haskelujah-test-harness-chirho = { path = "../haskelujah-test-harness-chirho" }
+haskelujah-test-harness-chirho = { package = "haskelujah-test-harness", path = "../haskelujah-test-harness-chirho", version = "0.1.0" }

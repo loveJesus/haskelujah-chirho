@@ -1,7 +1,7 @@
 # For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
 
 [package]
-name = "haskelujah-parser-chirho"
+name = "haskelujah-parser"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -11,12 +11,11 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-haskelujah-ast-chirho = { path = "../haskelujah-ast-chirho" }
-haskelujah-diagnostics-chirho = { path = "../haskelujah-diagnostics-chirho" }
-haskelujah-span-chirho = { path = "../haskelujah-span-chirho" }
-haskelujah-syntax-chirho = { path = "../haskelujah-syntax-chirho" }
+haskelujah-ast-chirho = { package = "haskelujah-ast", path = "../haskelujah-ast-chirho", version = "0.1.0" }
+haskelujah-diagnostics-chirho = { package = "haskelujah-diagnostics", path = "../haskelujah-diagnostics-chirho", version = "0.1.0" }
+haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.0" }
+haskelujah-syntax-chirho = { package = "haskelujah-syntax", path = "../haskelujah-syntax-chirho", version = "0.1.0" }
 
 [dev-dependencies]
-haskelujah-test-harness-chirho = { path = "../haskelujah-test-harness-chirho" }
+haskelujah-test-harness-chirho = { package = "haskelujah-test-harness", path = "../haskelujah-test-harness-chirho", version = "0.1.0" }
 proptest = "1"
-

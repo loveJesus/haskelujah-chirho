@@ -1,7 +1,7 @@
 # For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
 
 [package]
-name = "haskelujah-backend-wasm-chirho"
+name = "haskelujah-backend-wasm"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -11,7 +11,6 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-haskelujah-core-chirho = { path = "../haskelujah-core-chirho" }
-haskelujah-span-chirho = { path = "../haskelujah-span-chirho" }
-haskelujah-typing-chirho = { path = "../haskelujah-typing-chirho" }
-
+haskelujah-core-chirho = { package = "haskelujah-core", path = "../haskelujah-core-chirho", version = "0.1.0" }
+haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.0" }
+haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskelujah-typing-chirho", version = "0.1.0" }
