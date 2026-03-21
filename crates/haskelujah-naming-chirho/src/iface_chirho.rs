@@ -2700,6 +2700,45 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Control.Monad.Trans.* (transformers package — needed by mtl, everything)
+    {
+        // Common transformer types and operations
+        let trans_modules_chirho = [
+            ("Control.Monad.Trans.Class", vec!["lift"], vec![("MonadTrans", &[][..])]),
+            ("Control.Monad.Trans.Identity", vec!["runIdentityT"], vec![("IdentityT", &["IdentityT"][..])]),
+            ("Control.Monad.Trans.Reader", vec!["runReaderT", "ask", "local", "asks", "reader", "withReaderT", "mapReaderT"], vec![("ReaderT", &["ReaderT"][..])]),
+            ("Control.Monad.Trans.State", vec!["runStateT", "evalStateT", "execStateT", "get", "put", "modify", "gets", "state"], vec![("StateT", &["StateT"][..])]),
+            ("Control.Monad.Trans.State.Strict", vec!["runStateT", "evalStateT", "execStateT", "get", "put", "modify", "gets", "state"], vec![("StateT", &["StateT"][..])]),
+            ("Control.Monad.Trans.State.Lazy", vec!["runStateT", "evalStateT", "execStateT", "get", "put", "modify", "gets", "state"], vec![("StateT", &["StateT"][..])]),
+            ("Control.Monad.Trans.Writer", vec!["runWriterT", "execWriterT", "tell", "listen", "pass", "writer"], vec![("WriterT", &["WriterT"][..])]),
+            ("Control.Monad.Trans.Writer.Strict", vec!["runWriterT", "execWriterT", "tell", "listen", "pass", "writer"], vec![("WriterT", &["WriterT"][..])]),
+            ("Control.Monad.Trans.Writer.Lazy", vec!["runWriterT", "execWriterT", "tell", "listen", "pass", "writer"], vec![("WriterT", &["WriterT"][..])]),
+            ("Control.Monad.Trans.Writer.CPS", vec!["runWriterT", "execWriterT", "tell", "listen", "pass", "writer"], vec![("WriterT", &["WriterT"][..])]),
+            ("Control.Monad.Trans.Except", vec!["runExceptT", "throwE", "catchE", "mapExceptT", "withExceptT"], vec![("ExceptT", &["ExceptT"][..])]),
+            ("Control.Monad.Trans.Maybe", vec!["runMaybeT", "mapMaybeT"], vec![("MaybeT", &["MaybeT"][..])]),
+            ("Control.Monad.Trans.Cont", vec!["runContT", "evalContT", "cont", "callCC", "resetT", "shiftT"], vec![("ContT", &["ContT"][..])]),
+            ("Control.Monad.Trans.RWS", vec!["runRWST", "evalRWST", "execRWST"], vec![("RWST", &["RWST"][..])]),
+            ("Control.Monad.Trans.RWS.Strict", vec!["runRWST", "evalRWST", "execRWST"], vec![("RWST", &["RWST"][..])]),
+            ("Control.Monad.Trans.RWS.Lazy", vec!["runRWST", "evalRWST", "execRWST"], vec![("RWST", &["RWST"][..])]),
+            ("Control.Monad.Trans.RWS.CPS", vec!["runRWST", "evalRWST", "execRWST"], vec![("RWST", &["RWST"][..])]),
+        ];
+        for (mod_name_chirho, vals_chirho, types_chirho) in &trans_modules_chirho {
+            let mut exports_chirho = IfaceExportsChirho::default();
+            for val_chirho in vals_chirho {
+                let (k_chirho, v_chirho) = mk_val_chirho(val_chirho);
+                exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+            }
+            for (ty_name_chirho, cons_chirho) in types_chirho {
+                let (k_chirho, v_chirho) = mk_type_chirho(ty_name_chirho, cons_chirho);
+                exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+            }
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho,
+            });
+        }
+    }
+
     // Data.Array / Data.Array.Unboxed
     {
         let mut exports_chirho = IfaceExportsChirho::default();
