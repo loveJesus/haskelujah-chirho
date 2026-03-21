@@ -9027,6 +9027,7 @@ impl DictPassCtxChirho {
 
         // print :: a -> IO ()
         // Simplified: print x = putStrLn (show x)
+        // Uses showInt# as default; the dict pass handles type-specific dispatch
         {
             let id_chirho = self.resolve_or_fresh_id_chirho("print");
             let x_chirho = self.fresh_binder_chirho("x", any_ty_chirho.clone());
