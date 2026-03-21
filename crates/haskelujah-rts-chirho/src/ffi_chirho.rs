@@ -272,6 +272,20 @@ const THUNK_STATE_INDIRECTION_CHIRHO: u64 = 2 << 4;
 const THUNK_STATE_MASK_CHIRHO: u64 = 0xF0;
 const KIND_THUNK_CHIRHO: u64 = 0b00;
 
+const fn is_native_thunk_state_chirho(state_chirho: u64) -> bool {
+    matches!(
+        state_chirho,
+        THUNK_STATE_UNEVALUATED_CHIRHO
+            | THUNK_STATE_BLACKHOLE_CHIRHO
+            | THUNK_STATE_INDIRECTION_CHIRHO
+    )
+}
+
+const fn header_looks_like_native_thunk_chirho(header_chirho: u64) -> bool {
+    (header_chirho & 0b11) == KIND_THUNK_CHIRHO
+        && is_native_thunk_state_chirho(header_chirho & THUNK_STATE_MASK_CHIRHO)
+}
+
 /// Allocate a thunk on the heap.
 ///
 /// Layout: [header (8 bytes)] [fv_0] [fv_1] ... [fv_n]
@@ -328,10 +342,10 @@ pub extern "C" fn haskelujah_enter_thunk_chirho(thunk_ptr_chirho: u64) -> u64 {
 
     unsafe {
         let header_chirho = *raw_ptr_chirho;
-        let kind_chirho = header_chirho & 0b11;
-
-        if kind_chirho != KIND_THUNK_CHIRHO {
-            // Not a thunk (constructor, function, PAP) — return as-is
+        if !header_looks_like_native_thunk_chirho(header_chirho) {
+            // Legacy boxed constructors/dictionaries and non-thunk closures can
+            // also have the high bit set, but they do not use the native thunk
+            // state encoding in bits 7..4. Leave them untouched.
             return thunk_ptr_chirho;
         }
 
@@ -803,6 +817,34 @@ mod tests_chirho {
     fn ffi_test_lock_chirho() -> &'static Mutex<()> {
         static FFI_TEST_LOCK_CHIRHO: OnceLock<Mutex<()>> = OnceLock::new();
         FFI_TEST_LOCK_CHIRHO.get_or_init(|| Mutex::new(()))
+    }
+
+    #[test]
+    fn enter_thunk_leaves_immediate_values_unchanged_chirho() {
+        assert_eq!(haskelujah_enter_thunk_chirho(0), 0);
+        assert_eq!(haskelujah_enter_thunk_chirho(42), 42);
+        assert_eq!(haskelujah_enter_thunk_chirho(2249154), 2249154);
+    }
+
+    #[test]
+    fn enter_thunk_leaves_legacy_boxed_constructor_header_unchanged_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let boxed_ptr_chirho = haskelujah_alloc_chirho(24);
+        assert!(!boxed_ptr_chirho.is_null());
+        unsafe {
+            *(boxed_ptr_chirho as *mut u64) = 32671067318012;
+        }
+        let boxed_bits_chirho = (boxed_ptr_chirho as u64) | (1u64 << 63);
+        assert_eq!(haskelujah_enter_thunk_chirho(boxed_bits_chirho), boxed_bits_chirho);
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
     }
 
     #[test]
