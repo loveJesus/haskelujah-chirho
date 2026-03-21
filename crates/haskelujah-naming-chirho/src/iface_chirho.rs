@@ -2866,6 +2866,61 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Aeson + related encoding/types modules
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "encode", "decode", "decode'", "eitherDecode", "eitherDecode'",
+            "toJSON", "fromJSON", "toEncoding", "parseJSON",
+            "encodingToLazyByteString", "pairs", "pair",
+            "object", "withObject", "withArray", "withText", "withScientific", "withBool",
+            "parseField", "parseFieldMaybe", "parseFieldMaybe'",
+            "genericToJSON", "genericToEncoding", "genericParseJSON",
+            "defaultOptions", "fieldLabelModifier", "constructorTagModifier",
+            "allNullaryToStringTag", "omitNothingFields", "sumEncoding",
+            "unwrapUnaryRecords", "tagSingleConstructors",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for ty_chirho in &[
+            ("Value", &["Object", "Array", "String", "Number", "Bool", "Null"][..]),
+            ("ToJSON", &[]),
+            ("FromJSON", &[]),
+            ("ToJSON1", &[]),
+            ("FromJSON1", &[]),
+            ("Encoding", &[]),
+            ("Series", &[]),
+            ("Options", &["Options"]),
+            ("SumEncoding", &["TaggedObject", "UntaggedValue", "ObjectWithSingleField", "TwoElemArray"]),
+            ("Result", &["Success", "Error"]),
+            ("Parser", &[]),
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(ty_chirho.0, ty_chirho.1);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        // Share across all aeson sub-modules
+        let aeson_modules_chirho = [
+            "Data.Aeson",
+            "Data.Aeson.Types",
+            "Data.Aeson.Encoding",
+            "Data.Aeson.Encoding.Internal",
+            "Data.Aeson.Types.ToJSON",
+            "Data.Aeson.Types.FromJSON",
+            "Data.Aeson.Types.Internal",
+            "Data.Aeson.Types.Generic",
+            "Data.Aeson.Internal",
+            "Data.Aeson.Key",
+            "Data.Aeson.KeyMap",
+        ];
+        for mod_name_chirho in &aeson_modules_chirho {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
     // Control.Monad.Catch (exceptions package)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
