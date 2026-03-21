@@ -12,6 +12,6 @@ path = "src/lib.rs"
 
 [dependencies]
 haskelujah-core-chirho = { path = "../haskelujah-core-chirho" }
+haskelujah-rts-chirho = { path = "../haskelujah-rts-chirho" }
 haskelujah-span-chirho = { path = "../haskelujah-span-chirho" }
 haskelujah-typing-chirho = { path = "../haskelujah-typing-chirho" }
-

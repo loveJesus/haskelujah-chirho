@@ -25,6 +25,9 @@ use haskelujah_core_chirho::{
 };
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
+#[cfg(test)]
+use haskelujah_rts_chirho::{ObjectKindChirho, pack_native_header_chirho};
+
 const BOXED_CONSTRUCTOR_TAG_MASK_CHIRHO: i64 = i64::MIN;
 const BOXED_CONSTRUCTOR_PTR_MASK_CHIRHO: i64 = i64::MAX;
 
@@ -1261,6 +1264,21 @@ impl LlvmCodegenChirho {
         writeln!(
             self.output_chirho,
             "declare ptr @haskelujah_alloc_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare i64 @haskelujah_alloc_thunk_chirho(i64, i64, ptr)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare i64 @haskelujah_enter_thunk_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare void @haskelujah_update_thunk_chirho(i64, i64)"
         )
         .unwrap();
         writeln!(
@@ -4420,6 +4438,9 @@ mod tests_chirho {
         assert!(ir_chirho.contains("; ModuleID = 'Test'"));
         assert!(ir_chirho.contains("define i64 @haskelujah_main()"));
         assert!(ir_chirho.contains("ret i64 42"));
+        assert!(ir_chirho.contains("declare i64 @haskelujah_alloc_thunk_chirho(i64, i64, ptr)"));
+        assert!(ir_chirho.contains("declare i64 @haskelujah_enter_thunk_chirho(i64)"));
+        assert!(ir_chirho.contains("declare void @haskelujah_update_thunk_chirho(i64, i64)"));
     }
 
     #[test]
@@ -5076,6 +5097,19 @@ mod tests_chirho {
         assert_eq!(constructor_tag_chirho("True"), 1);
         assert_eq!(constructor_tag_chirho("Nothing"), 0);
         assert_eq!(constructor_tag_chirho("Just"), 1);
+    }
+
+    #[test]
+    fn shared_native_thunk_header_matches_cranelift_layout_chirho() {
+        let thunk_header_chirho = pack_native_header_chirho(0x1234, ObjectKindChirho::ThunkChirho);
+        let fun_header_chirho = pack_native_header_chirho(0x1234, ObjectKindChirho::FunChirho);
+        let con_header_chirho = pack_native_header_chirho(0x1234, ObjectKindChirho::ConChirho);
+        let pap_header_chirho = pack_native_header_chirho(0x1234, ObjectKindChirho::PapChirho);
+
+        assert_eq!(thunk_header_chirho & 0b11, 0b00);
+        assert_eq!(fun_header_chirho & 0b11, 0b01);
+        assert_eq!(con_header_chirho & 0b11, 0b10);
+        assert_eq!(pap_header_chirho & 0b11, 0b11);
     }
 
     #[test]

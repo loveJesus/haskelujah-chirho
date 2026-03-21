@@ -431,6 +431,7 @@ dependencies = [
  "cranelift-module",
  "cranelift-object",
  "haskelujah-core-chirho",
+ "haskelujah-rts-chirho",
  "haskelujah-span-chirho",
  "haskelujah-typing-chirho",
  "libc",
@@ -451,6 +452,7 @@ name = "haskelujah-backend-llvm-chirho"
 version = "0.1.0"
 dependencies = [
  "haskelujah-core-chirho",
+ "haskelujah-rts-chirho",
  "haskelujah-span-chirho",
  "haskelujah-typing-chirho",
 ]
