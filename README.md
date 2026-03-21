@@ -15,10 +15,10 @@ Haskelujah Chirho is a Haskell compiler written in Rust, aiming to be a drop-in 
 | GHC Compat | **833/938 (88.8%)** typecheck/should_compile |
 | Curated Tests | **513/513 (100%)** compile-and-run correctness tests |
 | Total Tests | **2,500+ passing**, 0 failures |
-| Hackage Packages | **14 compile** (aeson, lens 17/17 core, servant, containers, scientific) |
+| Hackage Packages | **17 compile** (aeson, lens 17/17, servant, containers, distributive, semigroupoids) |
 | Workspace | 21 crates, 133 Rust source files |
 | Codebase | ~161,000 lines of Rust |
-| Module interfaces | 346 synthetic Haskell modules |
+| Module interfaces | 350 synthetic Haskell modules |
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |
 
@@ -209,7 +209,7 @@ haskelujah clean .          # Remove build artifacts
 | Quicksort 1K | 0.22s | 0.20s CL, **0.15s LLVM** |
 | Prime sieve 10K | 0.28s | 0.59s CL, **0.18s LLVM** |
 | Tail call optimization | Full | Both backends (100M+ iterations) |
-| Hackage packages | cabal-install | `haskelujah install` — **14 packages compile** (aeson, containers, servant, lens core, data-default-class) |
+| Hackage packages | cabal-install | `haskelujah install` — **17 packages compile** (aeson, containers, servant, lens core, distributive, semigroupoids) |
 | Native code | Via NCG or LLVM | Cranelift (default) or LLVM + clang |
 | WebAssembly | Via Asterius/GHCJS | Built-in (beta) |
 | Package manager | cabal-install / Stack | Built-in `build` command |
