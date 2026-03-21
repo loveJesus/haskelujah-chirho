@@ -555,16 +555,23 @@ fn lower_let_chirho(
             builder_chirho.def_var(cl_vars_chirho[idx_chirho], val_i64_chirho);
         }
     } else {
-        // Non-recursive: evaluate each RHS, store in a fresh Variable.
+        // Non-recursive: try lazy thunk for function application RHSes,
+        // fall back to eager evaluation otherwise.
         for (binder_chirho, rhs_chirho) in binds_chirho {
-            let val_chirho = lower_let_rhs_value_chirho(
-                builder_chirho,
-                ctx_chirho,
-                binder_chirho.id_chirho,
-                rhs_chirho,
-            );
-            // Normalise to i64 (ensure_i64_chirho inspects the actual Cranelift type).
-            let val_i64_chirho = ensure_i64_chirho(builder_chirho, val_chirho, false);
+            let val_i64_chirho =
+                if let Some(thunk_val_chirho) =
+                    try_create_thunk_for_app_chirho(builder_chirho, ctx_chirho, rhs_chirho)
+                {
+                    thunk_val_chirho
+                } else {
+                    let val_chirho = lower_let_rhs_value_chirho(
+                        builder_chirho,
+                        ctx_chirho,
+                        binder_chirho.id_chirho,
+                        rhs_chirho,
+                    );
+                    ensure_i64_chirho(builder_chirho, val_chirho, false)
+                };
             let var_chirho = ctx_chirho.fresh_var_chirho(binder_chirho.id_chirho, builder_chirho);
             builder_chirho.def_var(var_chirho, val_i64_chirho);
         }
