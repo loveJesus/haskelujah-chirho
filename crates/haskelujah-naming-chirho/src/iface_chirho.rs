@@ -2700,6 +2700,92 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Primitive.Array / Data.Primitive
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "newArray", "readArray", "writeArray", "indexArray",
+            "sizeofArray", "copyArray", "cloneArray", "freezeArray",
+            "thawArray", "runArray", "createArray", "unsafeFreezeArray", "unsafeThawArray",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Array", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("MutableArray", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Primitive.Array".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Primitive".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Text / Data.Text.Encoding
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "pack", "unpack", "singleton", "empty", "cons", "snoc",
+            "append", "head", "tail", "last", "init", "null", "length",
+            "map", "intercalate", "intersperse", "transpose", "reverse",
+            "replace", "toLower", "toUpper", "toTitle", "strip",
+            "stripStart", "stripEnd", "isPrefixOf", "isSuffixOf",
+            "isInfixOf", "words", "unwords", "lines", "unlines",
+            "splitOn", "splitAt", "take", "drop", "takeWhile", "dropWhile",
+            "filter", "find", "partition", "index", "breakOn",
+            "concatMap", "any", "all", "foldr", "foldl", "foldl'",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Text", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Text".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        let mut enc_exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["encodeUtf8", "decodeUtf8", "decodeUtf8'"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            enc_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Text.Encoding".to_string(),
+            exports_chirho: enc_exports_chirho,
+        });
+    }
+
+    // Data.ByteString
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "pack", "unpack", "empty", "singleton", "cons", "snoc",
+            "append", "head", "tail", "last", "init", "null", "length",
+            "map", "reverse", "intercalate", "transpose", "foldl",
+            "foldl'", "foldr", "concat", "concatMap", "any", "all",
+            "take", "drop", "splitAt", "takeWhile", "dropWhile",
+            "break", "span", "filter", "find", "partition", "index",
+            "elem", "notElem", "isPrefixOf", "isSuffixOf",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("ByteString", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.ByteString".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.ByteString.Lazy".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Data.Bifoldable
     {
         let mut exports_chirho = IfaceExportsChirho::default();
