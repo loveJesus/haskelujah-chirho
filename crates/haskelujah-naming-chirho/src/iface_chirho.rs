@@ -2700,6 +2700,72 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Control.Monad.Signatures (transformers internal)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["CallCC", "Catch", "Listen", "Pass"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.Signatures".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Applicative (base)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["pure", "<*>", "*>", "<*", "liftA", "liftA2", "liftA3", "empty", "<|>", "some", "many", "optional", "asum", "guard", "when", "unless"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Alternative", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Const", &["Const"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("ZipList", &["ZipList"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Applicative".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Monad (base)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["return", ">>=", ">>", "=<<", "join", "void", "when", "unless", "guard", "forever", "mapM", "mapM_", "forM", "forM_", "sequence", "sequence_", "foldM", "foldM_", "filterM", "replicateM", "replicateM_", "liftM", "liftM2", "liftM3", "ap", "MonadPlus", "mzero", "mplus", "msum"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Monad", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Typeable
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["typeOf", "typeRep", "cast", "eqT", "gcast", "gcast1", "gcast2", "mkTyCon", "mkTyConApp", "typeRepTyCon", "typeRepArgs", "splitTyConApp", "funResultTy", "showsTypeRep"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Typeable", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("TypeRep", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Proxy", &["Proxy"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Typeable".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Control.Monad.Trans.* (transformers package — needed by mtl, everything)
     {
         // Common transformer types and operations
