@@ -1021,14 +1021,24 @@ fn scan_hierarchical_modules_chirho(
                 if let Ok(iface_chirho) = iface_result_chirho {
                     ifaces_chirho.push(iface_chirho);
                 } else {
-                    // Full parse failed — create a minimal stub iface from the
-                    // module declaration line. This handles complex files with
-                    // many extensions that our parser can't handle yet.
+                    // Full parse failed — create stub iface with exported names
+                    // extracted from the module header and top-level definitions.
                     if let Some(mod_name_chirho) = extract_module_name_from_source_chirho(&source_chirho) {
                         if !ifaces_chirho.iter().any(|i_chirho| i_chirho.name_chirho == mod_name_chirho) {
+                            let mut exports_chirho = haskelujah_naming_chirho::iface_chirho::IfaceExportsChirho::default();
+                            // Extract exported names from module header and definitions
+                            for name_chirho in extract_exported_names_from_source_chirho(&source_chirho) {
+                                exports_chirho.values_chirho.insert(
+                                    name_chirho.clone(),
+                                    haskelujah_naming_chirho::iface_chirho::IfaceValueChirho {
+                                        name_chirho,
+                                        span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+                                    },
+                                );
+                            }
                             ifaces_chirho.push(haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho {
                                 name_chirho: mod_name_chirho,
-                                exports_chirho: haskelujah_naming_chirho::iface_chirho::IfaceExportsChirho::default(),
+                                exports_chirho,
                             });
                         }
                     }
@@ -1036,6 +1046,67 @@ fn scan_hierarchical_modules_chirho(
             }
         }
     }
+}
+
+/// Extract exported names from module header and top-level type signatures.
+fn extract_exported_names_from_source_chirho(source_chirho: &str) -> Vec<String> {
+    let mut names_chirho = Vec::new();
+    let mut in_export_list_chirho = false;
+    let mut past_where_chirho = false;
+
+    for line_chirho in source_chirho.lines() {
+        let trimmed_chirho = line_chirho.trim();
+        if trimmed_chirho.starts_with("--") {
+            continue;
+        }
+        if trimmed_chirho.starts_with("module ") && trimmed_chirho.contains('(') {
+            in_export_list_chirho = true;
+        }
+        if in_export_list_chirho {
+            for part_chirho in trimmed_chirho.split(',') {
+                let clean_chirho = part_chirho
+                    .trim()
+                    .trim_start_matches("module ")
+                    .trim_start_matches("type ")
+                    .trim_start_matches('(')
+                    .trim_end_matches(')')
+                    .trim();
+                if let Some(n_chirho) = clean_chirho.split(|c: char| c == '(' || c.is_whitespace()).next() {
+                    if !n_chirho.is_empty()
+                        && n_chirho != "where"
+                        && n_chirho.chars().next().map_or(false, |c| c.is_alphanumeric() || c == '_')
+                    {
+                        names_chirho.push(n_chirho.to_string());
+                    }
+                }
+            }
+            if trimmed_chirho.contains("where") && !trimmed_chirho.starts_with("module") {
+                in_export_list_chirho = false;
+                past_where_chirho = true;
+            }
+            continue;
+        }
+        if trimmed_chirho == "where" || trimmed_chirho.ends_with(") where") {
+            past_where_chirho = true;
+            continue;
+        }
+        // Top-level type signatures (not indented)
+        if past_where_chirho
+            && !line_chirho.starts_with(' ')
+            && !line_chirho.starts_with('\t')
+            && trimmed_chirho.contains(" :: ")
+        {
+            if let Some(name_chirho) = trimmed_chirho.split(" :: ").next() {
+                let n_chirho = name_chirho.trim();
+                if !n_chirho.is_empty() && !n_chirho.contains(' ') {
+                    names_chirho.push(n_chirho.to_string());
+                }
+            }
+        }
+    }
+    names_chirho.sort();
+    names_chirho.dedup();
+    names_chirho
 }
 
 /// Extract module name from source by scanning for `module Foo.Bar.Baz` line.
