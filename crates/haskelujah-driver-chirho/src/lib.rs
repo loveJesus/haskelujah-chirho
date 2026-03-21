@@ -898,26 +898,18 @@ pub fn compile_source_with_search_path_chirho(
         }
     }
 
-    // Scan subdirectories for hierarchical module imports (e.g., Safe/Partial.hs
-    // for `import Safe.Partial`). Fixed-point iteration handles dependency chains.
+    // Scan ALL subdirectories recursively for hierarchical module imports
+    // (e.g., Debug/SimpleReflect/Expr.hs for `import Debug.SimpleReflect.Expr`).
+    // Fixed-point iteration handles dependency chains between modules.
     for _round_chirho in 0..5 {
         let prev_count_chirho = all_ifaces_chirho.len();
-        for subdir_entry_chirho in std::fs::read_dir(search_dir_chirho)
-            .into_iter()
-            .flatten()
-            .flatten()
-        {
-            let subdir_path_chirho = subdir_entry_chirho.path();
-            if subdir_path_chirho.is_dir() {
-                scan_hierarchical_modules_chirho(
-                    &subdir_path_chirho,
-                    search_dir_chirho,
-                    source_map_chirho,
-                    &mut all_ifaces_chirho,
-                    file_name_chirho,
-                );
-            }
-        }
+        scan_hierarchical_modules_chirho(
+            search_dir_chirho,
+            search_dir_chirho,
+            source_map_chirho,
+            &mut all_ifaces_chirho,
+            file_name_chirho,
+        );
         if all_ifaces_chirho.len() == prev_count_chirho {
             break;
         }

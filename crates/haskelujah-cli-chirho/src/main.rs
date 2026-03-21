@@ -361,8 +361,45 @@ fn compile_command_chirho(
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
-    // Use search path so sibling modules can be found
-    let search_dir_chirho = Path::new(&path_chirho).parent().unwrap_or(Path::new("."));
+    // Find the package root by walking up to a .cabal file, or use parent dir.
+    // This ensures hierarchical imports like `import Debug.SimpleReflect.Expr`
+    // resolve correctly when the source file is deep in a package tree.
+    let search_dir_chirho = {
+        let mut dir_chirho = Path::new(&path_chirho)
+            .parent()
+            .unwrap_or(Path::new("."))
+            .to_path_buf();
+        loop {
+            let has_cabal_chirho = std::fs::read_dir(&dir_chirho)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .any(|e_chirho| {
+                    e_chirho
+                        .path()
+                        .extension()
+                        .is_some_and(|ext_chirho| ext_chirho == "cabal")
+                });
+            if has_cabal_chirho {
+                break;
+            }
+            match dir_chirho.parent() {
+                Some(parent_chirho) if parent_chirho != dir_chirho => {
+                    dir_chirho = parent_chirho.to_path_buf();
+                }
+                _ => {
+                    // No .cabal found — use source file's parent
+                    dir_chirho = Path::new(&path_chirho)
+                        .parent()
+                        .unwrap_or(Path::new("."))
+                        .to_path_buf();
+                    break;
+                }
+            }
+        }
+        dir_chirho
+    };
+    let search_dir_chirho = search_dir_chirho.as_path();
     match haskelujah_driver_chirho::compile_source_with_search_path_chirho(
         &source_text_chirho,
         &mut source_map_chirho,
