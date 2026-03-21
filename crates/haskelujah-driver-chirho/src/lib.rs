@@ -987,7 +987,10 @@ fn scan_hierarchical_modules_chirho(
                 .unwrap_or_default()
                 .to_string_lossy()
                 .to_string();
-            if file_name_chirho == skip_file_chirho {
+            if file_name_chirho == skip_file_chirho
+                || file_name_chirho == "Setup.hs"
+                || file_name_chirho == "Setup.lhs"
+            {
                 continue;
             }
             // Check if we already have an iface for the module name

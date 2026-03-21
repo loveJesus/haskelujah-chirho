@@ -696,14 +696,10 @@ impl KindInferCtxChirho {
                         .bind_chirho(v_chirho.text_chirho().to_string(), k_chirho);
                 }
                 let k_chirho = self.infer_type_kind_chirho(body_chirho);
-                // A forall type itself must have kind *
-                self.unify_chirho(
-                    &k_chirho,
-                    &KindChirho::StarChirho,
-                    "forall body",
-                    *span_chirho,
-                );
-                KindChirho::StarChirho
+                // A forall type has the same kind as its body:
+                // - forall a. a -> a  has kind * (body is *)
+                // - forall a. C a => D (f a)  has kind Constraint (quantified constraint)
+                k_chirho
             }
             TypeChirho::QualChirho {
                 context_chirho,
@@ -719,15 +715,11 @@ impl KindInferCtxChirho {
                         let _k_chirho = self.infer_type_kind_chirho(arg_chirho);
                     }
                 }
-                // The body must have kind *
+                // The body determines the kind of the qualified type:
+                // - Num a => a -> a  has kind * (normal qualified type)
+                // - NFData a => NFData (f a)  has kind Constraint (quantified constraint)
                 let k_body_chirho = self.infer_type_kind_chirho(body_chirho);
-                self.unify_chirho(
-                    &k_body_chirho,
-                    &KindChirho::StarChirho,
-                    "qualified type body",
-                    *span_chirho,
-                );
-                KindChirho::StarChirho
+                k_body_chirho
             }
             // DataKinds: promoted constructors ('True, 'Just, 'Proxy, etc.)
             // have kinds determined by their data constructor types. Since we
