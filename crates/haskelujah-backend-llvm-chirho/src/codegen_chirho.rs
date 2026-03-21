@@ -139,6 +139,18 @@ impl LlvmCodegenChirho {
         label_chirho
     }
 
+    /// Force a value through enter_thunk. Returns the forced value.
+    /// enter_thunk returns non-thunks as-is (just checks bit 63).
+    fn emit_force_thunk_chirho(&mut self, value_chirho: &str) -> String {
+        let tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {tmp_chirho} = call i64 @haskelujah_enter_thunk_chirho(i64 {value_chirho})"
+        )
+        .unwrap();
+        tmp_chirho
+    }
+
     fn emit_gc_root_push_i64_chirho(&mut self, value_chirho: &str) {
         let root_ptr_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(

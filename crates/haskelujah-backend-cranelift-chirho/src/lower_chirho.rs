@@ -155,6 +155,24 @@ impl<'a> LowerCtxChirho<'a> {
     }
 }
 
+/// Force a value through enter_thunk if the thunk infrastructure is available.
+/// For non-thunks, enter_thunk returns the value as-is (just checks bit 63).
+fn force_if_thunk_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &LowerCtxChirho<'_>,
+    val_chirho: ClValueChirho,
+) -> ClValueChirho {
+    if let Some(enter_ref_chirho) = ctx_chirho.enter_thunk_ref_chirho {
+        let forced_i64_chirho = ensure_i64_chirho(builder_chirho, val_chirho, false);
+        let call_chirho = builder_chirho
+            .ins()
+            .call(enter_ref_chirho, &[forced_i64_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    } else {
+        val_chirho
+    }
+}
+
 /// Lower a Core literal to a Cranelift constant value.
 pub fn lower_lit_chirho(
     builder_chirho: &mut FuncBuilderChirho,
@@ -365,6 +383,137 @@ pub fn lower_tail_expr_chirho(
             expr_chirho,
         )),
     }
+}
+
+// ─── Lazy thunk creation ──────────────────────────────────────────────────────
+
+/// Collect the head function and arguments from a curried application chain.
+/// Returns `(head, [arg0, arg1, ...])` where head is the innermost function.
+fn collect_app_chain_chirho(expr_chirho: &CoreExprChirho) -> (&CoreExprChirho, Vec<&CoreExprChirho>) {
+    let mut args_chirho = Vec::new();
+    let mut cur_chirho = expr_chirho;
+    loop {
+        match cur_chirho {
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                args_chirho.push(arg_chirho.as_ref());
+                cur_chirho = fun_chirho.as_ref();
+            }
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => {
+                // Type applications are erased at runtime; skip them.
+                cur_chirho = inner_chirho.as_ref();
+            }
+            _ => break,
+        }
+    }
+    args_chirho.reverse(); // args were collected inside-out
+    (cur_chirho, args_chirho)
+}
+
+/// Try to create a lazy thunk for a let-binding RHS that is a known function
+/// application. Returns `Some(thunk_ptr)` if successful, `None` otherwise.
+///
+/// The thunk stores [func_addr, arg0_val, ..., argN_val] as free variables
+/// and uses the per-arity trampoline as its code pointer.
+fn try_create_thunk_for_app_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    rhs_chirho: &CoreExprChirho,
+) -> Option<ClValueChirho> {
+    // Only create thunks if the infrastructure is available.
+    let alloc_thunk_ref_chirho = ctx_chirho.alloc_thunk_ref_chirho?;
+    if ctx_chirho.thunk_trampoline_refs_chirho.is_empty() {
+        return None;
+    }
+
+    // Decompose into head function + args.
+    let (head_chirho, args_chirho) = collect_app_chain_chirho(rhs_chirho);
+    if args_chirho.is_empty() {
+        return None; // Nullary application — just evaluate it.
+    }
+
+    // Check arity limit (we only have trampolines for 0..=8 args).
+    if args_chirho.len() > ctx_chirho.thunk_trampoline_refs_chirho.len() - 1 {
+        return None;
+    }
+
+    // The head must be a known function so we can get its address.
+    let func_id_chirho = match head_chirho {
+        CoreExprChirho::VarChirho(id_chirho) => *id_chirho,
+        _ => return None,
+    };
+    let (func_ref_chirho, _arity_chirho) =
+        ctx_chirho.func_ref_map_chirho.get(&func_id_chirho)?;
+
+    // Get the address of the target function.
+    let func_addr_chirho = builder_chirho
+        .ins()
+        .func_addr(cl_types_chirho::I64, *func_ref_chirho);
+
+    // Evaluate all arguments eagerly (they go into the thunk's free vars).
+    let mut fv_vals_chirho: Vec<ClValueChirho> = Vec::with_capacity(args_chirho.len() + 1);
+    fv_vals_chirho.push(func_addr_chirho);
+    for arg_chirho in &args_chirho {
+        let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+        let arg_i64_chirho = ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+        fv_vals_chirho.push(arg_i64_chirho);
+    }
+
+    // Get the trampoline address for this arity.
+    let trampoline_ref_chirho =
+        ctx_chirho.thunk_trampoline_refs_chirho[args_chirho.len()];
+    let trampoline_addr_chirho = builder_chirho
+        .ins()
+        .func_addr(cl_types_chirho::I64, trampoline_ref_chirho);
+
+    // Stack-allocate the free variables array.
+    let num_fvs_chirho = fv_vals_chirho.len() as i64;
+    let fvs_size_chirho = num_fvs_chirho * 8;
+    let stack_slot_chirho = builder_chirho.create_sized_stack_slot(
+        cranelift_codegen::ir::StackSlotData::new(
+            cranelift_codegen::ir::StackSlotKind::ExplicitSlot,
+            fvs_size_chirho as u32,
+            0,
+        ),
+    );
+    let fvs_ptr_chirho = builder_chirho
+        .ins()
+        .stack_addr(cl_types_chirho::I64, stack_slot_chirho, 0);
+    let mem_flags_chirho = cranelift_codegen::ir::MemFlags::new();
+
+    for (idx_chirho, fv_val_chirho) in fv_vals_chirho.iter().enumerate() {
+        let offset_chirho = (idx_chirho * 8) as i32;
+        builder_chirho.ins().store(
+            mem_flags_chirho,
+            *fv_val_chirho,
+            fvs_ptr_chirho,
+            offset_chirho,
+        );
+    }
+
+    // Call alloc_thunk(trampoline_addr, num_fvs, fvs_ptr) → thunk_ptr
+    let num_fvs_val_chirho = builder_chirho
+        .ins()
+        .iconst(cl_types_chirho::I64, num_fvs_chirho);
+    let call_inst_chirho = builder_chirho.ins().call(
+        alloc_thunk_ref_chirho,
+        &[trampoline_addr_chirho, num_fvs_val_chirho, fvs_ptr_chirho],
+    );
+    let thunk_ptr_chirho = builder_chirho.inst_results(call_inst_chirho)[0];
+
+    // Push thunk as GC root.
+    if let Some(gc_push_ref_chirho) = ctx_chirho.gc_root_push_ref_chirho {
+        builder_chirho
+            .ins()
+            .call(gc_push_ref_chirho, &[thunk_ptr_chirho]);
+    }
+
+    Some(thunk_ptr_chirho)
 }
 
 // ─── Let lowering ─────────────────────────────────────────────────────────────
@@ -1881,14 +2030,16 @@ pub fn lower_primop_chirho(
     name_chirho: &str,
     args_chirho: &[CoreExprChirho],
 ) -> ClValueChirho {
-    // Evaluate operands.
+    // Evaluate operands and force any thunks (primops need unboxed values).
     let lhs_raw_chirho = if !args_chirho.is_empty() {
-        lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[0])
+        let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[0]);
+        force_if_thunk_chirho(builder_chirho, ctx_chirho, val_chirho)
     } else {
         builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
     };
     let rhs_raw_chirho = if args_chirho.len() > 1 {
-        lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[1])
+        let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[1]);
+        force_if_thunk_chirho(builder_chirho, ctx_chirho, val_chirho)
     } else {
         builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
     };
