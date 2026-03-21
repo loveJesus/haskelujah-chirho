@@ -2700,6 +2700,81 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Version
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["showVersion", "parseVersion", "makeVersion", "versionBranch"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Version", &["Version"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Version".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // GHC.Stack.Types
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["callStack", "pushCallStack", "freezeCallStack", "emptyCallStack", "fromCallSiteList", "getCallStack", "srcLocFile", "srcLocModule", "srcLocStartLine", "srcLocEndLine"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("CallStack", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("SrcLoc", &["SrcLoc"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Stack.Types".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.Mem.StableName
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["makeStableName", "hashStableName", "eqStableName"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("StableName", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.Mem.StableName".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Array.Byte
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_type_chirho("ByteArray", &["ByteArray"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("MutableByteArray", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Array.Byte".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Bifoldable1
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["bifoldMap1", "bifold1"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Bifoldable1", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Bifoldable1".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Data.Functor.Contravariant
     {
         let mut exports_chirho = IfaceExportsChirho::default();
