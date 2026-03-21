@@ -163,6 +163,7 @@ fn compile_core_to_object_inner_chirho(
         enter_thunk_func_id_chirho,
         gc_root_push_func_id_chirho,
         gc_root_pop_func_id_chirho,
+        is_heap_ptr_func_id_chirho,
     ) = {
         let mut put_str_ln_sig_chirho = obj_module_chirho.make_signature();
         put_str_ln_sig_chirho
@@ -273,6 +274,22 @@ fn compile_core_to_object_inner_chirho(
                 "haskelujah_enter_thunk_chirho",
                 LinkageChirho::Import,
                 &thunk_enter_sig_chirho,
+            )
+            .ok();
+
+        // Heap-pointer predicate: i64 -> i64 (0/1)
+        let mut is_heap_ptr_sig_chirho = obj_module_chirho.make_signature();
+        is_heap_ptr_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        is_heap_ptr_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        let is_heap_ptr_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_is_heap_ptr_chirho",
+                LinkageChirho::Import,
+                &is_heap_ptr_sig_chirho,
             )
             .ok();
 
@@ -445,6 +462,7 @@ fn compile_core_to_object_inner_chirho(
             enter_thunk_func_id_chirho,
             gc_root_push_func_id_chirho,
             gc_root_pop_func_id_chirho,
+            is_heap_ptr_func_id_chirho,
         )
     };
 
@@ -626,6 +644,7 @@ fn compile_core_to_object_inner_chirho(
             enter_thunk_func_id_chirho,
             gc_root_push_func_id_chirho,
             gc_root_pop_func_id_chirho,
+            is_heap_ptr_func_id_chirho,
             &thunk_trampoline_func_ids_chirho,
             &string_data_ids_chirho,
         )?;
@@ -1485,7 +1504,7 @@ fn define_pap_wrapper_body_chirho(
         );
         let block_params_chirho = builder_chirho.block_params(entry_block_chirho).to_vec();
         let env_val_chirho = block_params_chirho[0];
-        let ptr_mask_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, i64::MAX);
+        let ptr_mask_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, !1_i64);
         let env_ptr_chirho = builder_chirho.ins().band(env_val_chirho, ptr_mask_chirho);
         let mem_flags_chirho = cranelift_codegen::ir::MemFlags::new();
         let arg_val_chirho = block_params_chirho[1];
@@ -1610,6 +1629,7 @@ fn define_function_body_chirho(
     enter_thunk_func_id_chirho: Option<cranelift_module::FuncId>,
     gc_root_push_func_id_chirho: Option<cranelift_module::FuncId>,
     gc_root_pop_func_id_chirho: Option<cranelift_module::FuncId>,
+    is_heap_ptr_func_id_chirho: Option<cranelift_module::FuncId>,
     thunk_trampoline_func_ids_chirho: &[cranelift_module::FuncId],
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
@@ -1726,6 +1746,8 @@ fn define_function_body_chirho(
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let enter_thunk_fref_chirho = enter_thunk_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let is_heap_ptr_fref_chirho = is_heap_ptr_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let gc_root_push_fref_chirho = gc_root_push_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let gc_root_pop_fref_chirho = gc_root_pop_func_id_chirho
@@ -1777,6 +1799,7 @@ fn define_function_body_chirho(
             tco_loop_block_chirho: Some(loop_block_chirho),
             alloc_thunk_ref_chirho: alloc_thunk_fref_chirho,
             enter_thunk_ref_chirho: enter_thunk_fref_chirho,
+            is_heap_ptr_ref_chirho: is_heap_ptr_fref_chirho,
             gc_root_push_ref_chirho: gc_root_push_fref_chirho,
             gc_root_pop_ref_chirho: gc_root_pop_fref_chirho,
             thunk_trampoline_refs_chirho: trampoline_frefs_chirho,
@@ -2082,6 +2105,7 @@ fn lower_binding_chirho(
     enter_thunk_func_id_chirho: Option<cranelift_module::FuncId>,
     gc_root_push_func_id_chirho: Option<cranelift_module::FuncId>,
     gc_root_pop_func_id_chirho: Option<cranelift_module::FuncId>,
+    is_heap_ptr_func_id_chirho: Option<cranelift_module::FuncId>,
     thunk_trampoline_func_ids_chirho: &[cranelift_module::FuncId],
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
@@ -2201,6 +2225,7 @@ fn lower_binding_chirho(
             enter_thunk_func_id_chirho,
             gc_root_push_func_id_chirho,
             gc_root_pop_func_id_chirho,
+            is_heap_ptr_func_id_chirho,
             &thunk_trampoline_func_ids_chirho,
             string_data_ids_chirho,
         )?;
@@ -2240,6 +2265,7 @@ fn lower_binding_chirho(
         enter_thunk_func_id_chirho,
         gc_root_push_func_id_chirho,
         gc_root_pop_func_id_chirho,
+        is_heap_ptr_func_id_chirho,
         &thunk_trampoline_func_ids_chirho,
         string_data_ids_chirho,
     )?;
