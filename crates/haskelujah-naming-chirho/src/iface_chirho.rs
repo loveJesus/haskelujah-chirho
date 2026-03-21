@@ -2700,6 +2700,116 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Array / Data.Array.Unboxed
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["array", "listArray", "accumArray", "ixmap", "elems", "assocs", "indices", "bounds", "!", "//", "range", "index", "inRange", "rangeSize"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Array", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Ix", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Array".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        let (k_chirho, v_chirho) = mk_type_chirho("UArray", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Array.Unboxed".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Array.IArray".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // GHC.Num.Natural / Numeric.Natural
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_type_chirho("Natural", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["naturalToWord", "naturalToInteger", "intToNatural"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Num.Natural".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Numeric.Natural".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.CallStack (call-stack package, used by HUnit)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["callStack", "HasCallStack", "withFrozenCallStack", "prettyCallStack", "getCallStack", "SrcLoc"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("CallStack", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.CallStack".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.IORef
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["newIORef", "readIORef", "writeIORef", "modifyIORef", "modifyIORef'", "atomicModifyIORef", "atomicModifyIORef'", "atomicWriteIORef"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("IORef", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.IORef".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.IO
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["hFlush", "hPutStr", "hPutStrLn", "hGetLine", "hSetBuffering", "hSetEncoding", "hClose", "openFile", "withFile", "stdin", "stdout", "stderr", "utf8", "hGetContents", "hPrint", "putStr", "putStrLn", "print", "getLine", "getContents", "readFile", "writeFile", "appendFile"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Handle", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("IOMode", &["ReadMode", "WriteMode", "AppendMode", "ReadWriteMode"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("BufferMode", &["NoBuffering", "LineBuffering", "BlockBuffering"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.IO".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.Exit
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["exitWith", "exitFailure", "exitSuccess", "die"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("ExitCode", &["ExitSuccess", "ExitFailure"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.Exit".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Data.Version
     {
         let mut exports_chirho = IfaceExportsChirho::default();
