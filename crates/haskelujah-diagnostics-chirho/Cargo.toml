@@ -2,6 +2,7 @@
 
 [package]
 name = "haskelujah-diagnostics"
+description = "Diagnostics rendering and reporting utilities for the Haskelujah compiler"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true

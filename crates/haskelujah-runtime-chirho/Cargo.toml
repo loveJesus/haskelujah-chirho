@@ -2,6 +2,7 @@
 
 [package]
 name = "haskelujah-runtime"
+description = "STG evaluator and runtime services for the Haskelujah compiler"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true

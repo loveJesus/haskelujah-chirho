@@ -2,6 +2,7 @@
 
 [package]
 name = "haskelujah-backend-llvm"
+description = "LLVM IR backend for the Haskelujah Haskell compiler"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true

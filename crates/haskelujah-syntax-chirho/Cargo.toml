@@ -2,6 +2,7 @@
 
 [package]
 name = "haskelujah-syntax"
+description = "Green tree syntax and structural utilities for the Haskelujah compiler"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
