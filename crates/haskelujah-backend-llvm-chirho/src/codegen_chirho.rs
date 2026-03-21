@@ -166,6 +166,14 @@ impl LlvmCodegenChirho {
             _ => return None,
         };
         let func_name_chirho = self.toplevel_names_chirho.get(&func_id_chirho)?;
+        let func_arity_chirho = self
+            .toplevel_arities_chirho
+            .get(&func_id_chirho)
+            .copied()
+            .unwrap_or(0);
+        if func_arity_chirho > 0 && args_chirho.len() < func_arity_chirho {
+            return None;
+        }
         let mangled_chirho = mangle_name_chirho(func_name_chirho);
 
         // Get the function address
@@ -1079,10 +1087,11 @@ impl LlvmCodegenChirho {
     }
 
     fn emit_print_via_show_fallback_chirho(&mut self, arg_value_chirho: &str) {
+        let forced_arg_value_chirho = self.emit_force_thunk_chirho(arg_value_chirho);
         let shown_i64_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
             self.output_chirho,
-            "  {shown_i64_tmp_chirho} = call i64 @{}(i64 {arg_value_chirho})",
+            "  {shown_i64_tmp_chirho} = call i64 @{}(i64 {forced_arg_value_chirho})",
             mangle_name_chirho("show")
         )
         .unwrap();
@@ -2112,6 +2121,8 @@ impl LlvmCodegenChirho {
                                 {
                                     let arg_value_chirho =
                                         self.compile_expr_chirho(arg_expr_chirho);
+                                    let arg_value_chirho =
+                                        self.emit_force_thunk_chirho(&arg_value_chirho);
                                     self.emit_print_value_chirho(
                                         &arg_value_chirho,
                                         show_kind_chirho,
@@ -2144,6 +2155,8 @@ impl LlvmCodegenChirho {
                                 {
                                     let arg_value_chirho =
                                         self.compile_expr_chirho(arg_expr_chirho);
+                                    let arg_value_chirho =
+                                        self.emit_force_thunk_chirho(&arg_value_chirho);
                                     let ptr_tmp_chirho = self.emit_show_value_ptr_chirho(
                                         &arg_value_chirho,
                                         show_kind_chirho,
@@ -2188,6 +2201,7 @@ impl LlvmCodegenChirho {
                 }
 
                 let fun_val_chirho = self.compile_expr_chirho(callee_chirho);
+                let fun_val_chirho = self.emit_force_thunk_chirho(&fun_val_chirho);
                 self.compile_curried_indirect_apps_chirho(&fun_val_chirho, &arg_vals_chirho)
             }
 
@@ -2264,7 +2278,13 @@ impl LlvmCodegenChirho {
                             &lifted_let_bound_ids_chirho,
                         )
                     } else {
-                        self.compile_expr_chirho(rhs_chirho)
+                        if let Some(thunk_val_chirho) =
+                            self.try_create_thunk_for_app_chirho(rhs_chirho)
+                        {
+                            thunk_val_chirho
+                        } else {
+                            self.compile_expr_chirho(rhs_chirho)
+                        }
                     };
                     writeln!(
                         self.output_chirho,
@@ -2520,7 +2540,13 @@ impl LlvmCodegenChirho {
                             &lifted_let_bound_ids_chirho,
                         )
                     } else {
-                        self.compile_expr_chirho(rhs_chirho)
+                        if let Some(thunk_val_chirho) =
+                            self.try_create_thunk_for_app_chirho(rhs_chirho)
+                        {
+                            thunk_val_chirho
+                        } else {
+                            self.compile_expr_chirho(rhs_chirho)
+                        }
                     };
                     writeln!(
                         self.output_chirho,
@@ -3231,6 +3257,7 @@ impl LlvmCodegenChirho {
         arg_value_chirho: &str,
         show_kind_chirho: ShowBuiltinKindChirho,
     ) -> String {
+        let arg_value_chirho = self.emit_force_thunk_chirho(arg_value_chirho);
         match show_kind_chirho {
             ShowBuiltinKindChirho::IntChirho => {
                 let fmt_name_chirho = self.intern_string_global_name_chirho("%ld");
@@ -3337,7 +3364,7 @@ impl LlvmCodegenChirho {
                 buf_tmp_chirho
             }
             ShowBuiltinKindChirho::ListChirho(element_kind_chirho) => {
-                self.emit_show_list_value_ptr_chirho(arg_value_chirho, element_kind_chirho.as_ref())
+                self.emit_show_list_value_ptr_chirho(&arg_value_chirho, element_kind_chirho.as_ref())
             }
         }
     }
@@ -4596,7 +4623,7 @@ mod tests_chirho {
             .arg(&exe_path_chirho)
             .arg("-L")
             .arg(&rts_lib_dir_chirho)
-            .arg("-lhaskelujah_rts_chirho")
+            .arg("-lhaskelujah_rts")
             .output()
             .expect("clang should be available for llvm backend tests");
         assert!(
