@@ -1,7 +1,7 @@
 // For God so loved the world that he gave his only begotten Son, that whoever
 // believes in him should not perish but have eternal life. — John 3:16
 
-use haskelujah_driver_chirho::compile_source_chirho;
+use haskelujah_driver::compile_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 fn assert_compile_success_chirho(file_name_chirho: &str, source_chirho: &str) {

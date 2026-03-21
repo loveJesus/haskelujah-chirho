@@ -1,7 +1,7 @@
 -- For God so loved the world that he gave his only begotten Son, that whoever
 -- believes in him should not perish but have eternal life. — John 3:16
 -- TEST: compile_and_run
--- EXPECTED: Just 40\nNothing\nJust 10\n99
+-- EXPECTED: Just 42\nNothing\nJust 10\n99
 module Main where
 safeLookup :: Int -> [a] -> Maybe a
 safeLookup _ [] = Nothing

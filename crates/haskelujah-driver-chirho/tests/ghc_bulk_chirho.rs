@@ -32,8 +32,8 @@ struct BulkResultChirho {
 /// Try to parse a .hs file through the Haskelujah frontend.
 /// Uses sibling file search to resolve companion test modules.
 fn try_parse_chirho(path_chirho: &Path) -> Result<(), String> {
-    let source_chirho = fs::read_to_string(path_chirho)
-        .map_err(|e_chirho| format!("read error: {}", e_chirho))?;
+    let source_chirho =
+        fs::read_to_string(path_chirho).map_err(|e_chirho| format!("read error: {}", e_chirho))?;
 
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let file_name_chirho = path_chirho
@@ -44,7 +44,7 @@ fn try_parse_chirho(path_chirho: &Path) -> Result<(), String> {
 
     // Use compile with search path to find sibling companion modules
     let search_dir_chirho = path_chirho.parent().unwrap_or(Path::new("."));
-    haskelujah_driver_chirho::compile_source_with_search_path_chirho(
+    haskelujah_driver::compile_source_with_search_path_chirho(
         &source_chirho,
         &mut sm_chirho,
         &file_name_chirho,
@@ -66,7 +66,10 @@ fn discover_hs_files_chirho(dir_chirho: &Path) -> Vec<PathBuf> {
                 let p_chirho = entry_chirho.path();
                 if p_chirho.is_dir() {
                     walk_chirho(&p_chirho, out_chirho);
-                } else if p_chirho.extension().is_some_and(|e_chirho| e_chirho == "hs") {
+                } else if p_chirho
+                    .extension()
+                    .is_some_and(|e_chirho| e_chirho == "hs")
+                {
                     out_chirho.push(p_chirho);
                 }
             }
@@ -84,7 +87,9 @@ fn run_category_chirho(
     subcategory_chirho: &str,
     expect_success_chirho: bool,
 ) -> (usize, usize, Vec<String>) {
-    let dir_chirho = base_dir_chirho.join(category_chirho).join(subcategory_chirho);
+    let dir_chirho = base_dir_chirho
+        .join(category_chirho)
+        .join(subcategory_chirho);
     if !dir_chirho.is_dir() {
         return (0, 0, vec![]);
     }
@@ -115,7 +120,11 @@ fn run_category_chirho(
         }
     }
 
-    (passed_chirho.load(Ordering::Relaxed), total_chirho, failures_chirho)
+    (
+        passed_chirho.load(Ordering::Relaxed),
+        total_chirho,
+        failures_chirho,
+    )
 }
 
 // ── Test: parser/should_compile ────────────────────────────────────────
@@ -428,7 +437,9 @@ fn ghc_bulk_summary_chirho() {
     }
 
     // Layout and module (flat dirs)
-    for (label_chirho, dir_name_chirho) in [("layout", "layout-chirho"), ("module", "module-chirho")] {
+    for (label_chirho, dir_name_chirho) in
+        [("layout", "layout-chirho"), ("module", "module-chirho")]
+    {
         let dir_chirho = base_chirho.join(dir_name_chirho);
         if dir_chirho.is_dir() {
             let files_chirho = discover_hs_files_chirho(&dir_chirho);
