@@ -1017,7 +1017,7 @@ fn ensure_rts_staticlib_for_tests_chirho() -> Option<std::path::PathBuf> {
     let workspace_root_chirho = crate_dir_chirho.parent()?.parent()?.to_path_buf();
     let cargo_status_chirho = std::process::Command::new("cargo")
         .current_dir(&workspace_root_chirho)
-        .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+        .args(["build", "-p", "haskelujah-rts", "--quiet"])
         .status()
         .ok()?;
     if !cargo_status_chirho.success() {

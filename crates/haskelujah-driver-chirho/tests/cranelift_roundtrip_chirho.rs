@@ -9,7 +9,7 @@ use haskelujah_backend_cranelift_chirho::{
     TargetConfigChirho, compile_core_to_object_executable_chirho,
 };
 use haskelujah_core_chirho::{elide_dicts_and_filter_chirho, pretty_module_chirho};
-use haskelujah_driver_chirho::compile_source_chirho;
+use haskelujah_driver::compile_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 fn workspace_root_chirho() -> PathBuf {
@@ -28,12 +28,12 @@ fn ensure_rts_staticlib_for_cranelift_tests_chirho() -> PathBuf {
             let workspace_root_chirho = workspace_root_chirho();
             let cargo_status_chirho = Command::new("cargo")
                 .current_dir(&workspace_root_chirho)
-                .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+                .args(["build", "-p", "haskelujah-rts", "--quiet"])
                 .status()
                 .expect("should invoke cargo to build RTS");
             assert!(
                 cargo_status_chirho.success(),
-                "cargo build -p haskelujah-rts-chirho failed with exit code {:?}",
+                "cargo build -p haskelujah-rts failed with exit code {:?}",
                 cargo_status_chirho.code()
             );
             workspace_root_chirho.join("target").join("debug")

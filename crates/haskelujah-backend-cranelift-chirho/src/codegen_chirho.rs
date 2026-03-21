@@ -253,10 +253,18 @@ fn compile_core_to_object_inner_chirho(
 
         // Thunk alloc: (code_ptr: i64, num_fvs: i64, fvs: i64) → i64
         let mut thunk_alloc_sig_chirho = obj_module_chirho.make_signature();
-        thunk_alloc_sig_chirho.params.push(AbiParamChirho::new(cl_types_chirho::I64));
-        thunk_alloc_sig_chirho.params.push(AbiParamChirho::new(cl_types_chirho::I64));
-        thunk_alloc_sig_chirho.params.push(AbiParamChirho::new(cl_types_chirho::I64));
-        thunk_alloc_sig_chirho.returns.push(AbiParamChirho::new(cl_types_chirho::I64));
+        thunk_alloc_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        thunk_alloc_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        thunk_alloc_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        thunk_alloc_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
         let alloc_thunk_func_id_chirho = obj_module_chirho
             .declare_function(
                 "haskelujah_alloc_thunk_chirho",
@@ -267,8 +275,12 @@ fn compile_core_to_object_inner_chirho(
 
         // Thunk enter (force): i64 → i64
         let mut thunk_enter_sig_chirho = obj_module_chirho.make_signature();
-        thunk_enter_sig_chirho.params.push(AbiParamChirho::new(cl_types_chirho::I64));
-        thunk_enter_sig_chirho.returns.push(AbiParamChirho::new(cl_types_chirho::I64));
+        thunk_enter_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        thunk_enter_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
         let enter_thunk_func_id_chirho = obj_module_chirho
             .declare_function(
                 "haskelujah_enter_thunk_chirho",
@@ -487,9 +499,7 @@ fn compile_core_to_object_inner_chirho(
             let name_chirho = format!("haskelujah_thunk_trampoline_{arity_chirho}_chirho");
             let func_id_chirho = obj_module_chirho
                 .declare_function(&name_chirho, LinkageChirho::Local, &trampoline_sig_chirho)
-                .map_err(|e_chirho| {
-                    format!("failed to declare thunk trampoline: {e_chirho}")
-                })?;
+                .map_err(|e_chirho| format!("failed to declare thunk trampoline: {e_chirho}"))?;
 
             // Define the trampoline function body
             let mut func_chirho = ClFunctionChirho::with_name_signature(
@@ -500,13 +510,11 @@ fn compile_core_to_object_inner_chirho(
                 let mut builder_chirho =
                     FuncBuilderChirho::new(&mut func_chirho, &mut fb_ctx_chirho);
                 let entry_block_chirho = builder_chirho.create_block();
-                builder_chirho
-                    .append_block_params_for_function_params(entry_block_chirho);
+                builder_chirho.append_block_params_for_function_params(entry_block_chirho);
                 builder_chirho.switch_to_block(entry_block_chirho);
                 builder_chirho.seal_block(entry_block_chirho);
 
-                let fvs_ptr_chirho =
-                    builder_chirho.block_params(entry_block_chirho)[0];
+                let fvs_ptr_chirho = builder_chirho.block_params(entry_block_chirho)[0];
                 let mem_flags_chirho = cranelift_codegen::ir::MemFlags::new();
 
                 // Load function pointer from fvs[0]
@@ -543,8 +551,7 @@ fn compile_core_to_object_inner_chirho(
                         .params
                         .push(AbiParamChirho::new(cl_types_chirho::I64));
                 }
-                let sig_ref_chirho =
-                    builder_chirho.import_signature(target_sig_chirho);
+                let sig_ref_chirho = builder_chirho.import_signature(target_sig_chirho);
 
                 // Call the function pointer indirectly
                 let call_inst_chirho = builder_chirho.ins().call_indirect(
@@ -552,8 +559,7 @@ fn compile_core_to_object_inner_chirho(
                     fn_ptr_chirho,
                     &arg_vals_chirho,
                 );
-                let result_chirho =
-                    builder_chirho.inst_results(call_inst_chirho)[0];
+                let result_chirho = builder_chirho.inst_results(call_inst_chirho)[0];
                 builder_chirho.ins().return_(&[result_chirho]);
                 builder_chirho.finalize();
             }
@@ -562,9 +568,7 @@ fn compile_core_to_object_inner_chirho(
             ctx_def_chirho.func = func_chirho;
             obj_module_chirho
                 .define_function(func_id_chirho, &mut ctx_def_chirho)
-                .map_err(|e_chirho| {
-                    format!("failed to define thunk trampoline: {e_chirho}")
-                })?;
+                .map_err(|e_chirho| format!("failed to define thunk trampoline: {e_chirho}"))?;
 
             thunk_trampoline_func_ids_chirho.push(func_id_chirho);
         }
@@ -2416,7 +2420,7 @@ mod tests_chirho {
             .expect("backend crate should live under workspace/crates");
         let cargo_status_chirho = Command::new("cargo")
             .current_dir(workspace_root_chirho)
-            .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+            .args(["build", "-p", "haskelujah-rts", "--quiet"])
             .status()
             .expect("build RTS");
         assert!(cargo_status_chirho.success(), "RTS build should succeed");
@@ -2473,7 +2477,7 @@ mod tests_chirho {
             .expect("backend crate should live under workspace/crates");
         let cargo_status_chirho = Command::new("cargo")
             .current_dir(workspace_root_chirho)
-            .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+            .args(["build", "-p", "haskelujah-rts", "--quiet"])
             .status()
             .expect("build RTS");
         assert!(cargo_status_chirho.success(), "RTS build should succeed");
@@ -2523,7 +2527,7 @@ mod tests_chirho {
             .expect("backend crate should live under workspace/crates");
         let cargo_status_chirho = Command::new("cargo")
             .current_dir(workspace_root_chirho)
-            .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+            .args(["build", "-p", "haskelujah-rts", "--quiet"])
             .status()
             .expect("build RTS");
         assert!(cargo_status_chirho.success(), "RTS build should succeed");
