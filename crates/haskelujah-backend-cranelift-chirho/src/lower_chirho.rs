@@ -126,6 +126,14 @@ pub struct LowerCtxChirho<'a> {
     pub tco_self_id_chirho: Option<CoreIdChirho>,
     /// Optional loop-header block for self-tail-call elimination.
     pub tco_loop_block_chirho: Option<cranelift_codegen::ir::Block>,
+    /// Optional FuncRef for RTS `haskelujah_alloc_thunk_chirho`
+    pub alloc_thunk_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_enter_thunk_chirho`
+    pub enter_thunk_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_gc_root_push_chirho`
+    pub gc_root_push_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_gc_root_pop_chirho`
+    pub gc_root_pop_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
 }
 
 impl<'a> LowerCtxChirho<'a> {
@@ -543,7 +551,17 @@ fn lower_case_chirho(
 ) -> ClValueChirho {
     // ── Evaluate the scrutinee in the current block ────────────────────────
     let scrut_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, scrutinee_chirho);
-    let scrut_i64_chirho = ensure_i64_chirho(builder_chirho, scrut_val_chirho, false);
+    let scrut_raw_chirho = ensure_i64_chirho(builder_chirho, scrut_val_chirho, false);
+    // Force thunks: case is the only form of strict evaluation in Haskell.
+    // enter_thunk returns non-thunks as-is, so this is always safe.
+    let scrut_i64_chirho = if let Some(enter_ref_chirho) = ctx_chirho.enter_thunk_ref_chirho {
+        let force_call_chirho = builder_chirho
+            .ins()
+            .call(enter_ref_chirho, &[scrut_raw_chirho]);
+        builder_chirho.inst_results(force_call_chirho)[0]
+    } else {
+        scrut_raw_chirho
+    };
     let needs_constructor_tags_chirho = concrete_alts_need_constructor_tag_chirho(alts_chirho);
     let scrut_cmp_i64_chirho = if needs_constructor_tags_chirho {
         load_constructor_tag_chirho(builder_chirho, scrut_i64_chirho)
@@ -701,7 +719,16 @@ fn lower_tail_case_chirho(
     alts_chirho: &[CoreAltChirho],
 ) -> TailLowerOutcomeChirho {
     let scrut_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, scrutinee_chirho);
-    let scrut_i64_chirho = ensure_i64_chirho(builder_chirho, scrut_val_chirho, false);
+    let scrut_raw_chirho = ensure_i64_chirho(builder_chirho, scrut_val_chirho, false);
+    // Force thunks at case scrutinees (strict evaluation point).
+    let scrut_i64_chirho = if let Some(enter_ref_chirho) = ctx_chirho.enter_thunk_ref_chirho {
+        let force_call_chirho = builder_chirho
+            .ins()
+            .call(enter_ref_chirho, &[scrut_raw_chirho]);
+        builder_chirho.inst_results(force_call_chirho)[0]
+    } else {
+        scrut_raw_chirho
+    };
     let needs_constructor_tags_chirho = concrete_alts_need_constructor_tag_chirho(alts_chirho);
     let scrut_cmp_i64_chirho = if needs_constructor_tags_chirho {
         load_constructor_tag_chirho(builder_chirho, scrut_i64_chirho)
@@ -897,9 +924,18 @@ fn lower_constructor_app_chirho(
     }
 
     let boxed_mask_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, i64::MIN);
-    builder_chirho
+    let tagged_ptr_chirho = builder_chirho
         .ins()
-        .bor(alloc_ptr_chirho, boxed_mask_chirho)
+        .bor(alloc_ptr_chirho, boxed_mask_chirho);
+
+    // Push heap pointer as GC root so the collector knows it's live.
+    if let Some(gc_push_ref_chirho) = ctx_chirho.gc_root_push_ref_chirho {
+        builder_chirho
+            .ins()
+            .call(gc_push_ref_chirho, &[tagged_ptr_chirho]);
+    }
+
+    tagged_ptr_chirho
 }
 
 fn concrete_alts_need_constructor_tag_chirho(alts_chirho: &[CoreAltChirho]) -> bool {
@@ -1676,12 +1712,19 @@ fn emit_partial_application_closure_chirho(
     let Some(alloc_ref_chirho) = ctx_chirho.alloc_ref_chirho else {
         return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
     };
-    emit_partial_application_closure_with_alloc_ref_chirho(
+    let result_chirho = emit_partial_application_closure_with_alloc_ref_chirho(
         builder_chirho,
         alloc_ref_chirho,
         wrapper_ref_chirho,
         stored_arg_vals_chirho,
-    )
+    );
+    // Push PAP closure as GC root.
+    if let Some(gc_push_ref_chirho) = ctx_chirho.gc_root_push_ref_chirho {
+        builder_chirho
+            .ins()
+            .call(gc_push_ref_chirho, &[result_chirho]);
+    }
+    result_chirho
 }
 
 fn lower_known_function_value_chirho(

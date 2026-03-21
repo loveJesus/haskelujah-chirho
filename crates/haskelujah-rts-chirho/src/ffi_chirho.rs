@@ -315,6 +315,12 @@ pub extern "C" fn haskelujah_alloc_thunk_chirho(
 /// - Not a thunk: return as-is
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_enter_thunk_chirho(thunk_ptr_chirho: u64) -> u64 {
+    // Only heap pointers have the high bit (bit 63) set. Unboxed values
+    // (small ints, tags, chars) don't — return them as-is immediately.
+    if thunk_ptr_chirho & (1u64 << 63) == 0 {
+        return thunk_ptr_chirho;
+    }
+
     let raw_ptr_chirho = (thunk_ptr_chirho & !(1u64 << 63)) as *mut u64;
     if raw_ptr_chirho.is_null() {
         return 0;
@@ -325,7 +331,7 @@ pub extern "C" fn haskelujah_enter_thunk_chirho(thunk_ptr_chirho: u64) -> u64 {
         let kind_chirho = header_chirho & 0b11;
 
         if kind_chirho != KIND_THUNK_CHIRHO {
-            // Not a thunk — return as-is
+            // Not a thunk (constructor, function, PAP) — return as-is
             return thunk_ptr_chirho;
         }
 

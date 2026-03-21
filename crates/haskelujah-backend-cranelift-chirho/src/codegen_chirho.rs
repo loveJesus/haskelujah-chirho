@@ -159,6 +159,10 @@ fn compile_core_to_object_inner_chirho(
         unpack_string_func_id_chirho,
         pack_string_func_id_chirho,
         main_with_large_stack_func_id_chirho,
+        alloc_thunk_func_id_chirho,
+        enter_thunk_func_id_chirho,
+        gc_root_push_func_id_chirho,
+        gc_root_pop_func_id_chirho,
     ) = {
         let mut put_str_ln_sig_chirho = obj_module_chirho.make_signature();
         put_str_ln_sig_chirho
@@ -228,7 +232,7 @@ fn compile_core_to_object_inner_chirho(
         gc_push_sig_chirho
             .params
             .push(AbiParamChirho::new(cl_types_chirho::I64));
-        let _gc_root_push_func_id_chirho = obj_module_chirho
+        let gc_root_push_func_id_chirho = obj_module_chirho
             .declare_function(
                 "haskelujah_gc_root_push_chirho",
                 LinkageChirho::Import,
@@ -238,7 +242,7 @@ fn compile_core_to_object_inner_chirho(
 
         // GC root pop: void → void
         let gc_pop_sig_chirho = obj_module_chirho.make_signature();
-        let _gc_root_pop_func_id_chirho = obj_module_chirho
+        let gc_root_pop_func_id_chirho = obj_module_chirho
             .declare_function(
                 "haskelujah_gc_root_pop_chirho",
                 LinkageChirho::Import,
@@ -252,7 +256,7 @@ fn compile_core_to_object_inner_chirho(
         thunk_alloc_sig_chirho.params.push(AbiParamChirho::new(cl_types_chirho::I64));
         thunk_alloc_sig_chirho.params.push(AbiParamChirho::new(cl_types_chirho::I64));
         thunk_alloc_sig_chirho.returns.push(AbiParamChirho::new(cl_types_chirho::I64));
-        let _alloc_thunk_func_id_chirho = obj_module_chirho
+        let alloc_thunk_func_id_chirho = obj_module_chirho
             .declare_function(
                 "haskelujah_alloc_thunk_chirho",
                 LinkageChirho::Import,
@@ -264,7 +268,7 @@ fn compile_core_to_object_inner_chirho(
         let mut thunk_enter_sig_chirho = obj_module_chirho.make_signature();
         thunk_enter_sig_chirho.params.push(AbiParamChirho::new(cl_types_chirho::I64));
         thunk_enter_sig_chirho.returns.push(AbiParamChirho::new(cl_types_chirho::I64));
-        let _enter_thunk_func_id_chirho = obj_module_chirho
+        let enter_thunk_func_id_chirho = obj_module_chirho
             .declare_function(
                 "haskelujah_enter_thunk_chirho",
                 LinkageChirho::Import,
@@ -437,6 +441,10 @@ fn compile_core_to_object_inner_chirho(
             unpack_string_func_id_chirho,
             pack_string_func_id_chirho,
             main_with_large_stack_func_id_chirho,
+            alloc_thunk_func_id_chirho,
+            enter_thunk_func_id_chirho,
+            gc_root_push_func_id_chirho,
+            gc_root_pop_func_id_chirho,
         )
     };
 
@@ -510,6 +518,10 @@ fn compile_core_to_object_inner_chirho(
             read_int_func_id_chirho,
             unpack_string_func_id_chirho,
             pack_string_func_id_chirho,
+            alloc_thunk_func_id_chirho,
+            enter_thunk_func_id_chirho,
+            gc_root_push_func_id_chirho,
+            gc_root_pop_func_id_chirho,
             &string_data_ids_chirho,
         )?;
     }
@@ -1489,6 +1501,10 @@ fn define_function_body_chirho(
     read_int_func_id_chirho: Option<cranelift_module::FuncId>,
     unpack_string_func_id_chirho: Option<cranelift_module::FuncId>,
     pack_string_func_id_chirho: Option<cranelift_module::FuncId>,
+    alloc_thunk_func_id_chirho: Option<cranelift_module::FuncId>,
+    enter_thunk_func_id_chirho: Option<cranelift_module::FuncId>,
+    gc_root_push_func_id_chirho: Option<cranelift_module::FuncId>,
+    gc_root_pop_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let (param_binders_chirho, body_chirho) = peel_lambdas_chirho(rhs_chirho);
@@ -1600,6 +1616,14 @@ fn define_function_body_chirho(
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let pack_string_fref_chirho = pack_string_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let alloc_thunk_fref_chirho = alloc_thunk_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let enter_thunk_fref_chirho = enter_thunk_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let gc_root_push_fref_chirho = gc_root_push_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let gc_root_pop_fref_chirho = gc_root_pop_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
 
         let mut string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue> =
             HashMap::new();
@@ -1638,6 +1662,10 @@ fn define_function_body_chirho(
             string_globals_chirho,
             tco_self_id_chirho: Some(current_core_id_chirho),
             tco_loop_block_chirho: Some(loop_block_chirho),
+            alloc_thunk_ref_chirho: alloc_thunk_fref_chirho,
+            enter_thunk_ref_chirho: enter_thunk_fref_chirho,
+            gc_root_push_ref_chirho: gc_root_push_fref_chirho,
+            gc_root_pop_ref_chirho: gc_root_pop_fref_chirho,
         };
 
         match lower_tail_expr_chirho(&mut builder_chirho, &mut ctx_chirho, body_chirho) {
@@ -1936,6 +1964,10 @@ fn lower_binding_chirho(
     read_int_func_id_chirho: Option<cranelift_module::FuncId>,
     unpack_string_func_id_chirho: Option<cranelift_module::FuncId>,
     pack_string_func_id_chirho: Option<cranelift_module::FuncId>,
+    alloc_thunk_func_id_chirho: Option<cranelift_module::FuncId>,
+    enter_thunk_func_id_chirho: Option<cranelift_module::FuncId>,
+    gc_root_push_func_id_chirho: Option<cranelift_module::FuncId>,
+    gc_root_pop_func_id_chirho: Option<cranelift_module::FuncId>,
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
@@ -2050,6 +2082,10 @@ fn lower_binding_chirho(
             read_int_func_id_chirho,
             unpack_string_func_id_chirho,
             pack_string_func_id_chirho,
+            alloc_thunk_func_id_chirho,
+            enter_thunk_func_id_chirho,
+            gc_root_push_func_id_chirho,
+            gc_root_pop_func_id_chirho,
             string_data_ids_chirho,
         )?;
     }
@@ -2084,6 +2120,10 @@ fn lower_binding_chirho(
         read_int_func_id_chirho,
         unpack_string_func_id_chirho,
         pack_string_func_id_chirho,
+        alloc_thunk_func_id_chirho,
+        enter_thunk_func_id_chirho,
+        gc_root_push_func_id_chirho,
+        gc_root_pop_func_id_chirho,
         string_data_ids_chirho,
     )?;
 

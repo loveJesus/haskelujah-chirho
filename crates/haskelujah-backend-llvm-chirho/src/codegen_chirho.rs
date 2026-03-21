@@ -2128,7 +2128,16 @@ impl LlvmCodegenChirho {
                 alts_chirho,
                 ..
             } => {
-                let scrut_val_chirho = self.compile_expr_chirho(scrutinee_chirho);
+                let scrut_raw_chirho = self.compile_expr_chirho(scrutinee_chirho);
+                // Force thunks: case is the strict evaluation point in Haskell.
+                // enter_thunk returns non-thunks as-is, so this is always safe.
+                let forced_tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {forced_tmp_chirho} = call i64 @haskelujah_enter_thunk_chirho(i64 {scrut_raw_chirho})"
+                )
+                .unwrap();
+                let scrut_val_chirho = forced_tmp_chirho;
 
                 // Bind the case binder to the scrutinee value so %v{id} is defined
                 self.bind_local_value_name_chirho(bind_chirho, &scrut_val_chirho);
@@ -2366,7 +2375,15 @@ impl LlvmCodegenChirho {
                 alts_chirho,
                 ..
             } => {
-                let scrut_val_chirho = self.compile_expr_chirho(scrutinee_chirho);
+                let scrut_raw_chirho = self.compile_expr_chirho(scrutinee_chirho);
+                // Force thunks at case scrutinees (strict evaluation point).
+                let forced_tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {forced_tmp_chirho} = call i64 @haskelujah_enter_thunk_chirho(i64 {scrut_raw_chirho})"
+                )
+                .unwrap();
+                let scrut_val_chirho = forced_tmp_chirho;
                 self.bind_local_value_name_chirho(bind_chirho, &scrut_val_chirho);
 
                 if alts_chirho.is_empty() {
