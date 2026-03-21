@@ -443,10 +443,7 @@ fn simplify_expr_chirho(expr_chirho: &CoreExprChirho) -> CoreExprChirho {
                     if let Some(ordered_binds_chirho) =
                         reorder_acyclic_rec_let_binds_chirho(&simplified_binds_chirho)
                     {
-                        nest_nonrec_let_binds_chirho(
-                            ordered_binds_chirho,
-                            body_simplified_chirho,
-                        )
+                        nest_nonrec_let_binds_chirho(ordered_binds_chirho, body_simplified_chirho)
                     } else {
                         CoreExprChirho::LetChirho {
                             rec_chirho: true,
@@ -1096,7 +1093,11 @@ fn selector_dict_name_chirho(
     let dict_arg_chirho = all_args_chirho.first()?;
     match strip_ty_apps_chirho(dict_arg_chirho) {
         CoreExprChirho::VarChirho(id_chirho)
-            if expr_is_dict_var_chirho(dict_arg_chirho, all_bindings_chirho, local_names_chirho) =>
+            if expr_is_dict_var_chirho(
+                dict_arg_chirho,
+                all_bindings_chirho,
+                local_names_chirho,
+            ) =>
         {
             resolve_name_for_id_chirho(id_chirho, all_bindings_chirho, local_names_chirho)
         }
@@ -1170,7 +1171,9 @@ fn elide_dicts_with_locals_chirho(
                 // Check if the dict is a non-builtin (derived) Show instance.
                 // If so, don't elide — let runtime handle it.
                 let dict_name_opt_chirho = selector_dict_name_chirho(
-                    &all_args_chirho, all_bindings_chirho, local_names_chirho,
+                    &all_args_chirho,
+                    all_bindings_chirho,
+                    local_names_chirho,
                 );
                 if let Some(ref dn_chirho) = dict_name_opt_chirho {
                     if builtin_show_primop_for_dict_name_chirho(dn_chirho).is_none() {
@@ -1188,7 +1191,9 @@ fn elide_dicts_with_locals_chirho(
                                 "showBool#"
                             }
                             CoreExprChirho::LitChirho(CoreLitChirho::CharChirho(_)) => "showChar#",
-                            CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(_)) => "showFloat#",
+                            CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(_)) => {
+                                "showFloat#"
+                            }
                             // For computed values, default to showInt#.
                             // Dict names may be unreliable in merged Core.
                             _ => "showInt#",
@@ -1203,9 +1208,7 @@ fn elide_dicts_with_locals_chirho(
                     let show_primop_chirho = match &simplified_chirho {
                         CoreExprChirho::ConAppChirho {
                             con_name_chirho, ..
-                        } if con_name_chirho == "True" || con_name_chirho == "False" => {
-                            "showBool#"
-                        }
+                        } if con_name_chirho == "True" || con_name_chirho == "False" => "showBool#",
                         CoreExprChirho::LitChirho(CoreLitChirho::CharChirho(_)) => "showChar#",
                         CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(_)) => "showFloat#",
                         _ => "showInt#",
@@ -1275,10 +1278,10 @@ fn elide_dicts_with_locals_chirho(
                         };
                     }
                 }
-                let is_unary_chirho =
-                    matches!(primop_chirho, "absInt#" | "signumInt#" | "negate#");
+                let is_unary_chirho = matches!(primop_chirho, "absInt#" | "signumInt#" | "negate#");
                 let min_real_args_chirho = if is_unary_chirho { 1 } else { 2 };
-                if !should_preserve_selector_chirho && real_args_chirho.len() >= min_real_args_chirho
+                if !should_preserve_selector_chirho
+                    && real_args_chirho.len() >= min_real_args_chirho
                 {
                     let primop_args_chirho: Vec<CoreExprChirho> = real_args_chirho
                         .iter()
@@ -1368,31 +1371,56 @@ fn elide_dicts_with_locals_chirho(
                 .collect();
             let let_local_names_chirho =
                 extend_local_names_with_binders_chirho(local_names_chirho, &let_binders_chirho);
-            CoreExprChirho::LetChirho {
-                rec_chirho: *rec_chirho,
-                binds_chirho: binds_chirho
-                    .iter()
-                    .map(|(b_chirho, r_chirho)| {
-                        let rhs_local_names_chirho = if *rec_chirho {
-                            &let_local_names_chirho
-                        } else {
-                            local_names_chirho
-                        };
-                        (
-                            b_chirho.clone(),
-                            elide_dicts_with_locals_chirho(
-                                r_chirho,
-                                all_bindings_chirho,
-                                rhs_local_names_chirho,
-                            ),
-                        )
-                    })
-                    .collect(),
-                body_chirho: Box::new(elide_dicts_with_locals_chirho(
-                    body_chirho,
-                    all_bindings_chirho,
-                    &let_local_names_chirho,
-                )),
+            let simplified_body_chirho = elide_dicts_with_locals_chirho(
+                body_chirho,
+                all_bindings_chirho,
+                &let_local_names_chirho,
+            );
+            let simplified_binds_chirho: Vec<(BinderChirho, CoreExprChirho)> = binds_chirho
+                .iter()
+                .map(|(b_chirho, r_chirho)| {
+                    let rhs_local_names_chirho = if *rec_chirho {
+                        &let_local_names_chirho
+                    } else {
+                        local_names_chirho
+                    };
+                    (
+                        b_chirho.clone(),
+                        elide_dicts_with_locals_chirho(
+                            r_chirho,
+                            all_bindings_chirho,
+                            rhs_local_names_chirho,
+                        ),
+                    )
+                })
+                .collect();
+
+            if *rec_chirho {
+                return CoreExprChirho::LetChirho {
+                    rec_chirho: true,
+                    binds_chirho: simplified_binds_chirho,
+                    body_chirho: Box::new(simplified_body_chirho),
+                };
+            }
+
+            let mut live_ids_chirho = free_vars_chirho(&simplified_body_chirho);
+            let mut retained_binds_rev_chirho: Vec<(BinderChirho, CoreExprChirho)> = Vec::new();
+            for (binder_chirho, rhs_chirho) in simplified_binds_chirho.into_iter().rev() {
+                if live_ids_chirho.contains(&binder_chirho.id_chirho) {
+                    live_ids_chirho.extend(free_vars_chirho(&rhs_chirho));
+                    retained_binds_rev_chirho.push((binder_chirho, rhs_chirho));
+                }
+            }
+            retained_binds_rev_chirho.reverse();
+
+            if retained_binds_rev_chirho.is_empty() {
+                simplified_body_chirho
+            } else {
+                CoreExprChirho::LetChirho {
+                    rec_chirho: false,
+                    binds_chirho: retained_binds_rev_chirho,
+                    body_chirho: Box::new(simplified_body_chirho),
+                }
             }
         }
         CoreExprChirho::CaseChirho {
@@ -3199,6 +3227,64 @@ mod tests_chirho {
     }
 
     #[test]
+    fn elide_dicts_drops_dead_superclass_let_after_dict_lambda_strip_chirho() {
+        let dict_binder_chirho = dummy_binder_chirho("$dIntegral", 1);
+        let num_dict_binder_chirho = dummy_binder_chirho("$dNum", 2);
+        let selector_binder_chirho = dummy_binder_chirho("$sel_Integral_super_Num", 3);
+        let x_binder_chirho = dummy_binder_chirho("x", 4);
+
+        let expr_chirho = CoreExprChirho::LamChirho {
+            binder_chirho: dict_binder_chirho.clone(),
+            body_chirho: Box::new(CoreExprChirho::LetChirho {
+                rec_chirho: false,
+                binds_chirho: vec![(
+                    num_dict_binder_chirho,
+                    CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                            selector_binder_chirho.id_chirho,
+                        )),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                            dict_binder_chirho.id_chirho,
+                        )),
+                    },
+                )],
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: x_binder_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "+#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(x_binder_chirho.id_chirho),
+                            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+                        ],
+                    }),
+                }),
+            }),
+        };
+
+        let all_bindings_chirho = vec![CoreBindingChirho {
+            binder_chirho: selector_binder_chirho,
+            rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        }];
+
+        let result_chirho = elide_dicts_chirho(&expr_chirho, &all_bindings_chirho);
+        assert_eq!(
+            result_chirho,
+            CoreExprChirho::LamChirho {
+                binder_chirho: x_binder_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "+#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(x_binder_chirho.id_chirho),
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+                    ],
+                }),
+            }
+        );
+    }
+
+    #[test]
     fn elide_dicts_preserves_nonbuiltin_ord_compare_selector_chirho() {
         let ord_dict_binder_chirho = BinderChirho {
             id_chirho: CoreIdChirho(21),
@@ -3213,7 +3299,9 @@ mod tests_chirho {
                     fun_chirho: Box::new(CoreExprChirho::VarChirho(
                         compare_sel_binder_chirho.id_chirho,
                     )),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(ord_dict_binder_chirho.id_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                        ord_dict_binder_chirho.id_chirho,
+                    )),
                 }),
                 arg_chirho: Box::new(CoreExprChirho::ConAppChirho {
                     con_name_chirho: "High".to_string(),

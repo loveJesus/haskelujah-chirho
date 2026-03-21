@@ -36,8 +36,10 @@ fn builds_a_check_summary_for_batch_mode_chirho() {
             .runtime_plan_chirho
             .incremental_session_chirho
     );
-    assert!(render_summary_chirho(&check_summary_chirho)
-        .contains("llvm_preview: ; haskelujah llvm stub"));
+    assert!(
+        render_summary_chirho(&check_summary_chirho)
+            .contains("llvm_preview: ; haskelujah llvm stub")
+    );
 }
 
 #[test]
@@ -432,16 +434,22 @@ executable hello-app
         result_chirho.executables_chirho[0].compilation_order_chirho,
         vec!["Lib".to_string(), "Main".to_string()]
     );
-    assert!(!result_chirho.executables_chirho[0]
-        .core_chirho
-        .bindings_chirho
-        .is_empty());
-    assert!(result_chirho.executables_chirho[0]
-        .llvm_ir_chirho
-        .contains("define i32 @main()"));
-    assert!(result_chirho.executables_chirho[0]
-        .llvm_ir_chirho
-        .contains("@haskelujah_main"));
+    assert!(
+        !result_chirho.executables_chirho[0]
+            .core_chirho
+            .bindings_chirho
+            .is_empty()
+    );
+    assert!(
+        result_chirho.executables_chirho[0]
+            .llvm_ir_chirho
+            .contains("define i32 @main()")
+    );
+    assert!(
+        result_chirho.executables_chirho[0]
+            .llvm_ir_chirho
+            .contains("@haskelujah_main")
+    );
 
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
 }
@@ -450,7 +458,7 @@ executable hello-app
 fn cabal_project_cranelift_dedups_duplicate_prelude_bindings_chirho() {
     use crate::build_cabal_project_chirho;
     use haskelujah_backend_cranelift_chirho::{
-        compile_core_to_object_executable_chirho, TargetConfigChirho,
+        TargetConfigChirho, compile_core_to_object_executable_chirho,
     };
     use std::io::Write;
 
@@ -1164,8 +1172,7 @@ fn llvm_round_trip_get_line_read_int_output_chirho() {
 
 #[test]
 fn llvm_round_trip_recursive_io_return_unit_output_chirho() {
-    let src_chirho =
-        "module Main where\nprintTodos [] = return ()\nprintTodos (x:xs) = do\n  putStrLn x\n  printTodos xs\nmain = printTodos [\"a\",\"b\"]\n";
+    let src_chirho = "module Main where\nprintTodos [] = return ()\nprintTodos (x:xs) = do\n  putStrLn x\n  printTodos xs\nmain = printTodos [\"a\",\"b\"]\n";
     if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
         assert_eq!(
             exit_code_chirho, 0,
@@ -1389,8 +1396,7 @@ main = print (sumTo 10)
 
 #[test]
 fn llvm_round_trip_where_sibling_cross_reference_output_chirho() {
-    let src_chirho =
-        "module Main where\nf x = result where result = a + b; a = x * 2; b = x * 3\nmain = print (f 5)";
+    let src_chirho = "module Main where\nf x = result where result = a + b; a = x * 2; b = x * 3\nmain = print (f 5)";
     let (exit_code_chirho, stdout_chirho) =
         llvm_round_trip_output_chirho(src_chirho).expect("where sibling LLVM round-trip");
     assert_eq!(
@@ -1554,8 +1560,7 @@ fn llvm_round_trip_put_str_ln_show_float_output_chirho() {
 
 #[test]
 fn llvm_round_trip_put_str_ln_show_derived_enum_output_chirho() {
-    let src_chirho =
-        "module Main where\ndata Color = Red | Green | Blue deriving (Show)\nmain = putStrLn (show Green)";
+    let src_chirho = "module Main where\ndata Color = Red | Green | Blue deriving (Show)\nmain = putStrLn (show Green)";
     if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
         assert_eq!(
             exit_code_chirho, 0,
@@ -1593,8 +1598,7 @@ fn llvm_round_trip_print_derived_field_constructor_output_chirho() {
 
 #[test]
 fn llvm_round_trip_nested_adt_list_pattern_output_chirho() {
-    let src_chirho =
-        "module Main where\ndata Value = VInt Int | VList [Value]\nscore (VList [VInt n]) = n\nscore (VList (_:_)) = 1\nscore _ = 2\nmain = print (score (VList [VInt 7]))";
+    let src_chirho = "module Main where\ndata Value = VInt Int | VList [Value]\nscore (VList [VInt n]) = n\nscore (VList (_:_)) = 1\nscore _ = 2\nmain = print (score (VList [VInt 7]))";
     if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
         assert_eq!(
             exit_code_chirho, 0,
@@ -1606,8 +1610,7 @@ fn llvm_round_trip_nested_adt_list_pattern_output_chirho() {
 
 #[test]
 fn llvm_round_trip_non_tail_recursive_list_fold_output_chirho() {
-    let src_chirho =
-        "module Main where\nmyMax [x] = x\nmyMax (x:xs) = if x > myMax xs then x else myMax xs\nmain = print (myMax [5,3,9,2])";
+    let src_chirho = "module Main where\nmyMax [x] = x\nmyMax (x:xs) = if x > myMax xs then x else myMax xs\nmain = print (myMax [5,3,9,2])";
     if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
         assert_eq!(
             exit_code_chirho, 0,
@@ -1915,8 +1918,7 @@ main = print (sumTo 10)
 
 #[test]
 fn cranelift_round_trip_where_sibling_cross_reference_output_chirho() {
-    let src_chirho =
-        "module Main where\nf x = result where result = a + b; a = x * 2; b = x * 3\nmain = print (f 5)";
+    let src_chirho = "module Main where\nf x = result where result = a + b; a = x * 2; b = x * 3\nmain = print (f 5)";
     let (exit_code_chirho, stdout_chirho) =
         cranelift_round_trip_output_chirho(src_chirho).expect("where sibling Cranelift round-trip");
     assert_eq!(
@@ -1947,8 +1949,8 @@ main = do
   print (Red == Red)
   print (Red == Blue)
 "#;
-    let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
-        .expect("derived Eq Cranelift round-trip");
+    let (exit_code_chirho, stdout_chirho) =
+        cranelift_round_trip_output_chirho(src_chirho).expect("derived Eq Cranelift round-trip");
     assert_eq!(
         exit_code_chirho, 0,
         "derived Eq Cranelift executable should exit successfully"
@@ -1962,8 +1964,8 @@ fn cranelift_round_trip_derived_ord_runtime_output_chirho() {
 data Prio = Low | Med | High deriving (Ord, Eq, Show)
 main = print (compare High Low)
 "#;
-    let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
-        .expect("derived Ord Cranelift round-trip");
+    let (exit_code_chirho, stdout_chirho) =
+        cranelift_round_trip_output_chirho(src_chirho).expect("derived Ord Cranelift round-trip");
     assert_eq!(
         exit_code_chirho, 0,
         "derived Ord Cranelift executable should exit successfully"
@@ -3262,5 +3264,22 @@ main = print (sumPairs (myZip [1,2,3,4,5] [10,11,12,13,14]))
     if let Some((code_chirho, stdout_chirho)) = result_chirho {
         assert_eq!(code_chirho, 0);
         assert_eq!(stdout_chirho.trim(), "75");
+    }
+}
+
+#[test]
+fn llvm_round_trip_applyop_divide_output_chirho() {
+    let src_chirho = r#"module Main where
+data Op = Plus | Minus | Times | Divide deriving (Eq, Show)
+applyOp Plus x y = x + y
+applyOp Minus x y = x - y
+applyOp Times x y = x * y
+applyOp Divide x y = div x y
+main = print (applyOp Plus 3 4)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "7");
     }
 }

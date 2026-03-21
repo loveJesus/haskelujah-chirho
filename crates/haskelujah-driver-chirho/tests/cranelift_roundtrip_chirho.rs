@@ -199,6 +199,39 @@ fn cranelift_user_range_filtered_core_has_no_num_selectors_chirho() {
 }
 
 #[test]
+fn cranelift_applyop_divide_filtered_core_has_no_integral_selectors_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let compile_result_chirho = compile_source_chirho(
+        "module Main where\ndata Op = Plus | Minus | Times | Divide deriving (Eq, Show)\napplyOp Plus x y = x + y\napplyOp Minus x y = x - y\napplyOp Times x y = x * y\napplyOp Divide x y = div x y\nmain = print (applyOp Plus 3 4)\n",
+        &mut source_map_chirho,
+        "Main.hs",
+    )
+    .expect("source should compile");
+    let filtered_core_chirho = elide_dicts_and_filter_chirho(&compile_result_chirho.core_chirho);
+    let pretty_core_chirho = pretty_module_chirho(&filtered_core_chirho);
+    assert!(
+        !pretty_core_chirho.contains("$sel_Integral_super_Num"),
+        "filtered core should not retain $sel_Integral_super_Num:\\n{pretty_core_chirho}"
+    );
+    assert!(
+        !pretty_core_chirho.contains("$sel_Integral_div"),
+        "filtered core should not retain $sel_Integral_div:\\n{pretty_core_chirho}"
+    );
+    assert!(
+        pretty_core_chirho.contains("div#"),
+        "filtered core should lower div to div#:\\n{pretty_core_chirho}"
+    );
+}
+
+#[test]
+fn cranelift_round_trip_applyop_divide_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\ndata Op = Plus | Minus | Times | Divide deriving (Eq, Show)\napplyOp Plus x y = x + y\napplyOp Minus x y = x - y\napplyOp Times x y = x * y\napplyOp Divide x y = div x y\nmain = print (applyOp Plus 3 4)\n",
+    );
+    assert_eq!(stdout_chirho, "7\n");
+}
+
+#[test]
 fn cranelift_round_trip_show_bool_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = putStrLn (show True)\n");
