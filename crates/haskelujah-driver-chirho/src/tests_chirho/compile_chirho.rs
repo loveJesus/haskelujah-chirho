@@ -3283,3 +3283,35 @@ main = print (applyOp Plus 3 4)
         assert_eq!(stdout_chirho.trim(), "7");
     }
 }
+
+#[test]
+fn llvm_round_trip_applyop_modulo_output_chirho() {
+    let src_chirho = r#"module Main where
+data Op = Plus | Minus | Times | Divide | Modulo deriving (Eq, Show)
+applyOp Plus x y = x + y
+applyOp Minus x y = x - y
+applyOp Times x y = x * y
+applyOp Divide x y = div x y
+applyOp Modulo x y = mod x y
+main = print (applyOp Modulo 7 3)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "1");
+    }
+}
+
+#[test]
+fn llvm_round_trip_div_mod_combo_output_chirho() {
+    let src_chirho = r#"module Main where
+main = do
+  print (div 17 5)
+  print (mod 17 5)
+"#;
+    let result_chirho = llvm_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho.trim(), "3\n2");
+    }
+}

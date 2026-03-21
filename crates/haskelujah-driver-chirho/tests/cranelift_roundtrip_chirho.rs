@@ -232,6 +232,22 @@ fn cranelift_round_trip_applyop_divide_output_chirho() {
 }
 
 #[test]
+fn cranelift_round_trip_applyop_modulo_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\ndata Op = Plus | Minus | Times | Divide | Modulo deriving (Eq, Show)\napplyOp Plus x y = x + y\napplyOp Minus x y = x - y\napplyOp Times x y = x * y\napplyOp Divide x y = div x y\napplyOp Modulo x y = mod x y\nmain = print (applyOp Modulo 7 3)\n",
+    );
+    assert_eq!(stdout_chirho, "1\n");
+}
+
+#[test]
+fn cranelift_round_trip_div_mod_combo_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nmain = do\n  print (div 17 5)\n  print (mod 17 5)\n",
+    );
+    assert_eq!(stdout_chirho, "3\n2\n");
+}
+
+#[test]
 fn cranelift_round_trip_show_bool_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = putStrLn (show True)\n");
