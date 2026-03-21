@@ -3629,6 +3629,49 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Language.Haskell.TH.Quote
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["quoteExp", "quotePat", "quoteType", "quoteDec"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("QuasiQuoter", &["QuasiQuoter"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Language.Haskell.TH.Quote".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Hashable / Data.Hashable.Lifted
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["hashWithSalt", "hash", "hashUsing"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Hashable", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Hashable".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        let mut lifted_exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["liftHashWithSalt", "hashWithSalt1", "hashWithSalt2"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            lifted_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Hashable1", &[]);
+        lifted_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Hashable2", &[]);
+        lifted_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Hashable.Lifted".to_string(),
+            exports_chirho: lifted_exports_chirho,
+        });
+    }
+
     // Language.Haskell.TH.Lib
     {
         let mut exports_chirho = IfaceExportsChirho::default();
