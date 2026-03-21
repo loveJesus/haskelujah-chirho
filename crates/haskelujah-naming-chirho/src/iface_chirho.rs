@@ -8824,6 +8824,53 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Functor.WithIndex / Data.Foldable.WithIndex / Data.Traversable.WithIndex (indexed-traversable)
+    for mod_name_chirho in &["Data.Functor.WithIndex", "Data.Foldable.WithIndex", "Data.Traversable.WithIndex"] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["FunctorWithIndex", "imap", "FoldableWithIndex", "ifoldMap", "ifoldr", "ifoldl", "ifoldr'", "ifoldl'", "itraverse_", "ifor_", "TraversableWithIndex", "itraverse", "ifor", "imapDefault", "ifoldMapDefault"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["FunctorWithIndex", "FoldableWithIndex", "TraversableWithIndex"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Bifunctor.Swap (bifunctors)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["Swap", "unSwap"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Swap", &["Swap"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Bifunctor.Swap".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // GHC.Integer (compatibility)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["Integer", "mkInteger", "smallInteger", "wordToInteger", "integerToWord", "integerToInt", "plusInteger", "timesInteger", "minusInteger", "negateInteger", "absInteger", "signumInteger", "divInteger", "modInteger", "quotInteger", "remInteger", "quotRemInteger", "divModInteger", "eqInteger", "neqInteger", "leInteger", "ltInteger", "geInteger", "gtInteger", "compareInteger"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for mod_name_chirho in &["GHC.Integer", "GHC.Integer.Logarithms", "GHC.Integer.Logarithms.Compat"] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
     // Foreign.Concurrent
     {
         let mut exports_chirho = IfaceExportsChirho::default();

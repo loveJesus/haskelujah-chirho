@@ -3290,44 +3290,9 @@ pub fn discover_modules_chirho(
         }
     }
 
-    // Test-suite modules
-    for ts_chirho in &package_chirho.test_suites_chirho {
-        let src_dirs_chirho = if ts_chirho.build_info_chirho.hs_source_dirs_chirho.is_empty() {
-            vec![".".to_string()]
-        } else {
-            ts_chirho.build_info_chirho.hs_source_dirs_chirho.clone()
-        };
-
-        if let Some(main_is_chirho) = &ts_chirho.main_is_chirho {
-            let main_path_chirho = src_dirs_chirho
-                .iter()
-                .map(|d_chirho| project_dir_chirho.join(d_chirho).join(main_is_chirho))
-                .find(|p_chirho| p_chirho.exists());
-
-            if let Some(path_chirho) = main_path_chirho {
-                let mod_name_chirho = "Main".to_string();
-                if seen_chirho.insert(format!(
-                    "test:{}:{}",
-                    ts_chirho.name_chirho, mod_name_chirho
-                )) {
-                    modules_chirho.push((mod_name_chirho, path_chirho));
-                }
-            }
-        }
-
-        for mod_name_chirho in &ts_chirho.other_modules_chirho {
-            if seen_chirho.insert(format!(
-                "test:{}:{}",
-                ts_chirho.name_chirho, mod_name_chirho
-            )) {
-                if let Some(path_chirho) =
-                    find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
-                {
-                    modules_chirho.push((mod_name_chirho.clone(), path_chirho));
-                }
-            }
-        }
-    }
+    // Skip test-suite modules — they require test dependencies (tasty,
+    // QuickCheck, etc.) which are rarely available. Only compile library
+    // and executable components.
 
     // Skip Setup.hs / Setup.lhs — these are Cabal build system files
     // that import Distribution.Simple and are not part of the package itself.
