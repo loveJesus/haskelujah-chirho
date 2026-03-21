@@ -151,6 +151,90 @@ impl LlvmCodegenChirho {
         tmp_chirho
     }
 
+    /// Try to create a lazy thunk for a function application expression.
+    /// Returns Some(thunk_val) if the expression is an App chain with a
+    /// known top-level function head; None otherwise.
+    fn try_create_thunk_for_app_chirho(
+        &mut self,
+        expr_chirho: &CoreExprChirho,
+    ) -> Option<String> {
+        // Collect the application chain: head + args
+        let (head_chirho, args_chirho) = collect_app_chain_llvm_chirho(expr_chirho);
+        if args_chirho.is_empty() || args_chirho.len() > 8 {
+            return None;
+        }
+        // Head must be a known top-level function
+        let func_id_chirho = match head_chirho {
+            CoreExprChirho::VarChirho(id_chirho) => *id_chirho,
+            _ => return None,
+        };
+        let func_name_chirho = self.toplevel_names_chirho.get(&func_id_chirho)?;
+        let mangled_chirho = mangle_name_chirho(func_name_chirho);
+
+        // Get the function address
+        let fn_addr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {fn_addr_tmp_chirho} = ptrtoint ptr @{mangled_chirho} to i64"
+        )
+        .unwrap();
+
+        // Evaluate all arguments eagerly
+        let mut fv_vals_chirho = Vec::with_capacity(args_chirho.len() + 1);
+        fv_vals_chirho.push(fn_addr_tmp_chirho.clone());
+        for arg_chirho in &args_chirho {
+            let arg_val_chirho = self.compile_expr_chirho(arg_chirho);
+            fv_vals_chirho.push(arg_val_chirho);
+        }
+
+        // Get trampoline address
+        let trampoline_name_chirho =
+            format!("haskelujah_thunk_trampoline_{}_chirho", args_chirho.len());
+        let tramp_addr_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {tramp_addr_tmp_chirho} = ptrtoint ptr @{trampoline_name_chirho} to i64"
+        )
+        .unwrap();
+
+        // Stack-allocate fvs array
+        let num_fvs_chirho = fv_vals_chirho.len();
+        let fvs_alloca_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {fvs_alloca_chirho} = alloca i64, i64 {num_fvs_chirho}"
+        )
+        .unwrap();
+
+        // Store each free variable
+        for (idx_chirho, fv_val_chirho) in fv_vals_chirho.iter().enumerate() {
+            let fv_ptr_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {fv_ptr_chirho} = getelementptr i64, ptr {fvs_alloca_chirho}, i64 {idx_chirho}"
+            )
+            .unwrap();
+            writeln!(
+                self.output_chirho,
+                "  store i64 {fv_val_chirho}, ptr {fv_ptr_chirho}"
+            )
+            .unwrap();
+        }
+
+        // Call alloc_thunk(trampoline_addr, num_fvs, fvs_ptr)
+        let thunk_val_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {thunk_val_chirho} = call i64 @haskelujah_alloc_thunk_chirho(i64 {tramp_addr_tmp_chirho}, i64 {num_fvs_chirho}, ptr {fvs_alloca_chirho})"
+        )
+        .unwrap();
+
+        // Push as GC root
+        self.emit_gc_root_push_i64_chirho(&thunk_val_chirho);
+
+        Some(thunk_val_chirho)
+    }
+
     fn emit_gc_root_push_i64_chirho(&mut self, value_chirho: &str) {
         let root_ptr_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
@@ -1415,6 +1499,60 @@ impl LlvmCodegenChirho {
         for lifted_chirho in &self.lifted_functions_chirho.clone() {
             self.output_chirho.push_str(lifted_chirho);
             self.output_chirho.push('\n');
+        }
+
+        // Emit thunk trampoline functions (arities 0..8).
+        // Each trampoline takes fvs_ptr, loads func_ptr + args, calls indirectly.
+        for arity_chirho in 0..=8usize {
+            writeln!(self.output_chirho).unwrap();
+            writeln!(
+                self.output_chirho,
+                "define i64 @haskelujah_thunk_trampoline_{arity_chirho}_chirho(ptr %fvs_chirho) {{"
+            )
+            .unwrap();
+            writeln!(self.output_chirho, "entry:").unwrap();
+            // Load function pointer from fvs[0]
+            writeln!(
+                self.output_chirho,
+                "  %fp_ptr_chirho = getelementptr i64, ptr %fvs_chirho, i64 0"
+            )
+            .unwrap();
+            writeln!(
+                self.output_chirho,
+                "  %fp_chirho = load i64, ptr %fp_ptr_chirho"
+            )
+            .unwrap();
+            writeln!(
+                self.output_chirho,
+                "  %fn_chirho = inttoptr i64 %fp_chirho to ptr"
+            )
+            .unwrap();
+            // Load args from fvs[1..arity+1]
+            for arg_idx_chirho in 0..arity_chirho {
+                writeln!(
+                    self.output_chirho,
+                    "  %a{arg_idx_chirho}_ptr_chirho = getelementptr i64, ptr %fvs_chirho, i64 {}",
+                    arg_idx_chirho + 1
+                )
+                .unwrap();
+                writeln!(
+                    self.output_chirho,
+                    "  %a{arg_idx_chirho}_chirho = load i64, ptr %a{arg_idx_chirho}_ptr_chirho"
+                )
+                .unwrap();
+            }
+            // Build call with args
+            let args_str_chirho: String = (0..arity_chirho)
+                .map(|i_chirho| format!("i64 %a{i_chirho}_chirho"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            writeln!(
+                self.output_chirho,
+                "  %result_chirho = call i64 %fn_chirho({args_str_chirho})"
+            )
+            .unwrap();
+            writeln!(self.output_chirho, "  ret i64 %result_chirho").unwrap();
+            writeln!(self.output_chirho, "}}").unwrap();
         }
 
         if !self.global_defs_chirho.is_empty() {
@@ -2980,7 +3118,17 @@ impl LlvmCodegenChirho {
 
         let field_vals_chirho: Vec<String> = args_chirho
             .iter()
-            .map(|arg_chirho| self.compile_expr_chirho(arg_chirho))
+            .map(|arg_chirho| {
+                // Try lazy thunk for function application args (enables
+                // infinite data structures like repeat x = x : repeat x).
+                if let Some(thunk_val_chirho) =
+                    self.try_create_thunk_for_app_chirho(arg_chirho)
+                {
+                    thunk_val_chirho
+                } else {
+                    self.compile_expr_chirho(arg_chirho)
+                }
+            })
             .collect();
         for field_val_chirho in &field_vals_chirho {
             self.emit_gc_root_push_i64_chirho(field_val_chirho);
@@ -4118,6 +4266,34 @@ fn constructor_tag_chirho(name_chirho: &str) -> i64 {
 }
 
 /// Mangle a Haskell name for use as an LLVM symbol.
+/// Collect the head function and arguments from a curried App chain.
+fn collect_app_chain_llvm_chirho(
+    expr_chirho: &CoreExprChirho,
+) -> (&CoreExprChirho, Vec<&CoreExprChirho>) {
+    let mut args_chirho = Vec::new();
+    let mut cur_chirho = expr_chirho;
+    loop {
+        match cur_chirho {
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                args_chirho.push(arg_chirho.as_ref());
+                cur_chirho = fun_chirho.as_ref();
+            }
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => {
+                cur_chirho = inner_chirho.as_ref();
+            }
+            _ => break,
+        }
+    }
+    args_chirho.reverse();
+    (cur_chirho, args_chirho)
+}
+
 fn mangle_name_chirho(name_chirho: &str) -> String {
     let mut mangled_chirho = String::with_capacity(name_chirho.len() + 8);
     mangled_chirho.push_str("haskelujah_");
