@@ -9366,19 +9366,24 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     // Exception handling
     // -----------------------------------------------------------------------
 
-    // catch :: forall a. IO a -> (String -> IO a) -> IO a
+    // catch :: forall e a. Exception e => IO a -> (e -> IO a) -> IO a
     {
+        let catch_e_chirho = TyVarChirho(4129);
         let catch_a_chirho = TyVarChirho(4130);
         env_chirho.bind_chirho(
             "catch".to_string(),
             SchemeChirho {
-                vars_chirho: vec![catch_a_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![catch_e_chirho, catch_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Exception".to_string(),
+                    ty_chirho: TyChirho::VarChirho(catch_e_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         TyChirho::io_chirho(TyChirho::VarChirho(catch_a_chirho)),
                         TyChirho::fun_chirho(
-                            TyChirho::string_chirho(),
+                            TyChirho::VarChirho(catch_e_chirho),
                             TyChirho::io_chirho(TyChirho::VarChirho(catch_a_chirho)),
                         ),
                     ],
@@ -9388,56 +9393,71 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // throw :: forall a. String -> a
+    // throw :: forall e a. Exception e => e -> a
     {
+        let throw_e_chirho = TyVarChirho(4130);
         let throw_a_chirho = TyVarChirho(4131);
         env_chirho.bind_chirho(
             "throw".to_string(),
             SchemeChirho {
-                vars_chirho: vec![throw_a_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![throw_e_chirho, throw_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Exception".to_string(),
+                    ty_chirho: TyChirho::VarChirho(throw_e_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(
-                    TyChirho::string_chirho(),
+                    TyChirho::VarChirho(throw_e_chirho),
                     TyChirho::VarChirho(throw_a_chirho),
                 ),
             },
         );
     }
 
-    // try :: forall a. IO a -> IO (Either String a)
+    // try :: forall e a. Exception e => IO a -> IO (Either e a)
     {
+        let try_e_chirho = TyVarChirho(4133);
         let try_a_chirho = TyVarChirho(4132);
-        // Either String a = App (App (Con "Either") String) (Var a)
-        let either_string_a_chirho = TyChirho::AppChirho(
+        // Either e a = App (App (Con "Either") e) (Var a)
+        let either_e_a_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("Either".to_string())),
-                Box::new(TyChirho::string_chirho()),
+                Box::new(TyChirho::VarChirho(try_e_chirho)),
             )),
             Box::new(TyChirho::VarChirho(try_a_chirho)),
         );
         env_chirho.bind_chirho(
             "try".to_string(),
             SchemeChirho {
-                vars_chirho: vec![try_a_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![try_e_chirho, try_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Exception".to_string(),
+                    ty_chirho: TyChirho::VarChirho(try_e_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::io_chirho(TyChirho::VarChirho(try_a_chirho)),
-                    TyChirho::io_chirho(either_string_a_chirho),
+                    TyChirho::io_chirho(either_e_a_chirho),
                 ),
             },
         );
     }
 
-    // throwIO :: forall a. String -> IO a
+    // throwIO :: forall e a. Exception e => e -> IO a
     {
+        let throwio_e_chirho = TyVarChirho(4159);
         let throwio_a_chirho = TyVarChirho(4160);
         env_chirho.bind_chirho(
             "throwIO".to_string(),
             SchemeChirho {
-                vars_chirho: vec![throwio_a_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![throwio_e_chirho, throwio_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Exception".to_string(),
+                    ty_chirho: TyChirho::VarChirho(throwio_e_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(
-                    TyChirho::string_chirho(),
+                    TyChirho::VarChirho(throwio_e_chirho),
                     TyChirho::io_chirho(TyChirho::VarChirho(throwio_a_chirho)),
                 ),
             },
