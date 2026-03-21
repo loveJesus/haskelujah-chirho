@@ -122,7 +122,8 @@ pub fn nofib_benchmarks_chirho() -> Vec<BenchDefChirho> {
                 "module Bench where\n",
                 "nfib n = if n <= 1 then 1 else nfib (n-1) + nfib (n-2) + 1\n",
                 "main = nfib 15\n",
-            ).to_string(),
+            )
+            .to_string(),
             expected_chirho: Some(1973),
         },
         BenchDefChirho {
@@ -133,7 +134,8 @@ pub fn nofib_benchmarks_chirho() -> Vec<BenchDefChirho> {
                 "tak x y z = if y >= x then z\n",
                 "            else tak (tak (x-1) y z) (tak (y-1) z x) (tak (z-1) x y)\n",
                 "main = tak 12 8 4\n",
-            ).to_string(),
+            )
+            .to_string(),
             expected_chirho: Some(5),
         },
         BenchDefChirho {
@@ -143,7 +145,8 @@ pub fn nofib_benchmarks_chirho() -> Vec<BenchDefChirho> {
                 "module Bench where\n",
                 "fib n = if n == 0 then 0 else if n == 1 then 1 else fib (n-1) + fib (n-2)\n",
                 "main = fib 10\n",
-            ).to_string(),
+            )
+            .to_string(),
             expected_chirho: Some(55),
         },
         BenchDefChirho {
@@ -155,7 +158,8 @@ pub fn nofib_benchmarks_chirho() -> Vec<BenchDefChirho> {
                 "          else if n == 0 then ack (m-1) 1\n",
                 "          else ack (m-1) (ack m (n-1))\n",
                 "main = ack 2 5\n",
-            ).to_string(),
+            )
+            .to_string(),
             expected_chirho: Some(13),
         },
         BenchDefChirho {
@@ -166,7 +170,8 @@ pub fn nofib_benchmarks_chirho() -> Vec<BenchDefChirho> {
                 "fact 0 = 1\n",
                 "fact n = n * fact (n-1)\n",
                 "main = fact 12\n",
-            ).to_string(),
+            )
+            .to_string(),
             expected_chirho: Some(479001600),
         },
         // ── spectral ─────────────────────────────────────────────────────
@@ -178,7 +183,8 @@ pub fn nofib_benchmarks_chirho() -> Vec<BenchDefChirho> {
                 "sumTo 0 = 0\n",
                 "sumTo n = n + sumTo (n-1)\n",
                 "main = sumTo 100\n",
-            ).to_string(),
+            )
+            .to_string(),
             expected_chirho: Some(5050),
         },
         BenchDefChirho {
@@ -189,7 +195,8 @@ pub fn nofib_benchmarks_chirho() -> Vec<BenchDefChirho> {
                 "myGcd a 0 = a\n",
                 "myGcd a b = myGcd b (a `mod` b)\n",
                 "main = myGcd 123456789 987654321\n",
-            ).to_string(),
+            )
+            .to_string(),
             expected_chirho: Some(9),
         },
         BenchDefChirho {
@@ -202,7 +209,8 @@ pub fn nofib_benchmarks_chirho() -> Vec<BenchDefChirho> {
                 "               then 1 + collatzLen (n `div` 2)\n",
                 "               else 1 + collatzLen (3 * n + 1)\n",
                 "main = collatzLen 27\n",
-            ).to_string(),
+            )
+            .to_string(),
             expected_chirho: Some(111),
         },
         BenchDefChirho {
@@ -215,7 +223,8 @@ pub fn nofib_benchmarks_chirho() -> Vec<BenchDefChirho> {
                 "          then pow (b*b) (e `div` 2)\n",
                 "          else b * pow b (e-1)\n",
                 "main = pow 2 30\n",
-            ).to_string(),
+            )
+            .to_string(),
             expected_chirho: Some(1073741824),
         },
         BenchDefChirho {
@@ -233,7 +242,8 @@ pub fn nofib_benchmarks_chirho() -> Vec<BenchDefChirho> {
                 "checkPrime n d = if n `mod` d == 0 then 0 else checkPrime n (d-1)\n",
                 "isPrime n = if n < 2 then 0 else checkPrime n (isqrt n)\n",
                 "main = isPrime 104729\n",
-            ).to_string(),
+            )
+            .to_string(),
             expected_chirho: Some(1),
         },
     ]
@@ -285,9 +295,7 @@ where
 }
 
 /// Run all benchmarks in the nofib suite.
-pub fn run_nofib_suite_chirho<F>(
-    compile_and_eval_fn_chirho: F,
-) -> BenchSuiteResultChirho
+pub fn run_nofib_suite_chirho<F>(compile_and_eval_fn_chirho: F) -> BenchSuiteResultChirho
 where
     F: Fn(&str) -> Result<(Duration, Duration, Duration, i64), String>,
 {
@@ -295,7 +303,9 @@ where
     let benchmarks_chirho = nofib_benchmarks_chirho();
     let results_chirho: Vec<BenchResultChirho> = benchmarks_chirho
         .iter()
-        .map(|b_chirho| run_benchmark_chirho(b_chirho, |s_chirho| compile_and_eval_fn_chirho(s_chirho)))
+        .map(|b_chirho| {
+            run_benchmark_chirho(b_chirho, |s_chirho| compile_and_eval_fn_chirho(s_chirho))
+        })
         .collect();
     let total_chirho = start_chirho.elapsed();
     BenchSuiteResultChirho {
@@ -363,9 +373,8 @@ mod tests_chirho {
             source_chirho: "".to_string(),
             expected_chirho: Some(42),
         };
-        let result_chirho = run_benchmark_chirho(&bench_chirho, |_| {
-            Err("compilation failed".to_string())
-        });
+        let result_chirho =
+            run_benchmark_chirho(&bench_chirho, |_| Err("compilation failed".to_string()));
         assert!(!result_chirho.correct_chirho);
         assert!(result_chirho.result_chirho.is_none());
     }
@@ -379,7 +388,12 @@ mod tests_chirho {
             expected_chirho: Some(42),
         };
         let result_chirho = run_benchmark_chirho(&bench_chirho, |_| {
-            Ok((Duration::from_millis(1), Duration::from_millis(1), Duration::from_millis(1), 42))
+            Ok((
+                Duration::from_millis(1),
+                Duration::from_millis(1),
+                Duration::from_millis(1),
+                42,
+            ))
         });
         assert!(result_chirho.correct_chirho);
         assert_eq!(result_chirho.result_chirho, Some(42));

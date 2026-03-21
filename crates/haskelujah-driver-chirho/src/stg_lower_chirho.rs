@@ -1441,7 +1441,7 @@ pub fn lower_and_run_chirho(
             return Err(format!(
                 "no binding named '{}' in module '{}'",
                 target_name_chirho, module_chirho.name_chirho
-            ))
+            ));
         }
     };
 
@@ -1512,7 +1512,7 @@ pub fn lower_and_run_with_input_chirho(
             return Err(format!(
                 "no binding named '{}' in module '{}'",
                 target_name_chirho, module_chirho.name_chirho
-            ))
+            ));
         }
     };
 
@@ -1587,7 +1587,7 @@ pub fn lower_and_run_with_step_limit_chirho(
             return Err(format!(
                 "no binding named '{}' in module '{}'",
                 target_name_chirho, module_chirho.name_chirho
-            ))
+            ));
         }
     };
 
@@ -2043,9 +2043,11 @@ mod tests_chirho {
 
         let result_chirho = lower_and_run_chirho(&module_chirho, None, HashSet::new());
         assert!(result_chirho.is_err());
-        assert!(result_chirho
-            .unwrap_err()
-            .contains("no binding named 'main'"));
+        assert!(
+            result_chirho
+                .unwrap_err()
+                .contains("no binding named 'main'")
+        );
     }
 
     #[test]

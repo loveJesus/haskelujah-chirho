@@ -185,12 +185,10 @@ impl VersionConstraintChirho {
                 ver_chirho < &upper_ver_chirho
             }
             Self::AndChirho(a_chirho, b_chirho) => {
-                a_chirho.satisfied_by_chirho(ver_chirho)
-                    && b_chirho.satisfied_by_chirho(ver_chirho)
+                a_chirho.satisfied_by_chirho(ver_chirho) && b_chirho.satisfied_by_chirho(ver_chirho)
             }
             Self::OrChirho(a_chirho, b_chirho) => {
-                a_chirho.satisfied_by_chirho(ver_chirho)
-                    || b_chirho.satisfied_by_chirho(ver_chirho)
+                a_chirho.satisfied_by_chirho(ver_chirho) || b_chirho.satisfied_by_chirho(ver_chirho)
             }
         }
     }
@@ -202,8 +200,10 @@ impl fmt::Display for VersionConstraintChirho {
             Self::AnyChirho => write!(f_chirho, "-any"),
             Self::ExactChirho(v_chirho) => write!(f_chirho, "=={}", v_chirho),
             Self::PrefixChirho(p_chirho) => {
-                let parts_chirho: Vec<String> =
-                    p_chirho.iter().map(|c_chirho| c_chirho.to_string()).collect();
+                let parts_chirho: Vec<String> = p_chirho
+                    .iter()
+                    .map(|c_chirho| c_chirho.to_string())
+                    .collect();
                 write!(f_chirho, "=={}.*", parts_chirho.join("."))
             }
             Self::GeChirho(v_chirho) => write!(f_chirho, ">={}", v_chirho),
@@ -274,9 +274,7 @@ fn parse_constraint_atom_chirho(input_chirho: &str) -> Option<VersionConstraintC
 }
 
 /// Parse a version constraint expression (supports `&&` and `||`).
-pub fn parse_version_constraint_chirho(
-    input_chirho: &str,
-) -> Option<VersionConstraintChirho> {
+pub fn parse_version_constraint_chirho(input_chirho: &str) -> Option<VersionConstraintChirho> {
     let s_chirho = input_chirho.trim();
     if s_chirho.is_empty() {
         return Some(VersionConstraintChirho::AnyChirho);
@@ -360,8 +358,7 @@ mod tests_chirho {
 
     #[test]
     fn constraint_range_chirho() {
-        let c_chirho =
-            parse_version_constraint_chirho(">=1.0 && <2.0").unwrap();
+        let c_chirho = parse_version_constraint_chirho(">=1.0 && <2.0").unwrap();
         assert!(c_chirho.satisfied_by_chirho(&parse_version_chirho("1.0").unwrap()));
         assert!(c_chirho.satisfied_by_chirho(&parse_version_chirho("1.5.3").unwrap()));
         assert!(!c_chirho.satisfied_by_chirho(&parse_version_chirho("2.0").unwrap()));
@@ -380,8 +377,7 @@ mod tests_chirho {
 
     #[test]
     fn constraint_or_chirho() {
-        let c_chirho =
-            parse_version_constraint_chirho("==1.0 || ==2.0").unwrap();
+        let c_chirho = parse_version_constraint_chirho("==1.0 || ==2.0").unwrap();
         assert!(c_chirho.satisfied_by_chirho(&parse_version_chirho("1.0").unwrap()));
         assert!(c_chirho.satisfied_by_chirho(&parse_version_chirho("2.0").unwrap()));
         assert!(!c_chirho.satisfied_by_chirho(&parse_version_chirho("1.5").unwrap()));
@@ -396,8 +392,7 @@ mod tests_chirho {
 
     #[test]
     fn constraint_display_chirho() {
-        let c_chirho =
-            parse_version_constraint_chirho(">=1.0 && <2.0").unwrap();
+        let c_chirho = parse_version_constraint_chirho(">=1.0 && <2.0").unwrap();
         assert_eq!(c_chirho.to_string(), ">=1.0 && <2.0");
     }
 

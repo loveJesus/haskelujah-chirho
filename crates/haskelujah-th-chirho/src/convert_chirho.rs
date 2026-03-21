@@ -29,7 +29,10 @@ const TH_SPAN_CHIRHO: SpanChirho = SpanChirho::DUMMY_CHIRHO;
 
 /// Helper: create a raw unqualified NameChirho from a string.
 fn mk_ast_name_chirho(text_chirho: &str) -> NameChirho {
-    NameChirho::RawChirho(RawNameChirho::unqualified_chirho(text_chirho, TH_SPAN_CHIRHO))
+    NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+        text_chirho,
+        TH_SPAN_CHIRHO,
+    ))
 }
 
 // ---------------------------------------------------------------------------
@@ -59,12 +62,8 @@ pub fn th_type_to_ast_chirho(ty_chirho: &ThTypeChirho) -> TypeChirho {
             arg_chirho: Box::new(th_type_to_ast_chirho(arg_chirho)),
             span_chirho: TH_SPAN_CHIRHO,
         },
-        ThTypeChirho::ArrowTChirho => {
-            TypeChirho::ConChirho(mk_ast_name_chirho("->"))
-        }
-        ThTypeChirho::ListTChirho => {
-            TypeChirho::ConChirho(mk_ast_name_chirho("[]"))
-        }
+        ThTypeChirho::ArrowTChirho => TypeChirho::ConChirho(mk_ast_name_chirho("->")),
+        ThTypeChirho::ListTChirho => TypeChirho::ConChirho(mk_ast_name_chirho("[]")),
         ThTypeChirho::TupleTChirho(n_chirho) => {
             let name_chirho = match n_chirho {
                 0 => "()",
@@ -96,8 +95,12 @@ pub fn th_type_to_ast_chirho(ty_chirho: &ThTypeChirho) -> TypeChirho {
                 let vars_chirho: Vec<TyVarChirho> = bndrs_chirho
                     .iter()
                     .map(|b_chirho| match b_chirho {
-                        ThTyVarBndrChirho::PlainTVChirho(n_chirho) => TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho)),
-                        ThTyVarBndrChirho::KindedTVChirho(n_chirho, _) => TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho)),
+                        ThTyVarBndrChirho::PlainTVChirho(n_chirho) => {
+                            TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
+                        }
+                        ThTyVarBndrChirho::KindedTVChirho(n_chirho, _) => {
+                            TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
+                        }
                     })
                     .collect();
                 TypeChirho::ForallChirho {
@@ -115,18 +118,12 @@ pub fn th_type_to_ast_chirho(ty_chirho: &ThTypeChirho) -> TypeChirho {
             // No Wildcard variant in TypeChirho, use a placeholder
             TypeChirho::VarChirho(mk_ast_name_chirho("_"))
         }
-        ThTypeChirho::StarTChirho => {
-            TypeChirho::ConChirho(mk_ast_name_chirho("Type"))
-        }
-        ThTypeChirho::ConstraintTChirho => {
-            TypeChirho::ConChirho(mk_ast_name_chirho("Constraint"))
-        }
-        ThTypeChirho::PromotedTChirho(name_chirho) => {
-            TypeChirho::PromotedConChirho {
-                name_chirho: th_name_to_ast_chirho(name_chirho),
-                span_chirho: TH_SPAN_CHIRHO,
-            }
-        }
+        ThTypeChirho::StarTChirho => TypeChirho::ConChirho(mk_ast_name_chirho("Type")),
+        ThTypeChirho::ConstraintTChirho => TypeChirho::ConChirho(mk_ast_name_chirho("Constraint")),
+        ThTypeChirho::PromotedTChirho(name_chirho) => TypeChirho::PromotedConChirho {
+            name_chirho: th_name_to_ast_chirho(name_chirho),
+            span_chirho: TH_SPAN_CHIRHO,
+        },
         // For unsupported TH type forms, produce a placeholder
         _ => TypeChirho::ConChirho(mk_ast_name_chirho("__TH_UNSUPPORTED__")),
     }
@@ -163,20 +160,33 @@ fn th_type_to_constraint_chirho(ty_chirho: &ThTypeChirho) -> Option<ConstraintCh
 /// Convert a TH pattern to a haskelujah AST pattern.
 pub fn th_pat_to_ast_chirho(pat_chirho: &ThPatChirho) -> PatChirho {
     match pat_chirho {
-        ThPatChirho::VarPChirho(name_chirho) => PatChirho::VarChirho(th_name_to_ast_chirho(name_chirho)),
-        ThPatChirho::LitPChirho(lit_chirho) => PatChirho::LitChirho(th_lit_to_ast_chirho(lit_chirho)),
+        ThPatChirho::VarPChirho(name_chirho) => {
+            PatChirho::VarChirho(th_name_to_ast_chirho(name_chirho))
+        }
+        ThPatChirho::LitPChirho(lit_chirho) => {
+            PatChirho::LitChirho(th_lit_to_ast_chirho(lit_chirho))
+        }
         ThPatChirho::WildPChirho => PatChirho::WildcardChirho(TH_SPAN_CHIRHO),
         ThPatChirho::ConPChirho(name_chirho, _tys, pats_chirho) => PatChirho::ConChirho {
             con_chirho: th_name_to_ast_chirho(name_chirho),
-            args_chirho: pats_chirho.iter().map(|p_chirho| th_pat_to_ast_chirho(p_chirho)).collect(),
+            args_chirho: pats_chirho
+                .iter()
+                .map(|p_chirho| th_pat_to_ast_chirho(p_chirho))
+                .collect(),
             span_chirho: TH_SPAN_CHIRHO,
         },
         ThPatChirho::TupPChirho(pats_chirho) => PatChirho::TupleChirho {
-            elements_chirho: pats_chirho.iter().map(|p_chirho| th_pat_to_ast_chirho(p_chirho)).collect(),
+            elements_chirho: pats_chirho
+                .iter()
+                .map(|p_chirho| th_pat_to_ast_chirho(p_chirho))
+                .collect(),
             span_chirho: TH_SPAN_CHIRHO,
         },
         ThPatChirho::ListPChirho(pats_chirho) => PatChirho::ListChirho {
-            elements_chirho: pats_chirho.iter().map(|p_chirho| th_pat_to_ast_chirho(p_chirho)).collect(),
+            elements_chirho: pats_chirho
+                .iter()
+                .map(|p_chirho| th_pat_to_ast_chirho(p_chirho))
+                .collect(),
             span_chirho: TH_SPAN_CHIRHO,
         },
         ThPatChirho::AsPChirho(name_chirho, pat_inner_chirho) => PatChirho::AsChirho {
@@ -206,10 +216,16 @@ pub fn th_lit_to_ast_chirho(lit_chirho: &ThLitChirho) -> LitChirho {
         ThLitChirho::IntegerLChirho(n_chirho) => LitChirho::IntChirho(*n_chirho, TH_SPAN_CHIRHO),
         ThLitChirho::RationalLChirho(f_chirho) => LitChirho::FloatChirho(*f_chirho, TH_SPAN_CHIRHO),
         ThLitChirho::CharLChirho(c_chirho) => LitChirho::CharChirho(*c_chirho, TH_SPAN_CHIRHO),
-        ThLitChirho::StringLChirho(s_chirho) => LitChirho::StringChirho(s_chirho.clone(), TH_SPAN_CHIRHO),
+        ThLitChirho::StringLChirho(s_chirho) => {
+            LitChirho::StringChirho(s_chirho.clone(), TH_SPAN_CHIRHO)
+        }
         ThLitChirho::IntPrimLChirho(n_chirho) => LitChirho::IntChirho(*n_chirho, TH_SPAN_CHIRHO),
-        ThLitChirho::FloatPrimLChirho(f_chirho) => LitChirho::FloatChirho(*f_chirho, TH_SPAN_CHIRHO),
-        ThLitChirho::DoublePrimLChirho(f_chirho) => LitChirho::FloatChirho(*f_chirho, TH_SPAN_CHIRHO),
+        ThLitChirho::FloatPrimLChirho(f_chirho) => {
+            LitChirho::FloatChirho(*f_chirho, TH_SPAN_CHIRHO)
+        }
+        ThLitChirho::DoublePrimLChirho(f_chirho) => {
+            LitChirho::FloatChirho(*f_chirho, TH_SPAN_CHIRHO)
+        }
         _ => LitChirho::IntChirho(0, TH_SPAN_CHIRHO), // Fallback
     }
 }
@@ -221,28 +237,44 @@ pub fn th_lit_to_ast_chirho(lit_chirho: &ThLitChirho) -> LitChirho {
 /// Convert a TH expression to a haskelujah AST expression.
 pub fn th_exp_to_ast_chirho(exp_chirho: &ThExpChirho) -> ExprChirho {
     match exp_chirho {
-        ThExpChirho::VarEChirho(name_chirho) => ExprChirho::VarChirho(th_name_to_ast_chirho(name_chirho)),
-        ThExpChirho::ConEChirho(name_chirho) => ExprChirho::ConChirho(th_name_to_ast_chirho(name_chirho)),
-        ThExpChirho::LitEChirho(lit_chirho) => ExprChirho::LitChirho(th_lit_to_ast_chirho(lit_chirho)),
+        ThExpChirho::VarEChirho(name_chirho) => {
+            ExprChirho::VarChirho(th_name_to_ast_chirho(name_chirho))
+        }
+        ThExpChirho::ConEChirho(name_chirho) => {
+            ExprChirho::ConChirho(th_name_to_ast_chirho(name_chirho))
+        }
+        ThExpChirho::LitEChirho(lit_chirho) => {
+            ExprChirho::LitChirho(th_lit_to_ast_chirho(lit_chirho))
+        }
         ThExpChirho::AppEChirho(fun_chirho, arg_chirho) => ExprChirho::AppChirho {
             fun_chirho: Box::new(th_exp_to_ast_chirho(fun_chirho)),
             arg_chirho: Box::new(th_exp_to_ast_chirho(arg_chirho)),
             span_chirho: TH_SPAN_CHIRHO,
         },
         ThExpChirho::LamEChirho(pats_chirho, body_chirho) => ExprChirho::LamChirho {
-            pats_chirho: pats_chirho.iter().map(|p_chirho| th_pat_to_ast_chirho(p_chirho)).collect(),
+            pats_chirho: pats_chirho
+                .iter()
+                .map(|p_chirho| th_pat_to_ast_chirho(p_chirho))
+                .collect(),
             body_chirho: Box::new(th_exp_to_ast_chirho(body_chirho)),
             span_chirho: TH_SPAN_CHIRHO,
         },
         ThExpChirho::TupEChirho(elts_chirho) => ExprChirho::TupleChirho {
             elements_chirho: elts_chirho
                 .iter()
-                .filter_map(|e_chirho| e_chirho.as_ref().map(|e_chirho| th_exp_to_ast_chirho(e_chirho)))
+                .filter_map(|e_chirho| {
+                    e_chirho
+                        .as_ref()
+                        .map(|e_chirho| th_exp_to_ast_chirho(e_chirho))
+                })
                 .collect(),
             span_chirho: TH_SPAN_CHIRHO,
         },
         ThExpChirho::ListEChirho(elts_chirho) => ExprChirho::ListChirho {
-            elements_chirho: elts_chirho.iter().map(|e_chirho| th_exp_to_ast_chirho(e_chirho)).collect(),
+            elements_chirho: elts_chirho
+                .iter()
+                .map(|e_chirho| th_exp_to_ast_chirho(e_chirho))
+                .collect(),
             span_chirho: TH_SPAN_CHIRHO,
         },
         ThExpChirho::CondEChirho(cond_chirho, then_chirho, else_chirho) => ExprChirho::IfChirho {
@@ -253,7 +285,10 @@ pub fn th_exp_to_ast_chirho(exp_chirho: &ThExpChirho) -> ExprChirho {
         },
         ThExpChirho::CaseEChirho(scrut_chirho, matches_chirho) => ExprChirho::CaseChirho {
             scrutinee_chirho: Box::new(th_exp_to_ast_chirho(scrut_chirho)),
-            alts_chirho: matches_chirho.iter().map(|m_chirho| th_match_to_alt_chirho(m_chirho)).collect(),
+            alts_chirho: matches_chirho
+                .iter()
+                .map(|m_chirho| th_match_to_alt_chirho(m_chirho))
+                .collect(),
             span_chirho: TH_SPAN_CHIRHO,
         },
         ThExpChirho::LetEChirho(decs_chirho, body_chirho) => {
@@ -268,7 +303,10 @@ pub fn th_exp_to_ast_chirho(exp_chirho: &ThExpChirho) -> ExprChirho {
             }
         }
         ThExpChirho::DoEChirho(_, stmts_chirho) => ExprChirho::DoChirho {
-            stmts_chirho: stmts_chirho.iter().map(|s_chirho| th_stmt_to_ast_chirho(s_chirho)).collect(),
+            stmts_chirho: stmts_chirho
+                .iter()
+                .map(|s_chirho| th_stmt_to_ast_chirho(s_chirho))
+                .collect(),
             span_chirho: TH_SPAN_CHIRHO,
         },
         ThExpChirho::InfixEChirho(left_chirho, op_chirho, right_chirho) => {
@@ -353,25 +391,25 @@ fn th_match_to_alt_chirho(match_chirho: &ThMatchChirho) -> AltChirho {
 /// Convert a TH body to a haskelujah RHS.
 fn th_body_to_rhs_chirho(body_chirho: &ThBodyChirho) -> RhsChirho {
     match body_chirho {
-        ThBodyChirho::NormalBChirho(expr_chirho) => RhsChirho::UnguardedChirho(th_exp_to_ast_chirho(expr_chirho)),
-        ThBodyChirho::GuardedBChirho(guards_chirho) => {
-            RhsChirho::GuardedChirho(
-                guards_chirho
-                    .iter()
-                    .map(|(g_chirho, e_chirho)| {
-                        let guard_expr_chirho = match g_chirho {
-                            ThGuardChirho::NormalGChirho(ge_chirho) => th_exp_to_ast_chirho(ge_chirho),
-                            ThGuardChirho::PatGChirho(_, ge_chirho) => th_exp_to_ast_chirho(ge_chirho),
-                        };
-                        haskelujah_ast_chirho::expr_chirho::GuardedExprChirho {
-                            guard_chirho: guard_expr_chirho,
-                            body_chirho: th_exp_to_ast_chirho(e_chirho),
-                            span_chirho: TH_SPAN_CHIRHO,
-                        }
-                    })
-                    .collect(),
-            )
+        ThBodyChirho::NormalBChirho(expr_chirho) => {
+            RhsChirho::UnguardedChirho(th_exp_to_ast_chirho(expr_chirho))
         }
+        ThBodyChirho::GuardedBChirho(guards_chirho) => RhsChirho::GuardedChirho(
+            guards_chirho
+                .iter()
+                .map(|(g_chirho, e_chirho)| {
+                    let guard_expr_chirho = match g_chirho {
+                        ThGuardChirho::NormalGChirho(ge_chirho) => th_exp_to_ast_chirho(ge_chirho),
+                        ThGuardChirho::PatGChirho(_, ge_chirho) => th_exp_to_ast_chirho(ge_chirho),
+                    };
+                    haskelujah_ast_chirho::expr_chirho::GuardedExprChirho {
+                        guard_chirho: guard_expr_chirho,
+                        body_chirho: th_exp_to_ast_chirho(e_chirho),
+                        span_chirho: TH_SPAN_CHIRHO,
+                    }
+                })
+                .collect(),
+        ),
     }
 }
 
@@ -390,8 +428,12 @@ fn th_stmt_to_ast_chirho(stmt_chirho: &ThStmtChirho) -> StmtChirho {
                 .collect(),
             span_chirho: TH_SPAN_CHIRHO,
         },
-        ThStmtChirho::NoBindSChirho(expr_chirho) => StmtChirho::ExprChirho(th_exp_to_ast_chirho(expr_chirho)),
-        _ => StmtChirho::ExprChirho(ExprChirho::VarChirho(mk_ast_name_chirho("__TH_UNSUPPORTED__"))),
+        ThStmtChirho::NoBindSChirho(expr_chirho) => {
+            StmtChirho::ExprChirho(th_exp_to_ast_chirho(expr_chirho))
+        }
+        _ => StmtChirho::ExprChirho(ExprChirho::VarChirho(mk_ast_name_chirho(
+            "__TH_UNSUPPORTED__",
+        ))),
     }
 }
 
@@ -402,7 +444,11 @@ fn th_dec_to_local_bind_chirho(dec_chirho: &ThDecChirho) -> Option<LocalBindChir
             let matches_chirho: Vec<MatchArmChirho> = clauses_chirho
                 .iter()
                 .map(|c_chirho| MatchArmChirho {
-                    pats_chirho: c_chirho.pats_chirho.iter().map(|p_chirho| th_pat_to_ast_chirho(p_chirho)).collect(),
+                    pats_chirho: c_chirho
+                        .pats_chirho
+                        .iter()
+                        .map(|p_chirho| th_pat_to_ast_chirho(p_chirho))
+                        .collect(),
                     rhs_chirho: th_body_to_rhs_chirho(&c_chirho.body_chirho),
                     where_binds_chirho: c_chirho
                         .decs_chirho
@@ -440,7 +486,11 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
             let matches_chirho: Vec<MatchArmChirho> = clauses_chirho
                 .iter()
                 .map(|c_chirho| MatchArmChirho {
-                    pats_chirho: c_chirho.pats_chirho.iter().map(|p_chirho| th_pat_to_ast_chirho(p_chirho)).collect(),
+                    pats_chirho: c_chirho
+                        .pats_chirho
+                        .iter()
+                        .map(|p_chirho| th_pat_to_ast_chirho(p_chirho))
+                        .collect(),
                     rhs_chirho: th_body_to_rhs_chirho(&c_chirho.body_chirho),
                     where_binds_chirho: c_chirho
                         .decs_chirho
@@ -461,12 +511,23 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
             ty_chirho: th_type_to_ast_chirho(ty_chirho),
             span_chirho: TH_SPAN_CHIRHO,
         }),
-        ThDecChirho::DataDChirho(_cxt_chirho, name_chirho, tyvars_chirho, _kind, cons_chirho, derivs_chirho) => {
+        ThDecChirho::DataDChirho(
+            _cxt_chirho,
+            name_chirho,
+            tyvars_chirho,
+            _kind,
+            cons_chirho,
+            derivs_chirho,
+        ) => {
             let ast_tyvars_chirho: Vec<TyVarChirho> = tyvars_chirho
                 .iter()
                 .map(|tv_chirho| match tv_chirho {
-                    ThTyVarBndrChirho::PlainTVChirho(n_chirho) => TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho)),
-                    ThTyVarBndrChirho::KindedTVChirho(n_chirho, _) => TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho)),
+                    ThTyVarBndrChirho::PlainTVChirho(n_chirho) => {
+                        TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
+                    }
+                    ThTyVarBndrChirho::KindedTVChirho(n_chirho, _) => {
+                        TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
+                    }
                 })
                 .collect();
             let ast_cons_chirho: Vec<ConDeclChirho> = cons_chirho
@@ -498,8 +559,12 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
             let ast_tyvars_chirho: Vec<TyVarChirho> = tyvars_chirho
                 .iter()
                 .map(|tv_chirho| match tv_chirho {
-                    ThTyVarBndrChirho::PlainTVChirho(n_chirho) => TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho)),
-                    ThTyVarBndrChirho::KindedTVChirho(n_chirho, _) => TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho)),
+                    ThTyVarBndrChirho::PlainTVChirho(n_chirho) => {
+                        TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
+                    }
+                    ThTyVarBndrChirho::KindedTVChirho(n_chirho, _) => {
+                        TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
+                    }
                 })
                 .collect();
             Some(DeclChirho::TypeAliasDeclChirho {
@@ -570,7 +635,12 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
                 name_chirho: th_name_to_ast_chirho(name_chirho),
                 fields_chirho: bang_types_chirho
                     .iter()
-                    .map(|bt_chirho| (StrictnessChirho::LazyChirho, th_type_to_ast_chirho(&bt_chirho.ty_chirho)))
+                    .map(|bt_chirho| {
+                        (
+                            StrictnessChirho::LazyChirho,
+                            th_type_to_ast_chirho(&bt_chirho.ty_chirho),
+                        )
+                    })
                     .collect(),
                 span_chirho: TH_SPAN_CHIRHO,
             })
@@ -630,19 +700,21 @@ mod tests_chirho {
         let th_ty_chirho = ThTypeChirho::AppTChirho(
             Box::new(ThTypeChirho::AppTChirho(
                 Box::new(ThTypeChirho::ArrowTChirho),
-                Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho("Int"))),
+                Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+                    "Int",
+                ))),
             )),
-            Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho("Bool"))),
+            Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+                "Bool",
+            ))),
         );
 
         let ast_ty_chirho = th_type_to_ast_chirho(&th_ty_chirho);
         match ast_ty_chirho {
-            TypeChirho::AppChirho { arg_chirho, .. } => {
-                match *arg_chirho {
-                    TypeChirho::ConChirho(n_chirho) => assert_eq!(n_chirho.text_chirho(), "Bool"),
-                    _ => panic!("expected Con Bool"),
-                }
-            }
+            TypeChirho::AppChirho { arg_chirho, .. } => match *arg_chirho {
+                TypeChirho::ConChirho(n_chirho) => assert_eq!(n_chirho.text_chirho(), "Bool"),
+                _ => panic!("expected Con Bool"),
+            },
             _ => panic!("expected AppT"),
         }
     }
@@ -654,16 +726,20 @@ mod tests_chirho {
             ThNameChirho::mk_name_chirho("f"),
             vec![ThClauseChirho {
                 pats_chirho: vec![ThPatChirho::VarPChirho(ThNameChirho::mk_name_chirho("x"))],
-                body_chirho: ThBodyChirho::NormalBChirho(
-                    ThExpChirho::VarEChirho(ThNameChirho::mk_name_chirho("x")),
-                ),
+                body_chirho: ThBodyChirho::NormalBChirho(ThExpChirho::VarEChirho(
+                    ThNameChirho::mk_name_chirho("x"),
+                )),
                 decs_chirho: vec![],
             }],
         );
 
         let ast_dec_chirho = th_dec_to_ast_chirho(&th_dec_chirho).unwrap();
         match ast_dec_chirho {
-            DeclChirho::FunBindChirho { name_chirho, matches_chirho, .. } => {
+            DeclChirho::FunBindChirho {
+                name_chirho,
+                matches_chirho,
+                ..
+            } => {
                 assert_eq!(name_chirho.text_chirho(), "f");
                 assert_eq!(matches_chirho.len(), 1);
                 assert_eq!(matches_chirho[0].pats_chirho.len(), 1);
@@ -678,7 +754,9 @@ mod tests_chirho {
         let th_dec_chirho = ThDecChirho::DataDChirho(
             vec![],
             ThNameChirho::mk_name_chirho("Foo"),
-            vec![ThTyVarBndrChirho::PlainTVChirho(ThNameChirho::mk_name_chirho("a"))],
+            vec![ThTyVarBndrChirho::PlainTVChirho(
+                ThNameChirho::mk_name_chirho("a"),
+            )],
             None,
             vec![ThConChirho::NormalCChirho(
                 ThNameChirho::mk_name_chirho("MkFoo"),

@@ -146,10 +146,9 @@ fn roundtrip_llvm_all_chirho() {
             )
         });
 
-        let llvm_ir_chirho =
-            haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
-                &result_chirho.core_chirho,
-            );
+        let llvm_ir_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
+            &result_chirho.core_chirho,
+        );
 
         // Structural checks
         assert!(
@@ -191,10 +190,9 @@ fn roundtrip_wasm_all_chirho() {
             )
         });
 
-        let wasm_chirho =
-            haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
-                &result_chirho.core_chirho,
-            );
+        let wasm_chirho = haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
+            &result_chirho.core_chirho,
+        );
 
         // Valid Wasm magic number
         assert_eq!(
@@ -296,14 +294,12 @@ fn roundtrip_all_backends_produce_output_chirho() {
         )
         .expect("compile should succeed");
 
-        let llvm_chirho =
-            haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
-                &result_chirho.core_chirho,
-            );
-        let wasm_chirho =
-            haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
-                &result_chirho.core_chirho,
-            );
+        let llvm_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
+            &result_chirho.core_chirho,
+        );
+        let wasm_chirho = haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho(
+            &result_chirho.core_chirho,
+        );
         let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
         let cran_chirho =
             haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
@@ -312,9 +308,21 @@ fn roundtrip_all_backends_produce_output_chirho() {
             )
             .expect("Cranelift should compile");
 
-        assert!(!llvm_chirho.is_empty(), "LLVM empty for {}", case_chirho.name_chirho);
-        assert!(!wasm_chirho.is_empty(), "Wasm empty for {}", case_chirho.name_chirho);
-        assert!(!cran_chirho.object_bytes_chirho.is_empty(), "Cranelift empty for {}", case_chirho.name_chirho);
+        assert!(
+            !llvm_chirho.is_empty(),
+            "LLVM empty for {}",
+            case_chirho.name_chirho
+        );
+        assert!(
+            !wasm_chirho.is_empty(),
+            "Wasm empty for {}",
+            case_chirho.name_chirho
+        );
+        assert!(
+            !cran_chirho.object_bytes_chirho.is_empty(),
+            "Cranelift empty for {}",
+            case_chirho.name_chirho
+        );
         total_chirho += 1;
     }
     assert_eq!(total_chirho, ROUNDTRIP_CASES_CHIRHO.len());

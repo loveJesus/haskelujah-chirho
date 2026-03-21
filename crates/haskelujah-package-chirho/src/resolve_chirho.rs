@@ -59,9 +59,8 @@ impl PackageIndexChirho {
             dependencies_chirho,
         });
         // Keep newest first.
-        entry_chirho.sort_by(|a_chirho, b_chirho| {
-            b_chirho.version_chirho.cmp(&a_chirho.version_chirho)
-        });
+        entry_chirho
+            .sort_by(|a_chirho, b_chirho| b_chirho.version_chirho.cmp(&a_chirho.version_chirho));
     }
 
     /// All versions of a given package, newest first.
@@ -134,7 +133,11 @@ impl std::fmt::Display for ResolveErrorChirho {
                 )
             }
             Self::CycleDetectedChirho { packages_chirho } => {
-                write!(f_chirho, "dependency cycle: {}", packages_chirho.join(" -> "))
+                write!(
+                    f_chirho,
+                    "dependency cycle: {}",
+                    packages_chirho.join(" -> ")
+                )
             }
             Self::ConflictChirho {
                 package_chirho,
@@ -201,11 +204,7 @@ impl<'a> SolverChirho<'a> {
         // If already in progress (on the DFS stack), we have a cycle.
         if self.in_progress_chirho.contains(name_chirho) {
             return Err(ResolveErrorChirho::CycleDetectedChirho {
-                packages_chirho: self
-                    .in_progress_chirho
-                    .iter()
-                    .cloned()
-                    .collect(),
+                packages_chirho: self.in_progress_chirho.iter().cloned().collect(),
             });
         }
 
@@ -249,9 +248,9 @@ impl<'a> SolverChirho<'a> {
         let chosen_chirho = versions_chirho
             .iter()
             .find(|meta_chirho| {
-                all_constraints_chirho.iter().all(|c_chirho| {
-                    c_chirho.satisfied_by_chirho(&meta_chirho.version_chirho)
-                })
+                all_constraints_chirho
+                    .iter()
+                    .all(|c_chirho| c_chirho.satisfied_by_chirho(&meta_chirho.version_chirho))
             })
             .ok_or_else(|| ResolveErrorChirho::NoVersionSatisfiesChirho {
                 package_chirho: name_chirho.to_string(),
@@ -260,8 +259,10 @@ impl<'a> SolverChirho<'a> {
             .clone();
 
         // Select this version.
-        self.selected_chirho
-            .insert(name_chirho.to_string(), chosen_chirho.version_chirho.clone());
+        self.selected_chirho.insert(
+            name_chirho.to_string(),
+            chosen_chirho.version_chirho.clone(),
+        );
         self.in_progress_chirho.insert(name_chirho.to_string());
 
         // Record dep edges and recurse.
@@ -298,12 +299,12 @@ impl<'a> SolverChirho<'a> {
         order_chirho
             .iter()
             .filter_map(|name_chirho| {
-                self.selected_chirho.get(name_chirho).map(|v_chirho| {
-                    BuildStepChirho {
+                self.selected_chirho
+                    .get(name_chirho)
+                    .map(|v_chirho| BuildStepChirho {
                         package_chirho: name_chirho.clone(),
                         version_chirho: v_chirho.clone(),
-                    }
-                })
+                    })
             })
             .collect()
     }
@@ -439,8 +440,7 @@ mod tests_chirho {
 
         let deps_chirho = vec![dep_any_chirho("text")];
         let plan_chirho =
-            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho())
-                .unwrap();
+            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho()).unwrap();
 
         assert_eq!(plan_chirho.steps_chirho.len(), 1);
         assert_eq!(plan_chirho.steps_chirho[0].package_chirho, "text");
@@ -457,8 +457,7 @@ mod tests_chirho {
 
         let deps_chirho = vec![dep_range_chirho("text", "1.0", "2.0")];
         let plan_chirho =
-            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho())
-                .unwrap();
+            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho()).unwrap();
 
         assert_eq!(plan_chirho.steps_chirho.len(), 1);
         // 2.0 is excluded by <2.0, so should pick 1.5
@@ -469,22 +468,13 @@ mod tests_chirho {
     fn resolve_transitive_deps_chirho() {
         let mut index_chirho = PackageIndexChirho::new_chirho();
         // A depends on B, B depends on C.
-        index_chirho.add_package_chirho(
-            "A",
-            v_chirho("1.0"),
-            vec![dep_any_chirho("B")],
-        );
-        index_chirho.add_package_chirho(
-            "B",
-            v_chirho("1.0"),
-            vec![dep_any_chirho("C")],
-        );
+        index_chirho.add_package_chirho("A", v_chirho("1.0"), vec![dep_any_chirho("B")]);
+        index_chirho.add_package_chirho("B", v_chirho("1.0"), vec![dep_any_chirho("C")]);
         index_chirho.add_package_chirho("C", v_chirho("1.0"), vec![]);
 
         let deps_chirho = vec![dep_any_chirho("A")];
         let plan_chirho =
-            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho())
-                .unwrap();
+            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho()).unwrap();
 
         assert_eq!(plan_chirho.steps_chirho.len(), 3);
         // C should be first (leaf), then B, then A.
@@ -493,9 +483,18 @@ mod tests_chirho {
             .iter()
             .map(|s_chirho| s_chirho.package_chirho.as_str())
             .collect();
-        let c_idx_chirho = names_chirho.iter().position(|n_chirho| *n_chirho == "C").unwrap();
-        let b_idx_chirho = names_chirho.iter().position(|n_chirho| *n_chirho == "B").unwrap();
-        let a_idx_chirho = names_chirho.iter().position(|n_chirho| *n_chirho == "A").unwrap();
+        let c_idx_chirho = names_chirho
+            .iter()
+            .position(|n_chirho| *n_chirho == "C")
+            .unwrap();
+        let b_idx_chirho = names_chirho
+            .iter()
+            .position(|n_chirho| *n_chirho == "B")
+            .unwrap();
+        let a_idx_chirho = names_chirho
+            .iter()
+            .position(|n_chirho| *n_chirho == "A")
+            .unwrap();
         assert!(c_idx_chirho < b_idx_chirho);
         assert!(b_idx_chirho < a_idx_chirho);
     }
@@ -509,22 +508,13 @@ mod tests_chirho {
             v_chirho("1.0"),
             vec![dep_any_chirho("B"), dep_any_chirho("C")],
         );
-        index_chirho.add_package_chirho(
-            "B",
-            v_chirho("1.0"),
-            vec![dep_any_chirho("D")],
-        );
-        index_chirho.add_package_chirho(
-            "C",
-            v_chirho("1.0"),
-            vec![dep_any_chirho("D")],
-        );
+        index_chirho.add_package_chirho("B", v_chirho("1.0"), vec![dep_any_chirho("D")]);
+        index_chirho.add_package_chirho("C", v_chirho("1.0"), vec![dep_any_chirho("D")]);
         index_chirho.add_package_chirho("D", v_chirho("1.0"), vec![]);
 
         let deps_chirho = vec![dep_any_chirho("A")];
         let plan_chirho =
-            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho())
-                .unwrap();
+            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho()).unwrap();
 
         // D appears exactly once.
         let d_count_chirho = plan_chirho
@@ -541,8 +531,14 @@ mod tests_chirho {
             .iter()
             .map(|s_chirho| s_chirho.package_chirho.as_str())
             .collect();
-        let d_idx_chirho = names_chirho.iter().position(|n_chirho| *n_chirho == "D").unwrap();
-        let a_idx_chirho = names_chirho.iter().position(|n_chirho| *n_chirho == "A").unwrap();
+        let d_idx_chirho = names_chirho
+            .iter()
+            .position(|n_chirho| *n_chirho == "D")
+            .unwrap();
+        let a_idx_chirho = names_chirho
+            .iter()
+            .position(|n_chirho| *n_chirho == "A")
+            .unwrap();
         assert!(d_idx_chirho < a_idx_chirho);
     }
 
@@ -550,23 +546,14 @@ mod tests_chirho {
     fn resolve_shared_dep_different_constraints_chirho() {
         let mut index_chirho = PackageIndexChirho::new_chirho();
         // A needs D >=1.0, B needs D >=1.5. D has 1.0 and 2.0.
-        index_chirho.add_package_chirho(
-            "A",
-            v_chirho("1.0"),
-            vec![dep_ge_chirho("D", "1.0")],
-        );
-        index_chirho.add_package_chirho(
-            "B",
-            v_chirho("1.0"),
-            vec![dep_ge_chirho("D", "1.5")],
-        );
+        index_chirho.add_package_chirho("A", v_chirho("1.0"), vec![dep_ge_chirho("D", "1.0")]);
+        index_chirho.add_package_chirho("B", v_chirho("1.0"), vec![dep_ge_chirho("D", "1.5")]);
         index_chirho.add_package_chirho("D", v_chirho("2.0"), vec![]);
         index_chirho.add_package_chirho("D", v_chirho("1.0"), vec![]);
 
         let deps_chirho = vec![dep_any_chirho("A"), dep_any_chirho("B")];
         let plan_chirho =
-            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho())
-                .unwrap();
+            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho()).unwrap();
 
         // D should be 2.0 (satisfies both >=1.0 and >=1.5)
         let d_step_chirho = plan_chirho
@@ -610,16 +597,8 @@ mod tests_chirho {
     fn resolve_cycle_detected_chirho() {
         let mut index_chirho = PackageIndexChirho::new_chirho();
         // A -> B -> A (cycle)
-        index_chirho.add_package_chirho(
-            "A",
-            v_chirho("1.0"),
-            vec![dep_any_chirho("B")],
-        );
-        index_chirho.add_package_chirho(
-            "B",
-            v_chirho("1.0"),
-            vec![dep_any_chirho("A")],
-        );
+        index_chirho.add_package_chirho("A", v_chirho("1.0"), vec![dep_any_chirho("B")]);
+        index_chirho.add_package_chirho("B", v_chirho("1.0"), vec![dep_any_chirho("A")]);
 
         let deps_chirho = vec![dep_any_chirho("A")];
         let result_chirho =
@@ -636,11 +615,7 @@ mod tests_chirho {
     fn resolve_conflict_chirho() {
         let mut index_chirho = PackageIndexChirho::new_chirho();
         // A needs D >=2.0, B needs D <1.5. D only has 1.0 and 2.0.
-        index_chirho.add_package_chirho(
-            "A",
-            v_chirho("1.0"),
-            vec![dep_ge_chirho("D", "2.0")],
-        );
+        index_chirho.add_package_chirho("A", v_chirho("1.0"), vec![dep_ge_chirho("D", "2.0")]);
         index_chirho.add_package_chirho(
             "B",
             v_chirho("1.0"),
@@ -700,12 +675,8 @@ mod tests_chirho {
     #[test]
     fn resolve_no_deps_chirho() {
         let index_chirho = PackageIndexChirho::new_chirho();
-        let plan_chirho = resolve_deps_chirho(
-            &[],
-            &index_chirho,
-            &empty_builtins_chirho(),
-        )
-        .unwrap();
+        let plan_chirho =
+            resolve_deps_chirho(&[], &index_chirho, &empty_builtins_chirho()).unwrap();
         assert!(plan_chirho.steps_chirho.is_empty());
     }
 
@@ -719,8 +690,7 @@ mod tests_chirho {
 
         let deps_chirho = vec![dep_range_chirho("text", "2.0", "3.0")];
         let plan_chirho =
-            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho())
-                .unwrap();
+            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho()).unwrap();
 
         assert_eq!(plan_chirho.steps_chirho[0].version_chirho, v_chirho("2.5"));
     }

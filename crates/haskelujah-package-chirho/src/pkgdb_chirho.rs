@@ -93,17 +93,12 @@ impl InstalledPkgDbChirho {
         entry_chirho.push(pkg_chirho);
 
         // Sort newest first.
-        entry_chirho.sort_by(|a_chirho, b_chirho| {
-            b_chirho.version_chirho.cmp(&a_chirho.version_chirho)
-        });
+        entry_chirho
+            .sort_by(|a_chirho, b_chirho| b_chirho.version_chirho.cmp(&a_chirho.version_chirho));
     }
 
     /// Unregister a package version.
-    pub fn unregister_chirho(
-        &mut self,
-        name_chirho: &str,
-        version_chirho: &VersionChirho,
-    ) -> bool {
+    pub fn unregister_chirho(&mut self, name_chirho: &str, version_chirho: &VersionChirho) -> bool {
         if let Some(entry_chirho) = self.packages_chirho.get_mut(name_chirho) {
             let before_chirho = entry_chirho.len();
             entry_chirho.retain(|p_chirho| &p_chirho.version_chirho != version_chirho);
@@ -147,12 +142,18 @@ impl InstalledPkgDbChirho {
 
     /// List all installed packages (unique names).
     pub fn list_packages_chirho(&self) -> Vec<&str> {
-        self.packages_chirho.keys().map(|s_chirho| s_chirho.as_str()).collect()
+        self.packages_chirho
+            .keys()
+            .map(|s_chirho| s_chirho.as_str())
+            .collect()
     }
 
     /// Total number of installed package versions.
     pub fn total_versions_chirho(&self) -> usize {
-        self.packages_chirho.values().map(|v_chirho| v_chirho.len()).sum()
+        self.packages_chirho
+            .values()
+            .map(|v_chirho| v_chirho.len())
+            .sum()
     }
 
     /// Find which installed package exposes a given module.
@@ -174,13 +175,13 @@ impl InstalledPkgDbChirho {
     }
 
     /// Get the interface file path for a module from an installed package.
-    pub fn iface_path_chirho(
-        &self,
-        module_name_chirho: &str,
-    ) -> Option<PathBuf> {
-        self.find_module_chirho(module_name_chirho).map(|(pkg_chirho, mod_chirho)| {
-            pkg_chirho.install_dir_chirho.join(&mod_chirho.iface_path_chirho)
-        })
+    pub fn iface_path_chirho(&self, module_name_chirho: &str) -> Option<PathBuf> {
+        self.find_module_chirho(module_name_chirho)
+            .map(|(pkg_chirho, mod_chirho)| {
+                pkg_chirho
+                    .install_dir_chirho
+                    .join(&mod_chirho.iface_path_chirho)
+            })
     }
 
     /// Compute the default database directory (`~/.haskelujah/pkgdb`).
@@ -224,10 +225,7 @@ impl InstalledPkgDbChirho {
                     pkg_chirho.install_dir_chirho.display()
                 ));
                 for dep_chirho in &pkg_chirho.depends_chirho {
-                    out_chirho.push_str(&format!(
-                        "  dep:{} {}\n",
-                        dep_chirho.0, dep_chirho.1
-                    ));
+                    out_chirho.push_str(&format!("  dep:{} {}\n", dep_chirho.0, dep_chirho.1));
                 }
                 for mod_chirho in &pkg_chirho.exposed_modules_chirho {
                     out_chirho.push_str(&format!(
@@ -236,10 +234,7 @@ impl InstalledPkgDbChirho {
                         mod_chirho.iface_path_chirho.display()
                     ));
                     if let Some(obj_chirho) = &mod_chirho.object_path_chirho {
-                        out_chirho.push_str(&format!(
-                            "  obj:{}\n",
-                            obj_chirho.display()
-                        ));
+                        out_chirho.push_str(&format!("  obj:{}\n", obj_chirho.display()));
                     }
                 }
             }
@@ -264,8 +259,9 @@ impl InstalledPkgDbChirho {
                 let parts_chirho: Vec<&str> = rest_chirho.splitn(2, ' ').collect();
                 if parts_chirho.len() == 2 {
                     let name_chirho = parts_chirho[0].to_string();
-                    let version_chirho = crate::version_chirho::parse_version_chirho(parts_chirho[1])
-                        .unwrap_or_else(|| VersionChirho::new_chirho(vec![0]));
+                    let version_chirho =
+                        crate::version_chirho::parse_version_chirho(parts_chirho[1])
+                            .unwrap_or_else(|| VersionChirho::new_chirho(vec![0]));
                     current_pkg_chirho = Some(InstalledPkgChirho {
                         name_chirho,
                         version_chirho,
@@ -283,20 +279,25 @@ impl InstalledPkgDbChirho {
                     let parts_chirho: Vec<&str> = rest_chirho.splitn(2, ' ').collect();
                     if parts_chirho.len() == 2 {
                         let dep_name_chirho = parts_chirho[0].to_string();
-                        let dep_ver_chirho = crate::version_chirho::parse_version_chirho(parts_chirho[1])
-                            .unwrap_or_else(|| VersionChirho::new_chirho(vec![0]));
-                        pkg_chirho.depends_chirho.push((dep_name_chirho, dep_ver_chirho));
+                        let dep_ver_chirho =
+                            crate::version_chirho::parse_version_chirho(parts_chirho[1])
+                                .unwrap_or_else(|| VersionChirho::new_chirho(vec![0]));
+                        pkg_chirho
+                            .depends_chirho
+                            .push((dep_name_chirho, dep_ver_chirho));
                     }
                 }
             } else if let Some(rest_chirho) = trimmed_chirho.strip_prefix("mod:") {
                 if let Some(pkg_chirho) = &mut current_pkg_chirho {
                     let parts_chirho: Vec<&str> = rest_chirho.splitn(2, ' ').collect();
                     if parts_chirho.len() == 2 {
-                        pkg_chirho.exposed_modules_chirho.push(InstalledModuleChirho {
-                            module_name_chirho: parts_chirho[0].to_string(),
-                            iface_path_chirho: PathBuf::from(parts_chirho[1]),
-                            object_path_chirho: None,
-                        });
+                        pkg_chirho
+                            .exposed_modules_chirho
+                            .push(InstalledModuleChirho {
+                                module_name_chirho: parts_chirho[0].to_string(),
+                                iface_path_chirho: PathBuf::from(parts_chirho[1]),
+                                object_path_chirho: None,
+                            });
                     }
                 }
             } else if let Some(rest_chirho) = trimmed_chirho.strip_prefix("obj:") {
@@ -353,7 +354,11 @@ mod tests_chirho {
     #[test]
     fn register_and_lookup_chirho() {
         let mut db_chirho = InstalledPkgDbChirho::new_chirho();
-        db_chirho.register_chirho(make_pkg_chirho("containers", "0.6.7", &["Data.Map", "Data.Set"]));
+        db_chirho.register_chirho(make_pkg_chirho(
+            "containers",
+            "0.6.7",
+            &["Data.Map", "Data.Set"],
+        ));
 
         let pkg_chirho = db_chirho.lookup_chirho("containers").unwrap();
         assert_eq!(pkg_chirho.name_chirho, "containers");
@@ -367,7 +372,9 @@ mod tests_chirho {
         db_chirho.register_chirho(make_pkg_chirho("text", "2.0", &["Data.Text"]));
         db_chirho.register_chirho(make_pkg_chirho("text", "1.5", &["Data.Text"]));
 
-        let pkg_chirho = db_chirho.lookup_version_chirho("text", &v_chirho("1.5")).unwrap();
+        let pkg_chirho = db_chirho
+            .lookup_version_chirho("text", &v_chirho("1.5"))
+            .unwrap();
         assert_eq!(pkg_chirho.version_chirho, v_chirho("1.5"));
 
         // Newest first
@@ -392,7 +399,11 @@ mod tests_chirho {
     #[test]
     fn find_module_chirho() {
         let mut db_chirho = InstalledPkgDbChirho::new_chirho();
-        db_chirho.register_chirho(make_pkg_chirho("containers", "0.6.7", &["Data.Map", "Data.Set"]));
+        db_chirho.register_chirho(make_pkg_chirho(
+            "containers",
+            "0.6.7",
+            &["Data.Map", "Data.Set"],
+        ));
         db_chirho.register_chirho(make_pkg_chirho("text", "2.0", &["Data.Text"]));
 
         let (pkg_chirho, mod_chirho) = db_chirho.find_module_chirho("Data.Map").unwrap();
@@ -438,12 +449,20 @@ mod tests_chirho {
     fn reinstall_replaces_chirho() {
         let mut db_chirho = InstalledPkgDbChirho::new_chirho();
         db_chirho.register_chirho(make_pkg_chirho("text", "2.0", &["Data.Text"]));
-        db_chirho.register_chirho(make_pkg_chirho("text", "2.0", &["Data.Text", "Data.Text.Lazy"]));
+        db_chirho.register_chirho(make_pkg_chirho(
+            "text",
+            "2.0",
+            &["Data.Text", "Data.Text.Lazy"],
+        ));
 
         // Should replace, not duplicate.
         assert_eq!(db_chirho.versions_of_chirho("text").len(), 1);
         assert_eq!(
-            db_chirho.lookup_chirho("text").unwrap().exposed_modules_chirho.len(),
+            db_chirho
+                .lookup_chirho("text")
+                .unwrap()
+                .exposed_modules_chirho
+                .len(),
             2
         );
     }
@@ -462,7 +481,10 @@ mod tests_chirho {
         let serialized_chirho = db_chirho.to_string_chirho();
         let restored_chirho = InstalledPkgDbChirho::from_string_chirho(&serialized_chirho);
 
-        assert_eq!(restored_chirho.list_packages_chirho(), vec!["containers", "text"]);
+        assert_eq!(
+            restored_chirho.list_packages_chirho(),
+            vec!["containers", "text"]
+        );
         assert_eq!(restored_chirho.total_versions_chirho(), 2);
 
         let containers_chirho = restored_chirho.lookup_chirho("containers").unwrap();
@@ -494,6 +516,9 @@ mod tests_chirho {
             "text",
             &v_chirho("2.0"),
         );
-        assert_eq!(dir_chirho, PathBuf::from("/home/user/.haskelujah/pkgdb/text-2.0"));
+        assert_eq!(
+            dir_chirho,
+            PathBuf::from("/home/user/.haskelujah/pkgdb/text-2.0")
+        );
     }
 }

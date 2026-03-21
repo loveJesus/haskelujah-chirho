@@ -107,8 +107,8 @@ pub struct BeamInsnChirho {
 pub enum BeamOperandChirho {
     RegChirho(BeamRegChirho),
     LiteralChirho(i64),
-    AtomChirho(u32),    // atom table index
-    LabelChirho(u32),   // label number
+    AtomChirho(u32),  // atom table index
+    LabelChirho(u32), // label number
     ArityChirho(u32),
 }
 

@@ -21,7 +21,7 @@
 use std::collections::HashMap;
 
 use crate::version_chirho::{
-    parse_version_chirho, parse_version_constraint_chirho, VersionChirho, VersionConstraintChirho,
+    VersionChirho, VersionConstraintChirho, parse_version_chirho, parse_version_constraint_chirho,
 };
 
 // ---------------------------------------------------------------------------
@@ -1231,16 +1231,20 @@ description:
 "#;
         let pkg_chirho = parse_cabal_chirho(input_chirho);
         assert_eq!(pkg_chirho.name_chirho, "multi");
-        assert!(pkg_chirho
-            .description_chirho
-            .as_ref()
-            .unwrap()
-            .contains("multi-line"));
-        assert!(pkg_chirho
-            .description_chirho
-            .as_ref()
-            .unwrap()
-            .contains("description of the package."));
+        assert!(
+            pkg_chirho
+                .description_chirho
+                .as_ref()
+                .unwrap()
+                .contains("multi-line")
+        );
+        assert!(
+            pkg_chirho
+                .description_chirho
+                .as_ref()
+                .unwrap()
+                .contains("description of the package.")
+        );
     }
 
     #[test]
@@ -1257,19 +1261,25 @@ description:
         let dep_chirho = &deps_chirho[0];
 
         let v_ok_chirho = parse_version_chirho("4.17.0.0").unwrap();
-        assert!(dep_chirho
-            .constraint_chirho
-            .satisfied_by_chirho(&v_ok_chirho));
+        assert!(
+            dep_chirho
+                .constraint_chirho
+                .satisfied_by_chirho(&v_ok_chirho)
+        );
 
         let v_bad_chirho = parse_version_chirho("5.0").unwrap();
-        assert!(!dep_chirho
-            .constraint_chirho
-            .satisfied_by_chirho(&v_bad_chirho));
+        assert!(
+            !dep_chirho
+                .constraint_chirho
+                .satisfied_by_chirho(&v_bad_chirho)
+        );
 
         let v_old_chirho = parse_version_chirho("4.13").unwrap();
-        assert!(!dep_chirho
-            .constraint_chirho
-            .satisfied_by_chirho(&v_old_chirho));
+        assert!(
+            !dep_chirho
+                .constraint_chirho
+                .satisfied_by_chirho(&v_old_chirho)
+        );
     }
 
     #[test]

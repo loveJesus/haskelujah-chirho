@@ -301,7 +301,7 @@ mod tests_chirho {
                 binder_chirho: main_binder_chirho,
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),

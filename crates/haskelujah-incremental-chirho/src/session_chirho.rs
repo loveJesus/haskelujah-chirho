@@ -74,13 +74,9 @@ pub enum RebuildReasonChirho {
     /// Source file changed.
     SourceChangedChirho,
     /// A dependency's interface changed.
-    DepChangedChirho {
-        dep_name_chirho: String,
-    },
+    DepChangedChirho { dep_name_chirho: String },
     /// A specific phase artifact is missing from the cache.
-    MissingArtifactChirho {
-        phase_chirho: PhaseTagChirho,
-    },
+    MissingArtifactChirho { phase_chirho: PhaseTagChirho },
     /// Forced rebuild (e.g. `--force` flag).
     ForcedChirho,
 }
@@ -367,7 +363,10 @@ mod tests_chirho {
     fn fresh_session_needs_rebuild_chirho() {
         let session_chirho = IncrementalSessionChirho::new_chirho();
         let reason_chirho = session_chirho.needs_rebuild_chirho("Main", fp_chirho("source"));
-        assert_eq!(reason_chirho, Some(RebuildReasonChirho::NoPriorRecordChirho));
+        assert_eq!(
+            reason_chirho,
+            Some(RebuildReasonChirho::NoPriorRecordChirho)
+        );
     }
 
     #[test]
@@ -388,7 +387,10 @@ mod tests_chirho {
         session_chirho.record_compilation_chirho("Main", fp_chirho("v1"));
 
         let reason_chirho = session_chirho.needs_rebuild_chirho("Main", fp_chirho("v2"));
-        assert_eq!(reason_chirho, Some(RebuildReasonChirho::SourceChangedChirho));
+        assert_eq!(
+            reason_chirho,
+            Some(RebuildReasonChirho::SourceChangedChirho)
+        );
     }
 
     #[test]
@@ -400,7 +402,8 @@ mod tests_chirho {
         // Compile Base with an interface fingerprint.
         let base_record_chirho =
             session_chirho.record_compilation_chirho("Base", fp_chirho("base-v1"));
-        base_record_chirho.set_phase_chirho(PhaseTagChirho::IfaceChirho, fp_chirho("base-iface-v1"));
+        base_record_chirho
+            .set_phase_chirho(PhaseTagChirho::IfaceChirho, fp_chirho("base-iface-v1"));
 
         // Compile App (records deps_fp based on Base's iface).
         session_chirho.record_compilation_chirho("App", fp_chirho("app-v1"));
@@ -414,7 +417,8 @@ mod tests_chirho {
         // Now recompile Base with a different interface.
         let base_record_chirho =
             session_chirho.record_compilation_chirho("Base", fp_chirho("base-v2"));
-        base_record_chirho.set_phase_chirho(PhaseTagChirho::IfaceChirho, fp_chirho("base-iface-v2"));
+        base_record_chirho
+            .set_phase_chirho(PhaseTagChirho::IfaceChirho, fp_chirho("base-iface-v2"));
 
         // App needs rebuild because Base's iface changed.
         let reason_chirho = session_chirho.needs_rebuild_chirho("App", fp_chirho("app-v1"));
@@ -475,8 +479,7 @@ mod tests_chirho {
         let base_rec_chirho =
             session_chirho.record_compilation_chirho("Base", fp_chirho("base-v1"));
         base_rec_chirho.set_phase_chirho(PhaseTagChirho::IfaceChirho, fp_chirho("base-iface-v1"));
-        let mid_rec_chirho =
-            session_chirho.record_compilation_chirho("Mid", fp_chirho("mid-v1"));
+        let mid_rec_chirho = session_chirho.record_compilation_chirho("Mid", fp_chirho("mid-v1"));
         mid_rec_chirho.set_phase_chirho(PhaseTagChirho::IfaceChirho, fp_chirho("mid-iface-v1"));
         session_chirho.record_compilation_chirho("Top", fp_chirho("top-v1"));
 
@@ -497,9 +500,16 @@ mod tests_chirho {
 
     #[test]
     fn module_record_phases_chirho() {
-        let mut record_chirho =
-            ModuleRecordChirho::new_chirho("Test", fp_chirho("src"), FingerprintChirho::ZERO_CHIRHO);
-        assert!(record_chirho.get_phase_chirho(PhaseTagChirho::CoreChirho).is_none());
+        let mut record_chirho = ModuleRecordChirho::new_chirho(
+            "Test",
+            fp_chirho("src"),
+            FingerprintChirho::ZERO_CHIRHO,
+        );
+        assert!(
+            record_chirho
+                .get_phase_chirho(PhaseTagChirho::CoreChirho)
+                .is_none()
+        );
 
         record_chirho.set_phase_chirho(PhaseTagChirho::CoreChirho, fp_chirho("core-data"));
         assert_eq!(
@@ -524,10 +534,7 @@ mod tests_chirho {
         let reason_chirho = RebuildReasonChirho::DepChangedChirho {
             dep_name_chirho: "Data.List".to_string(),
         };
-        assert_eq!(
-            format!("{}", reason_chirho),
-            "dependency Data.List changed"
-        );
+        assert_eq!(format!("{}", reason_chirho), "dependency Data.List changed");
     }
 
     #[test]

@@ -45,17 +45,26 @@ impl QStateChirho {
     }
 
     /// Set the reification callback (called by the driver before splice evaluation).
-    pub fn set_reify_chirho(&mut self, callback_chirho: Box<dyn Fn(&ThNameChirho) -> Option<ThInfoChirho>>) {
+    pub fn set_reify_chirho(
+        &mut self,
+        callback_chirho: Box<dyn Fn(&ThNameChirho) -> Option<ThInfoChirho>>,
+    ) {
         self.reify_callback_chirho = Some(callback_chirho);
     }
 
     /// Set the value name lookup callback.
-    pub fn set_lookup_value_chirho(&mut self, callback_chirho: Box<dyn Fn(&str) -> Option<ThNameChirho>>) {
+    pub fn set_lookup_value_chirho(
+        &mut self,
+        callback_chirho: Box<dyn Fn(&str) -> Option<ThNameChirho>>,
+    ) {
         self.lookup_value_callback_chirho = Some(callback_chirho);
     }
 
     /// Set the type name lookup callback.
-    pub fn set_lookup_type_chirho(&mut self, callback_chirho: Box<dyn Fn(&str) -> Option<ThNameChirho>>) {
+    pub fn set_lookup_type_chirho(
+        &mut self,
+        callback_chirho: Box<dyn Fn(&str) -> Option<ThNameChirho>>,
+    ) {
         self.lookup_type_callback_chirho = Some(callback_chirho);
     }
 
@@ -151,8 +160,14 @@ mod tests_chirho {
         assert_ne!(n2_chirho, n3_chirho);
         assert_eq!(n1_chirho.occ_chirho, "x");
         assert_eq!(n3_chirho.occ_chirho, "y");
-        assert!(matches!(n1_chirho.flavour_chirho, ThNameFlavourChirho::UniqueChirho(0)));
-        assert!(matches!(n2_chirho.flavour_chirho, ThNameFlavourChirho::UniqueChirho(1)));
+        assert!(matches!(
+            n1_chirho.flavour_chirho,
+            ThNameFlavourChirho::UniqueChirho(0)
+        ));
+        assert!(matches!(
+            n2_chirho.flavour_chirho,
+            ThNameFlavourChirho::UniqueChirho(1)
+        ));
     }
 
     #[test]
@@ -206,6 +221,9 @@ mod tests_chirho {
     fn mk_name_creates_string_flavour_chirho() {
         let name_chirho = QStateChirho::mk_name_chirho("test");
         assert_eq!(name_chirho.occ_chirho, "test");
-        assert!(matches!(name_chirho.flavour_chirho, ThNameFlavourChirho::StringChirho));
+        assert!(matches!(
+            name_chirho.flavour_chirho,
+            ThNameFlavourChirho::StringChirho
+        ));
     }
 }

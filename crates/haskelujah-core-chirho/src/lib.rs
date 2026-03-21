@@ -20,14 +20,14 @@ pub mod desugar_chirho;
 pub mod dict_chirho;
 pub mod expr_chirho;
 pub mod pretty_chirho;
-pub mod simplify_chirho;
 #[cfg(test)]
 mod proptest_chirho;
+pub mod simplify_chirho;
 
-pub use desugar_chirho::{desugar_module_chirho, DesugarOutputChirho};
+pub use desugar_chirho::{DesugarOutputChirho, desugar_module_chirho};
 pub use dict_chirho::{
-    dict_pass_module_chirho, dict_pass_module_full_chirho, dict_pass_module_with_con_types_chirho,
-    DictPassResultChirho,
+    DictPassResultChirho, dict_pass_module_chirho, dict_pass_module_full_chirho,
+    dict_pass_module_with_con_types_chirho,
 };
 pub use expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
@@ -35,6 +35,5 @@ pub use expr_chirho::{
 };
 pub use pretty_chirho::pretty_module_chirho;
 pub use simplify_chirho::{
-    elide_dicts_and_filter_chirho, elide_dicts_chirho, simplify_module_chirho,
-    SimplifyConfigChirho,
+    SimplifyConfigChirho, elide_dicts_and_filter_chirho, elide_dicts_chirho, simplify_module_chirho,
 };

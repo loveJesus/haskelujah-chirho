@@ -9,7 +9,7 @@
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use crate::cabal_chirho::{parse_cabal_chirho, PackageDescChirho};
+use crate::cabal_chirho::{PackageDescChirho, parse_cabal_chirho};
 use crate::version_chirho::VersionChirho;
 
 /// Hackage base URL.
@@ -18,10 +18,7 @@ const HACKAGE_BASE_CHIRHO: &str = "https://hackage.haskell.org/package";
 /// Construct the URL for a package tarball on Hackage.
 ///
 /// E.g. `https://hackage.haskell.org/package/base-4.19.0.0/base-4.19.0.0.tar.gz`
-pub fn hackage_tarball_url_chirho(
-    name_chirho: &str,
-    version_chirho: &VersionChirho,
-) -> String {
+pub fn hackage_tarball_url_chirho(name_chirho: &str, version_chirho: &VersionChirho) -> String {
     let pkg_id_chirho = format!("{}-{}", name_chirho, version_chirho);
     format!(
         "{}/{}/{}.tar.gz",
@@ -32,10 +29,7 @@ pub fn hackage_tarball_url_chirho(
 /// Construct the URL for a package's `.cabal` file on Hackage.
 ///
 /// E.g. `https://hackage.haskell.org/package/base-4.19.0.0/base.cabal`
-pub fn hackage_cabal_url_chirho(
-    name_chirho: &str,
-    version_chirho: &VersionChirho,
-) -> String {
+pub fn hackage_cabal_url_chirho(name_chirho: &str, version_chirho: &VersionChirho) -> String {
     let pkg_id_chirho = format!("{}-{}", name_chirho, version_chirho);
     format!(
         "{}/{}/{}.cabal",
@@ -248,7 +242,11 @@ pub fn fetch_package_chirho(
         // Try to find any .cabal file in the directory.
         if let Ok(entries_chirho) = std::fs::read_dir(&pkg_dir_chirho) {
             for entry_chirho in entries_chirho.flatten() {
-                if entry_chirho.path().extension().is_some_and(|e_chirho| e_chirho == "cabal") {
+                if entry_chirho
+                    .path()
+                    .extension()
+                    .is_some_and(|e_chirho| e_chirho == "cabal")
+                {
                     let content_chirho = std::fs::read_to_string(entry_chirho.path())?;
                     return Ok(parse_cabal_chirho(&content_chirho));
                 }
@@ -260,12 +258,9 @@ pub fn fetch_package_chirho(
 
 /// Create a minimal `.tar.gz` in memory containing one file.
 /// Useful for testing without network access.
-pub fn create_test_tarball_chirho(
-    file_path_chirho: &str,
-    content_chirho: &str,
-) -> Vec<u8> {
-    use flate2::write::GzEncoder;
+pub fn create_test_tarball_chirho(file_path_chirho: &str, content_chirho: &str) -> Vec<u8> {
     use flate2::Compression;
+    use flate2::write::GzEncoder;
 
     let mut encoder_chirho = GzEncoder::new(Vec::new(), Compression::default());
     {
@@ -276,9 +271,7 @@ pub fn create_test_tarball_chirho(
         header_chirho.set_size(data_chirho.len() as u64);
         header_chirho.set_mode(0o644);
         header_chirho.set_cksum();
-        builder_chirho
-            .append(&header_chirho, data_chirho)
-            .unwrap();
+        builder_chirho.append(&header_chirho, data_chirho).unwrap();
         builder_chirho.finish().unwrap();
     }
     encoder_chirho.finish().unwrap()
@@ -330,10 +323,8 @@ version: 1.0.0
 library
   exposed-modules: Lib
 "#;
-        let tarball_chirho = create_test_tarball_chirho(
-            "test-pkg-1.0.0/test-pkg.cabal",
-            cabal_content_chirho,
-        );
+        let tarball_chirho =
+            create_test_tarball_chirho("test-pkg-1.0.0/test-pkg.cabal", cabal_content_chirho);
 
         let extracted_chirho = extract_cabal_from_tarball_chirho(&tarball_chirho).unwrap();
         assert!(extracted_chirho.contains("test-pkg"));
@@ -342,10 +333,8 @@ library
 
     #[test]
     fn list_tarball_files_chirho_test() {
-        let tarball_chirho = create_test_tarball_chirho(
-            "my-pkg-0.1/my-pkg.cabal",
-            "name: my-pkg\nversion: 0.1\n",
-        );
+        let tarball_chirho =
+            create_test_tarball_chirho("my-pkg-0.1/my-pkg.cabal", "name: my-pkg\nversion: 0.1\n");
 
         let files_chirho = list_tarball_files_chirho(&tarball_chirho).unwrap();
         assert_eq!(files_chirho.len(), 1);
@@ -355,10 +344,7 @@ library
     #[test]
     fn extract_tarball_to_dir_chirho() {
         let cabal_content_chirho = "name: foo\nversion: 2.0\n";
-        let tarball_chirho = create_test_tarball_chirho(
-            "foo-2.0/foo.cabal",
-            cabal_content_chirho,
-        );
+        let tarball_chirho = create_test_tarball_chirho("foo-2.0/foo.cabal", cabal_content_chirho);
 
         let dir_chirho = tempfile::tempdir().unwrap();
         extract_tarball_chirho(&tarball_chirho, dir_chirho.path()).unwrap();
@@ -372,10 +358,7 @@ library
 
     #[test]
     fn extract_cabal_no_cabal_file_chirho() {
-        let tarball_chirho = create_test_tarball_chirho(
-            "README.md",
-            "# Hello",
-        );
+        let tarball_chirho = create_test_tarball_chirho("README.md", "# Hello");
 
         let result_chirho = extract_cabal_from_tarball_chirho(&tarball_chirho);
         assert!(result_chirho.is_err());
@@ -407,7 +390,10 @@ executable hello
 
         assert_eq!(pkg_chirho.name_chirho, "hello-world");
         let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
-        assert_eq!(lib_chirho.exposed_modules_chirho, vec!["Hello", "Hello.World"]);
+        assert_eq!(
+            lib_chirho.exposed_modules_chirho,
+            vec!["Hello", "Hello.World"]
+        );
         assert_eq!(pkg_chirho.executables_chirho.len(), 1);
         assert_eq!(pkg_chirho.executables_chirho[0].name_chirho, "hello");
     }

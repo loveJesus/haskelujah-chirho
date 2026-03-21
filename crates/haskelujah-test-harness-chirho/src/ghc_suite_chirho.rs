@@ -136,8 +136,7 @@ pub fn discover_ghc_tests_chirho(
                 .to_string_lossy()
                 .into_owned();
 
-            let (kind_chirho, expected_output_chirho) =
-                parse_test_metadata_chirho(&source_chirho);
+            let (kind_chirho, expected_output_chirho) = parse_test_metadata_chirho(&source_chirho);
 
             tests_chirho.push(GhcTestCaseChirho {
                 path_chirho,
@@ -154,9 +153,7 @@ pub fn discover_ghc_tests_chirho(
 }
 
 /// Parse test metadata from comment headers.
-fn parse_test_metadata_chirho(
-    source_chirho: &str,
-) -> (GhcTestKindChirho, Option<String>) {
+fn parse_test_metadata_chirho(source_chirho: &str) -> (GhcTestKindChirho, Option<String>) {
     let mut kind_chirho = GhcTestKindChirho::CompileChirho;
     let mut expected_output_chirho = None;
 
@@ -181,9 +178,7 @@ fn parse_test_metadata_chirho(
 }
 
 /// Run a single GHC test case through the Haskelujah pipeline.
-pub fn run_ghc_test_chirho(
-    test_chirho: &GhcTestCaseChirho,
-) -> GhcTestResultChirho {
+pub fn run_ghc_test_chirho(test_chirho: &GhcTestCaseChirho) -> GhcTestResultChirho {
     let mut source_map_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
 
     match test_chirho.kind_chirho {
@@ -269,9 +264,8 @@ pub fn run_ghc_test_chirho(
                 Ok(_) => GhcTestResultChirho {
                     name_chirho: test_chirho.name_chirho.clone(),
                     passed_chirho: false,
-                    message_chirho:
-                        "expected compilation failure, but compiled successfully"
-                            .to_string(),
+                    message_chirho: "expected compilation failure, but compiled successfully"
+                        .to_string(),
                 },
                 Err(_) => GhcTestResultChirho {
                     name_chirho: test_chirho.name_chirho.clone(),
@@ -284,9 +278,7 @@ pub fn run_ghc_test_chirho(
 }
 
 /// Run all discovered tests and produce aggregate results.
-pub fn run_ghc_suite_chirho(
-    tests_chirho: &[GhcTestCaseChirho],
-) -> GhcSuiteResultChirho {
+pub fn run_ghc_suite_chirho(tests_chirho: &[GhcTestCaseChirho]) -> GhcSuiteResultChirho {
     let mut results_chirho = Vec::new();
     let mut passed_chirho = 0usize;
     let mut failed_chirho = 0usize;
@@ -362,9 +354,7 @@ pub struct GhcDriverEntryChirho {
 /// ```
 ///
 /// We extract the test name and the test kind (compile, compile_and_run, compile_fail).
-pub fn parse_dot_t_file_chirho(
-    content_chirho: &str,
-) -> Vec<GhcDriverEntryChirho> {
+pub fn parse_dot_t_file_chirho(content_chirho: &str) -> Vec<GhcDriverEntryChirho> {
     let mut entries_chirho = Vec::new();
 
     for line_chirho in content_chirho.lines() {
@@ -452,8 +442,7 @@ fn discover_t_files_recursive_chirho(
             if let Ok(content_chirho) = fs::read_to_string(&path_chirho) {
                 let entries_chirho = parse_dot_t_file_chirho(&content_chirho);
                 for entry_chirho in entries_chirho {
-                    t_file_entries_chirho
-                        .push((path_chirho.clone(), entry_chirho));
+                    t_file_entries_chirho.push((path_chirho.clone(), entry_chirho));
                 }
             }
         }
@@ -481,9 +470,7 @@ fn discover_t_files_recursive_chirho(
 }
 
 /// Load expected output from a GHC `.stdout` file (if it exists).
-pub fn load_expected_stdout_chirho(
-    test_path_chirho: &Path,
-) -> Option<String> {
+pub fn load_expected_stdout_chirho(test_path_chirho: &Path) -> Option<String> {
     let stdout_path_chirho = test_path_chirho.with_extension("stdout");
     fs::read_to_string(&stdout_path_chirho).ok()
 }
@@ -506,8 +493,9 @@ mod tests_chirho {
 
     #[test]
     fn parse_metadata_compile_and_run_chirho() {
-        let (kind_chirho, output_chirho) =
-            parse_test_metadata_chirho("-- TEST: compile_and_run\n-- EXPECT_OUTPUT: 42\nmain = print 42\n");
+        let (kind_chirho, output_chirho) = parse_test_metadata_chirho(
+            "-- TEST: compile_and_run\n-- EXPECT_OUTPUT: 42\nmain = print 42\n",
+        );
         assert_eq!(kind_chirho, GhcTestKindChirho::CompileAndRunChirho);
         assert_eq!(output_chirho.unwrap(), "42");
     }
@@ -563,7 +551,11 @@ mod tests_chirho {
         };
 
         let result_chirho = run_ghc_test_chirho(&test_chirho);
-        assert!(result_chirho.passed_chirho, "msg: {}", result_chirho.message_chirho);
+        assert!(
+            result_chirho.passed_chirho,
+            "msg: {}",
+            result_chirho.message_chirho
+        );
     }
 
     #[test]
@@ -582,9 +574,7 @@ mod tests_chirho {
 
         let result_chirho = run_ghc_test_chirho(&test_chirho);
         if !result_chirho.passed_chirho {
-            eprintln!(
-                "known issue: constructor type resolution — x :: Int; x = True not caught"
-            );
+            eprintln!("known issue: constructor type resolution — x :: Int; x = True not caught");
             return;
         }
     }
@@ -600,7 +590,11 @@ mod tests_chirho {
         };
 
         let result_chirho = run_ghc_test_chirho(&test_chirho);
-        assert!(result_chirho.passed_chirho, "msg: {}", result_chirho.message_chirho);
+        assert!(
+            result_chirho.passed_chirho,
+            "msg: {}",
+            result_chirho.message_chirho
+        );
     }
 
     #[test]
@@ -678,7 +672,8 @@ mod tests_chirho {
         assert_eq!(suite_chirho.total_chirho, 2);
         // Both should pass
         assert_eq!(
-            suite_chirho.passed_chirho, 2,
+            suite_chirho.passed_chirho,
+            2,
             "failures: {:?}",
             suite_chirho
                 .results_chirho
@@ -699,7 +694,10 @@ mod tests_chirho {
         let entries_chirho = parse_dot_t_file_chirho(content_chirho);
         assert_eq!(entries_chirho.len(), 1);
         assert_eq!(entries_chirho[0].name_chirho, "T001");
-        assert_eq!(entries_chirho[0].kind_chirho, GhcTestKindChirho::CompileChirho);
+        assert_eq!(
+            entries_chirho[0].kind_chirho,
+            GhcTestKindChirho::CompileChirho
+        );
     }
 
     #[test]
@@ -708,7 +706,10 @@ mod tests_chirho {
         let entries_chirho = parse_dot_t_file_chirho(content_chirho);
         assert_eq!(entries_chirho.len(), 1);
         assert_eq!(entries_chirho[0].name_chirho, "T002");
-        assert_eq!(entries_chirho[0].kind_chirho, GhcTestKindChirho::CompileAndRunChirho);
+        assert_eq!(
+            entries_chirho[0].kind_chirho,
+            GhcTestKindChirho::CompileAndRunChirho
+        );
     }
 
     #[test]
@@ -717,7 +718,10 @@ mod tests_chirho {
         let entries_chirho = parse_dot_t_file_chirho(content_chirho);
         assert_eq!(entries_chirho.len(), 1);
         assert_eq!(entries_chirho[0].name_chirho, "T003");
-        assert_eq!(entries_chirho[0].kind_chirho, GhcTestKindChirho::CompileFailChirho);
+        assert_eq!(
+            entries_chirho[0].kind_chirho,
+            GhcTestKindChirho::CompileFailChirho
+        );
     }
 
     #[test]
@@ -761,11 +765,7 @@ test('T004', normal, compile, ['-O'])
             "module Simple where\nfoo = 1\n",
         )
         .unwrap();
-        fs::write(
-            tmp_chirho.path().join("Run.hs"),
-            "main = putStrLn \"ok\"\n",
-        )
-        .unwrap();
+        fs::write(tmp_chirho.path().join("Run.hs"), "main = putStrLn \"ok\"\n").unwrap();
 
         let tests_chirho = discover_ghc_full_suite_chirho(tmp_chirho.path()).unwrap();
         assert_eq!(tests_chirho.len(), 2);
@@ -797,9 +797,6 @@ test('T004', normal, compile, ['-O'])
             extract_quoted_string_chirho("test('T001', normal, compile, [''])"),
             Some("T001".to_string())
         );
-        assert_eq!(
-            extract_quoted_string_chirho("no quotes here"),
-            None
-        );
+        assert_eq!(extract_quoted_string_chirho("no quotes here"), None);
     }
 }

@@ -18,15 +18,11 @@ use crate::value_chirho::{HeapAddrChirho, ValueChirho};
 pub enum FrameChirho {
     /// Apply the WHNF result to these pending arguments.
     /// Used when we evaluate the function part of an application.
-    ApplyChirho {
-        args_chirho: Vec<ValueChirho>,
-    },
+    ApplyChirho { args_chirho: Vec<ValueChirho> },
 
     /// Update the thunk at this address with the WHNF result.
     /// Pushed before entering a thunk body.
-    UpdateChirho {
-        thunk_addr_chirho: HeapAddrChirho,
-    },
+    UpdateChirho { thunk_addr_chirho: HeapAddrChirho },
 
     /// Scrutinise the WHNF result. The `alts_chirho` index selects
     /// which case branch to take based on the constructor tag.
@@ -425,7 +421,6 @@ pub enum PrimOpKindChirho {
     RetryChirho,
     /// orElse# :: STM a -> STM a -> STM a — try first, if it retries try second
     OrElseChirho,
-
 }
 
 /// The evaluation stack.

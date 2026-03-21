@@ -11,8 +11,7 @@
 
 // Re-export shared GC types from the RTS crate.
 pub use haskelujah_rts_chirho::gc_chirho::{
-    GcConfigChirho, GcStateChirho, GcStatsChirho,
-    extract_roots_from_values_chirho,
+    GcConfigChirho, GcStateChirho, GcStatsChirho, extract_roots_from_values_chirho,
 };
 
 use crate::stack_chirho::FrameChirho;
@@ -23,9 +22,7 @@ use crate::value_chirho::{HeapAddrChirho, ValueChirho};
 // ---------------------------------------------------------------------------
 
 /// Extract all heap addresses from the stack frames.
-pub fn extract_roots_from_stack_chirho(
-    frames_chirho: &[FrameChirho],
-) -> Vec<HeapAddrChirho> {
+pub fn extract_roots_from_stack_chirho(frames_chirho: &[FrameChirho]) -> Vec<HeapAddrChirho> {
     let mut roots_chirho = Vec::new();
     for frame_chirho in frames_chirho {
         match frame_chirho {

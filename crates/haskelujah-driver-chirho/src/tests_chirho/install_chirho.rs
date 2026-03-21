@@ -5,15 +5,10 @@
 
 #[cfg(test)]
 mod tests_chirho {
-    use crate::{
-        find_cabal_in_dir_chirho, discover_modules_chirho,
-        InstallResultChirho,
-    };
+    use crate::{InstallResultChirho, discover_modules_chirho, find_cabal_in_dir_chirho};
     use haskelujah_package_chirho::{
-        hackage_chirho::create_test_tarball_chirho,
-        hackage_chirho::extract_tarball_chirho,
-        parse_cabal_chirho, parse_version_chirho,
-        InstalledPkgDbChirho,
+        InstalledPkgDbChirho, hackage_chirho::create_test_tarball_chirho,
+        hackage_chirho::extract_tarball_chirho, parse_cabal_chirho, parse_version_chirho,
     };
     use std::fs;
 
@@ -50,11 +45,7 @@ mod tests_chirho {
         let tmp_chirho = tempfile::tempdir().unwrap();
         let src_dir_chirho = tmp_chirho.path().join("src");
         fs::create_dir_all(&src_dir_chirho).unwrap();
-        fs::write(
-            src_dir_chirho.join("Lib.hs"),
-            "module Lib where\nfoo = 1\n",
-        )
-        .unwrap();
+        fs::write(src_dir_chirho.join("Lib.hs"), "module Lib where\nfoo = 1\n").unwrap();
         let data_dir_chirho = src_dir_chirho.join("Data");
         fs::create_dir_all(&data_dir_chirho).unwrap();
         fs::write(

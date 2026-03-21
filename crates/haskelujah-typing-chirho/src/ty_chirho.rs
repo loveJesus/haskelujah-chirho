@@ -122,21 +122,36 @@ impl TyChirho {
 
     /// Build a function type `a -> b` (unrestricted).
     pub fn fun_chirho(arg_chirho: TyChirho, result_chirho: TyChirho) -> Self {
-        Self::FunChirho(Box::new(arg_chirho), Box::new(result_chirho), MultChirho::ManyChirho)
+        Self::FunChirho(
+            Box::new(arg_chirho),
+            Box::new(result_chirho),
+            MultChirho::ManyChirho,
+        )
     }
 
     /// Build a linear function type `a %1 -> b`.
     pub fn linear_fun_chirho(arg_chirho: TyChirho, result_chirho: TyChirho) -> Self {
-        Self::FunChirho(Box::new(arg_chirho), Box::new(result_chirho), MultChirho::OneChirho)
+        Self::FunChirho(
+            Box::new(arg_chirho),
+            Box::new(result_chirho),
+            MultChirho::OneChirho,
+        )
     }
 
     /// Build a function type with explicit multiplicity.
-    pub fn fun_with_mult_chirho(arg_chirho: TyChirho, result_chirho: TyChirho, mult_chirho: MultChirho) -> Self {
+    pub fn fun_with_mult_chirho(
+        arg_chirho: TyChirho,
+        result_chirho: TyChirho,
+        mult_chirho: MultChirho,
+    ) -> Self {
         Self::FunChirho(Box::new(arg_chirho), Box::new(result_chirho), mult_chirho)
     }
 
     /// Build a multi-argument function type `a -> b -> c -> ... -> result`.
-    pub fn fun_n_chirho(args_chirho: impl IntoIterator<Item = TyChirho>, result_chirho: TyChirho) -> Self {
+    pub fn fun_n_chirho(
+        args_chirho: impl IntoIterator<Item = TyChirho>,
+        result_chirho: TyChirho,
+    ) -> Self {
         let mut ty_chirho = result_chirho;
         let args_vec_chirho: Vec<_> = args_chirho.into_iter().collect();
         for arg_chirho in args_vec_chirho.into_iter().rev() {
@@ -166,10 +181,13 @@ impl TyChirho {
                 a_chirho.contains_var_chirho() || b_chirho.contains_var_chirho()
             }
             TyChirho::ListChirho(t_chirho) => t_chirho.contains_var_chirho(),
-            TyChirho::TupleChirho(ts_chirho) => {
-                ts_chirho.iter().any(|t_chirho| t_chirho.contains_var_chirho())
-            }
-            TyChirho::ForallChirho { body_chirho: t_chirho, .. } => t_chirho.contains_var_chirho(),
+            TyChirho::TupleChirho(ts_chirho) => ts_chirho
+                .iter()
+                .any(|t_chirho| t_chirho.contains_var_chirho()),
+            TyChirho::ForallChirho {
+                body_chirho: t_chirho,
+                ..
+            } => t_chirho.contains_var_chirho(),
         }
     }
 
@@ -193,7 +211,10 @@ impl TyChirho {
             TyChirho::ListChirho(inner_chirho) => {
                 inner_chirho.collect_free_vars_chirho(out_chirho);
             }
-            TyChirho::ForallChirho { vars_chirho, body_chirho } => {
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
                 // Collect free vars from body, excluding those bound by the forall
                 let mut body_fvs_chirho = Vec::new();
                 body_chirho.collect_free_vars_chirho(&mut body_fvs_chirho);
@@ -216,12 +237,10 @@ impl fmt::Display for TyChirho {
             TyChirho::AppChirho(fun_chirho, arg_chirho) => {
                 write!(f_chirho, "({fun_chirho} {arg_chirho})")
             }
-            TyChirho::FunChirho(a_chirho, b_chirho, mult_chirho) => {
-                match mult_chirho {
-                    MultChirho::OneChirho => write!(f_chirho, "({a_chirho} %1 -> {b_chirho})"),
-                    MultChirho::ManyChirho => write!(f_chirho, "({a_chirho} -> {b_chirho})"),
-                }
-            }
+            TyChirho::FunChirho(a_chirho, b_chirho, mult_chirho) => match mult_chirho {
+                MultChirho::OneChirho => write!(f_chirho, "({a_chirho} %1 -> {b_chirho})"),
+                MultChirho::ManyChirho => write!(f_chirho, "({a_chirho} -> {b_chirho})"),
+            },
             TyChirho::TupleChirho(elems_chirho) => {
                 write!(f_chirho, "(")?;
                 for (i_chirho, e_chirho) in elems_chirho.iter().enumerate() {
@@ -233,7 +252,10 @@ impl fmt::Display for TyChirho {
                 write!(f_chirho, ")")
             }
             TyChirho::ListChirho(inner_chirho) => write!(f_chirho, "[{inner_chirho}]"),
-            TyChirho::ForallChirho { vars_chirho, body_chirho } => {
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
                 write!(f_chirho, "(forall")?;
                 for v_chirho in vars_chirho {
                     write!(f_chirho, " {v_chirho}")?;
@@ -337,10 +359,8 @@ mod tests_chirho {
     fn ty_free_vars_chirho() {
         let a_chirho = TyVarChirho(0);
         let b_chirho = TyVarChirho(1);
-        let ty_chirho = TyChirho::fun_chirho(
-            TyChirho::VarChirho(a_chirho),
-            TyChirho::VarChirho(b_chirho),
-        );
+        let ty_chirho =
+            TyChirho::fun_chirho(TyChirho::VarChirho(a_chirho), TyChirho::VarChirho(b_chirho));
         let fvs_chirho = ty_chirho.free_vars_chirho();
         assert_eq!(fvs_chirho, vec![a_chirho, b_chirho]);
     }
@@ -371,7 +391,8 @@ mod tests_chirho {
 
     #[test]
     fn tuple_display_chirho() {
-        let ty_chirho = TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::bool_chirho()]);
+        let ty_chirho =
+            TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::bool_chirho()]);
         assert_eq!(ty_chirho.to_string(), "(Int, Bool)");
     }
 

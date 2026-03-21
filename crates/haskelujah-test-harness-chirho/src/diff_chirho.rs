@@ -59,13 +59,18 @@ pub struct DiffSuiteResultChirho {
 impl DiffSuiteResultChirho {
     /// Count of tests where Haskelujah agrees with GHC.
     pub fn agree_count_chirho(&self) -> usize {
-        self.results_chirho.iter().filter(|r_chirho| r_chirho.agrees_chirho).count()
+        self.results_chirho
+            .iter()
+            .filter(|r_chirho| r_chirho.agrees_chirho)
+            .count()
     }
 
     /// Agreement rate as percentage.
     pub fn agree_rate_chirho(&self) -> f64 {
         let total_chirho = self.results_chirho.len();
-        if total_chirho == 0 { return 100.0; }
+        if total_chirho == 0 {
+            return 100.0;
+        }
         self.agree_count_chirho() as f64 / total_chirho as f64 * 100.0
     }
 
@@ -244,10 +249,7 @@ pub fn diff_test_cases_chirho() -> Vec<DiffTestCaseChirho> {
         DiffTestCaseChirho {
             name_chirho: "list_comprehension",
             category_chirho: "semantics",
-            source_chirho: concat!(
-                "module Main where\n",
-                "main = sum [x * x | x <- [1..5]]\n",
-            ),
+            source_chirho: concat!("module Main where\n", "main = sum [x * x | x <- [1..5]]\n",),
             ghc_expected_chirho: SuccessIntChirho(55),
         },
         DiffTestCaseChirho {
@@ -292,11 +294,7 @@ pub fn diff_test_cases_chirho() -> Vec<DiffTestCaseChirho> {
         DiffTestCaseChirho {
             name_chirho: "wildcard_pattern",
             category_chirho: "edge",
-            source_chirho: concat!(
-                "module Main where\n",
-                "f _ _ x = x\n",
-                "main = f 1 2 42\n",
-            ),
+            source_chirho: concat!("module Main where\n", "f _ _ x = x\n", "main = f 1 2 42\n",),
             ghc_expected_chirho: SuccessIntChirho(42),
         },
         DiffTestCaseChirho {
@@ -331,10 +329,8 @@ where
         .iter()
         .map(|case_chirho| {
             let haskelujah_chirho = eval_fn_chirho(case_chirho.source_chirho);
-            let agrees_chirho = outcomes_agree_chirho(
-                &case_chirho.ghc_expected_chirho,
-                &haskelujah_chirho,
-            );
+            let agrees_chirho =
+                outcomes_agree_chirho(&case_chirho.ghc_expected_chirho, &haskelujah_chirho);
             DiffTestResultChirho {
                 name_chirho: case_chirho.name_chirho.to_string(),
                 category_chirho: case_chirho.category_chirho.to_string(),
@@ -353,9 +349,10 @@ fn outcomes_agree_chirho(
     haskelujah_chirho: &CompileOutcomeChirho,
 ) -> bool {
     match (ghc_chirho, haskelujah_chirho) {
-        (CompileOutcomeChirho::SuccessIntChirho(a_chirho), CompileOutcomeChirho::SuccessIntChirho(b_chirho)) => {
-            a_chirho == b_chirho
-        }
+        (
+            CompileOutcomeChirho::SuccessIntChirho(a_chirho),
+            CompileOutcomeChirho::SuccessIntChirho(b_chirho),
+        ) => a_chirho == b_chirho,
         (CompileOutcomeChirho::RejectedChirho(_), CompileOutcomeChirho::RejectedChirho(_)) => {
             true // both rejected = agreement
         }
@@ -380,8 +377,10 @@ mod tests_chirho {
     #[test]
     fn diff_test_cases_have_categories_chirho() {
         let cases_chirho = diff_test_cases_chirho();
-        let categories_chirho: std::collections::HashSet<&str> =
-            cases_chirho.iter().map(|c_chirho| c_chirho.category_chirho).collect();
+        let categories_chirho: std::collections::HashSet<&str> = cases_chirho
+            .iter()
+            .map(|c_chirho| c_chirho.category_chirho)
+            .collect();
         assert!(categories_chirho.contains("syntax"));
         assert!(categories_chirho.contains("types"));
         assert!(categories_chirho.contains("semantics"));
@@ -422,9 +421,7 @@ mod tests_chirho {
 
     #[test]
     fn run_diff_suite_mock_chirho() {
-        let suite_chirho = run_diff_suite_chirho(|_| {
-            CompileOutcomeChirho::SuccessIntChirho(42)
-        });
+        let suite_chirho = run_diff_suite_chirho(|_| CompileOutcomeChirho::SuccessIntChirho(42));
         assert!(!suite_chirho.results_chirho.is_empty());
         // Not all will agree since some expect rejection or different values
         assert!(suite_chirho.agree_count_chirho() > 0);
@@ -432,9 +429,7 @@ mod tests_chirho {
 
     #[test]
     fn diff_suite_summary_table_chirho() {
-        let suite_chirho = run_diff_suite_chirho(|_| {
-            CompileOutcomeChirho::SuccessIntChirho(42)
-        });
+        let suite_chirho = run_diff_suite_chirho(|_| CompileOutcomeChirho::SuccessIntChirho(42));
         let table_chirho = suite_chirho.summary_table_chirho();
         assert!(table_chirho.contains("Test"));
         assert!(table_chirho.contains("agree"));

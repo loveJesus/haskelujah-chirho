@@ -121,7 +121,10 @@ impl SubstChirho {
             TyChirho::ListChirho(inner_chirho) => {
                 TyChirho::ListChirho(Box::new(self.apply_ty_chirho(inner_chirho)))
             }
-            TyChirho::ForallChirho { vars_chirho, body_chirho } => {
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
                 // Don't substitute bound variables — restrict the substitution
                 let mut restricted_chirho = self.clone();
                 for v_chirho in vars_chirho {
@@ -150,7 +153,11 @@ impl SubstChirho {
                 .map(|p_chirho| crate::ty_chirho::SchemePredChirho {
                     class_name_chirho: p_chirho.class_name_chirho.clone(),
                     ty_chirho: restricted_chirho.apply_ty_chirho(&p_chirho.ty_chirho),
-                    extra_tys_chirho: p_chirho.extra_tys_chirho.iter().map(|t_chirho| restricted_chirho.apply_ty_chirho(t_chirho)).collect(),
+                    extra_tys_chirho: p_chirho
+                        .extra_tys_chirho
+                        .iter()
+                        .map(|t_chirho| restricted_chirho.apply_ty_chirho(t_chirho))
+                        .collect(),
                 })
                 .collect(),
             ty_chirho: restricted_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho),
@@ -171,16 +178,17 @@ mod tests_chirho {
 
     #[test]
     fn singleton_replaces_var_chirho() {
-        let subst_chirho =
-            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
+        let subst_chirho = SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
         let ty_chirho = TyChirho::VarChirho(TyVarChirho(0));
-        assert_eq!(subst_chirho.apply_ty_chirho(&ty_chirho), TyChirho::int_chirho());
+        assert_eq!(
+            subst_chirho.apply_ty_chirho(&ty_chirho),
+            TyChirho::int_chirho()
+        );
     }
 
     #[test]
     fn subst_leaves_other_vars_alone_chirho() {
-        let subst_chirho =
-            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
+        let subst_chirho = SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
         let ty_chirho = TyChirho::VarChirho(TyVarChirho(1));
         assert_eq!(
             subst_chirho.apply_ty_chirho(&ty_chirho),
@@ -190,8 +198,7 @@ mod tests_chirho {
 
     #[test]
     fn subst_through_fun_chirho() {
-        let subst_chirho =
-            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
+        let subst_chirho = SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
         let ty_chirho = TyChirho::fun_chirho(
             TyChirho::VarChirho(TyVarChirho(0)),
             TyChirho::VarChirho(TyVarChirho(1)),
@@ -207,12 +214,9 @@ mod tests_chirho {
     fn compose_applies_outer_to_inner_chirho() {
         // s1 = [t1 ↦ Int], s2 = [t0 ↦ t1]
         // (s1 ∘ s2)(t0) = s1(s2(t0)) = s1(t1) = Int
-        let s1_chirho =
-            SubstChirho::singleton_chirho(TyVarChirho(1), TyChirho::int_chirho());
-        let s2_chirho = SubstChirho::singleton_chirho(
-            TyVarChirho(0),
-            TyChirho::VarChirho(TyVarChirho(1)),
-        );
+        let s1_chirho = SubstChirho::singleton_chirho(TyVarChirho(1), TyChirho::int_chirho());
+        let s2_chirho =
+            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::VarChirho(TyVarChirho(1)));
         let composed_chirho = s1_chirho.compose_chirho(&s2_chirho);
 
         let ty_chirho = TyChirho::VarChirho(TyVarChirho(0));
@@ -243,19 +247,14 @@ mod tests_chirho {
         let result_chirho = subst_chirho.apply_scheme_chirho(&scheme_chirho);
         assert_eq!(
             result_chirho.ty_chirho,
-            TyChirho::fun_chirho(
-                TyChirho::VarChirho(TyVarChirho(0)),
-                TyChirho::bool_chirho(),
-            )
+            TyChirho::fun_chirho(TyChirho::VarChirho(TyVarChirho(0)), TyChirho::bool_chirho(),)
         );
     }
 
     #[test]
     fn merge_consistent_chirho() {
-        let mut s1_chirho =
-            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
-        let s2_chirho =
-            SubstChirho::singleton_chirho(TyVarChirho(1), TyChirho::bool_chirho());
+        let mut s1_chirho = SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
+        let s2_chirho = SubstChirho::singleton_chirho(TyVarChirho(1), TyChirho::bool_chirho());
         assert!(s1_chirho.merge_chirho(&s2_chirho));
         assert_eq!(
             s1_chirho.apply_ty_chirho(&TyChirho::VarChirho(TyVarChirho(0))),
@@ -269,19 +268,15 @@ mod tests_chirho {
 
     #[test]
     fn merge_same_binding_ok_chirho() {
-        let mut s1_chirho =
-            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
-        let s2_chirho =
-            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
+        let mut s1_chirho = SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
+        let s2_chirho = SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
         assert!(s1_chirho.merge_chirho(&s2_chirho));
     }
 
     #[test]
     fn merge_conflicting_fails_chirho() {
-        let mut s1_chirho =
-            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
-        let s2_chirho =
-            SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::bool_chirho());
+        let mut s1_chirho = SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::int_chirho());
+        let s2_chirho = SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::bool_chirho());
         assert!(!s1_chirho.merge_chirho(&s2_chirho));
     }
 }

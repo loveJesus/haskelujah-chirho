@@ -148,10 +148,9 @@ impl KindSubstChirho {
                 }
             }
             KindChirho::StarChirho | KindChirho::ConstraintChirho => kind_chirho.clone(),
-            KindChirho::ArrowChirho(a_chirho, b_chirho) => KindChirho::arrow_chirho(
-                self.apply_chirho(a_chirho),
-                self.apply_chirho(b_chirho),
-            ),
+            KindChirho::ArrowChirho(a_chirho, b_chirho) => {
+                KindChirho::arrow_chirho(self.apply_chirho(a_chirho), self.apply_chirho(b_chirho))
+            }
         }
     }
 
@@ -164,9 +163,13 @@ impl KindSubstChirho {
             .map(|(v_chirho, k_chirho)| (*v_chirho, self.apply_chirho(k_chirho)))
             .collect();
         for (v_chirho, k_chirho) in &self.map_chirho {
-            result_chirho.entry(*v_chirho).or_insert_with(|| k_chirho.clone());
+            result_chirho
+                .entry(*v_chirho)
+                .or_insert_with(|| k_chirho.clone());
         }
-        KindSubstChirho { map_chirho: result_chirho }
+        KindSubstChirho {
+            map_chirho: result_chirho,
+        }
     }
 }
 
@@ -211,7 +214,8 @@ fn unify_kind_chirho(
             Ok(KindSubstChirho::empty_chirho())
         }
 
-        (KindChirho::VarChirho(v_chirho), k_chirho) | (k_chirho, KindChirho::VarChirho(v_chirho)) => {
+        (KindChirho::VarChirho(v_chirho), k_chirho)
+        | (k_chirho, KindChirho::VarChirho(v_chirho)) => {
             bind_kind_var_chirho(*v_chirho, k_chirho, span_chirho)
         }
 
@@ -252,7 +256,10 @@ fn bind_kind_var_chirho(
             span_chirho,
         });
     }
-    Ok(KindSubstChirho::singleton_chirho(var_chirho, kind_chirho.clone()))
+    Ok(KindSubstChirho::singleton_chirho(
+        var_chirho,
+        kind_chirho.clone(),
+    ))
 }
 
 // ---------------------------------------------------------------------------
@@ -275,15 +282,15 @@ impl KindEnvChirho {
         let mut env_chirho = Self::new_chirho();
 
         // Primitive types: kind *
-        for name_chirho in &["Int", "Bool", "Char", "Double", "Float", "Integer", "String"] {
+        for name_chirho in &[
+            "Int", "Bool", "Char", "Double", "Float", "Integer", "String",
+        ] {
             env_chirho.bind_chirho(name_chirho.to_string(), KindChirho::StarChirho);
         }
 
         // * -> * constructors
-        let star_to_star_chirho = KindChirho::arrow_chirho(
-            KindChirho::StarChirho,
-            KindChirho::StarChirho,
-        );
+        let star_to_star_chirho =
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho);
         for name_chirho in &["Maybe", "[]", "IO"] {
             env_chirho.bind_chirho(name_chirho.to_string(), star_to_star_chirho.clone());
         }
@@ -308,10 +315,7 @@ impl KindEnvChirho {
         }
 
         // (->) :: * -> * -> *
-        env_chirho.bind_chirho(
-            "->".to_string(),
-            star2_chirho.clone(),
-        );
+        env_chirho.bind_chirho("->".to_string(), star2_chirho.clone());
 
         env_chirho
     }
@@ -387,9 +391,9 @@ impl KindInferCtxChirho {
                     let resolved_chirho = resolved_chirho.clone();
                     return self.instantiate_kind_inner_chirho(&resolved_chirho, var_map_chirho);
                 }
-                let new_var_chirho = *var_map_chirho.entry(*v_chirho).or_insert_with(|| {
-                    self.fresh_var_chirho()
-                });
+                let new_var_chirho = *var_map_chirho
+                    .entry(*v_chirho)
+                    .or_insert_with(|| self.fresh_var_chirho());
                 KindChirho::VarChirho(new_var_chirho)
             }
             KindChirho::StarChirho | KindChirho::ConstraintChirho => kind_chirho.clone(),
@@ -415,7 +419,8 @@ impl KindInferCtxChirho {
                     KindChirho::VarChirho(var_chirho)
                 } else {
                     let var_chirho = self.fresh_var_chirho();
-                    self.kind_var_cache_chirho.insert(name_chirho.clone(), var_chirho);
+                    self.kind_var_cache_chirho
+                        .insert(name_chirho.clone(), var_chirho);
                     KindChirho::VarChirho(var_chirho)
                 }
             }
@@ -428,14 +433,11 @@ impl KindInferCtxChirho {
     fn type_to_kind_chirho(&mut self, ty_chirho: &TypeChirho) -> KindChirho {
         match ty_chirho {
             TypeChirho::ConChirho(name_chirho)
-                if name_chirho.text_chirho() == "Type"
-                    || name_chirho.text_chirho() == "*" =>
+                if name_chirho.text_chirho() == "Type" || name_chirho.text_chirho() == "*" =>
             {
                 KindChirho::StarChirho
             }
-            TypeChirho::ConChirho(name_chirho)
-                if name_chirho.text_chirho() == "Constraint" =>
-            {
+            TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Constraint" => {
                 KindChirho::ConstraintChirho
             }
             TypeChirho::ConChirho(name_chirho) => {
@@ -499,9 +501,7 @@ impl KindInferCtxChirho {
                 );
                 result_chirho
             }
-            TypeChirho::ParenChirho { inner_chirho, .. } => {
-                self.type_to_kind_chirho(inner_chirho)
-            }
+            TypeChirho::ParenChirho { inner_chirho, .. } => self.type_to_kind_chirho(inner_chirho),
             _ => {
                 // Fallback: treat unknown shapes as *.
                 KindChirho::StarChirho
@@ -519,7 +519,12 @@ impl KindInferCtxChirho {
     ) {
         let k1_applied_chirho = self.subst_chirho.apply_chirho(k1_chirho);
         let k2_applied_chirho = self.subst_chirho.apply_chirho(k2_chirho);
-        match unify_kind_chirho(&k1_applied_chirho, &k2_applied_chirho, context_chirho, span_chirho) {
+        match unify_kind_chirho(
+            &k1_applied_chirho,
+            &k2_applied_chirho,
+            context_chirho,
+            span_chirho,
+        ) {
             Ok(s_chirho) => {
                 self.subst_chirho = s_chirho.compose_chirho(&self.subst_chirho);
             }
@@ -541,19 +546,17 @@ impl KindInferCtxChirho {
                         kind_chirho,
                         span_chirho,
                     } => {
-                        let msg_chirho = format!(
-                            "infinite kind: `{var_chirho}` occurs in `{kind_chirho}`"
-                        );
+                        let msg_chirho =
+                            format!("infinite kind: `{var_chirho}` occurs in `{kind_chirho}`");
                         (msg_chirho, span_chirho, KIND_OCCURS_CODE_CHIRHO)
                     }
                 };
-                self.diagnostics_chirho.push_chirho(
-                    DiagnosticChirho::error_with_code_chirho(
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
                         ErrorCodeChirho::error_chirho(code_chirho),
                         msg_chirho,
                         span_chirho,
-                    ),
-                );
+                    ));
             }
         }
     }
@@ -568,7 +571,8 @@ impl KindInferCtxChirho {
                 } else {
                     // Unknown type variable — assign a fresh kind variable.
                     let k_chirho = self.fresh_kind_chirho();
-                    self.env_chirho.bind_chirho(text_chirho.to_string(), k_chirho.clone());
+                    self.env_chirho
+                        .bind_chirho(text_chirho.to_string(), k_chirho.clone());
                     k_chirho
                 }
             }
@@ -587,7 +591,8 @@ impl KindInferCtxChirho {
                 } else {
                     // Unknown type constructor — assign a fresh kind variable.
                     let k_chirho = self.fresh_kind_chirho();
-                    self.env_chirho.bind_chirho(text_chirho.to_string(), k_chirho.clone());
+                    self.env_chirho
+                        .bind_chirho(text_chirho.to_string(), k_chirho.clone());
                     k_chirho
                 }
             }
@@ -687,7 +692,8 @@ impl KindInferCtxChirho {
                     } else {
                         self.fresh_kind_chirho()
                     };
-                    self.env_chirho.bind_chirho(v_chirho.text_chirho().to_string(), k_chirho);
+                    self.env_chirho
+                        .bind_chirho(v_chirho.text_chirho().to_string(), k_chirho);
                 }
                 let k_chirho = self.infer_type_kind_chirho(body_chirho);
                 // A forall type itself must have kind *
@@ -733,7 +739,8 @@ impl KindInferCtxChirho {
                     k_chirho.clone()
                 } else {
                     let k_chirho = self.fresh_kind_chirho();
-                    self.env_chirho.bind_chirho(text_chirho.to_string(), k_chirho.clone());
+                    self.env_chirho
+                        .bind_chirho(text_chirho.to_string(), k_chirho.clone());
                     k_chirho
                 }
             }
@@ -806,9 +813,15 @@ impl KindInferCtxChirho {
         // If already bound (e.g. from a use site), unify.
         if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
             let existing_chirho = existing_chirho.clone();
-            self.unify_chirho(&existing_chirho, &kind_chirho, "data declaration", span_chirho);
+            self.unify_chirho(
+                &existing_chirho,
+                &kind_chirho,
+                "data declaration",
+                span_chirho,
+            );
         }
-        self.env_chirho.bind_chirho(name_chirho.to_string(), kind_chirho);
+        self.env_chirho
+            .bind_chirho(name_chirho.to_string(), kind_chirho);
     }
 
     /// Process a class declaration to determine the kind of the class.
@@ -838,9 +851,15 @@ impl KindInferCtxChirho {
 
         if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
             let existing_chirho = existing_chirho.clone();
-            self.unify_chirho(&existing_chirho, &kind_chirho, "class declaration", span_chirho);
+            self.unify_chirho(
+                &existing_chirho,
+                &kind_chirho,
+                "class declaration",
+                span_chirho,
+            );
         }
-        self.env_chirho.bind_chirho(name_chirho.to_string(), kind_chirho);
+        self.env_chirho
+            .bind_chirho(name_chirho.to_string(), kind_chirho);
     }
 
     /// Process a type alias to determine its kind.
@@ -869,14 +888,14 @@ impl KindInferCtxChirho {
         let rhs_kind_chirho = self.infer_type_kind_chirho(rhs_ty_chirho);
 
         // The alias kind: k_params -> k_rhs
-        let kind_chirho =
-            KindChirho::arrow_n_chirho(param_kinds_chirho, rhs_kind_chirho);
+        let kind_chirho = KindChirho::arrow_n_chirho(param_kinds_chirho, rhs_kind_chirho);
 
         if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
             let existing_chirho = existing_chirho.clone();
             self.unify_chirho(&existing_chirho, &kind_chirho, "type alias", span_chirho);
         }
-        self.env_chirho.bind_chirho(name_chirho.to_string(), kind_chirho);
+        self.env_chirho
+            .bind_chirho(name_chirho.to_string(), kind_chirho);
     }
 
     /// Finalize: apply substitution to all kinds in the environment.
@@ -939,9 +958,10 @@ pub struct KindResultChirho {
 /// Run kind inference on a module's type declarations and type signatures.
 pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChirho {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
-    let poly_kinds_enabled_chirho = module_chirho.extensions_chirho.iter().any(|e_chirho| {
-        e_chirho == "PolyKinds" || e_chirho == "TypeInType"
-    });
+    let poly_kinds_enabled_chirho = module_chirho
+        .extensions_chirho
+        .iter()
+        .any(|e_chirho| e_chirho == "PolyKinds" || e_chirho == "TypeInType");
 
     // Phase 1: Process all type/data/newtype/class declarations to establish
     // the kind of each type constructor.
@@ -992,7 +1012,8 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                             ..
                         } => {
                             for field_decl_chirho in fields_chirho {
-                                let k_chirho = ctx_chirho.infer_type_kind_chirho(&field_decl_chirho.ty_chirho);
+                                let k_chirho =
+                                    ctx_chirho.infer_type_kind_chirho(&field_decl_chirho.ty_chirho);
                                 ctx_chirho.unify_chirho(
                                     &k_chirho,
                                     &KindChirho::StarChirho,
@@ -1052,7 +1073,8 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                         ..
                     } => {
                         for field_decl_chirho in fields_chirho {
-                            let k_chirho = ctx_chirho.infer_type_kind_chirho(&field_decl_chirho.ty_chirho);
+                            let k_chirho =
+                                ctx_chirho.infer_type_kind_chirho(&field_decl_chirho.ty_chirho);
                             ctx_chirho.unify_chirho(
                                 &k_chirho,
                                 &KindChirho::StarChirho,
@@ -1175,7 +1197,9 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
-    use haskelujah_ast_chirho::decl_chirho::{ClassMethodChirho, ConDeclChirho, DeclChirho, StrictnessChirho};
+    use haskelujah_ast_chirho::decl_chirho::{
+        ClassMethodChirho, ConDeclChirho, DeclChirho, StrictnessChirho,
+    };
     use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
     use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
@@ -1253,10 +1277,8 @@ mod tests_chirho {
     #[test]
     fn free_vars_chirho() {
         let v_chirho = KindVarChirho(0);
-        let k_chirho = KindChirho::arrow_chirho(
-            KindChirho::VarChirho(v_chirho),
-            KindChirho::StarChirho,
-        );
+        let k_chirho =
+            KindChirho::arrow_chirho(KindChirho::VarChirho(v_chirho), KindChirho::StarChirho);
         assert_eq!(k_chirho.free_vars_chirho(), vec![v_chirho]);
     }
 
@@ -1265,8 +1287,7 @@ mod tests_chirho {
     #[test]
     fn subst_applies_chirho() {
         let v_chirho = KindVarChirho(0);
-        let subst_chirho =
-            KindSubstChirho::singleton_chirho(v_chirho, KindChirho::StarChirho);
+        let subst_chirho = KindSubstChirho::singleton_chirho(v_chirho, KindChirho::StarChirho);
         let result_chirho = subst_chirho.apply_chirho(&KindChirho::VarChirho(v_chirho));
         assert_eq!(result_chirho, KindChirho::StarChirho);
     }
@@ -1277,8 +1298,7 @@ mod tests_chirho {
         let v1_chirho = KindVarChirho(1);
         let s1_chirho =
             KindSubstChirho::singleton_chirho(v0_chirho, KindChirho::VarChirho(v1_chirho));
-        let s2_chirho =
-            KindSubstChirho::singleton_chirho(v1_chirho, KindChirho::StarChirho);
+        let s2_chirho = KindSubstChirho::singleton_chirho(v1_chirho, KindChirho::StarChirho);
         let composed_chirho = s2_chirho.compose_chirho(&s1_chirho);
         // v0 should map to * (through v1)
         assert_eq!(
@@ -1320,17 +1340,11 @@ mod tests_chirho {
     #[test]
     fn unify_arrow_kinds_chirho() {
         let v_chirho = KindVarChirho(0);
-        let k1_chirho = KindChirho::arrow_chirho(
-            KindChirho::VarChirho(v_chirho),
-            KindChirho::StarChirho,
-        );
-        let k2_chirho = KindChirho::arrow_chirho(
-            KindChirho::StarChirho,
-            KindChirho::StarChirho,
-        );
+        let k1_chirho =
+            KindChirho::arrow_chirho(KindChirho::VarChirho(v_chirho), KindChirho::StarChirho);
+        let k2_chirho = KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho);
         let result_chirho =
-            unify_kind_chirho(&k1_chirho, &k2_chirho, "test", SpanChirho::DUMMY_CHIRHO)
-                .unwrap();
+            unify_kind_chirho(&k1_chirho, &k2_chirho, "test", SpanChirho::DUMMY_CHIRHO).unwrap();
         assert_eq!(
             result_chirho.apply_chirho(&KindChirho::VarChirho(v_chirho)),
             KindChirho::StarChirho
@@ -1381,7 +1395,10 @@ mod tests_chirho {
     #[test]
     fn builtins_have_correct_kinds_chirho() {
         let env_chirho = KindEnvChirho::with_builtins_chirho();
-        assert_eq!(env_chirho.lookup_chirho("Int"), Some(&KindChirho::StarChirho));
+        assert_eq!(
+            env_chirho.lookup_chirho("Int"),
+            Some(&KindChirho::StarChirho)
+        );
         assert_eq!(
             env_chirho.lookup_chirho("Maybe"),
             Some(&KindChirho::arrow_chirho(
@@ -1405,13 +1422,11 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(vec![DeclChirho::DataDeclChirho {
             name_chirho: mk_name_chirho("Color"),
             type_vars_chirho: vec![],
-            constructors_chirho: vec![
-                ConDeclChirho::OrdinaryChirho {
-                    name_chirho: mk_name_chirho("Red"),
-                    fields_chirho: vec![],
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-            ],
+            constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                name_chirho: mk_name_chirho("Red"),
+                fields_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
             deriving_chirho: vec![],
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1432,9 +1447,10 @@ mod tests_chirho {
             type_vars_chirho: vec![mk_name_chirho("a").into()],
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("MkBox"),
-                fields_chirho: vec![(StrictnessChirho::LazyChirho, TypeChirho::VarChirho(
-                    mk_name_chirho("a"),
-                ))],
+                fields_chirho: vec![(
+                    StrictnessChirho::LazyChirho,
+                    TypeChirho::VarChirho(mk_name_chirho("a")),
+                )],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             deriving_chirho: vec![],
@@ -1462,8 +1478,14 @@ mod tests_chirho {
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("MkPair"),
                 fields_chirho: vec![
-                    (StrictnessChirho::LazyChirho, TypeChirho::VarChirho(mk_name_chirho("a"))),
-                    (StrictnessChirho::LazyChirho, TypeChirho::VarChirho(mk_name_chirho("b"))),
+                    (
+                        StrictnessChirho::LazyChirho,
+                        TypeChirho::VarChirho(mk_name_chirho("a")),
+                    ),
+                    (
+                        StrictnessChirho::LazyChirho,
+                        TypeChirho::VarChirho(mk_name_chirho("b")),
+                    ),
                 ],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
@@ -1492,11 +1514,14 @@ mod tests_chirho {
             type_vars_chirho: vec![mk_name_chirho("f").into(), mk_name_chirho("a").into()],
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("MkApp"),
-                fields_chirho: vec![(StrictnessChirho::LazyChirho, TypeChirho::AppChirho {
-                    fun_chirho: Box::new(TypeChirho::VarChirho(mk_name_chirho("f"))),
-                    arg_chirho: Box::new(TypeChirho::VarChirho(mk_name_chirho("a"))),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                })],
+                fields_chirho: vec![(
+                    StrictnessChirho::LazyChirho,
+                    TypeChirho::AppChirho {
+                        fun_chirho: Box::new(TypeChirho::VarChirho(mk_name_chirho("f"))),
+                        arg_chirho: Box::new(TypeChirho::VarChirho(mk_name_chirho("a"))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                )],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             deriving_chirho: vec![],
@@ -1634,9 +1659,10 @@ mod tests_chirho {
             type_vars_chirho: vec![mk_name_chirho("a").into()],
             constructor_chirho: ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("Wrap"),
-                fields_chirho: vec![(StrictnessChirho::LazyChirho, TypeChirho::VarChirho(
-                    mk_name_chirho("a"),
-                ))],
+                fields_chirho: vec![(
+                    StrictnessChirho::LazyChirho,
+                    TypeChirho::VarChirho(mk_name_chirho("a")),
+                )],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             deriving_chirho: vec![],
@@ -1676,7 +1702,10 @@ mod tests_chirho {
     #[test]
     fn ast_kind_constraint_converts_chirho() {
         let ast_chirho = AstKindChirho::ConstraintChirho;
-        assert_eq!(ast_kind_to_kind_chirho(&ast_chirho), KindChirho::ConstraintChirho);
+        assert_eq!(
+            ast_kind_to_kind_chirho(&ast_chirho),
+            KindChirho::ConstraintChirho
+        );
     }
 
     #[test]
@@ -1685,10 +1714,8 @@ mod tests_chirho {
             Box::new(AstKindChirho::StarChirho),
             Box::new(AstKindChirho::ConstraintChirho),
         );
-        let expected_chirho = KindChirho::arrow_chirho(
-            KindChirho::StarChirho,
-            KindChirho::ConstraintChirho,
-        );
+        let expected_chirho =
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::ConstraintChirho);
         assert_eq!(ast_kind_to_kind_chirho(&ast_chirho), expected_chirho);
     }
 
@@ -1704,17 +1731,14 @@ mod tests_chirho {
         // PolyKinds: context-aware conversion maps same name to same kind var
         let env_chirho = KindEnvChirho::new_chirho();
         let mut ctx_chirho = KindInferCtxChirho::new_chirho(env_chirho);
-        let k1_chirho = ctx_chirho.ast_kind_to_kind_ctx_chirho(
-            &AstKindChirho::VarChirho("k".to_string()),
-        );
-        let k2_chirho = ctx_chirho.ast_kind_to_kind_ctx_chirho(
-            &AstKindChirho::VarChirho("k".to_string()),
-        );
+        let k1_chirho =
+            ctx_chirho.ast_kind_to_kind_ctx_chirho(&AstKindChirho::VarChirho("k".to_string()));
+        let k2_chirho =
+            ctx_chirho.ast_kind_to_kind_ctx_chirho(&AstKindChirho::VarChirho("k".to_string()));
         assert_eq!(k1_chirho, k2_chirho);
         // Different name gets different var
-        let j_chirho = ctx_chirho.ast_kind_to_kind_ctx_chirho(
-            &AstKindChirho::VarChirho("j".to_string()),
-        );
+        let j_chirho =
+            ctx_chirho.ast_kind_to_kind_ctx_chirho(&AstKindChirho::VarChirho("j".to_string()));
         assert_ne!(k1_chirho, j_chirho);
     }
 }

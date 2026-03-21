@@ -8,10 +8,10 @@
 
 #[cfg(test)]
 mod tests_chirho {
-    use proptest::prelude::*;
     use crate::expr_chirho::*;
-    use crate::simplify_chirho::{simplify_module_chirho, SimplifyConfigChirho};
+    use crate::simplify_chirho::{SimplifyConfigChirho, simplify_module_chirho};
     use haskelujah_span_chirho::SpanChirho;
+    use proptest::prelude::*;
     use std::collections::HashMap;
 
     fn dummy_binder_chirho(name_chirho: &str, id_chirho: u32) -> BinderChirho {
@@ -26,7 +26,8 @@ mod tests_chirho {
     /// Generate a random Core expression of bounded depth.
     fn arb_expr_chirho(max_depth_chirho: usize) -> impl Strategy<Value = CoreExprChirho> {
         let leaf_chirho = prop_oneof![
-            any::<i64>().prop_map(|n_chirho| CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(n_chirho))),
+            any::<i64>()
+                .prop_map(|n_chirho| CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(n_chirho))),
             (0u32..20).prop_map(|id_chirho| CoreExprChirho::VarChirho(CoreIdChirho(id_chirho))),
         ];
 

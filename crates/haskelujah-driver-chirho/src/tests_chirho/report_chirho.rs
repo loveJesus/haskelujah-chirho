@@ -9,7 +9,7 @@
 
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_test_harness_chirho::report_chirho::{
-    haskell_2010_conformance_chirho, StatusChirho,
+    StatusChirho, haskell_2010_conformance_chirho,
 };
 
 use crate::eval_source_with_machine_chirho;
@@ -104,7 +104,9 @@ fn report_tracker_reflects_reality_chirho() {
     // At least 70% done
     assert!(
         (done_chirho as f64 / total_chirho as f64) > 0.70,
-        "expected >70% done, got {}/{}", done_chirho, total_chirho
+        "expected >70% done, got {}/{}",
+        done_chirho,
+        total_chirho
     );
 }
 
@@ -114,7 +116,8 @@ fn report_pass_rate_above_80_chirho() {
     let rate_chirho = tracker_chirho.pass_rate_chirho();
     assert!(
         rate_chirho > 80.0,
-        "pass rate should be above 80%, got {:.1}%", rate_chirho
+        "pass rate should be above 80%, got {:.1}%",
+        rate_chirho
     );
 }
 

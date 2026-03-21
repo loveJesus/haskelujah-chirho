@@ -12,25 +12,23 @@
 //! - Dependency resolution types
 
 pub mod cabal_chirho;
-pub mod version_chirho;
 pub mod hackage_chirho;
-pub mod resolve_chirho;
 pub mod pkgdb_chirho;
+pub mod resolve_chirho;
+pub mod version_chirho;
 
 pub use cabal_chirho::{
-    parse_cabal_chirho, BuildInfoChirho, DependencyChirho, ExecutableChirho,
-    LibraryChirho, PackageDescChirho, TestSuiteChirho,
+    BuildInfoChirho, DependencyChirho, ExecutableChirho, LibraryChirho, PackageDescChirho,
+    TestSuiteChirho, parse_cabal_chirho,
+};
+pub use hackage_chirho::{hackage_cabal_url_chirho, hackage_tarball_url_chirho};
+pub use pkgdb_chirho::{
+    InstalledModuleChirho, InstalledPkgChirho, InstalledPkgDbChirho, pkg_id_chirho,
+};
+pub use resolve_chirho::{
+    BuildPlanChirho, BuildStepChirho, PackageIndexChirho, PackageMetaChirho, ResolveErrorChirho,
+    resolve_deps_chirho,
 };
 pub use version_chirho::{
-    VersionChirho, VersionConstraintChirho, parse_version_chirho,
-    parse_version_constraint_chirho,
-};
-pub use hackage_chirho::{hackage_tarball_url_chirho, hackage_cabal_url_chirho};
-pub use resolve_chirho::{
-    resolve_deps_chirho, BuildPlanChirho, BuildStepChirho,
-    PackageIndexChirho, PackageMetaChirho, ResolveErrorChirho,
-};
-pub use pkgdb_chirho::{
-    InstalledPkgDbChirho, InstalledPkgChirho, InstalledModuleChirho,
-    pkg_id_chirho,
+    VersionChirho, VersionConstraintChirho, parse_version_chirho, parse_version_constraint_chirho,
 };

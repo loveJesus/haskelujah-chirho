@@ -21,15 +21,14 @@
 use std::collections::HashMap;
 
 use crate::gc_chirho::{
-    extract_roots_from_stack_chirho, extract_roots_from_values_chirho,
-    GcConfigChirho, GcStateChirho, GcStatsChirho,
+    GcConfigChirho, GcStateChirho, GcStatsChirho, extract_roots_from_stack_chirho,
+    extract_roots_from_values_chirho,
 };
 use crate::heap_chirho::HeapChirho;
-use crate::prim_chirho::{apply_prim_binop_chirho, PrimErrorChirho};
+use crate::prim_chirho::{PrimErrorChirho, apply_prim_binop_chirho};
 use crate::stack_chirho::{FrameChirho, PrimOpKindChirho, StackChirho};
 use crate::value_chirho::{
-    ClosureChirho, CodePtrChirho, DataConTagChirho, HeapAddrChirho,
-    InfoTagChirho, ValueChirho,
+    ClosureChirho, CodePtrChirho, DataConTagChirho, HeapAddrChirho, InfoTagChirho, ValueChirho,
 };
 
 // ── Error type ──────────────────────────────────────────────────────────
@@ -132,14 +131,10 @@ pub enum CodeChirho {
     },
 
     /// Allocate a thunk and enter it (forcing evaluation).
-    ForceChirho {
-        thunk_chirho: ClosureChirho,
-    },
+    ForceChirho { thunk_chirho: ClosureChirho },
 
     /// Read argument register `index_chirho` and return it as a literal.
-    ArgChirho {
-        index_chirho: usize,
-    },
+    ArgChirho { index_chirho: usize },
 
     /// Apply a function from an arg register to arguments.
     /// Used when a lambda parameter is itself applied as a function.
@@ -360,8 +355,7 @@ impl MachineChirho {
     }
 
     fn collect_roots_chirho(&self) -> Vec<HeapAddrChirho> {
-        let mut roots_chirho =
-            extract_roots_from_stack_chirho(self.stack_chirho.frames_chirho());
+        let mut roots_chirho = extract_roots_from_stack_chirho(self.stack_chirho.frames_chirho());
         roots_chirho.extend(extract_roots_from_values_chirho(&self.arg_regs_chirho));
         roots_chirho.extend(extract_roots_from_values_chirho(
             &self.iorefs_chirho.values().cloned().collect::<Vec<_>>(),
@@ -379,9 +373,9 @@ impl MachineChirho {
             return;
         }
         let roots_chirho = self.collect_roots_chirho();
-        let stats_chirho =
-            self.gc_state_chirho
-                .collect_chirho(&mut self.heap_chirho, &roots_chirho);
+        let stats_chirho = self
+            .gc_state_chirho
+            .collect_chirho(&mut self.heap_chirho, &roots_chirho);
         self.last_gc_stats_chirho = Some(stats_chirho);
     }
 
@@ -410,7 +404,8 @@ impl MachineChirho {
     /// continuation stack.
     fn emit_lit_code_chirho(&mut self, val_chirho: ValueChirho) -> u32 {
         let idx_chirho = self.code_table_chirho.len() as u32;
-        self.code_table_chirho.push(CodeChirho::LitChirho(val_chirho));
+        self.code_table_chirho
+            .push(CodeChirho::LitChirho(val_chirho));
         idx_chirho
     }
 
@@ -480,10 +475,7 @@ impl MachineChirho {
     /// stack is searched for a `CatchChirho` frame.  If found, the
     /// handler is invoked with the error message string instead of
     /// propagating the error.
-    pub fn run_chirho(
-        &mut self,
-        entry_chirho: u32,
-    ) -> Result<ValueChirho, EvalErrorChirho> {
+    pub fn run_chirho(&mut self, entry_chirho: u32) -> Result<ValueChirho, EvalErrorChirho> {
         // Helper macro: dispatch on a Result<ReturnActionChirho, _>.
         // On success, either return Done or set pc to Continue.
         // On RuntimeErrorChirho, try to catch with a CatchChirho frame.
@@ -536,7 +528,6 @@ impl MachineChirho {
 
             let code_chirho = self.code_table_chirho[pc_chirho as usize].clone();
 
-
             match code_chirho {
                 // ── Enter a closure ─────────────────────────────────
                 CodeChirho::EnterChirho(addr_chirho) => {
@@ -564,8 +555,7 @@ impl MachineChirho {
                                 thunk_addr_chirho: addr_chirho,
                             });
                             if !closure_chirho.payload_chirho.is_empty() {
-                                self.arg_regs_chirho =
-                                    closure_chirho.payload_chirho.clone();
+                                self.arg_regs_chirho = closure_chirho.payload_chirho.clone();
                             }
                             pc_chirho = closure_chirho.info_chirho.entry_chirho.0;
                         }
@@ -604,18 +594,17 @@ impl MachineChirho {
                     fun_arg_index_chirho,
                     arg_sources_chirho,
                 } => {
-                    let fun_val_chirho =
-                        if fun_arg_index_chirho < self.arg_regs_chirho.len() {
-                            self.arg_regs_chirho[fun_arg_index_chirho].clone()
-                        } else {
-                            return Err(EvalErrorChirho::TypeErrorChirho {
-                                message_chirho: format!(
-                                    "fun arg register {} out of bounds (have {})",
-                                    fun_arg_index_chirho,
-                                    self.arg_regs_chirho.len()
-                                ),
-                            });
-                        };
+                    let fun_val_chirho = if fun_arg_index_chirho < self.arg_regs_chirho.len() {
+                        self.arg_regs_chirho[fun_arg_index_chirho].clone()
+                    } else {
+                        return Err(EvalErrorChirho::TypeErrorChirho {
+                            message_chirho: format!(
+                                "fun arg register {} out of bounds (have {})",
+                                fun_arg_index_chirho,
+                                self.arg_regs_chirho.len()
+                            ),
+                        });
+                    };
 
                     // Resolve all arg sources from current arg_regs
                     let resolved_args_chirho = self.resolve_args_chirho(&arg_sources_chirho);
@@ -641,8 +630,7 @@ impl MachineChirho {
                     alts_chirho,
                     default_chirho,
                 } => {
-                    let resolved_scrut_chirho =
-                        self.resolve_arg_source_chirho(&scrutinee_chirho);
+                    let resolved_scrut_chirho = self.resolve_arg_source_chirho(&scrutinee_chirho);
                     self.stack_chirho.push_chirho(FrameChirho::CaseChirho {
                         alt_entries_chirho: alts_chirho,
                         default_entry_chirho: default_chirho,
@@ -746,9 +734,11 @@ impl MachineChirho {
                     // and then we need to continue evaluating it (it may be a
                     // HeapPtr thunk or a literal). Handle the result via the
                     // normal return path.
-                    if matches!(op_chirho, PrimOpKindChirho::CatchChirho | PrimOpKindChirho::TryChirho) {
-                        let prim_result_chirho =
-                            self.eval_prim_chirho(op_chirho, &resolved_chirho);
+                    if matches!(
+                        op_chirho,
+                        PrimOpKindChirho::CatchChirho | PrimOpKindChirho::TryChirho
+                    ) {
+                        let prim_result_chirho = self.eval_prim_chirho(op_chirho, &resolved_chirho);
                         match prim_result_chirho {
                             Ok(ValueChirho::HeapPtrChirho(addr_chirho)) => {
                                 pc_chirho = self.emit_enter_chirho(addr_chirho);
@@ -761,7 +751,9 @@ impl MachineChirho {
                             }
                             Err(e_chirho) => {
                                 match self.maybe_catch_error_chirho(e_chirho) {
-                                    Ok(next_chirho) => { pc_chirho = next_chirho; }
+                                    Ok(next_chirho) => {
+                                        pc_chirho = next_chirho;
+                                    }
                                     Err(e2_chirho) => return Err(e2_chirho),
                                 }
                                 continue;
@@ -771,8 +763,7 @@ impl MachineChirho {
 
                     // InteractChirho needs HeapPtr function arg without forcing
                     if matches!(op_chirho, PrimOpKindChirho::InteractChirho) {
-                        let result_chirho =
-                            self.eval_prim_chirho(op_chirho, &resolved_chirho);
+                        let result_chirho = self.eval_prim_chirho(op_chirho, &resolved_chirho);
                         match result_chirho {
                             Ok(val_chirho) => {
                                 let r_chirho = self.return_lit_chirho(val_chirho);
@@ -781,7 +772,9 @@ impl MachineChirho {
                             }
                             Err(e_chirho) => {
                                 match self.maybe_catch_error_chirho(e_chirho) {
-                                    Ok(next_chirho) => { pc_chirho = next_chirho; }
+                                    Ok(next_chirho) => {
+                                        pc_chirho = next_chirho;
+                                    }
                                     Err(e2_chirho) => return Err(e2_chirho),
                                 }
                                 continue;
@@ -796,19 +789,18 @@ impl MachineChirho {
 
                     if !needs_forcing_chirho {
                         // Fast path: all args already unboxed.
-                        let result_chirho =
-                            self.eval_prim_chirho(op_chirho, &resolved_chirho);
+                        let result_chirho = self.eval_prim_chirho(op_chirho, &resolved_chirho);
                         match result_chirho {
                             Ok(val_chirho) => {
                                 let r_chirho = self.return_lit_chirho(val_chirho);
                                 dispatch_action_chirho!(self, pc_chirho, r_chirho);
                             }
-                            Err(e_chirho) => {
-                                match self.maybe_catch_error_chirho(e_chirho) {
-                                    Ok(next_chirho) => { pc_chirho = next_chirho; }
-                                    Err(e2_chirho) => return Err(e2_chirho),
+                            Err(e_chirho) => match self.maybe_catch_error_chirho(e_chirho) {
+                                Ok(next_chirho) => {
+                                    pc_chirho = next_chirho;
                                 }
-                            }
+                                Err(e2_chirho) => return Err(e2_chirho),
+                            },
                         }
                     } else {
                         // Slow path: force args one at a time via the stack.
@@ -905,8 +897,7 @@ impl MachineChirho {
                         self.arg_regs_chirho
                             .resize(dest_reg_chirho + 1, ValueChirho::IntChirho(0));
                     }
-                    self.arg_regs_chirho[dest_reg_chirho] =
-                        ValueChirho::HeapPtrChirho(addr_chirho);
+                    self.arg_regs_chirho[dest_reg_chirho] = ValueChirho::HeapPtrChirho(addr_chirho);
                     pc_chirho = body_chirho;
                 }
 
@@ -937,8 +928,7 @@ impl MachineChirho {
                         self.arg_regs_chirho
                             .resize(dest_reg_chirho + 1, ValueChirho::IntChirho(0));
                     }
-                    self.arg_regs_chirho[dest_reg_chirho] =
-                        ValueChirho::HeapPtrChirho(addr_chirho);
+                    self.arg_regs_chirho[dest_reg_chirho] = ValueChirho::HeapPtrChirho(addr_chirho);
                     pc_chirho = body_chirho;
                 }
 
@@ -980,9 +970,9 @@ impl MachineChirho {
             match self.stack_chirho.pop_chirho() {
                 None => {
                     // Stack empty — we're done
-                    return Ok(ReturnActionChirho::DoneChirho(
-                        ValueChirho::HeapPtrChirho(addr_chirho),
-                    ));
+                    return Ok(ReturnActionChirho::DoneChirho(ValueChirho::HeapPtrChirho(
+                        addr_chirho,
+                    )));
                 }
                 Some(FrameChirho::UpdateChirho { thunk_addr_chirho }) => {
                     // Update the thunk with an indirection to the result
@@ -1092,15 +1082,11 @@ impl MachineChirho {
                     // Check if this is actually a PAP (created by under-
                     // application in enter_fun_chirho).  PAPs routed through
                     // return_con_chirho need to absorb remaining Apply args.
-                    let closure_chirho_peek =
-                        self.heap_chirho.read_chirho(addr_chirho).clone();
-                    if closure_chirho_peek.info_chirho.tag_chirho
-                        == InfoTagChirho::PapChirho
-                    {
+                    let closure_chirho_peek = self.heap_chirho.read_chirho(addr_chirho).clone();
+                    if closure_chirho_peek.info_chirho.tag_chirho == InfoTagChirho::PapChirho {
                         // Re-push the Apply frame and enter the PAP
-                        self.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
-                            args_chirho,
-                        });
+                        self.stack_chirho
+                            .push_chirho(FrameChirho::ApplyChirho { args_chirho });
                         return self.enter_pap_chirho(addr_chirho, &closure_chirho_peek);
                     }
                     // True constructor with extra args — type error
@@ -1144,29 +1130,22 @@ impl MachineChirho {
                     let keep_heap_ptr_chirho = matches!(
                         op_chirho,
                         PrimOpKindChirho::ShowMaybeChirho
-                        | PrimOpKindChirho::ShowTuple2Chirho
-                        | PrimOpKindChirho::ShowEitherChirho
-                        | PrimOpKindChirho::ShowOrderingChirho
-                        | PrimOpKindChirho::ShowListChirho
+                            | PrimOpKindChirho::ShowTuple2Chirho
+                            | PrimOpKindChirho::ShowEitherChirho
+                            | PrimOpKindChirho::ShowOrderingChirho
+                            | PrimOpKindChirho::ShowListChirho
                     );
-                    let closure_chirho =
-                        self.heap_chirho.read_chirho(addr_chirho).clone();
+                    let closure_chirho = self.heap_chirho.read_chirho(addr_chirho).clone();
                     let unboxed_chirho = if keep_heap_ptr_chirho {
                         ValueChirho::HeapPtrChirho(addr_chirho)
                     } else if closure_chirho.payload_chirho.len() == 1 {
                         match &closure_chirho.payload_chirho[0] {
-                            ValueChirho::IntChirho(n_chirho) => {
-                                ValueChirho::IntChirho(*n_chirho)
-                            }
+                            ValueChirho::IntChirho(n_chirho) => ValueChirho::IntChirho(*n_chirho),
                             ValueChirho::FloatChirho(n_chirho) => {
                                 ValueChirho::FloatChirho(*n_chirho)
                             }
-                            ValueChirho::CharChirho(c_chirho) => {
-                                ValueChirho::CharChirho(*c_chirho)
-                            }
-                            ValueChirho::BoolChirho(b_chirho) => {
-                                ValueChirho::BoolChirho(*b_chirho)
-                            }
+                            ValueChirho::CharChirho(c_chirho) => ValueChirho::CharChirho(*c_chirho),
+                            ValueChirho::BoolChirho(b_chirho) => ValueChirho::BoolChirho(*b_chirho),
                             _ => ValueChirho::HeapPtrChirho(addr_chirho),
                         }
                     } else {
@@ -1189,11 +1168,8 @@ impl MachineChirho {
                         });
                         match next_chirho {
                             ValueChirho::HeapPtrChirho(a_chirho) => {
-                                let enter_idx_chirho =
-                                    self.emit_enter_chirho(a_chirho);
-                                return Ok(ReturnActionChirho::ContinueChirho(
-                                    enter_idx_chirho,
-                                ));
+                                let enter_idx_chirho = self.emit_enter_chirho(a_chirho);
+                                return Ok(ReturnActionChirho::ContinueChirho(enter_idx_chirho));
                             }
                             other_chirho => {
                                 return self.return_lit_chirho(other_chirho);
@@ -1257,11 +1233,8 @@ impl MachineChirho {
                         match next_chirho {
                             ValueChirho::HeapPtrChirho(addr_chirho) => {
                                 // Enter the closure to force it
-                                let enter_idx_chirho =
-                                    self.emit_enter_chirho(addr_chirho);
-                                return Ok(ReturnActionChirho::ContinueChirho(
-                                    enter_idx_chirho,
-                                ));
+                                let enter_idx_chirho = self.emit_enter_chirho(addr_chirho);
+                                return Ok(ReturnActionChirho::ContinueChirho(enter_idx_chirho));
                             }
                             other_chirho => {
                                 // Already unboxed — recursively return it
@@ -1279,8 +1252,7 @@ impl MachineChirho {
                 Some(FrameChirho::TryFrameChirho { .. }) => {
                     // try# frame — body succeeded with a literal value.
                     // Wrap in Right so the caller receives Either String a.
-                    let right_val_chirho =
-                        self.make_either_right_chirho(val_chirho.clone());
+                    let right_val_chirho = self.make_either_right_chirho(val_chirho.clone());
                     let idx_chirho = self.emit_lit_code_chirho(right_val_chirho);
                     return Ok(ReturnActionChirho::ContinueChirho(idx_chirho));
                 }
@@ -1313,10 +1285,7 @@ impl MachineChirho {
                 }
                 Some(FrameChirho::ApplyChirho { .. }) => {
                     return Err(EvalErrorChirho::TypeErrorChirho {
-                        message_chirho: format!(
-                            "cannot apply arguments to literal {}",
-                            val_chirho
-                        ),
+                        message_chirho: format!("cannot apply arguments to literal {}", val_chirho),
                     });
                 }
             }
@@ -1332,9 +1301,9 @@ impl MachineChirho {
         loop {
             match self.stack_chirho.pop_chirho() {
                 None => {
-                    return Ok(ReturnActionChirho::DoneChirho(
-                        ValueChirho::HeapPtrChirho(addr_chirho),
-                    ));
+                    return Ok(ReturnActionChirho::DoneChirho(ValueChirho::HeapPtrChirho(
+                        addr_chirho,
+                    )));
                 }
                 Some(FrameChirho::UpdateChirho { thunk_addr_chirho }) => {
                     // Update thunk to an indirection to the heap object.
@@ -1382,11 +1351,8 @@ impl MachineChirho {
                         });
                         match next_chirho {
                             ValueChirho::HeapPtrChirho(a_chirho) => {
-                                let enter_idx_chirho =
-                                    self.emit_enter_chirho(a_chirho);
-                                return Ok(ReturnActionChirho::ContinueChirho(
-                                    enter_idx_chirho,
-                                ));
+                                let enter_idx_chirho = self.emit_enter_chirho(a_chirho);
+                                return Ok(ReturnActionChirho::ContinueChirho(enter_idx_chirho));
                             }
                             other_chirho => {
                                 return self.return_lit_chirho(other_chirho);
@@ -1396,9 +1362,8 @@ impl MachineChirho {
                 }
                 Some(FrameChirho::ApplyChirho { args_chirho }) => {
                     // The heap object is being applied to arguments — enter it.
-                    self.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
-                        args_chirho,
-                    });
+                    self.stack_chirho
+                        .push_chirho(FrameChirho::ApplyChirho { args_chirho });
                     let enter_idx_chirho = self.emit_enter_chirho(addr_chirho);
                     return Ok(ReturnActionChirho::ContinueChirho(enter_idx_chirho));
                 }
@@ -1437,10 +1402,7 @@ impl MachineChirho {
             Ok(def_chirho)
         } else {
             Err(EvalErrorChirho::TypeErrorChirho {
-                message_chirho: format!(
-                    "non-exhaustive literal case: {:?}",
-                    val_chirho
-                ),
+                message_chirho: format!("non-exhaustive literal case: {:?}", val_chirho),
             })
         }
     }
@@ -1472,8 +1434,7 @@ impl MachineChirho {
                         ));
                     } else if n_args_chirho > arity_chirho {
                         // Over-application: take arity args, push the rest
-                        let (taken_chirho, rest_chirho) =
-                            args_chirho.split_at(arity_chirho);
+                        let (taken_chirho, rest_chirho) = args_chirho.split_at(arity_chirho);
                         let mut regs_chirho = payload_chirho.clone();
                         regs_chirho.extend_from_slice(taken_chirho);
                         self.arg_regs_chirho = regs_chirho;
@@ -1485,15 +1446,10 @@ impl MachineChirho {
                         ));
                     } else {
                         // Under-application: build a PAP
-                        let remaining_chirho =
-                            (arity_chirho - n_args_chirho) as u16;
-                        let pap_chirho = ClosureChirho::pap_chirho(
-                            remaining_chirho,
-                            addr_chirho,
-                            args_chirho,
-                        );
-                        let pap_addr_chirho =
-                            self.heap_chirho.alloc_chirho(pap_chirho);
+                        let remaining_chirho = (arity_chirho - n_args_chirho) as u16;
+                        let pap_chirho =
+                            ClosureChirho::pap_chirho(remaining_chirho, addr_chirho, args_chirho);
+                        let pap_addr_chirho = self.heap_chirho.alloc_chirho(pap_chirho);
                         return self.return_con_chirho(pap_addr_chirho);
                     }
                 }
@@ -1515,9 +1471,9 @@ impl MachineChirho {
                 }
                 None => {
                     // Stack empty — function is the final result
-                    return Ok(ReturnActionChirho::DoneChirho(
-                        ValueChirho::HeapPtrChirho(addr_chirho),
-                    ));
+                    return Ok(ReturnActionChirho::DoneChirho(ValueChirho::HeapPtrChirho(
+                        addr_chirho,
+                    )));
                 }
             }
         }
@@ -1542,9 +1498,8 @@ impl MachineChirho {
                         ValueChirho::HeapPtrChirho(a_chirho) => *a_chirho,
                         _ => {
                             return Err(EvalErrorChirho::TypeErrorChirho {
-                                message_chirho: "PAP payload[0] is not a heap pointer"
-                                    .to_string(),
-                            })
+                                message_chirho: "PAP payload[0] is not a heap pointer".to_string(),
+                            });
                         }
                     };
 
@@ -1564,8 +1519,7 @@ impl MachineChirho {
                     self.arg_regs_chirho = all_regs_chirho;
 
                     // Enter the original function
-                    let fun_closure_chirho =
-                        self.heap_chirho.read_chirho(fun_addr_chirho).clone();
+                    let fun_closure_chirho = self.heap_chirho.read_chirho(fun_addr_chirho).clone();
                     Ok(ReturnActionChirho::ContinueChirho(
                         fun_closure_chirho.info_chirho.entry_chirho.0,
                     ))
@@ -1576,9 +1530,8 @@ impl MachineChirho {
                         ValueChirho::HeapPtrChirho(a_chirho) => *a_chirho,
                         _ => {
                             return Err(EvalErrorChirho::TypeErrorChirho {
-                                message_chirho: "PAP payload[0] is not a heap pointer"
-                                    .to_string(),
-                            })
+                                message_chirho: "PAP payload[0] is not a heap pointer".to_string(),
+                            });
                         }
                     };
 
@@ -1604,9 +1557,9 @@ impl MachineChirho {
                 self.stack_chirho.push_chirho(other_chirho);
                 self.return_heap_ptr_chirho(addr_chirho)
             }
-            None => Ok(ReturnActionChirho::DoneChirho(
-                ValueChirho::HeapPtrChirho(addr_chirho),
-            )),
+            None => Ok(ReturnActionChirho::DoneChirho(ValueChirho::HeapPtrChirho(
+                addr_chirho,
+            ))),
         }
     }
 
@@ -1645,22 +1598,34 @@ impl MachineChirho {
             }
             PrimOpKindChirho::SeqChirho => {
                 // seq a b = b (a is already evaluated to WHNF by the time we reach here)
-                return Ok(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                return Ok(args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0)));
             }
             PrimOpKindChirho::EvaluateChirho => {
                 // evaluate a = return a (forces a to WHNF, wraps in IO)
                 // Since our primop args are already forced, just return the value.
-                return Ok(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                return Ok(args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0)));
             }
             PrimOpKindChirho::ForceChirho => {
                 // force a = deepseq a a (fully evaluates and returns a)
                 // Since our values are already fully evaluated for primitives,
                 // this is equivalent to identity.
-                return Ok(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                return Ok(args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0)));
             }
             PrimOpKindChirho::IdChirho => {
                 // id# a = a (identity function — returns first arg unchanged)
-                return Ok(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                return Ok(args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0)));
             }
             PrimOpKindChirho::CatchChirho => {
                 // catch# body handler
@@ -1669,9 +1634,13 @@ impl MachineChirho {
                 // The body's result will pass through the CatchChirho frame
                 // transparently on success. On error, run_chirho unwinds
                 // to the CatchChirho frame and invokes the handler.
-                let body_val_chirho = args_chirho.first().cloned()
+                let body_val_chirho = args_chirho
+                    .first()
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
-                let handler_val_chirho = args_chirho.get(1).cloned()
+                let handler_val_chirho = args_chirho
+                    .get(1)
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
                 // Allocate the handler on the heap if it's not already there
                 let handler_addr_chirho = match handler_val_chirho {
@@ -1710,7 +1679,9 @@ impl MachineChirho {
                 // wrap the result in `Right`.  On RuntimeErrorChirho,
                 // try_catch_runtime_error_chirho wraps the message in `Left`.
                 // Both paths produce IO (Either String a).
-                let body_val_chirho = args_chirho.first().cloned()
+                let body_val_chirho = args_chirho
+                    .first()
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
                 self.stack_chirho.push_chirho(FrameChirho::TryFrameChirho {
                     saved_arg_regs_chirho: self.arg_regs_chirho.clone(),
@@ -1729,11 +1700,17 @@ impl MachineChirho {
                 //
                 // We run sub-computations by saving/restoring stack+regs and
                 // calling run_chirho inline (same technique as force_addr_to_whnf_chirho).
-                let acquire_val_chirho = args_chirho.first().cloned()
+                let acquire_val_chirho = args_chirho
+                    .first()
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
-                let release_val_chirho = args_chirho.get(1).cloned()
+                let release_val_chirho = args_chirho
+                    .get(1)
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
-                let body_val_chirho = args_chirho.get(2).cloned()
+                let body_val_chirho = args_chirho
+                    .get(2)
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
 
                 // Helper: run an IO value (HeapPtr or literal) in a sub-context.
@@ -1761,9 +1738,7 @@ impl MachineChirho {
                                 Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho)) => {
                                     Err(msg_chirho)
                                 }
-                                Err(e_chirho) => {
-                                    Err(format!("{}", e_chirho))
-                                }
+                                Err(e_chirho) => Err(format!("{}", e_chirho)),
                             }
                         }
                         v_chirho => Ok(v_chirho),
@@ -1772,8 +1747,8 @@ impl MachineChirho {
 
                 // Helper: apply a function value to an argument.
                 let apply_to_arg_chirho = |machine_chirho: &mut MachineChirho,
-                                            func_val_chirho: ValueChirho,
-                                            arg_val_chirho: ValueChirho|
+                                           func_val_chirho: ValueChirho,
+                                           arg_val_chirho: ValueChirho|
                  -> Result<ValueChirho, String> {
                     match func_val_chirho {
                         ValueChirho::HeapPtrChirho(func_addr_chirho) => {
@@ -1783,9 +1758,11 @@ impl MachineChirho {
                             );
                             let saved_regs_chirho =
                                 std::mem::take(&mut machine_chirho.arg_regs_chirho);
-                            machine_chirho.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
-                                args_chirho: vec![arg_val_chirho],
-                            });
+                            machine_chirho
+                                .stack_chirho
+                                .push_chirho(FrameChirho::ApplyChirho {
+                                    args_chirho: vec![arg_val_chirho],
+                                });
                             let entry_chirho = machine_chirho.emit_enter_chirho(func_addr_chirho);
                             let result_chirho = machine_chirho.run_chirho(entry_chirho);
                             machine_chirho.stack_chirho = saved_stack_chirho;
@@ -1803,9 +1780,8 @@ impl MachineChirho {
                 };
 
                 // Step 1: run acquire
-                let resource_chirho =
-                    run_io_val_chirho(self, acquire_val_chirho)
-                        .map_err(|msg_chirho| EvalErrorChirho::RuntimeErrorChirho(msg_chirho))?;
+                let resource_chirho = run_io_val_chirho(self, acquire_val_chirho)
+                    .map_err(|msg_chirho| EvalErrorChirho::RuntimeErrorChirho(msg_chirho))?;
 
                 // Step 2: run (body resource), catching exceptions
                 let body_result_chirho: Result<ValueChirho, String> =
@@ -1817,9 +1793,7 @@ impl MachineChirho {
                 // Step 4: return body result or re-throw
                 match body_result_chirho {
                     Ok(val_chirho) => return Ok(val_chirho),
-                    Err(msg_chirho) => {
-                        return Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho))
-                    }
+                    Err(msg_chirho) => return Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho)),
                 }
             }
             PrimOpKindChirho::FinallyChirho => {
@@ -1827,44 +1801,40 @@ impl MachineChirho {
                 //
                 // Run action (catching exceptions), always run cleanup,
                 // then re-throw or return action result.
-                let action_val_chirho = args_chirho.first().cloned()
+                let action_val_chirho = args_chirho
+                    .first()
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
-                let cleanup_val_chirho = args_chirho.get(1).cloned()
+                let cleanup_val_chirho = args_chirho
+                    .get(1)
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
 
                 // Run action in a sub-context, catching RuntimeError.
-                let action_result_chirho: Result<ValueChirho, String> =
-                    match action_val_chirho {
-                        ValueChirho::HeapPtrChirho(addr_chirho) => {
-                            let saved_stack_chirho = std::mem::replace(
-                                &mut self.stack_chirho,
-                                StackChirho::new_chirho(),
-                            );
-                            let saved_regs_chirho =
-                                std::mem::take(&mut self.arg_regs_chirho);
-                            let entry_chirho = self.code_table_chirho.len() as u32;
-                            self.code_table_chirho
-                                .push(CodeChirho::EnterChirho(addr_chirho));
-                            let result_chirho = self.run_chirho(entry_chirho);
-                            self.stack_chirho = saved_stack_chirho;
-                            self.arg_regs_chirho = saved_regs_chirho;
-                            match result_chirho {
-                                Ok(v_chirho) => Ok(v_chirho),
-                                Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho)) => {
-                                    Err(msg_chirho)
-                                }
-                                Err(e_chirho) => Err(format!("{}", e_chirho)),
-                            }
+                let action_result_chirho: Result<ValueChirho, String> = match action_val_chirho {
+                    ValueChirho::HeapPtrChirho(addr_chirho) => {
+                        let saved_stack_chirho =
+                            std::mem::replace(&mut self.stack_chirho, StackChirho::new_chirho());
+                        let saved_regs_chirho = std::mem::take(&mut self.arg_regs_chirho);
+                        let entry_chirho = self.code_table_chirho.len() as u32;
+                        self.code_table_chirho
+                            .push(CodeChirho::EnterChirho(addr_chirho));
+                        let result_chirho = self.run_chirho(entry_chirho);
+                        self.stack_chirho = saved_stack_chirho;
+                        self.arg_regs_chirho = saved_regs_chirho;
+                        match result_chirho {
+                            Ok(v_chirho) => Ok(v_chirho),
+                            Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho)) => Err(msg_chirho),
+                            Err(e_chirho) => Err(format!("{}", e_chirho)),
                         }
-                        v_chirho => Ok(v_chirho),
-                    };
+                    }
+                    v_chirho => Ok(v_chirho),
+                };
 
                 // Always run cleanup
                 if let ValueChirho::HeapPtrChirho(cleanup_addr_chirho) = cleanup_val_chirho {
-                    let saved_stack_chirho = std::mem::replace(
-                        &mut self.stack_chirho,
-                        StackChirho::new_chirho(),
-                    );
+                    let saved_stack_chirho =
+                        std::mem::replace(&mut self.stack_chirho, StackChirho::new_chirho());
                     let saved_regs_chirho = std::mem::take(&mut self.arg_regs_chirho);
                     let entry_chirho = self.code_table_chirho.len() as u32;
                     self.code_table_chirho
@@ -1877,9 +1847,7 @@ impl MachineChirho {
                 // Return action result or re-throw
                 match action_result_chirho {
                     Ok(val_chirho) => return Ok(val_chirho),
-                    Err(msg_chirho) => {
-                        return Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho))
-                    }
+                    Err(msg_chirho) => return Err(EvalErrorChirho::RuntimeErrorChirho(msg_chirho)),
                 }
             }
             PrimOpKindChirho::PutStrLnChirho => {
@@ -1922,7 +1890,10 @@ impl MachineChirho {
             }
             PrimOpKindChirho::ReturnIOChirho => {
                 // return x = x (in our simplified IO model)
-                return Ok(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                return Ok(args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0)));
             }
             PrimOpKindChirho::BindIOChirho | PrimOpKindChirho::ThenIOChirho => {
                 // For now these are handled at the lowering level
@@ -1966,12 +1937,16 @@ impl MachineChirho {
                 {
                     let path_str_chirho = match path_chirho {
                         ValueChirho::StringChirho(s_chirho) => s_chirho.clone(),
-                        ValueChirho::HeapPtrChirho(a_chirho) => self.resolve_string_arg_chirho(*a_chirho)?,
+                        ValueChirho::HeapPtrChirho(a_chirho) => {
+                            self.resolve_string_arg_chirho(*a_chirho)?
+                        }
                         _ => String::new(),
                     };
                     let content_str_chirho = match content_chirho {
                         ValueChirho::StringChirho(s_chirho) => s_chirho.clone(),
-                        ValueChirho::HeapPtrChirho(a_chirho) => self.resolve_string_arg_chirho(*a_chirho)?,
+                        ValueChirho::HeapPtrChirho(a_chirho) => {
+                            self.resolve_string_arg_chirho(*a_chirho)?
+                        }
                         _ => String::new(),
                     };
                     self.io_output_chirho.push_str(&format!(
@@ -1987,12 +1962,16 @@ impl MachineChirho {
                 {
                     let path_str_chirho = match path_chirho {
                         ValueChirho::StringChirho(s_chirho) => s_chirho.clone(),
-                        ValueChirho::HeapPtrChirho(a_chirho) => self.resolve_string_arg_chirho(*a_chirho)?,
+                        ValueChirho::HeapPtrChirho(a_chirho) => {
+                            self.resolve_string_arg_chirho(*a_chirho)?
+                        }
                         _ => String::new(),
                     };
                     let content_str_chirho = match content_chirho {
                         ValueChirho::StringChirho(s_chirho) => s_chirho.clone(),
-                        ValueChirho::HeapPtrChirho(a_chirho) => self.resolve_string_arg_chirho(*a_chirho)?,
+                        ValueChirho::HeapPtrChirho(a_chirho) => {
+                            self.resolve_string_arg_chirho(*a_chirho)?
+                        }
                         _ => String::new(),
                     };
                     self.io_output_chirho.push_str(&format!(
@@ -2016,15 +1995,14 @@ impl MachineChirho {
                 let cons_tag_chirho = self.lookup_con_tag_chirho(":", 1);
 
                 // Build the list backwards from `to` down to `from`.
-                let nil_closure_chirho = ClosureChirho::con_chirho(
-                    nil_tag_chirho, "[]", vec![],
-                );
+                let nil_closure_chirho = ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
                 let mut tail_addr_chirho = self.heap_chirho.alloc_chirho(nil_closure_chirho);
 
                 let mut i_chirho = to_chirho;
                 while i_chirho >= from_chirho {
                     let cons_closure_chirho = ClosureChirho::con_chirho(
-                        cons_tag_chirho, ":",
+                        cons_tag_chirho,
+                        ":",
                         vec![
                             ValueChirho::IntChirho(i_chirho),
                             ValueChirho::HeapPtrChirho(tail_addr_chirho),
@@ -2050,7 +2028,8 @@ impl MachineChirho {
                 let mut i_chirho = cap_chirho;
                 while i_chirho >= from_chirho {
                     let cons_closure_chirho = ClosureChirho::con_chirho(
-                        cons_tag_chirho, ":",
+                        cons_tag_chirho,
+                        ":",
                         vec![
                             ValueChirho::IntChirho(i_chirho),
                             ValueChirho::HeapPtrChirho(tail_addr_chirho),
@@ -2086,7 +2065,8 @@ impl MachineChirho {
                 let mut tail_addr_chirho = self.heap_chirho.alloc_chirho(nil_closure_chirho);
                 for val_chirho in values_chirho.into_iter().rev() {
                     let cons_closure_chirho = ClosureChirho::con_chirho(
-                        cons_tag_chirho, ":",
+                        cons_tag_chirho,
+                        ":",
                         vec![
                             ValueChirho::IntChirho(val_chirho),
                             ValueChirho::HeapPtrChirho(tail_addr_chirho),
@@ -2132,7 +2112,8 @@ impl MachineChirho {
                 let mut tail_addr_chirho = self.heap_chirho.alloc_chirho(nil_closure_chirho);
                 for val_chirho in values_chirho.into_iter().rev() {
                     let cons_closure_chirho = ClosureChirho::con_chirho(
-                        cons_tag_chirho, ":",
+                        cons_tag_chirho,
+                        ":",
                         vec![
                             ValueChirho::IntChirho(val_chirho),
                             ValueChirho::HeapPtrChirho(tail_addr_chirho),
@@ -2198,8 +2179,7 @@ impl MachineChirho {
                         }
                     }
 
-                    let result_chirho =
-                        format!("[{}]", elements_chirho.join(","));
+                    let result_chirho = format!("[{}]", elements_chirho.join(","));
                     return Ok(ValueChirho::StringChirho(result_chirho));
                 }
                 return Ok(ValueChirho::StringChirho("[]".to_string()));
@@ -2243,18 +2223,27 @@ impl MachineChirho {
             PrimOpKindChirho::InteractChirho => {
                 // interact f = getContents >>= putStr . f
                 // Read all io_input, apply f (first arg) to the input string, write result
-                let all_input_chirho: String = self.io_input_chirho.drain(..).collect::<Vec<_>>().join("\n");
+                let all_input_chirho: String = self
+                    .io_input_chirho
+                    .drain(..)
+                    .collect::<Vec<_>>()
+                    .join("\n");
                 if let Some(func_val_chirho) = args_chirho.first().cloned() {
                     // Build a cons-list of Chars from the input string so
                     // list functions (reverse, map, etc.) can operate on it
                     let nil_tag_chirho = self.lookup_con_tag_chirho("[]", 0);
                     let cons_tag_chirho = self.lookup_con_tag_chirho(":", 1);
-                    let nil_closure_chirho = ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
+                    let nil_closure_chirho =
+                        ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
                     let mut input_addr_chirho = self.heap_chirho.alloc_chirho(nil_closure_chirho);
                     for ch_chirho in all_input_chirho.chars().rev() {
                         let cons_closure_chirho = ClosureChirho::con_chirho(
-                            cons_tag_chirho, ":",
-                            vec![ValueChirho::CharChirho(ch_chirho), ValueChirho::HeapPtrChirho(input_addr_chirho)],
+                            cons_tag_chirho,
+                            ":",
+                            vec![
+                                ValueChirho::CharChirho(ch_chirho),
+                                ValueChirho::HeapPtrChirho(input_addr_chirho),
+                            ],
                         );
                         input_addr_chirho = self.heap_chirho.alloc_chirho(cons_closure_chirho);
                     }
@@ -2270,10 +2259,8 @@ impl MachineChirho {
                     };
 
                     // Save machine state for nested eval
-                    let saved_stack_chirho = std::mem::replace(
-                        &mut self.stack_chirho,
-                        StackChirho::new_chirho(),
-                    );
+                    let saved_stack_chirho =
+                        std::mem::replace(&mut self.stack_chirho, StackChirho::new_chirho());
                     let saved_regs_chirho = std::mem::take(&mut self.arg_regs_chirho);
 
                     // Push Apply frame with the input string arg, then enter function
@@ -2281,7 +2268,8 @@ impl MachineChirho {
                         args_chirho: vec![ValueChirho::HeapPtrChirho(input_addr_chirho)],
                     });
                     let entry_chirho = self.code_table_chirho.len() as u32;
-                    self.code_table_chirho.push(CodeChirho::EnterChirho(func_addr_chirho));
+                    self.code_table_chirho
+                        .push(CodeChirho::EnterChirho(func_addr_chirho));
                     let result_val_chirho = self.run_chirho(entry_chirho)?;
 
                     // Restore machine state
@@ -2318,11 +2306,13 @@ impl MachineChirho {
                     let line_strs_chirho: Vec<&str> = s_chirho.split('\n').collect();
                     let nil_tag_chirho = self.lookup_con_tag_chirho("[]", 0);
                     let cons_tag_chirho = self.lookup_con_tag_chirho(":", 1);
-                    let nil_closure_chirho = ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
+                    let nil_closure_chirho =
+                        ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
                     let mut tail_addr_chirho = self.heap_chirho.alloc_chirho(nil_closure_chirho);
                     for line_chirho in line_strs_chirho.into_iter().rev() {
                         let cons_closure_chirho = ClosureChirho::con_chirho(
-                            cons_tag_chirho, ":",
+                            cons_tag_chirho,
+                            ":",
                             vec![
                                 ValueChirho::StringChirho(line_chirho.to_string()),
                                 ValueChirho::HeapPtrChirho(tail_addr_chirho),
@@ -2338,7 +2328,8 @@ impl MachineChirho {
                 // unlines# list → join strings with newlines (each line gets trailing \n)
                 if let Some(ValueChirho::HeapPtrChirho(addr_chirho)) = args_chirho.first() {
                     let strings_chirho = self.collect_string_list_chirho(*addr_chirho);
-                    let result_chirho = strings_chirho.iter()
+                    let result_chirho = strings_chirho
+                        .iter()
                         .map(|s_chirho| format!("{}\n", s_chirho))
                         .collect::<String>();
                     return Ok(ValueChirho::StringChirho(result_chirho));
@@ -2399,8 +2390,10 @@ impl MachineChirho {
                         let mut elements_chirho: Vec<ValueChirho> = Vec::new();
                         let mut current_chirho = *addr_chirho;
                         for _ in 0..n_chirho {
-                            let resolved_chirho = self.heap_chirho.follow_ind_chirho(current_chirho);
-                            let closure_chirho = self.heap_chirho.read_chirho(resolved_chirho).clone();
+                            let resolved_chirho =
+                                self.heap_chirho.follow_ind_chirho(current_chirho);
+                            let closure_chirho =
+                                self.heap_chirho.read_chirho(resolved_chirho).clone();
                             if closure_chirho.info_chirho.name_chirho == "[]" {
                                 break;
                             }
@@ -2409,7 +2402,9 @@ impl MachineChirho {
                             {
                                 elements_chirho.push(closure_chirho.payload_chirho[0].clone());
                                 match &closure_chirho.payload_chirho[1] {
-                                    ValueChirho::HeapPtrChirho(tail_chirho) => current_chirho = *tail_chirho,
+                                    ValueChirho::HeapPtrChirho(tail_chirho) => {
+                                        current_chirho = *tail_chirho
+                                    }
                                     _ => break,
                                 }
                             } else {
@@ -2417,11 +2412,14 @@ impl MachineChirho {
                             }
                         }
                         // Build result list backwards
-                        let nil_closure_chirho = ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
-                        let mut tail_addr_chirho = self.heap_chirho.alloc_chirho(nil_closure_chirho);
+                        let nil_closure_chirho =
+                            ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
+                        let mut tail_addr_chirho =
+                            self.heap_chirho.alloc_chirho(nil_closure_chirho);
                         for elem_chirho in elements_chirho.into_iter().rev() {
                             let cons_closure_chirho = ClosureChirho::con_chirho(
-                                cons_tag_chirho, ":",
+                                cons_tag_chirho,
+                                ":",
                                 vec![elem_chirho, ValueChirho::HeapPtrChirho(tail_addr_chirho)],
                             );
                             tail_addr_chirho = self.heap_chirho.alloc_chirho(cons_closure_chirho);
@@ -2447,8 +2445,10 @@ impl MachineChirho {
                         // Walk heap cons list, skip first n elements, return rest
                         let mut current_chirho = *addr_chirho;
                         for _ in 0..n_chirho {
-                            let resolved_chirho = self.heap_chirho.follow_ind_chirho(current_chirho);
-                            let closure_chirho = self.heap_chirho.read_chirho(resolved_chirho).clone();
+                            let resolved_chirho =
+                                self.heap_chirho.follow_ind_chirho(current_chirho);
+                            let closure_chirho =
+                                self.heap_chirho.read_chirho(resolved_chirho).clone();
                             if closure_chirho.info_chirho.name_chirho == "[]" {
                                 return Ok(ValueChirho::HeapPtrChirho(resolved_chirho));
                             }
@@ -2456,7 +2456,9 @@ impl MachineChirho {
                                 && closure_chirho.payload_chirho.len() >= 2
                             {
                                 match &closure_chirho.payload_chirho[1] {
-                                    ValueChirho::HeapPtrChirho(tail_chirho) => current_chirho = *tail_chirho,
+                                    ValueChirho::HeapPtrChirho(tail_chirho) => {
+                                        current_chirho = *tail_chirho
+                                    }
                                     _ => return Ok(ValueChirho::HeapPtrChirho(resolved_chirho)),
                                 }
                             } else {
@@ -2474,11 +2476,13 @@ impl MachineChirho {
                     let words_chirho: Vec<&str> = s_chirho.split_whitespace().collect();
                     let nil_tag_chirho = self.lookup_con_tag_chirho("[]", 0);
                     let cons_tag_chirho = self.lookup_con_tag_chirho(":", 1);
-                    let nil_closure_chirho = ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
+                    let nil_closure_chirho =
+                        ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
                     let mut tail_addr_chirho = self.heap_chirho.alloc_chirho(nil_closure_chirho);
                     for word_chirho in words_chirho.into_iter().rev() {
                         let cons_closure_chirho = ClosureChirho::con_chirho(
-                            cons_tag_chirho, ":",
+                            cons_tag_chirho,
+                            ":",
                             vec![
                                 ValueChirho::StringChirho(word_chirho.to_string()),
                                 ValueChirho::HeapPtrChirho(tail_addr_chirho),
@@ -2508,8 +2512,10 @@ impl MachineChirho {
             }
             PrimOpKindChirho::IntercalateStrChirho => {
                 // intercalateStr# sep list → join strings with separator
-                if let (Some(ValueChirho::StringChirho(sep_chirho)), Some(ValueChirho::HeapPtrChirho(addr_chirho))) =
-                    (args_chirho.first(), args_chirho.get(1))
+                if let (
+                    Some(ValueChirho::StringChirho(sep_chirho)),
+                    Some(ValueChirho::HeapPtrChirho(addr_chirho)),
+                ) = (args_chirho.first(), args_chirho.get(1))
                 {
                     let strings_chirho = self.collect_string_list_chirho(*addr_chirho);
                     return Ok(ValueChirho::StringChirho(strings_chirho.join(sep_chirho)));
@@ -2521,7 +2527,9 @@ impl MachineChirho {
                 // that whosoever believeth in Him should not perish, but have everlasting life.
                 //
                 // ++ operator — handles both String concat and cons-list append.
-                let is_cons_list_chirho = |val_chirho: &ValueChirho, heap_chirho: &crate::heap_chirho::HeapChirho| -> bool {
+                let is_cons_list_chirho = |val_chirho: &ValueChirho,
+                                           heap_chirho: &crate::heap_chirho::HeapChirho|
+                 -> bool {
                     match val_chirho {
                         ValueChirho::HeapPtrChirho(addr_chirho) => {
                             let resolved_chirho = heap_chirho.follow_ind_chirho(*addr_chirho);
@@ -2538,10 +2546,14 @@ impl MachineChirho {
                 if a_is_list_chirho || b_is_list_chirho {
                     // List append: xs ++ ys
                     let ys_addr_chirho = match &args_chirho[1] {
-                        ValueChirho::HeapPtrChirho(a_chirho) => self.heap_chirho.follow_ind_chirho(*a_chirho),
+                        ValueChirho::HeapPtrChirho(a_chirho) => {
+                            self.heap_chirho.follow_ind_chirho(*a_chirho)
+                        }
                         _ => {
                             let nil_chirho = ClosureChirho::con_chirho(
-                                self.lookup_con_tag_chirho("[]", 0), "[]", vec![],
+                                self.lookup_con_tag_chirho("[]", 0),
+                                "[]",
+                                vec![],
                             );
                             self.heap_chirho.alloc_chirho(nil_chirho)
                         }
@@ -2559,11 +2571,14 @@ impl MachineChirho {
                             let cl_chirho = self.heap_chirho.read_chirho(forced_chirho).clone();
                             if cl_chirho.info_chirho.name_chirho == "[]" {
                                 break;
-                            } else if cl_chirho.info_chirho.name_chirho == ":" && cl_chirho.payload_chirho.len() >= 2 {
+                            } else if cl_chirho.info_chirho.name_chirho == ":"
+                                && cl_chirho.payload_chirho.len() >= 2
+                            {
                                 xs_elems_chirho.push(cl_chirho.payload_chirho[0].clone());
                                 match &cl_chirho.payload_chirho[1] {
                                     ValueChirho::HeapPtrChirho(tail_chirho) => {
-                                        cur_chirho = self.heap_chirho.follow_ind_chirho(*tail_chirho);
+                                        cur_chirho =
+                                            self.heap_chirho.follow_ind_chirho(*tail_chirho);
                                     }
                                     _ => break,
                                 }
@@ -2589,7 +2604,10 @@ impl MachineChirho {
                 // Fallback: string concatenation
                 let a_chirho = self.resolve_value_to_string_chirho(&args_chirho[0])?;
                 let b_chirho = self.resolve_value_to_string_chirho(&args_chirho[1])?;
-                return Ok(ValueChirho::StringChirho(format!("{}{}", a_chirho, b_chirho)));
+                return Ok(ValueChirho::StringChirho(format!(
+                    "{}{}",
+                    a_chirho, b_chirho
+                )));
             }
             PrimOpKindChirho::CompareIntChirho => {
                 let a_chirho = match args_chirho.first() {
@@ -2625,7 +2643,9 @@ impl MachineChirho {
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
                 let ordering_chirho = self.make_ordering_chirho(
-                    a_chirho.partial_cmp(&b_chirho).unwrap_or(std::cmp::Ordering::Equal),
+                    a_chirho
+                        .partial_cmp(&b_chirho)
+                        .unwrap_or(std::cmp::Ordering::Equal),
                 );
                 return Ok(ordering_chirho);
             }
@@ -2638,7 +2658,10 @@ impl MachineChirho {
             // ── IORef operations ──
             PrimOpKindChirho::NewIORefChirho => {
                 // newIORef# val → allocate a new mutable reference, return its id as Int
-                let val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
                 let id_chirho = self.next_ioref_chirho;
                 self.next_ioref_chirho += 1;
                 self.iorefs_chirho.insert(id_chirho, val_chirho);
@@ -2650,13 +2673,18 @@ impl MachineChirho {
                     Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
-                let val_chirho = self.iorefs_chirho.get(&ref_id_chirho).cloned()
+                let val_chirho = self
+                    .iorefs_chirho
+                    .get(&ref_id_chirho)
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
                 // If the stored value is a HeapPtr (thunk), force it to WHNF
                 if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
                     match self.force_addr_to_whnf_chirho(addr_chirho) {
                         Ok(forced_chirho) => {
-                            let resolved_chirho = self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(forced_chirho));
+                            let resolved_chirho = self.resolve_heap_value_chirho(
+                                &ValueChirho::HeapPtrChirho(forced_chirho),
+                            );
                             return Ok(resolved_chirho);
                         }
                         Err(_) => return Ok(ValueChirho::HeapPtrChirho(addr_chirho)),
@@ -2670,12 +2698,17 @@ impl MachineChirho {
                     Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
-                let mut val_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let mut val_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
                 // Force thunks to WHNF before storing
                 if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
                     match self.force_addr_to_whnf_chirho(addr_chirho) {
                         Ok(forced_chirho) => {
-                            val_chirho = self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(forced_chirho));
+                            val_chirho = self.resolve_heap_value_chirho(
+                                &ValueChirho::HeapPtrChirho(forced_chirho),
+                            );
                         }
                         Err(_) => {}
                     }
@@ -2690,10 +2723,15 @@ impl MachineChirho {
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
                 // Read current value from the ref store
-                let current_chirho = self.iorefs_chirho.get(&ref_id_chirho).cloned()
+                let current_chirho = self
+                    .iorefs_chirho
+                    .get(&ref_id_chirho)
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
                 // Apply the function (second arg) to the current value
-                let func_val_chirho = args_chirho.get(1).cloned()
+                let func_val_chirho = args_chirho
+                    .get(1)
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
                 let new_val_chirho = match func_val_chirho {
                     ValueChirho::HeapPtrChirho(func_addr_chirho) => {
@@ -2712,26 +2750,26 @@ impl MachineChirho {
                             other_chirho => other_chirho.clone(),
                         };
                         // Save machine state for nested eval
-                        let saved_stack_chirho = std::mem::replace(
-                            &mut self.stack_chirho,
-                            StackChirho::new_chirho(),
-                        );
+                        let saved_stack_chirho =
+                            std::mem::replace(&mut self.stack_chirho, StackChirho::new_chirho());
                         let saved_regs_chirho = std::mem::take(&mut self.arg_regs_chirho);
                         // Push Apply frame with argument, enter function
                         self.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
                             args_chirho: vec![arg_val_chirho],
                         });
                         let entry_chirho = self.code_table_chirho.len() as u32;
-                        self.code_table_chirho.push(CodeChirho::EnterChirho(func_addr_chirho));
+                        self.code_table_chirho
+                            .push(CodeChirho::EnterChirho(func_addr_chirho));
                         let result_val_chirho = self.run_chirho(entry_chirho)?;
                         // Restore machine state
                         self.stack_chirho = saved_stack_chirho;
                         self.arg_regs_chirho = saved_regs_chirho;
                         // Resolve HeapPtr result to unboxed value if possible
                         match &result_val_chirho {
-                            ValueChirho::HeapPtrChirho(addr_chirho) => {
-                                self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(*addr_chirho))
-                            }
+                            ValueChirho::HeapPtrChirho(addr_chirho) => self
+                                .resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(
+                                    *addr_chirho,
+                                )),
                             other_chirho => other_chirho.clone(),
                         }
                     }
@@ -2747,7 +2785,10 @@ impl MachineChirho {
             // but are scoped via runST which gives pure semantics.
             PrimOpKindChirho::NewSTRefChirho => {
                 // newSTRef# val → allocate a new mutable reference, return id as Int
-                let val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
                 let id_chirho = self.next_ioref_chirho;
                 self.next_ioref_chirho += 1;
                 self.iorefs_chirho.insert(id_chirho, val_chirho);
@@ -2759,13 +2800,18 @@ impl MachineChirho {
                     Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
-                let val_chirho = self.iorefs_chirho.get(&ref_id_chirho).cloned()
+                let val_chirho = self
+                    .iorefs_chirho
+                    .get(&ref_id_chirho)
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
                 // If the stored value is a HeapPtr (thunk), force it to WHNF
                 if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
                     match self.force_addr_to_whnf_chirho(addr_chirho) {
                         Ok(forced_chirho) => {
-                            let resolved_chirho = self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(forced_chirho));
+                            let resolved_chirho = self.resolve_heap_value_chirho(
+                                &ValueChirho::HeapPtrChirho(forced_chirho),
+                            );
                             return Ok(resolved_chirho);
                         }
                         Err(_) => return Ok(ValueChirho::HeapPtrChirho(addr_chirho)),
@@ -2779,12 +2825,17 @@ impl MachineChirho {
                     Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
-                let mut val_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let mut val_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
                 // Force thunks to WHNF before storing
                 if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
                     match self.force_addr_to_whnf_chirho(addr_chirho) {
                         Ok(forced_chirho) => {
-                            val_chirho = self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(forced_chirho));
+                            val_chirho = self.resolve_heap_value_chirho(
+                                &ValueChirho::HeapPtrChirho(forced_chirho),
+                            );
                         }
                         Err(_) => {}
                     }
@@ -2799,10 +2850,15 @@ impl MachineChirho {
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
                 // Read current value from the ST ref store
-                let current_chirho = self.iorefs_chirho.get(&ref_id_chirho).cloned()
+                let current_chirho = self
+                    .iorefs_chirho
+                    .get(&ref_id_chirho)
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
                 // Apply the function (second arg) to the current value
-                let func_val_chirho = args_chirho.get(1).cloned()
+                let func_val_chirho = args_chirho
+                    .get(1)
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
                 let new_val_chirho = match func_val_chirho {
                     ValueChirho::HeapPtrChirho(func_addr_chirho) => {
@@ -2820,26 +2876,26 @@ impl MachineChirho {
                             other_chirho => other_chirho.clone(),
                         };
                         // Save machine state for nested evaluation
-                        let saved_stack_chirho = std::mem::replace(
-                            &mut self.stack_chirho,
-                            StackChirho::new_chirho(),
-                        );
+                        let saved_stack_chirho =
+                            std::mem::replace(&mut self.stack_chirho, StackChirho::new_chirho());
                         let saved_regs_chirho = std::mem::take(&mut self.arg_regs_chirho);
                         // Push Apply frame with argument, then enter the function closure
                         self.stack_chirho.push_chirho(FrameChirho::ApplyChirho {
                             args_chirho: vec![arg_val_chirho],
                         });
                         let entry_chirho = self.code_table_chirho.len() as u32;
-                        self.code_table_chirho.push(CodeChirho::EnterChirho(func_addr_chirho));
+                        self.code_table_chirho
+                            .push(CodeChirho::EnterChirho(func_addr_chirho));
                         let result_val_chirho = self.run_chirho(entry_chirho)?;
                         // Restore machine state
                         self.stack_chirho = saved_stack_chirho;
                         self.arg_regs_chirho = saved_regs_chirho;
                         // Resolve HeapPtr result to an unboxed primitive if possible
                         match &result_val_chirho {
-                            ValueChirho::HeapPtrChirho(addr_chirho) => {
-                                self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(*addr_chirho))
-                            }
+                            ValueChirho::HeapPtrChirho(addr_chirho) => self
+                                .resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(
+                                    *addr_chirho,
+                                )),
                             other_chirho => other_chirho.clone(),
                         }
                     }
@@ -2855,14 +2911,20 @@ impl MachineChirho {
                 // Since our ST monad is just identity-like (same as IO without I/O),
                 // we simply evaluate the argument which should be the result of the
                 // ST computation.
-                let val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
                 return Ok(val_chirho);
             }
 
             // ── STM (Software Transactional Memory) operations ──
             PrimOpKindChirho::NewTVarChirho => {
                 // newTVar# val → allocate a new TVar, return its id as Int
-                let val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
                 let id_chirho = self.next_tvar_chirho;
                 self.next_tvar_chirho += 1;
                 self.tvars_chirho.insert(id_chirho, val_chirho);
@@ -2874,13 +2936,18 @@ impl MachineChirho {
                     Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
-                let val_chirho = self.tvars_chirho.get(&tvar_id_chirho).cloned()
+                let val_chirho = self
+                    .tvars_chirho
+                    .get(&tvar_id_chirho)
+                    .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0));
                 // Force thunks to WHNF if needed
                 if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
                     match self.force_addr_to_whnf_chirho(addr_chirho) {
                         Ok(forced_chirho) => {
-                            let resolved_chirho = self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(forced_chirho));
+                            let resolved_chirho = self.resolve_heap_value_chirho(
+                                &ValueChirho::HeapPtrChirho(forced_chirho),
+                            );
                             return Ok(resolved_chirho);
                         }
                         Err(_) => return Ok(ValueChirho::HeapPtrChirho(addr_chirho)),
@@ -2894,12 +2961,17 @@ impl MachineChirho {
                     Some(ValueChirho::IntChirho(n_chirho)) => *n_chirho as u64,
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
-                let mut val_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let mut val_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
                 // Force thunks to WHNF before storing
                 if let ValueChirho::HeapPtrChirho(addr_chirho) = val_chirho {
                     match self.force_addr_to_whnf_chirho(addr_chirho) {
                         Ok(forced_chirho) => {
-                            val_chirho = self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(forced_chirho));
+                            val_chirho = self.resolve_heap_value_chirho(
+                                &ValueChirho::HeapPtrChirho(forced_chirho),
+                            );
                         }
                         Err(_) => {}
                     }
@@ -2910,18 +2982,26 @@ impl MachineChirho {
             PrimOpKindChirho::AtomicallyChirho => {
                 // atomically# action → execute STM action (in single-threaded evaluator,
                 // transactions always succeed since there's no concurrent modification)
-                let val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
                 return Ok(val_chirho);
             }
             PrimOpKindChirho::RetryChirho => {
                 // retry# → in single-threaded evaluator, retry blocks forever since
                 // there's no concurrent writer to change TVars. Signal error.
-                return Err(EvalErrorChirho::RuntimeErrorChirho("STM retry: no concurrent transaction to resolve retry".to_string()));
+                return Err(EvalErrorChirho::RuntimeErrorChirho(
+                    "STM retry: no concurrent transaction to resolve retry".to_string(),
+                ));
             }
             PrimOpKindChirho::OrElseChirho => {
                 // orElse# action1 action2 → try action1, if it retries, try action2
                 // In single-threaded mode, just return the first action's result
-                let val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
+                let val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
                 return Ok(val_chirho);
             }
 
@@ -2930,106 +3010,203 @@ impl MachineChirho {
                 return Ok(ValueChirho::MapChirho(vec![]));
             }
             PrimOpKindChirho::MapSingletonChirho => {
-                let k_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let v_chirho = self.force_to_prim_chirho(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                let k_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .first()
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let v_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .get(1)
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
                 return Ok(ValueChirho::MapChirho(vec![(k_chirho, v_chirho)]));
             }
             PrimOpKindChirho::MapInsertChirho => {
-                let k_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let v_chirho = self.force_to_prim_chirho(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let map_arg_chirho = args_chirho.get(2).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let k_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .first()
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let v_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .get(1)
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let map_arg_chirho = args_chirho
+                    .get(2)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let mut pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
                 // Binary search insert/overwrite
-                match pairs_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho)) {
-                    Ok(pos_chirho) => { pairs_chirho[pos_chirho].1 = v_chirho; }
-                    Err(pos_chirho) => { pairs_chirho.insert(pos_chirho, (k_chirho, v_chirho)); }
+                match pairs_chirho
+                    .binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho))
+                {
+                    Ok(pos_chirho) => {
+                        pairs_chirho[pos_chirho].1 = v_chirho;
+                    }
+                    Err(pos_chirho) => {
+                        pairs_chirho.insert(pos_chirho, (k_chirho, v_chirho));
+                    }
                 }
                 return Ok(ValueChirho::MapChirho(pairs_chirho));
             }
             PrimOpKindChirho::MapLookupChirho => {
-                let k_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let map_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let k_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .first()
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let map_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
-                match pairs_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho)) {
+                match pairs_chirho
+                    .binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho))
+                {
                     Ok(pos_chirho) => {
                         let found_val_chirho = pairs_chirho[pos_chirho].1.clone();
                         // Allocate Just(v) on the heap
                         let just_tag_chirho = self.lookup_con_tag_chirho("Just", 1);
-                        let just_closure_chirho = ClosureChirho::con_chirho(just_tag_chirho, "Just", vec![found_val_chirho]);
+                        let just_closure_chirho = ClosureChirho::con_chirho(
+                            just_tag_chirho,
+                            "Just",
+                            vec![found_val_chirho],
+                        );
                         let just_addr_chirho = self.heap_chirho.alloc_chirho(just_closure_chirho);
                         return Ok(ValueChirho::HeapPtrChirho(just_addr_chirho));
                     }
                     Err(_) => {
                         // Allocate Nothing on the heap
                         let nothing_tag_chirho = self.lookup_con_tag_chirho("Nothing", 0);
-                        let nothing_closure_chirho = ClosureChirho::con_chirho(nothing_tag_chirho, "Nothing", vec![]);
-                        let nothing_addr_chirho = self.heap_chirho.alloc_chirho(nothing_closure_chirho);
+                        let nothing_closure_chirho =
+                            ClosureChirho::con_chirho(nothing_tag_chirho, "Nothing", vec![]);
+                        let nothing_addr_chirho =
+                            self.heap_chirho.alloc_chirho(nothing_closure_chirho);
                         return Ok(ValueChirho::HeapPtrChirho(nothing_addr_chirho));
                     }
                 }
             }
             PrimOpKindChirho::MapDeleteChirho => {
-                let k_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let map_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let k_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .first()
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let map_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let mut pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
-                if let Ok(pos_chirho) = pairs_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho)) {
+                if let Ok(pos_chirho) = pairs_chirho
+                    .binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho))
+                {
                     pairs_chirho.remove(pos_chirho);
                 }
                 return Ok(ValueChirho::MapChirho(pairs_chirho));
             }
             PrimOpKindChirho::MapMemberChirho => {
-                let k_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let map_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let k_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .first()
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let map_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
-                let found_chirho = pairs_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho)).is_ok();
+                let found_chirho = pairs_chirho
+                    .binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho))
+                    .is_ok();
                 return Ok(ValueChirho::BoolChirho(found_chirho));
             }
             PrimOpKindChirho::MapSizeChirho => {
-                let map_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let map_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
                 return Ok(ValueChirho::IntChirho(pairs_chirho.len() as i64));
             }
             PrimOpKindChirho::MapNullChirho => {
-                let map_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let map_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
                 return Ok(ValueChirho::BoolChirho(pairs_chirho.is_empty()));
             }
             PrimOpKindChirho::MapFromListChirho => {
                 // Build a map from a heap list of (k, v) tuples
-                let list_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::HeapPtrChirho(HeapAddrChirho(0)));
+                let list_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::HeapPtrChirho(HeapAddrChirho(0)));
                 let pairs_chirho = self.collect_map_from_list_chirho(list_arg_chirho);
                 return Ok(ValueChirho::MapChirho(pairs_chirho));
             }
             PrimOpKindChirho::MapToListChirho => {
-                let map_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let map_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
                 // Build a heap list of (k,v) tuple constructors
                 let heap_list_chirho = self.build_pair_list_chirho(pairs_chirho);
                 return Ok(heap_list_chirho);
             }
             PrimOpKindChirho::MapKeysChirho => {
-                let map_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let map_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
-                let keys_chirho: Vec<ValueChirho> = pairs_chirho.into_iter().map(|(k_chirho, _)| k_chirho).collect();
+                let keys_chirho: Vec<ValueChirho> = pairs_chirho
+                    .into_iter()
+                    .map(|(k_chirho, _)| k_chirho)
+                    .collect();
                 let heap_list_chirho = self.build_value_list_chirho(keys_chirho);
                 return Ok(heap_list_chirho);
             }
             PrimOpKindChirho::MapElemsChirho => {
-                let map_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let map_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
-                let vals_chirho: Vec<ValueChirho> = pairs_chirho.into_iter().map(|(_, v_chirho)| v_chirho).collect();
+                let vals_chirho: Vec<ValueChirho> = pairs_chirho
+                    .into_iter()
+                    .map(|(_, v_chirho)| v_chirho)
+                    .collect();
                 let heap_list_chirho = self.build_value_list_chirho(vals_chirho);
                 return Ok(heap_list_chirho);
             }
             PrimOpKindChirho::MapMapChirho => {
                 // mapMap# f map — apply f to each value
                 // f is a heap closure; we apply it to each value using nested eval
-                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
-                let map_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let map_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
-                let mut new_pairs_chirho: Vec<(ValueChirho, ValueChirho)> = Vec::with_capacity(pairs_chirho.len());
+                let mut new_pairs_chirho: Vec<(ValueChirho, ValueChirho)> =
+                    Vec::with_capacity(pairs_chirho.len());
                 for (k_chirho, v_chirho) in pairs_chirho {
-                    let raw_v_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), v_chirho)?;
+                    let raw_v_chirho =
+                        self.apply_fn_to_value_chirho(func_val_chirho.clone(), v_chirho)?;
                     // Force result to primitive so lookup returns unboxed values
                     let new_v_chirho = self.force_to_prim_chirho(raw_v_chirho);
                     new_pairs_chirho.push((k_chirho, new_v_chirho));
@@ -3038,14 +3215,27 @@ impl MachineChirho {
             }
             PrimOpKindChirho::MapFoldlWithKeyChirho => {
                 // mapFoldlWithKey# f z map — strict left fold
-                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
-                let mut acc_chirho = self.force_to_prim_chirho(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let map_arg_chirho = args_chirho.get(2).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let mut acc_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .get(1)
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let map_arg_chirho = args_chirho
+                    .get(2)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
                 for (k_chirho, v_chirho) in pairs_chirho {
                     // Apply f acc k v, forcing result after each step
-                    let after_acc_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), acc_chirho)?;
-                    let after_k_chirho = self.apply_fn_to_value_chirho(after_acc_chirho, k_chirho)?;
+                    let after_acc_chirho =
+                        self.apply_fn_to_value_chirho(func_val_chirho.clone(), acc_chirho)?;
+                    let after_k_chirho =
+                        self.apply_fn_to_value_chirho(after_acc_chirho, k_chirho)?;
                     let raw_acc_chirho = self.apply_fn_to_value_chirho(after_k_chirho, v_chirho)?;
                     acc_chirho = self.force_to_prim_chirho(raw_acc_chirho);
                 }
@@ -3053,138 +3243,258 @@ impl MachineChirho {
             }
             PrimOpKindChirho::MapFoldrWithKeyChirho => {
                 // mapFoldrWithKey# f z map — right fold
-                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
-                let init_chirho = self.force_to_prim_chirho(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let map_arg_chirho = args_chirho.get(2).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let init_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .get(1)
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let map_arg_chirho = args_chirho
+                    .get(2)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
                 let mut acc_chirho = init_chirho;
                 for (k_chirho, v_chirho) in pairs_chirho.into_iter().rev() {
                     // Apply f k v acc, forcing after each application
-                    let after_k_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), k_chirho)?;
+                    let after_k_chirho =
+                        self.apply_fn_to_value_chirho(func_val_chirho.clone(), k_chirho)?;
                     let after_v_chirho = self.apply_fn_to_value_chirho(after_k_chirho, v_chirho)?;
-                    let raw_acc_chirho = self.apply_fn_to_value_chirho(after_v_chirho, acc_chirho)?;
+                    let raw_acc_chirho =
+                        self.apply_fn_to_value_chirho(after_v_chirho, acc_chirho)?;
                     acc_chirho = self.force_to_prim_chirho(raw_acc_chirho);
                 }
                 return Ok(acc_chirho);
             }
             PrimOpKindChirho::MapUnionChirho => {
                 // mapUnion# left right — left-biased union
-                let left_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
-                let right_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let left_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
+                let right_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let left_pairs_chirho = self.extract_map_pairs_chirho(left_arg_chirho);
                 let right_pairs_chirho = self.extract_map_pairs_chirho(right_arg_chirho);
                 let mut result_chirho = left_pairs_chirho;
                 for (k_chirho, v_chirho) in right_pairs_chirho {
-                    match result_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho)) {
+                    match result_chirho.binary_search_by(|(ek_chirho, _)| {
+                        compare_values_chirho(ek_chirho, &k_chirho)
+                    }) {
                         Ok(_) => {} // Key already in left; left-biased: skip
-                        Err(pos_chirho) => { result_chirho.insert(pos_chirho, (k_chirho, v_chirho)); }
+                        Err(pos_chirho) => {
+                            result_chirho.insert(pos_chirho, (k_chirho, v_chirho));
+                        }
                     }
                 }
                 return Ok(ValueChirho::MapChirho(result_chirho));
             }
             PrimOpKindChirho::MapDifferenceChirho => {
                 // mapDifference# left right — keys in left not in right
-                let left_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
-                let right_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let left_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
+                let right_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let left_pairs_chirho = self.extract_map_pairs_chirho(left_arg_chirho);
                 let right_pairs_chirho = self.extract_map_pairs_chirho(right_arg_chirho);
-                let result_chirho: Vec<(ValueChirho, ValueChirho)> = left_pairs_chirho.into_iter()
+                let result_chirho: Vec<(ValueChirho, ValueChirho)> = left_pairs_chirho
+                    .into_iter()
                     .filter(|(k_chirho, _)| {
-                        right_pairs_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, k_chirho)).is_err()
+                        right_pairs_chirho
+                            .binary_search_by(|(ek_chirho, _)| {
+                                compare_values_chirho(ek_chirho, k_chirho)
+                            })
+                            .is_err()
                     })
                     .collect();
                 return Ok(ValueChirho::MapChirho(result_chirho));
             }
             PrimOpKindChirho::MapIntersectionChirho => {
                 // mapIntersection# left right — keys in both; left values
-                let left_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
-                let right_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let left_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
+                let right_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let left_pairs_chirho = self.extract_map_pairs_chirho(left_arg_chirho);
                 let right_pairs_chirho = self.extract_map_pairs_chirho(right_arg_chirho);
-                let result_chirho: Vec<(ValueChirho, ValueChirho)> = left_pairs_chirho.into_iter()
+                let result_chirho: Vec<(ValueChirho, ValueChirho)> = left_pairs_chirho
+                    .into_iter()
                     .filter(|(k_chirho, _)| {
-                        right_pairs_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, k_chirho)).is_ok()
+                        right_pairs_chirho
+                            .binary_search_by(|(ek_chirho, _)| {
+                                compare_values_chirho(ek_chirho, k_chirho)
+                            })
+                            .is_ok()
                     })
                     .collect();
                 return Ok(ValueChirho::MapChirho(result_chirho));
             }
             PrimOpKindChirho::MapInsertWithChirho => {
                 // mapInsertWith# f k v map — insert with combiner f
-                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
-                let k_chirho = self.force_to_prim_chirho(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let v_new_chirho = self.force_to_prim_chirho(args_chirho.get(2).cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let map_arg_chirho = args_chirho.get(3).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let k_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .get(1)
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let v_new_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .get(2)
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let map_arg_chirho = args_chirho
+                    .get(3)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let mut pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
-                match pairs_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho)) {
+                match pairs_chirho
+                    .binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho))
+                {
                     Ok(pos_chirho) => {
                         let old_v_chirho = pairs_chirho[pos_chirho].1.clone();
                         // f new_v old_v
                         let combined_chirho = {
-                            let after_new_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), v_new_chirho)?;
-                            let raw_chirho = self.apply_fn_to_value_chirho(after_new_chirho, old_v_chirho)?;
+                            let after_new_chirho = self
+                                .apply_fn_to_value_chirho(func_val_chirho.clone(), v_new_chirho)?;
+                            let raw_chirho =
+                                self.apply_fn_to_value_chirho(after_new_chirho, old_v_chirho)?;
                             self.force_to_prim_chirho(raw_chirho)
                         };
                         pairs_chirho[pos_chirho].1 = combined_chirho;
                     }
-                    Err(pos_chirho) => { pairs_chirho.insert(pos_chirho, (k_chirho, v_new_chirho)); }
+                    Err(pos_chirho) => {
+                        pairs_chirho.insert(pos_chirho, (k_chirho, v_new_chirho));
+                    }
                 }
                 return Ok(ValueChirho::MapChirho(pairs_chirho));
             }
             PrimOpKindChirho::MapFindWithDefaultChirho => {
                 // mapFindWithDefault# def k map — lookup with default
-                let def_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let k_chirho = self.force_to_prim_chirho(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let map_arg_chirho = args_chirho.get(2).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let def_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .first()
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let k_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .get(1)
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let map_arg_chirho = args_chirho
+                    .get(2)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
-                match pairs_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho)) {
+                match pairs_chirho
+                    .binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho))
+                {
                     Ok(pos_chirho) => return Ok(pairs_chirho[pos_chirho].1.clone()),
                     Err(_) => return Ok(def_chirho),
                 }
             }
             PrimOpKindChirho::MapAdjustChirho => {
                 // mapAdjust# f k map — update value at key with f
-                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
-                let k_chirho = self.force_to_prim_chirho(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let map_arg_chirho = args_chirho.get(2).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let k_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .get(1)
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let map_arg_chirho = args_chirho
+                    .get(2)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let mut pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
-                if let Ok(pos_chirho) = pairs_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho)) {
+                if let Ok(pos_chirho) = pairs_chirho
+                    .binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho))
+                {
                     let old_v_chirho = pairs_chirho[pos_chirho].1.clone();
-                    let raw_v_chirho = self.apply_fn_to_value_chirho(func_val_chirho, old_v_chirho)?;
+                    let raw_v_chirho =
+                        self.apply_fn_to_value_chirho(func_val_chirho, old_v_chirho)?;
                     pairs_chirho[pos_chirho].1 = self.force_to_prim_chirho(raw_v_chirho);
                 }
                 return Ok(ValueChirho::MapChirho(pairs_chirho));
             }
             PrimOpKindChirho::MapUnionWithChirho => {
                 // mapUnionWith# f left right — union with combiner for duplicate keys
-                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
-                let left_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
-                let right_arg_chirho = args_chirho.get(2).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let left_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
+                let right_arg_chirho = args_chirho
+                    .get(2)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let mut result_chirho = self.extract_map_pairs_chirho(left_arg_chirho);
                 let right_pairs_chirho = self.extract_map_pairs_chirho(right_arg_chirho);
                 for (k_chirho, v_right_chirho) in right_pairs_chirho {
-                    match result_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho)) {
+                    match result_chirho.binary_search_by(|(ek_chirho, _)| {
+                        compare_values_chirho(ek_chirho, &k_chirho)
+                    }) {
                         Ok(pos_chirho) => {
                             let v_left_chirho = result_chirho[pos_chirho].1.clone();
                             let combined_chirho = {
-                                let af_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), v_left_chirho)?;
-                                let raw_chirho = self.apply_fn_to_value_chirho(af_chirho, v_right_chirho)?;
+                                let af_chirho = self.apply_fn_to_value_chirho(
+                                    func_val_chirho.clone(),
+                                    v_left_chirho,
+                                )?;
+                                let raw_chirho =
+                                    self.apply_fn_to_value_chirho(af_chirho, v_right_chirho)?;
                                 self.force_to_prim_chirho(raw_chirho)
                             };
                             result_chirho[pos_chirho].1 = combined_chirho;
                         }
-                        Err(pos_chirho) => { result_chirho.insert(pos_chirho, (k_chirho, v_right_chirho)); }
+                        Err(pos_chirho) => {
+                            result_chirho.insert(pos_chirho, (k_chirho, v_right_chirho));
+                        }
                     }
                 }
                 return Ok(ValueChirho::MapChirho(result_chirho));
             }
             PrimOpKindChirho::MapFilterChirho => {
                 // mapFilter# pred map — keep (k,v) where pred v is True
-                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
-                let map_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let map_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
                 let mut kept_chirho: Vec<(ValueChirho, ValueChirho)> = Vec::new();
                 for (k_chirho, v_chirho) in pairs_chirho {
-                    let result_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), v_chirho.clone())?;
+                    let result_chirho =
+                        self.apply_fn_to_value_chirho(func_val_chirho.clone(), v_chirho.clone())?;
                     let keep_chirho = match self.force_to_prim_chirho(result_chirho) {
                         ValueChirho::BoolChirho(b_chirho) => b_chirho,
                         ValueChirho::IntChirho(n_chirho) => n_chirho != 0,
@@ -3198,13 +3508,21 @@ impl MachineChirho {
             }
             PrimOpKindChirho::MapFilterWithKeyChirho => {
                 // mapFilterWithKey# pred map — keep (k,v) where pred k v is True
-                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
-                let map_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::MapChirho(vec![]));
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let map_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
                 let pairs_chirho = self.extract_map_pairs_chirho(map_arg_chirho);
                 let mut kept_chirho: Vec<(ValueChirho, ValueChirho)> = Vec::new();
                 for (k_chirho, v_chirho) in pairs_chirho {
-                    let after_k_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), k_chirho.clone())?;
-                    let result_chirho = self.apply_fn_to_value_chirho(after_k_chirho, v_chirho.clone())?;
+                    let after_k_chirho =
+                        self.apply_fn_to_value_chirho(func_val_chirho.clone(), k_chirho.clone())?;
+                    let result_chirho =
+                        self.apply_fn_to_value_chirho(after_k_chirho, v_chirho.clone())?;
                     let keep_chirho = match self.force_to_prim_chirho(result_chirho) {
                         ValueChirho::BoolChirho(b_chirho) => b_chirho,
                         ValueChirho::IntChirho(n_chirho) => n_chirho != 0,
@@ -3222,120 +3540,217 @@ impl MachineChirho {
                 return Ok(ValueChirho::SetChirho(vec![]));
             }
             PrimOpKindChirho::SetSingletonChirho => {
-                let e_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
+                let e_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .first()
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
                 return Ok(ValueChirho::SetChirho(vec![e_chirho]));
             }
             PrimOpKindChirho::SetInsertChirho => {
-                let e_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let set_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let e_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .first()
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let set_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let mut elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
-                match elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho)) {
+                match elems_chirho
+                    .binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho))
+                {
                     Ok(_) => {} // already present — dedup
-                    Err(pos_chirho) => { elems_chirho.insert(pos_chirho, e_chirho); }
+                    Err(pos_chirho) => {
+                        elems_chirho.insert(pos_chirho, e_chirho);
+                    }
                 }
                 return Ok(ValueChirho::SetChirho(elems_chirho));
             }
             PrimOpKindChirho::SetMemberChirho => {
-                let e_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let set_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let e_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .first()
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let set_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
-                let found_chirho = elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho)).is_ok();
+                let found_chirho = elems_chirho
+                    .binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho))
+                    .is_ok();
                 return Ok(ValueChirho::BoolChirho(found_chirho));
             }
             PrimOpKindChirho::SetDeleteChirho => {
-                let e_chirho = self.force_to_prim_chirho(args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let set_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let e_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .first()
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let set_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let mut elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
-                if let Ok(pos_chirho) = elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho)) {
+                if let Ok(pos_chirho) = elems_chirho
+                    .binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho))
+                {
                     elems_chirho.remove(pos_chirho);
                 }
                 return Ok(ValueChirho::SetChirho(elems_chirho));
             }
             PrimOpKindChirho::SetSizeChirho => {
-                let set_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let set_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
                 return Ok(ValueChirho::IntChirho(elems_chirho.len() as i64));
             }
             PrimOpKindChirho::SetNullChirho => {
-                let set_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let set_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
                 return Ok(ValueChirho::BoolChirho(elems_chirho.is_empty()));
             }
             PrimOpKindChirho::SetFromListChirho => {
                 // Build a sorted deduplicated set from a heap list
-                let list_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::HeapPtrChirho(HeapAddrChirho(0)));
+                let list_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::HeapPtrChirho(HeapAddrChirho(0)));
                 let elems_chirho = self.collect_set_from_list_chirho(list_arg_chirho);
                 return Ok(ValueChirho::SetChirho(elems_chirho));
             }
             PrimOpKindChirho::SetToListChirho => {
-                let set_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let set_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
                 let heap_list_chirho = self.build_value_list_chirho(elems_chirho);
                 return Ok(heap_list_chirho);
             }
             PrimOpKindChirho::SetUnionChirho => {
                 // Merge two sorted vecs — union of sets
-                let left_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
-                let right_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let left_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
+                let right_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let left_elems_chirho = self.extract_set_elems_chirho(left_arg_chirho);
                 let right_elems_chirho = self.extract_set_elems_chirho(right_arg_chirho);
                 let mut result_chirho = left_elems_chirho;
                 for e_chirho in right_elems_chirho {
-                    match result_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho)) {
+                    match result_chirho
+                        .binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho))
+                    {
                         Ok(_) => {} // already present
-                        Err(pos_chirho) => { result_chirho.insert(pos_chirho, e_chirho); }
+                        Err(pos_chirho) => {
+                            result_chirho.insert(pos_chirho, e_chirho);
+                        }
                     }
                 }
                 return Ok(ValueChirho::SetChirho(result_chirho));
             }
             PrimOpKindChirho::SetIntersectionChirho => {
                 // Keep elements common to both sets
-                let left_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
-                let right_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let left_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
+                let right_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let left_elems_chirho = self.extract_set_elems_chirho(left_arg_chirho);
                 let right_elems_chirho = self.extract_set_elems_chirho(right_arg_chirho);
-                let result_chirho: Vec<ValueChirho> = left_elems_chirho.into_iter()
+                let result_chirho: Vec<ValueChirho> = left_elems_chirho
+                    .into_iter()
                     .filter(|e_chirho| {
-                        right_elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, e_chirho)).is_ok()
+                        right_elems_chirho
+                            .binary_search_by(|ek_chirho| {
+                                compare_values_chirho(ek_chirho, e_chirho)
+                            })
+                            .is_ok()
                     })
                     .collect();
                 return Ok(ValueChirho::SetChirho(result_chirho));
             }
             PrimOpKindChirho::SetDifferenceChirho => {
                 // Elements in left not in right
-                let left_arg_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
-                let right_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let left_arg_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
+                let right_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let left_elems_chirho = self.extract_set_elems_chirho(left_arg_chirho);
                 let right_elems_chirho = self.extract_set_elems_chirho(right_arg_chirho);
-                let result_chirho: Vec<ValueChirho> = left_elems_chirho.into_iter()
+                let result_chirho: Vec<ValueChirho> = left_elems_chirho
+                    .into_iter()
                     .filter(|e_chirho| {
-                        right_elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, e_chirho)).is_err()
+                        right_elems_chirho
+                            .binary_search_by(|ek_chirho| {
+                                compare_values_chirho(ek_chirho, e_chirho)
+                            })
+                            .is_err()
                     })
                     .collect();
                 return Ok(ValueChirho::SetChirho(result_chirho));
             }
             PrimOpKindChirho::SetMapChirho => {
                 // setMap# f set — apply f to each element, re-sort and dedup
-                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
-                let set_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let set_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
                 let mut new_elems_chirho: Vec<ValueChirho> = Vec::with_capacity(elems_chirho.len());
                 for e_chirho in elems_chirho {
-                    let raw_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), e_chirho)?;
+                    let raw_chirho =
+                        self.apply_fn_to_value_chirho(func_val_chirho.clone(), e_chirho)?;
                     new_elems_chirho.push(self.force_to_prim_chirho(raw_chirho));
                 }
                 new_elems_chirho.sort_by(compare_values_chirho);
-                new_elems_chirho.dedup_by(|a_chirho, b_chirho| compare_values_chirho(a_chirho, b_chirho) == std::cmp::Ordering::Equal);
+                new_elems_chirho.dedup_by(|a_chirho, b_chirho| {
+                    compare_values_chirho(a_chirho, b_chirho) == std::cmp::Ordering::Equal
+                });
                 return Ok(ValueChirho::SetChirho(new_elems_chirho));
             }
             PrimOpKindChirho::SetFilterChirho => {
                 // setFilter# pred set — keep elements where pred e is True
-                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
-                let set_arg_chirho = args_chirho.get(1).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let set_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
                 let mut kept_chirho: Vec<ValueChirho> = Vec::new();
                 for e_chirho in elems_chirho {
-                    let result_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), e_chirho.clone())?;
+                    let result_chirho =
+                        self.apply_fn_to_value_chirho(func_val_chirho.clone(), e_chirho.clone())?;
                     let keep_chirho = match self.force_to_prim_chirho(result_chirho) {
                         ValueChirho::BoolChirho(b_chirho) => b_chirho,
                         ValueChirho::IntChirho(n_chirho) => n_chirho != 0,
@@ -3349,13 +3764,25 @@ impl MachineChirho {
             }
             PrimOpKindChirho::SetFoldrChirho => {
                 // setFoldr# f z set — right fold over set elements
-                let func_val_chirho = args_chirho.first().cloned().unwrap_or(ValueChirho::IntChirho(0));
-                let init_chirho = self.force_to_prim_chirho(args_chirho.get(1).cloned().unwrap_or(ValueChirho::IntChirho(0)));
-                let set_arg_chirho = args_chirho.get(2).cloned().unwrap_or(ValueChirho::SetChirho(vec![]));
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let init_chirho = self.force_to_prim_chirho(
+                    args_chirho
+                        .get(1)
+                        .cloned()
+                        .unwrap_or(ValueChirho::IntChirho(0)),
+                );
+                let set_arg_chirho = args_chirho
+                    .get(2)
+                    .cloned()
+                    .unwrap_or(ValueChirho::SetChirho(vec![]));
                 let elems_chirho = self.extract_set_elems_chirho(set_arg_chirho);
                 let mut acc_chirho = init_chirho;
                 for e_chirho in elems_chirho.into_iter().rev() {
-                    let after_e_chirho = self.apply_fn_to_value_chirho(func_val_chirho.clone(), e_chirho)?;
+                    let after_e_chirho =
+                        self.apply_fn_to_value_chirho(func_val_chirho.clone(), e_chirho)?;
                     let raw_chirho = self.apply_fn_to_value_chirho(after_e_chirho, acc_chirho)?;
                     acc_chirho = self.force_to_prim_chirho(raw_chirho);
                 }
@@ -3375,9 +3802,9 @@ impl MachineChirho {
         let is_show_primop_chirho = matches!(
             op_chirho,
             PrimOpKindChirho::ShowIntChirho
-            | PrimOpKindChirho::ShowFloatChirho
-            | PrimOpKindChirho::ShowStrChirho
-            | PrimOpKindChirho::ShowBoolChirho
+                | PrimOpKindChirho::ShowFloatChirho
+                | PrimOpKindChirho::ShowStrChirho
+                | PrimOpKindChirho::ShowBoolChirho
         );
         if is_show_primop_chirho {
             if let Some(val_chirho) = args_chirho.first() {
@@ -3421,8 +3848,10 @@ impl MachineChirho {
                 | PrimOpKindChirho::GeIntChirho
         );
         if is_string_compare_primop_chirho && resolved_args_chirho.len() == 2 {
-            let left_str_chirho = self.try_resolve_value_to_string_chirho(&resolved_args_chirho[0])?;
-            let right_str_chirho = self.try_resolve_value_to_string_chirho(&resolved_args_chirho[1])?;
+            let left_str_chirho =
+                self.try_resolve_value_to_string_chirho(&resolved_args_chirho[0])?;
+            let right_str_chirho =
+                self.try_resolve_value_to_string_chirho(&resolved_args_chirho[1])?;
             if let (Some(left_str_chirho), Some(right_str_chirho)) =
                 (left_str_chirho, right_str_chirho)
             {
@@ -3432,8 +3861,12 @@ impl MachineChirho {
         }
 
         match resolved_args_chirho.len() {
-            2 => apply_prim_binop_chirho(op_chirho, &resolved_args_chirho[0], &resolved_args_chirho[1])
-                .map_err(EvalErrorChirho::PrimFailChirho),
+            2 => apply_prim_binop_chirho(
+                op_chirho,
+                &resolved_args_chirho[0],
+                &resolved_args_chirho[1],
+            )
+            .map_err(EvalErrorChirho::PrimFailChirho),
             1 => {
                 // Unary ops (NegInt)
                 apply_prim_binop_chirho(
@@ -3471,10 +3904,12 @@ impl MachineChirho {
                 let head_val_chirho = match &closure_chirho.payload_chirho[0] {
                     ValueChirho::HeapPtrChirho(h_chirho) => {
                         match self.force_addr_to_whnf_chirho(*h_chirho) {
-                            Ok(forced_chirho) => {
-                                self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(forced_chirho))
+                            Ok(forced_chirho) => self.resolve_heap_value_chirho(
+                                &ValueChirho::HeapPtrChirho(forced_chirho),
+                            ),
+                            Err(_) => {
+                                self.resolve_heap_value_chirho(&closure_chirho.payload_chirho[0])
                             }
-                            Err(_) => self.resolve_heap_value_chirho(&closure_chirho.payload_chirho[0]),
                         }
                     }
                     other_chirho => self.resolve_heap_value_chirho(other_chirho),
@@ -3535,9 +3970,7 @@ impl MachineChirho {
                     _ => {
                         // Single-field constructor — try extracting its payload
                         if closure_chirho.payload_chirho.len() == 1 {
-                            self.resolve_heap_value_chirho(
-                                &closure_chirho.payload_chirho[0],
-                            )
+                            self.resolve_heap_value_chirho(&closure_chirho.payload_chirho[0])
                         } else {
                             val_chirho.clone()
                         }
@@ -3559,14 +3992,19 @@ impl MachineChirho {
             ValueChirho::CharChirho(c_chirho) => format!("'{}'", c_chirho),
             ValueChirho::StringChirho(s_chirho) => format!("\"{}\"", s_chirho),
             ValueChirho::BoolChirho(b_chirho) => {
-                if *b_chirho { "True".to_string() } else { "False".to_string() }
+                if *b_chirho {
+                    "True".to_string()
+                } else {
+                    "False".to_string()
+                }
             }
             ValueChirho::MapChirho(pairs_chirho) => {
                 let pairs_clone_chirho = pairs_chirho.clone();
                 if pairs_clone_chirho.is_empty() {
                     "fromList []".to_string()
                 } else {
-                    let entries_chirho: Vec<String> = pairs_clone_chirho.into_iter()
+                    let entries_chirho: Vec<String> = pairs_clone_chirho
+                        .into_iter()
                         .map(|(k_chirho, v_chirho)| {
                             let k_str_chirho = self.show_value_as_string_chirho(&k_chirho);
                             let v_str_chirho = self.show_value_as_string_chirho(&v_chirho);
@@ -3581,7 +4019,8 @@ impl MachineChirho {
                 if elems_clone_chirho.is_empty() {
                     "fromList []".to_string()
                 } else {
-                    let items_chirho: Vec<String> = elems_clone_chirho.iter()
+                    let items_chirho: Vec<String> = elems_clone_chirho
+                        .iter()
                         .map(|e_chirho| self.show_value_as_string_chirho(e_chirho))
                         .collect();
                     format!("fromList [{}]", items_chirho.join(","))
@@ -3646,8 +4085,15 @@ impl MachineChirho {
                     "LT" => "LT".to_string(),
                     "EQ" => "EQ".to_string(),
                     "GT" => "GT".to_string(),
-                    name_chirho if name_chirho.starts_with("$tuple") || name_chirho == "(,)" || name_chirho == "(,,)" || name_chirho == "(,,,)" || name_chirho == "(,,,,)" => {
-                        let parts_chirho: Vec<String> = closure_chirho.payload_chirho
+                    name_chirho
+                        if name_chirho.starts_with("$tuple")
+                            || name_chirho == "(,)"
+                            || name_chirho == "(,,)"
+                            || name_chirho == "(,,,)"
+                            || name_chirho == "(,,,,)" =>
+                    {
+                        let parts_chirho: Vec<String> = closure_chirho
+                            .payload_chirho
                             .iter()
                             .map(|v_chirho| self.show_value_as_string_chirho(v_chirho))
                             .collect();
@@ -3663,13 +4109,17 @@ impl MachineChirho {
                         loop {
                             let cl_chirho = self.heap_chirho.read_chirho(cur_chirho).clone();
                             let cn_chirho = &cl_chirho.info_chirho.name_chirho;
-                            if cn_chirho == "[]" { break; }
+                            if cn_chirho == "[]" {
+                                break;
+                            }
                             if cn_chirho == ":" && cl_chirho.payload_chirho.len() >= 2 {
                                 let hd_chirho = &cl_chirho.payload_chirho[0];
                                 // Check if element is a Char
                                 match hd_chirho {
                                     ValueChirho::CharChirho(_) => {}
-                                    _ => { all_char_chirho = false; }
+                                    _ => {
+                                        all_char_chirho = false;
+                                    }
                                 }
                                 raw_values_chirho.push(hd_chirho.clone());
                                 match &cl_chirho.payload_chirho[1] {
@@ -3685,18 +4135,28 @@ impl MachineChirho {
                                     }
                                     _ => break,
                                 }
-                            } else { break; }
+                            } else {
+                                break;
+                            }
                         }
                         // Display all-Char lists as strings
                         if all_char_chirho && !raw_values_chirho.is_empty() {
-                            let s_chirho: String = raw_values_chirho.iter().map(|v_chirho| {
-                                if let ValueChirho::CharChirho(c_chirho) = v_chirho { *c_chirho } else { '?' }
-                            }).collect();
+                            let s_chirho: String = raw_values_chirho
+                                .iter()
+                                .map(|v_chirho| {
+                                    if let ValueChirho::CharChirho(c_chirho) = v_chirho {
+                                        *c_chirho
+                                    } else {
+                                        '?'
+                                    }
+                                })
+                                .collect();
                             format!("\"{}\"", s_chirho)
                         } else {
-                            let elements_chirho: Vec<String> = raw_values_chirho.iter().map(|v_chirho| {
-                                self.show_value_as_string_chirho(v_chirho)
-                            }).collect();
+                            let elements_chirho: Vec<String> = raw_values_chirho
+                                .iter()
+                                .map(|v_chirho| self.show_value_as_string_chirho(v_chirho))
+                                .collect();
                             format!("[{}]", elements_chirho.join(","))
                         }
                     }
@@ -3705,11 +4165,17 @@ impl MachineChirho {
                         if closure_chirho.payload_chirho.is_empty() {
                             name_chirho.clone()
                         } else {
-                            let fields_chirho: Vec<String> = closure_chirho.payload_chirho.iter()
+                            let fields_chirho: Vec<String> = closure_chirho
+                                .payload_chirho
+                                .iter()
                                 .map(|f_chirho| {
                                     let s_chirho = self.show_value_as_string_chirho(f_chirho);
                                     // Wrap compound values in parens
-                                    if s_chirho.contains(' ') && !s_chirho.starts_with('(') && !s_chirho.starts_with('[') && !s_chirho.starts_with('"') {
+                                    if s_chirho.contains(' ')
+                                        && !s_chirho.starts_with('(')
+                                        && !s_chirho.starts_with('[')
+                                        && !s_chirho.starts_with('"')
+                                    {
                                         format!("({})", s_chirho)
                                     } else {
                                         s_chirho
@@ -3742,17 +4208,20 @@ impl MachineChirho {
         addr_chirho: HeapAddrChirho,
     ) -> Result<HeapAddrChirho, EvalErrorChirho> {
         let resolved_chirho = self.heap_chirho.follow_ind_chirho(addr_chirho);
-        let tag_chirho = self.heap_chirho.read_chirho(resolved_chirho).info_chirho.tag_chirho;
+        let tag_chirho = self
+            .heap_chirho
+            .read_chirho(resolved_chirho)
+            .info_chirho
+            .tag_chirho;
         match tag_chirho {
             InfoTagChirho::ConChirho => Ok(resolved_chirho),
             InfoTagChirho::ThunkChirho | InfoTagChirho::PapChirho | InfoTagChirho::FunChirho => {
-                let saved_stack_chirho = std::mem::replace(
-                    &mut self.stack_chirho,
-                    StackChirho::new_chirho(),
-                );
+                let saved_stack_chirho =
+                    std::mem::replace(&mut self.stack_chirho, StackChirho::new_chirho());
                 let saved_regs_chirho = std::mem::take(&mut self.arg_regs_chirho);
                 let entry_chirho = self.code_table_chirho.len() as u32;
-                self.code_table_chirho.push(CodeChirho::EnterChirho(resolved_chirho));
+                self.code_table_chirho
+                    .push(CodeChirho::EnterChirho(resolved_chirho));
                 let _result_chirho = self.run_chirho(entry_chirho)?;
                 self.stack_chirho = saved_stack_chirho;
                 self.arg_regs_chirho = saved_regs_chirho;
@@ -3763,9 +4232,9 @@ impl MachineChirho {
                 // If we still see one, follow it again.
                 Ok(self.heap_chirho.follow_ind_chirho(resolved_chirho))
             }
-            InfoTagChirho::BlackholeChirho => {
-                Err(EvalErrorChirho::BlackholeChirho { addr_chirho: resolved_chirho })
-            }
+            InfoTagChirho::BlackholeChirho => Err(EvalErrorChirho::BlackholeChirho {
+                addr_chirho: resolved_chirho,
+            }),
         }
     }
 
@@ -3802,9 +4271,13 @@ impl MachineChirho {
                         }
                         ValueChirho::HeapPtrChirho(head_addr_chirho) => {
                             // Force the head thunk (e.g. from `map toUpper`)
-                            let head_resolved_chirho = self.force_addr_to_whnf_chirho(*head_addr_chirho)?;
-                            let head_closure_chirho = self.heap_chirho.read_chirho(head_resolved_chirho).clone();
-                            if let Some(ValueChirho::CharChirho(ch_chirho)) = head_closure_chirho.payload_chirho.first() {
+                            let head_resolved_chirho =
+                                self.force_addr_to_whnf_chirho(*head_addr_chirho)?;
+                            let head_closure_chirho =
+                                self.heap_chirho.read_chirho(head_resolved_chirho).clone();
+                            if let Some(ValueChirho::CharChirho(ch_chirho)) =
+                                head_closure_chirho.payload_chirho.first()
+                            {
                                 result_chirho.push(*ch_chirho);
                             } else {
                                 break;
@@ -3905,11 +4378,7 @@ impl MachineChirho {
             ),
             ValueChirho::BoolChirho(b_chirho) => {
                 if *b_chirho {
-                    ClosureChirho::con_chirho(
-                        self.lookup_con_tag_chirho("True", 0),
-                        "True",
-                        vec![],
-                    )
+                    ClosureChirho::con_chirho(self.lookup_con_tag_chirho("True", 0), "True", vec![])
                 } else {
                     ClosureChirho::con_chirho(
                         self.lookup_con_tag_chirho("False", 1),
@@ -3933,7 +4402,8 @@ impl MachineChirho {
                 let mut tail_addr_chirho = self.heap_chirho.alloc_chirho(nil_chirho);
                 for ch_chirho in s_chirho.chars().rev() {
                     let cons_chirho = ClosureChirho::con_chirho(
-                        cons_tag_chirho, ":",
+                        cons_tag_chirho,
+                        ":",
                         vec![
                             ValueChirho::CharChirho(ch_chirho),
                             ValueChirho::HeapPtrChirho(tail_addr_chirho),
@@ -3970,7 +4440,10 @@ impl MachineChirho {
     /// Extract sorted key-value pairs from a `ValueChirho`.
     /// Handles `MapChirho` directly, and also resolves heap pointers
     /// so that primop-wrapped maps can be passed through.
-    fn extract_map_pairs_chirho(&mut self, val_chirho: ValueChirho) -> Vec<(ValueChirho, ValueChirho)> {
+    fn extract_map_pairs_chirho(
+        &mut self,
+        val_chirho: ValueChirho,
+    ) -> Vec<(ValueChirho, ValueChirho)> {
         match val_chirho {
             ValueChirho::MapChirho(pairs_chirho) => pairs_chirho,
             ValueChirho::HeapPtrChirho(addr_chirho) => {
@@ -3984,7 +4457,9 @@ impl MachineChirho {
                 let name_chirho = &closure_chirho.info_chirho.name_chirho;
                 // MapBox: a boxed MapChirho stored as payload[0]
                 if name_chirho == "MapBox" {
-                    if let Some(ValueChirho::MapChirho(pairs_chirho)) = closure_chirho.payload_chirho.first() {
+                    if let Some(ValueChirho::MapChirho(pairs_chirho)) =
+                        closure_chirho.payload_chirho.first()
+                    {
                         return pairs_chirho.clone();
                     }
                 }
@@ -4024,7 +4499,9 @@ impl MachineChirho {
                 let closure_chirho = self.heap_chirho.read_chirho(resolved_chirho).clone();
                 let name_chirho = &closure_chirho.info_chirho.name_chirho;
                 if name_chirho == "SetBox" {
-                    if let Some(ValueChirho::SetChirho(elems_chirho)) = closure_chirho.payload_chirho.first() {
+                    if let Some(ValueChirho::SetChirho(elems_chirho)) =
+                        closure_chirho.payload_chirho.first()
+                    {
                         return elems_chirho.clone();
                     }
                 }
@@ -4065,9 +4542,13 @@ impl MachineChirho {
                 let raw_e_chirho = closure_chirho.payload_chirho[0].clone();
                 let e_chirho = self.force_to_prim_chirho(raw_e_chirho);
                 // Insert in sorted order, dedup
-                match elems_chirho.binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho)) {
+                match elems_chirho
+                    .binary_search_by(|ek_chirho| compare_values_chirho(ek_chirho, &e_chirho))
+                {
                     Ok(_) => {} // duplicate — skip
-                    Err(pos_chirho) => { elems_chirho.insert(pos_chirho, e_chirho); }
+                    Err(pos_chirho) => {
+                        elems_chirho.insert(pos_chirho, e_chirho);
+                    }
                 }
                 // Advance to tail
                 match &closure_chirho.payload_chirho[1] {
@@ -4109,7 +4590,8 @@ impl MachineChirho {
         let mut tail_addr_chirho = self.heap_chirho.alloc_chirho(nil_closure_chirho);
         for val_chirho in values_chirho.into_iter().rev() {
             let cons_closure_chirho = ClosureChirho::con_chirho(
-                cons_tag_chirho, ":",
+                cons_tag_chirho,
+                ":",
                 vec![val_chirho, ValueChirho::HeapPtrChirho(tail_addr_chirho)],
             );
             tail_addr_chirho = self.heap_chirho.alloc_chirho(cons_closure_chirho);
@@ -4128,13 +4610,12 @@ impl MachineChirho {
         let nil_closure_chirho = ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
         let mut tail_addr_chirho = self.heap_chirho.alloc_chirho(nil_closure_chirho);
         for (k_chirho, v_chirho) in pairs_chirho.into_iter().rev() {
-            let tup_closure_chirho = ClosureChirho::con_chirho(
-                tuple2_tag_chirho, "(,)",
-                vec![k_chirho, v_chirho],
-            );
+            let tup_closure_chirho =
+                ClosureChirho::con_chirho(tuple2_tag_chirho, "(,)", vec![k_chirho, v_chirho]);
             let tup_addr_chirho = self.heap_chirho.alloc_chirho(tup_closure_chirho);
             let cons_closure_chirho = ClosureChirho::con_chirho(
-                cons_tag_chirho, ":",
+                cons_tag_chirho,
+                ":",
                 vec![
                     ValueChirho::HeapPtrChirho(tup_addr_chirho),
                     ValueChirho::HeapPtrChirho(tail_addr_chirho),
@@ -4146,7 +4627,10 @@ impl MachineChirho {
     }
 
     /// Collect (k, v) pairs from a heap list of tuples, building a sorted map.
-    fn collect_map_from_list_chirho(&mut self, list_val_chirho: ValueChirho) -> Vec<(ValueChirho, ValueChirho)> {
+    fn collect_map_from_list_chirho(
+        &mut self,
+        list_val_chirho: ValueChirho,
+    ) -> Vec<(ValueChirho, ValueChirho)> {
         let mut pairs_chirho: Vec<(ValueChirho, ValueChirho)> = Vec::new();
         let start_addr_chirho = match list_val_chirho {
             ValueChirho::HeapPtrChirho(addr_chirho) => addr_chirho,
@@ -4166,20 +4650,28 @@ impl MachineChirho {
                 // Head is a tuple: extract (k, v)
                 let head_val_chirho = closure_chirho.payload_chirho[0].clone();
                 if let ValueChirho::HeapPtrChirho(tup_addr_chirho) = head_val_chirho {
-                    let tup_resolved_chirho = match self.force_addr_to_whnf_chirho(tup_addr_chirho) {
+                    let tup_resolved_chirho = match self.force_addr_to_whnf_chirho(tup_addr_chirho)
+                    {
                         Ok(a_chirho) => a_chirho,
                         Err(_) => break,
                     };
-                    let tup_closure_chirho = self.heap_chirho.read_chirho(tup_resolved_chirho).clone();
+                    let tup_closure_chirho =
+                        self.heap_chirho.read_chirho(tup_resolved_chirho).clone();
                     if tup_closure_chirho.payload_chirho.len() >= 2 {
                         let raw_k_chirho = tup_closure_chirho.payload_chirho[0].clone();
                         let raw_v_chirho = tup_closure_chirho.payload_chirho[1].clone();
                         let k_chirho = self.force_to_prim_chirho(raw_k_chirho);
                         let v_chirho = self.force_to_prim_chirho(raw_v_chirho);
                         // Insert in sorted order
-                        match pairs_chirho.binary_search_by(|(ek_chirho, _)| compare_values_chirho(ek_chirho, &k_chirho)) {
-                            Ok(pos_chirho) => { pairs_chirho[pos_chirho].1 = v_chirho; }
-                            Err(pos_chirho) => { pairs_chirho.insert(pos_chirho, (k_chirho, v_chirho)); }
+                        match pairs_chirho.binary_search_by(|(ek_chirho, _)| {
+                            compare_values_chirho(ek_chirho, &k_chirho)
+                        }) {
+                            Ok(pos_chirho) => {
+                                pairs_chirho[pos_chirho].1 = v_chirho;
+                            }
+                            Err(pos_chirho) => {
+                                pairs_chirho.insert(pos_chirho, (k_chirho, v_chirho));
+                            }
                         }
                     }
                 }
@@ -4210,7 +4702,8 @@ impl MachineChirho {
             _ => return Ok(arg_val_chirho),
         };
         // Save machine state
-        let saved_stack_chirho = std::mem::replace(&mut self.stack_chirho, StackChirho::new_chirho());
+        let saved_stack_chirho =
+            std::mem::replace(&mut self.stack_chirho, StackChirho::new_chirho());
         let saved_regs_chirho = std::mem::take(&mut self.arg_regs_chirho);
         // Box the argument so it can be placed on the heap if needed
         let arg_for_stack_chirho = match &arg_val_chirho {
@@ -4226,7 +4719,8 @@ impl MachineChirho {
             args_chirho: vec![arg_for_stack_chirho],
         });
         let entry_chirho = self.code_table_chirho.len() as u32;
-        self.code_table_chirho.push(CodeChirho::EnterChirho(fun_addr_chirho));
+        self.code_table_chirho
+            .push(CodeChirho::EnterChirho(fun_addr_chirho));
         let result_chirho = self.run_chirho(entry_chirho);
         // Restore machine state
         self.stack_chirho = saved_stack_chirho;
@@ -4254,9 +4748,9 @@ fn compare_values_chirho(a_chirho: &ValueChirho, b_chirho: &ValueChirho) -> std:
         (ValueChirho::IntChirho(a_n_chirho), ValueChirho::IntChirho(b_n_chirho)) => {
             a_n_chirho.cmp(b_n_chirho)
         }
-        (ValueChirho::FloatChirho(a_f_chirho), ValueChirho::FloatChirho(b_f_chirho)) => {
-            a_f_chirho.partial_cmp(b_f_chirho).unwrap_or(Ordering::Equal)
-        }
+        (ValueChirho::FloatChirho(a_f_chirho), ValueChirho::FloatChirho(b_f_chirho)) => a_f_chirho
+            .partial_cmp(b_f_chirho)
+            .unwrap_or(Ordering::Equal),
         (ValueChirho::CharChirho(a_c_chirho), ValueChirho::CharChirho(b_c_chirho)) => {
             a_c_chirho.cmp(b_c_chirho)
         }
@@ -4267,12 +4761,13 @@ fn compare_values_chirho(a_chirho: &ValueChirho, b_chirho: &ValueChirho) -> std:
             a_s_chirho.cmp(b_s_chirho)
         }
         // Mixed Int/Float comparison
-        (ValueChirho::IntChirho(a_n_chirho), ValueChirho::FloatChirho(b_f_chirho)) => {
-            (*a_n_chirho as f64).partial_cmp(b_f_chirho).unwrap_or(Ordering::Equal)
-        }
-        (ValueChirho::FloatChirho(a_f_chirho), ValueChirho::IntChirho(b_n_chirho)) => {
-            a_f_chirho.partial_cmp(&(*b_n_chirho as f64)).unwrap_or(Ordering::Equal)
-        }
+        (ValueChirho::IntChirho(a_n_chirho), ValueChirho::FloatChirho(b_f_chirho)) => (*a_n_chirho
+            as f64)
+            .partial_cmp(b_f_chirho)
+            .unwrap_or(Ordering::Equal),
+        (ValueChirho::FloatChirho(a_f_chirho), ValueChirho::IntChirho(b_n_chirho)) => a_f_chirho
+            .partial_cmp(&(*b_n_chirho as f64))
+            .unwrap_or(Ordering::Equal),
         // Fallback: compare by debug representation
         _ => format!("{:?}", a_chirho).cmp(&format!("{:?}", b_chirho)),
     }
@@ -4286,9 +4781,7 @@ mod tests_chirho {
     use crate::value_chirho::CodePtrChirho;
 
     /// Helper: build a machine, run it from entry 0, return the result.
-    fn run_code_chirho(
-        code_chirho: Vec<CodeChirho>,
-    ) -> Result<ValueChirho, EvalErrorChirho> {
+    fn run_code_chirho(code_chirho: Vec<CodeChirho>) -> Result<ValueChirho, EvalErrorChirho> {
         let mut machine_chirho = MachineChirho::new_chirho(code_chirho);
         machine_chirho.run_chirho(0)
     }
@@ -4296,9 +4789,8 @@ mod tests_chirho {
     #[test]
     fn literal_return_chirho() {
         // Code: just return Int 42
-        let result_chirho = run_code_chirho(vec![CodeChirho::LitChirho(
-            ValueChirho::IntChirho(42),
-        )]);
+        let result_chirho =
+            run_code_chirho(vec![CodeChirho::LitChirho(ValueChirho::IntChirho(42))]);
         assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
     }
 
@@ -4307,7 +4799,10 @@ mod tests_chirho {
         // Code: 3 + 4
         let result_chirho = run_code_chirho(vec![CodeChirho::PrimChirho {
             op_chirho: PrimOpKindChirho::AddIntChirho,
-            args_chirho: vec![ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(3)), ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(4))],
+            args_chirho: vec![
+                ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(3)),
+                ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(4)),
+            ],
         }]);
         assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(7));
     }
@@ -4316,7 +4811,10 @@ mod tests_chirho {
     fn primop_mul_chirho() {
         let result_chirho = run_code_chirho(vec![CodeChirho::PrimChirho {
             op_chirho: PrimOpKindChirho::MulIntChirho,
-            args_chirho: vec![ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(6)), ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(7))],
+            args_chirho: vec![
+                ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(6)),
+                ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(7)),
+            ],
         }]);
         assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
     }
@@ -4339,12 +4837,11 @@ mod tests_chirho {
     #[test]
     fn con_with_fields_chirho() {
         // Code: construct Just 42 — verify fields via machine
-        let mut machine_chirho =
-            MachineChirho::new_chirho(vec![CodeChirho::ConAppChirho {
-                tag_chirho: DataConTagChirho(1),
-                name_chirho: "Just".to_string(),
-                fields_chirho: vec![ValueChirho::IntChirho(42)],
-            }]);
+        let mut machine_chirho = MachineChirho::new_chirho(vec![CodeChirho::ConAppChirho {
+            tag_chirho: DataConTagChirho(1),
+            name_chirho: "Just".to_string(),
+            fields_chirho: vec![ValueChirho::IntChirho(42)],
+        }]);
         let result2_chirho = machine_chirho.run_chirho(0).unwrap();
         let addr2_chirho = match result2_chirho {
             ValueChirho::HeapPtrChirho(a_chirho) => a_chirho,
@@ -4384,13 +4881,19 @@ mod tests_chirho {
         ]);
 
         // Pre-allocate True on heap so we can case on it
-        let true_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::con_chirho(DataConTagChirho(0), "True", vec![]),
-        );
+        let true_addr_chirho = machine_chirho
+            .heap_chirho
+            .alloc_chirho(ClosureChirho::con_chirho(
+                DataConTagChirho(0),
+                "True",
+                vec![],
+            ));
 
         // Replace code[0] with a Case
         machine_chirho.code_table_chirho[0] = CodeChirho::CaseChirho {
-            scrutinee_chirho: ArgSourceChirho::StaticChirho(ValueChirho::HeapPtrChirho(true_addr_chirho)),
+            scrutinee_chirho: ArgSourceChirho::StaticChirho(ValueChirho::HeapPtrChirho(
+                true_addr_chirho,
+            )),
             alts_chirho: vec![(0, 1), (1, 2)],
             default_chirho: None,
         };
@@ -4407,12 +4910,18 @@ mod tests_chirho {
         ]);
 
         // Allocate a constructor with tag 5 — no matching alt
-        let addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::con_chirho(DataConTagChirho(5), "Unknown", vec![]),
-        );
+        let addr_chirho = machine_chirho
+            .heap_chirho
+            .alloc_chirho(ClosureChirho::con_chirho(
+                DataConTagChirho(5),
+                "Unknown",
+                vec![],
+            ));
 
         machine_chirho.code_table_chirho[0] = CodeChirho::CaseChirho {
-            scrutinee_chirho: ArgSourceChirho::StaticChirho(ValueChirho::HeapPtrChirho(addr_chirho)),
+            scrutinee_chirho: ArgSourceChirho::StaticChirho(ValueChirho::HeapPtrChirho(
+                addr_chirho,
+            )),
             alts_chirho: vec![(0, 0)], // only tag 0 handled
             default_chirho: Some(1),
         };
@@ -4429,25 +4938,30 @@ mod tests_chirho {
             CodeChirho::PrimChirho {
                 // index 1: thunk body
                 op_chirho: PrimOpKindChirho::AddIntChirho,
-                args_chirho: vec![ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(3)), ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(4))],
+                args_chirho: vec![
+                    ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(3)),
+                    ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(4)),
+                ],
             },
         ]);
 
-        let thunk_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::thunk_chirho(CodePtrChirho(1), "myThunk", vec![]),
-        );
+        let thunk_addr_chirho =
+            machine_chirho
+                .heap_chirho
+                .alloc_chirho(ClosureChirho::thunk_chirho(
+                    CodePtrChirho(1),
+                    "myThunk",
+                    vec![],
+                ));
 
         // Entry: Enter the thunk
-        machine_chirho.code_table_chirho[0] =
-            CodeChirho::EnterChirho(thunk_addr_chirho);
+        machine_chirho.code_table_chirho[0] = CodeChirho::EnterChirho(thunk_addr_chirho);
 
         let result_chirho = machine_chirho.run_chirho(0).unwrap();
         assert_eq!(result_chirho, ValueChirho::IntChirho(7));
 
         // Verify the thunk was updated (now an indirection)
-        let updated_chirho = machine_chirho
-            .heap_chirho
-            .read_chirho(thunk_addr_chirho);
+        let updated_chirho = machine_chirho.heap_chirho.read_chirho(thunk_addr_chirho);
         assert_eq!(
             updated_chirho.info_chirho.tag_chirho,
             InfoTagChirho::IndChirho
@@ -4462,16 +4976,19 @@ mod tests_chirho {
             CodeChirho::LitChirho(ValueChirho::IntChirho(0)), // placeholder
         ]);
 
-        let thunk_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::thunk_chirho(CodePtrChirho(1), "loop", vec![]),
-        );
+        let thunk_addr_chirho =
+            machine_chirho
+                .heap_chirho
+                .alloc_chirho(ClosureChirho::thunk_chirho(
+                    CodePtrChirho(1),
+                    "loop",
+                    vec![],
+                ));
 
         // code[0] = Enter thunk
-        machine_chirho.code_table_chirho[0] =
-            CodeChirho::EnterChirho(thunk_addr_chirho);
+        machine_chirho.code_table_chirho[0] = CodeChirho::EnterChirho(thunk_addr_chirho);
         // code[1] = Enter same thunk (self-reference)
-        machine_chirho.code_table_chirho[1] =
-            CodeChirho::EnterChirho(thunk_addr_chirho);
+        machine_chirho.code_table_chirho[1] = CodeChirho::EnterChirho(thunk_addr_chirho);
 
         let result_chirho = machine_chirho.run_chirho(0);
         assert!(matches!(
@@ -4483,16 +5000,19 @@ mod tests_chirho {
     #[test]
     fn step_limit_chirho() {
         // Infinite loop via step limit
-        let mut machine_chirho = MachineChirho::new_chirho(vec![
-            CodeChirho::LitChirho(ValueChirho::IntChirho(0)),
-        ]);
+        let mut machine_chirho =
+            MachineChirho::new_chirho(vec![CodeChirho::LitChirho(ValueChirho::IntChirho(0))]);
 
-        let thunk_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::thunk_chirho(CodePtrChirho(0), "loop", vec![]),
-        );
+        let thunk_addr_chirho =
+            machine_chirho
+                .heap_chirho
+                .alloc_chirho(ClosureChirho::thunk_chirho(
+                    CodePtrChirho(0),
+                    "loop",
+                    vec![],
+                ));
 
-        machine_chirho.code_table_chirho[0] =
-            CodeChirho::EnterChirho(thunk_addr_chirho);
+        machine_chirho.code_table_chirho[0] = CodeChirho::EnterChirho(thunk_addr_chirho);
 
         machine_chirho.step_limit_chirho = 5;
         let result_chirho = machine_chirho.run_chirho(0);
@@ -4537,13 +5057,16 @@ mod tests_chirho {
             // 1: function body: add arg + 1
             CodeChirho::PrimChirho {
                 op_chirho: PrimOpKindChirho::AddIntChirho,
-                args_chirho: vec![ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(41)), ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(1))],
+                args_chirho: vec![
+                    ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(41)),
+                    ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(1)),
+                ],
             },
         ]);
 
-        let fun_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::fun_chirho(1, CodePtrChirho(1), "f", vec![]),
-        );
+        let fun_addr_chirho = machine_chirho
+            .heap_chirho
+            .alloc_chirho(ClosureChirho::fun_chirho(1, CodePtrChirho(1), "f", vec![]));
 
         machine_chirho.code_table_chirho[0] = CodeChirho::AppChirho {
             fun_chirho: fun_addr_chirho,
@@ -4562,13 +5085,21 @@ mod tests_chirho {
             CodeChirho::PrimChirho {
                 // arity 2 body
                 op_chirho: PrimOpKindChirho::AddIntChirho,
-                args_chirho: vec![ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(10)), ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(32))],
+                args_chirho: vec![
+                    ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(10)),
+                    ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(32)),
+                ],
             },
         ]);
 
-        let fun_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::fun_chirho(2, CodePtrChirho(1), "add", vec![]),
-        );
+        let fun_addr_chirho = machine_chirho
+            .heap_chirho
+            .alloc_chirho(ClosureChirho::fun_chirho(
+                2,
+                CodePtrChirho(1),
+                "add",
+                vec![],
+            ));
 
         // Apply with only 1 arg (arity is 2)
         machine_chirho.code_table_chirho[0] = CodeChirho::AppChirho {
@@ -4591,7 +5122,10 @@ mod tests_chirho {
     fn div_by_zero_chirho() {
         let result_chirho = run_code_chirho(vec![CodeChirho::PrimChirho {
             op_chirho: PrimOpKindChirho::DivIntChirho,
-            args_chirho: vec![ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(42)), ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(0))],
+            args_chirho: vec![
+                ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(42)),
+                ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(0)),
+            ],
         }]);
         assert!(matches!(
             result_chirho,
@@ -4615,53 +5149,62 @@ mod tests_chirho {
 
     #[test]
     fn maybe_gc_keeps_ioref_and_tvar_payloads_alive_chirho() {
-        let mut machine_chirho = MachineChirho::new_chirho(vec![]).with_gc_config_chirho(
-            GcConfigChirho {
+        let mut machine_chirho =
+            MachineChirho::new_chirho(vec![]).with_gc_config_chirho(GcConfigChirho {
                 alloc_threshold_chirho: 1,
                 min_heap_size_chirho: 0,
-            },
-        );
+            });
 
-        let ioref_payload_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::con_chirho(
-                DataConTagChirho(0),
-                "I#",
-                vec![ValueChirho::IntChirho(11)],
-            ),
-        );
-        let tvar_payload_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::con_chirho(
-                DataConTagChirho(0),
-                "I#",
-                vec![ValueChirho::IntChirho(29)],
-            ),
-        );
-        let dead_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::con_chirho(
+        let ioref_payload_addr_chirho =
+            machine_chirho
+                .heap_chirho
+                .alloc_chirho(ClosureChirho::con_chirho(
+                    DataConTagChirho(0),
+                    "I#",
+                    vec![ValueChirho::IntChirho(11)],
+                ));
+        let tvar_payload_addr_chirho =
+            machine_chirho
+                .heap_chirho
+                .alloc_chirho(ClosureChirho::con_chirho(
+                    DataConTagChirho(0),
+                    "I#",
+                    vec![ValueChirho::IntChirho(29)],
+                ));
+        let dead_addr_chirho = machine_chirho
+            .heap_chirho
+            .alloc_chirho(ClosureChirho::con_chirho(
                 DataConTagChirho(0),
                 "I#",
                 vec![ValueChirho::IntChirho(99)],
-            ),
-        );
+            ));
 
-        machine_chirho.iorefs_chirho.insert(
-            0,
-            ValueChirho::HeapPtrChirho(ioref_payload_addr_chirho),
-        );
-        machine_chirho.tvars_chirho.insert(
-            0,
-            ValueChirho::HeapPtrChirho(tvar_payload_addr_chirho),
-        );
+        machine_chirho
+            .iorefs_chirho
+            .insert(0, ValueChirho::HeapPtrChirho(ioref_payload_addr_chirho));
+        machine_chirho
+            .tvars_chirho
+            .insert(0, ValueChirho::HeapPtrChirho(tvar_payload_addr_chirho));
 
         machine_chirho.maybe_gc_chirho();
 
-        let ioref_payload_chirho = machine_chirho.heap_chirho.read_chirho(ioref_payload_addr_chirho);
+        let ioref_payload_chirho = machine_chirho
+            .heap_chirho
+            .read_chirho(ioref_payload_addr_chirho);
         assert_eq!(ioref_payload_chirho.info_chirho.name_chirho, "I#");
-        assert_eq!(ioref_payload_chirho.payload_chirho, vec![ValueChirho::IntChirho(11)]);
+        assert_eq!(
+            ioref_payload_chirho.payload_chirho,
+            vec![ValueChirho::IntChirho(11)]
+        );
 
-        let tvar_payload_chirho = machine_chirho.heap_chirho.read_chirho(tvar_payload_addr_chirho);
+        let tvar_payload_chirho = machine_chirho
+            .heap_chirho
+            .read_chirho(tvar_payload_addr_chirho);
         assert_eq!(tvar_payload_chirho.info_chirho.name_chirho, "I#");
-        assert_eq!(tvar_payload_chirho.payload_chirho, vec![ValueChirho::IntChirho(29)]);
+        assert_eq!(
+            tvar_payload_chirho.payload_chirho,
+            vec![ValueChirho::IntChirho(29)]
+        );
 
         let dead_closure_chirho = machine_chirho.heap_chirho.read_chirho(dead_addr_chirho);
         assert_eq!(dead_closure_chirho.info_chirho.name_chirho, "$DEAD");
@@ -4669,34 +5212,37 @@ mod tests_chirho {
 
     #[test]
     fn enter_pap_flows_through_primop_frames_chirho() {
-        let mut machine_chirho = MachineChirho::new_chirho(vec![
-            CodeChirho::PrimChirho {
-                op_chirho: PrimOpKindChirho::AddIntChirho,
-                args_chirho: vec![
-                    ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(1)),
-                    ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(2)),
-                ],
-            },
-        ]);
+        let mut machine_chirho = MachineChirho::new_chirho(vec![CodeChirho::PrimChirho {
+            op_chirho: PrimOpKindChirho::AddIntChirho,
+            args_chirho: vec![
+                ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(1)),
+                ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(2)),
+            ],
+        }]);
 
-        let fun_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::fun_chirho(2, CodePtrChirho(0), "f", vec![]),
-        );
-        let pap_addr_chirho = machine_chirho.heap_chirho.alloc_chirho(
-            ClosureChirho::pap_chirho(
+        let fun_addr_chirho = machine_chirho
+            .heap_chirho
+            .alloc_chirho(ClosureChirho::fun_chirho(2, CodePtrChirho(0), "f", vec![]));
+        let pap_addr_chirho = machine_chirho
+            .heap_chirho
+            .alloc_chirho(ClosureChirho::pap_chirho(
                 1,
                 fun_addr_chirho,
                 vec![ValueChirho::IntChirho(10)],
-            ),
-        );
-        let pap_closure_chirho = machine_chirho.heap_chirho.read_chirho(pap_addr_chirho).clone();
+            ));
+        let pap_closure_chirho = machine_chirho
+            .heap_chirho
+            .read_chirho(pap_addr_chirho)
+            .clone();
 
-        machine_chirho.stack_chirho.push_chirho(FrameChirho::PrimOpChirho {
-            op_chirho: PrimOpKindChirho::SeqChirho,
-            args_so_far_chirho: vec![],
-            pending_args_chirho: vec![ValueChirho::IntChirho(42)],
-            remaining_chirho: 2,
-        });
+        machine_chirho
+            .stack_chirho
+            .push_chirho(FrameChirho::PrimOpChirho {
+                op_chirho: PrimOpKindChirho::SeqChirho,
+                args_so_far_chirho: vec![],
+                pending_args_chirho: vec![ValueChirho::IntChirho(42)],
+                remaining_chirho: 2,
+            });
 
         let result_chirho = machine_chirho
             .enter_pap_chirho(pap_addr_chirho, &pap_closure_chirho)
@@ -4708,7 +5254,10 @@ mod tests_chirho {
                 panic!("expected seq result 42, got {:?}", other_chirho)
             }
             ReturnActionChirho::ContinueChirho(next_chirho) => {
-                panic!("expected final seq result, got continuation {}", next_chirho)
+                panic!(
+                    "expected final seq result, got continuation {}",
+                    next_chirho
+                )
             }
         }
     }

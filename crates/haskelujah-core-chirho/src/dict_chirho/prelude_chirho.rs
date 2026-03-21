@@ -10,11 +10,11 @@ use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
+use super::{DictLayoutChirho, DictPassCtxChirho};
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
     CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
 };
-use super::{DictPassCtxChirho, DictLayoutChirho};
 
 impl DictPassCtxChirho {
     pub fn generate_prelude_bindings_chirho(&mut self) {
@@ -23,23 +23,22 @@ impl DictPassCtxChirho {
         // Helper to generate a Prelude binding with ID matching.
         // Uses resolve_or_fresh_id_chirho so the binding ID matches
         // any reference the desugarer may have already created.
-        let prelude_fns_chirho: Vec<(&str, TyChirho, Box<dyn FnOnce(&mut Self) -> CoreExprChirho>)> = vec![
+        let prelude_fns_chirho: Vec<(
+            &str,
+            TyChirho,
+            Box<dyn FnOnce(&mut Self) -> CoreExprChirho>,
+        )> = vec![
             // not :: Bool -> Bool
             (
                 "not",
                 TyChirho::fun_chirho(bool_ty_chirho.clone(), bool_ty_chirho.clone()),
                 Box::new(|ctx_chirho: &mut Self| {
-                    let x_chirho = ctx_chirho.fresh_binder_chirho(
-                        "x",
-                        TyChirho::bool_chirho(),
-                    );
+                    let x_chirho = ctx_chirho.fresh_binder_chirho("x", TyChirho::bool_chirho());
                     CoreExprChirho::LamChirho {
                         binder_chirho: x_chirho.clone(),
                         body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
                             name_chirho: "not#".to_string(),
-                            args_chirho: vec![CoreExprChirho::VarChirho(
-                                x_chirho.id_chirho,
-                            )],
+                            args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
                         }),
                     }
                 }),
@@ -48,32 +47,26 @@ impl DictPassCtxChirho {
             (
                 "otherwise",
                 bool_ty_chirho.clone(),
-                Box::new(|_ctx_chirho: &mut Self| {
-                    CoreExprChirho::ConAppChirho {
-                        con_name_chirho: "True".to_string(),
-                        args_chirho: vec![],
-                    }
+                Box::new(|_ctx_chirho: &mut Self| CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "True".to_string(),
+                    args_chirho: vec![],
                 }),
             ),
             // id :: a -> a
             (
                 "id",
                 {
-                    let a_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-                    );
+                    let a_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
                     TyChirho::fun_chirho(a_chirho.clone(), a_chirho)
                 },
                 Box::new(|ctx_chirho: &mut Self| {
-                    let a_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-                    );
+                    let a_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
                     let x_chirho = ctx_chirho.fresh_binder_chirho("x", a_chirho);
                     CoreExprChirho::LamChirho {
                         binder_chirho: x_chirho.clone(),
-                        body_chirho: Box::new(CoreExprChirho::VarChirho(
-                            x_chirho.id_chirho,
-                        )),
+                        body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
                     }
                 }),
             ),
@@ -81,21 +74,17 @@ impl DictPassCtxChirho {
             (
                 "fromList",
                 {
-                    let a_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-                    );
+                    let a_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
                     TyChirho::fun_chirho(a_chirho.clone(), a_chirho)
                 },
                 Box::new(|ctx_chirho: &mut Self| {
-                    let a_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-                    );
+                    let a_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
                     let x_chirho = ctx_chirho.fresh_binder_chirho("x", a_chirho);
                     CoreExprChirho::LamChirho {
                         binder_chirho: x_chirho.clone(),
-                        body_chirho: Box::new(CoreExprChirho::VarChirho(
-                            x_chirho.id_chirho,
-                        )),
+                        body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
                     }
                 }),
             ),
@@ -103,21 +92,17 @@ impl DictPassCtxChirho {
             (
                 "toList",
                 {
-                    let a_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-                    );
+                    let a_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
                     TyChirho::fun_chirho(a_chirho.clone(), a_chirho)
                 },
                 Box::new(|ctx_chirho: &mut Self| {
-                    let a_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-                    );
+                    let a_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
                     let x_chirho = ctx_chirho.fresh_binder_chirho("x", a_chirho);
                     CoreExprChirho::LamChirho {
                         binder_chirho: x_chirho.clone(),
-                        body_chirho: Box::new(CoreExprChirho::VarChirho(
-                            x_chirho.id_chirho,
-                        )),
+                        body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
                     }
                 }),
             ),
@@ -125,33 +110,24 @@ impl DictPassCtxChirho {
             (
                 "const",
                 {
-                    let a_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-                    );
-                    let b_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991),
-                    );
-                    TyChirho::fun_chirho(
-                        a_chirho.clone(),
-                        TyChirho::fun_chirho(b_chirho, a_chirho),
-                    )
+                    let a_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
+                    let b_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991));
+                    TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(b_chirho, a_chirho))
                 },
                 Box::new(|ctx_chirho: &mut Self| {
-                    let a_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-                    );
-                    let b_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991),
-                    );
+                    let a_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
+                    let b_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991));
                     let x_chirho = ctx_chirho.fresh_binder_chirho("x", a_chirho);
                     let y_chirho = ctx_chirho.fresh_binder_chirho("y", b_chirho);
                     CoreExprChirho::LamChirho {
                         binder_chirho: x_chirho.clone(),
                         body_chirho: Box::new(CoreExprChirho::LamChirho {
                             binder_chirho: y_chirho,
-                            body_chirho: Box::new(CoreExprChirho::VarChirho(
-                                x_chirho.id_chirho,
-                            )),
+                            body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
                         }),
                     }
                 }),
@@ -160,38 +136,34 @@ impl DictPassCtxChirho {
             (
                 "flip",
                 {
-                    let a_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-                    );
-                    let b_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991),
-                    );
-                    let c_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9992),
-                    );
+                    let a_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
+                    let b_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991));
+                    let c_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9992));
                     TyChirho::fun_chirho(
                         TyChirho::fun_chirho(
                             a_chirho.clone(),
                             TyChirho::fun_chirho(b_chirho.clone(), c_chirho.clone()),
                         ),
-                        TyChirho::fun_chirho(
-                            b_chirho,
-                            TyChirho::fun_chirho(a_chirho, c_chirho),
-                        ),
+                        TyChirho::fun_chirho(b_chirho, TyChirho::fun_chirho(a_chirho, c_chirho)),
                     )
                 },
                 Box::new(|ctx_chirho: &mut Self| {
-                    let a_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
+                    let a_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
+                    let b_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991));
+                    let c_chirho =
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9992));
+                    let f_chirho = ctx_chirho.fresh_binder_chirho(
+                        "f",
+                        TyChirho::fun_chirho(
+                            a_chirho.clone(),
+                            TyChirho::fun_chirho(b_chirho.clone(), c_chirho),
+                        ),
                     );
-                    let b_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991),
-                    );
-                    let c_chirho = TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(9992),
-                    );
-                    let f_chirho = ctx_chirho.fresh_binder_chirho("f",
-                        TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(b_chirho.clone(), c_chirho)));
                     let x_chirho = ctx_chirho.fresh_binder_chirho("x", b_chirho);
                     let y_chirho = ctx_chirho.fresh_binder_chirho("y", a_chirho);
                     // flip f x y = f y x
@@ -203,10 +175,16 @@ impl DictPassCtxChirho {
                                 binder_chirho: y_chirho.clone(),
                                 body_chirho: Box::new(CoreExprChirho::AppChirho {
                                     fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                                        fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
-                                        arg_chirho: Box::new(CoreExprChirho::VarChirho(y_chirho.id_chirho)),
+                                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            f_chirho.id_chirho,
+                                        )),
+                                        arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            y_chirho.id_chirho,
+                                        )),
                                     }),
-                                    arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+                                    arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                        x_chirho.id_chirho,
+                                    )),
                                 }),
                             }),
                         }),
@@ -228,7 +206,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -269,7 +247,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -310,7 +288,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -367,7 +345,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho: rhs_chirho.clone(),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // Also generate $prim_Num_abs_Int for the instance dictionary
@@ -383,7 +361,7 @@ impl DictPassCtxChirho {
                 binder_chirho: prim_abs_binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -443,7 +421,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -503,18 +481,16 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // fst :: (a, b) -> a
         {
-            let a_chirho = TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-            );
-            let b_chirho = TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991),
-            );
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
+            let b_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991));
             let pair_ty_chirho = TyChirho::TupleChirho(vec![a_chirho.clone(), b_chirho.clone()]);
             let fst_id_chirho = self.resolve_or_fresh_id_chirho("fst");
             let p_chirho = self.fresh_binder_chirho("p", pair_ty_chirho.clone());
@@ -547,18 +523,16 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // snd :: (a, b) -> b
         {
-            let a_chirho = TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-            );
-            let b_chirho = TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991),
-            );
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
+            let b_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991));
             let pair_ty_chirho = TyChirho::TupleChirho(vec![a_chirho.clone(), b_chirho.clone()]);
             let snd_id_chirho = self.resolve_or_fresh_id_chirho("snd");
             let p_chirho = self.fresh_binder_chirho("p", pair_ty_chirho.clone());
@@ -591,22 +565,19 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // curry :: ((a, b) -> c) -> a -> b -> c
         // curry f a b = f (a, b)
         {
-            let a_chirho = TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-            );
-            let b_chirho = TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991),
-            );
-            let c_chirho = TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(9992),
-            );
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
+            let b_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991));
+            let c_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9992));
             let pair_ty_chirho = TyChirho::TupleChirho(vec![a_chirho.clone(), b_chirho.clone()]);
             let curry_id_chirho = self.resolve_or_fresh_id_chirho("curry");
             let f_chirho = self.fresh_binder_chirho(
@@ -656,22 +627,19 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // uncurry :: (a -> b -> c) -> (a, b) -> c
         // uncurry f (a, b) = f a b
         {
-            let a_chirho = TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990),
-            );
-            let b_chirho = TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991),
-            );
-            let c_chirho = TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(9992),
-            );
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9990));
+            let b_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9991));
+            let c_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9992));
             let pair_ty_chirho = TyChirho::TupleChirho(vec![a_chirho.clone(), b_chirho.clone()]);
             let uncurry_id_chirho = self.resolve_or_fresh_id_chirho("uncurry");
             let f_chirho = self.fresh_binder_chirho(
@@ -729,7 +697,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -784,10 +752,7 @@ impl DictPassCtxChirho {
             };
 
             // case (from > to) of { True -> []; _ -> from : ... }
-            let case_wild_chirho = self.fresh_binder_chirho(
-                "$w",
-                TyChirho::bool_chirho(),
-            );
+            let case_wild_chirho = self.fresh_binder_chirho("$w", TyChirho::bool_chirho());
             let body_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(cond_chirho),
                 bind_chirho: case_wild_chirho,
@@ -830,7 +795,7 @@ impl DictPassCtxChirho {
                 binder_chirho: enum_binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -936,7 +901,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1031,7 +996,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1060,7 +1025,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1089,7 +1054,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1118,7 +1083,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1147,7 +1112,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1176,7 +1141,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1215,7 +1180,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1238,7 +1203,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1266,7 +1231,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1302,14 +1267,15 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // isJust :: Maybe a -> Bool
         // isJust m = case m of { Nothing -> False; Just _ -> True }
         {
-            let a_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9900));
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9900));
             let maybe_a_chirho = TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("Maybe".to_string())),
                 Box::new(a_chirho.clone()),
@@ -1355,14 +1321,15 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // isNothing :: Maybe a -> Bool
         // isNothing m = case m of { Nothing -> True; Just _ -> False }
         {
-            let a_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9901));
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9901));
             let maybe_a_chirho = TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("Maybe".to_string())),
                 Box::new(a_chirho.clone()),
@@ -1408,14 +1375,15 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // fromMaybe :: a -> Maybe a -> a
         // fromMaybe def m = case m of { Nothing -> def; Just x -> x }
         {
-            let a_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9902));
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9902));
             let maybe_a_chirho = TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("Maybe".to_string())),
                 Box::new(a_chirho.clone()),
@@ -1462,22 +1430,27 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // maybe :: b -> (a -> b) -> Maybe a -> b
         // maybe def f m = case m of { Nothing -> def; Just x -> f x }
         {
-            let a_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9903));
-            let b_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9904));
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9903));
+            let b_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9904));
             let maybe_a_chirho = TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("Maybe".to_string())),
                 Box::new(a_chirho.clone()),
             );
             let maybe_id_chirho = self.resolve_or_fresh_id_chirho("maybe");
             let def_chirho = self.fresh_binder_chirho("def", b_chirho.clone());
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()),
+            );
             let m_chirho = self.fresh_binder_chirho("m", maybe_a_chirho.clone());
             let wild_chirho = self.fresh_binder_chirho("$w", a_chirho.clone());
             let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
@@ -1528,16 +1501,19 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // either :: (a -> c) -> (b -> c) -> Either a b -> c
         // either f g e = case e of { Left x -> f x; Right y -> g y }
         {
-            let a_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9905));
-            let b_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9906));
-            let c_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9907));
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9905));
+            let b_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9906));
+            let c_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9907));
             let either_ab_chirho = TyChirho::AppChirho(
                 Box::new(TyChirho::AppChirho(
                     Box::new(TyChirho::ConChirho("Either".to_string())),
@@ -1546,8 +1522,14 @@ impl DictPassCtxChirho {
                 Box::new(b_chirho.clone()),
             );
             let either_id_chirho = self.resolve_or_fresh_id_chirho("either");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), c_chirho.clone()));
-            let g_chirho = self.fresh_binder_chirho("g", TyChirho::fun_chirho(b_chirho.clone(), c_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(a_chirho.clone(), c_chirho.clone()),
+            );
+            let g_chirho = self.fresh_binder_chirho(
+                "g",
+                TyChirho::fun_chirho(b_chirho.clone(), c_chirho.clone()),
+            );
             let e_chirho = self.fresh_binder_chirho("e", either_ab_chirho.clone());
             let wild_chirho = self.fresh_binder_chirho("$w", a_chirho.clone());
             let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
@@ -1602,7 +1584,7 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1615,24 +1597,36 @@ impl DictPassCtxChirho {
                 let fn_id_chirho = self.resolve_or_fresh_id_chirho(fn_name_chirho);
                 let wild_id_chirho = self.fresh_id_chirho("$wild");
                 let x_chirho = BinderChirho {
-                    id_chirho: x_id_chirho, name_chirho: "x".to_string(),
-                    ty_chirho: int_chirho.clone(), span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    id_chirho: x_id_chirho,
+                    name_chirho: "x".to_string(),
+                    ty_chirho: int_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
                 };
                 let y_chirho = BinderChirho {
-                    id_chirho: y_id_chirho, name_chirho: "y".to_string(),
-                    ty_chirho: int_chirho.clone(), span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    id_chirho: y_id_chirho,
+                    name_chirho: "y".to_string(),
+                    ty_chirho: int_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
                 };
                 let wild_chirho = BinderChirho {
-                    id_chirho: wild_id_chirho, name_chirho: "$wild".to_string(),
-                    ty_chirho: TyChirho::bool_chirho(), span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    id_chirho: wild_id_chirho,
+                    name_chirho: "$wild".to_string(),
+                    ty_chirho: TyChirho::bool_chirho(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
                 };
                 // case x <=# y of True -> <first>; False -> <second>
                 let (true_rhs_chirho, false_rhs_chirho) = if pick_first_chirho {
                     // min: True → x, False → y
-                    (CoreExprChirho::VarChirho(x_id_chirho), CoreExprChirho::VarChirho(y_id_chirho))
+                    (
+                        CoreExprChirho::VarChirho(x_id_chirho),
+                        CoreExprChirho::VarChirho(y_id_chirho),
+                    )
                 } else {
                     // max: True → y, False → x
-                    (CoreExprChirho::VarChirho(y_id_chirho), CoreExprChirho::VarChirho(x_id_chirho))
+                    (
+                        CoreExprChirho::VarChirho(y_id_chirho),
+                        CoreExprChirho::VarChirho(x_id_chirho),
+                    )
                 };
                 let body_chirho = CoreExprChirho::CaseChirho {
                     scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
@@ -1647,11 +1641,13 @@ impl DictPassCtxChirho {
                     alts_chirho: vec![
                         CoreAltChirho {
                             con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                            binders_chirho: vec![], rhs_chirho: true_rhs_chirho,
+                            binders_chirho: vec![],
+                            rhs_chirho: true_rhs_chirho,
                         },
                         CoreAltChirho {
                             con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                            binders_chirho: vec![], rhs_chirho: false_rhs_chirho,
+                            binders_chirho: vec![],
+                            rhs_chirho: false_rhs_chirho,
                         },
                     ],
                 };
@@ -1672,7 +1668,9 @@ impl DictPassCtxChirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 };
                 self.generated_bindings_chirho.push(CoreBindingChirho {
-                    binder_chirho, rhs_chirho, is_rec_chirho: false,
+                    binder_chirho,
+                    rhs_chirho,
+                    is_rec_chirho: false,
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
                 });
             }
@@ -1699,7 +1697,10 @@ impl DictPassCtxChirho {
         // map f [] = []; map f (x:xs) = f x : map f xs
         {
             let map_id_chirho = self.resolve_or_fresh_id_chirho("map");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()),
+            );
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
             let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
@@ -1758,7 +1759,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1766,7 +1767,10 @@ impl DictPassCtxChirho {
         // filter p [] = []; filter p (x:xs) = if p x then x : filter p xs else filter p xs
         {
             let filter_id_chirho = self.resolve_or_fresh_id_chirho("filter");
-            let p_chirho = self.fresh_binder_chirho("p", TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()));
+            let p_chirho = self.fresh_binder_chirho(
+                "p",
+                TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+            );
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
             let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
@@ -1846,7 +1850,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1854,7 +1858,13 @@ impl DictPassCtxChirho {
         // foldr f z [] = z; foldr f z (x:xs) = f x (foldr f z xs)
         {
             let foldr_id_chirho = self.resolve_or_fresh_id_chirho("foldr");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(b_chirho.clone(), b_chirho.clone())));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(
+                    a_chirho.clone(),
+                    TyChirho::fun_chirho(b_chirho.clone(), b_chirho.clone()),
+                ),
+            );
             let z_chirho = self.fresh_binder_chirho("z", b_chirho.clone());
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
@@ -1912,14 +1922,20 @@ impl DictPassCtxChirho {
                     id_chirho: foldr_id_chirho,
                     name_chirho: "foldr".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(b_chirho.clone(), b_chirho.clone())),
-                        TyChirho::fun_chirho(b_chirho.clone(), TyChirho::fun_chirho(list_a_chirho.clone(), b_chirho.clone())),
+                        TyChirho::fun_chirho(
+                            a_chirho.clone(),
+                            TyChirho::fun_chirho(b_chirho.clone(), b_chirho.clone()),
+                        ),
+                        TyChirho::fun_chirho(
+                            b_chirho.clone(),
+                            TyChirho::fun_chirho(list_a_chirho.clone(), b_chirho.clone()),
+                        ),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -1927,7 +1943,13 @@ impl DictPassCtxChirho {
         // foldl f z [] = z; foldl f z (x:xs) = foldl f (f z x) xs
         {
             let foldl_id_chirho = self.resolve_or_fresh_id_chirho("foldl");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(b_chirho.clone(), TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone())));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(
+                    b_chirho.clone(),
+                    TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()),
+                ),
+            );
             let z_chirho = self.fresh_binder_chirho("z", b_chirho.clone());
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
@@ -1985,14 +2007,20 @@ impl DictPassCtxChirho {
                     id_chirho: foldl_id_chirho,
                     name_chirho: "foldl".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::fun_chirho(b_chirho.clone(), TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone())),
-                        TyChirho::fun_chirho(b_chirho.clone(), TyChirho::fun_chirho(list_a_chirho.clone(), b_chirho.clone())),
+                        TyChirho::fun_chirho(
+                            b_chirho.clone(),
+                            TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()),
+                        ),
+                        TyChirho::fun_chirho(
+                            b_chirho.clone(),
+                            TyChirho::fun_chirho(list_a_chirho.clone(), b_chirho.clone()),
+                        ),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2029,7 +2057,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2066,7 +2094,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2114,7 +2142,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2171,7 +2199,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2273,7 +2301,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2368,16 +2396,23 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // zipWith :: (a -> b -> c) -> [a] -> [b] -> [c]
         {
-            let c_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9992));
+            let c_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9992));
             let list_c_chirho = TyChirho::ListChirho(Box::new(c_chirho.clone()));
             let zipw_id_chirho = self.resolve_or_fresh_id_chirho("zipWith");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(b_chirho.clone(), c_chirho.clone())));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(
+                    a_chirho.clone(),
+                    TyChirho::fun_chirho(b_chirho.clone(), c_chirho.clone()),
+                ),
+            );
             let as_chirho = self.fresh_binder_chirho("as", list_a_chirho.clone());
             let bs_chirho = self.fresh_binder_chirho("bs", list_b_chirho.clone());
             let ah_chirho = self.fresh_binder_chirho("a", a_chirho.clone());
@@ -2460,14 +2495,20 @@ impl DictPassCtxChirho {
                     id_chirho: zipw_id_chirho,
                     name_chirho: "zipWith".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(b_chirho.clone(), c_chirho.clone())),
-                        TyChirho::fun_chirho(list_a_chirho.clone(), TyChirho::fun_chirho(list_b_chirho.clone(), list_c_chirho)),
+                        TyChirho::fun_chirho(
+                            a_chirho.clone(),
+                            TyChirho::fun_chirho(b_chirho.clone(), c_chirho.clone()),
+                        ),
+                        TyChirho::fun_chirho(
+                            list_a_chirho.clone(),
+                            TyChirho::fun_chirho(list_b_chirho.clone(), list_c_chirho),
+                        ),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2525,12 +2566,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: append_id_chirho,
                     name_chirho: "append".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(list_a_chirho.clone(), TyChirho::fun_chirho(list_a_chirho.clone(), list_a_chirho.clone())),
+                    ty_chirho: TyChirho::fun_chirho(
+                        list_a_chirho.clone(),
+                        TyChirho::fun_chirho(list_a_chirho.clone(), list_a_chirho.clone()),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2538,7 +2582,10 @@ impl DictPassCtxChirho {
         // any p [] = False; any p (x:xs) = case p x of { True -> True; False -> any p xs }
         {
             let any_id_chirho = self.resolve_or_fresh_id_chirho("any");
-            let p_chirho = self.fresh_binder_chirho("p", TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()));
+            let p_chirho = self.fresh_binder_chirho(
+                "p",
+                TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+            );
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
             let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
@@ -2617,7 +2664,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2625,7 +2672,10 @@ impl DictPassCtxChirho {
         // all p [] = True; all p (x:xs) = case p x of { True -> all p xs; False -> False }
         {
             let all_id_chirho = self.resolve_or_fresh_id_chirho("all");
-            let p_chirho = self.fresh_binder_chirho("p", TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()));
+            let p_chirho = self.fresh_binder_chirho(
+                "p",
+                TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+            );
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
             let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
@@ -2704,7 +2754,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2762,7 +2812,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2820,7 +2870,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2829,7 +2879,10 @@ impl DictPassCtxChirho {
         {
             let concatmap_id_chirho = self.resolve_or_fresh_id_chirho("concatMap");
             let append_id_chirho = self.resolve_or_fresh_id_chirho("append");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), list_b_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(a_chirho.clone(), list_b_chirho.clone()),
+            );
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
             let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
@@ -2891,7 +2944,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -2953,7 +3006,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3022,7 +3075,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3202,12 +3255,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "MaybeT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(maybe_a_chirho.clone(), maybe_t_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        maybe_a_chirho.clone(),
+                        maybe_t_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3237,12 +3293,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "runMaybeT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(maybe_t_ty_chirho.clone(), maybe_a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        maybe_t_ty_chirho.clone(),
+                        maybe_a_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3262,12 +3321,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "StateT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(state_fn_ty_chirho.clone(), state_t_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        state_fn_ty_chirho.clone(),
+                        state_t_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3322,7 +3384,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3349,7 +3411,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3395,7 +3457,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3414,12 +3476,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "ExceptT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(either_ty_chirho.clone(), except_t_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        either_ty_chirho.clone(),
+                        except_t_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3448,12 +3513,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "runExceptT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(except_t_ty_chirho.clone(), either_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        except_t_ty_chirho.clone(),
+                        either_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3473,12 +3541,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "WriterT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(pair_a_w_ty_chirho.clone(), writer_t_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        pair_a_w_ty_chirho.clone(),
+                        writer_t_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3507,12 +3578,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "runWriterT".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(writer_t_ty_chirho.clone(), pair_a_w_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        writer_t_ty_chirho.clone(),
+                        pair_a_w_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -3627,7 +3701,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3663,12 +3737,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: put_id_chirho,
                     name_chirho: "put".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(ty_s_chirho.clone(), state_t_s_unit_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        ty_s_chirho.clone(),
+                        state_t_s_unit_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3715,7 +3792,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3766,7 +3843,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3817,7 +3894,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3896,7 +3973,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3933,7 +4010,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3953,7 +4030,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(run_state_t_id_chirho),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -3991,7 +4068,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4047,13 +4124,16 @@ impl DictPassCtxChirho {
                     name_chirho: "local".to_string(),
                     ty_chirho: TyChirho::fun_chirho(
                         TyChirho::fun_chirho(ty_r_chirho.clone(), ty_r_chirho.clone()),
-                        TyChirho::fun_chirho(reader_t_r_a_chirho.clone(), reader_t_r_a_chirho.clone()),
+                        TyChirho::fun_chirho(
+                            reader_t_r_a_chirho.clone(),
+                            reader_t_r_a_chirho.clone(),
+                        ),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4160,7 +4240,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4191,7 +4271,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4211,7 +4291,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(run_reader_t_id_chirho),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4239,12 +4319,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: throw_id_chirho,
                     name_chirho: "throwE".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(ty_e_chirho.clone(), except_t_e_a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        ty_e_chirho.clone(),
+                        except_t_e_a_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4273,7 +4356,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4391,7 +4474,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4494,7 +4577,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4533,7 +4616,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4647,7 +4730,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4686,7 +4769,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4722,7 +4805,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4841,7 +4924,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4858,7 +4941,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(run_writer_t_id_chirho),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4910,7 +4993,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -4927,7 +5010,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(exec_writer_t_id_chirho),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -5030,10 +5113,8 @@ impl DictPassCtxChirho {
             };
 
             // h : nub (filter pred t)
-            let cons_result_chirho = cons_chirho(
-                CoreExprChirho::VarChirho(h_chirho.id_chirho),
-                rec_chirho,
-            );
+            let cons_result_chirho =
+                cons_chirho(CoreExprChirho::VarChirho(h_chirho.id_chirho), rec_chirho);
 
             let body_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(xs_chirho.id_chirho)),
@@ -5067,7 +5148,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5192,7 +5273,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5221,10 +5302,7 @@ impl DictPassCtxChirho {
             // h : sep : intersperse sep t
             let cons_with_sep_chirho = cons_chirho(
                 CoreExprChirho::VarChirho(h_chirho.id_chirho),
-                cons_chirho(
-                    CoreExprChirho::VarChirho(sep_chirho.id_chirho),
-                    rec_chirho,
-                ),
+                cons_chirho(CoreExprChirho::VarChirho(sep_chirho.id_chirho), rec_chirho),
             );
 
             // case t of { [] -> [h]; _ -> h : sep : intersperse sep t }
@@ -5239,7 +5317,10 @@ impl DictPassCtxChirho {
                     CoreAltChirho {
                         con_chirho: AltConChirho::DataConChirho("[]".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: cons_chirho(CoreExprChirho::VarChirho(h_chirho.id_chirho), nil_chirho()),
+                        rhs_chirho: cons_chirho(
+                            CoreExprChirho::VarChirho(h_chirho.id_chirho),
+                            nil_chirho(),
+                        ),
                     },
                     CoreAltChirho {
                         con_chirho: AltConChirho::DataConChirho(":".to_string()),
@@ -5279,12 +5360,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: isp_id_chirho,
                     name_chirho: "intersperse".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), TyChirho::fun_chirho(list_a_chirho.clone(), list_a_chirho.clone())),
+                    ty_chirho: TyChirho::fun_chirho(
+                        a_chirho.clone(),
+                        TyChirho::fun_chirho(list_a_chirho.clone(), list_a_chirho.clone()),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5408,7 +5492,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5458,7 +5542,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5490,9 +5574,18 @@ impl DictPassCtxChirho {
             let result_tuple_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "$tuple3".to_string(),
                 args_chirho: vec![
-                    cons_chirho(CoreExprChirho::VarChirho(ta_chirho.id_chirho), CoreExprChirho::VarChirho(ra_chirho.id_chirho)),
-                    cons_chirho(CoreExprChirho::VarChirho(tb_chirho.id_chirho), CoreExprChirho::VarChirho(rb_chirho.id_chirho)),
-                    cons_chirho(CoreExprChirho::VarChirho(tc_chirho.id_chirho), CoreExprChirho::VarChirho(rc_chirho.id_chirho)),
+                    cons_chirho(
+                        CoreExprChirho::VarChirho(ta_chirho.id_chirho),
+                        CoreExprChirho::VarChirho(ra_chirho.id_chirho),
+                    ),
+                    cons_chirho(
+                        CoreExprChirho::VarChirho(tb_chirho.id_chirho),
+                        CoreExprChirho::VarChirho(rb_chirho.id_chirho),
+                    ),
+                    cons_chirho(
+                        CoreExprChirho::VarChirho(tc_chirho.id_chirho),
+                        CoreExprChirho::VarChirho(rc_chirho.id_chirho),
+                    ),
                 ],
             };
 
@@ -5556,7 +5649,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -5601,7 +5694,8 @@ impl DictPassCtxChirho {
                         con_chirho: AltConChirho::DataConChirho("True".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "True".to_string(), args_chirho: vec![],
+                            con_name_chirho: "True".to_string(),
+                            args_chirho: vec![],
                         },
                     },
                     CoreAltChirho {
@@ -5620,7 +5714,8 @@ impl DictPassCtxChirho {
                         con_chirho: AltConChirho::DataConChirho("[]".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "False".to_string(), args_chirho: vec![],
+                            con_name_chirho: "False".to_string(),
+                            args_chirho: vec![],
                         },
                     },
                     CoreAltChirho {
@@ -5649,7 +5744,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5678,14 +5773,16 @@ impl DictPassCtxChirho {
                         con_chirho: AltConChirho::DataConChirho("True".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "False".to_string(), args_chirho: vec![],
+                            con_name_chirho: "False".to_string(),
+                            args_chirho: vec![],
                         },
                     },
                     CoreAltChirho {
                         con_chirho: AltConChirho::DataConChirho("False".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "True".to_string(), args_chirho: vec![],
+                            con_name_chirho: "True".to_string(),
+                            args_chirho: vec![],
                         },
                     },
                 ],
@@ -5709,7 +5806,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5755,7 +5852,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5800,7 +5897,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -5826,7 +5923,8 @@ impl DictPassCtxChirho {
                 args_chirho: vec![
                     CoreExprChirho::VarChirho(e_chirho.id_chirho),
                     CoreExprChirho::ConAppChirho {
-                        con_name_chirho: "[]".to_string(), args_chirho: vec![],
+                        con_name_chirho: "[]".to_string(),
+                        args_chirho: vec![],
                     },
                 ],
             };
@@ -5917,7 +6015,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: insert_rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // ── sort ──
@@ -5946,7 +6044,8 @@ impl DictPassCtxChirho {
                         con_chirho: AltConChirho::DataConChirho("[]".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "[]".to_string(), args_chirho: vec![],
+                            con_name_chirho: "[]".to_string(),
+                            args_chirho: vec![],
                         },
                     },
                     CoreAltChirho {
@@ -5964,12 +6063,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: sort_id_chirho,
                     name_chirho: "sort".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(list_int_chirho.clone(), list_int_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        list_int_chirho.clone(),
+                        list_int_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho: sort_rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6040,8 +6142,9 @@ impl DictPassCtxChirho {
                     ty_chirho: TyChirho::fun_chirho(int_chirho.clone(), int_chirho.clone()),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                rhs_chirho: rhs_chirho.clone(), is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                rhs_chirho: rhs_chirho.clone(),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // Also generate $prim_Num_signum_Int for the instance dictionary
@@ -6056,7 +6159,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6067,7 +6170,8 @@ impl DictPassCtxChirho {
         // replicate n x = x : replicate (n-1) x
         {
             let replicate_id_chirho = self.resolve_or_fresh_id_chirho("replicate");
-            let a_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9995));
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9995));
             let list_a_chirho = TyChirho::ListChirho(Box::new(a_chirho.clone()));
 
             let n_chirho = self.fresh_binder_chirho("n", int_chirho.clone());
@@ -6109,7 +6213,8 @@ impl DictPassCtxChirho {
                         con_chirho: AltConChirho::DataConChirho("True".to_string()),
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "[]".to_string(), args_chirho: vec![],
+                            con_name_chirho: "[]".to_string(),
+                            args_chirho: vec![],
                         },
                     },
                     CoreAltChirho {
@@ -6136,8 +6241,9 @@ impl DictPassCtxChirho {
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                rhs_chirho, is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                rhs_chirho,
+                is_rec_chirho: true,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -6158,7 +6264,10 @@ impl DictPassCtxChirho {
         // takeWhile p [] = []; takeWhile p (x:xs) = if p x then x : takeWhile p xs else []
         {
             let tw_id_chirho = self.resolve_or_fresh_id_chirho("takeWhile");
-            let p_chirho = self.fresh_binder_chirho("p", TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()));
+            let p_chirho = self.fresh_binder_chirho(
+                "p",
+                TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+            );
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
             let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
@@ -6229,13 +6338,17 @@ impl DictPassCtxChirho {
                     id_chirho: tw_id_chirho,
                     name_chirho: "takeWhile".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
-                        vec![TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()), list_a_chirho.clone()],
+                        vec![
+                            TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+                            list_a_chirho.clone(),
+                        ],
                         list_a_chirho.clone(),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                rhs_chirho, is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                rhs_chirho,
+                is_rec_chirho: true,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6243,7 +6356,10 @@ impl DictPassCtxChirho {
         // dropWhile p [] = []; dropWhile p (x:xs) = if p x then dropWhile p xs else x:xs
         {
             let dw_id_chirho = self.resolve_or_fresh_id_chirho("dropWhile");
-            let p_chirho = self.fresh_binder_chirho("p", TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()));
+            let p_chirho = self.fresh_binder_chirho(
+                "p",
+                TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+            );
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
             let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
@@ -6314,13 +6430,17 @@ impl DictPassCtxChirho {
                     id_chirho: dw_id_chirho,
                     name_chirho: "dropWhile".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
-                        vec![TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()), list_a_chirho.clone()],
+                        vec![
+                            TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+                            list_a_chirho.clone(),
+                        ],
                         list_a_chirho.clone(),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                rhs_chirho, is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                rhs_chirho,
+                is_rec_chirho: true,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6328,7 +6448,10 @@ impl DictPassCtxChirho {
         // iterate f x = x : iterate f (f x)
         {
             let iter_id_chirho = self.resolve_or_fresh_id_chirho("iterate");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+            );
             let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
 
             let f_x_chirho = CoreExprChirho::AppChirho {
@@ -6360,13 +6483,17 @@ impl DictPassCtxChirho {
                     id_chirho: iter_id_chirho,
                     name_chirho: "iterate".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
-                        vec![TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()), a_chirho.clone()],
+                        vec![
+                            TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+                            a_chirho.clone(),
+                        ],
                         list_a_chirho.clone(),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                rhs_chirho, is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                rhs_chirho,
+                is_rec_chirho: true,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6429,13 +6556,11 @@ impl DictPassCtxChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(pair_chirho.id_chirho)),
                 bind_chirho: w2_chirho,
                 result_ty_chirho: maybe_b_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
-                        binders_chirho: vec![kp_chirho, v_chirho],
-                        rhs_chirho: cond_chirho,
-                    },
-                ],
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
+                    binders_chirho: vec![kp_chirho, v_chirho],
+                    rhs_chirho: cond_chirho,
+                }],
             };
             let body_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(xs_chirho.id_chirho)),
@@ -6474,8 +6599,9 @@ impl DictPassCtxChirho {
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                rhs_chirho, is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                rhs_chirho,
+                is_rec_chirho: true,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6508,31 +6634,29 @@ impl DictPassCtxChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(res_chirho.id_chirho)),
                 bind_chirho: w3_chirho,
                 result_ty_chirho: result_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
-                        binders_chirho: vec![as_chirho.clone(), bs_chirho.clone()],
-                        rhs_chirho: CoreExprChirho::ConAppChirho {
-                            con_name_chirho: "$tuple2".to_string(),
-                            args_chirho: vec![
-                                CoreExprChirho::ConAppChirho {
-                                    con_name_chirho: ":".to_string(),
-                                    args_chirho: vec![
-                                        CoreExprChirho::VarChirho(pa_chirho.id_chirho),
-                                        CoreExprChirho::VarChirho(as_chirho.id_chirho),
-                                    ],
-                                },
-                                CoreExprChirho::ConAppChirho {
-                                    con_name_chirho: ":".to_string(),
-                                    args_chirho: vec![
-                                        CoreExprChirho::VarChirho(pb_chirho.id_chirho),
-                                        CoreExprChirho::VarChirho(bs_chirho.id_chirho),
-                                    ],
-                                },
-                            ],
-                        },
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
+                    binders_chirho: vec![as_chirho.clone(), bs_chirho.clone()],
+                    rhs_chirho: CoreExprChirho::ConAppChirho {
+                        con_name_chirho: "$tuple2".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::ConAppChirho {
+                                con_name_chirho: ":".to_string(),
+                                args_chirho: vec![
+                                    CoreExprChirho::VarChirho(pa_chirho.id_chirho),
+                                    CoreExprChirho::VarChirho(as_chirho.id_chirho),
+                                ],
+                            },
+                            CoreExprChirho::ConAppChirho {
+                                con_name_chirho: ":".to_string(),
+                                args_chirho: vec![
+                                    CoreExprChirho::VarChirho(pb_chirho.id_chirho),
+                                    CoreExprChirho::VarChirho(bs_chirho.id_chirho),
+                                ],
+                            },
+                        ],
                     },
-                ],
+                }],
             };
             let let_body_chirho = CoreExprChirho::LetChirho {
                 rec_chirho: false,
@@ -6544,13 +6668,11 @@ impl DictPassCtxChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(pair_chirho.id_chirho)),
                 bind_chirho: w2_chirho,
                 result_ty_chirho: result_ty_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
-                        binders_chirho: vec![pa_chirho, pb_chirho],
-                        rhs_chirho: let_body_chirho,
-                    },
-                ],
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
+                    binders_chirho: vec![pa_chirho, pb_chirho],
+                    rhs_chirho: let_body_chirho,
+                }],
             };
             let body_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(xs_chirho.id_chirho)),
@@ -6583,8 +6705,9 @@ impl DictPassCtxChirho {
                     ty_chirho: TyChirho::fun_chirho(list_pair_chirho, result_ty_chirho),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                rhs_chirho, is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                rhs_chirho,
+                is_rec_chirho: true,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6592,9 +6715,10 @@ impl DictPassCtxChirho {
         // scanl f z [] = [z]; scanl f z (x:xs) = z : scanl f (f z x) xs
         {
             let scanl_id_chirho = self.resolve_or_fresh_id_chirho("scanl");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_n_chirho(
-                vec![b_chirho.clone(), a_chirho.clone()], b_chirho.clone(),
-            ));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_n_chirho(vec![b_chirho.clone(), a_chirho.clone()], b_chirho.clone()),
+            );
             let z_chirho = self.fresh_binder_chirho("z", b_chirho.clone());
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
@@ -6663,7 +6787,10 @@ impl DictPassCtxChirho {
                     name_chirho: "scanl".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
                         vec![
-                            TyChirho::fun_n_chirho(vec![b_chirho.clone(), a_chirho.clone()], b_chirho.clone()),
+                            TyChirho::fun_n_chirho(
+                                vec![b_chirho.clone(), a_chirho.clone()],
+                                b_chirho.clone(),
+                            ),
                             b_chirho.clone(),
                             list_a_chirho.clone(),
                         ],
@@ -6671,8 +6798,9 @@ impl DictPassCtxChirho {
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                rhs_chirho, is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                rhs_chirho,
+                is_rec_chirho: true,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6681,7 +6809,10 @@ impl DictPassCtxChirho {
         {
             let span_id_chirho = self.resolve_or_fresh_id_chirho("span");
             let tuple_ty_chirho = TyChirho::ConChirho("(,)".to_string());
-            let p_chirho = self.fresh_binder_chirho("p", TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()));
+            let p_chirho = self.fresh_binder_chirho(
+                "p",
+                TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+            );
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
             let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
@@ -6707,25 +6838,23 @@ impl DictPassCtxChirho {
                     scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(res_chirho.id_chirho)),
                     bind_chirho: w2_chirho,
                     result_ty_chirho: tuple_ty_chirho.clone(),
-                    alts_chirho: vec![
-                        CoreAltChirho {
-                            con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
-                            binders_chirho: vec![ys_chirho.clone(), zs_chirho.clone()],
-                            rhs_chirho: CoreExprChirho::ConAppChirho {
-                                con_name_chirho: "$tuple2".to_string(),
-                                args_chirho: vec![
-                                    CoreExprChirho::ConAppChirho {
-                                        con_name_chirho: ":".to_string(),
-                                        args_chirho: vec![
-                                            CoreExprChirho::VarChirho(h_chirho.id_chirho),
-                                            CoreExprChirho::VarChirho(ys_chirho.id_chirho),
-                                        ],
-                                    },
-                                    CoreExprChirho::VarChirho(zs_chirho.id_chirho),
-                                ],
-                            },
+                    alts_chirho: vec![CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
+                        binders_chirho: vec![ys_chirho.clone(), zs_chirho.clone()],
+                        rhs_chirho: CoreExprChirho::ConAppChirho {
+                            con_name_chirho: "$tuple2".to_string(),
+                            args_chirho: vec![
+                                CoreExprChirho::ConAppChirho {
+                                    con_name_chirho: ":".to_string(),
+                                    args_chirho: vec![
+                                        CoreExprChirho::VarChirho(h_chirho.id_chirho),
+                                        CoreExprChirho::VarChirho(ys_chirho.id_chirho),
+                                    ],
+                                },
+                                CoreExprChirho::VarChirho(zs_chirho.id_chirho),
+                            ],
                         },
-                    ],
+                    }],
                 }),
             };
             // False branch: ([], x:xs)
@@ -6795,19 +6924,26 @@ impl DictPassCtxChirho {
                     id_chirho: span_id_chirho,
                     name_chirho: "span".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
-                        vec![TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()), list_a_chirho.clone()],
+                        vec![
+                            TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+                            list_a_chirho.clone(),
+                        ],
                         tuple_ty_chirho.clone(),
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                rhs_chirho, is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                rhs_chirho,
+                is_rec_chirho: true,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // break = span . not
             // break p = span (not . p)
             let break_id_chirho = self.resolve_or_fresh_id_chirho("break");
-            let bp_chirho = self.fresh_binder_chirho("p", TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()));
+            let bp_chirho = self.fresh_binder_chirho(
+                "p",
+                TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+            );
             let bxs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let bx_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
             // \x -> not (p x) — uses case to negate
@@ -6826,14 +6962,16 @@ impl DictPassCtxChirho {
                             con_chirho: AltConChirho::DataConChirho("True".to_string()),
                             binders_chirho: vec![],
                             rhs_chirho: CoreExprChirho::ConAppChirho {
-                                con_name_chirho: "False".to_string(), args_chirho: vec![],
+                                con_name_chirho: "False".to_string(),
+                                args_chirho: vec![],
                             },
                         },
                         CoreAltChirho {
                             con_chirho: AltConChirho::DefaultChirho,
                             binders_chirho: vec![],
                             rhs_chirho: CoreExprChirho::ConAppChirho {
-                                con_name_chirho: "True".to_string(), args_chirho: vec![],
+                                con_name_chirho: "True".to_string(),
+                                args_chirho: vec![],
                             },
                         },
                     ],
@@ -6858,14 +6996,17 @@ impl DictPassCtxChirho {
                     id_chirho: break_id_chirho,
                     name_chirho: "break".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
-                        vec![TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()), list_a_chirho.clone()],
+                        vec![
+                            TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+                            list_a_chirho.clone(),
+                        ],
                         tuple_ty_chirho,
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho: break_rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -6875,7 +7016,10 @@ impl DictPassCtxChirho {
         {
             let part_id_chirho = self.resolve_or_fresh_id_chirho("partition");
             let tuple_ty_chirho = TyChirho::ConChirho("(,)".to_string());
-            let p_chirho = self.fresh_binder_chirho("p", TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()));
+            let p_chirho = self.fresh_binder_chirho(
+                "p",
+                TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+            );
             let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
             let h_chirho = self.fresh_binder_chirho("h", a_chirho.clone());
             let t_chirho = self.fresh_binder_chirho("t", list_a_chirho.clone());
@@ -6949,13 +7093,11 @@ impl DictPassCtxChirho {
                     scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(res_chirho.id_chirho)),
                     bind_chirho: w2_chirho,
                     result_ty_chirho: tuple_ty_chirho.clone(),
-                    alts_chirho: vec![
-                        CoreAltChirho {
-                            con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
-                            binders_chirho: vec![yes_chirho, no_chirho],
-                            rhs_chirho: cond_chirho,
-                        },
-                    ],
+                    alts_chirho: vec![CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
+                        binders_chirho: vec![yes_chirho, no_chirho],
+                        rhs_chirho: cond_chirho,
+                    }],
                 }),
             };
             let body_chirho = CoreExprChirho::CaseChirho {
@@ -6990,13 +7132,17 @@ impl DictPassCtxChirho {
                     id_chirho: part_id_chirho,
                     name_chirho: "partition".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
-                        vec![TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()), list_a_chirho.clone()],
+                        vec![
+                            TyChirho::fun_chirho(a_chirho.clone(), TyChirho::bool_chirho()),
+                            list_a_chirho.clone(),
+                        ],
                         tuple_ty_chirho,
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                rhs_chirho, is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                rhs_chirho,
+                is_rec_chirho: true,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -7023,7 +7169,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
         {
@@ -7043,7 +7189,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7071,7 +7217,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
         {
@@ -7097,7 +7243,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7121,7 +7267,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             let prim_name_chirho = "$prim_Enum_fromEnum_Char";
@@ -7140,7 +7286,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7196,7 +7342,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // fromEnum for Bool: \b -> case b of { False -> 0; True -> 1 }
@@ -7234,7 +7380,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7251,7 +7397,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(i64::MIN)),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
         {
@@ -7266,7 +7412,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(i64::MAX)),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7284,7 +7430,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
             let prim_name_chirho = "$prim_Bounded_maxBound_Char";
             let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
@@ -7297,7 +7443,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0x10FFFF)),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7318,7 +7464,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![],
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
             let prim_name_chirho = "$prim_Bounded_maxBound_Bool";
             let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
@@ -7334,7 +7480,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![],
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7356,7 +7502,7 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // fromEnum :: Int -> Int (defaulting to Int-specialized)
@@ -7374,7 +7520,7 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // succ :: Int -> Int = \x -> x +# 1
@@ -7398,7 +7544,7 @@ impl DictPassCtxChirho {
                     }),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // pred :: Int -> Int = \x -> x -# 1
@@ -7422,7 +7568,7 @@ impl DictPassCtxChirho {
                     }),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // minBound :: Int (prelude-level, defaulting to Int)
@@ -7436,7 +7582,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(i64::MIN)),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // maxBound :: Int (prelude-level, defaulting to Int)
@@ -7450,7 +7596,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(i64::MAX)),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -7496,7 +7642,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7517,7 +7663,7 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7565,7 +7711,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7613,7 +7759,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7646,7 +7792,7 @@ impl DictPassCtxChirho {
                     }),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             let rem_id_chirho = self.resolve_or_fresh_id_chirho("rem");
@@ -7676,7 +7822,7 @@ impl DictPassCtxChirho {
                     }),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -7714,15 +7860,12 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // Unary Char->Char functions
-        for (name_chirho, primop_chirho) in [
-            ("toLower", "toLower#"),
-            ("toUpper", "toUpper#"),
-        ] {
+        for (name_chirho, primop_chirho) in [("toLower", "toLower#"), ("toUpper", "toUpper#")] {
             let fn_id_chirho = self.resolve_or_fresh_id_chirho(name_chirho);
             let c_chirho = self.fresh_binder_chirho("c", char_ty_chirho.clone());
             let rhs_chirho = CoreExprChirho::LamChirho {
@@ -7741,7 +7884,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7765,7 +7908,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7789,7 +7932,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7813,7 +7956,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7832,12 +7975,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
                     name_chirho: "intToDigit".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(int_ty_chirho, TyChirho::ConChirho("Char".to_string())),
+                    ty_chirho: TyChirho::fun_chirho(
+                        int_ty_chirho,
+                        TyChirho::ConChirho("Char".to_string()),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -7878,7 +8024,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // Prelude-level alias: sin = $prim_Floating_sin_Double
@@ -7892,7 +8038,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(prim_id_chirho),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -7921,7 +8067,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // NOTE: We intentionally do NOT create a top-level "pi" alias
@@ -7976,7 +8122,7 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(body_chirho),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8054,7 +8200,7 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(body_chirho),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8074,12 +8220,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: prim_id_chirho,
                     name_chirho: prim_name_chirho.to_string(),
-                    ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), double_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::int_chirho(),
+                        double_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8087,11 +8236,7 @@ impl DictPassCtxChirho {
         // $prim_Num_+_Double = \a b -> +.# a b
         // $prim_Num_-_Double = \a b -> -.# a b
         // $prim_Num_*_Double = \a b -> *.# a b
-        for (method_chirho, primop_chirho) in [
-            ("+", "+.#"),
-            ("-", "-.#"),
-            ("*", "*.#"),
-        ] {
+        for (method_chirho, primop_chirho) in [("+", "+.#"), ("-", "-.#"), ("*", "*.#")] {
             let prim_name_chirho = format!("$prim_Num_{}_Double", method_chirho);
             let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
             let a_chirho = self.fresh_binder_chirho("a", double_ty_chirho.clone());
@@ -8121,7 +8266,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8141,12 +8286,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: prim_id_chirho,
                     name_chirho: prim_name_chirho.to_string(),
-                    ty_chirho: TyChirho::fun_chirho(double_ty_chirho.clone(), double_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        double_ty_chirho.clone(),
+                        double_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8182,7 +8330,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8207,7 +8355,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8228,12 +8376,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: prim_id_chirho,
                     name_chirho: prim_name_chirho.to_string(),
-                    ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), double_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::int_chirho(),
+                        double_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8282,8 +8433,12 @@ impl DictPassCtxChirho {
                                 rhs_chirho: CoreExprChirho::ConAppChirho {
                                     con_name_chirho: "Just".to_string(),
                                     args_chirho: vec![CoreExprChirho::AppChirho {
-                                        fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
-                                        arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+                                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            f_chirho.id_chirho,
+                                        )),
+                                        arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            x_chirho.id_chirho,
+                                        )),
                                     }],
                                 },
                             },
@@ -8300,7 +8455,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // Prelude-level: fmap = $prim_Functor_fmap_Maybe (default to Maybe)
@@ -8314,7 +8469,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(prim_id_chirho),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8333,7 +8488,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: CoreExprChirho::VarChirho(map_id_chirho),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8359,7 +8514,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8440,7 +8595,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8477,8 +8632,12 @@ impl DictPassCtxChirho {
                                 con_chirho: AltConChirho::DataConChirho("Just".to_string()),
                                 binders_chirho: vec![x_chirho.clone()],
                                 rhs_chirho: CoreExprChirho::AppChirho {
-                                    fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
-                                    arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+                                    fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                                        f_chirho.id_chirho,
+                                    )),
+                                    arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                        x_chirho.id_chirho,
+                                    )),
                                 },
                             },
                         ],
@@ -8494,7 +8653,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8544,7 +8703,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -8580,7 +8739,9 @@ impl DictPassCtxChirho {
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::PrimOpChirho {
                             name_chirho: "returnIO#".to_string(),
-                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))],
+                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                                0,
+                            ))],
                         },
                     },
                 ],
@@ -8606,7 +8767,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8628,7 +8789,9 @@ impl DictPassCtxChirho {
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::PrimOpChirho {
                             name_chirho: "returnIO#".to_string(),
-                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))],
+                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                                0,
+                            ))],
                         },
                     },
                     CoreAltChirho {
@@ -8659,7 +8822,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8706,7 +8869,9 @@ impl DictPassCtxChirho {
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::PrimOpChirho {
                             name_chirho: "returnIO#".to_string(),
-                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))],
+                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                                0,
+                            ))],
                         },
                     },
                     CoreAltChirho {
@@ -8737,7 +8902,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8782,7 +8947,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8802,7 +8967,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8822,12 +8987,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: putchar_id_chirho,
                     name_chirho: "putChar".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(TyChirho::char_chirho(), io_unit_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::char_chirho(),
+                        io_unit_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8848,12 +9016,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho,
                     name_chirho: "putStrLn".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(string_ty_chirho.clone(), io_unit_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        string_ty_chirho.clone(),
+                        io_unit_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8872,12 +9043,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho,
                     name_chirho: "putStr".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(string_ty_chirho.clone(), io_unit_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        string_ty_chirho.clone(),
+                        io_unit_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -8896,7 +9070,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho,
                     name_chirho: "unpack".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(string_ty_chirho.clone(), string_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        string_ty_chirho.clone(),
+                        string_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -8920,7 +9097,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho,
                     name_chirho: "pack".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(string_ty_chirho.clone(), string_ty_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        string_ty_chirho.clone(),
+                        string_ty_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -8944,7 +9124,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho,
                     name_chirho: "toUpper".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(TyChirho::char_chirho(), TyChirho::char_chirho()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::char_chirho(),
+                        TyChirho::char_chirho(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -8968,7 +9151,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho,
                     name_chirho: "toLower".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(TyChirho::char_chirho(), TyChirho::char_chirho()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::char_chirho(),
+                        TyChirho::char_chirho(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -8992,7 +9178,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho,
                     name_chirho: "isDigit".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(TyChirho::char_chirho(), TyChirho::bool_chirho()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::char_chirho(),
+                        TyChirho::bool_chirho(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -9016,7 +9205,10 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho,
                     name_chirho: "isAlpha".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(TyChirho::char_chirho(), TyChirho::bool_chirho()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::char_chirho(),
+                        TyChirho::bool_chirho(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
@@ -9051,7 +9243,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9078,7 +9270,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9103,7 +9295,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9138,7 +9330,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9194,7 +9386,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9232,7 +9424,9 @@ impl DictPassCtxChirho {
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::PrimOpChirho {
                             name_chirho: "returnIO#".to_string(),
-                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))],
+                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                                0,
+                            ))],
                         },
                     },
                     CoreAltChirho {
@@ -9257,7 +9451,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9275,7 +9469,9 @@ impl DictPassCtxChirho {
                         CoreExprChirho::VarChirho(action_chirho.id_chirho),
                         CoreExprChirho::PrimOpChirho {
                             name_chirho: "returnIO#".to_string(),
-                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))],
+                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                                0,
+                            ))],
                         },
                     ],
                 }),
@@ -9290,7 +9486,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9312,7 +9508,9 @@ impl DictPassCtxChirho {
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::PrimOpChirho {
                             name_chirho: "returnIO#".to_string(),
-                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))],
+                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                                0,
+                            ))],
                         },
                     },
                     CoreAltChirho {
@@ -9320,9 +9518,9 @@ impl DictPassCtxChirho {
                         binders_chirho: vec![],
                         rhs_chirho: CoreExprChirho::PrimOpChirho {
                             name_chirho: "error#".to_string(),
-                            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
-                                "guard failed".to_string(),
-                            ))],
+                            args_chirho: vec![CoreExprChirho::LitChirho(
+                                CoreLitChirho::StringChirho("guard failed".to_string()),
+                            )],
                         },
                     },
                 ],
@@ -9342,7 +9540,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9400,7 +9598,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -9436,7 +9634,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![],
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9471,7 +9669,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9514,7 +9712,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9550,7 +9748,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9585,7 +9783,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9620,7 +9818,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9658,7 +9856,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9683,7 +9881,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9708,7 +9906,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9733,7 +9931,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9758,7 +9956,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9783,7 +9981,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9808,7 +10006,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9834,7 +10032,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9869,7 +10067,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9912,7 +10110,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9955,7 +10153,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -9979,7 +10177,9 @@ impl DictPassCtxChirho {
                         body_chirho: Box::new(CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::AppChirho {
                                 fun_chirho: Box::new(CoreExprChirho::VarChirho(f_chirho.id_chirho)),
-                                arg_chirho: Box::new(CoreExprChirho::VarChirho(v2_chirho.id_chirho)),
+                                arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                    v2_chirho.id_chirho,
+                                )),
                             }),
                             arg_chirho: Box::new(CoreExprChirho::VarChirho(acc2_chirho.id_chirho)),
                         }),
@@ -10019,7 +10219,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10054,7 +10254,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10090,7 +10290,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10125,7 +10325,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10160,7 +10360,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10211,7 +10411,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10254,7 +10454,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10297,7 +10497,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10340,7 +10540,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -10381,7 +10581,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10416,11 +10616,10 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
-
 
     /// Generate String-keyed Data.Map operations.
     /// Uses same MapEmpty/MapNode constructors but with eqStr#/ltStr# for comparison.
@@ -10430,7 +10629,8 @@ impl DictPassCtxChirho {
     /// these are just re-exports / aliases that delegate to the same Map runtime primops.
     fn generate_map_str_prelude_chirho(&mut self) {
         let str_ty_chirho = TyChirho::ConChirho("String".to_string());
-        let any_v_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9981));
+        let any_v_chirho =
+            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9981));
         let map_ty_chirho = TyChirho::int_chirho(); // placeholder for Map String v
 
         // mapInsertStr :: String -> v -> Map String v -> Map String v
@@ -10472,7 +10672,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10508,7 +10708,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10543,7 +10743,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10578,7 +10778,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10621,7 +10821,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10646,7 +10846,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10674,7 +10874,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -10686,7 +10886,8 @@ impl DictPassCtxChirho {
     /// handled by the STG machine via dedicated `PrimOpKindChirho::Set*` variants.
     fn generate_set_prelude_chirho(&mut self) {
         let set_ty_chirho = TyChirho::int_chirho(); // placeholder for Set a
-        let any_e_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9985));
+        let any_e_chirho =
+            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9985));
         let bool_ty_chirho = TyChirho::bool_chirho();
         let int_ty_chirho = TyChirho::int_chirho();
         let list_ty_chirho = TyChirho::ConChirho("[a]".to_string());
@@ -10706,7 +10907,7 @@ impl DictPassCtxChirho {
                     args_chirho: vec![],
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10730,7 +10931,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10764,7 +10965,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10798,7 +10999,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10832,7 +11033,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10856,7 +11057,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10880,7 +11081,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10904,7 +11105,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10928,7 +11129,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10962,7 +11163,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -10996,7 +11197,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11030,7 +11231,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11041,7 +11242,10 @@ impl DictPassCtxChirho {
             let filter_id_chirho = self.resolve_or_fresh_id_chirho("filter");
             let to_list_id_chirho = self.resolve_or_fresh_id_chirho("setToList");
             let from_list_id_chirho = self.resolve_or_fresh_id_chirho("setFromList");
-            let pred_chirho = self.fresh_binder_chirho("pred", TyChirho::fun_chirho(any_e_chirho.clone(), bool_ty_chirho.clone()));
+            let pred_chirho = self.fresh_binder_chirho(
+                "pred",
+                TyChirho::fun_chirho(any_e_chirho.clone(), bool_ty_chirho.clone()),
+            );
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
             // setFilter pred s = setFromList (filter pred (setToList s))
             let to_list_call_chirho = CoreExprChirho::AppChirho {
@@ -11078,7 +11282,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11089,7 +11293,10 @@ impl DictPassCtxChirho {
             let map_id_chirho = self.resolve_or_fresh_id_chirho("map");
             let to_list_id_chirho = self.resolve_or_fresh_id_chirho("setToList");
             let from_list_id_chirho = self.resolve_or_fresh_id_chirho("setFromList");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(any_e_chirho.clone(), any_e_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(any_e_chirho.clone(), any_e_chirho.clone()),
+            );
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
             // setMap f s = setFromList (map f (setToList s))
             let to_list_call_chirho = CoreExprChirho::AppChirho {
@@ -11126,7 +11333,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11136,8 +11343,15 @@ impl DictPassCtxChirho {
             let id_chirho = self.resolve_or_fresh_id_chirho("setFold");
             let foldr_id_chirho = self.resolve_or_fresh_id_chirho("foldr");
             let to_list_id_chirho = self.resolve_or_fresh_id_chirho("setToList");
-            let any_b_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9986));
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(any_e_chirho.clone(), TyChirho::fun_chirho(any_b_chirho.clone(), any_b_chirho.clone())));
+            let any_b_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9986));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(
+                    any_e_chirho.clone(),
+                    TyChirho::fun_chirho(any_b_chirho.clone(), any_b_chirho.clone()),
+                ),
+            );
             let z_chirho = self.fresh_binder_chirho("z", any_b_chirho.clone());
             let s_chirho = self.fresh_binder_chirho("s", set_ty_chirho.clone());
             // setFold f z s = foldr f z (setToList s)
@@ -11171,7 +11385,10 @@ impl DictPassCtxChirho {
                     name_chirho: "setFold".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
                         vec![
-                            TyChirho::fun_chirho(any_e_chirho.clone(), TyChirho::fun_chirho(any_b_chirho.clone(), any_b_chirho.clone())),
+                            TyChirho::fun_chirho(
+                                any_e_chirho.clone(),
+                                TyChirho::fun_chirho(any_b_chirho.clone(), any_b_chirho.clone()),
+                            ),
                             any_b_chirho.clone(),
                             set_ty_chirho.clone(),
                         ],
@@ -11181,7 +11398,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11222,7 +11439,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11248,13 +11465,12 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         let _ = any_e_chirho; // suppress unused warning if any path removed
     }
-
 
     /// Generate instance dictionary bindings for ground instances.
     ///
@@ -11264,7 +11480,6 @@ impl DictPassCtxChirho {
     /// $fEqInt = $DictEq $prim_Eq_==_Int
     /// $fNumInt = $DictNum $fEqInt $fShowInt $prim_Num_+_Int ...
     /// ```
-
 
     /// Generate Data.Maybe Prelude functions:
     ///   catMaybes :: [Maybe a] -> [a]
@@ -11332,7 +11547,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11388,7 +11603,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11477,7 +11692,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11488,7 +11703,10 @@ impl DictPassCtxChirho {
         //   Just y  -> y : mapMaybe f xs
         {
             let fn_id_chirho = self.resolve_or_fresh_id_chirho("mapMaybe");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()),
+            );
             let xs_chirho = self.fresh_binder_chirho("xs", a_chirho.clone());
             let scr_chirho = self.fresh_binder_chirho("_sl", a_chirho.clone());
             let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
@@ -11583,7 +11801,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11633,7 +11851,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11676,7 +11894,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -11708,7 +11926,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11732,7 +11950,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11766,7 +11984,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11777,7 +11995,10 @@ impl DictPassCtxChirho {
         {
             let fn_id_chirho = self.resolve_or_fresh_id_chirho("modifyIORef");
             let r_chirho = self.fresh_binder_chirho("r", TyChirho::int_chirho());
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+            );
             let v_chirho = self.fresh_binder_chirho("v", a_chirho.clone());
 
             // readIORef# r
@@ -11795,10 +12016,7 @@ impl DictPassCtxChirho {
             // writeIORef# r (f v)
             let write_chirho = CoreExprChirho::PrimOpChirho {
                 name_chirho: "writeIORef#".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(r_chirho.id_chirho),
-                    fv_chirho,
-                ],
+                args_chirho: vec![CoreExprChirho::VarChirho(r_chirho.id_chirho), fv_chirho],
             };
 
             // let v = readIORef# r in writeIORef# r (f v)
@@ -11831,7 +12049,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -11863,7 +12081,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11887,7 +12105,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11921,7 +12139,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11930,7 +12148,10 @@ impl DictPassCtxChirho {
         {
             let fn_id_chirho = self.resolve_or_fresh_id_chirho("modifySTRef");
             let r_chirho = self.fresh_binder_chirho("r", TyChirho::int_chirho());
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+            );
             let rhs_chirho = CoreExprChirho::LamChirho {
                 binder_chirho: r_chirho.clone(),
                 body_chirho: Box::new(CoreExprChirho::LamChirho {
@@ -11959,7 +12180,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -11984,7 +12205,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12210,10 +12431,11 @@ impl DictPassCtxChirho {
             con_name_chirho: "[]".to_string(),
             args_chirho: vec![],
         };
-        let cons_chirho = |hd_chirho: CoreExprChirho, tl_chirho: CoreExprChirho| CoreExprChirho::ConAppChirho {
-            con_name_chirho: ":".to_string(),
-            args_chirho: vec![hd_chirho, tl_chirho],
-        };
+        let cons_chirho =
+            |hd_chirho: CoreExprChirho, tl_chirho: CoreExprChirho| CoreExprChirho::ConAppChirho {
+                con_name_chirho: ":".to_string(),
+                args_chirho: vec![hd_chirho, tl_chirho],
+            };
 
         // ── sortBy :: (a -> a -> Ordering) -> [a] -> [a] ──
         // Insertion sort using the comparison function:
@@ -12300,7 +12522,10 @@ impl DictPassCtxChirho {
                     CoreAltChirho {
                         con_chirho: AltConChirho::DataConChirho("[]".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: cons_chirho(CoreExprChirho::VarChirho(x_ib_chirho.id_chirho), nil_chirho()),
+                        rhs_chirho: cons_chirho(
+                            CoreExprChirho::VarChirho(x_ib_chirho.id_chirho),
+                            nil_chirho(),
+                        ),
                     },
                     cons_alt_chirho,
                 ],
@@ -12326,7 +12551,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: insertby_rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
             // sortBy cmp [] = []
@@ -12391,7 +12616,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho: sortby_rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12445,10 +12670,8 @@ impl DictPassCtxChirho {
                 arg_chirho: Box::new(filtered_chirho),
             };
 
-            let cons_rhs_chirho = cons_chirho(
-                CoreExprChirho::VarChirho(h_chirho.id_chirho),
-                rec_chirho,
-            );
+            let cons_rhs_chirho =
+                cons_chirho(CoreExprChirho::VarChirho(h_chirho.id_chirho), rec_chirho);
 
             let body_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(xs_chirho.id_chirho)),
@@ -12485,7 +12708,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12565,7 +12788,9 @@ impl DictPassCtxChirho {
                         rhs_chirho: CoreExprChirho::PrimOpChirho {
                             name_chirho: "error#".to_string(),
                             args_chirho: vec![CoreExprChirho::LitChirho(
-                                crate::expr_chirho::CoreLitChirho::StringChirho("maximumBy: empty list".to_string()),
+                                crate::expr_chirho::CoreLitChirho::StringChirho(
+                                    "maximumBy: empty list".to_string(),
+                                ),
                             )],
                         },
                     },
@@ -12589,7 +12814,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12667,7 +12892,9 @@ impl DictPassCtxChirho {
                         rhs_chirho: CoreExprChirho::PrimOpChirho {
                             name_chirho: "error#".to_string(),
                             args_chirho: vec![CoreExprChirho::LitChirho(
-                                crate::expr_chirho::CoreLitChirho::StringChirho("minimumBy: empty list".to_string()),
+                                crate::expr_chirho::CoreLitChirho::StringChirho(
+                                    "minimumBy: empty list".to_string(),
+                                ),
                             )],
                         },
                     },
@@ -12691,7 +12918,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12743,7 +12970,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12847,7 +13074,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -12916,13 +13143,11 @@ impl DictPassCtxChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(pair_chirho.id_chirho)),
                 bind_chirho: self.fresh_binder_chirho("_gbp", a_chirho.clone()),
                 result_ty_chirho: list_list_a_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
-                        binders_chirho: vec![ys_chirho, zs_chirho],
-                        rhs_chirho: result_chirho,
-                    },
-                ],
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
+                    binders_chirho: vec![ys_chirho, zs_chirho],
+                    rhs_chirho: result_chirho,
+                }],
             };
 
             // let pair = span (\y -> eq x y) rest in case pair of ...
@@ -12971,7 +13196,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -13007,16 +13232,15 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // ── $prim_Semigroup_<>_[Int] etc.: delegates to `append` (list-level) ──
         let append_id_chirho = self.resolve_or_fresh_id_chirho("append");
         for type_key_chirho in &["[Int]", "[Double]", "[Bool]"] {
-            let fn_id_chirho = self.resolve_or_fresh_id_chirho(
-                &format!("$prim_Semigroup_<>_{}", type_key_chirho),
-            );
+            let fn_id_chirho =
+                self.resolve_or_fresh_id_chirho(&format!("$prim_Semigroup_<>_{}", type_key_chirho));
             let a_chirho = self.fresh_binder_chirho("a", TyChirho::string_chirho());
             let b_chirho = self.fresh_binder_chirho("b", TyChirho::string_chirho());
             let rhs_chirho = CoreExprChirho::LamChirho {
@@ -13041,15 +13265,14 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // ── $prim_Monoid_mempty_[Int] etc.: returns [] ──
         for type_key_chirho in &["[Int]", "[Char]", "[Double]", "[Bool]"] {
-            let fn_id_chirho = self.resolve_or_fresh_id_chirho(
-                &format!("$prim_Monoid_mempty_{}", type_key_chirho),
-            );
+            let fn_id_chirho = self
+                .resolve_or_fresh_id_chirho(&format!("$prim_Monoid_mempty_{}", type_key_chirho));
             let rhs_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "[]".to_string(),
                 args_chirho: vec![],
@@ -13063,7 +13286,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13100,7 +13323,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13120,7 +13343,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13144,7 +13367,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13153,26 +13376,13 @@ impl DictPassCtxChirho {
         // For other list types: uses append function.
         let mconcat_append_id_chirho = self.resolve_or_fresh_id_chirho("append");
         for type_key_chirho in &["[Int]", "[Char]", "[Double]", "[Bool]"] {
-            let fn_id_chirho = self.resolve_or_fresh_id_chirho(
-                &format!("$prim_Monoid_mconcat_{}", type_key_chirho),
-            );
+            let fn_id_chirho = self
+                .resolve_or_fresh_id_chirho(&format!("$prim_Monoid_mconcat_{}", type_key_chirho));
             // mconcat xss = case xss of { [] -> []; (x:xs) -> x <> mconcat xs }
-            let xss_chirho = self.fresh_binder_chirho(
-                "xss",
-                TyChirho::string_chirho(),
-            );
-            let x_chirho = self.fresh_binder_chirho(
-                "x",
-                TyChirho::string_chirho(),
-            );
-            let xs_chirho = self.fresh_binder_chirho(
-                "xs",
-                TyChirho::string_chirho(),
-            );
-            let wild_chirho = self.fresh_binder_chirho(
-                "wild",
-                TyChirho::string_chirho(),
-            );
+            let xss_chirho = self.fresh_binder_chirho("xss", TyChirho::string_chirho());
+            let x_chirho = self.fresh_binder_chirho("x", TyChirho::string_chirho());
+            let xs_chirho = self.fresh_binder_chirho("xs", TyChirho::string_chirho());
+            let wild_chirho = self.fresh_binder_chirho("wild", TyChirho::string_chirho());
             // Recursive call: mconcat xs
             let rec_call_chirho = CoreExprChirho::AppChirho {
                 fun_chirho: Box::new(CoreExprChirho::VarChirho(fn_id_chirho)),
@@ -13229,7 +13439,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -13255,10 +13465,11 @@ impl DictPassCtxChirho {
             con_name_chirho: "[]".to_string(),
             args_chirho: vec![],
         };
-        let cons_chirho = |hd_chirho: CoreExprChirho, tl_chirho: CoreExprChirho| CoreExprChirho::ConAppChirho {
-            con_name_chirho: ":".to_string(),
-            args_chirho: vec![hd_chirho, tl_chirho],
-        };
+        let cons_chirho =
+            |hd_chirho: CoreExprChirho, tl_chirho: CoreExprChirho| CoreExprChirho::ConAppChirho {
+                con_name_chirho: ":".to_string(),
+                args_chirho: vec![hd_chirho, tl_chirho],
+            };
 
         // ── repeat :: a -> [a] ──
         // repeat x = x : repeat x
@@ -13286,7 +13497,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13321,7 +13532,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13446,7 +13657,10 @@ impl DictPassCtxChirho {
                     name_chirho: "zipWith3".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
                         vec![
-                            TyChirho::fun_n_chirho(vec![a_chirho.clone(), b_chirho.clone(), c_chirho.clone()], d_chirho.clone()),
+                            TyChirho::fun_n_chirho(
+                                vec![a_chirho.clone(), b_chirho.clone(), c_chirho.clone()],
+                                d_chirho.clone(),
+                            ),
                             list_a_chirho.clone(),
                             list_b_chirho.clone(),
                             list_c_chirho.clone(),
@@ -13457,7 +13671,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13524,14 +13738,18 @@ impl DictPassCtxChirho {
                     id_chirho: zip3_id_chirho,
                     name_chirho: "zip3".to_string(),
                     ty_chirho: TyChirho::fun_n_chirho(
-                        vec![list_a_chirho.clone(), list_b_chirho.clone(), list_c_chirho.clone()],
+                        vec![
+                            list_a_chirho.clone(),
+                            list_b_chirho.clone(),
+                            list_c_chirho.clone(),
+                        ],
                         list_a_chirho.clone(), // placeholder
                     ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13539,7 +13757,10 @@ impl DictPassCtxChirho {
         // fix f = let x = f x in x
         {
             let fix_id_chirho = self.resolve_or_fresh_id_chirho("fix");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(a_chirho.clone(), a_chirho.clone()),
+            );
             let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
 
             let f_x_chirho = CoreExprChirho::AppChirho {
@@ -13567,7 +13788,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13628,13 +13849,11 @@ impl DictPassCtxChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(pair_chirho.id_chirho)),
                 bind_chirho: self.fresh_binder_chirho("_gp", a_chirho.clone()),
                 result_ty_chirho: list_a_chirho.clone(),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
-                        binders_chirho: vec![ys_chirho, zs_chirho],
-                        rhs_chirho: result_chirho,
-                    },
-                ],
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho("$tuple2".to_string()),
+                    binders_chirho: vec![ys_chirho, zs_chirho],
+                    rhs_chirho: result_chirho,
+                }],
             };
 
             // let pair = span ... in case pair of ...
@@ -13663,9 +13882,8 @@ impl DictPassCtxChirho {
                 ],
             };
 
-            let list_list_int_chirho = TyChirho::ListChirho(Box::new(
-                TyChirho::ListChirho(Box::new(int_chirho.clone())),
-            ));
+            let list_list_int_chirho =
+                TyChirho::ListChirho(Box::new(TyChirho::ListChirho(Box::new(int_chirho.clone()))));
             let rhs_chirho = CoreExprChirho::LamChirho {
                 binder_chirho: xs_chirho,
                 body_chirho: Box::new(body_chirho),
@@ -13682,7 +13900,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13695,7 +13913,10 @@ impl DictPassCtxChirho {
         // first f (a, c) = (f a, c)
         {
             let first_id_chirho = self.resolve_or_fresh_id_chirho("first");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()),
+            );
             let p_chirho = self.fresh_binder_chirho("p", a_chirho.clone());
             let pa_chirho = self.fresh_binder_chirho("pa", a_chirho.clone());
             let pc_chirho = self.fresh_binder_chirho("pc", c_chirho.clone());
@@ -13707,7 +13928,10 @@ impl DictPassCtxChirho {
             };
             let mk_tuple_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "$tuple2".to_string(),
-                args_chirho: vec![apply_f_chirho, CoreExprChirho::VarChirho(pc_chirho.id_chirho)],
+                args_chirho: vec![
+                    apply_f_chirho,
+                    CoreExprChirho::VarChirho(pc_chirho.id_chirho),
+                ],
             };
             let body_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(p_chirho.id_chirho)),
@@ -13735,7 +13959,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13743,7 +13967,10 @@ impl DictPassCtxChirho {
         // second f (a, b) = (a, f b)
         {
             let second_id_chirho = self.resolve_or_fresh_id_chirho("second");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(b_chirho.clone(), c_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(b_chirho.clone(), c_chirho.clone()),
+            );
             let p_chirho = self.fresh_binder_chirho("p", a_chirho.clone());
             let pa_chirho = self.fresh_binder_chirho("pa", a_chirho.clone());
             let pb_chirho = self.fresh_binder_chirho("pb", b_chirho.clone());
@@ -13755,7 +13982,10 @@ impl DictPassCtxChirho {
             };
             let mk_tuple_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: "$tuple2".to_string(),
-                args_chirho: vec![CoreExprChirho::VarChirho(pa_chirho.id_chirho), apply_f_chirho],
+                args_chirho: vec![
+                    CoreExprChirho::VarChirho(pa_chirho.id_chirho),
+                    apply_f_chirho,
+                ],
             };
             let body_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(p_chirho.id_chirho)),
@@ -13783,7 +14013,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13791,7 +14021,10 @@ impl DictPassCtxChirho {
         // both f (x, y) = (f x, f y)
         {
             let both_id_chirho = self.resolve_or_fresh_id_chirho("both");
-            let f_chirho = self.fresh_binder_chirho("f", TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()));
+            let f_chirho = self.fresh_binder_chirho(
+                "f",
+                TyChirho::fun_chirho(a_chirho.clone(), b_chirho.clone()),
+            );
             let p_chirho = self.fresh_binder_chirho("p", a_chirho.clone());
             let px_chirho = self.fresh_binder_chirho("px", a_chirho.clone());
             let py_chirho = self.fresh_binder_chirho("py", a_chirho.clone());
@@ -13835,7 +14068,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13891,12 +14124,15 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: tails_id_chirho,
                     name_chirho: "tails".to_string(),
-                    ty_chirho: TyChirho::fun_chirho(list_a_chirho.clone(), list_list_a_chirho.clone()),
+                    ty_chirho: TyChirho::fun_chirho(
+                        list_a_chirho.clone(),
+                        list_list_a_chirho.clone(),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -13991,7 +14227,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -14020,12 +14256,13 @@ impl DictPassCtxChirho {
         };
 
         // Helper: build a binary primop expression
-        let prim_bin_chirho = |op_chirho: &str, l_chirho: CoreExprChirho, r_chirho: CoreExprChirho| {
-            CoreExprChirho::PrimOpChirho {
-                name_chirho: op_chirho.to_string(),
-                args_chirho: vec![l_chirho, r_chirho],
-            }
-        };
+        let prim_bin_chirho =
+            |op_chirho: &str, l_chirho: CoreExprChirho, r_chirho: CoreExprChirho| {
+                CoreExprChirho::PrimOpChirho {
+                    name_chirho: op_chirho.to_string(),
+                    args_chirho: vec![l_chirho, r_chirho],
+                }
+            };
 
         // ── enumFrom :: Int -> [Int] ──────────────────────────────────
         // enumFrom n = n : enumFrom (n +# 1)
@@ -14063,7 +14300,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -14120,7 +14357,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -14197,7 +14434,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
@@ -14362,7 +14599,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: true,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }
@@ -14393,7 +14630,7 @@ impl DictPassCtxChirho {
                     name_chirho: "seq#".to_string(),
                     args_chirho: vec![
                         CoreExprChirho::VarChirho(x_chirho.id_chirho),
-                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),  // unit approximation
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)), // unit approximation
                     ],
                 }),
             };
@@ -14406,15 +14643,17 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // Prelude-level `deepseq :: a -> b -> b`
         // deepseq x y = x `seq` y
         {
-            let a_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(3410));
-            let b_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(3411));
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(3410));
+            let b_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(3411));
             let prim_name_chirho = "deepseq";
             let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
             let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
@@ -14436,19 +14675,23 @@ impl DictPassCtxChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: prim_id_chirho,
                     name_chirho: prim_name_chirho.to_string(),
-                    ty_chirho: TyChirho::fun_chirho(a_chirho, TyChirho::fun_chirho(b_chirho.clone(), b_chirho)),
+                    ty_chirho: TyChirho::fun_chirho(
+                        a_chirho,
+                        TyChirho::fun_chirho(b_chirho.clone(), b_chirho),
+                    ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // Prelude-level `force :: a -> a`
         // force x = x `seq` x
         {
-            let a_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(3412));
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(3412));
             let prim_name_chirho = "force";
             let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
             let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
@@ -14471,14 +14714,15 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
 
         // Prelude-level `evaluate :: a -> IO a`
         // evaluate x = return x (force to WHNF, which is what STG evaluator does)
         {
-            let a_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(3413));
+            let a_chirho =
+                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(3413));
             let prim_name_chirho = "evaluate";
             let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
             let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
@@ -14495,7 +14739,7 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
     }

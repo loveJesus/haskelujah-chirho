@@ -52,9 +52,7 @@ pub const fn pack_native_header_chirho(
 }
 
 /// Unpack the low-bit kind from a native header word.
-pub const fn unpack_native_object_kind_chirho(
-    header_word_chirho: u64,
-) -> ObjectKindChirho {
+pub const fn unpack_native_object_kind_chirho(header_word_chirho: u64) -> ObjectKindChirho {
     match header_word_chirho & OBJECT_KIND_MASK_CHIRHO {
         0b00 => ObjectKindChirho::ThunkChirho,
         0b01 => ObjectKindChirho::FunChirho,

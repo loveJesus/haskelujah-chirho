@@ -62,10 +62,10 @@ impl AnsiChirho {
             return text_chirho.to_string();
         }
         let code_chirho = match severity_chirho {
-            SeverityChirho::ErrorChirho => "\x1b[1;31m",   // bold red
-            SeverityChirho::WarningChirho => "\x1b[1;33m",  // bold yellow
-            SeverityChirho::InfoChirho => "\x1b[1;36m",     // bold cyan
-            SeverityChirho::HintChirho => "\x1b[1;32m",     // bold green
+            SeverityChirho::ErrorChirho => "\x1b[1;31m", // bold red
+            SeverityChirho::WarningChirho => "\x1b[1;33m", // bold yellow
+            SeverityChirho::InfoChirho => "\x1b[1;36m",  // bold cyan
+            SeverityChirho::HintChirho => "\x1b[1;32m",  // bold green
         };
         format!("{code_chirho}{text_chirho}\x1b[0m")
     }
@@ -233,10 +233,7 @@ fn render_snippet_chirho(
 
     for line_num_chirho in first_line_chirho..=last_line_chirho {
         let line_idx_chirho = (line_num_chirho - 1) as usize;
-        let line_text_chirho = lines_chirho
-            .get(line_idx_chirho)
-            .copied()
-            .unwrap_or("");
+        let line_text_chirho = lines_chirho.get(line_idx_chirho).copied().unwrap_or("");
 
         // Source line: " NN | text"
         let num_str_chirho = format!("{line_num_chirho:>gutter_width_chirho$}");
@@ -326,10 +323,7 @@ pub fn render_bundle_chirho(
                 &format!("{warning_count_chirho} warning{s_chirho}"),
             ));
         }
-        output_chirho.push_str(&format!(
-            "{} generated\n",
-            parts_chirho.join(" and ")
-        ));
+        output_chirho.push_str(&format!("{} generated\n", parts_chirho.join(" and ")));
     }
 
     output_chirho
@@ -368,8 +362,7 @@ mod tests_chirho {
             span_chirho,
         );
 
-        let rendered_chirho =
-            render_diagnostic_chirho(&diag_chirho, &sm_chirho, &config_chirho);
+        let rendered_chirho = render_diagnostic_chirho(&diag_chirho, &sm_chirho, &config_chirho);
 
         assert!(rendered_chirho.contains("error[E0100]"));
         assert!(rendered_chirho.contains("variable not in scope: `bar`"));
@@ -392,8 +385,7 @@ mod tests_chirho {
             .with_code_chirho(ErrorCodeChirho::warning_chirho(401))
             .with_note_chirho("prefix with an underscore to suppress this warning: `_main`");
 
-        let rendered_chirho =
-            render_diagnostic_chirho(&diag_chirho, &sm_chirho, &config_chirho);
+        let rendered_chirho = render_diagnostic_chirho(&diag_chirho, &sm_chirho, &config_chirho);
 
         assert!(rendered_chirho.contains("warning[W0401]"));
         assert!(rendered_chirho.contains("unused binding: `main`"));
@@ -416,14 +408,12 @@ mod tests_chirho {
             ByteOffsetChirho::new_chirho(19),
             ByteOffsetChirho::new_chirho(23),
         );
-        let diag_chirho = DiagnosticChirho::error_chirho("type mismatch", primary_span_chirho)
-            .with_label_chirho(LabelChirho::secondary_chirho(
-                secondary_span_chirho,
-                "expected type from here",
-            ));
+        let diag_chirho =
+            DiagnosticChirho::error_chirho("type mismatch", primary_span_chirho).with_label_chirho(
+                LabelChirho::secondary_chirho(secondary_span_chirho, "expected type from here"),
+            );
 
-        let rendered_chirho =
-            render_diagnostic_chirho(&diag_chirho, &sm_chirho, &config_chirho);
+        let rendered_chirho = render_diagnostic_chirho(&diag_chirho, &sm_chirho, &config_chirho);
 
         // Two --> arrows (primary + secondary)
         assert_eq!(
@@ -460,11 +450,9 @@ mod tests_chirho {
         let sm_chirho = SourceMapChirho::new_chirho();
         let config_chirho = RenderConfigChirho::plain_chirho();
 
-        let diag_chirho =
-            DiagnosticChirho::error_no_span_chirho("cannot read file: missing.hs");
+        let diag_chirho = DiagnosticChirho::error_no_span_chirho("cannot read file: missing.hs");
 
-        let rendered_chirho =
-            render_diagnostic_chirho(&diag_chirho, &sm_chirho, &config_chirho);
+        let rendered_chirho = render_diagnostic_chirho(&diag_chirho, &sm_chirho, &config_chirho);
 
         assert!(rendered_chirho.contains("cannot read file"));
         // No --> arrow for spanless diagnostic
@@ -485,13 +473,15 @@ mod tests_chirho {
             severity_chirho: SeverityChirho::ErrorChirho,
             code_chirho: None,
             message_chirho: "undefined variable".to_string(),
-            labels_chirho: vec![LabelChirho::primary_chirho(span_chirho, "not found in this scope")],
+            labels_chirho: vec![LabelChirho::primary_chirho(
+                span_chirho,
+                "not found in this scope",
+            )],
             notes_chirho: vec![],
             suggestions_chirho: vec![],
         };
 
-        let rendered_chirho =
-            render_diagnostic_chirho(&diag_chirho, &sm_chirho, &config_chirho);
+        let rendered_chirho = render_diagnostic_chirho(&diag_chirho, &sm_chirho, &config_chirho);
 
         assert!(rendered_chirho.contains("not found in this scope"));
     }

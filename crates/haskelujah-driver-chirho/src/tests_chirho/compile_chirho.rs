@@ -114,6 +114,57 @@ main = 0
 }
 
 #[test]
+fn frontend_reexported_with_frozen_call_stack_from_ghc_stack_chirho() {
+    use haskelujah_naming_chirho::{build_iface_with_imports_chirho, builtin_module_ifaces_chirho};
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
+
+    let safe_util_source_chirho = "\
+module Safe.Util (module GHC.Stack) where
+import GHC.Stack
+";
+    let main_source_chirho = "\
+module Main where
+import Safe.Util
+answer = withFrozenCallStack id (42 :: Int)
+";
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let mut ifaces_chirho = builtin_module_ifaces_chirho();
+
+    let safe_util_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "Safe/Util.hs",
+        safe_util_source_chirho,
+    );
+    let safe_util_file_id_chirho = safe_util_file_chirho.file_id_chirho();
+    let safe_util_parser_chirho =
+        ParserChirho::new_chirho(safe_util_source_chirho, safe_util_file_id_chirho);
+    let safe_util_green_chirho = safe_util_parser_chirho.parse_chirho();
+    let safe_util_module_chirho =
+        lower_module_chirho(&safe_util_green_chirho, safe_util_file_id_chirho);
+    let safe_util_iface_chirho =
+        build_iface_with_imports_chirho(&safe_util_module_chirho, &ifaces_chirho);
+    ifaces_chirho.push(safe_util_iface_chirho);
+
+    let main_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "Main.hs",
+        main_source_chirho,
+    );
+    let main_file_id_chirho = main_file_chirho.file_id_chirho();
+    let empty_imported_types_chirho = std::collections::HashMap::new();
+    crate::run_frontend_chirho(
+        main_source_chirho,
+        main_file_id_chirho,
+        &ifaces_chirho,
+        &empty_imported_types_chirho,
+    )
+    .expect("GHC.Stack re-exports should preserve withFrozenCallStack");
+}
+
+#[test]
 fn multi_module_import_chirho() {
     use crate::compile_modules_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();

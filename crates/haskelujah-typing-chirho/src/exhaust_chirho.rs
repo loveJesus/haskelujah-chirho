@@ -18,12 +18,12 @@
 use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
-use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_ast_chirho::expr_chirho::{
     AltChirho, ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho, StmtChirho,
 };
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
+use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
@@ -185,10 +185,8 @@ impl TypeConEnvChirho {
                         .iter()
                         .map(|c_chirho| con_decl_to_info_chirho(c_chirho))
                         .collect();
-                    env_chirho.register_type_chirho(
-                        name_chirho.text_chirho().to_string(),
-                        cons_chirho,
-                    );
+                    env_chirho
+                        .register_type_chirho(name_chirho.text_chirho().to_string(), cons_chirho);
                 }
                 DeclChirho::NewtypeDeclChirho {
                     name_chirho,
@@ -207,11 +205,7 @@ impl TypeConEnvChirho {
         env_chirho
     }
 
-    fn register_type_chirho(
-        &mut self,
-        type_name_chirho: String,
-        cons_chirho: Vec<ConInfoChirho>,
-    ) {
+    fn register_type_chirho(&mut self, type_name_chirho: String, cons_chirho: Vec<ConInfoChirho>) {
         for c_chirho in &cons_chirho {
             self.con_to_type_chirho
                 .insert(c_chirho.name_chirho.clone(), type_name_chirho.clone());
@@ -294,9 +288,7 @@ pub struct ExhaustResultChirho {
 }
 
 /// Check a module for non-exhaustive and redundant patterns.
-pub fn check_module_exhaustiveness_chirho(
-    module_chirho: &ModuleChirho,
-) -> ExhaustResultChirho {
+pub fn check_module_exhaustiveness_chirho(module_chirho: &ModuleChirho) -> ExhaustResultChirho {
     let env_chirho = TypeConEnvChirho::from_module_chirho(module_chirho);
     let mut diags_chirho = DiagnosticBundleChirho::empty_chirho();
     let mut checker_chirho = ExhaustCheckerChirho {
@@ -331,11 +323,7 @@ impl<'a> ExhaustCheckerChirho<'a> {
                 matches_chirho,
                 span_chirho,
             } => {
-                self.check_fun_bind_chirho(
-                    name_chirho.text_chirho(),
-                    matches_chirho,
-                    *span_chirho,
-                );
+                self.check_fun_bind_chirho(name_chirho.text_chirho(), matches_chirho, *span_chirho);
                 // Recurse into match RHSs
                 for arm_chirho in matches_chirho {
                     self.check_rhs_chirho(&arm_chirho.rhs_chirho);
@@ -525,14 +513,11 @@ impl<'a> ExhaustCheckerChirho<'a> {
                     self.check_decl_chirho(d_chirho);
                 }
             }
-            ExprChirho::QuoteTypeChirho { .. }
-            | ExprChirho::QuotePatChirho { .. } => {
+            ExprChirho::QuoteTypeChirho { .. } | ExprChirho::QuotePatChirho { .. } => {
                 // Type and pattern quotes contain no sub-expressions to check.
             }
             // Leaves — no sub-expressions to check
-            ExprChirho::VarChirho(_)
-            | ExprChirho::ConChirho(_)
-            | ExprChirho::LitChirho(_) => {}
+            ExprChirho::VarChirho(_) | ExprChirho::ConChirho(_) | ExprChirho::LitChirho(_) => {}
         }
     }
 
@@ -552,15 +537,15 @@ impl<'a> ExhaustCheckerChirho<'a> {
 
     /// Check a case expression's alternatives for exhaustiveness and
     /// redundancy. Each alt has a single pattern.
-    fn check_case_alts_chirho(
-        &mut self,
-        alts_chirho: &[AltChirho],
-        case_span_chirho: SpanChirho,
-    ) {
-        let pats_chirho: Vec<&PatChirho> =
-            alts_chirho.iter().map(|a_chirho| &a_chirho.pat_chirho).collect();
-        let spans_chirho: Vec<SpanChirho> =
-            alts_chirho.iter().map(|a_chirho| a_chirho.span_chirho).collect();
+    fn check_case_alts_chirho(&mut self, alts_chirho: &[AltChirho], case_span_chirho: SpanChirho) {
+        let pats_chirho: Vec<&PatChirho> = alts_chirho
+            .iter()
+            .map(|a_chirho| &a_chirho.pat_chirho)
+            .collect();
+        let spans_chirho: Vec<SpanChirho> = alts_chirho
+            .iter()
+            .map(|a_chirho| a_chirho.span_chirho)
+            .collect();
         self.check_pattern_column_chirho(&pats_chirho, &spans_chirho, case_span_chirho, "case");
     }
 
@@ -639,10 +624,7 @@ impl<'a> ExhaustCheckerChirho<'a> {
                     if has_wildcard_chirho {
                         // Second wildcard is always redundant
                         redundant_indices_chirho.push(idx_chirho);
-                    } else if all_cons_covered_chirho(
-                        &seen_cons_chirho,
-                        self.env_chirho,
-                    ) {
+                    } else if all_cons_covered_chirho(&seen_cons_chirho, self.env_chirho) {
                         // Wildcard after all constructors covered is redundant
                         redundant_indices_chirho.push(idx_chirho);
                     } else {
@@ -791,7 +773,9 @@ fn classify_pattern_chirho(pat_chirho: &PatChirho) -> PatClassChirho {
             // so it is exhaustive by itself (only one tuple constructor).
             PatClassChirho::WildcardChirho
         }
-        PatChirho::ListChirho { elements_chirho, .. } => {
+        PatChirho::ListChirho {
+            elements_chirho, ..
+        } => {
             // [] is the nil constructor; [a, b, c] desugars to a:b:c:[]
             // which starts with the (:) constructor.
             if elements_chirho.is_empty() {
@@ -816,17 +800,16 @@ fn classify_pattern_chirho(pat_chirho: &PatChirho) -> PatClassChirho {
 
 /// Check whether a set of seen constructors already covers all constructors
 /// of their type.
-fn all_cons_covered_chirho(
-    seen_chirho: &[(String, usize)],
-    env_chirho: &TypeConEnvChirho,
-) -> bool {
+fn all_cons_covered_chirho(seen_chirho: &[(String, usize)], env_chirho: &TypeConEnvChirho) -> bool {
     if seen_chirho.is_empty() {
         return false;
     }
     let first_chirho = &seen_chirho[0].0;
     if let Some(siblings_chirho) = env_chirho.siblings_of_chirho(first_chirho) {
-        let covered_chirho: HashSet<&str> =
-            seen_chirho.iter().map(|(n_chirho, _)| n_chirho.as_str()).collect();
+        let covered_chirho: HashSet<&str> = seen_chirho
+            .iter()
+            .map(|(n_chirho, _)| n_chirho.as_str())
+            .collect();
         siblings_chirho
             .iter()
             .all(|c_chirho| covered_chirho.contains(c_chirho.name_chirho.as_str()))
@@ -870,25 +853,22 @@ mod tests_chirho {
         }
     }
 
-    fn mk_data_decl_chirho(
-        name_chirho: &str,
-        cons_chirho: Vec<(&str, usize)>,
-    ) -> DeclChirho {
+    fn mk_data_decl_chirho(name_chirho: &str, cons_chirho: Vec<(&str, usize)>) -> DeclChirho {
         let constructors_chirho = cons_chirho
             .into_iter()
-            .map(|(cn_chirho, arity_chirho)| {
-                ConDeclChirho::OrdinaryChirho {
-                    name_chirho: mk_name_chirho(cn_chirho),
-                    fields_chirho: (0..arity_chirho)
-                        .map(|_| {
-                            (haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
-                             haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
+            .map(|(cn_chirho, arity_chirho)| ConDeclChirho::OrdinaryChirho {
+                name_chirho: mk_name_chirho(cn_chirho),
+                fields_chirho: (0..arity_chirho)
+                    .map(|_| {
+                        (
+                            haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                            haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                                 mk_name_chirho("Int"),
-                            ))
-                        })
-                        .collect(),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                }
+                            ),
+                        )
+                    })
+                    .collect(),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
             })
             .collect();
         DeclChirho::DataDeclChirho {
@@ -921,10 +901,7 @@ mod tests_chirho {
         PatChirho::LitChirho(LitChirho::IntChirho(val_chirho, SpanChirho::DUMMY_CHIRHO))
     }
 
-    fn mk_case_decl_chirho(
-        fn_name_chirho: &str,
-        pats_chirho: Vec<PatChirho>,
-    ) -> DeclChirho {
+    fn mk_case_decl_chirho(fn_name_chirho: &str, pats_chirho: Vec<PatChirho>) -> DeclChirho {
         // Wraps a case expression with the given alt patterns inside a
         // simple function binding: fn = case x of { pats... }
         let alts_chirho: Vec<AltChirho> = pats_chirho
@@ -1049,10 +1026,7 @@ mod tests_chirho {
     fn case_exhaustive_with_wildcard_chirho() {
         let module_chirho = mk_module_chirho(vec![
             mk_data_decl_chirho("Color", vec![("Red", 0), ("Green", 0), ("Blue", 0)]),
-            mk_case_decl_chirho(
-                "f",
-                vec![mk_con_pat_chirho("Red"), mk_wild_pat_chirho()],
-            ),
+            mk_case_decl_chirho("f", vec![mk_con_pat_chirho("Red"), mk_wild_pat_chirho()]),
         ]);
         let result_chirho = check_module_exhaustiveness_chirho(&module_chirho);
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
@@ -1241,9 +1215,12 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructor_chirho: ConDeclChirho::OrdinaryChirho {
                     name_chirho: mk_name_chirho("Wrap"),
-                    fields_chirho: vec![(haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho, haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
-                        mk_name_chirho("Int"),
-                    ))],
+                    fields_chirho: vec![(
+                        haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                        haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(mk_name_chirho(
+                            "Int",
+                        )),
+                    )],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 deriving_chirho: vec![],
@@ -1321,10 +1298,7 @@ mod tests_chirho {
     fn maybe_exhaustive_chirho() {
         let module_chirho = mk_module_chirho(vec![mk_case_decl_chirho(
             "f",
-            vec![
-                mk_con_pat_chirho("Nothing"),
-                mk_con_pat_chirho("Just"),
-            ],
+            vec![mk_con_pat_chirho("Nothing"), mk_con_pat_chirho("Just")],
         )]);
         let result_chirho = check_module_exhaustiveness_chirho(&module_chirho);
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());

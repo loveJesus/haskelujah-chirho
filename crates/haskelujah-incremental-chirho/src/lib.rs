@@ -28,4 +28,6 @@ pub mod session_chirho;
 pub use artifact_chirho::ArtifactStoreChirho;
 pub use dep_chirho::{DepGraphChirho, DepNodeChirho};
 pub use fingerprint_chirho::FingerprintChirho;
-pub use session_chirho::{IncrementalSessionChirho, ModuleRecordChirho, PhaseTagChirho, RebuildReasonChirho};
+pub use session_chirho::{
+    IncrementalSessionChirho, ModuleRecordChirho, PhaseTagChirho, RebuildReasonChirho,
+};

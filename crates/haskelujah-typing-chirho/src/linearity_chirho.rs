@@ -51,9 +51,7 @@ fn walk_expr_chirho(expr_chirho: &ExprChirho, counts_chirho: &mut HashMap<String
             walk_expr_chirho(fun_chirho, counts_chirho);
             walk_expr_chirho(arg_chirho, counts_chirho);
         }
-        ExprChirho::LamChirho {
-            body_chirho, ..
-        } => {
+        ExprChirho::LamChirho { body_chirho, .. } => {
             walk_expr_chirho(body_chirho, counts_chirho);
         }
         ExprChirho::LetChirho {
@@ -100,18 +98,22 @@ fn walk_expr_chirho(expr_chirho: &ExprChirho, counts_chirho: &mut HashMap<String
                 walk_expr_chirho(elem_chirho, counts_chirho);
             }
         }
-        ExprChirho::NegChirho { expr_chirho: inner_chirho, .. } => {
+        ExprChirho::NegChirho {
+            expr_chirho: inner_chirho,
+            ..
+        } => {
             walk_expr_chirho(inner_chirho, counts_chirho);
         }
-        ExprChirho::DoChirho {
-            stmts_chirho, ..
-        } => {
+        ExprChirho::DoChirho { stmts_chirho, .. } => {
             for stmt_chirho in stmts_chirho {
                 match stmt_chirho {
                     StmtChirho::ExprChirho(e_chirho) => {
                         walk_expr_chirho(e_chirho, counts_chirho);
                     }
-                    StmtChirho::BindChirho { expr_chirho: e_chirho, .. } => {
+                    StmtChirho::BindChirho {
+                        expr_chirho: e_chirho,
+                        ..
+                    } => {
                         walk_expr_chirho(e_chirho, counts_chirho);
                     }
                     StmtChirho::LetChirho { binds_chirho, .. } => {
@@ -134,10 +136,18 @@ fn walk_expr_chirho(expr_chirho: &ExprChirho, counts_chirho: &mut HashMap<String
                 .or_insert(0) += 1;
             walk_expr_chirho(right_chirho, counts_chirho);
         }
-        ExprChirho::TypeAppChirho { expr_chirho: inner_chirho, .. } => {
+        ExprChirho::TypeAppChirho {
+            expr_chirho: inner_chirho,
+            ..
+        } => {
             walk_expr_chirho(inner_chirho, counts_chirho);
         }
-        ExprChirho::ArithSeqChirho { from_chirho, then_chirho, to_chirho, .. } => {
+        ExprChirho::ArithSeqChirho {
+            from_chirho,
+            then_chirho,
+            to_chirho,
+            ..
+        } => {
             walk_expr_chirho(from_chirho, counts_chirho);
             if let Some(t_chirho) = then_chirho {
                 walk_expr_chirho(t_chirho, counts_chirho);
@@ -154,7 +164,10 @@ fn walk_expr_chirho(expr_chirho: &ExprChirho, counts_chirho: &mut HashMap<String
     }
 }
 
-fn walk_local_bind_chirho(bind_chirho: &LocalBindChirho, counts_chirho: &mut HashMap<String, usize>) {
+fn walk_local_bind_chirho(
+    bind_chirho: &LocalBindChirho,
+    counts_chirho: &mut HashMap<String, usize>,
+) {
     match bind_chirho {
         LocalBindChirho::FunBindChirho { matches_chirho, .. } => {
             for arm_chirho in matches_chirho {
@@ -168,7 +181,10 @@ fn walk_local_bind_chirho(bind_chirho: &LocalBindChirho, counts_chirho: &mut Has
     }
 }
 
-fn walk_rhs_chirho(rhs_chirho: &haskelujah_ast_chirho::expr_chirho::RhsChirho, counts_chirho: &mut HashMap<String, usize>) {
+fn walk_rhs_chirho(
+    rhs_chirho: &haskelujah_ast_chirho::expr_chirho::RhsChirho,
+    counts_chirho: &mut HashMap<String, usize>,
+) {
     match rhs_chirho {
         haskelujah_ast_chirho::expr_chirho::RhsChirho::UnguardedChirho(e_chirho) => {
             walk_expr_chirho(e_chirho, counts_chirho);
@@ -199,17 +215,25 @@ fn collect_pat_names_chirho(pat_chirho: &PatChirho, out_chirho: &mut Vec<String>
                 collect_pat_names_chirho(arg_chirho, out_chirho);
             }
         }
-        PatChirho::TupleChirho { elements_chirho, .. } => {
+        PatChirho::TupleChirho {
+            elements_chirho, ..
+        } => {
             for elem_chirho in elements_chirho {
                 collect_pat_names_chirho(elem_chirho, out_chirho);
             }
         }
-        PatChirho::ListChirho { elements_chirho, .. } => {
+        PatChirho::ListChirho {
+            elements_chirho, ..
+        } => {
             for elem_chirho in elements_chirho {
                 collect_pat_names_chirho(elem_chirho, out_chirho);
             }
         }
-        PatChirho::AsChirho { name_chirho, pattern_chirho, .. } => {
+        PatChirho::AsChirho {
+            name_chirho,
+            pattern_chirho,
+            ..
+        } => {
             out_chirho.push(name_chirho.text_chirho().to_string());
             collect_pat_names_chirho(pattern_chirho, out_chirho);
         }
@@ -219,7 +243,11 @@ fn collect_pat_names_chirho(pat_chirho: &PatChirho, out_chirho: &mut Vec<String>
         PatChirho::BangChirho { inner_chirho, .. } => {
             collect_pat_names_chirho(inner_chirho, out_chirho);
         }
-        PatChirho::InfixConChirho { left_chirho, right_chirho, .. } => {
+        PatChirho::InfixConChirho {
+            left_chirho,
+            right_chirho,
+            ..
+        } => {
             collect_pat_names_chirho(left_chirho, out_chirho);
             collect_pat_names_chirho(right_chirho, out_chirho);
         }
@@ -276,8 +304,8 @@ pub fn check_linearity_chirho(
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
-    use haskelujah_ast_chirho::name_chirho::NameChirho;
     use haskelujah_ast_chirho::lit_chirho::LitChirho;
+    use haskelujah_ast_chirho::name_chirho::NameChirho;
 
     fn mk_name_chirho(s_chirho: &str) -> NameChirho {
         NameChirho::RawChirho(haskelujah_ast_chirho::name_chirho::RawNameChirho {
@@ -292,18 +320,18 @@ mod tests_chirho {
         // \x -> x (used once = OK for linear)
         let body_chirho = ExprChirho::VarChirho(mk_name_chirho("x"));
         let params_chirho = vec![("x".to_string(), true)];
-        let violations_chirho = check_linearity_chirho(&params_chirho, &body_chirho, SpanChirho::DUMMY_CHIRHO);
+        let violations_chirho =
+            check_linearity_chirho(&params_chirho, &body_chirho, SpanChirho::DUMMY_CHIRHO);
         assert!(violations_chirho.is_empty());
     }
 
     #[test]
     fn linear_unused_violation_chirho() {
         // \x -> 42 (x not used = violation)
-        let body_chirho = ExprChirho::LitChirho(
-            LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO),
-        );
+        let body_chirho = ExprChirho::LitChirho(LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO));
         let params_chirho = vec![("x".to_string(), true)];
-        let violations_chirho = check_linearity_chirho(&params_chirho, &body_chirho, SpanChirho::DUMMY_CHIRHO);
+        let violations_chirho =
+            check_linearity_chirho(&params_chirho, &body_chirho, SpanChirho::DUMMY_CHIRHO);
         assert_eq!(violations_chirho.len(), 1);
         assert!(matches!(
             &violations_chirho[0],
@@ -322,7 +350,8 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let params_chirho = vec![("x".to_string(), true)];
-        let violations_chirho = check_linearity_chirho(&params_chirho, &body_chirho, SpanChirho::DUMMY_CHIRHO);
+        let violations_chirho =
+            check_linearity_chirho(&params_chirho, &body_chirho, SpanChirho::DUMMY_CHIRHO);
         assert_eq!(violations_chirho.len(), 1);
         assert!(matches!(
             &violations_chirho[0],
@@ -333,11 +362,10 @@ mod tests_chirho {
     #[test]
     fn unrestricted_unused_ok_chirho() {
         // \x -> 42 with unrestricted x — no violation
-        let body_chirho = ExprChirho::LitChirho(
-            LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO),
-        );
+        let body_chirho = ExprChirho::LitChirho(LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO));
         let params_chirho = vec![("x".to_string(), false)];
-        let violations_chirho = check_linearity_chirho(&params_chirho, &body_chirho, SpanChirho::DUMMY_CHIRHO);
+        let violations_chirho =
+            check_linearity_chirho(&params_chirho, &body_chirho, SpanChirho::DUMMY_CHIRHO);
         assert!(violations_chirho.is_empty());
     }
 

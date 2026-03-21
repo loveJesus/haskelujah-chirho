@@ -12,9 +12,9 @@
 
 #[cfg(test)]
 mod tests_chirho {
-    use proptest::prelude::*;
     use haskelujah_span_chirho::SourceMapChirho;
     use haskelujah_syntax_chirho::SourceFileChirho;
+    use proptest::prelude::*;
 
     /// Parse arbitrary text through the full pipeline (lex → layout → CST → AST).
     fn parse_no_panic_chirho(src_chirho: &str) {
@@ -22,8 +22,10 @@ mod tests_chirho {
         let sf_chirho =
             SourceFileChirho::from_source_map_chirho(&mut sm_chirho, "prop.hs", src_chirho);
         let file_id_chirho = sf_chirho.file_id_chirho();
-        let green_chirho =
-            crate::cst_parser_chirho::parse_to_cst_chirho(sf_chirho.contents_chirho(), file_id_chirho);
+        let green_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(
+            sf_chirho.contents_chirho(),
+            file_id_chirho,
+        );
         let _module_chirho =
             crate::lower_chirho::lower_module_chirho(&green_chirho, file_id_chirho);
     }

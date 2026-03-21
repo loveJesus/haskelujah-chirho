@@ -12,8 +12,7 @@ use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenElementChirho, GreenNodeChirho};
 use haskelujah_test_harness_chirho::{assert_golden_chirho, bless_golden_chirho};
 
-const JOHN_3_16_COMMENT_CHIRHO: &str =
-    "<!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. -->\n\n";
+const JOHN_3_16_COMMENT_CHIRHO: &str = "<!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. -->\n\n";
 
 #[derive(Clone, Copy)]
 struct ExpectedNodeAtPathChirho {
@@ -49,8 +48,7 @@ fn golden_cases_chirho() -> Vec<ParseGoldenCaseChirho> {
         },
         ParseGoldenCaseChirho {
             name_chirho: "data_decl_chirho",
-            source_chirho:
-                "module DataDeclChirho where\ndata ColorChirho = RedChirho | GreenChirho | BlueChirho\n",
+            source_chirho: "module DataDeclChirho where\ndata ColorChirho = RedChirho | GreenChirho | BlueChirho\n",
             expected_nodes_chirho: &[
                 ExpectedNodeAtPathChirho {
                     node_path_chirho: &[0],
@@ -64,8 +62,7 @@ fn golden_cases_chirho() -> Vec<ParseGoldenCaseChirho> {
         },
         ParseGoldenCaseChirho {
             name_chirho: "fun_bind_chirho",
-            source_chirho:
-                "module FunBindChirho where\nfChirho xChirho yChirho = xChirho + yChirho\n",
+            source_chirho: "module FunBindChirho where\nfChirho xChirho yChirho = xChirho + yChirho\n",
             expected_nodes_chirho: &[
                 ExpectedNodeAtPathChirho {
                     node_path_chirho: &[0],
@@ -79,8 +76,7 @@ fn golden_cases_chirho() -> Vec<ParseGoldenCaseChirho> {
         },
         ParseGoldenCaseChirho {
             name_chirho: "lambda_chirho",
-            source_chirho:
-                "module LambdaChirho where\nlambdaValueChirho = \\xChirho -> xChirho\n",
+            source_chirho: "module LambdaChirho where\nlambdaValueChirho = \\xChirho -> xChirho\n",
             expected_nodes_chirho: &[
                 ExpectedNodeAtPathChirho {
                     node_path_chirho: &[0],
@@ -122,8 +118,7 @@ fn golden_cases_chirho() -> Vec<ParseGoldenCaseChirho> {
         },
         ParseGoldenCaseChirho {
             name_chirho: "let_expr_chirho",
-            source_chirho:
-                "module LetExprChirho where\nletValueChirho = let innerValueChirho = 42 in innerValueChirho\n",
+            source_chirho: "module LetExprChirho where\nletValueChirho = let innerValueChirho = 42 in innerValueChirho\n",
             expected_nodes_chirho: &[
                 ExpectedNodeAtPathChirho {
                     node_path_chirho: &[0],

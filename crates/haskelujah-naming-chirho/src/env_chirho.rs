@@ -210,11 +210,13 @@ impl NameEnvChirho {
         namespace_chirho: NamespaceChirho,
     ) -> Option<&DefInfoChirho> {
         let key_chirho = format!("{qualifier_chirho}.{name_chirho}");
-        self.qualified_chirho.get(&key_chirho).and_then(|infos_chirho| {
-            infos_chirho
-                .iter()
-                .find(|i_chirho| i_chirho.namespace_chirho == namespace_chirho)
-        })
+        self.qualified_chirho
+            .get(&key_chirho)
+            .and_then(|infos_chirho| {
+                infos_chirho
+                    .iter()
+                    .find(|i_chirho| i_chirho.namespace_chirho == namespace_chirho)
+            })
     }
 
     /// Collect all visible names in a given namespace across all scopes.

@@ -772,20 +772,24 @@ fn float_binop_chirho(
     let a_chirho = match left_chirho {
         ValueChirho::FloatChirho(v_chirho) => *v_chirho,
         ValueChirho::IntChirho(v_chirho) => *v_chirho as f64,
-        _ => return Err(PrimErrorChirho::TypeMismatchChirho {
-            op_chirho,
-            expected_chirho: "Double#",
-            got_chirho: format!("{left_chirho}"),
-        }),
+        _ => {
+            return Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho,
+                expected_chirho: "Double#",
+                got_chirho: format!("{left_chirho}"),
+            });
+        }
     };
     let b_chirho = match right_chirho {
         ValueChirho::FloatChirho(v_chirho) => *v_chirho,
         ValueChirho::IntChirho(v_chirho) => *v_chirho as f64,
-        _ => return Err(PrimErrorChirho::TypeMismatchChirho {
-            op_chirho,
-            expected_chirho: "Double#",
-            got_chirho: format!("{right_chirho}"),
-        }),
+        _ => {
+            return Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho,
+                expected_chirho: "Double#",
+                got_chirho: format!("{right_chirho}"),
+            });
+        }
     };
     f_chirho(a_chirho, b_chirho)
 }

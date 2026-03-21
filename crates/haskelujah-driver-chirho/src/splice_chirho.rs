@@ -68,7 +68,8 @@ pub fn expand_splices_chirho(decls_chirho: Vec<DeclChirho>) -> SpliceExpansionRe
                                     &fields_chirho,
                                 );
                                 for th_dec_chirho in &generated_chirho {
-                                    if let Some(ast_dec_chirho) = th_dec_to_ast_chirho(th_dec_chirho)
+                                    if let Some(ast_dec_chirho) =
+                                        th_dec_to_ast_chirho(th_dec_chirho)
                                     {
                                         result_decls_chirho.push(ast_dec_chirho);
                                     }
@@ -141,15 +142,13 @@ fn recognize_splice_chirho(expr_chirho: &ExprChirho) -> SplicePatternChirho {
             "makeLenses" | "makeLenses'" => {
                 // The type name is the last argument (after stripping
                 // any intermediate tick-quote tokens).
-                if let Some(type_name_chirho) = extract_type_name_from_args_chirho(&args_chirho)
-                {
+                if let Some(type_name_chirho) = extract_type_name_from_args_chirho(&args_chirho) {
                     return SplicePatternChirho::MakeLensesChirho(type_name_chirho);
                 }
             }
             "deriveJSON" => {
                 // `deriveJSON opts ''Type` → args = [opts, ..., Type]
-                if let Some(type_name_chirho) = extract_type_name_from_args_chirho(&args_chirho)
-                {
+                if let Some(type_name_chirho) = extract_type_name_from_args_chirho(&args_chirho) {
                     return SplicePatternChirho::DeriveJsonChirho(type_name_chirho);
                 }
             }
@@ -322,7 +321,9 @@ fn type_to_string_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirh
         TypeChirho::ListChirho { element_chirho, .. } => {
             format!("[{}]", type_to_string_chirho(element_chirho))
         }
-        TypeChirho::TupleChirho { elements_chirho, .. } => {
+        TypeChirho::TupleChirho {
+            elements_chirho, ..
+        } => {
             let inner_chirho: Vec<String> = elements_chirho
                 .iter()
                 .map(|e_chirho| type_to_string_chirho(e_chirho))
@@ -376,11 +377,8 @@ fn generate_lenses_chirho(
         // 1. Type signature: lensName :: Lens' DataType FieldType
         //    Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
         //    We emit the expanded Lens' type for now.
-        let sig_chirho = generate_lens_sig_chirho(
-            &lens_name_chirho,
-            data_name_chirho,
-            field_type_chirho,
-        );
+        let sig_chirho =
+            generate_lens_sig_chirho(&lens_name_chirho, data_name_chirho, field_type_chirho);
         decs_chirho.push(sig_chirho);
 
         // 2. Function body: lensName f s = fmap (\x -> s { _field = x }) (f (_field s))
@@ -448,7 +446,9 @@ fn generate_lens_sig_chirho(
 
     // Functor f => ...
     let functor_constraint_chirho = ThTypeChirho::AppTChirho(
-        Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho("Functor"))),
+        Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+            "Functor",
+        ))),
         Box::new(ThTypeChirho::VarTChirho(f_name_chirho.clone())),
     );
 
@@ -508,7 +508,9 @@ fn generate_lens_body_chirho(
     // fmap (\x_param -> ...) (f_param (_field s_param))
     let fmap_call_chirho = ThExpChirho::AppEChirho(
         Box::new(ThExpChirho::AppEChirho(
-            Box::new(ThExpChirho::VarEChirho(ThNameChirho::mk_name_chirho("fmap"))),
+            Box::new(ThExpChirho::VarEChirho(ThNameChirho::mk_name_chirho(
+                "fmap",
+            ))),
             Box::new(lambda_chirho),
         )),
         Box::new(f_applied_chirho),
@@ -541,7 +543,10 @@ mod tests_chirho {
     use haskelujah_span_chirho::SpanChirho;
 
     fn mk_name_chirho(s_chirho: &str) -> NameChirho {
-        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(s_chirho, SpanChirho::DUMMY_CHIRHO))
+        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+            s_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+        ))
     }
 
     fn mk_var_chirho(s_chirho: &str) -> ExprChirho {
@@ -559,13 +564,15 @@ mod tests_chirho {
                     FieldDeclChirho {
                         names_chirho: vec![mk_name_chirho("_name")],
                         ty_chirho: TypeChirho::ConChirho(mk_name_chirho("String")),
-                        strictness_chirho: haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                        strictness_chirho:
+                            haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     FieldDeclChirho {
                         names_chirho: vec![mk_name_chirho("_age")],
                         ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
-                        strictness_chirho: haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                        strictness_chirho:
+                            haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                 ],
@@ -609,12 +616,18 @@ mod tests_chirho {
     fn make_lenses_generates_lens_decls_chirho() {
         // Person has _name and _age, so we expect 4 generated decls
         // (2 type sigs + 2 function bindings).
-        let decls_chirho = vec![person_data_decl_chirho(), make_lenses_splice_chirho("Person")];
+        let decls_chirho = vec![
+            person_data_decl_chirho(),
+            make_lenses_splice_chirho("Person"),
+        ];
 
         let result_chirho = expand_splices_chirho(decls_chirho);
 
         // The Person data decl should be preserved.
-        assert!(result_chirho.warnings_chirho.is_empty(), "no warnings expected");
+        assert!(
+            result_chirho.warnings_chirho.is_empty(),
+            "no warnings expected"
+        );
 
         // Count generated decls: Person data + 2 type sigs + 2 fun binds = 5
         assert_eq!(
@@ -703,13 +716,15 @@ mod tests_chirho {
                         FieldDeclChirho {
                             names_chirho: vec![mk_name_chirho("verbose")],
                             ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Bool")),
-                            strictness_chirho: haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                            strictness_chirho:
+                                haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         },
                         FieldDeclChirho {
                             names_chirho: vec![mk_name_chirho("_port")],
                             ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
-                            strictness_chirho: haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                            strictness_chirho:
+                                haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         },
                     ],

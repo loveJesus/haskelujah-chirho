@@ -10,11 +10,11 @@ use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
+use super::{DictLayoutChirho, DictPassCtxChirho};
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
     CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
 };
-use super::{DictPassCtxChirho, DictLayoutChirho};
 
 impl DictPassCtxChirho {
     pub fn build_layouts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
@@ -77,14 +77,11 @@ impl DictPassCtxChirho {
                     "$sel_{}_{}",
                     layout_chirho.class_name_chirho, method_name_chirho
                 );
-                let dict_ty_chirho = TyChirho::ConChirho(format!(
-                    "$Dict_{}",
-                    layout_chirho.class_name_chirho
-                ));
+                let dict_ty_chirho =
+                    TyChirho::ConChirho(format!("$Dict_{}", layout_chirho.class_name_chirho));
 
                 // The dictionary binder for the lambda
-                let dict_binder_chirho =
-                    self.fresh_binder_chirho("$dict", dict_ty_chirho.clone());
+                let dict_binder_chirho = self.fresh_binder_chirho("$dict", dict_ty_chirho.clone());
                 let dict_id_chirho = dict_binder_chirho.id_chirho;
 
                 // Build field binders for the case alt
@@ -94,9 +91,7 @@ impl DictPassCtxChirho {
                     let field_name_chirho = format!("$f{i_chirho}");
                     let fb_chirho = self.fresh_binder_chirho(
                         &field_name_chirho,
-                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                            9999,
-                        )),
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9999)),
                     );
                     if i_chirho == *slot_idx_chirho {
                         selected_id_chirho = fb_chirho.id_chirho;
@@ -104,11 +99,9 @@ impl DictPassCtxChirho {
                     field_binders_chirho.push(fb_chirho);
                 }
 
-                let case_wild_chirho =
-                    self.fresh_binder_chirho("$wild", dict_ty_chirho.clone());
+                let case_wild_chirho = self.fresh_binder_chirho("$wild", dict_ty_chirho.clone());
 
-                let con_name_chirho =
-                    format!("$Dict_{}", layout_chirho.class_name_chirho);
+                let con_name_chirho = format!("$Dict_{}", layout_chirho.class_name_chirho);
 
                 let case_expr_chirho = CoreExprChirho::CaseChirho {
                     scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
@@ -132,9 +125,7 @@ impl DictPassCtxChirho {
                     &sel_name_chirho,
                     TyChirho::fun_chirho(
                         dict_ty_chirho,
-                        TyChirho::VarChirho(
-                            haskelujah_typing_chirho::ty_chirho::TyVarChirho(9998),
-                        ),
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9998)),
                     ),
                 );
                 let sel_id_chirho = sel_binder_chirho.id_chirho;
@@ -159,13 +150,10 @@ impl DictPassCtxChirho {
                     "$sel_{}_super_{}",
                     layout_chirho.class_name_chirho, super_name_chirho
                 );
-                let dict_ty_chirho = TyChirho::ConChirho(format!(
-                    "$Dict_{}",
-                    layout_chirho.class_name_chirho
-                ));
+                let dict_ty_chirho =
+                    TyChirho::ConChirho(format!("$Dict_{}", layout_chirho.class_name_chirho));
 
-                let dict_binder_chirho =
-                    self.fresh_binder_chirho("$dict", dict_ty_chirho.clone());
+                let dict_binder_chirho = self.fresh_binder_chirho("$dict", dict_ty_chirho.clone());
                 let dict_id_chirho = dict_binder_chirho.id_chirho;
 
                 let mut field_binders_chirho = Vec::new();
@@ -174,9 +162,7 @@ impl DictPassCtxChirho {
                     let field_name_chirho = format!("$f{i_chirho}");
                     let fb_chirho = self.fresh_binder_chirho(
                         &field_name_chirho,
-                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                            9999,
-                        )),
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9999)),
                     );
                     if i_chirho == *slot_idx_chirho {
                         selected_id_chirho = fb_chirho.id_chirho;
@@ -184,10 +170,8 @@ impl DictPassCtxChirho {
                     field_binders_chirho.push(fb_chirho);
                 }
 
-                let case_wild_chirho =
-                    self.fresh_binder_chirho("$wild", dict_ty_chirho.clone());
-                let con_name_chirho =
-                    format!("$Dict_{}", layout_chirho.class_name_chirho);
+                let case_wild_chirho = self.fresh_binder_chirho("$wild", dict_ty_chirho.clone());
+                let con_name_chirho = format!("$Dict_{}", layout_chirho.class_name_chirho);
 
                 let case_expr_chirho = CoreExprChirho::CaseChirho {
                     scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
@@ -207,10 +191,8 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(case_expr_chirho),
                 };
 
-                let super_dict_ty_chirho = TyChirho::ConChirho(format!(
-                    "$Dict_{}",
-                    super_name_chirho
-                ));
+                let super_dict_ty_chirho =
+                    TyChirho::ConChirho(format!("$Dict_{}", super_name_chirho));
                 let sel_binder_chirho = self.fresh_binder_chirho(
                     &sel_name_chirho,
                     TyChirho::fun_chirho(dict_ty_chirho, super_dict_ty_chirho),

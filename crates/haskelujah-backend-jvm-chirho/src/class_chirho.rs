@@ -35,8 +35,7 @@ pub fn compile_core_to_class_chirho(
     let super_class_idx_chirho = cp_chirho.add_class_chirho("java/lang/Object");
 
     // Add <init> method ref for java/lang/Object.
-    let _init_ref_chirho =
-        cp_chirho.add_method_ref_chirho("java/lang/Object", "<init>", "()V");
+    let _init_ref_chirho = cp_chirho.add_method_ref_chirho("java/lang/Object", "<init>", "()V");
 
     // Add Code attribute name.
     let _code_attr_chirho = cp_chirho.add_utf8_chirho("Code");
@@ -123,6 +122,9 @@ mod tests_chirho {
         let mut config_chirho = JvmConfigChirho::default();
         config_chirho.package_chirho = "com/example".to_string();
         let output_chirho = compile_core_to_class_chirho(&module_chirho, &config_chirho).unwrap();
-        assert_eq!(output_chirho.classes_chirho[0].name_chirho, "com/example/Main");
+        assert_eq!(
+            output_chirho.classes_chirho[0].name_chirho,
+            "com/example/Main"
+        );
     }
 }

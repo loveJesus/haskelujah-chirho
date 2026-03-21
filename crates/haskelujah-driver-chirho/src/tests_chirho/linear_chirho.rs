@@ -4,15 +4,11 @@
 //! End-to-end tests for the LinearTypes extension.
 
 #[allow(unused_imports)]
-use crate::{
-    eval_source_chirho,
-    compile_source_chirho,
-    frontend_warnings_chirho,
-};
-#[allow(unused_imports)]
-use haskelujah_span_chirho::SourceMapChirho;
+use crate::{compile_source_chirho, eval_source_chirho, frontend_warnings_chirho};
 #[allow(unused_imports)]
 use haskelujah_runtime_chirho::ValueChirho;
+#[allow(unused_imports)]
+use haskelujah_span_chirho::SourceMapChirho;
 
 // ── Parsing and evaluation ────────────────────────────────────────────────
 
@@ -73,8 +69,8 @@ f :: Int %1 -> Int
 f x = x + 1
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let warnings_chirho = frontend_warnings_chirho(src_chirho, &mut sm_chirho, "LinearOk.hs")
-        .unwrap();
+    let warnings_chirho =
+        frontend_warnings_chirho(src_chirho, &mut sm_chirho, "LinearOk.hs").unwrap();
     let linearity_warns_chirho: Vec<_> = warnings_chirho
         .iter()
         .filter(|w_chirho| w_chirho.contains("Linearity violation"))
@@ -96,8 +92,8 @@ dup :: Int %1 -> Int
 dup x = x + x
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let warnings_chirho = frontend_warnings_chirho(src_chirho, &mut sm_chirho, "LinearDup.hs")
-        .unwrap();
+    let warnings_chirho =
+        frontend_warnings_chirho(src_chirho, &mut sm_chirho, "LinearDup.hs").unwrap();
     let linearity_warns_chirho: Vec<_> = warnings_chirho
         .iter()
         .filter(|w_chirho| w_chirho.contains("Linearity violation"))
@@ -123,8 +119,8 @@ discard :: Int %1 -> Int
 discard x = 42
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let warnings_chirho = frontend_warnings_chirho(src_chirho, &mut sm_chirho, "LinearDiscard.hs")
-        .unwrap();
+    let warnings_chirho =
+        frontend_warnings_chirho(src_chirho, &mut sm_chirho, "LinearDiscard.hs").unwrap();
     let linearity_warns_chirho: Vec<_> = warnings_chirho
         .iter()
         .filter(|w_chirho| w_chirho.contains("Linearity violation"))
@@ -149,8 +145,8 @@ dup :: Int -> Int
 dup x = x + x
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let warnings_chirho = frontend_warnings_chirho(src_chirho, &mut sm_chirho, "NoLinear.hs")
-        .unwrap();
+    let warnings_chirho =
+        frontend_warnings_chirho(src_chirho, &mut sm_chirho, "NoLinear.hs").unwrap();
     let linearity_warns_chirho: Vec<_> = warnings_chirho
         .iter()
         .filter(|w_chirho| w_chirho.contains("Linearity violation"))
@@ -171,8 +167,8 @@ h :: Int %Many -> Int
 h x = x + x
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let warnings_chirho = frontend_warnings_chirho(src_chirho, &mut sm_chirho, "LinearManyOk.hs")
-        .unwrap();
+    let warnings_chirho =
+        frontend_warnings_chirho(src_chirho, &mut sm_chirho, "LinearManyOk.hs").unwrap();
     let linearity_warns_chirho: Vec<_> = warnings_chirho
         .iter()
         .filter(|w_chirho| w_chirho.contains("Linearity violation"))

@@ -32,12 +32,12 @@ pub enum CpEntryChirho {
     LongChirho(i64),
     FloatChirho(f32),
     DoubleChirho(f64),
-    ClassChirho(u16),        // index to Utf8
-    StringChirho(u16),       // index to Utf8
-    FieldRefChirho(u16, u16),        // class_idx, name_and_type_idx
-    MethodRefChirho(u16, u16),       // class_idx, name_and_type_idx
+    ClassChirho(u16),          // index to Utf8
+    StringChirho(u16),         // index to Utf8
+    FieldRefChirho(u16, u16),  // class_idx, name_and_type_idx
+    MethodRefChirho(u16, u16), // class_idx, name_and_type_idx
     InterfaceMethodRefChirho(u16, u16),
-    NameAndTypeChirho(u16, u16),     // name_idx, descriptor_idx
+    NameAndTypeChirho(u16, u16), // name_idx, descriptor_idx
 }
 
 /// Builder for constructing a JVM constant pool.
@@ -80,8 +80,10 @@ impl ConstantPoolChirho {
     pub fn add_name_and_type_chirho(&mut self, name_chirho: &str, descriptor_chirho: &str) -> u16 {
         let name_idx_chirho = self.add_utf8_chirho(name_chirho);
         let desc_idx_chirho = self.add_utf8_chirho(descriptor_chirho);
-        self.entries_chirho
-            .push(CpEntryChirho::NameAndTypeChirho(name_idx_chirho, desc_idx_chirho));
+        self.entries_chirho.push(CpEntryChirho::NameAndTypeChirho(
+            name_idx_chirho,
+            desc_idx_chirho,
+        ));
         (self.entries_chirho.len() - 1) as u16
     }
 
@@ -94,8 +96,10 @@ impl ConstantPoolChirho {
     ) -> u16 {
         let class_idx_chirho = self.add_class_chirho(class_name_chirho);
         let nat_idx_chirho = self.add_name_and_type_chirho(method_name_chirho, descriptor_chirho);
-        self.entries_chirho
-            .push(CpEntryChirho::MethodRefChirho(class_idx_chirho, nat_idx_chirho));
+        self.entries_chirho.push(CpEntryChirho::MethodRefChirho(
+            class_idx_chirho,
+            nat_idx_chirho,
+        ));
         (self.entries_chirho.len() - 1) as u16
     }
 
@@ -211,11 +215,7 @@ mod tests_chirho {
     #[test]
     fn constant_pool_method_ref_chirho() {
         let mut cp_chirho = ConstantPoolChirho::new_chirho();
-        let idx_chirho = cp_chirho.add_method_ref_chirho(
-            "java/lang/Object",
-            "<init>",
-            "()V",
-        );
+        let idx_chirho = cp_chirho.add_method_ref_chirho("java/lang/Object", "<init>", "()V");
         assert!(idx_chirho > 0);
     }
 

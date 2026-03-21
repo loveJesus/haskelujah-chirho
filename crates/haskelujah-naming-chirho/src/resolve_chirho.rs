@@ -152,7 +152,8 @@ pub fn resolve_module_with_imports_chirho(
                 }
             }
             haskelujah_ast_chirho::decl_chirho::DeclChirho::TypeAliasDeclChirho {
-                name_chirho, ..
+                name_chirho,
+                ..
             } => {
                 bind_name_chirho(&mut env_chirho, name_chirho, NamespaceChirho::TypeChirho);
             }
@@ -171,7 +172,8 @@ pub fn resolve_module_with_imports_chirho(
                 }
             }
             haskelujah_ast_chirho::decl_chirho::DeclChirho::TypeFamilyDeclChirho {
-                name_chirho, ..
+                name_chirho,
+                ..
             } => {
                 bind_name_chirho(&mut env_chirho, name_chirho, NamespaceChirho::TypeChirho);
             }
@@ -195,11 +197,7 @@ pub fn resolve_module_with_imports_chirho(
                     .lookup_value_chirho(name_chirho.text_chirho())
                     .map_or(false, |info_chirho| !info_chirho.imported_chirho);
                 if !already_local_chirho {
-                    bind_name_chirho(
-                        &mut env_chirho,
-                        name_chirho,
-                        NamespaceChirho::ValueChirho,
-                    );
+                    bind_name_chirho(&mut env_chirho, name_chirho, NamespaceChirho::ValueChirho);
                 }
             }
             haskelujah_ast_chirho::decl_chirho::DeclChirho::PatBindChirho {
@@ -233,14 +231,11 @@ pub fn resolve_module_with_imports_chirho(
                 }
             }
             haskelujah_ast_chirho::decl_chirho::DeclChirho::PatSynDeclChirho {
-                name_chirho, ..
+                name_chirho,
+                ..
             } => {
                 // Pattern synonyms are constructor-like in the value namespace
-                bind_name_chirho(
-                    &mut env_chirho,
-                    name_chirho,
-                    NamespaceChirho::ValueChirho,
-                );
+                bind_name_chirho(&mut env_chirho, name_chirho, NamespaceChirho::ValueChirho);
             }
             _ => {}
         }
@@ -382,9 +377,7 @@ fn collect_export_names_chirho(
 }
 
 /// Extract the names from an import item.
-fn import_item_names_chirho(
-    item_chirho: &ImportItemChirho,
-) -> Vec<String> {
+fn import_item_names_chirho(item_chirho: &ImportItemChirho) -> Vec<String> {
     match item_chirho {
         ImportItemChirho::VarChirho(name_chirho) => {
             vec![name_chirho.text_chirho().to_string()]
@@ -443,8 +436,7 @@ pub fn report_undefined_with_suggestions_chirho(
     env_chirho: Option<&NameEnvChirho>,
 ) {
     use haskelujah_diagnostics_chirho::suggest_chirho::{
-        default_max_distance_chirho, format_did_you_mean_chirho,
-        suggest_similar_names_chirho,
+        default_max_distance_chirho, format_did_you_mean_chirho, suggest_similar_names_chirho,
     };
 
     let code_chirho = match namespace_chirho {
@@ -494,12 +486,16 @@ fn bind_pat_names_chirho(env_chirho: &mut NameEnvChirho, pat_chirho: &PatChirho)
                 bind_pat_names_chirho(env_chirho, arg_chirho);
             }
         }
-        PatChirho::TupleChirho { elements_chirho, .. } => {
+        PatChirho::TupleChirho {
+            elements_chirho, ..
+        } => {
             for elem_chirho in elements_chirho {
                 bind_pat_names_chirho(env_chirho, elem_chirho);
             }
         }
-        PatChirho::ListChirho { elements_chirho, .. } => {
+        PatChirho::ListChirho {
+            elements_chirho, ..
+        } => {
             for elem_chirho in elements_chirho {
                 bind_pat_names_chirho(env_chirho, elem_chirho);
             }
@@ -541,9 +537,7 @@ fn bind_pat_names_chirho(env_chirho: &mut NameEnvChirho, pat_chirho: &PatChirho)
             bind_pat_names_chirho(env_chirho, pat_chirho);
         }
         // Literals, wildcards, negated literals — no bindings
-        PatChirho::LitChirho(_)
-        | PatChirho::WildcardChirho(_)
-        | PatChirho::NegChirho { .. } => {}
+        PatChirho::LitChirho(_) | PatChirho::WildcardChirho(_) | PatChirho::NegChirho { .. } => {}
     }
 }
 
@@ -616,24 +610,16 @@ fn type_con_names_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirh
                 result_chirho.extend(type_con_names_chirho(elem_chirho));
             }
         }
-        TypeChirho::ListChirho {
-            element_chirho, ..
-        } => {
+        TypeChirho::ListChirho { element_chirho, .. } => {
             result_chirho.extend(type_con_names_chirho(element_chirho));
         }
-        TypeChirho::ParenChirho {
-            inner_chirho, ..
-        } => {
+        TypeChirho::ParenChirho { inner_chirho, .. } => {
             result_chirho.extend(type_con_names_chirho(inner_chirho));
         }
-        TypeChirho::ForallChirho {
-            body_chirho, ..
-        } => {
+        TypeChirho::ForallChirho { body_chirho, .. } => {
             result_chirho.extend(type_con_names_chirho(body_chirho));
         }
-        TypeChirho::QualChirho {
-            body_chirho, ..
-        } => {
+        TypeChirho::QualChirho { body_chirho, .. } => {
             result_chirho.extend(type_con_names_chirho(body_chirho));
         }
         // Type variables — no type constructors
@@ -643,7 +629,9 @@ fn type_con_names_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirh
             result_chirho.push(name_chirho.text_chirho().to_string());
         }
         // DataKinds promoted list — recurse into elements
-        TypeChirho::PromotedListChirho { elements_chirho, .. } => {
+        TypeChirho::PromotedListChirho {
+            elements_chirho, ..
+        } => {
             for elem_chirho in elements_chirho {
                 result_chirho.extend(type_con_names_chirho(elem_chirho));
             }
@@ -662,9 +650,7 @@ fn type_con_names_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirh
 /// any type constructor mentioned in the instance head `T` is defined in
 /// the current module. Orphan instances can cause incoherence and are
 /// flagged with warning W0402.
-pub fn check_orphan_instances_chirho(
-    module_chirho: &ModuleChirho,
-) -> DiagnosticBundleChirho {
+pub fn check_orphan_instances_chirho(module_chirho: &ModuleChirho) -> DiagnosticBundleChirho {
     let local_names_chirho = local_defined_names_chirho(module_chirho);
     let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
 
@@ -712,9 +698,7 @@ pub fn check_orphan_instances_chirho(
                         ),
                         *span_chirho,
                     )
-                    .with_code_chirho(ErrorCodeChirho::warning_chirho(
-                        ORPHAN_INSTANCE_CODE_CHIRHO,
-                    ))
+                    .with_code_chirho(ErrorCodeChirho::warning_chirho(ORPHAN_INSTANCE_CODE_CHIRHO))
                     .with_note_chirho(
                         "move the instance to the module that defines the class \
                          or the type, or use {-# OPTIONS_GHC -fno-warn-orphans #-}",
@@ -854,10 +838,30 @@ mod tests_chirho {
 
         let result_chirho = resolve_module_chirho(&module_chirho);
 
-        assert!(result_chirho.env_chirho.lookup_type_chirho("Color").is_some());
-        assert!(result_chirho.env_chirho.lookup_value_chirho("Red").is_some());
-        assert!(result_chirho.env_chirho.lookup_value_chirho("Green").is_some());
-        assert!(result_chirho.env_chirho.lookup_value_chirho("main").is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("Color")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("Red")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("Green")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("main")
+                .is_some()
+        );
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
     }
 
@@ -868,17 +872,15 @@ mod tests_chirho {
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("Describable"),
                 type_vars_chirho: vec![dummy_name_chirho("a").into()],
-                methods_chirho: vec![
-                    haskelujah_ast_chirho::decl_chirho::ClassMethodChirho {
-                        name_chirho: dummy_name_chirho("describe"),
-                        ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::VarChirho(
-                            dummy_name_chirho("a"),
-                        ),
-                        default_chirho: None,
-                        default_sig_chirho: None,
-                        span_chirho: SpanChirho::DUMMY_CHIRHO,
-                    },
-                ],
+                methods_chirho: vec![haskelujah_ast_chirho::decl_chirho::ClassMethodChirho {
+                    name_chirho: dummy_name_chirho("describe"),
+                    ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::VarChirho(
+                        dummy_name_chirho("a"),
+                    ),
+                    default_chirho: None,
+                    default_sig_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
                 associated_tfs_chirho: vec![],
                 fundeps_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -888,14 +890,18 @@ mod tests_chirho {
 
         let result_chirho = resolve_module_chirho(&module_chirho);
 
-        assert!(result_chirho
-            .env_chirho
-            .lookup_type_chirho("Describable")
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("describe")
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("Describable")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("describe")
+                .is_some()
+        );
     }
 
     // ---------------------------------------------------------------
@@ -916,19 +922,35 @@ mod tests_chirho {
             }],
         );
 
-        let result_chirho =
-            resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
+        let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
 
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
         // Unqualified lookup
-        assert!(result_chirho.env_chirho.lookup_value_chirho("sort").is_some());
-        assert!(result_chirho.env_chirho.lookup_value_chirho("map").is_some());
-        assert!(result_chirho.env_chirho.lookup_type_chirho("Color").is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("sort")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("map")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("Color")
+                .is_some()
+        );
         // Qualified lookup
-        assert!(result_chirho
-            .env_chirho
-            .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
+                .is_some()
+        );
     }
 
     #[test]
@@ -945,16 +967,22 @@ mod tests_chirho {
             }],
         );
 
-        let result_chirho =
-            resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
+        let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
 
         // Unqualified lookup should NOT find imported names
-        assert!(result_chirho.env_chirho.lookup_value_chirho("sort").is_none());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("sort")
+                .is_none()
+        );
         // Qualified lookup should work
-        assert!(result_chirho
-            .env_chirho
-            .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
+                .is_some()
+        );
     }
 
     #[test]
@@ -971,19 +999,22 @@ mod tests_chirho {
             }],
         );
 
-        let result_chirho =
-            resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
+        let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
 
         // Should be accessible via alias
-        assert!(result_chirho
-            .env_chirho
-            .lookup_qualified_chirho("L", "sort", NamespaceChirho::ValueChirho)
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("L", "sort", NamespaceChirho::ValueChirho)
+                .is_some()
+        );
         // Original module name should NOT work with alias
-        assert!(result_chirho
-            .env_chirho
-            .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
-            .is_none());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
+                .is_none()
+        );
     }
 
     #[test]
@@ -1003,12 +1034,21 @@ mod tests_chirho {
             }],
         );
 
-        let result_chirho =
-            resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
+        let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
 
-        assert!(result_chirho.env_chirho.lookup_value_chirho("sort").is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("sort")
+                .is_some()
+        );
         // map is NOT imported
-        assert!(result_chirho.env_chirho.lookup_value_chirho("map").is_none());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("map")
+                .is_none()
+        );
     }
 
     #[test]
@@ -1028,13 +1068,22 @@ mod tests_chirho {
             }],
         );
 
-        let result_chirho =
-            resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
+        let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
 
         // sort is hidden
-        assert!(result_chirho.env_chirho.lookup_value_chirho("sort").is_none());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("sort")
+                .is_none()
+        );
         // map is still imported
-        assert!(result_chirho.env_chirho.lookup_value_chirho("map").is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("map")
+                .is_some()
+        );
     }
 
     #[test]
@@ -1050,8 +1099,7 @@ mod tests_chirho {
             }],
         );
 
-        let result_chirho =
-            resolve_module_with_imports_chirho(&module_chirho, &[]);
+        let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[]);
 
         // Unknown module import is an error
         assert!(result_chirho.diagnostics_chirho.has_errors_chirho());
@@ -1077,8 +1125,7 @@ mod tests_chirho {
             }],
         );
 
-        let result_chirho =
-            resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
+        let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
 
         // Local definition should win (it's bound after imports)
         let info_chirho = result_chirho
@@ -1101,30 +1148,30 @@ mod tests_chirho {
             vec![DeclChirho::DataDeclChirho {
                 name_chirho: dummy_name_chirho("Person"),
                 type_vars_chirho: vec![],
-                constructors_chirho: vec![
-                    ConDeclChirho::RecordChirho {
-                        name_chirho: dummy_name_chirho("MkPerson"),
-                        fields_chirho: vec![
-                            FieldDeclChirho {
-                                names_chirho: vec![dummy_name_chirho("personName")],
-                                ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
-                                    dummy_name_chirho("String"),
-                                ),
-                                strictness_chirho: haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
-                                span_chirho: SpanChirho::DUMMY_CHIRHO,
-                            },
-                            FieldDeclChirho {
-                                names_chirho: vec![dummy_name_chirho("personAge")],
-                                ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
-                                    dummy_name_chirho("Int"),
-                                ),
-                                strictness_chirho: haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
-                                span_chirho: SpanChirho::DUMMY_CHIRHO,
-                            },
-                        ],
-                        span_chirho: SpanChirho::DUMMY_CHIRHO,
-                    },
-                ],
+                constructors_chirho: vec![ConDeclChirho::RecordChirho {
+                    name_chirho: dummy_name_chirho("MkPerson"),
+                    fields_chirho: vec![
+                        FieldDeclChirho {
+                            names_chirho: vec![dummy_name_chirho("personName")],
+                            ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
+                                dummy_name_chirho("String"),
+                            ),
+                            strictness_chirho:
+                                haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                        FieldDeclChirho {
+                            names_chirho: vec![dummy_name_chirho("personAge")],
+                            ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
+                                dummy_name_chirho("Int"),
+                            ),
+                            strictness_chirho:
+                                haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                    ],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1136,16 +1183,32 @@ mod tests_chirho {
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
 
         // Type should be registered
-        assert!(result_chirho.env_chirho.lookup_type_chirho("Person").is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("Person")
+                .is_some()
+        );
         // Constructor should be registered
-        assert!(result_chirho.env_chirho.lookup_value_chirho("MkPerson").is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("MkPerson")
+                .is_some()
+        );
         // Field accessors should be registered as values
         assert!(
-            result_chirho.env_chirho.lookup_value_chirho("personName").is_some(),
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("personName")
+                .is_some(),
             "personName field accessor should be in scope"
         );
         assert!(
-            result_chirho.env_chirho.lookup_value_chirho("personAge").is_some(),
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("personAge")
+                .is_some(),
             "personAge field accessor should be in scope"
         );
     }
@@ -1217,11 +1280,17 @@ mod tests_chirho {
         let result_chirho = resolve_module_chirho(&module_chirho);
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
         assert!(
-            result_chirho.env_chirho.lookup_value_chirho("whole").is_some(),
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("whole")
+                .is_some(),
             "whole from whole@(Just inner) should be in scope"
         );
         assert!(
-            result_chirho.env_chirho.lookup_value_chirho("inner").is_some(),
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("inner")
+                .is_some(),
             "inner from whole@(Just inner) should be in scope"
         );
     }
@@ -1242,7 +1311,8 @@ mod tests_chirho {
                         ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                             dummy_name_chirho("Int"),
                         ),
-                        strictness_chirho: haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                        strictness_chirho:
+                            haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1257,9 +1327,17 @@ mod tests_chirho {
         let result_chirho = resolve_module_chirho(&module_chirho);
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
         assert!(result_chirho.env_chirho.lookup_type_chirho("Age").is_some());
-        assert!(result_chirho.env_chirho.lookup_value_chirho("MkAge").is_some());
         assert!(
-            result_chirho.env_chirho.lookup_value_chirho("getAge").is_some(),
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("MkAge")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("getAge")
+                .is_some(),
             "getAge field accessor for newtype record should be in scope"
         );
     }
@@ -1382,7 +1460,10 @@ mod tests_chirho {
                     type_vars_chirho: vec![dummy_name_chirho("a").into()],
                     constructor_chirho: ConDeclChirho::OrdinaryChirho {
                         name_chirho: dummy_name_chirho("MkWrapper"),
-                        fields_chirho: vec![(haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho, TypeChirho::VarChirho(dummy_name_chirho("a")))],
+                        fields_chirho: vec![(
+                            haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                            TypeChirho::VarChirho(dummy_name_chirho("a")),
+                        )],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     deriving_chirho: vec![],

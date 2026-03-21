@@ -95,7 +95,10 @@ impl DepGraphChirho {
 
     /// All module names in the graph.
     pub fn modules_chirho(&self) -> Vec<&str> {
-        self.nodes_chirho.keys().map(|k_chirho| k_chirho.as_str()).collect()
+        self.nodes_chirho
+            .keys()
+            .map(|k_chirho| k_chirho.as_str())
+            .collect()
     }
 
     /// Compute the transitive closure of modules that depend on `changed_chirho`.
@@ -184,7 +187,11 @@ impl DepGraphChirho {
     /// Returns SCCs in dependency order (leaves first).
     pub fn topo_sort_sccs_chirho(&self) -> Vec<Vec<String>> {
         // Tarjan's SCC algorithm
-        let names_chirho: Vec<&str> = self.nodes_chirho.keys().map(|s_chirho| s_chirho.as_str()).collect();
+        let names_chirho: Vec<&str> = self
+            .nodes_chirho
+            .keys()
+            .map(|s_chirho| s_chirho.as_str())
+            .collect();
         let mut index_map_chirho: HashMap<&str, usize> = HashMap::new();
         let mut lowlink_chirho: HashMap<&str, usize> = HashMap::new();
         let mut on_stack_chirho: HashSet<&str> = HashSet::new();
@@ -212,7 +219,10 @@ impl DepGraphChirho {
             if let Some(deps_chirho) = edges_chirho.get(v_chirho) {
                 for w_name_chirho in deps_chirho {
                     // Find the &'a str reference from names_chirho
-                    if let Some(w_chirho) = names_chirho.iter().find(|n_chirho| **n_chirho == w_name_chirho.as_str()) {
+                    if let Some(w_chirho) = names_chirho
+                        .iter()
+                        .find(|n_chirho| **n_chirho == w_name_chirho.as_str())
+                    {
                         if !index_map_chirho.contains_key(*w_chirho) {
                             strongconnect_chirho(
                                 w_chirho,

@@ -49,7 +49,9 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
             Box::new(ThTypeChirho::ListTChirho),
             Box::new(ast_type_to_th_chirho(element_chirho)),
         ),
-        TypeChirho::TupleChirho { elements_chirho, .. } => {
+        TypeChirho::TupleChirho {
+            elements_chirho, ..
+        } => {
             let arity_chirho = elements_chirho.len() as i32;
             let mut result_chirho = ThTypeChirho::TupleTChirho(arity_chirho);
             for elt_chirho in elements_chirho {
@@ -69,7 +71,11 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
                 .iter()
                 .map(|v_chirho| ast_tyvar_to_th_chirho(v_chirho))
                 .collect();
-            ThTypeChirho::ForallTChirho(bndrs_chirho, vec![], Box::new(ast_type_to_th_chirho(body_chirho)))
+            ThTypeChirho::ForallTChirho(
+                bndrs_chirho,
+                vec![],
+                Box::new(ast_type_to_th_chirho(body_chirho)),
+            )
         }
         TypeChirho::QualChirho {
             context_chirho,
@@ -79,9 +85,9 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
             let cxt_chirho: Vec<ThTypeChirho> = context_chirho
                 .iter()
                 .map(|c_chirho| {
-                    let mut result_chirho = ThTypeChirho::ConTChirho(
-                        ThNameChirho::mk_name_chirho(c_chirho.class_chirho.text_chirho()),
-                    );
+                    let mut result_chirho = ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+                        c_chirho.class_chirho.text_chirho(),
+                    ));
                     for arg_chirho in &c_chirho.args_chirho {
                         result_chirho = ThTypeChirho::AppTChirho(
                             Box::new(result_chirho),
@@ -91,17 +97,24 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
                     result_chirho
                 })
                 .collect();
-            ThTypeChirho::ForallTChirho(vec![], cxt_chirho, Box::new(ast_type_to_th_chirho(body_chirho)))
+            ThTypeChirho::ForallTChirho(
+                vec![],
+                cxt_chirho,
+                Box::new(ast_type_to_th_chirho(body_chirho)),
+            )
         }
         TypeChirho::ParenChirho { inner_chirho, .. } => ast_type_to_th_chirho(inner_chirho),
         TypeChirho::PromotedConChirho { name_chirho, .. } => {
             ThTypeChirho::PromotedTChirho(ThNameChirho::mk_name_chirho(name_chirho.text_chirho()))
         }
-        TypeChirho::PromotedListChirho { elements_chirho, .. } => {
-            ThTypeChirho::PromotedListTChirho(
-                elements_chirho.iter().map(|e_chirho| ast_type_to_th_chirho(e_chirho)).collect(),
-            )
-        }
+        TypeChirho::PromotedListChirho {
+            elements_chirho, ..
+        } => ThTypeChirho::PromotedListTChirho(
+            elements_chirho
+                .iter()
+                .map(|e_chirho| ast_type_to_th_chirho(e_chirho))
+                .collect(),
+        ),
         // PartialTypeSignatures: `_` wildcard becomes a fresh anonymous TH type
         // variable named `_wildcard_chirho` at the TH level.
         TypeChirho::WildcardChirho { .. } => {
@@ -117,15 +130,15 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
 /// Convert a haskelujah AST type variable to a TH type variable binder.
 pub fn ast_tyvar_to_th_chirho(tv_chirho: &TyVarChirho) -> ThTyVarBndrChirho {
     match &tv_chirho.kind_annotation_chirho {
-        None => ThTyVarBndrChirho::PlainTVChirho(
-            ThNameChirho::mk_name_chirho(tv_chirho.name_chirho.text_chirho()),
-        ),
+        None => ThTyVarBndrChirho::PlainTVChirho(ThNameChirho::mk_name_chirho(
+            tv_chirho.name_chirho.text_chirho(),
+        )),
         Some(_kind_chirho) => {
             // Kind annotations require mapping AstKindChirho to ThTypeChirho
             // For now, treat as plain since kind annotations are rare in user code
-            ThTyVarBndrChirho::PlainTVChirho(
-                ThNameChirho::mk_name_chirho(tv_chirho.name_chirho.text_chirho()),
-            )
+            ThTyVarBndrChirho::PlainTVChirho(ThNameChirho::mk_name_chirho(
+                tv_chirho.name_chirho.text_chirho(),
+            ))
         }
     }
 }
@@ -158,11 +171,14 @@ pub fn ast_con_to_th_chirho(con_chirho: &ConDeclChirho) -> ThConChirho {
             let var_bang_types_chirho: Vec<ThVarBangTypeChirho> = fields_chirho
                 .iter()
                 .flat_map(|fd_chirho: &FieldDeclChirho| {
-                    fd_chirho.names_chirho.iter().map(move |fn_chirho| ThVarBangTypeChirho {
-                        name_chirho: ThNameChirho::mk_name_chirho(fn_chirho.text_chirho()),
-                        bang_chirho: ThBangChirho::default_bang_chirho(),
-                        ty_chirho: ast_type_to_th_chirho(&fd_chirho.ty_chirho),
-                    })
+                    fd_chirho
+                        .names_chirho
+                        .iter()
+                        .map(move |fn_chirho| ThVarBangTypeChirho {
+                            name_chirho: ThNameChirho::mk_name_chirho(fn_chirho.text_chirho()),
+                            bang_chirho: ThBangChirho::default_bang_chirho(),
+                            ty_chirho: ast_type_to_th_chirho(&fd_chirho.ty_chirho),
+                        })
                 })
                 .collect();
             ThConChirho::RecCChirho(
@@ -228,9 +244,7 @@ fn extract_gadt_return_type_chirho(ty_chirho: &TypeChirho) -> TypeChirho {
         TypeChirho::ForallChirho { body_chirho, .. } => {
             extract_gadt_return_type_chirho(body_chirho)
         }
-        TypeChirho::QualChirho { body_chirho, .. } => {
-            extract_gadt_return_type_chirho(body_chirho)
-        }
+        TypeChirho::QualChirho { body_chirho, .. } => extract_gadt_return_type_chirho(body_chirho),
         TypeChirho::ParenChirho { inner_chirho, .. } => {
             extract_gadt_return_type_chirho(inner_chirho)
         }
@@ -266,7 +280,11 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
                     strategy_chirho: None,
                     classes_chirho: deriving_chirho
                         .iter()
-                        .map(|d_chirho| ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(d_chirho.text_chirho())))
+                        .map(|d_chirho| {
+                            ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+                                d_chirho.text_chirho(),
+                            ))
+                        })
                         .collect(),
                 }]
             };
@@ -300,7 +318,11 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
                     strategy_chirho: None,
                     classes_chirho: deriving_chirho
                         .iter()
-                        .map(|d_chirho| ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(d_chirho.text_chirho())))
+                        .map(|d_chirho| {
+                            ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+                                d_chirho.text_chirho(),
+                            ))
+                        })
                         .collect(),
                 }]
             };
@@ -330,9 +352,9 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
             let th_cxt_chirho: ThCxtChirho = context_chirho
                 .iter()
                 .map(|c_chirho| {
-                    let mut t_chirho = ThTypeChirho::ConTChirho(
-                        ThNameChirho::mk_name_chirho(c_chirho.class_chirho.text_chirho()),
-                    );
+                    let mut t_chirho = ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+                        c_chirho.class_chirho.text_chirho(),
+                    ));
                     for arg_chirho in &c_chirho.args_chirho {
                         t_chirho = ThTypeChirho::AppTChirho(
                             Box::new(t_chirho),
@@ -345,8 +367,14 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
             let th_fundeps_chirho: Vec<ThFunDepChirho> = fundeps_chirho
                 .iter()
                 .map(|(from_chirho, to_chirho)| ThFunDepChirho {
-                    from_chirho: from_chirho.iter().map(|s_chirho| ThNameChirho::mk_name_chirho(s_chirho)).collect(),
-                    to_chirho: to_chirho.iter().map(|s_chirho| ThNameChirho::mk_name_chirho(s_chirho)).collect(),
+                    from_chirho: from_chirho
+                        .iter()
+                        .map(|s_chirho| ThNameChirho::mk_name_chirho(s_chirho))
+                        .collect(),
+                    to_chirho: to_chirho
+                        .iter()
+                        .map(|s_chirho| ThNameChirho::mk_name_chirho(s_chirho))
+                        .collect(),
                 })
                 .collect();
             let th_methods_chirho: Vec<ThDecChirho> = methods_chirho
@@ -402,7 +430,10 @@ mod tests_chirho {
     use haskelujah_span_chirho::SpanChirho;
 
     fn mk_name_chirho(s_chirho: &str) -> NameChirho {
-        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(s_chirho, SpanChirho::DUMMY_CHIRHO))
+        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+            s_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+        ))
     }
 
     #[test]
@@ -416,13 +447,15 @@ mod tests_chirho {
                     FieldDeclChirho {
                         names_chirho: vec![mk_name_chirho("_name")],
                         ty_chirho: TypeChirho::ConChirho(mk_name_chirho("String")),
-                        strictness_chirho: haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                        strictness_chirho:
+                            haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     FieldDeclChirho {
                         names_chirho: vec![mk_name_chirho("_age")],
                         ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
-                        strictness_chirho: haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                        strictness_chirho:
+                            haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                 ],
@@ -473,7 +506,9 @@ mod tests_chirho {
         match info_chirho {
             ThInfoChirho::TyConIChirho(ThDecChirho::TySynDChirho(name_chirho, _, rhs_chirho)) => {
                 assert_eq!(name_chirho.occ_chirho, "MyString");
-                assert!(matches!(*rhs_chirho, ThTypeChirho::ConTChirho(n) if n.occ_chirho == "String"));
+                assert!(
+                    matches!(*rhs_chirho, ThTypeChirho::ConTChirho(n) if n.occ_chirho == "String")
+                );
             }
             _ => panic!("expected TyConI(TySynD)"),
         }
@@ -491,14 +526,12 @@ mod tests_chirho {
         let th_ty_chirho = ast_type_to_th_chirho(&ty_chirho);
         // Should be AppT (AppT ArrowT Int) Bool
         match th_ty_chirho {
-            ThTypeChirho::AppTChirho(inner_chirho, _bool_chirho) => {
-                match *inner_chirho {
-                    ThTypeChirho::AppTChirho(arrow_chirho, _int_chirho) => {
-                        assert!(matches!(*arrow_chirho, ThTypeChirho::ArrowTChirho));
-                    }
-                    _ => panic!("expected AppT ArrowT Int"),
+            ThTypeChirho::AppTChirho(inner_chirho, _bool_chirho) => match *inner_chirho {
+                ThTypeChirho::AppTChirho(arrow_chirho, _int_chirho) => {
+                    assert!(matches!(*arrow_chirho, ThTypeChirho::ArrowTChirho));
                 }
-            }
+                _ => panic!("expected AppT ArrowT Int"),
+            },
             _ => panic!("expected AppT"),
         }
     }

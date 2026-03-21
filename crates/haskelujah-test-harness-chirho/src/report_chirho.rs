@@ -85,7 +85,10 @@ impl ConformanceTrackerChirho {
         let todo_chirho = self.count_by_status_chirho(StatusChirho::NotStartedChirho);
         lines_chirho.push(format!(
             "Done: {}, Partial: {}, TODO: {}, Pass rate: {:.1}%",
-            done_chirho, partial_chirho, todo_chirho, self.pass_rate_chirho()
+            done_chirho,
+            partial_chirho,
+            todo_chirho,
+            self.pass_rate_chirho()
         ));
         lines_chirho.join("\n")
     }
@@ -98,64 +101,248 @@ pub fn haskell_2010_conformance_chirho() -> ConformanceTrackerChirho {
     let sections_chirho = vec![
         // Chapter 2: Lexical Structure
         sec_chirho("2.1", "Notational Conventions", DoneChirho, ""),
-        sec_chirho("2.2", "Lexical Program Structure", DoneChirho, "lexer + layout rule"),
+        sec_chirho(
+            "2.2",
+            "Lexical Program Structure",
+            DoneChirho,
+            "lexer + layout rule",
+        ),
         sec_chirho("2.3", "Comments", DoneChirho, "line and block comments"),
-        sec_chirho("2.4", "Identifiers and Operators", DoneChirho, "qualified names, operators"),
-        sec_chirho("2.5", "Numeric Literals", DoneChirho, "int, float, hex, octal"),
-        sec_chirho("2.6", "Character and String Literals", DoneChirho, "escape sequences"),
+        sec_chirho(
+            "2.4",
+            "Identifiers and Operators",
+            DoneChirho,
+            "qualified names, operators",
+        ),
+        sec_chirho(
+            "2.5",
+            "Numeric Literals",
+            DoneChirho,
+            "int, float, hex, octal",
+        ),
+        sec_chirho(
+            "2.6",
+            "Character and String Literals",
+            DoneChirho,
+            "escape sequences",
+        ),
         sec_chirho("2.7", "Layout", DoneChirho, "offside rule, brace insertion"),
-
         // Chapter 3: Expressions
-        sec_chirho("3.1", "Errors", PartialChirho, "error function works, undefined partial"),
-        sec_chirho("3.2", "Variables, Constructors, Operators, Literals", DoneChirho, ""),
-        sec_chirho("3.3", "Curried Applications and Lambda Abstractions", DoneChirho, ""),
-        sec_chirho("3.4", "Operator Applications", DoneChirho, "sections, fixity"),
+        sec_chirho(
+            "3.1",
+            "Errors",
+            PartialChirho,
+            "error function works, undefined partial",
+        ),
+        sec_chirho(
+            "3.2",
+            "Variables, Constructors, Operators, Literals",
+            DoneChirho,
+            "",
+        ),
+        sec_chirho(
+            "3.3",
+            "Curried Applications and Lambda Abstractions",
+            DoneChirho,
+            "",
+        ),
+        sec_chirho(
+            "3.4",
+            "Operator Applications",
+            DoneChirho,
+            "sections, fixity",
+        ),
         sec_chirho("3.5", "Sections", DoneChirho, "left and right sections"),
         sec_chirho("3.6", "Conditionals", DoneChirho, "if-then-else"),
         sec_chirho("3.7", "Lists", DoneChirho, "list literals, cons, concat"),
         sec_chirho("3.8", "Tuples", DoneChirho, "pair tuples, fst, snd"),
-        sec_chirho("3.9", "Unit Expressions and Parenthesized Expressions", DoneChirho, ""),
-        sec_chirho("3.10", "Arithmetic Sequences", DoneChirho, "[1..], [1,3..], [1..10], [1,3..10]"),
-        sec_chirho("3.11", "List Comprehensions", DoneChirho, "generators, guards, let"),
+        sec_chirho(
+            "3.9",
+            "Unit Expressions and Parenthesized Expressions",
+            DoneChirho,
+            "",
+        ),
+        sec_chirho(
+            "3.10",
+            "Arithmetic Sequences",
+            DoneChirho,
+            "[1..], [1,3..], [1..10], [1,3..10]",
+        ),
+        sec_chirho(
+            "3.11",
+            "List Comprehensions",
+            DoneChirho,
+            "generators, guards, let",
+        ),
         sec_chirho("3.12", "Let Expressions", DoneChirho, "let/in, where"),
-        sec_chirho("3.13", "Case Expressions", DoneChirho, "with exhaustiveness checking"),
-        sec_chirho("3.14", "Do Expressions", DoneChirho, "bind, return, let in do"),
-        sec_chirho("3.15", "Datatypes with Field Labels", DoneChirho, "record construction, update, pattern match"),
-        sec_chirho("3.16", "Expression Type-Signatures", DoneChirho, ":: annotations"),
-        sec_chirho("3.17", "Pattern Matching", DoneChirho, "constructors, literals, wildcards, as-patterns, guards"),
-
+        sec_chirho(
+            "3.13",
+            "Case Expressions",
+            DoneChirho,
+            "with exhaustiveness checking",
+        ),
+        sec_chirho(
+            "3.14",
+            "Do Expressions",
+            DoneChirho,
+            "bind, return, let in do",
+        ),
+        sec_chirho(
+            "3.15",
+            "Datatypes with Field Labels",
+            DoneChirho,
+            "record construction, update, pattern match",
+        ),
+        sec_chirho(
+            "3.16",
+            "Expression Type-Signatures",
+            DoneChirho,
+            ":: annotations",
+        ),
+        sec_chirho(
+            "3.17",
+            "Pattern Matching",
+            DoneChirho,
+            "constructors, literals, wildcards, as-patterns, guards",
+        ),
         // Chapter 4: Declarations and Bindings
         sec_chirho("4.1", "Overview of Types and Classes", DoneChirho, ""),
-        sec_chirho("4.2", "User-Defined Datatypes", DoneChirho, "data, newtype, type aliases"),
-        sec_chirho("4.3", "Type Classes and Overloading", DoneChirho, "class, instance, default methods, deriving"),
-        sec_chirho("4.4", "Nested Declarations", DoneChirho, "type sigs, fixity, function/pattern bindings"),
-        sec_chirho("4.5", "Static Semantics of Function and Pattern Bindings", DoneChirho, ""),
-        sec_chirho("4.6", "Kind Inference", DoneChirho, "kind inference with unification"),
-
+        sec_chirho(
+            "4.2",
+            "User-Defined Datatypes",
+            DoneChirho,
+            "data, newtype, type aliases",
+        ),
+        sec_chirho(
+            "4.3",
+            "Type Classes and Overloading",
+            DoneChirho,
+            "class, instance, default methods, deriving",
+        ),
+        sec_chirho(
+            "4.4",
+            "Nested Declarations",
+            DoneChirho,
+            "type sigs, fixity, function/pattern bindings",
+        ),
+        sec_chirho(
+            "4.5",
+            "Static Semantics of Function and Pattern Bindings",
+            DoneChirho,
+            "",
+        ),
+        sec_chirho(
+            "4.6",
+            "Kind Inference",
+            DoneChirho,
+            "kind inference with unification",
+        ),
         // Chapter 5: Modules
-        sec_chirho("5.1", "Module Structure", DoneChirho, "module header, export list"),
-        sec_chirho("5.2", "Export Lists", DoneChirho, "var, tycon(..), module re-export"),
-        sec_chirho("5.3", "Import Declarations", DoneChirho, "qualified, as, hiding, import specs"),
-        sec_chirho("5.4", "Importing and Exporting Instance Declarations", PartialChirho, "instances auto-export, orphan detection done"),
-        sec_chirho("5.5", "Name Clashes and Closure", PartialChirho, "qualified disambiguation works"),
-        sec_chirho("5.6", "Standard Prelude", DoneChirho, "automatic Prelude import, NoImplicitPrelude"),
-        sec_chirho("5.7", "Separate Compilation", DoneChirho, "multi-module, incremental, hierarchical"),
-
+        sec_chirho(
+            "5.1",
+            "Module Structure",
+            DoneChirho,
+            "module header, export list",
+        ),
+        sec_chirho(
+            "5.2",
+            "Export Lists",
+            DoneChirho,
+            "var, tycon(..), module re-export",
+        ),
+        sec_chirho(
+            "5.3",
+            "Import Declarations",
+            DoneChirho,
+            "qualified, as, hiding, import specs",
+        ),
+        sec_chirho(
+            "5.4",
+            "Importing and Exporting Instance Declarations",
+            PartialChirho,
+            "instances auto-export, orphan detection done",
+        ),
+        sec_chirho(
+            "5.5",
+            "Name Clashes and Closure",
+            PartialChirho,
+            "qualified disambiguation works",
+        ),
+        sec_chirho(
+            "5.6",
+            "Standard Prelude",
+            DoneChirho,
+            "automatic Prelude import, NoImplicitPrelude",
+        ),
+        sec_chirho(
+            "5.7",
+            "Separate Compilation",
+            DoneChirho,
+            "multi-module, incremental, hierarchical",
+        ),
         // Chapter 6: Predefined Types and Classes
-        sec_chirho("6.1", "Standard Haskell Types", DoneChirho, "Bool, Char, Int, Integer, Float, Double, Maybe, Either, Ordering, tuples, lists"),
-        sec_chirho("6.2", "Strict Evaluation", DoneChirho, "seq, $!, $!!, deepseq, force, evaluate"),
-        sec_chirho("6.3", "Standard Haskell Classes", DoneChirho, "Eq, Ord, Show, Read, Num, Enum, Bounded, Functor, Foldable, Traversable"),
-        sec_chirho("6.4", "Numbers", PartialChirho, "Int/Double done, Integer/Rational partial"),
-
+        sec_chirho(
+            "6.1",
+            "Standard Haskell Types",
+            DoneChirho,
+            "Bool, Char, Int, Integer, Float, Double, Maybe, Either, Ordering, tuples, lists",
+        ),
+        sec_chirho(
+            "6.2",
+            "Strict Evaluation",
+            DoneChirho,
+            "seq, $!, $!!, deepseq, force, evaluate",
+        ),
+        sec_chirho(
+            "6.3",
+            "Standard Haskell Classes",
+            DoneChirho,
+            "Eq, Ord, Show, Read, Num, Enum, Bounded, Functor, Foldable, Traversable",
+        ),
+        sec_chirho(
+            "6.4",
+            "Numbers",
+            PartialChirho,
+            "Int/Double done, Integer/Rational partial",
+        ),
         // Chapter 7: Basic I/O
-        sec_chirho("7.1", "Standard I/O Functions", DoneChirho, "putStr, putStrLn, print, getLine, getChar"),
-        sec_chirho("7.2", "Sequencing I/O Operations", DoneChirho, "do notation, >>= , >>"),
-        sec_chirho("7.3", "Exception Handling in the I/O Monad", DoneChirho, "catch, throw, try, bracket, finally"),
-
+        sec_chirho(
+            "7.1",
+            "Standard I/O Functions",
+            DoneChirho,
+            "putStr, putStrLn, print, getLine, getChar",
+        ),
+        sec_chirho(
+            "7.2",
+            "Sequencing I/O Operations",
+            DoneChirho,
+            "do notation, >>= , >>",
+        ),
+        sec_chirho(
+            "7.3",
+            "Exception Handling in the I/O Monad",
+            DoneChirho,
+            "catch, throw, try, bracket, finally",
+        ),
         // Chapter 8: Foreign Function Interface (addendum)
-        sec_chirho("8.1", "Foreign Declarations", DoneChirho, "foreign import ccall, foreign export ccall"),
-        sec_chirho("8.2", "Marshalling", NotStartedChirho, "Storable, Ptr, ForeignPtr not yet implemented"),
-        sec_chirho("8.3", "Foreign Types", NotStartedChirho, "CInt, CDouble, etc. not yet mapped"),
+        sec_chirho(
+            "8.1",
+            "Foreign Declarations",
+            DoneChirho,
+            "foreign import ccall, foreign export ccall",
+        ),
+        sec_chirho(
+            "8.2",
+            "Marshalling",
+            NotStartedChirho,
+            "Storable, Ptr, ForeignPtr not yet implemented",
+        ),
+        sec_chirho(
+            "8.3",
+            "Foreign Types",
+            NotStartedChirho,
+            "CInt, CDouble, etc. not yet mapped",
+        ),
     ];
 
     ConformanceTrackerChirho { sections_chirho }
@@ -229,9 +416,18 @@ mod tests_chirho {
                 sec_chirho("3.0", "C", StatusChirho::NotStartedChirho, ""),
             ],
         };
-        assert_eq!(tracker_chirho.count_by_status_chirho(StatusChirho::DoneChirho), 1);
-        assert_eq!(tracker_chirho.count_by_status_chirho(StatusChirho::PartialChirho), 1);
-        assert_eq!(tracker_chirho.count_by_status_chirho(StatusChirho::NotStartedChirho), 1);
+        assert_eq!(
+            tracker_chirho.count_by_status_chirho(StatusChirho::DoneChirho),
+            1
+        );
+        assert_eq!(
+            tracker_chirho.count_by_status_chirho(StatusChirho::PartialChirho),
+            1
+        );
+        assert_eq!(
+            tracker_chirho.count_by_status_chirho(StatusChirho::NotStartedChirho),
+            1
+        );
     }
 
     #[test]

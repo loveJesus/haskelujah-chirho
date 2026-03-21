@@ -58,7 +58,11 @@ impl ThNameChirho {
     }
 
     /// Create a global name with module qualification.
-    pub fn global_chirho(occ_chirho: &str, module_chirho: &str, ns_chirho: ThNameSpaceChirho) -> Self {
+    pub fn global_chirho(
+        occ_chirho: &str,
+        module_chirho: &str,
+        ns_chirho: ThNameSpaceChirho,
+    ) -> Self {
         Self {
             occ_chirho: occ_chirho.to_string(),
             flavour_chirho: ThNameFlavourChirho::GlobalChirho {
@@ -129,7 +133,11 @@ pub enum ThExpChirho {
     /// Type application: `f @Int`.
     AppTypeEChirho(Box<ThExpChirho>, Box<ThTypeChirho>),
     /// Infix application: `x + y` as `InfixE (Just x) (+) (Just y)`.
-    InfixEChirho(Option<Box<ThExpChirho>>, Box<ThExpChirho>, Option<Box<ThExpChirho>>),
+    InfixEChirho(
+        Option<Box<ThExpChirho>>,
+        Box<ThExpChirho>,
+        Option<Box<ThExpChirho>>,
+    ),
     /// Unboxed infix application.
     UnboundVarEChirho(ThNameChirho),
     /// Lambda: `\p1 p2 -> body`.
@@ -358,30 +366,67 @@ pub enum ThDecChirho {
     /// Type signature: `f :: Type`.
     SigDChirho(ThNameChirho, Box<ThTypeChirho>),
     /// Data declaration: `data T a = C1 | C2`.
-    DataDChirho(ThCxtChirho, ThNameChirho, Vec<ThTyVarBndrChirho>,
-                Option<Box<ThTypeChirho>>, Vec<ThConChirho>, Vec<ThDerivClauseChirho>),
+    DataDChirho(
+        ThCxtChirho,
+        ThNameChirho,
+        Vec<ThTyVarBndrChirho>,
+        Option<Box<ThTypeChirho>>,
+        Vec<ThConChirho>,
+        Vec<ThDerivClauseChirho>,
+    ),
     /// Newtype: `newtype T a = C Type`.
-    NewtypeDChirho(ThCxtChirho, ThNameChirho, Vec<ThTyVarBndrChirho>,
-                   Option<Box<ThTypeChirho>>, ThConChirho, Vec<ThDerivClauseChirho>),
+    NewtypeDChirho(
+        ThCxtChirho,
+        ThNameChirho,
+        Vec<ThTyVarBndrChirho>,
+        Option<Box<ThTypeChirho>>,
+        ThConChirho,
+        Vec<ThDerivClauseChirho>,
+    ),
     /// Type alias: `type Name = Type`.
     TySynDChirho(ThNameChirho, Vec<ThTyVarBndrChirho>, Box<ThTypeChirho>),
     /// Class declaration.
-    ClassDChirho(ThCxtChirho, ThNameChirho, Vec<ThTyVarBndrChirho>,
-                 Vec<ThFunDepChirho>, Vec<ThDecChirho>),
+    ClassDChirho(
+        ThCxtChirho,
+        ThNameChirho,
+        Vec<ThTyVarBndrChirho>,
+        Vec<ThFunDepChirho>,
+        Vec<ThDecChirho>,
+    ),
     /// Instance declaration.
-    InstanceDChirho(Option<ThOverlapChirho>, ThCxtChirho, Box<ThTypeChirho>, Vec<ThDecChirho>),
+    InstanceDChirho(
+        Option<ThOverlapChirho>,
+        ThCxtChirho,
+        Box<ThTypeChirho>,
+        Vec<ThDecChirho>,
+    ),
     /// Standalone deriving: `deriving instance C T`.
-    StandaloneDerivDChirho(Option<ThDerivStrategyChirho>, ThCxtChirho, Box<ThTypeChirho>),
+    StandaloneDerivDChirho(
+        Option<ThDerivStrategyChirho>,
+        ThCxtChirho,
+        Box<ThTypeChirho>,
+    ),
     /// Foreign import.
     ForeignDChirho(ThForeignChirho),
     /// Inline pragma.
-    InlineDChirho(ThNameChirho, ThInlineChirho, ThRuleBangChirho, ThPhasesChirho),
+    InlineDChirho(
+        ThNameChirho,
+        ThInlineChirho,
+        ThRuleBangChirho,
+        ThPhasesChirho,
+    ),
     /// Specialise pragma.
     SpecialiseDChirho(ThNameChirho, Box<ThTypeChirho>, ThPhasesChirho),
     /// Specialise instance pragma.
     SpecialiseInstDChirho(Box<ThTypeChirho>),
     /// Rule pragma: `{-# RULES "name" forall x. f x = g x #-}`.
-    RuleDChirho(String, Vec<ThRuleBndrChirho>, Box<ThExpChirho>, Box<ThExpChirho>, ThPhasesChirho),
+    RuleDChirho(
+        String,
+        Vec<ThRuleBndrChirho>,
+        Box<ThExpChirho>,
+        Box<ThExpChirho>,
+        ThPhasesChirho,
+    ),
     /// ANN pragma.
     AnnDChirho(ThAnnTargetChirho, Box<ThExpChirho>),
     /// Fixity declaration.
@@ -393,22 +438,47 @@ pub enum ThDecChirho {
     /// Closed type family.
     ClosedTypeFamilyDChirho(ThTypeFamilyHeadChirho, Vec<ThTySynEqnChirho>),
     /// Data family declaration.
-    DataFamilyDChirho(ThNameChirho, Vec<ThTyVarBndrChirho>, Option<Box<ThTypeChirho>>),
+    DataFamilyDChirho(
+        ThNameChirho,
+        Vec<ThTyVarBndrChirho>,
+        Option<Box<ThTypeChirho>>,
+    ),
     /// Data family instance.
-    DataInstDChirho(ThCxtChirho, Box<ThTypeChirho>,
-                    Option<Box<ThTypeChirho>>, Vec<ThConChirho>, Vec<ThDerivClauseChirho>),
+    DataInstDChirho(
+        ThCxtChirho,
+        Box<ThTypeChirho>,
+        Option<Box<ThTypeChirho>>,
+        Vec<ThConChirho>,
+        Vec<ThDerivClauseChirho>,
+    ),
     /// Newtype family instance.
-    NewtypeInstDChirho(ThCxtChirho, Box<ThTypeChirho>,
-                       Option<Box<ThTypeChirho>>, ThConChirho, Vec<ThDerivClauseChirho>),
+    NewtypeInstDChirho(
+        ThCxtChirho,
+        Box<ThTypeChirho>,
+        Option<Box<ThTypeChirho>>,
+        ThConChirho,
+        Vec<ThDerivClauseChirho>,
+    ),
     /// Type family instance: `type instance F Int = Bool`.
     TySynInstDChirho(ThTySynEqnChirho),
     /// Role annotation.
     RoleAnnotDChirho(ThNameChirho, Vec<ThRoleChirho>),
     /// Pattern synonym.
-    PatSynDChirho(ThNameChirho, ThPatSynArgsChirho, ThPatSynDirChirho, ThPatChirho),
+    PatSynDChirho(
+        ThNameChirho,
+        ThPatSynArgsChirho,
+        ThPatSynDirChirho,
+        ThPatChirho,
+    ),
     /// Pattern synonym type signature.
-    PatSynSigDChirho(ThNameChirho, Vec<ThTyVarBndrChirho>, ThCxtChirho,
-                     Vec<ThTyVarBndrChirho>, ThCxtChirho, Box<ThTypeChirho>),
+    PatSynSigDChirho(
+        ThNameChirho,
+        Vec<ThTyVarBndrChirho>,
+        ThCxtChirho,
+        Vec<ThTyVarBndrChirho>,
+        ThCxtChirho,
+        Box<ThTypeChirho>,
+    ),
     /// COMPLETE pragma.
     CompleteDChirho(Vec<ThNameChirho>, Option<ThNameChirho>),
     /// Implicit parameter binding.
@@ -435,7 +505,11 @@ pub enum ThConChirho {
     /// GADT: `C :: Int -> Bool -> T a`.
     GadtCChirho(Vec<ThNameChirho>, Vec<ThBangTypeChirho>, Box<ThTypeChirho>),
     /// Record GADT: `C :: { f :: Int } -> T a`.
-    RecGadtCChirho(Vec<ThNameChirho>, Vec<ThVarBangTypeChirho>, Box<ThTypeChirho>),
+    RecGadtCChirho(
+        Vec<ThNameChirho>,
+        Vec<ThVarBangTypeChirho>,
+        Box<ThTypeChirho>,
+    ),
     /// Forall-qualified constructor.
     ForallCChirho(Vec<ThTyVarBndrChirho>, ThCxtChirho, Box<ThConChirho>),
 }
@@ -534,7 +608,13 @@ pub enum ThFixityDirectionChirho {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ThForeignChirho {
-    ImportFChirho(ThCallconvChirho, ThSafetyChirho, String, ThNameChirho, Box<ThTypeChirho>),
+    ImportFChirho(
+        ThCallconvChirho,
+        ThSafetyChirho,
+        String,
+        ThNameChirho,
+        Box<ThTypeChirho>,
+    ),
     ExportFChirho(ThCallconvChirho, String, ThNameChirho, Box<ThTypeChirho>),
 }
 
@@ -677,7 +757,8 @@ mod tests_chirho {
         let name_chirho = ThNameChirho::mk_name_chirho("foo");
         assert_eq!(format!("{}", name_chirho), "foo");
 
-        let global_chirho = ThNameChirho::global_chirho("insert", "Data.Map", ThNameSpaceChirho::VarNameChirho);
+        let global_chirho =
+            ThNameChirho::global_chirho("insert", "Data.Map", ThNameSpaceChirho::VarNameChirho);
         assert_eq!(format!("{}", global_chirho), "Data.Map.insert");
 
         let unique_chirho = ThNameChirho::unique_chirho("x", 42);
@@ -695,10 +776,14 @@ mod tests_chirho {
             ThNameChirho::mk_name_chirho("name"),
             Box::new(ThTypeChirho::AppTChirho(
                 Box::new(ThTypeChirho::AppTChirho(
-                    Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho("Lens'"))),
+                    Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+                        "Lens'",
+                    ))),
                     Box::new(ThTypeChirho::ConTChirho(person_name_chirho.clone())),
                 )),
-                Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho("String"))),
+                Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+                    "String",
+                ))),
             )),
         );
 
@@ -708,19 +793,19 @@ mod tests_chirho {
             ThNameChirho::mk_name_chirho("name"),
             vec![ThClauseChirho {
                 pats_chirho: vec![ThPatChirho::VarPChirho(ThNameChirho::mk_name_chirho("f"))],
-                body_chirho: ThBodyChirho::NormalBChirho(
-                    ThExpChirho::LamEChirho(
-                        vec![ThPatChirho::ConPChirho(
-                            person_name_chirho,
-                            vec![],
-                            vec![
-                                ThPatChirho::VarPChirho(ThNameChirho::mk_name_chirho("n")),
-                                ThPatChirho::VarPChirho(ThNameChirho::mk_name_chirho("a")),
-                            ],
-                        )],
-                        Box::new(ThExpChirho::VarEChirho(ThNameChirho::mk_name_chirho("placeholder"))),
-                    ),
-                ),
+                body_chirho: ThBodyChirho::NormalBChirho(ThExpChirho::LamEChirho(
+                    vec![ThPatChirho::ConPChirho(
+                        person_name_chirho,
+                        vec![],
+                        vec![
+                            ThPatChirho::VarPChirho(ThNameChirho::mk_name_chirho("n")),
+                            ThPatChirho::VarPChirho(ThNameChirho::mk_name_chirho("a")),
+                        ],
+                    )],
+                    Box::new(ThExpChirho::VarEChirho(ThNameChirho::mk_name_chirho(
+                        "placeholder",
+                    ))),
+                )),
                 decs_chirho: vec![],
             }],
         );
@@ -744,7 +829,12 @@ mod tests_chirho {
         match &result_chirho[0] {
             ThDecChirho::ValDChirho(pat_chirho, body_chirho, decs_chirho) => {
                 assert!(matches!(pat_chirho, ThPatChirho::VarPChirho(n) if n.occ_chirho == "x"));
-                assert!(matches!(body_chirho, ThBodyChirho::NormalBChirho(ThExpChirho::LitEChirho(ThLitChirho::IntegerLChirho(42)))));
+                assert!(matches!(
+                    body_chirho,
+                    ThBodyChirho::NormalBChirho(ThExpChirho::LitEChirho(
+                        ThLitChirho::IntegerLChirho(42)
+                    ))
+                ));
                 assert!(decs_chirho.is_empty());
             }
             _ => panic!("expected ValD"),
@@ -754,7 +844,13 @@ mod tests_chirho {
     #[test]
     fn th_bang_default_chirho() {
         let bang_chirho = ThBangChirho::default_bang_chirho();
-        assert_eq!(bang_chirho.src_unpackedness_chirho, ThSourceUnpackednessChirho::NoSourceUnpackednessChirho);
-        assert_eq!(bang_chirho.src_strictness_chirho, ThSourceStrictnessChirho::NoSourceStrictnessChirho);
+        assert_eq!(
+            bang_chirho.src_unpackedness_chirho,
+            ThSourceUnpackednessChirho::NoSourceUnpackednessChirho
+        );
+        assert_eq!(
+            bang_chirho.src_strictness_chirho,
+            ThSourceStrictnessChirho::NoSourceStrictnessChirho
+        );
     }
 }

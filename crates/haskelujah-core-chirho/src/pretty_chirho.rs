@@ -8,9 +8,7 @@
 
 use std::fmt::Write;
 
-use crate::expr_chirho::{
-    CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreModuleChirho,
-};
+use crate::expr_chirho::{CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreModuleChirho};
 
 /// Pretty-print a Core module to a string.
 pub fn pretty_module_chirho(module_chirho: &CoreModuleChirho) -> String {
@@ -43,16 +41,17 @@ fn pretty_binding_chirho(
         binding_chirho.binder_chirho.name_chirho, binding_chirho.binder_chirho.ty_chirho
     )
     .unwrap();
-    write!(out_chirho, "{prefix_chirho}{} = ", binding_chirho.binder_chirho.name_chirho).unwrap();
+    write!(
+        out_chirho,
+        "{prefix_chirho}{} = ",
+        binding_chirho.binder_chirho.name_chirho
+    )
+    .unwrap();
     pretty_expr_chirho(out_chirho, &binding_chirho.rhs_chirho, indent_chirho + 2);
     writeln!(out_chirho).unwrap();
 }
 
-fn pretty_expr_chirho(
-    out_chirho: &mut String,
-    expr_chirho: &CoreExprChirho,
-    indent_chirho: usize,
-) {
+fn pretty_expr_chirho(out_chirho: &mut String, expr_chirho: &CoreExprChirho, indent_chirho: usize) {
     match expr_chirho {
         CoreExprChirho::VarChirho(id_chirho) => {
             write!(out_chirho, "{id_chirho}").unwrap();
@@ -90,7 +89,12 @@ fn pretty_expr_chirho(
             let prefix_chirho = " ".repeat(indent_chirho);
             writeln!(out_chirho, "{kw_chirho} {{").unwrap();
             for (binder_chirho, rhs_chirho) in binds_chirho {
-                write!(out_chirho, "{prefix_chirho}  {} = ", binder_chirho.name_chirho).unwrap();
+                write!(
+                    out_chirho,
+                    "{prefix_chirho}  {} = ",
+                    binder_chirho.name_chirho
+                )
+                .unwrap();
                 pretty_expr_chirho(out_chirho, rhs_chirho, indent_chirho + 4);
                 writeln!(out_chirho).unwrap();
             }
@@ -156,11 +160,7 @@ fn pretty_expr_chirho(
     }
 }
 
-fn pretty_alt_chirho(
-    out_chirho: &mut String,
-    alt_chirho: &CoreAltChirho,
-    indent_chirho: usize,
-) {
+fn pretty_alt_chirho(out_chirho: &mut String, alt_chirho: &CoreAltChirho, indent_chirho: usize) {
     let prefix_chirho = " ".repeat(indent_chirho);
     write!(out_chirho, "{prefix_chirho}{}", alt_chirho.con_chirho).unwrap();
     for binder_chirho in &alt_chirho.binders_chirho {
@@ -174,7 +174,9 @@ fn pretty_alt_chirho(
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
-    use crate::expr_chirho::{AltConChirho, BinderChirho, CoreIdChirho, CoreLitChirho, InlineAnnotationChirho};
+    use crate::expr_chirho::{
+        AltConChirho, BinderChirho, CoreIdChirho, CoreLitChirho, InlineAnnotationChirho,
+    };
     use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
     #[test]
@@ -190,7 +192,7 @@ mod tests_chirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),

@@ -150,9 +150,15 @@ main = putStrLn "hello"
             );
             let file_id_chirho = source_file_chirho.file_id_chirho();
             let parser_chirho =
-                haskelujah_parser_chirho::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+                haskelujah_parser_chirho::cst_parser_chirho::ParserChirho::new_chirho(
+                    source_chirho,
+                    file_id_chirho,
+                );
             let green_chirho = parser_chirho.parse_chirho();
-            let module_chirho = haskelujah_parser_chirho::lower_chirho::lower_module_chirho(&green_chirho, file_id_chirho);
+            let module_chirho = haskelujah_parser_chirho::lower_chirho::lower_module_chirho(
+                &green_chirho,
+                file_id_chirho,
+            );
 
             // Run splice expansion on the raw AST declarations.
             let splice_result_chirho =
@@ -163,11 +169,15 @@ main = putStrLn "hello"
                 .decls_chirho
                 .iter()
                 .filter(|d_chirho| {
-                    matches!(d_chirho, haskelujah_ast_chirho::decl_chirho::DeclChirho::SpliceDeclChirho { .. })
+                    matches!(
+                        d_chirho,
+                        haskelujah_ast_chirho::decl_chirho::DeclChirho::SpliceDeclChirho { .. }
+                    )
                 })
                 .count();
             assert_eq!(
-                remaining_splices_chirho, 0,
+                remaining_splices_chirho,
+                0,
                 "no SpliceDeclChirho should remain after expansion (fallback path due to: {:?})",
                 diag_chirho
                     .diagnostics_chirho()
@@ -194,10 +204,22 @@ main = putStrLn "hello"
                     if name_chirho.text_chirho() == "age")
             });
 
-            assert!(has_name_sig_chirho, "fallback: should have TypeSig for 'name'");
-            assert!(has_name_fun_chirho, "fallback: should have FunBind for 'name'");
-            assert!(has_age_sig_chirho, "fallback: should have TypeSig for 'age'");
-            assert!(has_age_fun_chirho, "fallback: should have FunBind for 'age'");
+            assert!(
+                has_name_sig_chirho,
+                "fallback: should have TypeSig for 'name'"
+            );
+            assert!(
+                has_name_fun_chirho,
+                "fallback: should have FunBind for 'name'"
+            );
+            assert!(
+                has_age_sig_chirho,
+                "fallback: should have TypeSig for 'age'"
+            );
+            assert!(
+                has_age_fun_chirho,
+                "fallback: should have FunBind for 'age'"
+            );
 
             // The splice expansion itself worked; type-checking limitations are expected.
             return;
@@ -211,7 +233,10 @@ main = putStrLn "hello"
     let remaining_splices_chirho = decls_chirho
         .iter()
         .filter(|d_chirho| {
-            matches!(d_chirho, haskelujah_ast_chirho::decl_chirho::DeclChirho::SpliceDeclChirho { .. })
+            matches!(
+                d_chirho,
+                haskelujah_ast_chirho::decl_chirho::DeclChirho::SpliceDeclChirho { .. }
+            )
         })
         .count();
     assert_eq!(
@@ -249,8 +274,10 @@ main = putStrLn "hello"
             matches!(d_chirho, haskelujah_ast_chirho::decl_chirho::DeclChirho::TypeSigChirho { name_chirho, .. }
                 if name_chirho.text_chirho() == *lens_name_chirho)
         });
-        if let Some(haskelujah_ast_chirho::decl_chirho::DeclChirho::TypeSigChirho { ty_chirho, .. }) =
-            sig_decl_chirho
+        if let Some(haskelujah_ast_chirho::decl_chirho::DeclChirho::TypeSigChirho {
+            ty_chirho,
+            ..
+        }) = sig_decl_chirho
         {
             // The type should be ForallChirho wrapping a QualChirho with Functor context.
             let has_functor_chirho = type_mentions_functor_chirho(ty_chirho);
@@ -296,17 +323,13 @@ fn type_mentions_functor_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::Ty
             fun_chirho,
             arg_chirho,
             ..
-        } => {
-            type_mentions_functor_chirho(fun_chirho)
-                || type_mentions_functor_chirho(arg_chirho)
-        }
+        } => type_mentions_functor_chirho(fun_chirho) || type_mentions_functor_chirho(arg_chirho),
         TypeChirho::FunChirho {
             arg_chirho,
             result_chirho,
             ..
         } => {
-            type_mentions_functor_chirho(arg_chirho)
-                || type_mentions_functor_chirho(result_chirho)
+            type_mentions_functor_chirho(arg_chirho) || type_mentions_functor_chirho(result_chirho)
         }
         TypeChirho::ConChirho(name_chirho) => name_chirho.text_chirho() == "Functor",
         _ => false,

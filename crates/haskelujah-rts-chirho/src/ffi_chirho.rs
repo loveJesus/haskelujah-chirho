@@ -361,11 +361,7 @@ pub extern "C" fn haskelujah_alloc_thunk_chirho(
 
         if num_fvs_chirho > 0 && !fvs_chirho.is_null() {
             let fvs_dest_chirho = header_chirho.add(1);
-            std::ptr::copy_nonoverlapping(
-                fvs_chirho,
-                fvs_dest_chirho,
-                num_fvs_chirho as usize,
-            );
+            std::ptr::copy_nonoverlapping(fvs_chirho, fvs_dest_chirho, num_fvs_chirho as usize);
         }
     }
     // Set low bit to mark as heap pointer.
@@ -426,7 +422,8 @@ pub extern "C" fn haskelujah_enter_thunk_chirho(thunk_ptr_chirho: u64) -> u64 {
 
         // Unevaluated thunk: blackhole, call code, update
         let code_addr_chirho = header_chirho >> 8;
-        *raw_ptr_chirho = (code_addr_chirho << 8) | THUNK_STATE_BLACKHOLE_CHIRHO | KIND_THUNK_CHIRHO;
+        *raw_ptr_chirho =
+            (code_addr_chirho << 8) | THUNK_STATE_BLACKHOLE_CHIRHO | KIND_THUNK_CHIRHO;
 
         let fvs_ptr_chirho = raw_ptr_chirho.add(1);
         let code_fn_chirho: unsafe extern "C" fn(*const u64) -> u64 =
@@ -442,10 +439,7 @@ pub extern "C" fn haskelujah_enter_thunk_chirho(thunk_ptr_chirho: u64) -> u64 {
 
 /// Update a thunk in place with the computed result.
 #[unsafe(no_mangle)]
-pub extern "C" fn haskelujah_update_thunk_chirho(
-    thunk_ptr_chirho: u64,
-    result_chirho: u64,
-) {
+pub extern "C" fn haskelujah_update_thunk_chirho(thunk_ptr_chirho: u64, result_chirho: u64) {
     let raw_ptr_chirho = (thunk_ptr_chirho & !1u64) as *mut u64;
     if !raw_ptr_chirho.is_null() {
         unsafe {
@@ -888,7 +882,10 @@ mod tests_chirho {
         assert_eq!(haskelujah_enter_thunk_chirho(1), 1);
         assert_eq!(haskelujah_enter_thunk_chirho(3), 3);
         assert_eq!(haskelujah_enter_thunk_chirho(42), 42);
-        assert_eq!(haskelujah_enter_thunk_chirho((-1_i64) as u64), (-1_i64) as u64);
+        assert_eq!(
+            haskelujah_enter_thunk_chirho((-1_i64) as u64),
+            (-1_i64) as u64
+        );
         assert_eq!(haskelujah_enter_thunk_chirho(2249154), 2249154);
     }
 
@@ -907,7 +904,10 @@ mod tests_chirho {
             *(boxed_ptr_chirho as *mut u64) = 32671067318012;
         }
         let boxed_bits_chirho = (boxed_ptr_chirho as u64) | 1;
-        assert_eq!(haskelujah_enter_thunk_chirho(boxed_bits_chirho), boxed_bits_chirho);
+        assert_eq!(
+            haskelujah_enter_thunk_chirho(boxed_bits_chirho),
+            boxed_bits_chirho
+        );
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
         runtime_chirho.reset_chirho();
@@ -1040,9 +1040,9 @@ mod tests_chirho {
         assert!(!child_ptr_chirho.is_null());
 
         unsafe {
-            parent_ptr_chirho.cast::<usize>().write_unaligned(
-                (child_ptr_chirho as usize) | BOXED_PTR_MASK_CHIRHO,
-            );
+            parent_ptr_chirho
+                .cast::<usize>()
+                .write_unaligned((child_ptr_chirho as usize) | BOXED_PTR_MASK_CHIRHO);
         }
 
         haskelujah_gc_root_push_chirho(parent_ptr_chirho);
@@ -1173,8 +1173,7 @@ mod tests_chirho {
             *(cell1_ptr_chirho.add(16) as *mut u64) = (cell2_ptr_chirho as u64) | 1;
         }
 
-        let shown_ptr_bits_chirho =
-            haskelujah_show_int_list_chirho((cell1_ptr_chirho as u64) | 1);
+        let shown_ptr_bits_chirho = haskelujah_show_int_list_chirho((cell1_ptr_chirho as u64) | 1);
         assert_ne!(shown_ptr_bits_chirho, 0);
         let shown_text_chirho =
             unsafe { CStr::from_ptr(shown_ptr_bits_chirho as usize as *const std::ffi::c_char) };
@@ -1215,8 +1214,7 @@ mod tests_chirho {
             *(cell1_ptr_chirho.add(16) as *mut u64) = (cell2_ptr_chirho as u64) | 1;
         }
 
-        let shown_ptr_bits_chirho =
-            haskelujah_show_bool_list_chirho((cell1_ptr_chirho as u64) | 1);
+        let shown_ptr_bits_chirho = haskelujah_show_bool_list_chirho((cell1_ptr_chirho as u64) | 1);
         assert_ne!(shown_ptr_bits_chirho, 0);
         let shown_text_chirho =
             unsafe { CStr::from_ptr(shown_ptr_bits_chirho as usize as *const std::ffi::c_char) };
@@ -1270,11 +1268,13 @@ mod tests_chirho {
         drop(runtime_chirho);
 
         let test_str_chirho = b"Hi\0";
-        let result_chirho =
-            haskelujah_unpack_string_chirho(test_str_chirho.as_ptr() as u64);
+        let result_chirho = haskelujah_unpack_string_chirho(test_str_chirho.as_ptr() as u64);
 
         // Result should be a boxed cons cell (low bit set)
-        assert_ne!(result_chirho, 0, "unpack should not return Nil for non-empty string");
+        assert_ne!(
+            result_chirho, 0,
+            "unpack should not return Nil for non-empty string"
+        );
         assert!(
             result_chirho & 1 != 0,
             "result should be boxed (low bit set)"

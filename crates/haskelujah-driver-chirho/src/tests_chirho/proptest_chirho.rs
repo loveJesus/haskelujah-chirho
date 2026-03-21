@@ -6,9 +6,9 @@
 //! These tests verify that the STG runtime evaluator terminates correctly,
 //! preserves integer arithmetic identities, and handles edge cases gracefully.
 
-use proptest::prelude::*;
-use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_runtime_chirho::ValueChirho;
+use haskelujah_span_chirho::SourceMapChirho;
+use proptest::prelude::*;
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]

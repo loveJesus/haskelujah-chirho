@@ -27,9 +27,8 @@
 //! - Superclass dictionary extraction
 //! - Instance method body compilation from source `where` clauses
 
-
-pub mod layout_chirho;
 pub mod instance_chirho;
+pub mod layout_chirho;
 pub mod prelude_chirho;
 pub mod rewrite_chirho;
 
@@ -42,8 +41,7 @@ use haskelujah_typing_chirho::env_chirho::TyEnvChirho;
 use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 
 use crate::expr_chirho::{
-    BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-    CoreModuleChirho,
+    BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreModuleChirho,
 };
 
 /// Layout of a typeclass dictionary.
@@ -143,8 +141,7 @@ impl DictPassCtxChirho {
     fn fresh_id_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
         let id_chirho = CoreIdChirho(self.next_id_chirho);
         self.next_id_chirho += 1;
-        self.names_chirho
-            .insert(id_chirho, name_chirho.to_string());
+        self.names_chirho.insert(id_chirho, name_chirho.to_string());
         id_chirho
     }
 
@@ -274,12 +271,26 @@ impl DictPassCtxChirho {
                             }
                             Some("Maybe Int".to_string())
                         }
-                        name_chirho if name_chirho == "(,)" || name_chirho.starts_with("$tuple") || name_chirho == "(,,)" || name_chirho == "(,,,)" => {
+                        name_chirho
+                            if name_chirho == "(,)"
+                                || name_chirho.starts_with("$tuple")
+                                || name_chirho == "(,,)"
+                                || name_chirho == "(,,,)" =>
+                        {
                             if !args_chirho.is_empty() {
-                                let keys_chirho: Vec<String> = args_chirho.iter().map(|a_chirho| {
-                                    let k_chirho = self.infer_type_key_chirho(a_chirho).unwrap_or("Int".to_string());
-                                    if k_chirho == "[Char]" { "String".to_string() } else { k_chirho }
-                                }).collect();
+                                let keys_chirho: Vec<String> = args_chirho
+                                    .iter()
+                                    .map(|a_chirho| {
+                                        let k_chirho = self
+                                            .infer_type_key_chirho(a_chirho)
+                                            .unwrap_or("Int".to_string());
+                                        if k_chirho == "[Char]" {
+                                            "String".to_string()
+                                        } else {
+                                            k_chirho
+                                        }
+                                    })
+                                    .collect();
                                 return Some(format!("({})", keys_chirho.join(",")));
                             }
                             Some("(Int,Int)".to_string())
@@ -324,29 +335,25 @@ impl DictPassCtxChirho {
                 }
                 None
             }
-            CoreExprChirho::PrimOpChirho {
-                name_chirho, ..
-            } => {
+            CoreExprChirho::PrimOpChirho { name_chirho, .. } => {
                 // Infer result type of known primops
                 match name_chirho.as_str() {
                     "enumFromTo#" => Some("[Int]".to_string()),
-                    "+#" | "-#" | "*#" | "div#" | "mod#" | "negate#"
-                    | "readInt#" => {
+                    "+#" | "-#" | "*#" | "div#" | "mod#" | "negate#" | "readInt#" => {
                         Some("Int".to_string())
                     }
-                    "+.#" | "-.#" | "*.#" | "/.#" | "negateFloat#"
-                    | "recip#" | "readFloat#" => {
+                    "+.#" | "-.#" | "*.#" | "/.#" | "negateFloat#" | "recip#" | "readFloat#" => {
                         Some("Double".to_string())
                     }
-                    "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#"
-                    | "eqFloat#" | "readBool#" => Some("Bool".to_string()),
+                    "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#" | "eqFloat#"
+                    | "readBool#" => Some("Bool".to_string()),
                     "compare#" | "compareChar#" | "compareFloat#" | "compareStr#" => {
                         Some("Ordering".to_string())
                     }
-                    "showInt#" | "showFloat#" | "showStr#" | "showList#"
-                    | "showMaybe#" | "showTuple2#" | "showEither#" | "showOrdering#"
-                    | "showBool#"
-                    | "++#" => Some("[Char]".to_string()),
+                    "showInt#" | "showFloat#" | "showStr#" | "showList#" | "showMaybe#"
+                    | "showTuple2#" | "showEither#" | "showOrdering#" | "showBool#" | "++#" => {
+                        Some("[Char]".to_string())
+                    }
                     _ => None,
                 }
             }
@@ -371,10 +378,9 @@ impl DictPassCtxChirho {
                                 return Some("Int".to_string());
                             }
                             // :: [a] -> [a]  (element type from arg)
-                            "take" | "drop" | "reverse" | "sort"
-                            | "init" | "tail" | "nub" | "cycle" => {
-                                if let Some(arg_ty_chirho) =
-                                    self.infer_type_key_chirho(arg_chirho)
+                            "take" | "drop" | "reverse" | "sort" | "init" | "tail" | "nub"
+                            | "cycle" => {
+                                if let Some(arg_ty_chirho) = self.infer_type_key_chirho(arg_chirho)
                                 {
                                     return Some(arg_ty_chirho);
                                 }
@@ -382,16 +388,14 @@ impl DictPassCtxChirho {
                             }
                             // :: [a] -> a  (element type from list arg)
                             "head" | "last" | "minimum" | "maximum" => {
-                                if let Some(arg_ty_chirho) =
-                                    self.infer_type_key_chirho(arg_chirho)
+                                if let Some(arg_ty_chirho) = self.infer_type_key_chirho(arg_chirho)
                                 {
                                     // Strip outer list: [Int] → Int
                                     if arg_ty_chirho.starts_with('[')
                                         && arg_ty_chirho.ends_with(']')
                                     {
                                         return Some(
-                                            arg_ty_chirho[1..arg_ty_chirho.len() - 1]
-                                                .to_string(),
+                                            arg_ty_chirho[1..arg_ty_chirho.len() - 1].to_string(),
                                         );
                                     }
                                     return Some(arg_ty_chirho);
@@ -413,18 +417,25 @@ impl DictPassCtxChirho {
                         // Constructor applications: App(Just, x) → Maybe <x-type>
                         match name_chirho.as_str() {
                             "Just" => {
-                                let inner_chirho = self.infer_type_key_chirho(arg_chirho)
+                                let inner_chirho = self
+                                    .infer_type_key_chirho(arg_chirho)
                                     .unwrap_or_else(|| "Int".to_string());
-                                let inner_key_chirho = if inner_chirho == "[Char]" { "String" } else { &inner_chirho };
+                                let inner_key_chirho = if inner_chirho == "[Char]" {
+                                    "String"
+                                } else {
+                                    &inner_chirho
+                                };
                                 return Some(format!("Maybe {}", inner_key_chirho));
                             }
                             "Left" => {
-                                let inner_chirho = self.infer_type_key_chirho(arg_chirho)
+                                let inner_chirho = self
+                                    .infer_type_key_chirho(arg_chirho)
                                     .unwrap_or_else(|| "Int".to_string());
                                 return Some(format!("Either {} Int", inner_chirho));
                             }
                             "Right" => {
-                                let inner_chirho = self.infer_type_key_chirho(arg_chirho)
+                                let inner_chirho = self
+                                    .infer_type_key_chirho(arg_chirho)
                                     .unwrap_or_else(|| "Int".to_string());
                                 return Some(format!("Either Int {}", inner_chirho));
                             }
@@ -447,16 +458,28 @@ impl DictPassCtxChirho {
                     if let CoreExprChirho::VarChirho(id_chirho) = inner_fun_chirho.as_ref() {
                         if let Some(name_chirho) = self.names_chirho.get(id_chirho) {
                             if name_chirho == "(,)" || name_chirho == "$tuple2" {
-                                let a_chirho = self.infer_type_key_chirho(first_arg_chirho)
+                                let a_chirho = self
+                                    .infer_type_key_chirho(first_arg_chirho)
                                     .unwrap_or_else(|| "Int".to_string());
-                                let b_chirho = self.infer_type_key_chirho(arg_chirho)
+                                let b_chirho = self
+                                    .infer_type_key_chirho(arg_chirho)
                                     .unwrap_or_else(|| "Int".to_string());
-                                let a_key_chirho = if a_chirho == "[Char]" { "String" } else { &a_chirho };
-                                let b_key_chirho = if b_chirho == "[Char]" { "String" } else { &b_chirho };
+                                let a_key_chirho = if a_chirho == "[Char]" {
+                                    "String"
+                                } else {
+                                    &a_chirho
+                                };
+                                let b_key_chirho = if b_chirho == "[Char]" {
+                                    "String"
+                                } else {
+                                    &b_chirho
+                                };
                                 return Some(format!("({},{})", a_key_chirho, b_key_chirho));
                             }
                             // compare :: a -> a -> Ordering
-                            if name_chirho == "compare" || name_chirho.starts_with("$prim_Ord_compare") {
+                            if name_chirho == "compare"
+                                || name_chirho.starts_with("$prim_Ord_compare")
+                            {
                                 return Some("Ordering".to_string());
                             }
                             // Two-arg Prelude functions:
@@ -465,11 +488,9 @@ impl DictPassCtxChirho {
                             // map :: (a -> b) -> [a] -> [b]
                             // filter :: (a -> Bool) -> [a] -> [a]
                             match name_chirho.as_str() {
-                                "take" | "drop" | "filter" | "takeWhile"
-                                | "dropWhile" => {
+                                "take" | "drop" | "filter" | "takeWhile" | "dropWhile" => {
                                     // Result type = list arg type
-                                    if let Some(ty_chirho) =
-                                        self.infer_type_key_chirho(arg_chirho)
+                                    if let Some(ty_chirho) = self.infer_type_key_chirho(arg_chirho)
                                     {
                                         return Some(ty_chirho);
                                     }
@@ -494,10 +515,9 @@ impl DictPassCtxChirho {
                     // always use them.  Other primops (like ++#) return [Char] which
                     // already matched in the PrimOpChirho arm above, so we won't reach
                     // here for those.  General function types are inferred below.
-                    let is_typed_primop_chirho = matches!(
-                        fun_chirho.as_ref(),
-                        CoreExprChirho::PrimOpChirho { .. }
-                    ) && !fty_chirho.is_empty();
+                    let is_typed_primop_chirho =
+                        matches!(fun_chirho.as_ref(), CoreExprChirho::PrimOpChirho { .. })
+                            && !fty_chirho.is_empty();
                     if is_typed_primop_chirho {
                         return Some(fty_chirho.clone());
                     }
@@ -530,11 +550,7 @@ impl DictPassCtxChirho {
     }
 
     /// Create a binder with a fresh ID.
-    fn fresh_binder_chirho(
-        &mut self,
-        name_chirho: &str,
-        ty_chirho: TyChirho,
-    ) -> BinderChirho {
+    fn fresh_binder_chirho(&mut self, name_chirho: &str, ty_chirho: TyChirho) -> BinderChirho {
         BinderChirho {
             id_chirho: self.fresh_id_chirho(name_chirho),
             name_chirho: name_chirho.to_string(),
@@ -692,14 +708,12 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("f", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
         let scheme_chirho = SchemeChirho::mono_chirho(TyChirho::int_chirho());
 
-        let mut ctx_chirho =
-            DictPassCtxChirho::new_chirho(10, HashMap::new(), HashMap::new());
-        let result_chirho =
-            ctx_chirho.add_dict_params_chirho(&binding_chirho, &scheme_chirho);
+        let mut ctx_chirho = DictPassCtxChirho::new_chirho(10, HashMap::new(), HashMap::new());
+        let result_chirho = ctx_chirho.add_dict_params_chirho(&binding_chirho, &scheme_chirho);
 
         // No predicates, so binding is unchanged
         assert_eq!(
@@ -714,15 +728,13 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("add", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
         let scheme_chirho = SchemeChirho {
             vars_chirho: vec![haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)],
             preds_chirho: vec![SchemePredChirho {
                 class_name_chirho: "Num".to_string(),
-                ty_chirho: TyChirho::VarChirho(
-                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
-                ),
+                ty_chirho: TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)),
                 extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
@@ -731,10 +743,8 @@ mod tests_chirho {
             ),
         };
 
-        let mut ctx_chirho =
-            DictPassCtxChirho::new_chirho(10, HashMap::new(), HashMap::new());
-        let result_chirho =
-            ctx_chirho.add_dict_params_chirho(&binding_chirho, &scheme_chirho);
+        let mut ctx_chirho = DictPassCtxChirho::new_chirho(10, HashMap::new(), HashMap::new());
+        let result_chirho = ctx_chirho.add_dict_params_chirho(&binding_chirho, &scheme_chirho);
 
         // Should be wrapped in a lambda: \$dNum -> 0
         assert!(matches!(
@@ -771,7 +781,7 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("cmp", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
         let scheme_chirho = SchemeChirho {
             vars_chirho: vec![haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)],
@@ -797,10 +807,8 @@ mod tests_chirho {
             ),
         };
 
-        let mut ctx_chirho =
-            DictPassCtxChirho::new_chirho(10, HashMap::new(), HashMap::new());
-        let result_chirho =
-            ctx_chirho.add_dict_params_chirho(&binding_chirho, &scheme_chirho);
+        let mut ctx_chirho = DictPassCtxChirho::new_chirho(10, HashMap::new(), HashMap::new());
+        let result_chirho = ctx_chirho.add_dict_params_chirho(&binding_chirho, &scheme_chirho);
 
         // Should be: \$dEq -> \$dOrd -> 0
         if let CoreExprChirho::LamChirho {
@@ -832,8 +840,7 @@ mod tests_chirho {
         let mut class_env_chirho = ClassEnvChirho::new_chirho();
         class_env_chirho.seed_standard_chirho();
 
-        let mut ctx_chirho =
-            DictPassCtxChirho::new_chirho(0, HashMap::new(), HashMap::new());
+        let mut ctx_chirho = DictPassCtxChirho::new_chirho(0, HashMap::new(), HashMap::new());
         ctx_chirho.build_layouts_chirho(&class_env_chirho);
 
         // Eq: no supers, 1 method (==)
@@ -862,8 +869,7 @@ mod tests_chirho {
         let mut class_env_chirho = ClassEnvChirho::new_chirho();
         class_env_chirho.seed_standard_chirho();
 
-        let mut ctx_chirho =
-            DictPassCtxChirho::new_chirho(0, HashMap::new(), HashMap::new());
+        let mut ctx_chirho = DictPassCtxChirho::new_chirho(0, HashMap::new(), HashMap::new());
         ctx_chirho.build_layouts_chirho(&class_env_chirho);
         ctx_chirho.generate_selectors_chirho();
 
@@ -899,12 +905,10 @@ mod tests_chirho {
                 binder_chirho: dummy_binder_chirho("f", 5),
                 rhs_chirho: CoreExprChirho::LamChirho {
                     binder_chirho: dummy_binder_chirho("x", 10),
-                    body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(
-                        42,
-                    ))),
+                    body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(42))),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
@@ -918,8 +922,7 @@ mod tests_chirho {
         let mut class_env_chirho = ClassEnvChirho::new_chirho();
         class_env_chirho.seed_standard_chirho();
 
-        let mut ctx_chirho =
-            DictPassCtxChirho::new_chirho(0, HashMap::new(), HashMap::new());
+        let mut ctx_chirho = DictPassCtxChirho::new_chirho(0, HashMap::new(), HashMap::new());
         ctx_chirho.build_layouts_chirho(&class_env_chirho);
         ctx_chirho.generate_selectors_chirho();
         ctx_chirho.generate_instance_dicts_chirho(&class_env_chirho);
@@ -930,14 +933,18 @@ mod tests_chirho {
         assert!(!ctx_chirho.instance_dicts_chirho.is_empty());
 
         // Check Eq Int dict exists
-        assert!(ctx_chirho
-            .instance_dicts_chirho
-            .contains_key(&("Eq".to_string(), "Int".to_string())));
+        assert!(
+            ctx_chirho
+                .instance_dicts_chirho
+                .contains_key(&("Eq".to_string(), "Int".to_string()))
+        );
 
         // Check Num Int dict exists
-        assert!(ctx_chirho
-            .instance_dicts_chirho
-            .contains_key(&("Num".to_string(), "Int".to_string())));
+        assert!(
+            ctx_chirho
+                .instance_dicts_chirho
+                .contains_key(&("Num".to_string(), "Int".to_string()))
+        );
 
         // Find the $fEqInt binding
         let eq_int_binding_chirho = ctx_chirho
@@ -962,8 +969,7 @@ mod tests_chirho {
         let mut names_chirho = HashMap::new();
         names_chirho.insert(CoreIdChirho(5), "+".to_string());
 
-        let mut ctx_chirho =
-            DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
+        let mut ctx_chirho = DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
         ctx_chirho.build_layouts_chirho(&class_env_chirho);
         ctx_chirho.generate_selectors_chirho();
 
@@ -973,8 +979,7 @@ mod tests_chirho {
 
         // Rewrite a reference to "+" (id 5)
         let expr_chirho = CoreExprChirho::VarChirho(CoreIdChirho(5));
-        let result_chirho =
-            ctx_chirho.rewrite_method_refs_chirho(&expr_chirho, &dict_vars_chirho);
+        let result_chirho = ctx_chirho.rewrite_method_refs_chirho(&expr_chirho, &dict_vars_chirho);
 
         // Should be: ($sel_Num_+ $dNum) i.e. App(Var(sel_id), Var(99))
         if let CoreExprChirho::AppChirho {
@@ -996,13 +1001,11 @@ mod tests_chirho {
         let mut names_chirho = HashMap::new();
         names_chirho.insert(CoreIdChirho(5), "x".to_string());
 
-        let ctx_chirho =
-            DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
+        let ctx_chirho = DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
 
         let dict_vars_chirho = HashMap::new();
         let expr_chirho = CoreExprChirho::VarChirho(CoreIdChirho(5));
-        let result_chirho =
-            ctx_chirho.rewrite_method_refs_chirho(&expr_chirho, &dict_vars_chirho);
+        let result_chirho = ctx_chirho.rewrite_method_refs_chirho(&expr_chirho, &dict_vars_chirho);
 
         // "x" is not an overloaded method, should be unchanged
         assert_eq!(result_chirho, CoreExprChirho::VarChirho(CoreIdChirho(5)));
@@ -1018,8 +1021,7 @@ mod tests_chirho {
         names_chirho.insert(CoreIdChirho(6), "x".to_string());
         names_chirho.insert(CoreIdChirho(7), "y".to_string());
 
-        let mut ctx_chirho =
-            DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
+        let mut ctx_chirho = DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
         ctx_chirho.build_layouts_chirho(&class_env_chirho);
         ctx_chirho.generate_selectors_chirho();
 
@@ -1035,8 +1037,7 @@ mod tests_chirho {
             arg_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(7))),
         };
 
-        let result_chirho =
-            ctx_chirho.rewrite_method_refs_chirho(&expr_chirho, &dict_vars_chirho);
+        let result_chirho = ctx_chirho.rewrite_method_refs_chirho(&expr_chirho, &dict_vars_chirho);
 
         // The "+" reference should be rewritten, "x" and "y" should not
         if let CoreExprChirho::AppChirho { fun_chirho, .. } = &result_chirho {
@@ -1083,16 +1084,10 @@ mod tests_chirho {
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     [
-                        TyChirho::VarChirho(
-                            haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
-                        ),
-                        TyChirho::VarChirho(
-                            haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
-                        ),
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)),
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)),
                     ],
-                    TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
-                    ),
+                    TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)),
                 ),
             },
         );
@@ -1103,7 +1098,7 @@ mod tests_chirho {
                 binder_chirho: dummy_binder_chirho("add", 0),
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),

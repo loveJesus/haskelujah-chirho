@@ -14,7 +14,7 @@
 //! TH represents the stable Haskell-visible API surface while the compiler AST
 //! may evolve independently.
 
-pub mod th_ast_chirho;
+pub mod convert_chirho;
 pub mod q_monad_chirho;
 pub mod reify_chirho;
-pub mod convert_chirho;
+pub mod th_ast_chirho;

@@ -195,7 +195,7 @@ mod tests_chirho {
                 },
                 rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             }],
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),

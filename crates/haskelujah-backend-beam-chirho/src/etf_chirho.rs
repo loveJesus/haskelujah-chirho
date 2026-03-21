@@ -128,10 +128,7 @@ mod tests_chirho {
 
     #[test]
     fn encode_tuple_pair_chirho() {
-        let elems_chirho = vec![
-            encode_atom_chirho("ok"),
-            encode_small_int_chirho(42),
-        ];
+        let elems_chirho = vec![encode_atom_chirho("ok"), encode_small_int_chirho(42)];
         let bytes_chirho = encode_tuple_chirho(&elems_chirho);
         assert_eq!(bytes_chirho[0], EtfTagChirho::SmallTupleChirho as u8);
         assert_eq!(bytes_chirho[1], 2); // arity

@@ -21,8 +21,8 @@ pub mod resolve_chirho;
 
 pub use env_chirho::NameEnvChirho;
 pub use iface_chirho::{
-    build_iface_chirho, build_iface_with_imports_chirho, builtin_module_ifaces_chirho,
-    ModuleIfaceChirho,
+    ModuleIfaceChirho, build_iface_chirho, build_iface_with_imports_chirho,
+    builtin_module_ifaces_chirho,
 };
 pub use resolve_chirho::{
     check_orphan_instances_chirho, resolve_module_chirho, resolve_module_with_imports_chirho,

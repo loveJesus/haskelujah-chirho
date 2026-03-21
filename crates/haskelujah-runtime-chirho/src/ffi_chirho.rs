@@ -317,11 +317,12 @@ impl ForeignTableChirho {
         name_chirho: &str,
         args_chirho: Vec<FfiValueChirho>,
     ) -> Result<FfiValueChirho, FfiErrorChirho> {
-        let entry_chirho = self.entries_chirho.get(name_chirho).ok_or_else(|| {
-            FfiErrorChirho::NotFoundChirho {
-                name_chirho: name_chirho.to_string(),
-            }
-        })?;
+        let entry_chirho =
+            self.entries_chirho
+                .get(name_chirho)
+                .ok_or_else(|| FfiErrorChirho::NotFoundChirho {
+                    name_chirho: name_chirho.to_string(),
+                })?;
 
         let expected_arity_chirho = entry_chirho.import_chirho.arg_types_chirho.len();
         if args_chirho.len() != expected_arity_chirho {
@@ -346,7 +347,10 @@ impl ForeignTableChirho {
 
     /// List all registered function names.
     pub fn names_chirho(&self) -> Vec<&str> {
-        self.entries_chirho.keys().map(|s_chirho| s_chirho.as_str()).collect()
+        self.entries_chirho
+            .keys()
+            .map(|s_chirho| s_chirho.as_str())
+            .collect()
     }
 }
 
@@ -517,11 +521,9 @@ mod tests_chirho {
         let val_chirho = FfiValueChirho::DoubleChirho(3.14);
         let runtime_chirho = val_chirho.to_runtime_chirho();
         assert_eq!(runtime_chirho, ValueChirho::FloatChirho(3.14));
-        let back_chirho = FfiValueChirho::from_runtime_chirho(
-            &runtime_chirho,
-            &FfiTypeChirho::DoubleChirho,
-        )
-        .unwrap();
+        let back_chirho =
+            FfiValueChirho::from_runtime_chirho(&runtime_chirho, &FfiTypeChirho::DoubleChirho)
+                .unwrap();
         assert_eq!(back_chirho, FfiValueChirho::DoubleChirho(3.14));
     }
 
@@ -603,8 +605,7 @@ mod tests_chirho {
     #[test]
     fn foreign_table_not_found_chirho() {
         let table_chirho = ForeignTableChirho::new_chirho();
-        let result_chirho =
-            table_chirho.call_chirho("nope", vec![]);
+        let result_chirho = table_chirho.call_chirho("nope", vec![]);
         assert!(matches!(
             result_chirho,
             Err(FfiErrorChirho::NotFoundChirho { .. })

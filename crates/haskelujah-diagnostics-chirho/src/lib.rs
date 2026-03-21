@@ -178,10 +178,7 @@ pub struct DiagnosticChirho {
 
 impl DiagnosticChirho {
     /// Create an error diagnostic with a primary span.
-    pub fn error_chirho(
-        message_chirho: impl Into<String>,
-        span_chirho: SpanChirho,
-    ) -> Self {
+    pub fn error_chirho(message_chirho: impl Into<String>, span_chirho: SpanChirho) -> Self {
         Self {
             severity_chirho: SeverityChirho::ErrorChirho,
             code_chirho: None,
@@ -209,10 +206,7 @@ impl DiagnosticChirho {
     }
 
     /// Create a warning diagnostic with a primary span.
-    pub fn warning_chirho(
-        message_chirho: impl Into<String>,
-        span_chirho: SpanChirho,
-    ) -> Self {
+    pub fn warning_chirho(message_chirho: impl Into<String>, span_chirho: SpanChirho) -> Self {
         Self {
             severity_chirho: SeverityChirho::WarningChirho,
             code_chirho: None,
@@ -388,7 +382,8 @@ impl DiagnosticBundleChirho {
 
     /// Merge another bundle into this one.
     pub fn extend_chirho(&mut self, other_chirho: DiagnosticBundleChirho) {
-        self.diagnostics_chirho.extend(other_chirho.diagnostics_chirho);
+        self.diagnostics_chirho
+            .extend(other_chirho.diagnostics_chirho);
     }
 }
 
@@ -443,10 +438,7 @@ mod tests_chirho {
 
     #[test]
     fn warning_without_code_chirho() {
-        let diag_chirho = DiagnosticChirho::warning_chirho(
-            "unused variable",
-            test_span_chirho(),
-        );
+        let diag_chirho = DiagnosticChirho::warning_chirho("unused variable", test_span_chirho());
         assert_eq!(diag_chirho.severity_chirho, SeverityChirho::WarningChirho);
         assert!(diag_chirho.code_chirho.is_none());
         assert!(!diag_chirho.is_error_chirho());
@@ -471,7 +463,10 @@ mod tests_chirho {
 
         assert_eq!(diag_chirho.labels_chirho.len(), 2);
         assert_eq!(diag_chirho.notes_chirho.len(), 1);
-        assert_eq!(diag_chirho.code_chirho, Some(ErrorCodeChirho::error_chirho(200)));
+        assert_eq!(
+            diag_chirho.code_chirho,
+            Some(ErrorCodeChirho::error_chirho(200))
+        );
     }
 
     #[test]
@@ -492,12 +487,10 @@ mod tests_chirho {
 
     #[test]
     fn bundle_extend_chirho() {
-        let mut a_chirho = DiagnosticBundleChirho::from(
-            DiagnosticChirho::error_chirho("a", test_span_chirho()),
-        );
-        let b_chirho = DiagnosticBundleChirho::from(
-            DiagnosticChirho::warning_chirho("b", test_span_chirho()),
-        );
+        let mut a_chirho =
+            DiagnosticBundleChirho::from(DiagnosticChirho::error_chirho("a", test_span_chirho()));
+        let b_chirho =
+            DiagnosticBundleChirho::from(DiagnosticChirho::warning_chirho("b", test_span_chirho()));
         a_chirho.extend_chirho(b_chirho);
         assert_eq!(a_chirho.len_chirho(), 2);
     }

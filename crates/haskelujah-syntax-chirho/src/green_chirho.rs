@@ -214,10 +214,10 @@ impl GreenBuilderChirho {
             // Stack is empty after depth recovery — skip the wrap.
             return;
         };
-        let children_count_chirho = checkpoint_chirho.children_count_chirho
+        let children_count_chirho = checkpoint_chirho
+            .children_count_chirho
             .min(parent_chirho.1.len());
-        let wrapped_children_chirho =
-            parent_chirho.1.split_off(children_count_chirho);
+        let wrapped_children_chirho = parent_chirho.1.split_off(children_count_chirho);
         self.stack_chirho
             .push((kind_chirho, wrapped_children_chirho));
     }
@@ -247,8 +247,7 @@ impl GreenBuilderChirho {
         } else {
             // This was the root — push back as a single-child frame so
             // finish_chirho() can extract it.
-            self.stack_chirho
-                .push((kind_chirho, vec![element_chirho]));
+            self.stack_chirho.push((kind_chirho, vec![element_chirho]));
         }
     }
 
@@ -282,7 +281,10 @@ impl GreenBuilderChirho {
         }
 
         // Fallback: wrap whatever children exist into a root node.
-        Arc::new(GreenNodeChirho::new_chirho(root_kind_chirho, children_chirho))
+        Arc::new(GreenNodeChirho::new_chirho(
+            root_kind_chirho,
+            children_chirho,
+        ))
     }
 }
 
@@ -310,16 +312,21 @@ mod tests_chirho {
 
         let root_chirho = builder_chirho.finish_chirho();
 
-        assert_eq!(root_chirho.kind_chirho(), SyntaxKindChirho::SourceFileChirho);
+        assert_eq!(
+            root_chirho.kind_chirho(),
+            SyntaxKindChirho::SourceFileChirho
+        );
         assert_eq!(root_chirho.text_len_chirho(), "module Main where".len());
         assert_eq!(root_chirho.child_count_chirho(), 1); // ModuleHeader
     }
 
     #[test]
     fn green_token_basics_chirho() {
-        let tok_chirho =
-            GreenTokenChirho::new_chirho(TokenKindChirho::IntegerLiteralChirho, "42");
-        assert_eq!(tok_chirho.kind_chirho(), TokenKindChirho::IntegerLiteralChirho);
+        let tok_chirho = GreenTokenChirho::new_chirho(TokenKindChirho::IntegerLiteralChirho, "42");
+        assert_eq!(
+            tok_chirho.kind_chirho(),
+            TokenKindChirho::IntegerLiteralChirho
+        );
         assert_eq!(tok_chirho.text_chirho(), "42");
         assert_eq!(tok_chirho.text_len_chirho(), 2);
     }
@@ -371,10 +378,8 @@ mod tests_chirho {
                 "world",
             )),
         ];
-        let node_chirho = GreenNodeChirho::new_chirho(
-            SyntaxKindChirho::AppExprChirho,
-            children_chirho,
-        );
+        let node_chirho =
+            GreenNodeChirho::new_chirho(SyntaxKindChirho::AppExprChirho, children_chirho);
         assert_eq!(node_chirho.text_len_chirho(), 11);
     }
 }

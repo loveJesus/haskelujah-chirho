@@ -392,7 +392,9 @@ pub fn lower_tail_expr_chirho(
 
 /// Collect the head function and arguments from a curried application chain.
 /// Returns `(head, [arg0, arg1, ...])` where head is the innermost function.
-fn collect_app_chain_chirho(expr_chirho: &CoreExprChirho) -> (&CoreExprChirho, Vec<&CoreExprChirho>) {
+fn collect_app_chain_chirho(
+    expr_chirho: &CoreExprChirho,
+) -> (&CoreExprChirho, Vec<&CoreExprChirho>) {
     let mut args_chirho = Vec::new();
     let mut cur_chirho = expr_chirho;
     loop {
@@ -450,8 +452,7 @@ fn try_create_thunk_for_app_chirho(
         CoreExprChirho::VarChirho(id_chirho) => *id_chirho,
         _ => return None,
     };
-    let (func_ref_chirho, _arity_chirho) =
-        ctx_chirho.func_ref_map_chirho.get(&func_id_chirho)?;
+    let (func_ref_chirho, _arity_chirho) = ctx_chirho.func_ref_map_chirho.get(&func_id_chirho)?;
 
     // Get the address of the target function.
     let func_addr_chirho = builder_chirho
@@ -468,8 +469,7 @@ fn try_create_thunk_for_app_chirho(
     }
 
     // Get the trampoline address for this arity.
-    let trampoline_ref_chirho =
-        ctx_chirho.thunk_trampoline_refs_chirho[args_chirho.len()];
+    let trampoline_ref_chirho = ctx_chirho.thunk_trampoline_refs_chirho[args_chirho.len()];
     let trampoline_addr_chirho = builder_chirho
         .ins()
         .func_addr(cl_types_chirho::I64, trampoline_ref_chirho);
@@ -477,16 +477,16 @@ fn try_create_thunk_for_app_chirho(
     // Stack-allocate the free variables array.
     let num_fvs_chirho = fv_vals_chirho.len() as i64;
     let fvs_size_chirho = num_fvs_chirho * 8;
-    let stack_slot_chirho = builder_chirho.create_sized_stack_slot(
-        cranelift_codegen::ir::StackSlotData::new(
+    let stack_slot_chirho =
+        builder_chirho.create_sized_stack_slot(cranelift_codegen::ir::StackSlotData::new(
             cranelift_codegen::ir::StackSlotKind::ExplicitSlot,
             fvs_size_chirho as u32,
             0,
-        ),
-    );
-    let fvs_ptr_chirho = builder_chirho
-        .ins()
-        .stack_addr(cl_types_chirho::I64, stack_slot_chirho, 0);
+        ));
+    let fvs_ptr_chirho =
+        builder_chirho
+            .ins()
+            .stack_addr(cl_types_chirho::I64, stack_slot_chirho, 0);
     let mem_flags_chirho = cranelift_codegen::ir::MemFlags::new();
 
     for (idx_chirho, fv_val_chirho) in fv_vals_chirho.iter().enumerate() {
@@ -558,20 +558,19 @@ fn lower_let_chirho(
         // Non-recursive: try lazy thunk for function application RHSes,
         // fall back to eager evaluation otherwise.
         for (binder_chirho, rhs_chirho) in binds_chirho {
-            let val_i64_chirho =
-                if let Some(thunk_val_chirho) =
-                    try_create_thunk_for_app_chirho(builder_chirho, ctx_chirho, rhs_chirho)
-                {
-                    thunk_val_chirho
-                } else {
-                    let val_chirho = lower_let_rhs_value_chirho(
-                        builder_chirho,
-                        ctx_chirho,
-                        binder_chirho.id_chirho,
-                        rhs_chirho,
-                    );
-                    ensure_i64_chirho(builder_chirho, val_chirho, false)
-                };
+            let val_i64_chirho = if let Some(thunk_val_chirho) =
+                try_create_thunk_for_app_chirho(builder_chirho, ctx_chirho, rhs_chirho)
+            {
+                thunk_val_chirho
+            } else {
+                let val_chirho = lower_let_rhs_value_chirho(
+                    builder_chirho,
+                    ctx_chirho,
+                    binder_chirho.id_chirho,
+                    rhs_chirho,
+                );
+                ensure_i64_chirho(builder_chirho, val_chirho, false)
+            };
             let var_chirho = ctx_chirho.fresh_var_chirho(binder_chirho.id_chirho, builder_chirho);
             builder_chirho.def_var(var_chirho, val_i64_chirho);
         }
@@ -1086,16 +1085,14 @@ fn lower_constructor_app_chirho(
         // This enables lazy constructor fields for infinite data structures.
         // With low-bit tagging + primop forcing, thunk pointers are safely
         // forced at all use sites (case scrutinees and primop args).
-        let field_i64_chirho =
-            if let Some(thunk_val_chirho) =
-                try_create_thunk_for_app_chirho(builder_chirho, ctx_chirho, arg_chirho)
-            {
-                thunk_val_chirho
-            } else {
-                let field_val_chirho =
-                    lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
-                ensure_i64_chirho(builder_chirho, field_val_chirho, false)
-            };
+        let field_i64_chirho = if let Some(thunk_val_chirho) =
+            try_create_thunk_for_app_chirho(builder_chirho, ctx_chirho, arg_chirho)
+        {
+            thunk_val_chirho
+        } else {
+            let field_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+            ensure_i64_chirho(builder_chirho, field_val_chirho, false)
+        };
         let offset_chirho = ((field_idx_chirho + 1) * 8) as i32;
         builder_chirho.ins().store(
             mem_flags_chirho,
@@ -1982,16 +1979,21 @@ fn lower_indirect_app_values_chirho(
     builder_chirho.append_block_param(join_block_chirho, cl_types_chirho::I64);
 
     let Some(is_heap_ptr_ref_chirho) = ctx_chirho.is_heap_ptr_ref_chirho else {
-        return lower_indirect_call_with_sig_chirho(builder_chirho, fun_ptr_i64_chirho, arg_vals_chirho);
+        return lower_indirect_call_with_sig_chirho(
+            builder_chirho,
+            fun_ptr_i64_chirho,
+            arg_vals_chirho,
+        );
     };
     let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
     let is_boxed_call_chirho = builder_chirho
         .ins()
         .call(is_heap_ptr_ref_chirho, &[fun_ptr_i64_chirho]);
     let is_boxed_bits_chirho = builder_chirho.inst_results(is_boxed_call_chirho)[0];
-    let is_boxed_chirho = builder_chirho
-        .ins()
-        .icmp(IntCcChirho::NotEqual, is_boxed_bits_chirho, zero_chirho);
+    let is_boxed_chirho =
+        builder_chirho
+            .ins()
+            .icmp(IntCcChirho::NotEqual, is_boxed_bits_chirho, zero_chirho);
     builder_chirho.ins().brif(
         is_boxed_chirho,
         boxed_block_chirho,
@@ -2496,8 +2498,7 @@ pub fn lower_primop_chirho(
             // effectively just returning `b`. Once lazy eval is enabled,
             // enter_thunk on `a` ensures it's forced.
             if let Some(enter_ref_chirho) = ctx_chirho.enter_thunk_ref_chirho {
-                let lhs_i64_chirho =
-                    ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+                let lhs_i64_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
                 builder_chirho
                     .ins()
                     .call(enter_ref_chirho, &[lhs_i64_chirho]);

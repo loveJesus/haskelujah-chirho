@@ -55,7 +55,10 @@ fn walkdir_chirho(dir_chirho: &std::path::Path) -> Vec<PathBuf> {
 fn lex_ghc_corpus_no_panic_chirho() {
     let dir_chirho = ghc_test_dir_chirho();
     if !dir_chirho.exists() {
-        eprintln!("Skipping GHC corpus test: {} not found", dir_chirho.display());
+        eprintln!(
+            "Skipping GHC corpus test: {} not found",
+            dir_chirho.display()
+        );
         return;
     }
 
@@ -119,7 +122,10 @@ fn lex_ghc_corpus_no_panic_chirho() {
 fn layout_ghc_corpus_no_panic_chirho() {
     let dir_chirho = ghc_test_dir_chirho();
     if !dir_chirho.exists() {
-        eprintln!("Skipping GHC corpus layout test: {} not found", dir_chirho.display());
+        eprintln!(
+            "Skipping GHC corpus layout test: {} not found",
+            dir_chirho.display()
+        );
         return;
     }
 
@@ -177,7 +183,10 @@ fn layout_ghc_corpus_no_panic_chirho() {
 fn parse_ghc_corpus_no_panic_chirho() {
     let dir_chirho = ghc_test_dir_chirho();
     if !dir_chirho.exists() {
-        eprintln!("Skipping GHC corpus parse test: {} not found", dir_chirho.display());
+        eprintln!(
+            "Skipping GHC corpus parse test: {} not found",
+            dir_chirho.display()
+        );
         return;
     }
 

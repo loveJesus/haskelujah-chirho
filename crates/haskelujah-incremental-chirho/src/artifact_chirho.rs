@@ -220,21 +220,15 @@ mod tests_chirho {
     fn cached_count_chirho() {
         let mut store_chirho = ArtifactStoreChirho::in_memory_chirho();
         assert_eq!(store_chirho.cached_count_chirho(), 0);
-        store_chirho
-            .put_chirho(fp_chirho("a"), b"aaa")
-            .unwrap();
-        store_chirho
-            .put_chirho(fp_chirho("b"), b"bbb")
-            .unwrap();
+        store_chirho.put_chirho(fp_chirho("a"), b"aaa").unwrap();
+        store_chirho.put_chirho(fp_chirho("b"), b"bbb").unwrap();
         assert_eq!(store_chirho.cached_count_chirho(), 2);
     }
 
     #[test]
     fn clear_mem_chirho() {
         let mut store_chirho = ArtifactStoreChirho::in_memory_chirho();
-        store_chirho
-            .put_chirho(fp_chirho("x"), b"xxx")
-            .unwrap();
+        store_chirho.put_chirho(fp_chirho("x"), b"xxx").unwrap();
         assert_eq!(store_chirho.cached_count_chirho(), 1);
         store_chirho.clear_mem_chirho();
         assert_eq!(store_chirho.cached_count_chirho(), 0);
@@ -247,9 +241,7 @@ mod tests_chirho {
         let mut store_chirho = ArtifactStoreChirho::open_chirho(&tmp_chirho).unwrap();
 
         let key_chirho = fp_chirho("disk-test");
-        store_chirho
-            .put_chirho(key_chirho, b"on disk")
-            .unwrap();
+        store_chirho.put_chirho(key_chirho, b"on disk").unwrap();
 
         // Clear memory, force disk read.
         store_chirho.clear_mem_chirho();
@@ -264,12 +256,8 @@ mod tests_chirho {
     #[test]
     fn evict_all_chirho() {
         let mut store_chirho = ArtifactStoreChirho::in_memory_chirho();
-        store_chirho
-            .put_chirho(fp_chirho("a"), b"a")
-            .unwrap();
-        store_chirho
-            .put_chirho(fp_chirho("b"), b"b")
-            .unwrap();
+        store_chirho.put_chirho(fp_chirho("a"), b"a").unwrap();
+        store_chirho.put_chirho(fp_chirho("b"), b"b").unwrap();
         store_chirho.evict_all_chirho().unwrap();
         assert_eq!(store_chirho.cached_count_chirho(), 0);
     }

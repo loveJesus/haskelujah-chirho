@@ -82,18 +82,18 @@ pub enum RawTokenKindChirho {
     BacktickChirho,
 
     // -- Special symbols --
-    DotDotChirho,       // ..
-    ColonColonChirho,   // ::
-    EqualsChirho,       // =
-    BackslashChirho,    // \ (lambda)
-    PipeChirho,         // |
-    LeftArrowChirho,    // <-
-    RightArrowChirho,   // ->
-    LinearArrowChirho,  // ⊸  (LinearTypes)
-    FatArrowChirho,     // =>
-    AtChirho,           // @
-    TildeChirho,        // ~
-    UnderscoreChirho,   // _ (wildcard)
+    DotDotChirho,      // ..
+    ColonColonChirho,  // ::
+    EqualsChirho,      // =
+    BackslashChirho,   // \ (lambda)
+    PipeChirho,        // |
+    LeftArrowChirho,   // <-
+    RightArrowChirho,  // ->
+    LinearArrowChirho, // ⊸  (LinearTypes)
+    FatArrowChirho,    // =>
+    AtChirho,          // @
+    TildeChirho,       // ~
+    UnderscoreChirho,  // _ (wildcard)
 
     // -- Trivia --
     WhitespaceChirho,
@@ -257,7 +257,9 @@ impl<'src> LexerChirho<'src> {
             // Line comment or operator starting with -
             b'-' => {
                 if self.peek_at_chirho(1) == Some(b'-')
-                    && self.peek_at_chirho(2).is_none_or(|b_chirho| !is_symbol_char_chirho(b_chirho))
+                    && self
+                        .peek_at_chirho(2)
+                        .is_none_or(|b_chirho| !is_symbol_char_chirho(b_chirho))
                 {
                     self.lex_line_comment_chirho(start_chirho)
                 } else if self.peek_at_chirho(1) == Some(b'>') && !self.has_more_symbol_at_chirho(2)
@@ -293,27 +295,41 @@ impl<'src> LexerChirho<'src> {
                 if self.peek_at_chirho(1) == Some(b'|') && self.peek_at_chirho(2) == Some(b'|') {
                     // [|| — typed expression quote
                     self.pos_chirho += 3;
-                    self.make_token_chirho(RawTokenKindChirho::ThOpenTypedExpQuoteChirho, start_chirho)
+                    self.make_token_chirho(
+                        RawTokenKindChirho::ThOpenTypedExpQuoteChirho,
+                        start_chirho,
+                    )
                 } else if self.peek_at_chirho(1) == Some(b'|') {
                     // [| — expression quote
                     self.pos_chirho += 2;
                     self.make_token_chirho(RawTokenKindChirho::ThOpenExpQuoteChirho, start_chirho)
-                } else if self.peek_at_chirho(1) == Some(b'd') && self.peek_at_chirho(2) == Some(b'|') {
+                } else if self.peek_at_chirho(1) == Some(b'd')
+                    && self.peek_at_chirho(2) == Some(b'|')
+                {
                     // [d| — declaration quote
                     self.pos_chirho += 3;
                     self.make_token_chirho(RawTokenKindChirho::ThOpenDecQuoteChirho, start_chirho)
-                } else if self.peek_at_chirho(1) == Some(b't') && self.peek_at_chirho(2) == Some(b'|') {
+                } else if self.peek_at_chirho(1) == Some(b't')
+                    && self.peek_at_chirho(2) == Some(b'|')
+                {
                     // [t| — type quote
                     self.pos_chirho += 3;
                     self.make_token_chirho(RawTokenKindChirho::ThOpenTypeQuoteChirho, start_chirho)
-                } else if self.peek_at_chirho(1) == Some(b'p') && self.peek_at_chirho(2) == Some(b'|') {
+                } else if self.peek_at_chirho(1) == Some(b'p')
+                    && self.peek_at_chirho(2) == Some(b'|')
+                {
                     // [p| — pattern quote
                     self.pos_chirho += 3;
                     self.make_token_chirho(RawTokenKindChirho::ThOpenPatQuoteChirho, start_chirho)
-                } else if self.peek_at_chirho(1) == Some(b'e') && self.peek_at_chirho(2) == Some(b'|') {
+                } else if self.peek_at_chirho(1) == Some(b'e')
+                    && self.peek_at_chirho(2) == Some(b'|')
+                {
                     // [e| — explicit expression quote
                     self.pos_chirho += 3;
-                    self.make_token_chirho(RawTokenKindChirho::ThOpenExpExplicitQuoteChirho, start_chirho)
+                    self.make_token_chirho(
+                        RawTokenKindChirho::ThOpenExpExplicitQuoteChirho,
+                        start_chirho,
+                    )
                 } else {
                     self.pos_chirho += 1;
                     self.make_token_chirho(RawTokenKindChirho::LeftBracketChirho, start_chirho)
@@ -366,7 +382,10 @@ impl<'src> LexerChirho<'src> {
                 if self.peek_at_chirho(1) == Some(b'.') && !self.has_more_symbol_at_chirho(2) {
                     self.pos_chirho += 2;
                     self.make_token_chirho(RawTokenKindChirho::DotDotChirho, start_chirho)
-                } else if self.peek_at_chirho(1).is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho)) {
+                } else if self
+                    .peek_at_chirho(1)
+                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
+                {
                     self.lex_operator_chirho(start_chirho)
                 } else {
                     // Standalone dot — could be a qualified name separator or operator
@@ -378,7 +397,10 @@ impl<'src> LexerChirho<'src> {
                 if self.peek_at_chirho(1) == Some(b'>') && !self.has_more_symbol_at_chirho(2) {
                     self.pos_chirho += 2;
                     self.make_token_chirho(RawTokenKindChirho::FatArrowChirho, start_chirho)
-                } else if self.peek_at_chirho(1).is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho)) {
+                } else if self
+                    .peek_at_chirho(1)
+                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
+                {
                     self.lex_operator_chirho(start_chirho)
                 } else {
                     self.pos_chirho += 1;
@@ -394,12 +416,18 @@ impl<'src> LexerChirho<'src> {
                 if self.peek_at_chirho(1) == Some(b'|') && self.peek_at_chirho(2) == Some(b']') {
                     // ||] — typed expression quote close
                     self.pos_chirho += 3;
-                    self.make_token_chirho(RawTokenKindChirho::ThCloseTypedQuoteChirho, start_chirho)
+                    self.make_token_chirho(
+                        RawTokenKindChirho::ThCloseTypedQuoteChirho,
+                        start_chirho,
+                    )
                 } else if self.peek_at_chirho(1) == Some(b']') {
                     // |] — quote close
                     self.pos_chirho += 2;
                     self.make_token_chirho(RawTokenKindChirho::ThCloseQuoteChirho, start_chirho)
-                } else if self.peek_at_chirho(1).is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho)) {
+                } else if self
+                    .peek_at_chirho(1)
+                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
+                {
                     self.lex_operator_chirho(start_chirho)
                 } else {
                     self.pos_chirho += 1;
@@ -431,14 +459,21 @@ impl<'src> LexerChirho<'src> {
                 let next_chirho = self.peek_at_chirho(1);
                 if next_chirho == Some(b'$') {
                     let after_chirho = self.peek_at_chirho(2);
-                    if after_chirho.is_some_and(|b_chirho| b_chirho.is_ascii_alphabetic() || b_chirho == b'_' || b_chirho == b'(') {
+                    if after_chirho.is_some_and(|b_chirho| {
+                        b_chirho.is_ascii_alphabetic() || b_chirho == b'_' || b_chirho == b'('
+                    }) {
                         // $$(name) or $$name — typed splice
                         self.pos_chirho += 2;
-                        self.make_token_chirho(RawTokenKindChirho::ThTypedSpliceChirho, start_chirho)
+                        self.make_token_chirho(
+                            RawTokenKindChirho::ThTypedSpliceChirho,
+                            start_chirho,
+                        )
                     } else {
                         self.lex_operator_chirho(start_chirho)
                     }
-                } else if next_chirho.is_some_and(|b_chirho| b_chirho.is_ascii_alphabetic() || b_chirho == b'_' || b_chirho == b'(') {
+                } else if next_chirho.is_some_and(|b_chirho| {
+                    b_chirho.is_ascii_alphabetic() || b_chirho == b'_' || b_chirho == b'('
+                }) {
                     // $(expr) or $name — splice
                     self.pos_chirho += 1;
                     self.make_token_chirho(RawTokenKindChirho::ThSpliceChirho, start_chirho)
@@ -449,7 +484,10 @@ impl<'src> LexerChirho<'src> {
             }
 
             // ImplicitParams: ?varName — lex as a single VarId token
-            b'?' if self.peek_at_chirho(1).is_some_and(|b_chirho| b_chirho.is_ascii_lowercase() || b_chirho == b'_') => {
+            b'?' if self
+                .peek_at_chirho(1)
+                .is_some_and(|b_chirho| b_chirho.is_ascii_lowercase() || b_chirho == b'_') =>
+            {
                 self.pos_chirho += 1; // skip '?'
                 // Consume the identifier part
                 while self.pos_chirho < self.bytes_chirho.len()
@@ -470,13 +508,34 @@ impl<'src> LexerChirho<'src> {
                 if let Some(rest_pre_chirho) = rest_chirho_pre {
                     if let Some(ch_pre_chirho) = rest_pre_chirho.chars().next() {
                         let (kind_opt_chirho, len_chirho) = match ch_pre_chirho {
-                            '→' => (Some(RawTokenKindChirho::RightArrowChirho), ch_pre_chirho.len_utf8()),
-                            '←' => (Some(RawTokenKindChirho::LeftArrowChirho), ch_pre_chirho.len_utf8()),
-                            '∷' => (Some(RawTokenKindChirho::ColonColonChirho), ch_pre_chirho.len_utf8()),
-                            '⇒' => (Some(RawTokenKindChirho::FatArrowChirho), ch_pre_chirho.len_utf8()),
-                            '∀' => (Some(RawTokenKindChirho::ForallChirho), ch_pre_chirho.len_utf8()),
-                            'λ' => (Some(RawTokenKindChirho::BackslashChirho), ch_pre_chirho.len_utf8()),
-                            '⊸' => (Some(RawTokenKindChirho::LinearArrowChirho), ch_pre_chirho.len_utf8()),
+                            '→' => (
+                                Some(RawTokenKindChirho::RightArrowChirho),
+                                ch_pre_chirho.len_utf8(),
+                            ),
+                            '←' => (
+                                Some(RawTokenKindChirho::LeftArrowChirho),
+                                ch_pre_chirho.len_utf8(),
+                            ),
+                            '∷' => (
+                                Some(RawTokenKindChirho::ColonColonChirho),
+                                ch_pre_chirho.len_utf8(),
+                            ),
+                            '⇒' => (
+                                Some(RawTokenKindChirho::FatArrowChirho),
+                                ch_pre_chirho.len_utf8(),
+                            ),
+                            '∀' => (
+                                Some(RawTokenKindChirho::ForallChirho),
+                                ch_pre_chirho.len_utf8(),
+                            ),
+                            'λ' => (
+                                Some(RawTokenKindChirho::BackslashChirho),
+                                ch_pre_chirho.len_utf8(),
+                            ),
+                            '⊸' => (
+                                Some(RawTokenKindChirho::LinearArrowChirho),
+                                ch_pre_chirho.len_utf8(),
+                            ),
                             _ => (None, 0),
                         };
                         if let Some(kind_chirho) = kind_opt_chirho {
@@ -491,7 +550,8 @@ impl<'src> LexerChirho<'src> {
                     Some(s_chirho) => s_chirho,
                     None => {
                         self.pos_chirho += 1;
-                        return self.make_token_chirho(RawTokenKindChirho::ErrorChirho, start_chirho);
+                        return self
+                            .make_token_chirho(RawTokenKindChirho::ErrorChirho, start_chirho);
                     }
                 };
                 if let Some(ch_chirho) = rest_chirho.chars().next() {
@@ -501,10 +561,16 @@ impl<'src> LexerChirho<'src> {
                         // Continue eating ident chars (properly decode non-ASCII)
                         while self.pos_chirho < self.bytes_chirho.len() {
                             let b_chirho = self.bytes_chirho[self.pos_chirho];
-                            if b_chirho.is_ascii_alphanumeric() || b_chirho == b'_' || b_chirho == b'\'' {
+                            if b_chirho.is_ascii_alphanumeric()
+                                || b_chirho == b'_'
+                                || b_chirho == b'\''
+                            {
                                 self.pos_chirho += 1;
                             } else if b_chirho > 0x7F {
-                                let len_chirho = unicode_ident_continue_len_chirho(self.source_chirho, self.pos_chirho);
+                                let len_chirho = unicode_ident_continue_len_chirho(
+                                    self.source_chirho,
+                                    self.pos_chirho,
+                                );
                                 if len_chirho > 0 {
                                     self.pos_chirho += len_chirho;
                                 } else {
@@ -556,7 +622,9 @@ impl<'src> LexerChirho<'src> {
     // -- Helper methods --
 
     fn peek_at_chirho(&self, offset_chirho: usize) -> Option<u8> {
-        self.bytes_chirho.get(self.pos_chirho + offset_chirho).copied()
+        self.bytes_chirho
+            .get(self.pos_chirho + offset_chirho)
+            .copied()
     }
 
     fn has_more_symbol_at_chirho(&self, offset_chirho: usize) -> bool {
@@ -693,10 +761,8 @@ impl<'src> LexerChirho<'src> {
                     self.pos_chirho += 1;
                     // MagicHash: consume trailing # (e.g. "hello"#)
                     self.consume_magic_hash_chirho();
-                    return self.make_token_chirho(
-                        RawTokenKindChirho::StringLitChirho,
-                        start_chirho,
-                    );
+                    return self
+                        .make_token_chirho(RawTokenKindChirho::StringLitChirho, start_chirho);
                 }
                 b'\\' => {
                     self.pos_chirho += 1;
@@ -765,8 +831,7 @@ impl<'src> LexerChirho<'src> {
             self.pos_chirho += 1; // skip the character
         }
 
-        if self.pos_chirho < self.bytes_chirho.len()
-            && self.bytes_chirho[self.pos_chirho] == b'\''
+        if self.pos_chirho < self.bytes_chirho.len() && self.bytes_chirho[self.pos_chirho] == b'\''
         {
             self.pos_chirho += 1;
             // MagicHash: consume trailing # (e.g. 'a'#)
@@ -781,7 +846,9 @@ impl<'src> LexerChirho<'src> {
 
     fn lex_number_chirho(&mut self, start_chirho: usize) -> RawTokenChirho {
         // Check for hex (0x), octal (0o), or binary (0b) prefix
-        if self.bytes_chirho[self.pos_chirho] == b'0' && self.pos_chirho + 1 < self.bytes_chirho.len() {
+        if self.bytes_chirho[self.pos_chirho] == b'0'
+            && self.pos_chirho + 1 < self.bytes_chirho.len()
+        {
             match self.bytes_chirho[self.pos_chirho + 1] {
                 b'x' | b'X' => {
                     self.pos_chirho += 2;
@@ -795,7 +862,9 @@ impl<'src> LexerChirho<'src> {
                     let mut is_hex_float_chirho = false;
                     if self.pos_chirho < self.bytes_chirho.len()
                         && self.bytes_chirho[self.pos_chirho] == b'.'
-                        && self.peek_at_chirho(1).is_some_and(|b_chirho| b_chirho.is_ascii_hexdigit())
+                        && self
+                            .peek_at_chirho(1)
+                            .is_some_and(|b_chirho| b_chirho.is_ascii_hexdigit())
                     {
                         is_hex_float_chirho = true;
                         self.pos_chirho += 1; // skip .
@@ -844,10 +913,7 @@ impl<'src> LexerChirho<'src> {
                     }
                     // MagicHash: consume trailing # on octal literals
                     self.consume_magic_hash_chirho();
-                    return self.make_token_chirho(
-                        RawTokenKindChirho::IntLitChirho,
-                        start_chirho,
-                    );
+                    return self.make_token_chirho(RawTokenKindChirho::IntLitChirho, start_chirho);
                 }
                 b'b' | b'B' => {
                     self.pos_chirho += 2;
@@ -858,10 +924,7 @@ impl<'src> LexerChirho<'src> {
                     }
                     // MagicHash: consume trailing # on binary literals
                     self.consume_magic_hash_chirho();
-                    return self.make_token_chirho(
-                        RawTokenKindChirho::IntLitChirho,
-                        start_chirho,
-                    );
+                    return self.make_token_chirho(RawTokenKindChirho::IntLitChirho, start_chirho);
                 }
                 _ => {}
             }
@@ -879,7 +942,9 @@ impl<'src> LexerChirho<'src> {
         let mut is_float_chirho = false;
         if self.pos_chirho < self.bytes_chirho.len()
             && self.bytes_chirho[self.pos_chirho] == b'.'
-            && self.peek_at_chirho(1).is_some_and(|b_chirho| b_chirho.is_ascii_digit())
+            && self
+                .peek_at_chirho(1)
+                .is_some_and(|b_chirho| b_chirho.is_ascii_digit())
         {
             is_float_chirho = true;
             self.pos_chirho += 1; // skip .
@@ -927,7 +992,8 @@ impl<'src> LexerChirho<'src> {
                 self.pos_chirho += 1;
             } else if b_chirho > 0x7F {
                 // Non-ASCII: decode to check if it's an identifier char (not whitespace)
-                let len_chirho = unicode_ident_continue_len_chirho(self.source_chirho, self.pos_chirho);
+                let len_chirho =
+                    unicode_ident_continue_len_chirho(self.source_chirho, self.pos_chirho);
                 if len_chirho > 0 {
                     self.pos_chirho += len_chirho;
                 } else {
@@ -941,7 +1007,8 @@ impl<'src> LexerChirho<'src> {
         // MagicHash: consume trailing # (e.g. foo#, bar##)
         self.consume_magic_hash_chirho();
 
-        let text_chirho = self.source_chirho
+        let text_chirho = self
+            .source_chirho
             .get(start_chirho..self.pos_chirho)
             .unwrap_or("");
 
@@ -950,8 +1017,8 @@ impl<'src> LexerChirho<'src> {
             return self.make_token_chirho(RawTokenKindChirho::UnderscoreChirho, start_chirho);
         }
 
-        let kind_chirho = keyword_kind_chirho(text_chirho)
-            .unwrap_or(RawTokenKindChirho::VarIdChirho);
+        let kind_chirho =
+            keyword_kind_chirho(text_chirho).unwrap_or(RawTokenKindChirho::VarIdChirho);
         self.make_token_chirho(kind_chirho, start_chirho)
     }
 
@@ -961,7 +1028,8 @@ impl<'src> LexerChirho<'src> {
             if b_chirho.is_ascii_alphanumeric() || b_chirho == b'_' || b_chirho == b'\'' {
                 self.pos_chirho += 1;
             } else if b_chirho > 0x7F {
-                let len_chirho = unicode_ident_continue_len_chirho(self.source_chirho, self.pos_chirho);
+                let len_chirho =
+                    unicode_ident_continue_len_chirho(self.source_chirho, self.pos_chirho);
                 if len_chirho > 0 {
                     self.pos_chirho += len_chirho;
                 } else {
@@ -976,7 +1044,9 @@ impl<'src> LexerChirho<'src> {
         if self.pos_chirho < self.bytes_chirho.len()
             && self.bytes_chirho[self.pos_chirho] == b'.'
             && self.peek_at_chirho(1).is_some_and(|b_chirho| {
-                b_chirho.is_ascii_alphanumeric() || b_chirho == b'_' || is_symbol_char_chirho(b_chirho)
+                b_chirho.is_ascii_alphanumeric()
+                    || b_chirho == b'_'
+                    || is_symbol_char_chirho(b_chirho)
             })
         {
             // Consume the rest of the qualified name
@@ -993,10 +1063,8 @@ impl<'src> LexerChirho<'src> {
                     {
                         self.pos_chirho += 1;
                     }
-                    return self.make_token_chirho(
-                        RawTokenKindChirho::QualifiedIdChirho,
-                        start_chirho,
-                    );
+                    return self
+                        .make_token_chirho(RawTokenKindChirho::QualifiedIdChirho, start_chirho);
                 }
                 // Qualified identifier continuation
                 while self.pos_chirho < self.bytes_chirho.len()
@@ -1007,10 +1075,7 @@ impl<'src> LexerChirho<'src> {
             }
             // MagicHash: consume trailing # on qualified names
             self.consume_magic_hash_chirho();
-            return self.make_token_chirho(
-                RawTokenKindChirho::QualifiedIdChirho,
-                start_chirho,
-            );
+            return self.make_token_chirho(RawTokenKindChirho::QualifiedIdChirho, start_chirho);
         }
 
         // MagicHash: consume trailing # (e.g. Int#, MutableArray##)
@@ -1128,7 +1193,8 @@ mod tests_chirho {
     use super::*;
 
     fn lex_chirho(source_chirho: &str) -> Vec<RawTokenChirho> {
-        let mut lexer_chirho = LexerChirho::new_chirho(source_chirho, FileIdChirho::SYNTHETIC_CHIRHO);
+        let mut lexer_chirho =
+            LexerChirho::new_chirho(source_chirho, FileIdChirho::SYNTHETIC_CHIRHO);
         lexer_chirho.lex_all_chirho()
     }
 
@@ -1209,9 +1275,14 @@ mod tests_chirho {
             .collect();
         assert_eq!(string_tokens_chirho.len(), 1);
 
-        let text_chirho = &"\"hello \\    \\world\""
-            [string_tokens_chirho[0].span_chirho.start_chirho().as_usize_chirho()
-                ..string_tokens_chirho[0].span_chirho.end_chirho().as_usize_chirho()];
+        let text_chirho = &"\"hello \\    \\world\""[string_tokens_chirho[0]
+            .span_chirho
+            .start_chirho()
+            .as_usize_chirho()
+            ..string_tokens_chirho[0]
+                .span_chirho
+                .end_chirho()
+                .as_usize_chirho()];
         assert_eq!(text_chirho, "\"hello \\    \\world\"");
     }
 
@@ -1420,7 +1491,10 @@ mod tests_chirho {
         let source_chirho = "module Main where";
         let tokens_chirho = lex_chirho(source_chirho);
         let module_token_chirho = &tokens_chirho[0];
-        assert_eq!(module_token_chirho.kind_chirho, RawTokenKindChirho::ModuleChirho);
+        assert_eq!(
+            module_token_chirho.kind_chirho,
+            RawTokenKindChirho::ModuleChirho
+        );
         let text_chirho = module_token_chirho
             .span_chirho
             .text_chirho(source_chirho)
@@ -1507,7 +1581,10 @@ mod tests_chirho {
         // [d| ... |]
         let kinds_chirho = non_trivia_kinds_chirho("[d| x = 1 |]");
         assert_eq!(kinds_chirho[0], RawTokenKindChirho::ThOpenDecQuoteChirho);
-        assert_eq!(kinds_chirho[kinds_chirho.len() - 2], RawTokenKindChirho::ThCloseQuoteChirho);
+        assert_eq!(
+            kinds_chirho[kinds_chirho.len() - 2],
+            RawTokenKindChirho::ThCloseQuoteChirho
+        );
     }
 
     #[test]

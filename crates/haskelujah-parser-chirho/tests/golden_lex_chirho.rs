@@ -15,8 +15,7 @@ use haskelujah_test_harness_chirho::{
 use std::path::PathBuf;
 
 fn golden_dir_chirho() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests-chirho/golden-chirho/lex-chirho")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests-chirho/golden-chirho/lex-chirho")
 }
 
 fn render_tokens_chirho(source_chirho: &str) -> String {

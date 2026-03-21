@@ -70,10 +70,7 @@ impl WasmEmitterChirho {
         // Also build CoreId → function index for VarChirho resolution
         let mut id_to_func_idx_chirho: HashMap<CoreIdChirho, u32> = HashMap::new();
         for (i_chirho, b_chirho) in module_chirho.bindings_chirho.iter().enumerate() {
-            func_idx_map_chirho.insert(
-                b_chirho.binder_chirho.name_chirho.clone(),
-                i_chirho as u32,
-            );
+            func_idx_map_chirho.insert(b_chirho.binder_chirho.name_chirho.clone(), i_chirho as u32);
             id_to_func_idx_chirho.insert(b_chirho.binder_chirho.id_chirho, i_chirho as u32);
         }
 
@@ -82,7 +79,8 @@ impl WasmEmitterChirho {
             .bindings_chirho
             .iter()
             .map(|b_chirho| {
-                let (params_chirho, body_chirho) = collect_lambda_params_chirho(&b_chirho.rhs_chirho);
+                let (params_chirho, body_chirho) =
+                    collect_lambda_params_chirho(&b_chirho.rhs_chirho);
                 FuncInfoChirho {
                     name_chirho: b_chirho.binder_chirho.name_chirho.clone(),
                     param_count_chirho: params_chirho.len(),
@@ -144,8 +142,13 @@ impl WasmEmitterChirho {
         }
         // Foreign export stubs: export the same function under the C/foreign name
         for export_chirho in &module_chirho.foreign_exports_chirho {
-            if let Some(func_idx_chirho) = func_idx_map_chirho.get(&export_chirho.haskell_name_chirho) {
-                encode_string_chirho(&mut export_section_chirho, &export_chirho.foreign_name_chirho);
+            if let Some(func_idx_chirho) =
+                func_idx_map_chirho.get(&export_chirho.haskell_name_chirho)
+            {
+                encode_string_chirho(
+                    &mut export_section_chirho,
+                    &export_chirho.foreign_name_chirho,
+                );
                 export_section_chirho.push(0x00); // func export
                 encode_u32_chirho(&mut export_section_chirho, *func_idx_chirho);
             }
@@ -167,13 +170,16 @@ impl WasmEmitterChirho {
 
             // Map param CoreIds to local indices (0..param_count)
             for (i_chirho, pid_chirho) in info_chirho.params_chirho.iter().enumerate() {
-                ctx_chirho.local_map_chirho.insert(*pid_chirho, i_chirho as u32);
+                ctx_chirho
+                    .local_map_chirho
+                    .insert(*pid_chirho, i_chirho as u32);
             }
 
             // Pre-allocate local slots for let-bindings and case binders
             allocate_locals_chirho(&info_chirho.body_chirho, &mut ctx_chirho);
 
-            let locals_count_chirho = ctx_chirho.next_local_chirho - info_chirho.param_count_chirho as u32;
+            let locals_count_chirho =
+                ctx_chirho.next_local_chirho - info_chirho.param_count_chirho as u32;
 
             let mut body_bytes_chirho = Vec::new();
             if locals_count_chirho > 0 {
@@ -185,7 +191,11 @@ impl WasmEmitterChirho {
             }
 
             // Emit body instructions
-            emit_expr_chirho(&mut body_bytes_chirho, &info_chirho.body_chirho, &ctx_chirho);
+            emit_expr_chirho(
+                &mut body_bytes_chirho,
+                &info_chirho.body_chirho,
+                &ctx_chirho,
+            );
 
             body_bytes_chirho.push(0x0B); // end
 
@@ -269,12 +279,18 @@ fn allocate_locals_chirho(expr_chirho: &CoreExprChirho, ctx_chirho: &mut EmitCtx
             }
             allocate_locals_chirho(scrutinee_chirho, ctx_chirho);
         }
-        CoreExprChirho::LamChirho { body_chirho, binder_chirho } => {
+        CoreExprChirho::LamChirho {
+            body_chirho,
+            binder_chirho,
+        } => {
             // Residual lambda — allocate the param as a local
             ctx_chirho.alloc_local_chirho(binder_chirho.id_chirho);
             allocate_locals_chirho(body_chirho, ctx_chirho);
         }
-        CoreExprChirho::AppChirho { fun_chirho, arg_chirho } => {
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => {
             allocate_locals_chirho(fun_chirho, ctx_chirho);
             allocate_locals_chirho(arg_chirho, ctx_chirho);
         }
@@ -325,7 +341,9 @@ fn encode_string_chirho(buf_chirho: &mut Vec<u8>, s_chirho: &str) {
 }
 
 /// Collect all lambda parameters from a nested chain of Lam nodes.
-fn collect_lambda_params_chirho(expr_chirho: &CoreExprChirho) -> (Vec<CoreIdChirho>, &CoreExprChirho) {
+fn collect_lambda_params_chirho(
+    expr_chirho: &CoreExprChirho,
+) -> (Vec<CoreIdChirho>, &CoreExprChirho) {
     let mut params_chirho = Vec::new();
     let mut current_chirho = expr_chirho;
 
@@ -345,7 +363,11 @@ fn collect_lambda_params_chirho(expr_chirho: &CoreExprChirho) -> (Vec<CoreIdChir
 fn flatten_apps_chirho(expr_chirho: &CoreExprChirho) -> (&CoreExprChirho, Vec<&CoreExprChirho>) {
     let mut args_chirho = Vec::new();
     let mut current_chirho = expr_chirho;
-    while let CoreExprChirho::AppChirho { fun_chirho, arg_chirho } = current_chirho {
+    while let CoreExprChirho::AppChirho {
+        fun_chirho,
+        arg_chirho,
+    } = current_chirho
+    {
         args_chirho.push(arg_chirho.as_ref());
         current_chirho = fun_chirho;
     }
@@ -372,7 +394,8 @@ fn emit_expr_chirho(
                 encode_u32_chirho(buf_chirho, *local_idx_chirho);
             } else if let Some(func_idx_chirho) = ctx_chirho.id_to_func_idx_chirho.get(id_chirho) {
                 // It's a top-level function with 0 params — call it
-                let arity_chirho = ctx_chirho.func_infos_chirho[*func_idx_chirho as usize].param_count_chirho;
+                let arity_chirho =
+                    ctx_chirho.func_infos_chirho[*func_idx_chirho as usize].param_count_chirho;
                 if arity_chirho == 0 {
                     buf_chirho.push(0x10); // call
                     encode_u32_chirho(buf_chirho, *func_idx_chirho);
@@ -393,7 +416,8 @@ fn emit_expr_chirho(
             let (callee_chirho, args_chirho) = flatten_apps_chirho(expr_chirho);
 
             if let CoreExprChirho::VarChirho(func_id_chirho) = callee_chirho {
-                if let Some(func_idx_chirho) = ctx_chirho.id_to_func_idx_chirho.get(func_id_chirho) {
+                if let Some(func_idx_chirho) = ctx_chirho.id_to_func_idx_chirho.get(func_id_chirho)
+                {
                     // Top-level function call: emit args, then call
                     for arg_chirho in &args_chirho {
                         emit_expr_chirho(buf_chirho, arg_chirho, ctx_chirho);
@@ -432,7 +456,9 @@ fn emit_expr_chirho(
             // Emit each binding and store via local.set
             for (binder_chirho, rhs_chirho) in binds_chirho {
                 emit_expr_chirho(buf_chirho, rhs_chirho, ctx_chirho);
-                if let Some(local_idx_chirho) = ctx_chirho.local_map_chirho.get(&binder_chirho.id_chirho) {
+                if let Some(local_idx_chirho) =
+                    ctx_chirho.local_map_chirho.get(&binder_chirho.id_chirho)
+                {
                     buf_chirho.push(0x21); // local.set
                     encode_u32_chirho(buf_chirho, *local_idx_chirho);
                 } else {
@@ -450,7 +476,9 @@ fn emit_expr_chirho(
         } => {
             // Evaluate scrutinee and store in case binder local
             emit_expr_chirho(buf_chirho, scrutinee_chirho, ctx_chirho);
-            if let Some(binder_local_chirho) = ctx_chirho.local_map_chirho.get(&bind_chirho.id_chirho) {
+            if let Some(binder_local_chirho) =
+                ctx_chirho.local_map_chirho.get(&bind_chirho.id_chirho)
+            {
                 buf_chirho.push(0x22); // local.tee (keep value on stack + store)
                 encode_u32_chirho(buf_chirho, *binder_local_chirho);
             }
@@ -487,8 +515,12 @@ fn emit_expr_chirho(
 
                 // Bind alt binders if any (for DataCon with fields: first field = scrutinee value)
                 for binder_chirho in &spec_chirho.binders_chirho {
-                    if let Some(local_idx_chirho) = ctx_chirho.local_map_chirho.get(&binder_chirho.id_chirho) {
-                        if let Some(binder_local_chirho) = ctx_chirho.local_map_chirho.get(&bind_chirho.id_chirho) {
+                    if let Some(local_idx_chirho) =
+                        ctx_chirho.local_map_chirho.get(&binder_chirho.id_chirho)
+                    {
+                        if let Some(binder_local_chirho) =
+                            ctx_chirho.local_map_chirho.get(&bind_chirho.id_chirho)
+                        {
                             buf_chirho.push(0x20); // local.get (scrutinee)
                             encode_u32_chirho(buf_chirho, *binder_local_chirho);
                             buf_chirho.push(0x21); // local.set
@@ -535,20 +567,20 @@ fn emit_expr_chirho(
                 emit_expr_chirho(buf_chirho, &args_chirho[1], ctx_chirho);
                 let opcode_chirho = match name_chirho.as_str() {
                     "+#" => 0x7C_u8, // i64.add
-                    "-#" => 0x7D,     // i64.sub
-                    "*#" => 0x7E,     // i64.mul
-                    "div#" => 0x7F,   // i64.div_s
-                    "mod#" => 0x81,   // i64.rem_s
-                    "quot#" => 0x7F,  // i64.div_s (same as div for integers)
-                    "rem#" => 0x81,   // i64.rem_s
-                    "==#" => 0x51,    // i64.eq
-                    "/=#" => 0x52,    // i64.ne
-                    "<#" => 0x53,     // i64.lt_s
-                    "<=#" => 0x57,    // i64.le_s
-                    ">#" => 0x55,     // i64.gt_s
-                    ">=#" => 0x59,    // i64.ge_s
-                    "^#" => 0x7C,     // fallback (no native wasm pow)
-                    _ => 0x7C,        // fallback: i64.add
+                    "-#" => 0x7D,    // i64.sub
+                    "*#" => 0x7E,    // i64.mul
+                    "div#" => 0x7F,  // i64.div_s
+                    "mod#" => 0x81,  // i64.rem_s
+                    "quot#" => 0x7F, // i64.div_s (same as div for integers)
+                    "rem#" => 0x81,  // i64.rem_s
+                    "==#" => 0x51,   // i64.eq
+                    "/=#" => 0x52,   // i64.ne
+                    "<#" => 0x53,    // i64.lt_s
+                    "<=#" => 0x57,   // i64.le_s
+                    ">#" => 0x55,    // i64.gt_s
+                    ">=#" => 0x59,   // i64.ge_s
+                    "^#" => 0x7C,    // fallback (no native wasm pow)
+                    _ => 0x7C,       // fallback: i64.add
                 };
                 buf_chirho.push(opcode_chirho);
             } else if args_chirho.len() == 1 && name_chirho == "negate#" {
@@ -583,10 +615,7 @@ fn emit_expr_chirho(
 }
 
 /// Emit a comparison of the value on the stack with a case alt pattern.
-fn emit_alt_compare_chirho(
-    buf_chirho: &mut Vec<u8>,
-    con_chirho: &AltConChirho,
-) {
+fn emit_alt_compare_chirho(buf_chirho: &mut Vec<u8>, con_chirho: &AltConChirho) {
     match con_chirho {
         AltConChirho::LitConChirho(lit_chirho) => {
             emit_lit_chirho(buf_chirho, lit_chirho);
@@ -663,7 +692,9 @@ fn emit_nested_if_else_chirho(
     // Bind alt binders
     for binder_chirho in &alt_chirho.binders_chirho {
         if let Some(local_idx_chirho) = ctx_chirho.local_map_chirho.get(&binder_chirho.id_chirho) {
-            if let Some(binder_local_chirho) = ctx_chirho.local_map_chirho.get(&bind_chirho.id_chirho) {
+            if let Some(binder_local_chirho) =
+                ctx_chirho.local_map_chirho.get(&bind_chirho.id_chirho)
+            {
                 buf_chirho.push(0x20); // local.get (scrutinee)
                 encode_u32_chirho(buf_chirho, *binder_local_chirho);
                 buf_chirho.push(0x21); // local.set
@@ -761,7 +792,7 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("main", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -775,7 +806,7 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("main", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -792,7 +823,7 @@ mod tests_chirho {
                 body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(0))),
             },
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -847,7 +878,7 @@ mod tests_chirho {
                     }),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             },
             CoreBindingChirho {
                 binder_chirho: dummy_binder_chirho("main", 3),
@@ -856,7 +887,7 @@ mod tests_chirho {
                     arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(41))),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             },
         ]);
 
@@ -885,7 +916,7 @@ mod tests_chirho {
                 }),
             },
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -916,7 +947,7 @@ mod tests_chirho {
                 ],
             },
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -935,7 +966,7 @@ mod tests_chirho {
                 args_chirho: vec![],
             },
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -968,7 +999,7 @@ mod tests_chirho {
                 ],
             },
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_chirho(&module_chirho);
@@ -983,7 +1014,7 @@ mod tests_chirho {
             binder_chirho: dummy_binder_chirho("main", 0),
             rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(42)),
             is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         }]);
 
         let wasm_chirho = compile_core_to_wasm_executable_chirho(&module_chirho);
@@ -1011,19 +1042,21 @@ mod tests_chirho {
                     }),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             },
             CoreBindingChirho {
                 binder_chirho: dummy_binder_chirho("main", 4),
                 rhs_chirho: CoreExprChirho::AppChirho {
                     fun_chirho: Box::new(CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(1))),
-                        arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(10))),
+                        arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                            10,
+                        ))),
                     }),
                     arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(32))),
                 },
                 is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
             },
         ]);
 

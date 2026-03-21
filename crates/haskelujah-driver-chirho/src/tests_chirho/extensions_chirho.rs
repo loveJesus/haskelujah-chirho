@@ -10,16 +10,13 @@
 
 #[allow(unused_imports)]
 use crate::{
-    eval_source_chirho,
-    eval_source_with_machine_chirho,
-    compile_source_chirho,
-    frontend_warnings_chirho,
-    check_source_file_chirho,
+    check_source_file_chirho, compile_source_chirho, eval_source_chirho,
+    eval_source_with_machine_chirho, frontend_warnings_chirho,
 };
 #[allow(unused_imports)]
-use haskelujah_span_chirho::SourceMapChirho;
+use haskelujah_runtime_chirho::{ExecutionModeChirho, ValueChirho};
 #[allow(unused_imports)]
-use haskelujah_runtime_chirho::{ValueChirho, ExecutionModeChirho};
+use haskelujah_span_chirho::SourceMapChirho;
 #[allow(unused_imports)]
 use haskelujah_syntax_chirho::SourceFileChirho;
 
@@ -106,7 +103,8 @@ fn hex_float_lexer_token_chirho() {
     let float_count_chirho = tokens_chirho
         .iter()
         .filter(|t_chirho| {
-            t_chirho.kind_chirho == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::FloatLitChirho
+            t_chirho.kind_chirho
+                == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::FloatLitChirho
         })
         .count();
     assert_eq!(float_count_chirho, 1, "0x1Fp4 should lex as FloatLit");
@@ -122,7 +120,8 @@ fn hex_float_with_dot_parses_chirho() {
     let float_count_chirho = tokens_chirho
         .iter()
         .filter(|t_chirho| {
-            t_chirho.kind_chirho == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::FloatLitChirho
+            t_chirho.kind_chirho
+                == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::FloatLitChirho
         })
         .count();
     assert_eq!(float_count_chirho, 1, "0x1.8p1 should lex as FloatLit");
@@ -138,7 +137,8 @@ fn hex_int_unchanged_chirho() {
     let int_count_chirho = tokens_chirho
         .iter()
         .filter(|t_chirho| {
-            t_chirho.kind_chirho == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::IntLitChirho
+            t_chirho.kind_chirho
+                == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::IntLitChirho
         })
         .count();
     assert_eq!(int_count_chirho, 1, "0xFF without p should remain IntLit");
@@ -466,7 +466,8 @@ fn magic_hash_lexer_ident_chirho() {
     let var_count_chirho = tokens_chirho
         .iter()
         .filter(|t_chirho| {
-            t_chirho.kind_chirho == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::VarIdChirho
+            t_chirho.kind_chirho
+                == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::VarIdChirho
         })
         .count();
     assert_eq!(var_count_chirho, 2, "foo# and bar# should lex as VarId");
@@ -482,7 +483,8 @@ fn magic_hash_lexer_con_chirho() {
     let con_count_chirho = tokens_chirho
         .iter()
         .filter(|t_chirho| {
-            t_chirho.kind_chirho == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::ConIdChirho
+            t_chirho.kind_chirho
+                == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::ConIdChirho
         })
         .count();
     assert_eq!(con_count_chirho, 2, "Int# and Char## should lex as ConId");
@@ -533,12 +535,10 @@ main = 42
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let warnings_chirho = frontend_warnings_chirho(src_chirho, &mut sm_chirho, "HoleWarn.hs");
-    let has_hole_warning_chirho = warnings_chirho
-        .iter()
-        .any(|w_chirho| {
-            let msg_chirho = format!("{:?}", w_chirho);
-            msg_chirho.contains("hole") || msg_chirho.contains("4200")
-        });
+    let has_hole_warning_chirho = warnings_chirho.iter().any(|w_chirho| {
+        let msg_chirho = format!("{:?}", w_chirho);
+        msg_chirho.contains("hole") || msg_chirho.contains("4200")
+    });
     assert!(has_hole_warning_chirho, "should emit typed hole warning");
 }
 
@@ -827,7 +827,8 @@ add x y = x + y
 main = add 20 22
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PartialTypeSigMulti.hs", None);
+    let result_chirho =
+        eval_source_chirho(src_chirho, &mut sm_chirho, "PartialTypeSigMulti.hs", None);
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
@@ -845,12 +846,10 @@ main = f 41
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let warnings_chirho =
         frontend_warnings_chirho(src_chirho, &mut sm_chirho, "PartialTypeSigWarn.hs");
-    let has_wildcard_warning_chirho = warnings_chirho
-        .iter()
-        .any(|w_chirho| {
-            let msg_chirho = format!("{:?}", w_chirho);
-            msg_chirho.contains("4201") || msg_chirho.contains("wildcard")
-        });
+    let has_wildcard_warning_chirho = warnings_chirho.iter().any(|w_chirho| {
+        let msg_chirho = format!("{:?}", w_chirho);
+        msg_chirho.contains("4201") || msg_chirho.contains("wildcard")
+    });
     assert!(
         has_wildcard_warning_chirho,
         "expected W4201 wildcard warning for `_` in type signature"
@@ -896,84 +895,120 @@ main = case Cons 1 (Cons 2 Nil) of
 fn strict_extension_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE Strict #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "Strict.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "Strict.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 #[test]
 fn strict_data_extension_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE StrictData #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "StrictData.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "StrictData.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 #[test]
 fn applicative_do_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE ApplicativeDo #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "ApplicativeDo.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "ApplicativeDo.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 #[test]
 fn generalized_newtype_deriving_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE GeneralizedNewtypeDeriving #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "GND.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "GND.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 #[test]
 fn derive_lift_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE DeriveLift #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "DeriveLift.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "DeriveLift.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 #[test]
 fn safe_haskell_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE Safe #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "Safe.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "Safe.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 #[test]
 fn trustworthy_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE Trustworthy #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "Trustworthy.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "Trustworthy.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 #[test]
 fn cpp_extension_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE CPP #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "CPP.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "CPP.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 #[test]
 fn template_haskell_quotes_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE TemplateHaskellQuotes #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "THQuotes.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "THQuotes.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 #[test]
 fn qualified_do_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE QualifiedDo #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "QualifiedDo.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "QualifiedDo.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 #[test]
 fn overloaded_record_update_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE OverloadedRecordUpdate #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "RecordUpdate.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "RecordUpdate.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 #[test]
 fn type_data_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE TypeData #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "TypeData.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "TypeData.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 // ── GHC2021 meta-extension ─────────────────────────────────────────────
@@ -997,7 +1032,10 @@ main = case Cons 42 Nil of
 fn ghc2024_meta_extension_chirho() {
     let src_chirho = "{-# LANGUAGE GHC2024 #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    assert_eq!(eval_source_chirho(src_chirho, &mut sm_chirho, "GHC2024.hs", None).unwrap(), ValueChirho::IntChirho(42));
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "GHC2024.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
 }
 
 // -- Phase 3 item 40: Library type schemes expansion --
@@ -1008,15 +1046,24 @@ fn builtin_real_to_frac_chirho() {
     let src_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nf x = realToFrac x\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "realToFrac.hs");
-    assert!(result_chirho.is_ok(), "realToFrac should type-check: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "realToFrac should type-check: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
 fn builtin_from_integral_chirho() {
-    let src_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nf x = fromIntegral x\n";
+    let src_chirho =
+        "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nf x = fromIntegral x\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "fromIntegral.hs");
-    assert!(result_chirho.is_ok(), "fromIntegral should type-check: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "fromIntegral should type-check: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -1024,7 +1071,11 @@ fn builtin_div_mod_chirho() {
     let src_chirho = "module Test where\nmain = div 10 3\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "divmod.hs", None);
-    assert!(result_chirho.is_ok(), "div should eval: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "div should eval: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -1032,7 +1083,11 @@ fn builtin_error_without_stack_trace_chirho() {
     let src_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nf = errorWithoutStackTrace \"oops\"\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "errWST.hs");
-    assert!(result_chirho.is_ok(), "errorWithoutStackTrace should type-check: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "errorWithoutStackTrace should type-check: {:?}",
+        result_chirho.err()
+    );
 }
 
 // -- Phase 3 item 41: Module interfaces expansion (transformers) --
@@ -1042,7 +1097,11 @@ fn import_control_monad_trans_identity_chirho() {
     let src_chirho = "module Test where\nimport Control.Monad.Trans.Identity (IdentityT)\nf = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TransIdentity.hs");
-    assert!(result_chirho.is_ok(), "Control.Monad.Trans.Identity import: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Control.Monad.Trans.Identity import: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -1050,7 +1109,11 @@ fn import_control_monad_trans_state_chirho() {
     let src_chirho = "module Test where\nimport Control.Monad.Trans.State (StateT)\nf = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TransState.hs");
-    assert!(result_chirho.is_ok(), "Control.Monad.Trans.State import: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Control.Monad.Trans.State import: {:?}",
+        result_chirho.err()
+    );
 }
 
 // -- Phase 3 item 42: Desugarer robustness (panic elimination) --
@@ -1090,7 +1153,11 @@ fn do_where_compiles_chirho() {
     let src_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Test where\nf = do\n  return a\n  where a = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "DoWhereCmp.hs");
-    assert!(result_chirho.is_ok(), "do-where should compile: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "do-where should compile: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -1183,7 +1250,11 @@ fn options_ghc_x_extension_chirho() {
     let src_chirho = "{-# OPTIONS_GHC -XNoImplicitPrelude #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "OptsGHC.hs");
-    assert!(result_chirho.is_ok(), "OPTIONS_GHC -X should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "OPTIONS_GHC -X should work: {:?}",
+        result_chirho.err()
+    );
 }
 
 // ── Module interface: Type.Reflection ──────────────────────────────────
@@ -1198,7 +1269,11 @@ main = 42
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TypeRefl.hs");
-    assert!(result_chirho.is_ok(), "Type.Reflection import should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Type.Reflection import should work: {:?}",
+        result_chirho.err()
+    );
 }
 
 // ── Module interface: Unsafe.Coerce ────────────────────────────────────
@@ -1213,7 +1288,11 @@ main = 42
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "UnsCoerce.hs");
-    assert!(result_chirho.is_ok(), "Unsafe.Coerce import should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Unsafe.Coerce import should work: {:?}",
+        result_chirho.err()
+    );
 }
 
 // ── Module interface: GHC.Exception ────────────────────────────────────
@@ -1228,7 +1307,11 @@ main = 42
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "GHCExc.hs");
-    assert!(result_chirho.is_ok(), "GHC.Exception import should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.Exception import should work: {:?}",
+        result_chirho.err()
+    );
 }
 
 // ── Type family reduction in type inference ────────────────────────────
@@ -1254,7 +1337,11 @@ main = myVal
     let mut sm_chirho = SourceMapChirho::new_chirho();
     // Compiles without E0205 — type family reduction resolves F Int = Bool
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TFRedSig.hs");
-    assert!(result_chirho.is_ok(), "Type family reduction in sig should compile: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Type family reduction in sig should compile: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -1302,7 +1389,11 @@ main = checkInt
     let mut sm_chirho = SourceMapChirho::new_chirho();
     // Compiles without E0205 — closed type family reduces IsInt Int = Bool
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TFClosed.hs");
-    assert!(result_chirho.is_ok(), "Closed type family reduction should compile: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Closed type family reduction should compile: {:?}",
+        result_chirho.err()
+    );
 }
 
 // ── Data families ──────────────────────────────────────────────────────
@@ -1318,7 +1409,11 @@ main = 42
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DataFam.hs", None);
-    assert!(result_chirho.is_ok(), "data family decl should compile: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "data family decl should compile: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -1333,7 +1428,11 @@ main = 42
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DataInst.hs", None);
-    assert!(result_chirho.is_ok(), "data instance decl should compile: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "data instance decl should compile: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -1348,7 +1447,11 @@ main = 42
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NewtypeInst.hs", None);
-    assert!(result_chirho.is_ok(), "newtype instance decl should compile: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "newtype instance decl should compile: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -1361,7 +1464,11 @@ main = let MkBox x = MkBox 42 in x
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "LetConPat.hs", None);
-    assert!(result_chirho.is_ok(), "let constructor pat bind should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "let constructor pat bind should work: {:?}",
+        result_chirho.err()
+    );
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
@@ -1374,7 +1481,11 @@ main = let (a, b) = (10, 32) in a + b
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "LetTuplePat.hs", None);
-    assert!(result_chirho.is_ok(), "let tuple pat bind should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "let tuple pat bind should work: {:?}",
+        result_chirho.err()
+    );
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
@@ -1389,7 +1500,11 @@ main = val
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TopConPat.hs", None);
-    assert!(result_chirho.is_ok(), "top-level constructor pat bind should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "top-level constructor pat bind should work: {:?}",
+        result_chirho.err()
+    );
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
@@ -1404,7 +1519,11 @@ main = val
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "WhereConPat.hs", None);
-    assert!(result_chirho.is_ok(), "where constructor pat bind should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "where constructor pat bind should work: {:?}",
+        result_chirho.err()
+    );
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
@@ -1418,7 +1537,11 @@ main = x + y
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "WhereTuplePat.hs", None);
-    assert!(result_chirho.is_ok(), "where tuple pat bind should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "where tuple pat bind should work: {:?}",
+        result_chirho.err()
+    );
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
@@ -1434,7 +1557,11 @@ main = f x + y
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "WhereMixed.hs", None);
-    assert!(result_chirho.is_ok(), "mixed where bindings should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "mixed where bindings should work: {:?}",
+        result_chirho.err()
+    );
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
@@ -1449,7 +1576,11 @@ main = do
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DoLetTuple.hs", None);
-    assert!(result_chirho.is_ok(), "do-let tuple pat should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "do-let tuple pat should work: {:?}",
+        result_chirho.err()
+    );
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
@@ -1465,7 +1596,11 @@ main = do
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "DoLetCon.hs", None);
-    assert!(result_chirho.is_ok(), "do-let constructor pat should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "do-let constructor pat should work: {:?}",
+        result_chirho.err()
+    );
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
@@ -1482,7 +1617,11 @@ iD x = x
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "SccForward.hs", None);
-    assert!(result_chirho.is_ok(), "SCC forward ref should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "SCC forward ref should work: {:?}",
+        result_chirho.err()
+    );
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
@@ -1498,7 +1637,11 @@ incr x = x + 1
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "SccMulti.hs", None);
-    assert!(result_chirho.is_ok(), "SCC multi forward ref should work: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "SCC multi forward ref should work: {:?}",
+        result_chirho.err()
+    );
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
@@ -1646,7 +1789,11 @@ main = print (f 5)
     let (_v_chirho, m_chirho) =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "LetrecMulti.hs", None)
             .expect("should eval");
-    assert_eq!(m_chirho.io_output_chirho.trim(), "10", "f 5 = x + y = a + a = 10");
+    assert_eq!(
+        m_chirho.io_output_chirho.trim(),
+        "10",
+        "f 5 = x + y = a + a = 10"
+    );
 }
 
 /// Letrec where-clause with arithmetic on captured values.
@@ -1661,7 +1808,11 @@ main = print (f 10)
     let (_v_chirho, m_chirho) =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "LetrecArith.hs", None)
             .expect("should eval");
-    assert_eq!(m_chirho.io_output_chirho.trim(), "31", "f 10: x=11, y=20, c=31");
+    assert_eq!(
+        m_chirho.io_output_chirho.trim(),
+        "31",
+        "f 10: x=11, y=20, c=31"
+    );
 }
 
 /// Letrec where three thunks depend on two outer lambda params.
@@ -1676,7 +1827,11 @@ main = print (f 3 4)
     let (_v_chirho, m_chirho) =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "LetrecMultiParam.hs", None)
             .expect("should eval");
-    assert_eq!(m_chirho.io_output_chirho.trim(), "25", "f 3 4 = 9 + 16 = 25");
+    assert_eq!(
+        m_chirho.io_output_chirho.trim(),
+        "25",
+        "f 3 4 = 9 + 16 = 25"
+    );
 }
 
 /// Record field types with type variables: `data Box f = MkBox { unBox :: f Int }`
@@ -1926,8 +2081,11 @@ main = print (case (42 :: Int) of x -> x)
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseVar.hs", None);
     match result_chirho {
         Ok((_val_chirho, machine_chirho)) => {
-            assert_eq!(machine_chirho.io_output_chirho.trim(), "42",
-                "case var pattern should bind scrutinee");
+            assert_eq!(
+                machine_chirho.io_output_chirho.trim(),
+                "42",
+                "case var pattern should bind scrutinee"
+            );
         }
         Err(e_chirho) => panic!("case var pattern failed: {}", e_chirho),
     }
@@ -1950,8 +2108,11 @@ main = print (f 41)
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseVar2.hs", None);
     match result_chirho {
         Ok((_val_chirho, machine_chirho)) => {
-            assert_eq!(machine_chirho.io_output_chirho.trim(), "42",
-                "case var pattern should bind for arithmetic");
+            assert_eq!(
+                machine_chirho.io_output_chirho.trim(),
+                "42",
+                "case var pattern should bind for arithmetic"
+            );
         }
         Err(e_chirho) => panic!("case var arithmetic failed: {}", e_chirho),
     }
@@ -1972,8 +2133,11 @@ main = do
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseVar3.hs", None);
     match result_chirho {
         Ok((_val_chirho, machine_chirho)) => {
-            assert_eq!(machine_chirho.io_output_chirho.trim(), "42",
-                "case var should be visible in let-in-alt");
+            assert_eq!(
+                machine_chirho.io_output_chirho.trim(),
+                "42",
+                "case var should be visible in let-in-alt"
+            );
         }
         Err(e_chirho) => panic!("case var let-in-alt failed: {}", e_chirho),
     }
@@ -2000,8 +2164,11 @@ main = print (f Green)
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "CaseVar4.hs", None);
     match result_chirho {
         Ok((_val_chirho, machine_chirho)) => {
-            assert_eq!(machine_chirho.io_output_chirho.trim(), "2",
-                "constructor case alts should still work");
+            assert_eq!(
+                machine_chirho.io_output_chirho.trim(),
+                "2",
+                "constructor case alts should still work"
+            );
         }
         Err(e_chirho) => panic!("constructor case alt failed: {}", e_chirho),
     }
@@ -2430,7 +2597,11 @@ main = print "proxy ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceProxy.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Proxy import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Proxy import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2444,7 +2615,11 @@ main = print "typeable ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceTypeable.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Typeable import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Typeable import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2458,7 +2633,11 @@ main = print "coerce ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceCoerce.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Coerce import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Coerce import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2472,7 +2651,11 @@ main = print "typelits ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceTypeLits.hs", None);
-    assert!(result_chirho.is_ok(), "GHC.TypeLits import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.TypeLits import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2486,7 +2669,11 @@ main = print "typenats ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceTypeNats.hs", None);
-    assert!(result_chirho.is_ok(), "GHC.TypeNats import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.TypeNats import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2500,7 +2687,11 @@ main = print "storable ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceStorable.hs", None);
-    assert!(result_chirho.is_ok(), "Foreign.Storable import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Foreign.Storable import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2514,7 +2705,11 @@ main = print "ptr ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfacePtr.hs", None);
-    assert!(result_chirho.is_ok(), "Foreign.Ptr import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Foreign.Ptr import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2528,7 +2723,11 @@ main = print "mvar ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceMVar.hs", None);
-    assert!(result_chirho.is_ok(), "Control.Concurrent.MVar import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Control.Concurrent.MVar import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2542,7 +2741,11 @@ main = print "monadtrans ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceMonadTrans.hs", None);
-    assert!(result_chirho.is_ok(), "Control.Monad.Trans.Class import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Control.Monad.Trans.Class import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2556,7 +2759,11 @@ main = print "prettyprint ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfacePrettyPrint.hs", None);
-    assert!(result_chirho.is_ok(), "Text.PrettyPrint import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Text.PrettyPrint import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2570,7 +2777,11 @@ main = print "data ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDataData.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Data import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Data import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2584,7 +2795,11 @@ main = print "word ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceWord.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Word import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Word import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2598,7 +2813,11 @@ main = print "int ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDataInt.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Int import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Int import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2612,7 +2831,11 @@ main = print "map ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDataMap.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Map import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Map import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2625,8 +2848,13 @@ main :: IO ()
 main = print "map strict ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDataMapStrict.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Map.Strict import failed: {:?}", result_chirho.err());
+    let result_chirho =
+        eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDataMapStrict.hs", None);
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Map.Strict import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2640,7 +2868,11 @@ main = print "set ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDataSet.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Set import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Set import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2654,7 +2886,11 @@ main = print "generics ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceGenerics.hs", None);
-    assert!(result_chirho.is_ok(), "GHC.Generics import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.Generics import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 // ── Module Interfaces Batch 5b ────────────────────────────────────────────
@@ -2670,7 +2906,11 @@ main = print "trace ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceTrace.hs", None);
-    assert!(result_chirho.is_ok(), "Debug.Trace import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Debug.Trace import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2684,7 +2924,11 @@ main = print "bits ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceBits.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Bits import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Bits import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2698,7 +2942,11 @@ main = print "ratio ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceRatio.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Ratio import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Ratio import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2712,7 +2960,11 @@ main = print "complex ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceComplex.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Complex import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Complex import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2726,7 +2978,11 @@ main = print "exit ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceExit.hs", None);
-    assert!(result_chirho.is_ok(), "System.Exit import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "System.Exit import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2740,7 +2996,11 @@ main = print "dynamic ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDynamic.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Dynamic import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Dynamic import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2754,7 +3014,11 @@ main = print "deepseq ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceDeepSeq.hs", None);
-    assert!(result_chirho.is_ok(), "Control.DeepSeq import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Control.DeepSeq import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2768,7 +3032,11 @@ main = print "intmap ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceIntMap.hs", None);
-    assert!(result_chirho.is_ok(), "Data.IntMap import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.IntMap import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2782,7 +3050,11 @@ main = print "sequence ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceSeq.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Sequence import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Sequence import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2796,7 +3068,11 @@ main = print "ghcnum ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceGhcNum.hs", None);
-    assert!(result_chirho.is_ok(), "GHC.Num import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.Num import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2810,7 +3086,11 @@ main = print "ghcreal ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceGhcReal.hs", None);
-    assert!(result_chirho.is_ok(), "GHC.Real import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.Real import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2824,7 +3104,11 @@ main = print "ghcfloat ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceGhcFloat.hs", None);
-    assert!(result_chirho.is_ok(), "GHC.Float import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.Float import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2838,7 +3122,11 @@ main = print "ghcenum ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceGhcEnum.hs", None);
-    assert!(result_chirho.is_ok(), "GHC.Enum import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.Enum import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2851,8 +3139,13 @@ main :: IO ()
 main = print "char expanded ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceCharExpanded.hs", None);
-    assert!(result_chirho.is_ok(), "Data.Char expanded import failed: {:?}", result_chirho.err());
+    let result_chirho =
+        eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceCharExpanded.hs", None);
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Char expanded import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2865,8 +3158,13 @@ main :: IO ()
 main = print "prim expanded ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfacePrimExpanded.hs", None);
-    assert!(result_chirho.is_ok(), "GHC.Prim expanded import failed: {:?}", result_chirho.err());
+    let result_chirho =
+        eval_source_chirho(src_chirho, &mut sm_chirho, "IfacePrimExpanded.hs", None);
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.Prim expanded import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2880,7 +3178,11 @@ main = print "records ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "IfaceRecords.hs", None);
-    assert!(result_chirho.is_ok(), "GHC.Records import failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.Records import failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 // ── Prelude expansion tests ───────────────────────────────────────────────
@@ -2898,7 +3200,11 @@ main = print val
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PreludeAsTypeOf.hs", None);
-    assert!(result_chirho.is_ok(), "asTypeOf failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "asTypeOf failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2914,7 +3220,11 @@ main = do
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PreludeMath.hs", None);
-    assert!(result_chirho.is_ok(), "Prelude math failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Prelude math failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2931,7 +3241,11 @@ main = do
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "PreludeListExp.hs", None);
-    assert!(result_chirho.is_ok(), "Prelude list expanded failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Prelude list expanded failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -2955,7 +3269,11 @@ main = putStrLn "ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "GadtKindSig.hs", None);
-    assert!(result_chirho.is_ok(), "GADT standalone kind sig failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GADT standalone kind sig failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2972,7 +3290,11 @@ main = putStrLn "ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "GadtKindMulti.hs", None);
-    assert!(result_chirho.is_ok(), "GADT multi-param kind sig failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GADT multi-param kind sig failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -2989,7 +3311,11 @@ main = putStrLn "ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "GadtKindStar.hs", None);
-    assert!(result_chirho.is_ok(), "GADT simple star kind sig failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "GADT simple star kind sig failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 // ── Constraint/Star kind interchangeability ─────────────────────────────
@@ -3011,7 +3337,11 @@ main = print "ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "DictGADT.hs");
-    assert!(result_chirho.is_ok(), "Constraint->Type GADT kind sig failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Constraint->Type GADT kind sig failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -3034,7 +3364,11 @@ main = print "ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ConstraintFam.hs");
-    assert!(result_chirho.is_ok(), "Constraint type family failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Constraint type family failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -3051,7 +3385,11 @@ main = print "ok"
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "BoolKind.hs");
-    assert!(result_chirho.is_ok(), "DataKinds Bool kind annotation failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "DataKinds Bool kind annotation failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -3072,7 +3410,11 @@ bar = True
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TfApp.hs");
-    assert!(result_chirho.is_ok(), "Type family app pattern failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Type family app pattern failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -3088,7 +3430,11 @@ x = 0
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "ImportVal.hs");
-    assert!(result_chirho.is_ok(), "Imported module values should resolve: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "Imported module values should resolve: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
@@ -3104,14 +3450,27 @@ bar = foo
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "RfMio.hs");
-    assert!(result_chirho.is_ok(), "RealFloat constraint failed: {:?}", result_chirho.err());
+    assert!(
+        result_chirho.is_ok(),
+        "RealFloat constraint failed: {:?}",
+        result_chirho.err()
+    );
 }
 
 #[test]
 fn prelude_export_count_chirho() {
     let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
-    let prelude_chirho = ifaces_chirho.iter().find(|m_chirho| m_chirho.name_chirho == "Prelude").unwrap();
+    let prelude_chirho = ifaces_chirho
+        .iter()
+        .find(|m_chirho| m_chirho.name_chirho == "Prelude")
+        .unwrap();
     // Prelude should have substantial exports after expansion
-    assert!(prelude_chirho.exports_chirho.values_chirho.len() > 200, "Prelude should have 200+ value exports");
-    assert!(prelude_chirho.exports_chirho.types_chirho.len() > 30, "Prelude should have 30+ type exports");
+    assert!(
+        prelude_chirho.exports_chirho.values_chirho.len() > 200,
+        "Prelude should have 200+ value exports"
+    );
+    assert!(
+        prelude_chirho.exports_chirho.types_chirho.len() > 30,
+        "Prelude should have 30+ type exports"
+    );
 }

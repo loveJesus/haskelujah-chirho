@@ -8,7 +8,7 @@
 
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_test_harness_chirho::diff_chirho::{
-    diff_test_cases_chirho, run_diff_suite_chirho, CompileOutcomeChirho,
+    CompileOutcomeChirho, diff_test_cases_chirho, run_diff_suite_chirho,
 };
 
 use crate::eval_source_with_machine_chirho;
@@ -22,9 +22,7 @@ fn haskelujah_eval_chirho(source_chirho: &str) -> CompileOutcomeChirho {
             haskelujah_runtime_chirho::ValueChirho::IntChirho(n_chirho) => {
                 CompileOutcomeChirho::SuccessIntChirho(n_chirho)
             }
-            other_chirho => {
-                CompileOutcomeChirho::SuccessOtherChirho(format!("{:?}", other_chirho))
-            }
+            other_chirho => CompileOutcomeChirho::SuccessOtherChirho(format!("{:?}", other_chirho)),
         },
         Err(e_chirho) => CompileOutcomeChirho::RejectedChirho(format!("{}", e_chirho)),
     }
@@ -127,7 +125,9 @@ fn diff_full_suite_chirho() {
     assert!(
         rate_chirho >= 60.0,
         "GHC agreement rate too low: {}/{} ({:.1}%)",
-        agree_chirho, total_chirho, rate_chirho
+        agree_chirho,
+        total_chirho,
+        rate_chirho
     );
 }
 
