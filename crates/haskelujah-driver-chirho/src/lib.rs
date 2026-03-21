@@ -2243,10 +2243,15 @@ pub fn compile_cabal_project_chirho(
         .parent()
         .unwrap_or_else(|| Path::new("."));
     let source_files_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
+
+    // Scan downloaded dependency packages for stub module interfaces.
+    let dep_ifaces_chirho = scan_dependency_package_ifaces_chirho(project_dir_chirho);
+
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let project_compile_result_chirho = compile_module_files_in_dependency_order_chirho(
+    let project_compile_result_chirho = compile_module_files_with_extra_ifaces_chirho(
         &source_files_chirho,
         &mut source_map_chirho,
+        dep_ifaces_chirho,
     )?;
 
     Ok(CabalCompileResultChirho {
@@ -2373,6 +2378,14 @@ fn compile_module_files_in_dependency_order_chirho(
     module_files_chirho: &[(String, PathBuf)],
     source_map_chirho: &mut SourceMapChirho,
 ) -> Result<ProjectCompileResultChirho, String> {
+    compile_module_files_with_extra_ifaces_chirho(module_files_chirho, source_map_chirho, vec![])
+}
+
+fn compile_module_files_with_extra_ifaces_chirho(
+    module_files_chirho: &[(String, PathBuf)],
+    source_map_chirho: &mut SourceMapChirho,
+    extra_ifaces_chirho: Vec<ModuleIfaceChirho>,
+) -> Result<ProjectCompileResultChirho, String> {
     let mut module_sources_chirho: Vec<(String, String, String)> = Vec::new();
     for (module_name_chirho, path_chirho) in module_files_chirho {
         let source_chirho = read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
@@ -2389,12 +2402,140 @@ fn compile_module_files_in_dependency_order_chirho(
             source_chirho,
         ));
     }
-    compile_module_sources_in_dependency_order_chirho(module_sources_chirho, source_map_chirho)
+    compile_module_sources_with_extra_ifaces_chirho(
+        module_sources_chirho,
+        source_map_chirho,
+        extra_ifaces_chirho,
+    )
 }
 
-fn compile_module_sources_in_dependency_order_chirho(
+/// Scan downloaded dependency packages in .haskelujah-packages-chirho/ for stub
+/// module interfaces. This enables cross-package module resolution.
+fn scan_dependency_package_ifaces_chirho(project_dir_chirho: &Path) -> Vec<ModuleIfaceChirho> {
+    let mut ifaces_chirho = Vec::new();
+
+    // Look for .haskelujah-packages-chirho/ relative to project dir ancestors
+    let mut search_dir_chirho = project_dir_chirho.to_path_buf();
+    let packages_dir_chirho = loop {
+        let candidate_chirho = search_dir_chirho.join(".haskelujah-packages-chirho");
+        if candidate_chirho.is_dir() {
+            break candidate_chirho;
+        }
+        if !search_dir_chirho.pop() {
+            return ifaces_chirho; // No packages directory found
+        }
+    };
+
+    // Scan each package directory
+    let entries_chirho = match std::fs::read_dir(&packages_dir_chirho) {
+        Ok(e_chirho) => e_chirho,
+        Err(_) => return ifaces_chirho,
+    };
+
+    for entry_chirho in entries_chirho.flatten() {
+        let pkg_dir_chirho = entry_chirho.path();
+        if !pkg_dir_chirho.is_dir() {
+            continue;
+        }
+        // Recursively find .hs files and generate stub interfaces
+        scan_package_hs_files_chirho(&pkg_dir_chirho, &pkg_dir_chirho, &mut ifaces_chirho);
+    }
+
+    ifaces_chirho
+}
+
+/// Recursively scan a package directory for .hs files and generate stub interfaces.
+fn scan_package_hs_files_chirho(
+    root_chirho: &Path,
+    dir_chirho: &Path,
+    ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
+) {
+    let entries_chirho = match std::fs::read_dir(dir_chirho) {
+        Ok(e_chirho) => e_chirho,
+        Err(_) => return,
+    };
+
+    for entry_chirho in entries_chirho.flatten() {
+        let path_chirho = entry_chirho.path();
+        if path_chirho.is_dir() {
+            let dir_name_chirho = path_chirho
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy();
+            // Skip hidden dirs, dist, test, bench directories
+            if dir_name_chirho.starts_with('.')
+                || dir_name_chirho == "dist-chirho"
+                || dir_name_chirho == "tests"
+                || dir_name_chirho == "test"
+                || dir_name_chirho == "bench"
+                || dir_name_chirho == "benchmarks"
+            {
+                continue;
+            }
+            scan_package_hs_files_chirho(root_chirho, &path_chirho, ifaces_chirho);
+        } else if path_chirho.extension().is_some_and(|e| e == "hs") {
+            let file_name_chirho = path_chirho
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy();
+            if file_name_chirho == "Setup.hs" || file_name_chirho == "Setup.lhs" {
+                continue;
+            }
+            // Read source and extract module name + exports
+            if let Ok(source_chirho) = std::fs::read_to_string(&path_chirho) {
+                if let Some(mod_name_chirho) =
+                    extract_module_name_from_source_chirho(&source_chirho)
+                {
+                    use haskelujah_naming_chirho::iface_chirho::{
+                        IfaceExportsChirho, IfaceTypeChirho, IfaceValueChirho,
+                    };
+                    let span_chirho = haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO;
+                    let mut exports_chirho = IfaceExportsChirho::default();
+                    for name_chirho in
+                        extract_exported_names_from_source_chirho(&source_chirho)
+                    {
+                        let first_char_chirho = name_chirho.chars().next().unwrap_or('a');
+                        if first_char_chirho.is_uppercase() {
+                            exports_chirho.types_chirho.insert(
+                                name_chirho.clone(),
+                                IfaceTypeChirho {
+                                    name_chirho: name_chirho.clone(),
+                                    constructors_chirho: vec![],
+                                    methods_chirho: vec![],
+                                    span_chirho,
+                                },
+                            );
+                            exports_chirho.values_chirho.insert(
+                                name_chirho.clone(),
+                                IfaceValueChirho {
+                                    name_chirho: name_chirho.clone(),
+                                    span_chirho,
+                                },
+                            );
+                        } else {
+                            exports_chirho.values_chirho.insert(
+                                name_chirho.clone(),
+                                IfaceValueChirho {
+                                    name_chirho: name_chirho.clone(),
+                                    span_chirho,
+                                },
+                            );
+                        }
+                    }
+                    ifaces_chirho.push(ModuleIfaceChirho {
+                        name_chirho: mod_name_chirho,
+                        exports_chirho,
+                    });
+                }
+            }
+        }
+    }
+}
+
+fn compile_module_sources_with_extra_ifaces_chirho(
     module_sources_chirho: Vec<(String, String, String)>,
     source_map_chirho: &mut SourceMapChirho,
+    extra_ifaces_chirho: Vec<ModuleIfaceChirho>,
 ) -> Result<ProjectCompileResultChirho, String> {
     if module_sources_chirho.is_empty() {
         return Ok(ProjectCompileResultChirho {
@@ -2425,6 +2566,8 @@ fn compile_module_sources_in_dependency_order_chirho(
     let mut results_chirho: Vec<CompileResultChirho> = Vec::new();
     let mut ifaces_chirho: Vec<ModuleIfaceChirho> =
         haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    // Add cross-package dependency interfaces
+    ifaces_chirho.extend(extra_ifaces_chirho);
     let mut all_warnings_chirho: Vec<String> = Vec::new();
     let mut imported_types_chirho: std::collections::HashMap<
         String,
