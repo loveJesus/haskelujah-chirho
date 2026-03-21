@@ -23,8 +23,9 @@ use std::thread;
 /// GC threshold: disabled until proper root tracking is implemented.
 /// Without GC roots, the collector frees live cons cells and corrupts data.
 /// Programs will leak memory but produce correct results.
-const GC_THRESHOLD_CHIRHO: u64 = u64::MAX;
+const GC_THRESHOLD_CHIRHO: u64 = 1000;
 const NATIVE_MAIN_STACK_SIZE_CHIRHO: usize = 1024 * 1024 * 1024; // 1GB
+const BOXED_PTR_MASK_CHIRHO: usize = 1usize << (usize::BITS - 1);
 
 type NativeEntryFnChirho = unsafe extern "C" fn() -> i64;
 
@@ -44,6 +45,32 @@ struct NativeGcRuntimeChirho {
 }
 
 impl NativeGcRuntimeChirho {
+    fn normalize_heap_ptr_addr_chirho(ptr_addr_chirho: usize) -> usize {
+        ptr_addr_chirho & !BOXED_PTR_MASK_CHIRHO
+    }
+
+    fn canonical_root_ptr_addr_chirho(&self, root_ptr_addr_chirho: usize) -> Option<usize> {
+        let direct_ptr_addr_chirho =
+            Self::normalize_heap_ptr_addr_chirho(root_ptr_addr_chirho);
+        if self
+            .allocations_by_ptr_chirho
+            .contains_key(&direct_ptr_addr_chirho)
+        {
+            return Some(direct_ptr_addr_chirho);
+        }
+
+        if root_ptr_addr_chirho & BOXED_PTR_MASK_CHIRHO != 0 || root_ptr_addr_chirho == 0 {
+            return None;
+        }
+
+        let indirect_bits_chirho =
+            unsafe { (root_ptr_addr_chirho as *const usize).read_unaligned() };
+        let indirect_ptr_addr_chirho = Self::normalize_heap_ptr_addr_chirho(indirect_bits_chirho);
+        self.allocations_by_ptr_chirho
+            .contains_key(&indirect_ptr_addr_chirho)
+            .then_some(indirect_ptr_addr_chirho)
+    }
+
     fn alloc_chirho(&mut self, requested_size_chirho: u64) -> *mut u8 {
         if self.alloc_count_since_gc_chirho >= GC_THRESHOLD_CHIRHO {
             self.collect_chirho();
@@ -99,8 +126,13 @@ impl NativeGcRuntimeChirho {
         let mut worklist_chirho = VecDeque::new();
         let roots_snapshot_chirho = self.gc_roots_chirho.clone();
         for root_ptr_addr_chirho in roots_snapshot_chirho {
-            if self.try_mark_ptr_addr_chirho(root_ptr_addr_chirho) {
-                worklist_chirho.push_back(root_ptr_addr_chirho);
+            let Some(canonical_root_addr_chirho) =
+                self.canonical_root_ptr_addr_chirho(root_ptr_addr_chirho)
+            else {
+                continue;
+            };
+            if self.try_mark_ptr_addr_chirho(canonical_root_addr_chirho) {
+                worklist_chirho.push_back(canonical_root_addr_chirho);
             }
         }
 
@@ -129,7 +161,11 @@ impl NativeGcRuntimeChirho {
     }
 
     fn try_mark_ptr_addr_chirho(&mut self, ptr_addr_chirho: usize) -> bool {
-        let Some(record_chirho) = self.allocations_by_ptr_chirho.get_mut(&ptr_addr_chirho) else {
+        let canonical_ptr_addr_chirho = Self::normalize_heap_ptr_addr_chirho(ptr_addr_chirho);
+        let Some(record_chirho) = self
+            .allocations_by_ptr_chirho
+            .get_mut(&canonical_ptr_addr_chirho)
+        else {
             return false;
         };
         if record_chirho.marked_chirho {
@@ -875,6 +911,35 @@ mod tests_chirho {
     }
 
     #[test]
+    fn tagged_root_survives_collection_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let root_ptr_chirho = haskelujah_alloc_chirho(16);
+        assert!(!root_ptr_chirho.is_null());
+        let tagged_root_ptr_chirho =
+            ((root_ptr_chirho as usize) | BOXED_PTR_MASK_CHIRHO) as *mut u8;
+        haskelujah_gc_root_push_chirho(tagged_root_ptr_chirho);
+        haskelujah_gc_collect_chirho();
+
+        let runtime_chirho = native_gc_runtime_lock_chirho();
+        assert_eq!(runtime_chirho.allocation_count_chirho(), 1);
+        assert!(runtime_chirho.contains_alloc_chirho(root_ptr_chirho));
+        drop(runtime_chirho);
+
+        haskelujah_gc_root_pop_chirho();
+        haskelujah_gc_collect_chirho();
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        assert_eq!(runtime_chirho.allocation_count_chirho(), 0);
+        runtime_chirho.reset_chirho();
+    }
+
+    #[test]
     fn reachable_child_survives_via_parent_scan_chirho() {
         let _guard_chirho = ffi_test_lock_chirho()
             .lock()
@@ -892,6 +957,43 @@ mod tests_chirho {
             parent_ptr_chirho
                 .cast::<usize>()
                 .write_unaligned(child_ptr_chirho as usize);
+        }
+
+        haskelujah_gc_root_push_chirho(parent_ptr_chirho);
+        haskelujah_gc_collect_chirho();
+
+        let runtime_chirho = native_gc_runtime_lock_chirho();
+        assert_eq!(runtime_chirho.allocation_count_chirho(), 2);
+        assert!(runtime_chirho.contains_alloc_chirho(parent_ptr_chirho));
+        assert!(runtime_chirho.contains_alloc_chirho(child_ptr_chirho));
+        drop(runtime_chirho);
+
+        haskelujah_gc_root_pop_chirho();
+        haskelujah_gc_collect_chirho();
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        assert_eq!(runtime_chirho.allocation_count_chirho(), 0);
+        runtime_chirho.reset_chirho();
+    }
+
+    #[test]
+    fn tagged_child_pointer_survives_parent_scan_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let parent_ptr_chirho = haskelujah_alloc_chirho(16);
+        let child_ptr_chirho = haskelujah_alloc_chirho(16);
+        assert!(!parent_ptr_chirho.is_null());
+        assert!(!child_ptr_chirho.is_null());
+
+        unsafe {
+            parent_ptr_chirho.cast::<usize>().write_unaligned(
+                (child_ptr_chirho as usize) | BOXED_PTR_MASK_CHIRHO,
+            );
         }
 
         haskelujah_gc_root_push_chirho(parent_ptr_chirho);

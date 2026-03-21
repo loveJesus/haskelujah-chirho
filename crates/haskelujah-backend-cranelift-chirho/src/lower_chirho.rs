@@ -1056,6 +1056,14 @@ fn lower_constructor_app_chirho(
     let alloc_ptr_chirho = builder_chirho.inst_results(alloc_call_chirho)[0];
     let mem_flags_chirho = cranelift_codegen::ir::MemFlags::new();
 
+    // Root the freshly allocated object before evaluating later constructor
+    // fields, since a recursive tail field can allocate enough to trigger GC.
+    if let Some(gc_push_ref_chirho) = ctx_chirho.gc_root_push_ref_chirho {
+        builder_chirho
+            .ins()
+            .call(gc_push_ref_chirho, &[alloc_ptr_chirho]);
+    }
+
     let tag_val_chirho = builder_chirho
         .ins()
         .iconst(cl_types_chirho::I64, tag_chirho);
@@ -1079,13 +1087,6 @@ fn lower_constructor_app_chirho(
     let tagged_ptr_chirho = builder_chirho
         .ins()
         .bor(alloc_ptr_chirho, boxed_mask_chirho);
-
-    // Push heap pointer as GC root so the collector knows it's live.
-    if let Some(gc_push_ref_chirho) = ctx_chirho.gc_root_push_ref_chirho {
-        builder_chirho
-            .ins()
-            .call(gc_push_ref_chirho, &[tagged_ptr_chirho]);
-    }
 
     tagged_ptr_chirho
 }
