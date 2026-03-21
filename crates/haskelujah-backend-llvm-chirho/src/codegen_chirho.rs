@@ -1156,6 +1156,37 @@ impl LlvmCodegenChirho {
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
+                "return" | "pure" | "returnIO#" => {
+                    writeln!(def_chirho, "define i64 @{fn_name_chirho}(i64 %v0) {{").unwrap();
+                    writeln!(def_chirho, "entry:").unwrap();
+                    writeln!(def_chirho, "  ret i64 %v0").unwrap();
+                    writeln!(def_chirho, "}}").unwrap();
+                    writeln!(def_chirho).unwrap();
+                }
+                ">>" | "thenIO#" => {
+                    writeln!(
+                        def_chirho,
+                        "define i64 @{fn_name_chirho}(i64 %v0, i64 %v1) {{"
+                    )
+                    .unwrap();
+                    writeln!(def_chirho, "entry:").unwrap();
+                    writeln!(def_chirho, "  ret i64 %v1").unwrap();
+                    writeln!(def_chirho, "}}").unwrap();
+                    writeln!(def_chirho).unwrap();
+                }
+                ">>=" | "bindIO#" => {
+                    writeln!(
+                        def_chirho,
+                        "define i64 @{fn_name_chirho}(i64 %v0, i64 %v1) {{"
+                    )
+                    .unwrap();
+                    writeln!(def_chirho, "entry:").unwrap();
+                    writeln!(def_chirho, "  %cont_ptr = inttoptr i64 %v1 to ptr").unwrap();
+                    writeln!(def_chirho, "  %result = call i64 %cont_ptr(i64 %v0)").unwrap();
+                    writeln!(def_chirho, "  ret i64 %result").unwrap();
+                    writeln!(def_chirho, "}}").unwrap();
+                    writeln!(def_chirho).unwrap();
+                }
                 _ => {}
             }
             self.lifted_functions_chirho.push(def_chirho);
@@ -3835,6 +3866,9 @@ fn builtin_runtime_arity_by_name_chirho(name_chirho: &str) -> Option<usize> {
         "getLine" | "getLine#" => Some(0),
         "readFile" | "readFile#" => Some(1),
         "writeFile" | "writeFile#" => Some(2),
+        "return" | "pure" | "returnIO#" => Some(1),
+        ">>" | "thenIO#" => Some(2),
+        ">>=" | "bindIO#" => Some(2),
         "undefined" | "undefined#" => Some(0),
         "error" | "error#" => Some(1),
         _ => None,
