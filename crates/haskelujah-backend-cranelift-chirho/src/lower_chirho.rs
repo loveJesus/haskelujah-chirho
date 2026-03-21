@@ -130,6 +130,8 @@ pub struct LowerCtxChirho<'a> {
     pub alloc_thunk_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_enter_thunk_chirho`
     pub enter_thunk_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for RTS `haskelujah_is_heap_ptr_chirho`
+    pub is_heap_ptr_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_gc_root_push_chirho`
     pub gc_root_push_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_gc_root_pop_chirho`
@@ -156,7 +158,8 @@ impl<'a> LowerCtxChirho<'a> {
 }
 
 /// Force a value through enter_thunk if the thunk infrastructure is available.
-/// For non-thunks, enter_thunk returns the value as-is (just checks bit 63).
+/// For non-thunks, enter_thunk returns the value as-is after checking the low
+/// boxed-pointer tag and validating the allocation.
 fn force_if_thunk_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     ctx_chirho: &LowerCtxChirho<'_>,
@@ -716,7 +719,7 @@ fn lower_case_chirho(
     };
     let needs_constructor_tags_chirho = concrete_alts_need_constructor_tag_chirho(alts_chirho);
     let scrut_cmp_i64_chirho = if needs_constructor_tags_chirho {
-        load_constructor_tag_chirho(builder_chirho, scrut_i64_chirho)
+        load_constructor_tag_chirho(builder_chirho, ctx_chirho, scrut_i64_chirho)
     } else {
         scrut_i64_chirho
     };
@@ -883,7 +886,7 @@ fn lower_tail_case_chirho(
     };
     let needs_constructor_tags_chirho = concrete_alts_need_constructor_tag_chirho(alts_chirho);
     let scrut_cmp_i64_chirho = if needs_constructor_tags_chirho {
-        load_constructor_tag_chirho(builder_chirho, scrut_i64_chirho)
+        load_constructor_tag_chirho(builder_chirho, ctx_chirho, scrut_i64_chirho)
     } else {
         scrut_i64_chirho
     };
@@ -1083,7 +1086,7 @@ fn lower_constructor_app_chirho(
         );
     }
 
-    let boxed_mask_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, i64::MIN);
+    let boxed_mask_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 1_i64);
     let tagged_ptr_chirho = builder_chirho
         .ins()
         .bor(alloc_ptr_chirho, boxed_mask_chirho);
@@ -1115,6 +1118,7 @@ fn looks_like_data_constructor_name_chirho(name_chirho: &str) -> bool {
 
 fn load_constructor_tag_chirho(
     builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
     scrut_i64_chirho: ClValueChirho,
 ) -> ClValueChirho {
     let boxed_block_chirho = builder_chirho.create_block();
@@ -1122,11 +1126,18 @@ fn load_constructor_tag_chirho(
     let join_block_chirho = builder_chirho.create_block();
     builder_chirho.append_block_param(join_block_chirho, cl_types_chirho::I64);
 
+    let Some(is_heap_ptr_ref_chirho) = ctx_chirho.is_heap_ptr_ref_chirho else {
+        return scrut_i64_chirho;
+    };
     let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    let is_boxed_call_chirho = builder_chirho
+        .ins()
+        .call(is_heap_ptr_ref_chirho, &[scrut_i64_chirho]);
+    let is_boxed_bits_chirho = builder_chirho.inst_results(is_boxed_call_chirho)[0];
     let is_boxed_chirho =
         builder_chirho
             .ins()
-            .icmp(IntCcChirho::SignedLessThan, scrut_i64_chirho, zero_chirho);
+            .icmp(IntCcChirho::NotEqual, is_boxed_bits_chirho, zero_chirho);
     builder_chirho.ins().brif(
         is_boxed_chirho,
         boxed_block_chirho,
@@ -1163,7 +1174,7 @@ fn decode_boxed_constructor_ptr_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     scrut_i64_chirho: ClValueChirho,
 ) -> ClValueChirho {
-    let ptr_mask_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, i64::MAX);
+    let ptr_mask_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, !1_i64);
     builder_chirho.ins().band(scrut_i64_chirho, ptr_mask_chirho)
 }
 
@@ -1850,7 +1861,7 @@ pub fn emit_partial_application_closure_with_alloc_ref_chirho(
         );
     }
 
-    let boxed_mask_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, i64::MIN);
+    let boxed_mask_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 1_i64);
     builder_chirho
         .ins()
         .bor(alloc_ptr_chirho, boxed_mask_chirho)
@@ -1938,6 +1949,7 @@ fn lower_indirect_call_with_sig_chirho(
 
 fn lower_indirect_app_values_chirho(
     builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
     fun_ptr_i64_chirho: ClValueChirho,
     arg_vals_chirho: &[ClValueChirho],
 ) -> ClValueChirho {
@@ -1950,11 +1962,17 @@ fn lower_indirect_app_values_chirho(
     let join_block_chirho = builder_chirho.create_block();
     builder_chirho.append_block_param(join_block_chirho, cl_types_chirho::I64);
 
+    let Some(is_heap_ptr_ref_chirho) = ctx_chirho.is_heap_ptr_ref_chirho else {
+        return lower_indirect_call_with_sig_chirho(builder_chirho, fun_ptr_i64_chirho, arg_vals_chirho);
+    };
     let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
-    let is_boxed_chirho =
-        builder_chirho
-            .ins()
-            .icmp(IntCcChirho::SignedLessThan, fun_ptr_i64_chirho, zero_chirho);
+    let is_boxed_call_chirho = builder_chirho
+        .ins()
+        .call(is_heap_ptr_ref_chirho, &[fun_ptr_i64_chirho]);
+    let is_boxed_bits_chirho = builder_chirho.inst_results(is_boxed_call_chirho)[0];
+    let is_boxed_chirho = builder_chirho
+        .ins()
+        .icmp(IntCcChirho::NotEqual, is_boxed_bits_chirho, zero_chirho);
     builder_chirho.ins().brif(
         is_boxed_chirho,
         boxed_block_chirho,
@@ -1990,6 +2008,7 @@ fn lower_indirect_app_values_chirho(
     } else {
         lower_indirect_app_values_chirho(
             builder_chirho,
+            ctx_chirho,
             closure_result_chirho,
             &arg_vals_chirho[1..],
         )
@@ -2016,7 +2035,12 @@ fn lower_indirect_app_chirho(
         let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
         arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, arg_val_chirho, false));
     }
-    lower_indirect_app_values_chirho(builder_chirho, fun_ptr_i64_chirho, &arg_vals_chirho)
+    lower_indirect_app_values_chirho(
+        builder_chirho,
+        ctx_chirho,
+        fun_ptr_i64_chirho,
+        &arg_vals_chirho,
+    )
 }
 
 // ─── Primitive operation lowering ─────────────────────────────────────────────
@@ -2031,11 +2055,9 @@ pub fn lower_primop_chirho(
     name_chirho: &str,
     args_chirho: &[CoreExprChirho],
 ) -> ClValueChirho {
-    // Evaluate operands. NOTE: thunk forcing at primop args is NOT safe with
-    // the current bit-63 heap pointer tagging because negative integers also
-    // have bit 63 set (e.g. -1 = 0xFFFF...FFFF). enter_thunk would misclassify
-    // them as heap pointers. Proper fix: change tagging to use low bits (pointer
-    // alignment) or box all integers. For now, primop args are evaluated eagerly.
+    // Evaluate operands eagerly for now. Low-bit pointer tagging means odd
+    // integers no longer collide with boxed pointers during enter_thunk,
+    // because the RTS validates the de-tagged address before entering it.
     let lhs_raw_chirho = if !args_chirho.is_empty() {
         lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[0])
     } else {

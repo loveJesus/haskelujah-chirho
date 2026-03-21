@@ -25,7 +25,7 @@ use std::thread;
 /// Programs will leak memory but produce correct results.
 const GC_THRESHOLD_CHIRHO: u64 = 1000;
 const NATIVE_MAIN_STACK_SIZE_CHIRHO: usize = 1024 * 1024 * 1024; // 1GB
-const BOXED_PTR_MASK_CHIRHO: usize = 1usize << (usize::BITS - 1);
+const BOXED_PTR_MASK_CHIRHO: usize = 1;
 
 type NativeEntryFnChirho = unsafe extern "C" fn() -> i64;
 
@@ -50,25 +50,23 @@ impl NativeGcRuntimeChirho {
     }
 
     fn canonical_root_ptr_addr_chirho(&self, root_ptr_addr_chirho: usize) -> Option<usize> {
-        let direct_ptr_addr_chirho =
-            Self::normalize_heap_ptr_addr_chirho(root_ptr_addr_chirho);
-        if self
-            .allocations_by_ptr_chirho
-            .contains_key(&direct_ptr_addr_chirho)
-        {
-            return Some(direct_ptr_addr_chirho);
-        }
-
-        if root_ptr_addr_chirho & BOXED_PTR_MASK_CHIRHO != 0 || root_ptr_addr_chirho == 0 {
-            return None;
-        }
-
-        let indirect_bits_chirho =
-            unsafe { (root_ptr_addr_chirho as *const usize).read_unaligned() };
-        let indirect_ptr_addr_chirho = Self::normalize_heap_ptr_addr_chirho(indirect_bits_chirho);
+        let direct_ptr_addr_chirho = Self::normalize_heap_ptr_addr_chirho(root_ptr_addr_chirho);
         self.allocations_by_ptr_chirho
-            .contains_key(&indirect_ptr_addr_chirho)
-            .then_some(indirect_ptr_addr_chirho)
+            .contains_key(&direct_ptr_addr_chirho)
+            .then_some(direct_ptr_addr_chirho)
+            .or_else(|| {
+                if root_ptr_addr_chirho & BOXED_PTR_MASK_CHIRHO != 0 || root_ptr_addr_chirho == 0 {
+                    return None;
+                }
+
+                let indirect_bits_chirho =
+                    unsafe { (root_ptr_addr_chirho as *const usize).read_unaligned() };
+                let indirect_ptr_addr_chirho =
+                    Self::normalize_heap_ptr_addr_chirho(indirect_bits_chirho);
+                self.allocations_by_ptr_chirho
+                    .contains_key(&indirect_ptr_addr_chirho)
+                    .then_some(indirect_ptr_addr_chirho)
+            })
     }
 
     fn alloc_chirho(&mut self, requested_size_chirho: u64) -> *mut u8 {
@@ -287,6 +285,24 @@ pub extern "C" fn haskelujah_alloc_total_chirho() -> u64 {
     native_gc_runtime_lock_chirho().alloc_total_chirho()
 }
 
+/// Return 1 if the given boxed-tagged value points at a live heap allocation.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_is_heap_ptr_chirho(value_bits_chirho: u64) -> i64 {
+    if value_bits_chirho & 1 == 0 {
+        return 0;
+    }
+    let raw_ptr_addr_chirho = (value_bits_chirho & !1u64) as usize;
+    let runtime_chirho = native_gc_runtime_lock_chirho();
+    if runtime_chirho
+        .allocations_by_ptr_chirho
+        .contains_key(&raw_ptr_addr_chirho)
+    {
+        1
+    } else {
+        0
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Thunk operations for lazy evaluation
 // ---------------------------------------------------------------------------
@@ -352,8 +368,8 @@ pub extern "C" fn haskelujah_alloc_thunk_chirho(
             );
         }
     }
-    // Set high bit to mark as heap pointer
-    (ptr_chirho as u64) | (1u64 << 63)
+    // Set low bit to mark as heap pointer.
+    (ptr_chirho as u64) | 1
 }
 
 /// Enter (force) a thunk.
@@ -365,23 +381,34 @@ pub extern "C" fn haskelujah_alloc_thunk_chirho(
 /// - Not a thunk: return as-is
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_enter_thunk_chirho(thunk_ptr_chirho: u64) -> u64 {
-    // Only heap pointers have the high bit (bit 63) set. Unboxed values
-    // (small ints, tags, chars) don't — return them as-is immediately.
-    if thunk_ptr_chirho & (1u64 << 63) == 0 {
+    // Only boxed heap pointers set low bit 0 -> 1. Plain integers can also be
+    // odd, so after clearing the tag we must verify the address is a live heap
+    // allocation before dereferencing it as a thunk object.
+    if thunk_ptr_chirho & 1 == 0 {
         return thunk_ptr_chirho;
     }
 
-    let raw_ptr_chirho = (thunk_ptr_chirho & !(1u64 << 63)) as *mut u64;
+    let raw_ptr_chirho = (thunk_ptr_chirho & !1u64) as *mut u64;
     if raw_ptr_chirho.is_null() {
-        return 0;
+        return thunk_ptr_chirho;
+    }
+
+    {
+        let runtime_chirho = native_gc_runtime_lock_chirho();
+        if !runtime_chirho
+            .allocations_by_ptr_chirho
+            .contains_key(&(raw_ptr_chirho as usize))
+        {
+            return thunk_ptr_chirho;
+        }
     }
 
     unsafe {
         let header_chirho = *raw_ptr_chirho;
         if !header_looks_like_native_thunk_chirho(header_chirho) {
             // Legacy boxed constructors/dictionaries and non-thunk closures can
-            // also have the high bit set, but they do not use the native thunk
-            // state encoding in bits 7..4. Leave them untouched.
+            // also set the low boxed-pointer tag, but they do not use the
+            // native thunk state encoding in bits 7..4. Leave them untouched.
             return thunk_ptr_chirho;
         }
 
@@ -419,7 +446,7 @@ pub extern "C" fn haskelujah_update_thunk_chirho(
     thunk_ptr_chirho: u64,
     result_chirho: u64,
 ) {
-    let raw_ptr_chirho = (thunk_ptr_chirho & !(1u64 << 63)) as *mut u64;
+    let raw_ptr_chirho = (thunk_ptr_chirho & !1u64) as *mut u64;
     if !raw_ptr_chirho.is_null() {
         unsafe {
             *raw_ptr_chirho =
@@ -529,11 +556,11 @@ pub extern "C" fn haskelujah_show_int_list_chirho(list_bits_chirho: u64) -> u64 
         if current_chirho == 0 {
             break;
         }
-        if current_chirho & (1u64 << 63) == 0 {
+        if current_chirho & 1 == 0 {
             break;
         }
 
-        let ptr_chirho = (current_chirho & 0x7FFFFFFFFFFFFFFF) as *const u64;
+        let ptr_chirho = (current_chirho & !1u64) as *const u64;
         let tag_chirho = unsafe { *ptr_chirho };
         if tag_chirho != 1 {
             break;
@@ -565,11 +592,11 @@ pub extern "C" fn haskelujah_show_bool_list_chirho(list_bits_chirho: u64) -> u64
         if current_chirho == 0 {
             break;
         }
-        if current_chirho & (1u64 << 63) == 0 {
+        if current_chirho & 1 == 0 {
             break;
         }
 
-        let ptr_chirho = (current_chirho & 0x7FFFFFFFFFFFFFFF) as *const u64;
+        let ptr_chirho = (current_chirho & !1u64) as *const u64;
         let tag_chirho = unsafe { *ptr_chirho };
         if tag_chirho != 1 {
             break;
@@ -775,16 +802,16 @@ pub extern "C" fn haskelujah_pack_string_chirho(list_bits_chirho: u64) -> u64 {
     let mut current_chirho = list_bits_chirho;
 
     loop {
-        // Check if boxed (high bit set)
+        // Check if boxed (low bit set)
         if current_chirho == 0 {
             break; // Nil (immediate 0)
         }
-        if current_chirho & (1u64 << 63) == 0 {
+        if current_chirho & 1 == 0 {
             // Immediate value — tag 0 = Nil
             break;
         }
-        // Unbox: clear high bit to get real pointer
-        let ptr_chirho = (current_chirho & 0x7FFFFFFFFFFFFFFF) as *const u64;
+        // Unbox: clear low tag bit to get real pointer
+        let ptr_chirho = (current_chirho & !1u64) as *const u64;
         let tag_chirho = unsafe { *ptr_chirho };
         if tag_chirho != 1 {
             break; // Not Cons
@@ -832,8 +859,8 @@ pub extern "C" fn haskelujah_unpack_string_chirho(str_bits_chirho: u64) -> u64 {
             // tail = previous cell (boxed) or 0 (Nil)
             *(cell_ptr_chirho.add(16) as *mut u64) = tail_chirho;
         }
-        // Box the pointer (set high bit)
-        tail_chirho = (cell_ptr_chirho as u64) | (1u64 << 63);
+        // Box the pointer (set low tag bit).
+        tail_chirho = (cell_ptr_chirho as u64) | 1;
     }
     tail_chirho
 }
@@ -858,7 +885,10 @@ mod tests_chirho {
     #[test]
     fn enter_thunk_leaves_immediate_values_unchanged_chirho() {
         assert_eq!(haskelujah_enter_thunk_chirho(0), 0);
+        assert_eq!(haskelujah_enter_thunk_chirho(1), 1);
+        assert_eq!(haskelujah_enter_thunk_chirho(3), 3);
         assert_eq!(haskelujah_enter_thunk_chirho(42), 42);
+        assert_eq!(haskelujah_enter_thunk_chirho((-1_i64) as u64), (-1_i64) as u64);
         assert_eq!(haskelujah_enter_thunk_chirho(2249154), 2249154);
     }
 
@@ -876,7 +906,7 @@ mod tests_chirho {
         unsafe {
             *(boxed_ptr_chirho as *mut u64) = 32671067318012;
         }
-        let boxed_bits_chirho = (boxed_ptr_chirho as u64) | (1u64 << 63);
+        let boxed_bits_chirho = (boxed_ptr_chirho as u64) | 1;
         assert_eq!(haskelujah_enter_thunk_chirho(boxed_bits_chirho), boxed_bits_chirho);
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
@@ -936,6 +966,25 @@ mod tests_chirho {
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
         assert_eq!(runtime_chirho.allocation_count_chirho(), 0);
+        runtime_chirho.reset_chirho();
+    }
+
+    #[test]
+    fn is_heap_ptr_distinguishes_boxed_ptrs_from_odd_immediates_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let ptr_chirho = haskelujah_alloc_chirho(16);
+        assert!(!ptr_chirho.is_null());
+        assert_eq!(haskelujah_is_heap_ptr_chirho((ptr_chirho as u64) | 1), 1);
+        assert_eq!(haskelujah_is_heap_ptr_chirho(3), 0);
+        assert_eq!(haskelujah_is_heap_ptr_chirho((-1_i64) as u64), 0);
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
         runtime_chirho.reset_chirho();
     }
 
@@ -1117,15 +1166,15 @@ mod tests_chirho {
 
             *(cell2_ptr_chirho as *mut u64) = 1;
             *(cell2_ptr_chirho.add(8) as *mut u64) = 2;
-            *(cell2_ptr_chirho.add(16) as *mut u64) = (cell3_ptr_chirho as u64) | (1u64 << 63);
+            *(cell2_ptr_chirho.add(16) as *mut u64) = (cell3_ptr_chirho as u64) | 1;
 
             *(cell1_ptr_chirho as *mut u64) = 1;
             *(cell1_ptr_chirho.add(8) as *mut u64) = 1;
-            *(cell1_ptr_chirho.add(16) as *mut u64) = (cell2_ptr_chirho as u64) | (1u64 << 63);
+            *(cell1_ptr_chirho.add(16) as *mut u64) = (cell2_ptr_chirho as u64) | 1;
         }
 
         let shown_ptr_bits_chirho =
-            haskelujah_show_int_list_chirho((cell1_ptr_chirho as u64) | (1u64 << 63));
+            haskelujah_show_int_list_chirho((cell1_ptr_chirho as u64) | 1);
         assert_ne!(shown_ptr_bits_chirho, 0);
         let shown_text_chirho =
             unsafe { CStr::from_ptr(shown_ptr_bits_chirho as usize as *const std::ffi::c_char) };
@@ -1159,15 +1208,15 @@ mod tests_chirho {
 
             *(cell2_ptr_chirho as *mut u64) = 1;
             *(cell2_ptr_chirho.add(8) as *mut u64) = 0;
-            *(cell2_ptr_chirho.add(16) as *mut u64) = (cell3_ptr_chirho as u64) | (1u64 << 63);
+            *(cell2_ptr_chirho.add(16) as *mut u64) = (cell3_ptr_chirho as u64) | 1;
 
             *(cell1_ptr_chirho as *mut u64) = 1;
             *(cell1_ptr_chirho.add(8) as *mut u64) = 1;
-            *(cell1_ptr_chirho.add(16) as *mut u64) = (cell2_ptr_chirho as u64) | (1u64 << 63);
+            *(cell1_ptr_chirho.add(16) as *mut u64) = (cell2_ptr_chirho as u64) | 1;
         }
 
         let shown_ptr_bits_chirho =
-            haskelujah_show_bool_list_chirho((cell1_ptr_chirho as u64) | (1u64 << 63));
+            haskelujah_show_bool_list_chirho((cell1_ptr_chirho as u64) | 1);
         assert_ne!(shown_ptr_bits_chirho, 0);
         let shown_text_chirho =
             unsafe { CStr::from_ptr(shown_ptr_bits_chirho as usize as *const std::ffi::c_char) };
@@ -1224,15 +1273,15 @@ mod tests_chirho {
         let result_chirho =
             haskelujah_unpack_string_chirho(test_str_chirho.as_ptr() as u64);
 
-        // Result should be a boxed cons cell (high bit set)
+        // Result should be a boxed cons cell (low bit set)
         assert_ne!(result_chirho, 0, "unpack should not return Nil for non-empty string");
         assert!(
-            result_chirho & (1u64 << 63) != 0,
-            "result should be boxed (high bit set)"
+            result_chirho & 1 != 0,
+            "result should be boxed (low bit set)"
         );
 
         // Decode first cons cell: tag=1, head='H'=72, tail=boxed
-        let ptr_chirho = (result_chirho & 0x7FFFFFFFFFFFFFFF) as *const u64;
+        let ptr_chirho = (result_chirho & !1u64) as *const u64;
         unsafe {
             let tag_chirho = *ptr_chirho;
             let head_chirho = *ptr_chirho.add(1);

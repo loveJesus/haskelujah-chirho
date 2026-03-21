@@ -28,8 +28,8 @@ use haskelujah_typing_chirho::ty_chirho::TyChirho;
 #[cfg(test)]
 use haskelujah_rts_chirho::{ObjectKindChirho, pack_native_header_chirho};
 
-const BOXED_CONSTRUCTOR_TAG_MASK_CHIRHO: i64 = i64::MIN;
-const BOXED_CONSTRUCTOR_PTR_MASK_CHIRHO: i64 = i64::MAX;
+const BOXED_CONSTRUCTOR_TAG_MASK_CHIRHO: i64 = 1;
+const BOXED_CONSTRUCTOR_PTR_MASK_CHIRHO: i64 = !1_i64;
 
 /// LLVM IR generation context.
 pub struct LlvmCodegenChirho {
@@ -140,7 +140,7 @@ impl LlvmCodegenChirho {
     }
 
     /// Force a value through enter_thunk. Returns the forced value.
-    /// enter_thunk returns non-thunks as-is (just checks bit 63).
+    /// enter_thunk returns non-thunks as-is after checking the low boxed tag.
     fn emit_force_thunk_chirho(&mut self, value_chirho: &str) -> String {
         let tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
@@ -1286,6 +1286,11 @@ impl LlvmCodegenChirho {
         writeln!(
             self.output_chirho,
             "declare i64 @haskelujah_enter_thunk_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare i64 @haskelujah_is_heap_ptr_chirho(i64)"
         )
         .unwrap();
         writeln!(
@@ -2518,9 +2523,15 @@ impl LlvmCodegenChirho {
         let direct_label_chirho = self.fresh_label_chirho("call.direct");
         let join_label_chirho = self.fresh_label_chirho("call.join");
         let is_boxed_tmp_chirho = self.fresh_tmp_chirho();
+        let boxed_probe_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
             self.output_chirho,
-            "  {is_boxed_tmp_chirho} = icmp slt i64 {fun_val_chirho}, 0"
+            "  {boxed_probe_tmp_chirho} = call i64 @haskelujah_is_heap_ptr_chirho(i64 {fun_val_chirho})"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {is_boxed_tmp_chirho} = icmp ne i64 {boxed_probe_tmp_chirho}, 0"
         )
         .unwrap();
         writeln!(
@@ -3828,9 +3839,15 @@ impl LlvmCodegenChirho {
         let immediate_label_chirho = self.fresh_label_chirho("case.tag.immediate");
         let join_label_chirho = self.fresh_label_chirho("case.tag.join");
         let is_boxed_tmp_chirho = self.fresh_tmp_chirho();
+        let boxed_probe_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
             self.output_chirho,
-            "  {is_boxed_tmp_chirho} = icmp slt i64 {scrut_val_chirho}, 0"
+            "  {boxed_probe_tmp_chirho} = call i64 @haskelujah_is_heap_ptr_chirho(i64 {scrut_val_chirho})"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {is_boxed_tmp_chirho} = icmp ne i64 {boxed_probe_tmp_chirho}, 0"
         )
         .unwrap();
         writeln!(
