@@ -251,6 +251,118 @@ pub extern "C" fn haskelujah_alloc_total_chirho() -> u64 {
     native_gc_runtime_lock_chirho().alloc_total_chirho()
 }
 
+// ---------------------------------------------------------------------------
+// Thunk operations for lazy evaluation
+// ---------------------------------------------------------------------------
+
+/// Allocate a thunk on the heap.
+///
+/// Layout: [header (8 bytes)] [fv_0] [fv_1] ... [fv_n]
+/// Header: (code_ptr << 2) | 0b00 (thunk tag)
+///
+/// The code_ptr is the address of the function that computes the thunk's value.
+/// Free variables are the captured environment needed by the thunk body.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_alloc_thunk_chirho(
+    code_ptr_chirho: u64,
+    num_fvs_chirho: u64,
+    fvs_chirho: *const u64,
+) -> u64 {
+    let total_size_chirho = 8 + num_fvs_chirho * 8;
+    let ptr_chirho = haskelujah_alloc_chirho(total_size_chirho);
+    if ptr_chirho.is_null() {
+        return 0;
+    }
+    unsafe {
+        // Write header: (code_ptr << 2) | 0b00 (thunk kind)
+        let header_chirho = ptr_chirho as *mut u64;
+        *header_chirho = code_ptr_chirho << 2;
+
+        // Copy free variables
+        if num_fvs_chirho > 0 && !fvs_chirho.is_null() {
+            let fvs_dest_chirho = header_chirho.add(1);
+            std::ptr::copy_nonoverlapping(
+                fvs_chirho,
+                fvs_dest_chirho,
+                num_fvs_chirho as usize,
+            );
+        }
+    }
+
+    // Set high bit to mark as heap pointer
+    (ptr_chirho as u64) | (1u64 << 63)
+}
+
+/// Enter (force) a thunk. If the object is already evaluated (indirection),
+/// follow the chain. If it's a thunk, call the code pointer with the free
+/// variables and update in place.
+///
+/// Returns the evaluated value (may be a heap pointer or immediate).
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_enter_thunk_chirho(thunk_ptr_chirho: u64) -> u64 {
+    // Strip high bit to get real pointer
+    let raw_ptr_chirho = (thunk_ptr_chirho & !(1u64 << 63)) as *mut u64;
+    if raw_ptr_chirho.is_null() {
+        return 0;
+    }
+
+    unsafe {
+        let header_chirho = *raw_ptr_chirho;
+        let kind_chirho = header_chirho & 0b11;
+
+        match kind_chirho {
+            0b00 => {
+                // Thunk: extract code ptr, call it, update in place
+                let code_addr_chirho = header_chirho >> 2;
+
+                // Blackhole: set kind to 0b11 (PAP/blackhole marker)
+                *raw_ptr_chirho = 0b11;
+
+                // Call the thunk's code with pointer to free variables
+                let fvs_ptr_chirho = raw_ptr_chirho.add(1);
+                let code_fn_chirho: unsafe extern "C" fn(*const u64) -> u64 =
+                    std::mem::transmute(code_addr_chirho as usize);
+                let result_chirho = code_fn_chirho(fvs_ptr_chirho);
+
+                // Update thunk to indirection: (result << 2) | 0b01
+                // But if result is a heap ptr (high bit set), store it directly
+                // with indirection kind bits
+                *raw_ptr_chirho = (result_chirho << 2) | 0b01;
+
+                result_chirho
+            }
+            0b01 => {
+                // Indirection: follow to target
+                let target_chirho = header_chirho >> 2;
+                target_chirho
+            }
+            0b11 => {
+                // Blackhole: infinite loop detected
+                eprintln!("runtime error: thunk blackhole (infinite loop)");
+                std::process::abort();
+            }
+            _ => {
+                // Not a thunk (constructor or function) — return as-is
+                thunk_ptr_chirho
+            }
+        }
+    }
+}
+
+/// Update a thunk in place with the computed result.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_update_thunk_chirho(
+    thunk_ptr_chirho: u64,
+    result_chirho: u64,
+) {
+    let raw_ptr_chirho = (thunk_ptr_chirho & !(1u64 << 63)) as *mut u64;
+    if !raw_ptr_chirho.is_null() {
+        unsafe {
+            *raw_ptr_chirho = (result_chirho << 2) | 0b01;
+        }
+    }
+}
+
 /// Run a native backend entry function on a worker thread with an explicitly
 /// large stack so non-tail-recursive list code does not immediately exhaust the
 /// relatively small default macOS main-thread stack.
