@@ -6,7 +6,7 @@ use std::process::Command;
 use std::sync::OnceLock;
 
 use haskelujah_backend_cranelift_chirho::{
-    compile_core_to_object_executable_chirho, TargetConfigChirho,
+    TargetConfigChirho, compile_core_to_object_executable_chirho,
 };
 use haskelujah_core_chirho::{elide_dicts_and_filter_chirho, pretty_module_chirho};
 use haskelujah_driver_chirho::compile_source_chirho;
@@ -87,10 +87,7 @@ fn cranelift_round_trip_stdout_chirho(src_chirho: &str) -> String {
     String::from_utf8(output_chirho.stdout).expect("stdout should be UTF-8")
 }
 
-fn cranelift_round_trip_stdout_with_input_chirho(
-    src_chirho: &str,
-    stdin_chirho: &str,
-) -> String {
+fn cranelift_round_trip_stdout_with_input_chirho(src_chirho: &str, stdin_chirho: &str) -> String {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let compile_result_chirho =
         compile_source_chirho(src_chirho, &mut source_map_chirho, "Main.hs")
@@ -234,8 +231,9 @@ fn cranelift_round_trip_recursive_io_return_unit_output_chirho() {
 
 #[test]
 fn cranelift_round_trip_put_str_output_chirho() {
-    let stdout_chirho =
-        cranelift_round_trip_stdout_chirho("module Main where\nmain = do\n  putStr \"Hello\"\n  putStr \" from\"\n  putStr \" Haskelujah!\"\n");
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\nmain = do\n  putStr \"Hello\"\n  putStr \" from\"\n  putStr \" Haskelujah!\"\n",
+    );
     assert_eq!(stdout_chirho, "Hello from Haskelujah!");
 }
 
@@ -367,6 +365,22 @@ fn cranelift_round_trip_print_bool_list_output_chirho() {
     let stdout_chirho =
         cranelift_round_trip_stdout_chirho("module Main where\nmain = print [True,False,True]\n");
     assert_eq!(stdout_chirho, "[True,False,True]\n");
+}
+
+#[test]
+fn cranelift_round_trip_print_tuple_list_with_adt_field_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\ndata Op = Add | Mul deriving (Eq, Show)\nsteps = [(Add,2),(Mul,3)]\nmain = print steps\n",
+    );
+    assert_eq!(stdout_chirho, "[(Add,2),(Mul,3)]\n");
+}
+
+#[test]
+fn cranelift_round_trip_show_tuple_list_with_adt_field_output_chirho() {
+    let stdout_chirho = cranelift_round_trip_stdout_chirho(
+        "module Main where\ndata Op = Add | Mul deriving (Eq, Show)\nsteps = [(Add,2),(Mul,3)]\nmain = putStrLn (show steps)\n",
+    );
+    assert_eq!(stdout_chirho, "[(Add,2),(Mul,3)]\n");
 }
 
 #[test]
