@@ -4,7 +4,7 @@
 //! Integration test that runs the curated GHC test suite from
 //! `ghc-tests-chirho/` through the Haskelujah pipeline.
 
-use haskelujah_test_harness_chirho::ghc_suite_chirho::{
+use haskelujah_test_harness::ghc_suite_chirho::{
     discover_ghc_tests_chirho, run_ghc_suite_chirho,
 };
 use std::path::Path;
@@ -28,8 +28,8 @@ fn ghc_curated_suite_chirho() {
         return;
     }
 
-    let tests_chirho = discover_ghc_tests_chirho(&suite_dir_chirho)
-        .expect("should discover test files");
+    let tests_chirho =
+        discover_ghc_tests_chirho(&suite_dir_chirho).expect("should discover test files");
 
     assert!(
         !tests_chirho.is_empty(),
@@ -63,7 +63,8 @@ fn ghc_curated_suite_chirho() {
 
     // Assert all tests pass (since we curated them to match our capabilities).
     assert_eq!(
-        suite_chirho.failed_chirho, 0,
+        suite_chirho.failed_chirho,
+        0,
         "All curated GHC tests should pass. Failures:\n{}",
         suite_chirho
             .results_chirho
