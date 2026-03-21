@@ -2866,6 +2866,69 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Control.Lens (lens package — massive, synthetic)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "view", "over", "set", "lens", "iso", "prism", "traverse",
+            "to", "from", "review", "preview", "folded", "filtered",
+            "mapped", "each", "both", "ix", "at", "contains",
+            "_1", "_2", "_3", "_4", "_5",
+            "_head", "_tail", "_init", "_last",
+            "_Left", "_Right", "_Just", "_Nothing",
+            "makeLenses", "makePrisms", "makeClassy", "makeFields",
+            "(&)", "(%~)", "(.~)", "(^.)", "(^?)", "(^..)",
+            "(+~)", "(-~)", "(*~)", "(//~)", "(&&~)", "(||~)",
+            "use", "uses", "assign", "modifying",
+            "zoom", "magnify",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for ty_chirho in &[
+            ("Lens", &[][..]), ("Lens'", &[]), ("Traversal", &[]), ("Traversal'", &[]),
+            ("Prism", &[]), ("Prism'", &[]), ("Iso", &[]), ("Iso'", &[]),
+            ("Getter", &[]), ("Setter", &[]), ("Setter'", &[]),
+            ("Fold", &[]), ("Review", &[]),
+            ("Getting", &[]), ("ASetter", &[]), ("ASetter'", &[]),
+            ("ALens", &[]), ("ALens'", &[]),
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(ty_chirho.0, ty_chirho.1);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        let lens_modules_chirho = [
+            "Control.Lens", "Control.Lens.Type", "Control.Lens.Lens",
+            "Control.Lens.Getter", "Control.Lens.Setter", "Control.Lens.Fold",
+            "Control.Lens.Traversal", "Control.Lens.Prism", "Control.Lens.Iso",
+            "Control.Lens.Review", "Control.Lens.At", "Control.Lens.Each",
+            "Control.Lens.Indexed", "Control.Lens.TH", "Control.Lens.Combinators",
+            "Control.Lens.Operators", "Control.Lens.Tuple",
+        ];
+        for mod_name_chirho in &lens_modules_chirho {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
+    // Control.Parallel.Strategies
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["rpar", "rseq", "rdeepseq", "parMap", "parList", "parListChunk", "dot", "using", "withStrategy", "evalList", "evalTraversable"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Strategy", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Eval", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Parallel.Strategies".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Data.Aeson + related encoding/types modules
     {
         let mut exports_chirho = IfaceExportsChirho::default();
