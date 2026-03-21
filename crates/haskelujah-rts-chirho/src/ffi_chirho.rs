@@ -254,14 +254,28 @@ pub extern "C" fn haskelujah_alloc_total_chirho() -> u64 {
 // ---------------------------------------------------------------------------
 // Thunk operations for lazy evaluation
 // ---------------------------------------------------------------------------
+//
+// Header layout (matches runtime_layout_chirho.rs):
+//   [63..8]  info-table pointer / entry code address
+//   [7..4]   thunk state: 0=unevaluated, 1=blackhole, 2=evaluated(ind)
+//   [3..2]   GC mark bits
+//   [1..0]   object kind: 00=thunk, 01=fun, 10=con, 11=pap
+//
+// Thunk-specific header:
+//   [63..8]  code_ptr (unevaluated) or result_ptr (evaluated)
+//   [7..4]   state: 0=thunk, 1=blackhole, 2=indirection
+//   [1..0]   0b00 (ThunkChirho kind)
+
+const THUNK_STATE_UNEVALUATED_CHIRHO: u64 = 0 << 4;
+const THUNK_STATE_BLACKHOLE_CHIRHO: u64 = 1 << 4;
+const THUNK_STATE_INDIRECTION_CHIRHO: u64 = 2 << 4;
+const THUNK_STATE_MASK_CHIRHO: u64 = 0xF0;
+const KIND_THUNK_CHIRHO: u64 = 0b00;
 
 /// Allocate a thunk on the heap.
 ///
 /// Layout: [header (8 bytes)] [fv_0] [fv_1] ... [fv_n]
-/// Header: (code_ptr << 2) | 0b00 (thunk tag)
-///
-/// The code_ptr is the address of the function that computes the thunk's value.
-/// Free variables are the captured environment needed by the thunk body.
+/// Header: (code_ptr << 8) | state | kind
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_alloc_thunk_chirho(
     code_ptr_chirho: u64,
@@ -274,11 +288,11 @@ pub extern "C" fn haskelujah_alloc_thunk_chirho(
         return 0;
     }
     unsafe {
-        // Write header: (code_ptr << 2) | 0b00 (thunk kind)
         let header_chirho = ptr_chirho as *mut u64;
-        *header_chirho = code_ptr_chirho << 2;
+        // Header: code_ptr in high bits, state=unevaluated, kind=thunk
+        *header_chirho =
+            (code_ptr_chirho << 8) | THUNK_STATE_UNEVALUATED_CHIRHO | KIND_THUNK_CHIRHO;
 
-        // Copy free variables
         if num_fvs_chirho > 0 && !fvs_chirho.is_null() {
             let fvs_dest_chirho = header_chirho.add(1);
             std::ptr::copy_nonoverlapping(
@@ -288,19 +302,19 @@ pub extern "C" fn haskelujah_alloc_thunk_chirho(
             );
         }
     }
-
     // Set high bit to mark as heap pointer
     (ptr_chirho as u64) | (1u64 << 63)
 }
 
-/// Enter (force) a thunk. If the object is already evaluated (indirection),
-/// follow the chain. If it's a thunk, call the code pointer with the free
-/// variables and update in place.
+/// Enter (force) a thunk.
 ///
-/// Returns the evaluated value (may be a heap pointer or immediate).
+/// Checks the thunk state in the header:
+/// - Unevaluated: blackhole it, call code, update to indirection
+/// - Indirection: return the stored result
+/// - Blackhole: abort (infinite loop)
+/// - Not a thunk: return as-is
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_enter_thunk_chirho(thunk_ptr_chirho: u64) -> u64 {
-    // Strip high bit to get real pointer
     let raw_ptr_chirho = (thunk_ptr_chirho & !(1u64 << 63)) as *mut u64;
     if raw_ptr_chirho.is_null() {
         return 0;
@@ -310,42 +324,36 @@ pub extern "C" fn haskelujah_enter_thunk_chirho(thunk_ptr_chirho: u64) -> u64 {
         let header_chirho = *raw_ptr_chirho;
         let kind_chirho = header_chirho & 0b11;
 
-        match kind_chirho {
-            0b00 => {
-                // Thunk: extract code ptr, call it, update in place
-                let code_addr_chirho = header_chirho >> 2;
-
-                // Blackhole: set kind to 0b11 (PAP/blackhole marker)
-                *raw_ptr_chirho = 0b11;
-
-                // Call the thunk's code with pointer to free variables
-                let fvs_ptr_chirho = raw_ptr_chirho.add(1);
-                let code_fn_chirho: unsafe extern "C" fn(*const u64) -> u64 =
-                    std::mem::transmute(code_addr_chirho as usize);
-                let result_chirho = code_fn_chirho(fvs_ptr_chirho);
-
-                // Update thunk to indirection: (result << 2) | 0b01
-                // But if result is a heap ptr (high bit set), store it directly
-                // with indirection kind bits
-                *raw_ptr_chirho = (result_chirho << 2) | 0b01;
-
-                result_chirho
-            }
-            0b01 => {
-                // Indirection: follow to target
-                let target_chirho = header_chirho >> 2;
-                target_chirho
-            }
-            0b11 => {
-                // Blackhole: infinite loop detected
-                eprintln!("runtime error: thunk blackhole (infinite loop)");
-                std::process::abort();
-            }
-            _ => {
-                // Not a thunk (constructor or function) — return as-is
-                thunk_ptr_chirho
-            }
+        if kind_chirho != KIND_THUNK_CHIRHO {
+            // Not a thunk — return as-is
+            return thunk_ptr_chirho;
         }
+
+        let state_chirho = header_chirho & THUNK_STATE_MASK_CHIRHO;
+
+        if state_chirho == THUNK_STATE_INDIRECTION_CHIRHO {
+            // Already evaluated — return result
+            return header_chirho >> 8;
+        }
+
+        if state_chirho == THUNK_STATE_BLACKHOLE_CHIRHO {
+            eprintln!("runtime error: thunk blackhole (infinite loop)");
+            std::process::abort();
+        }
+
+        // Unevaluated thunk: blackhole, call code, update
+        let code_addr_chirho = header_chirho >> 8;
+        *raw_ptr_chirho = (code_addr_chirho << 8) | THUNK_STATE_BLACKHOLE_CHIRHO | KIND_THUNK_CHIRHO;
+
+        let fvs_ptr_chirho = raw_ptr_chirho.add(1);
+        let code_fn_chirho: unsafe extern "C" fn(*const u64) -> u64 =
+            std::mem::transmute(code_addr_chirho as usize);
+        let result_chirho = code_fn_chirho(fvs_ptr_chirho);
+
+        // Update to indirection
+        *raw_ptr_chirho = (result_chirho << 8) | THUNK_STATE_INDIRECTION_CHIRHO | KIND_THUNK_CHIRHO;
+
+        result_chirho
     }
 }
 
@@ -358,7 +366,8 @@ pub extern "C" fn haskelujah_update_thunk_chirho(
     let raw_ptr_chirho = (thunk_ptr_chirho & !(1u64 << 63)) as *mut u64;
     if !raw_ptr_chirho.is_null() {
         unsafe {
-            *raw_ptr_chirho = (result_chirho << 2) | 0b01;
+            *raw_ptr_chirho =
+                (result_chirho << 8) | THUNK_STATE_INDIRECTION_CHIRHO | KIND_THUNK_CHIRHO;
         }
     }
 }
