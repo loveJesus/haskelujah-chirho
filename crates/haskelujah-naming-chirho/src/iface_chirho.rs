@@ -2866,6 +2866,48 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Control.Monad.Catch (exceptions package)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["throwM", "catch", "catchAll", "try", "tryJust", "handle", "handleAll", "handleJust", "onException", "bracket", "bracket_", "finally", "mask", "uninterruptibleMask", "mask_", "catches"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("MonadThrow", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("MonadCatch", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("MonadMask", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("SomeException", &["SomeException"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.Catch".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Exception (base)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["throw", "throwIO", "catch", "try", "evaluate", "bracket", "bracket_", "finally", "onException", "handle", "handleJust", "tryJust", "catches", "mask", "mask_", "uninterruptibleMask", "assert", "throwTo"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Exception", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("SomeException", &["SomeException"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("IOException", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("AsyncException", &["StackOverflow", "HeapOverflow", "ThreadKilled", "UserInterrupt"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Exception".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Data.ByteString.Internal
     {
         let mut exports_chirho = IfaceExportsChirho::default();
