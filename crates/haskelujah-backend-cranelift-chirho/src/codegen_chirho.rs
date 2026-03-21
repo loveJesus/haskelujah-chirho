@@ -223,6 +223,29 @@ fn compile_core_to_object_inner_chirho(
             )
             .ok();
 
+        // GC root push: i64 → void (push a heap pointer as a GC root)
+        let mut gc_push_sig_chirho = obj_module_chirho.make_signature();
+        gc_push_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        let _gc_root_push_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_gc_root_push_chirho",
+                LinkageChirho::Import,
+                &gc_push_sig_chirho,
+            )
+            .ok();
+
+        // GC root pop: void → void
+        let gc_pop_sig_chirho = obj_module_chirho.make_signature();
+        let _gc_root_pop_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_gc_root_pop_chirho",
+                LinkageChirho::Import,
+                &gc_pop_sig_chirho,
+            )
+            .ok();
+
         // show_int: i64 → i64 (pointer to NUL-terminated string)
         let show_int_sig_chirho = put_str_ln_sig_chirho.clone(); // same sig: i64 → i64
         let show_int_func_id_chirho = obj_module_chirho
