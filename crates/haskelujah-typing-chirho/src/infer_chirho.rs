@@ -1217,7 +1217,7 @@ impl InferCtxChirho {
                 let (body_subst_chirho, body_ty_chirho) = self.infer_expr_chirho(body_chirho);
                 self.env_chirho.pop_scope_chirho();
 
-                let mut result_chirho = body_ty_chirho;
+                let mut result_chirho = body_subst_chirho.apply_ty_chirho(&body_ty_chirho);
                 for param_ty_chirho in param_tys_chirho.into_iter().rev() {
                     let param_sub_chirho = body_subst_chirho.apply_ty_chirho(&param_ty_chirho);
                     result_chirho = TyChirho::fun_chirho(param_sub_chirho, result_chirho);
