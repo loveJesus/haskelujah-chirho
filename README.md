@@ -226,6 +226,9 @@ haskelujah clean .          # Remove build artifacts
 The `examples-chirho/` directory contains verified working programs:
 
 - **showcase**: Multi-module demo — fibonacci, collatz, GCD, primes, quicksort, foldl, filter
+- **stats**: Statistics calculator — mean, variance, min, max, filter with IO report
+- **todo**: Todo list manager — Priority ADT, list counting, string formatting
+- **number-converter**: Interactive number converter — binary, octal, hex, digit sum
 - **hello-world**: Fibonacci, Collatz, Euler #1, closures, list operations
 - **multi-module**: Cross-module imports with library
 - **expr-eval**: Recursive algebraic expression evaluator
