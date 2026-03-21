@@ -127,7 +127,31 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
 fn read_haskell_source_file_chirho(path_chirho: impl AsRef<Path>) -> io::Result<String> {
     let path_ref_chirho = path_chirho.as_ref();
     let source_chirho = std::fs::read_to_string(path_ref_chirho)?;
-    preprocess_cpp_source_chirho(path_ref_chirho, &source_chirho)
+    // Try CPP preprocessing; fall back to raw source (with directives
+    // stripped) if cpp fails (e.g., tick characters in Haskell identifiers).
+    match preprocess_cpp_source_chirho(path_ref_chirho, &source_chirho) {
+        Ok(processed_chirho) => Ok(processed_chirho),
+        Err(_) => {
+            // Strip CPP directives manually as fallback
+            let stripped_chirho: String = source_chirho
+                .lines()
+                .filter(|line_chirho| {
+                    let t_chirho = line_chirho.trim();
+                    !t_chirho.starts_with("#if")
+                        && !t_chirho.starts_with("#else")
+                        && !t_chirho.starts_with("#endif")
+                        && !t_chirho.starts_with("#define")
+                        && !t_chirho.starts_with("#undef")
+                        && !t_chirho.starts_with("#include")
+                        && !t_chirho.starts_with("#ifdef")
+                        && !t_chirho.starts_with("#ifndef")
+                        && !t_chirho.starts_with("#elif")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            Ok(stripped_chirho)
+        }
+    }
 }
 
 /// Run the shared front-end compiler phases for a single Haskell module.
@@ -996,10 +1020,40 @@ fn scan_hierarchical_modules_chirho(
                     }));
                 if let Ok(iface_chirho) = iface_result_chirho {
                     ifaces_chirho.push(iface_chirho);
+                } else {
+                    // Full parse failed — create a minimal stub iface from the
+                    // module declaration line. This handles complex files with
+                    // many extensions that our parser can't handle yet.
+                    if let Some(mod_name_chirho) = extract_module_name_from_source_chirho(&source_chirho) {
+                        if !ifaces_chirho.iter().any(|i_chirho| i_chirho.name_chirho == mod_name_chirho) {
+                            ifaces_chirho.push(haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho {
+                                name_chirho: mod_name_chirho,
+                                exports_chirho: haskelujah_naming_chirho::iface_chirho::IfaceExportsChirho::default(),
+                            });
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+/// Extract module name from source by scanning for `module Foo.Bar.Baz` line.
+fn extract_module_name_from_source_chirho(source_chirho: &str) -> Option<String> {
+    for line_chirho in source_chirho.lines() {
+        let trimmed_chirho = line_chirho.trim();
+        if trimmed_chirho.starts_with("module ") {
+            let rest_chirho = trimmed_chirho["module ".len()..].trim();
+            // Module name ends at whitespace, '(', or "where"
+            let name_chirho = rest_chirho
+                .split(|c_chirho: char| c_chirho.is_whitespace() || c_chirho == '(')
+                .next()?;
+            if !name_chirho.is_empty() {
+                return Some(name_chirho.to_string());
+            }
+        }
+    }
+    None
 }
 
 /// Run the back-end pipeline phases (5 through 7) on an already-front-end-compiled
