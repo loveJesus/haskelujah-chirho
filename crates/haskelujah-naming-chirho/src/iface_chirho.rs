@@ -8824,6 +8824,55 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Foreign.Concurrent
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["newForeignPtr", "addForeignPtrFinalizer"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Foreign.Concurrent".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.Posix.Types / System.Posix.Internals
+    for mod_name_chirho in &["System.Posix.Types", "System.Posix.Internals"] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["Fd", "FileMode", "FileOffset", "ProcessID", "ProcessGroupID", "UserID", "GroupID", "ByteCount", "ClockTick", "EpochTime", "DeviceID", "FileID", "Limit", "LinkCount", "CDev", "CIno", "CMode", "COff", "CPid", "CSsize", "CGid", "CNlink", "CUid", "CCc", "CSpeed", "CTcflag", "CRLim", "CSocklen", "CKey", "CId", "CFsBlkCnt", "CFsFilCnt", "CClockId", "CBlkSize", "CBlkCnt", "fdToHandle"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Fd", "FileMode", "FileOffset", "ProcessID", "UserID", "GroupID"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Monad.Trans.Resource (resourcet)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["ResourceT", "runResourceT", "liftResourceT", "transResourceT", "MonadResource", "liftResourceT", "allocate", "register", "release", "resourceForkIO", "ReleaseKey", "MonadUnliftIO", "withRunInIO", "UnliftIO", "askUnliftIO"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["ResourceT", "MonadResource", "ReleaseKey", "MonadUnliftIO", "UnliftIO"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for mod_name_chirho in &["Control.Monad.Trans.Resource", "Control.Monad.Trans.Resource.Internal", "UnliftIO", "Control.Monad.IO.Unlift"] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
     // System.Timeout
     {
         let mut exports_chirho = IfaceExportsChirho::default();
