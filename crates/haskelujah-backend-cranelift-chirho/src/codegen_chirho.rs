@@ -223,7 +223,7 @@ fn compile_core_to_object_inner_chirho(
             )
             .ok();
 
-        // GC root push: i64 → void (push a heap pointer as a GC root)
+        // GC root push: i64 → void
         let mut gc_push_sig_chirho = obj_module_chirho.make_signature();
         gc_push_sig_chirho
             .params
@@ -243,6 +243,32 @@ fn compile_core_to_object_inner_chirho(
                 "haskelujah_gc_root_pop_chirho",
                 LinkageChirho::Import,
                 &gc_pop_sig_chirho,
+            )
+            .ok();
+
+        // Thunk alloc: (code_ptr: i64, num_fvs: i64, fvs: i64) → i64
+        let mut thunk_alloc_sig_chirho = obj_module_chirho.make_signature();
+        thunk_alloc_sig_chirho.params.push(AbiParamChirho::new(cl_types_chirho::I64));
+        thunk_alloc_sig_chirho.params.push(AbiParamChirho::new(cl_types_chirho::I64));
+        thunk_alloc_sig_chirho.params.push(AbiParamChirho::new(cl_types_chirho::I64));
+        thunk_alloc_sig_chirho.returns.push(AbiParamChirho::new(cl_types_chirho::I64));
+        let _alloc_thunk_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_alloc_thunk_chirho",
+                LinkageChirho::Import,
+                &thunk_alloc_sig_chirho,
+            )
+            .ok();
+
+        // Thunk enter (force): i64 → i64
+        let mut thunk_enter_sig_chirho = obj_module_chirho.make_signature();
+        thunk_enter_sig_chirho.params.push(AbiParamChirho::new(cl_types_chirho::I64));
+        thunk_enter_sig_chirho.returns.push(AbiParamChirho::new(cl_types_chirho::I64));
+        let _enter_thunk_func_id_chirho = obj_module_chirho
+            .declare_function(
+                "haskelujah_enter_thunk_chirho",
+                LinkageChirho::Import,
+                &thunk_enter_sig_chirho,
             )
             .ok();
 
