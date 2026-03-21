@@ -1549,7 +1549,12 @@ impl DesugarCtxChirho {
 
         if let Some(first_arm_chirho) = matches_chirho.first() {
             if let Some(first_pat_chirho) = first_arm_chirho.pats_chirho.get(pat_idx_chirho) {
-                if self.is_unconditional_default_pat_chirho(first_pat_chirho) {
+                if self.is_unconditional_default_pat_chirho(first_pat_chirho)
+                    && self.first_arm_is_unconditional_from_pat_idx_chirho(
+                        first_arm_chirho,
+                        pat_idx_chirho,
+                    )
+                {
                     self.push_scope_chirho();
                     self.bind_var_pat_to_case_binder_chirho(
                         first_pat_chirho,
@@ -1621,6 +1626,10 @@ impl DesugarCtxChirho {
                 if first_con_chirho == AltConChirho::DefaultChirho
                     && matches_chirho.len() > 1
                     && !groups_chirho.iter().all(|(c_chirho, _)| *c_chirho == AltConChirho::DefaultChirho)
+                    && self.first_arm_is_unconditional_from_pat_idx_chirho(
+                        first_arm_chirho,
+                        pat_idx_chirho,
+                    )
                 {
                     // First arm is wildcard but there are constructor arms too.
                     // Bind the variable and use the first arm's RHS directly.
@@ -2419,6 +2428,18 @@ impl DesugarCtxChirho {
             }
             _ => false,
         }
+    }
+
+    fn first_arm_is_unconditional_from_pat_idx_chirho(
+        &self,
+        arm_chirho: &MatchArmChirho,
+        pat_idx_chirho: usize,
+    ) -> bool {
+        arm_chirho
+            .pats_chirho
+            .iter()
+            .skip(pat_idx_chirho)
+            .all(|pat_chirho| self.is_unconditional_default_pat_chirho(pat_chirho))
     }
 
     /// Recursively bind ALL variable names in a pattern tree (including

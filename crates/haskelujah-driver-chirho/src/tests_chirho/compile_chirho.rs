@@ -1785,6 +1785,22 @@ main = print (myLenChirho (myTakeChirho 0 [1,2,3]))
     }
 }
 
+#[test]
+fn llvm_round_trip_safe_lookup_literal_after_wildcard_output_chirho() {
+    let src_chirho = r#"module Main where
+safeLookupChirho _ [] = Nothing
+safeLookupChirho 0 (xChirho:_) = Just xChirho
+safeLookupChirho nChirho (_:xsChirho) = safeLookupChirho (nChirho - 1) xsChirho
+main = case safeLookupChirho 2 [40,41,42,43] of
+  Just valueChirho -> print valueChirho
+  Nothing -> print 0
+"#;
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(exit_code_chirho, 0, "safeLookup executable should exit successfully");
+        assert_eq!(stdout_chirho, "42\n");
+    }
+}
+
 // ── Cranelift backend driver integration tests ────────────────────────
 
 #[test]
@@ -2237,6 +2253,23 @@ main = print (myLenChirho (myTakeChirho 0 [1,2,3]))
     if let Some((code_chirho, stdout_chirho)) = result_chirho {
         assert_eq!(code_chirho, 0, "should exit 0");
         assert_eq!(stdout_chirho, "0\n");
+    }
+}
+
+#[test]
+fn cranelift_round_trip_safe_lookup_literal_after_wildcard_output_chirho() {
+    let src_chirho = r#"module Main where
+safeLookupChirho _ [] = Nothing
+safeLookupChirho 0 (xChirho:_) = Just xChirho
+safeLookupChirho nChirho (_:xsChirho) = safeLookupChirho (nChirho - 1) xsChirho
+main = case safeLookupChirho 2 [40,41,42,43] of
+  Just valueChirho -> print valueChirho
+  Nothing -> print 0
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0, "should exit 0");
+        assert_eq!(stdout_chirho, "42\n");
     }
 }
 
