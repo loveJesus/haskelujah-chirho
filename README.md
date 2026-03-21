@@ -208,7 +208,7 @@ haskelujah clean .          # Remove build artifacts
 | Quicksort 1K | 0.22s | 0.20s CL, **0.15s LLVM** |
 | Prime sieve 10K | 0.28s | 0.59s CL, **0.18s LLVM** |
 | Tail call optimization | Full | Both backends (100M+ iterations) |
-| Hackage packages | cabal-install | `haskelujah install` (aeson, safe, split) |
+| Hackage packages | cabal-install | `haskelujah install` — **safe, void compile!** |
 | Native code | Via NCG or LLVM | Cranelift (default) or LLVM + clang |
 | WebAssembly | Via Asterius/GHCJS | Built-in (beta) |
 | Package manager | cabal-install / Stack | Built-in `build` command |
