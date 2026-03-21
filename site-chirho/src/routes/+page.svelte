@@ -5,9 +5,9 @@
 
 	const statsChirho = [
 		{ labelChirho: 'GHC Compatibility', valueChirho: '88.8%', detailChirho: '833 / 938 tests' },
-		{ labelChirho: 'Rust Code', valueChirho: '161K+', detailChirho: '21 crates, 133 source files' },
+		{ labelChirho: 'Module Interfaces', valueChirho: '351+', detailChirho: 'Synthetic Haskell module interfaces' },
 		{ labelChirho: 'Passing Tests', valueChirho: '2,500+', detailChirho: '513/513 curated, 43 CL + 82 LLVM roundtrips' },
-		{ labelChirho: 'Hackage Packages', valueChirho: '13', detailChirho: 'aeson, lens, servant, containers compile' }
+		{ labelChirho: 'Hackage Packages', valueChirho: '12+', detailChirho: 'comonad, exceptions, distributive, semigroupoids compile' }
 	];
 
 	const heroPillsChirho = [
@@ -146,8 +146,8 @@
 				</div>
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Hackage packages</span>
-					<strong>13 packages compile</strong>
-					<p>aeson, lens (17/17 core modules), servant, containers, scientific, comonad, and more.</p>
+					<strong>12+ packages compile</strong>
+					<p>comonad, exceptions, distributive, semigroupoids, data-default, safe, vector, and more. Cross-package resolution enabled.</p>
 				</div>
 			</div>
 		</div>
