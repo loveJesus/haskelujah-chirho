@@ -2866,6 +2866,36 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Network.HTTP.Types (http-types package — needed by servant, warp, etc.)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["statusCode", "statusMessage", "status200", "status301", "status302", "status400", "status401", "status403", "status404", "status500", "ok200", "notFound404", "methodGet", "methodPost", "methodPut", "methodDelete", "methodPatch", "methodHead", "methodOptions", "hContentType", "hAccept", "hAuthorization", "hCacheControl", "hCookie", "hContentLength", "parseQuery", "renderQuery", "simpleQueryToQuery", "queryToQueryBS", "urlDecode", "urlEncode", "decodePath", "encodePath"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for ty_chirho in &[("Status", &["Status"][..]), ("Method", &[]), ("Header", &[]), ("HeaderName", &[]), ("Query", &[]), ("QueryItem", &[]), ("StdMethod", &["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])] {
+            let (k_chirho, v_chirho) = mk_type_chirho(ty_chirho.0, ty_chirho.1);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for mod_name_chirho in &["Network.HTTP.Types", "Network.HTTP.Types.Status", "Network.HTTP.Types.Method", "Network.HTTP.Types.Header", "Network.HTTP.Types.URI", "Network.HTTP.Types.Version"] {
+            modules_chirho.push(ModuleIfaceChirho { name_chirho: mod_name_chirho.to_string(), exports_chirho: exports_chirho.clone() });
+        }
+    }
+
+    // Gauge.Main / Criterion.Main (benchmarking)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["defaultMain", "bench", "bgroup", "nf", "whnf", "env", "nfIO", "whnfIO"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Benchmark", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for mod_name_chirho in &["Gauge.Main", "Gauge", "Criterion.Main", "Criterion"] {
+            modules_chirho.push(ModuleIfaceChirho { name_chirho: mod_name_chirho.to_string(), exports_chirho: exports_chirho.clone() });
+        }
+    }
+
     // Control.Lens (lens package — massive, synthetic)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
