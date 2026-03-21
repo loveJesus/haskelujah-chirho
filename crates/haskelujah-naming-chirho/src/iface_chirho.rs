@@ -8871,6 +8871,38 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
     }
 
+    // GHC.SrcLoc
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["SrcLoc", "srcLocPackage", "srcLocModule", "srcLocFile", "srcLocStartLine", "srcLocStartCol", "srcLocEndLine", "srcLocEndCol", "getCallStack", "callStack", "withFrozenCallStack", "HasCallStack", "CallStack", "emptyCallStack", "freezeCallStack", "pushCallStack", "fromCallSiteList", "prettySrcLoc", "prettyCallStack"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["SrcLoc", "CallStack", "HasCallStack"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["SrcLoc"]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.SrcLoc".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // GHC.IO.Encoding.Failure
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["CodingFailureMode", "ErrorOnCodingFailure", "IgnoreCodingFailure", "TransliterateCodingFailure", "RoundtripFailure", "isSurrogate", "recoverDecode", "recoverEncode"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("CodingFailureMode", &["ErrorOnCodingFailure", "IgnoreCodingFailure", "TransliterateCodingFailure", "RoundtripFailure"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.IO.Encoding.Failure".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Foreign.Concurrent
     {
         let mut exports_chirho = IfaceExportsChirho::default();
