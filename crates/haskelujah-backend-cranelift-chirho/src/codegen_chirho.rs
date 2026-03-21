@@ -448,6 +448,110 @@ fn compile_core_to_object_inner_chirho(
         )
     };
 
+    // ── Generate thunk trampoline functions (arities 0..8) ─────────────────
+    // Each trampoline has signature fn(fvs_ptr: i64) -> i64.
+    // fvs_ptr points to [func_ptr, arg0, arg1, ...]. The trampoline loads
+    // the function pointer and args, calls the function, and returns the result.
+    const MAX_THUNK_TRAMPOLINE_ARITY_CHIRHO: usize = 8;
+    let mut thunk_trampoline_func_ids_chirho: Vec<cranelift_module::FuncId> =
+        Vec::with_capacity(MAX_THUNK_TRAMPOLINE_ARITY_CHIRHO + 1);
+    {
+        // Trampoline signature: (fvs_ptr: i64) -> i64
+        let mut trampoline_sig_chirho = obj_module_chirho.make_signature();
+        trampoline_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        trampoline_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+
+        for arity_chirho in 0..=MAX_THUNK_TRAMPOLINE_ARITY_CHIRHO {
+            let name_chirho = format!("haskelujah_thunk_trampoline_{arity_chirho}_chirho");
+            let func_id_chirho = obj_module_chirho
+                .declare_function(&name_chirho, LinkageChirho::Local, &trampoline_sig_chirho)
+                .map_err(|e_chirho| {
+                    format!("failed to declare thunk trampoline: {e_chirho}")
+                })?;
+
+            // Define the trampoline function body
+            let mut func_chirho = ClFunctionChirho::with_name_signature(
+                cranelift_codegen::ir::UserFuncName::user(0, func_id_chirho.as_u32()),
+                trampoline_sig_chirho.clone(),
+            );
+            {
+                let mut builder_chirho =
+                    FuncBuilderChirho::new(&mut func_chirho, &mut fb_ctx_chirho);
+                let entry_block_chirho = builder_chirho.create_block();
+                builder_chirho
+                    .append_block_params_for_function_params(entry_block_chirho);
+                builder_chirho.switch_to_block(entry_block_chirho);
+                builder_chirho.seal_block(entry_block_chirho);
+
+                let fvs_ptr_chirho =
+                    builder_chirho.block_params(entry_block_chirho)[0];
+                let mem_flags_chirho = cranelift_codegen::ir::MemFlags::new();
+
+                // Load function pointer from fvs[0]
+                let fn_ptr_chirho = builder_chirho.ins().load(
+                    cl_types_chirho::I64,
+                    mem_flags_chirho,
+                    fvs_ptr_chirho,
+                    0,
+                );
+
+                // Load args from fvs[1..arity+1]
+                let mut arg_vals_chirho: Vec<cranelift_codegen::ir::Value> =
+                    Vec::with_capacity(arity_chirho);
+                for arg_idx_chirho in 0..arity_chirho {
+                    let offset_chirho = ((arg_idx_chirho + 1) * 8) as i32;
+                    let arg_val_chirho = builder_chirho.ins().load(
+                        cl_types_chirho::I64,
+                        mem_flags_chirho,
+                        fvs_ptr_chirho,
+                        offset_chirho,
+                    );
+                    arg_vals_chirho.push(arg_val_chirho);
+                }
+
+                // Build target function signature: (i64, ...) -> i64
+                let mut target_sig_chirho = builder_chirho.func.signature.clone();
+                target_sig_chirho.params.clear();
+                target_sig_chirho.returns.clear();
+                target_sig_chirho
+                    .returns
+                    .push(AbiParamChirho::new(cl_types_chirho::I64));
+                for _ in 0..arity_chirho {
+                    target_sig_chirho
+                        .params
+                        .push(AbiParamChirho::new(cl_types_chirho::I64));
+                }
+                let sig_ref_chirho =
+                    builder_chirho.import_signature(target_sig_chirho);
+
+                // Call the function pointer indirectly
+                let call_inst_chirho = builder_chirho.ins().call_indirect(
+                    sig_ref_chirho,
+                    fn_ptr_chirho,
+                    &arg_vals_chirho,
+                );
+                let result_chirho =
+                    builder_chirho.inst_results(call_inst_chirho)[0];
+                builder_chirho.ins().return_(&[result_chirho]);
+                builder_chirho.finalize();
+            }
+
+            let mut ctx_def_chirho = cranelift_codegen::Context::new();
+            ctx_def_chirho.func = func_chirho;
+            obj_module_chirho
+                .define_function(func_id_chirho, &mut ctx_def_chirho)
+                .map_err(|e_chirho| {
+                    format!("failed to define thunk trampoline: {e_chirho}")
+                })?;
+
+            thunk_trampoline_func_ids_chirho.push(func_id_chirho);
+        }
+    }
+
     // ── Pre-scan: embed string literals in data section ────────────────────
     let mut string_data_ids_chirho: HashMap<String, cranelift_module::DataId> = HashMap::new();
     // Always include printf format strings
@@ -522,6 +626,7 @@ fn compile_core_to_object_inner_chirho(
             enter_thunk_func_id_chirho,
             gc_root_push_func_id_chirho,
             gc_root_pop_func_id_chirho,
+            &thunk_trampoline_func_ids_chirho,
             &string_data_ids_chirho,
         )?;
     }
@@ -1505,6 +1610,7 @@ fn define_function_body_chirho(
     enter_thunk_func_id_chirho: Option<cranelift_module::FuncId>,
     gc_root_push_func_id_chirho: Option<cranelift_module::FuncId>,
     gc_root_pop_func_id_chirho: Option<cranelift_module::FuncId>,
+    thunk_trampoline_func_ids_chirho: &[cranelift_module::FuncId],
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let (param_binders_chirho, body_chirho) = peel_lambdas_chirho(rhs_chirho);
@@ -1624,6 +1730,13 @@ fn define_function_body_chirho(
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let gc_root_pop_fref_chirho = gc_root_pop_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let trampoline_frefs_chirho: Vec<cranelift_codegen::ir::FuncRef> =
+            thunk_trampoline_func_ids_chirho
+                .iter()
+                .map(|fid_chirho| {
+                    module_chirho.declare_func_in_func(*fid_chirho, builder_chirho.func)
+                })
+                .collect();
 
         let mut string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue> =
             HashMap::new();
@@ -1666,6 +1779,7 @@ fn define_function_body_chirho(
             enter_thunk_ref_chirho: enter_thunk_fref_chirho,
             gc_root_push_ref_chirho: gc_root_push_fref_chirho,
             gc_root_pop_ref_chirho: gc_root_pop_fref_chirho,
+            thunk_trampoline_refs_chirho: trampoline_frefs_chirho,
         };
 
         match lower_tail_expr_chirho(&mut builder_chirho, &mut ctx_chirho, body_chirho) {
@@ -1968,6 +2082,7 @@ fn lower_binding_chirho(
     enter_thunk_func_id_chirho: Option<cranelift_module::FuncId>,
     gc_root_push_func_id_chirho: Option<cranelift_module::FuncId>,
     gc_root_pop_func_id_chirho: Option<cranelift_module::FuncId>,
+    thunk_trampoline_func_ids_chirho: &[cranelift_module::FuncId],
     string_data_ids_chirho: &HashMap<String, cranelift_module::DataId>,
 ) -> Result<(), String> {
     let name_chirho = &binding_chirho.binder_chirho.name_chirho;
@@ -2086,6 +2201,7 @@ fn lower_binding_chirho(
             enter_thunk_func_id_chirho,
             gc_root_push_func_id_chirho,
             gc_root_pop_func_id_chirho,
+            &thunk_trampoline_func_ids_chirho,
             string_data_ids_chirho,
         )?;
     }
@@ -2124,6 +2240,7 @@ fn lower_binding_chirho(
         enter_thunk_func_id_chirho,
         gc_root_push_func_id_chirho,
         gc_root_pop_func_id_chirho,
+        &thunk_trampoline_func_ids_chirho,
         string_data_ids_chirho,
     )?;
 

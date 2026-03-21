@@ -134,6 +134,9 @@ pub struct LowerCtxChirho<'a> {
     pub gc_root_push_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_gc_root_pop_chirho`
     pub gc_root_pop_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// FuncRefs for thunk trampoline functions, indexed by arity (0..=8).
+    /// Used to create lazy thunks for let-bound function applications.
+    pub thunk_trampoline_refs_chirho: Vec<cranelift_codegen::ir::FuncRef>,
 }
 
 impl<'a> LowerCtxChirho<'a> {
