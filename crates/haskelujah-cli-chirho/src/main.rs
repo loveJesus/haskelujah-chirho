@@ -364,40 +364,76 @@ fn compile_command_chirho(
     // Find the package root by walking up to a .cabal file, or use parent dir.
     // This ensures hierarchical imports like `import Debug.SimpleReflect.Expr`
     // resolve correctly when the source file is deep in a package tree.
+    // Find the package root by walking up to a .cabal file. Then parse
+    // hs-source-dirs to find the correct source directory. This handles
+    // packages with `hs-source-dirs: src` (base-orphans, nats, etc.).
     let search_dir_chirho = {
-        let mut dir_chirho = Path::new(&path_chirho)
+        let file_parent_chirho = Path::new(&path_chirho)
             .parent()
             .unwrap_or(Path::new("."))
             .to_path_buf();
+        let mut dir_chirho = file_parent_chirho.clone();
+        let mut cabal_root_chirho = None;
         loop {
-            let has_cabal_chirho = std::fs::read_dir(&dir_chirho)
+            let cabal_file_chirho = std::fs::read_dir(&dir_chirho)
                 .into_iter()
                 .flatten()
                 .flatten()
-                .any(|e_chirho| {
+                .find(|e_chirho| {
                     e_chirho
                         .path()
                         .extension()
                         .is_some_and(|ext_chirho| ext_chirho == "cabal")
                 });
-            if has_cabal_chirho {
+            if let Some(cf_chirho) = cabal_file_chirho {
+                cabal_root_chirho = Some((dir_chirho.clone(), cf_chirho.path()));
                 break;
             }
             match dir_chirho.parent() {
                 Some(parent_chirho) if parent_chirho != dir_chirho => {
                     dir_chirho = parent_chirho.to_path_buf();
                 }
-                _ => {
-                    // No .cabal found — use source file's parent
-                    dir_chirho = Path::new(&path_chirho)
-                        .parent()
-                        .unwrap_or(Path::new("."))
-                        .to_path_buf();
-                    break;
-                }
+                _ => break,
             }
         }
-        dir_chirho
+        if let Some((root_chirho, cabal_path_chirho)) = cabal_root_chirho {
+            // Parse hs-source-dirs from .cabal file (value may be on same
+            // line or indented on the next line).
+            let src_dir_chirho = std::fs::read_to_string(&cabal_path_chirho)
+                .ok()
+                .and_then(|content_chirho| {
+                    let lines_chirho: Vec<&str> = content_chirho.lines().collect();
+                    for (idx_chirho, line_chirho) in lines_chirho.iter().enumerate() {
+                        let trimmed_chirho = line_chirho.trim().to_lowercase();
+                        if trimmed_chirho.starts_with("hs-source-dirs:") {
+                            // Value on same line?
+                            let after_chirho = line_chirho.trim()
+                                [line_chirho.trim().to_lowercase().find("hs-source-dirs:").unwrap() + "hs-source-dirs:".len()..]
+                                .trim();
+                            if !after_chirho.is_empty() {
+                                return Some(after_chirho.split(',').next().unwrap_or(".").trim().to_string());
+                            }
+                            // Value on next indented line
+                            if idx_chirho + 1 < lines_chirho.len() {
+                                let next_chirho = lines_chirho[idx_chirho + 1].trim();
+                                if !next_chirho.is_empty() && !next_chirho.contains(':') {
+                                    return Some(next_chirho.split(',').next().unwrap_or(".").trim().to_string());
+                                }
+                            }
+                        }
+                    }
+                    None
+                })
+                .unwrap_or_else(|| ".".to_string());
+            let resolved_chirho = root_chirho.join(&src_dir_chirho);
+            if resolved_chirho.is_dir() {
+                resolved_chirho
+            } else {
+                root_chirho
+            }
+        } else {
+            file_parent_chirho
+        }
     };
     let search_dir_chirho = search_dir_chirho.as_path();
     match haskelujah_driver_chirho::compile_source_with_search_path_chirho(
