@@ -2700,6 +2700,120 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Functor.Contravariant
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "contramap", "phantom", ">$<", ">$$<",
+            "Predicate", "getPredicate",
+            "Comparison", "getComparison",
+            "Equivalence", "getEquivalence",
+            "Op", "getOp",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Contravariant", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Functor.Contravariant".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Functor.Identity
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["runIdentity"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Identity", &["Identity"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Functor.Identity".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Functor.Compose
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["getCompose"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Compose", &["Compose"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Functor.Compose".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Functor.Product
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_type_chirho("Product", &["Pair"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Functor.Product".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Functor.Sum
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_type_chirho("Sum", &["InL", "InR"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Functor.Sum".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Functor.Const
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["getConst"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Const", &["Const"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Functor.Const".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Concurrent.STM / Control.Monad.STM
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "atomically", "retry", "orElse", "throwSTM", "catchSTM",
+            "newTVar", "readTVar", "writeTVar", "modifyTVar",
+            "newTMVar", "readTMVar", "putTMVar", "takeTMVar",
+            "newTChan", "readTChan", "writeTChan",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("STM", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("TVar", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Concurrent.STM".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.STM".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Data.Primitive.Array / Data.Primitive
     {
         let mut exports_chirho = IfaceExportsChirho::default();
