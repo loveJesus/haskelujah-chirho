@@ -2283,6 +2283,12 @@ impl LlvmCodegenChirho {
                     )
                     .unwrap();
                     tmp_chirho
+                } else if args_chirho.len() == 2 && name_chirho == "seq#" {
+                    // seq# a b: force a, return b
+                    let a_chirho = self.compile_expr_chirho(&args_chirho[0]);
+                    let b_chirho = self.compile_expr_chirho(&args_chirho[1]);
+                    let _forced_chirho = self.emit_force_thunk_chirho(&a_chirho);
+                    b_chirho
                 } else {
                     // Fallback: return 0
                     "0".to_string()

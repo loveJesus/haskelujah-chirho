@@ -2442,6 +2442,22 @@ pub fn lower_primop_chirho(
             }
         }
 
+        // ── seq# — force first argument, return second ───────────────────
+        "seq#" => {
+            // seq a b: evaluate `a` to WHNF (force thunk if any), return `b`.
+            // With strict evaluation, `a` is already evaluated, so this is
+            // effectively just returning `b`. Once lazy eval is enabled,
+            // enter_thunk on `a` ensures it's forced.
+            if let Some(enter_ref_chirho) = ctx_chirho.enter_thunk_ref_chirho {
+                let lhs_i64_chirho =
+                    ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+                builder_chirho
+                    .ins()
+                    .call(enter_ref_chirho, &[lhs_i64_chirho]);
+            }
+            ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false)
+        }
+
         // ── Unknown primop ─────────────────────────────────────────────────
         _ => builder_chirho.ins().iconst(cl_types_chirho::I64, 0),
     }
