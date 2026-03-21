@@ -1,0 +1,12 @@
+-- For God so loved the world that he gave his only begotten Son, that whoever
+-- believes in him should not perish but have eternal life. — John 3:16
+
+cabal-version: 2.4
+name: number-converter-chirho
+version: 0.1.0.0
+
+executable number-converter-chirho
+  main-is: Main.hs
+  hs-source-dirs: .
+  build-depends: base
+  default-language: Haskell2010
