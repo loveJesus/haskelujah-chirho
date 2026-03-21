@@ -2031,8 +2031,11 @@ pub fn lower_primop_chirho(
     name_chirho: &str,
     args_chirho: &[CoreExprChirho],
 ) -> ClValueChirho {
-    // Evaluate operands. Thunk forcing will be added here once lazy
-    // let-binding creation is enabled. For now, all values are strict.
+    // Evaluate operands. NOTE: thunk forcing at primop args is NOT safe with
+    // the current bit-63 heap pointer tagging because negative integers also
+    // have bit 63 set (e.g. -1 = 0xFFFF...FFFF). enter_thunk would misclassify
+    // them as heap pointers. Proper fix: change tagging to use low bits (pointer
+    // alignment) or box all integers. For now, primop args are evaluated eagerly.
     let lhs_raw_chirho = if !args_chirho.is_empty() {
         lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[0])
     } else {

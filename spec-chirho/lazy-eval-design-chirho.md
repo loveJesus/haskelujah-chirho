@@ -77,6 +77,30 @@ Core stays strict (like GHC Core). Codegen decides when to thunk.
 - 🔜 Lower GC_THRESHOLD_CHIRHO from u64::MAX once root tracking is complete
 - 🔜 Test GC with long-running programs
 
+### BLOCKER: Bit-63 Tagging Conflict
+
+**Problem:** The heap pointer tag (bit 63) conflicts with negative integers.
+Both `-1` (0xFFFFFFFFFFFFFFFF) and heap pointer `alloc_ptr | (1<<63)` have
+bit 63 set. `enter_thunk` cannot distinguish them.
+
+**Impact:** Cannot safely call enter_thunk on primop arguments because
+primop args may be negative integers. This prevents universal forcing.
+
+**Solutions (choose one):**
+1. **Low-bit tagging:** Use bit 0 or bits [0:1] for pointer/thunk tagging
+   (pointers are 8-byte aligned, low bits are always 0). Requires changes
+   to alloc, constructor tag, and all pointer manipulation code.
+2. **Box all integers:** Like GHC, store ints as `I# n#` heap objects.
+   Primops extract `n#`, which is always unboxed. Avoids the conflict but
+   adds allocation overhead for every integer.
+3. **Heap range check:** In enter_thunk, check that the untagged address
+   is within the heap range (typically < 2^47 on 64-bit). Fragile but
+   works in practice.
+
+**Recommended:** Option 1 (low-bit tagging) is cleanest. Constructor tags
+already use specific values (0 = nil, 1 = cons, etc.) that won't conflict
+with pointer low bits being used for heap/unboxed discrimination.
+
 ### Phase 7: Testing
 - 🔜 End-to-end thunk round-trip test
 - 🔜 Infinite list test (take 5 (repeat x))
