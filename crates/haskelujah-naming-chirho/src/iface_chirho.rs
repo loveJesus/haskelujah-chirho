@@ -8824,6 +8824,105 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // System.Timeout
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["timeout"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.Timeout".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // GHC.Weak
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["Weak", "mkWeak", "deRefWeak", "finalize", "mkWeakPtr", "mkWeakPair", "addFinalizer", "mkWeakIORef"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Weak", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Weak".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Foreign.ForeignPtr.Unsafe
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["unsafeForeignPtrToPtr"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Foreign.ForeignPtr.Unsafe".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // GHC.IO.Encoding / GHC.IO.Encoding.UTF8
+    for mod_name_chirho in &["GHC.IO.Encoding", "GHC.IO.Encoding.UTF8", "GHC.IO.Encoding.Latin1", "GHC.IO.Encoding.CodePage"] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["TextEncoding", "utf8", "utf8_bom", "utf16le", "utf16be", "utf32le", "utf32be", "latin1", "char8", "mkTextEncoding", "localeEncoding", "getLocaleEncoding", "setLocaleEncoding", "getFileSystemEncoding", "setFileSystemEncoding", "getForeignEncoding", "setForeignEncoding"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("TextEncoding", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.FilePath.Posix / System.FilePath.Windows / System.FilePath
+    for mod_name_chirho in &["System.FilePath", "System.FilePath.Posix", "System.FilePath.Windows"] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["FilePath", "pathSeparator", "pathSeparators", "isPathSeparator", "searchPathSeparator", "isSearchPathSeparator", "extSeparator", "isExtSeparator", "splitExtension", "takeExtension", "replaceExtension", "dropExtension", "addExtension", "hasExtension", "splitExtensions", "takeExtensions", "dropExtensions", "splitFileName", "takeFileName", "replaceFileName", "dropFileName", "takeBaseName", "replaceBaseName", "takeDirectory", "replaceDirectory", "combine", "splitPath", "joinPath", "splitDirectories", "splitDrive", "joinDrive", "takeDrive", "hasDrive", "dropDrive", "isDrive", "hasTrailingPathSeparator", "addTrailingPathSeparator", "dropTrailingPathSeparator", "normalise", "equalFilePath", "makeRelative", "isRelative", "isAbsolute", "isValid", "makeValid", "</>", "<.>", "-<.>"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.Environment
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["getArgs", "getProgName", "getExecutablePath", "getEnvironment", "lookupEnv", "setEnv", "unsetEnv", "withArgs", "withProgName"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.Environment".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Concurrent / Control.Concurrent.MVar
+    for mod_name_chirho in &["Control.Concurrent", "Control.Concurrent.MVar", "Control.Concurrent.Chan"] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["ThreadId", "myThreadId", "forkIO", "forkFinally", "forkOS", "killThread", "throwTo", "threadDelay", "threadWaitRead", "threadWaitWrite", "yield", "MVar", "newMVar", "newEmptyMVar", "readMVar", "takeMVar", "putMVar", "tryTakeMVar", "tryPutMVar", "modifyMVar", "modifyMVar_", "swapMVar", "withMVar", "Chan", "newChan", "writeChan", "readChan", "dupChan", "getChanContents", "writeList2Chan"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["ThreadId", "MVar", "Chan"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
     // Deduplicate: merge exports for modules with the same name.
     // Earlier batches may define partial interfaces that later batches extend.
     let mut deduped_chirho: Vec<ModuleIfaceChirho> = Vec::with_capacity(modules_chirho.len());
