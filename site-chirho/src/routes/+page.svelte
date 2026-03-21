@@ -393,7 +393,7 @@ main = putStrLn "Hello from a script!"</span>
 			<h2 class="section-title-chirho">Current Limitations</h2>
 			<p class="section-subtitle-chirho">Where we still fall short of GHC.</p>
 			<ul class="limitation-list-chirho">
-				<li><strong>Lazy evaluation:</strong> Cranelift backend now supports lazy constructor fields &mdash; infinite lists like <code>take 5 (repeat 42)</code> work! LLVM backend is still strict. STG interpreter has full laziness.</li>
+				<li><strong>Lazy evaluation:</strong> Both Cranelift and LLVM backends support lazy constructor fields &mdash; infinite lists like <code>take 5 (repeat 42)</code> work! Let-bindings are still eager (strictness analysis planned).</li>
 				<li><strong>Garbage collection:</strong> Mark-sweep GC is active with root tracking at allocation sites. Programs reclaim unused heap memory automatically.</li>
 				<li><strong>Type class dictionaries at runtime:</strong> Type checking supports full typeclasses, but compiled code uses simplified dictionary elision. Complex polymorphic dispatch is partial.</li>
 				<li><strong>String as [Char]:</strong> String literals are C strings internally. <code>unpack</code>/<code>pack</code> conversion works but isn't transparent like GHC's representation.</li>
@@ -410,8 +410,8 @@ main = putStrLn "Hello from a script!"</span>
 			<p class="section-subtitle-chirho">Where we're headed, God willing.</p>
 			<div class="roadmap-grid-chirho">
 				<div class="roadmap-item-chirho">
-					<h3>Lazy Evaluation (LLVM)</h3>
-					<p>Mirror Cranelift's lazy constructor fields in the LLVM backend. Add lazy let-bindings for full GHC semantics.</p>
+					<h3>Full Lazy Semantics</h3>
+					<p>Lazy let-bindings and strictness analysis for full GHC-compatible evaluation order.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Strictness Analysis</h3>

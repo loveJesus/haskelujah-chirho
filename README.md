@@ -214,7 +214,7 @@ haskelujah clean .          # Remove build artifacts
 | Package manager | cabal-install / Stack | Built-in `build` command |
 | Project scaffold | `cabal init` | `haskelujah init` |
 | REPL | GHCi | `haskelujah repl` |
-| Lazy evaluation | Full | **Lazy** (Cranelift + STG), Strict (LLVM) |
+| Lazy evaluation | Full | **Lazy** (Cranelift + LLVM + STG) — infinite lists work! |
 | Garbage collection | Generational GC | **Mark-sweep GC active** (Rust RTS staticlib) |
 | Type classes | Full dictionary passing | Type checking OK, runtime partial |
 | GADTs | Full | 91.5% type checking, compilation for simple cases |
@@ -260,7 +260,7 @@ See [AGENTS.md](AGENTS.md) for the full convention.
 
 ## Current Limitations
 
-- **Lazy evaluation**: Cranelift backend has lazy constructor fields (infinite lists work!). LLVM backend is strict-only. STG interpreter has full laziness.
+- **Lazy evaluation**: Both Cranelift and LLVM backends have lazy constructor fields — infinite lists like `take 5 (repeat 42)` work! STG interpreter has full laziness.
 - **Garbage collection**: Mark-sweep GC is active (threshold 1000 allocations). Root tracking via `gc_root_push` at allocation sites.
 - **Type class dicts at runtime**: Type checking supports full typeclasses; compiled code uses simplified dictionary elision. Complex polymorphic dispatch is partial.
 - **String as [Char]**: String literals are C strings internally. `unpack`/`pack` works but isn't transparent.
@@ -269,7 +269,7 @@ See [AGENTS.md](AGENTS.md) for the full convention.
 
 ## Roadmap
 
-- **Lazy evaluation (LLVM)** — mirror Cranelift lazy constructor fields in LLVM backend
+- **Lazy let-bindings** — thunkify non-recursive let-bound expressions for full GHC semantics
 - **Lazy let-bindings** — thunkify non-recursive let-bound expressions for full GHC semantics
 - **Integrated IDE** — Zed-like editor extensible via Haskell (like Emacs uses Lisp), LSP support
 - **Cross-compilation** — target selection from CLI (Linux, macOS, Windows, embedded)
