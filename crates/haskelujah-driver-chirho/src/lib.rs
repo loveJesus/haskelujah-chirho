@@ -898,6 +898,31 @@ pub fn compile_source_with_search_path_chirho(
         }
     }
 
+    // Scan subdirectories for hierarchical module imports (e.g., Safe/Partial.hs
+    // for `import Safe.Partial`). Fixed-point iteration handles dependency chains.
+    for _round_chirho in 0..5 {
+        let prev_count_chirho = all_ifaces_chirho.len();
+        for subdir_entry_chirho in std::fs::read_dir(search_dir_chirho)
+            .into_iter()
+            .flatten()
+            .flatten()
+        {
+            let subdir_path_chirho = subdir_entry_chirho.path();
+            if subdir_path_chirho.is_dir() {
+                scan_hierarchical_modules_chirho(
+                    &subdir_path_chirho,
+                    search_dir_chirho,
+                    source_map_chirho,
+                    &mut all_ifaces_chirho,
+                    file_name_chirho,
+                );
+            }
+        }
+        if all_ifaces_chirho.len() == prev_count_chirho {
+            break;
+        }
+    }
+
     let empty_imported_types_chirho = std::collections::HashMap::new();
 
     let frontend_result_chirho = run_frontend_chirho(
@@ -914,6 +939,75 @@ pub fn compile_source_with_search_path_chirho(
     } = frontend_result_chirho;
 
     compile_backend_chirho(module_chirho, infer_result_chirho)
+}
+
+/// Recursively scan subdirectories for `.hs` files and build module interfaces.
+/// This handles hierarchical imports like `import Data.List.Split.Internals`
+/// by finding `Data/List/Split/Internals.hs` relative to the root search dir.
+fn scan_hierarchical_modules_chirho(
+    dir_chirho: &Path,
+    root_dir_chirho: &Path,
+    source_map_chirho: &mut SourceMapChirho,
+    ifaces_chirho: &mut Vec<haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho>,
+    skip_file_chirho: &str,
+) {
+    let entries_chirho = match std::fs::read_dir(dir_chirho) {
+        Ok(e_chirho) => e_chirho,
+        Err(_) => return,
+    };
+    for entry_chirho in entries_chirho.flatten() {
+        let p_chirho = entry_chirho.path();
+        if p_chirho.is_dir() {
+            scan_hierarchical_modules_chirho(
+                &p_chirho,
+                root_dir_chirho,
+                source_map_chirho,
+                ifaces_chirho,
+                skip_file_chirho,
+            );
+        } else if p_chirho.extension().is_some_and(|e_chirho| e_chirho == "hs") {
+            let file_name_chirho = p_chirho
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            if file_name_chirho == skip_file_chirho {
+                continue;
+            }
+            // Check if we already have an iface for the module name
+            // derived from the path (e.g., Safe/Partial.hs → Safe.Partial).
+            let rel_path_chirho = p_chirho.strip_prefix(root_dir_chirho).unwrap_or(&p_chirho);
+            let module_name_chirho = rel_path_chirho
+                .with_extension("")
+                .to_string_lossy()
+                .replace('/', ".")
+                .replace('\\', ".");
+            if ifaces_chirho
+                .iter()
+                .any(|i_chirho| i_chirho.name_chirho == module_name_chirho)
+            {
+                continue;
+            }
+            if let Ok(source_chirho) = read_haskell_source_file_chirho(&p_chirho) {
+                let sibling_file_chirho = SourceFileChirho::from_source_map_chirho(
+                    source_map_chirho,
+                    &file_name_chirho,
+                    &source_chirho,
+                );
+                let fid_chirho = sibling_file_chirho.file_id_chirho();
+                let iface_result_chirho =
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        let parser_chirho = ParserChirho::new_chirho(&source_chirho, fid_chirho);
+                        let green_chirho = parser_chirho.parse_chirho();
+                        let module_chirho = lower_module_chirho(&green_chirho, fid_chirho);
+                        build_iface_with_imports_chirho(&module_chirho, ifaces_chirho)
+                    }));
+                if let Ok(iface_chirho) = iface_result_chirho {
+                    ifaces_chirho.push(iface_chirho);
+                }
+            }
+        }
+    }
 }
 
 /// Run the back-end pipeline phases (5 through 7) on an already-front-end-compiled
