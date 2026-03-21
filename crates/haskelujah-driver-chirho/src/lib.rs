@@ -89,22 +89,22 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
     }
 
     let mut cpp_cmd_chirho = Command::new("cpp");
-    cpp_cmd_chirho
-        .arg("-traditional")
-        .arg("-P")
-        .arg(format!(
-            "-D__GLASGOW_HASKELL__={CPP_GLASGOW_HASKELL_VERSION_CHIRHO}"
-        ))
-        .arg(path_chirho);
+    cpp_cmd_chirho.arg("-traditional").arg("-P").arg(format!(
+        "-D__GLASGOW_HASKELL__={CPP_GLASGOW_HASKELL_VERSION_CHIRHO}"
+    ));
 
     if let Some(parent_chirho) = path_chirho.parent() {
         cpp_cmd_chirho.current_dir(parent_chirho);
         cpp_cmd_chirho.arg(format!("-I{}", parent_chirho.display()));
     }
 
+    cpp_cmd_chirho.arg(path_chirho);
+
     let output_chirho = cpp_cmd_chirho.output()?;
     if !output_chirho.status.success() {
-        let stderr_chirho = String::from_utf8_lossy(&output_chirho.stderr).trim().to_string();
+        let stderr_chirho = String::from_utf8_lossy(&output_chirho.stderr)
+            .trim()
+            .to_string();
         return Err(io::Error::other(format!(
             "cpp preprocessing failed for {}: {}",
             path_chirho.display(),
@@ -735,15 +735,12 @@ pub fn frontend_warnings_chirho(
 /// for compatibility with packages that conditionally compile for GHC versions.
 pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
     // Check if CPP extension is enabled
-    let has_cpp_chirho = source_chirho
-        .lines()
-        .take(20)
-        .any(|line_chirho| {
-            let trimmed_chirho = line_chirho.trim();
-            trimmed_chirho.contains("LANGUAGE")
-                && trimmed_chirho.contains("CPP")
-                && trimmed_chirho.starts_with("{-#")
-        });
+    let has_cpp_chirho = source_chirho.lines().take(20).any(|line_chirho| {
+        let trimmed_chirho = line_chirho.trim();
+        trimmed_chirho.contains("LANGUAGE")
+            && trimmed_chirho.contains("CPP")
+            && trimmed_chirho.starts_with("{-#")
+    });
 
     if !has_cpp_chirho {
         return source_chirho.to_string();
@@ -1846,8 +1843,7 @@ pub fn compile_project_dir_chirho(
 
                 // Look for a .hs-boot file alongside the .hs file
                 let boot_path_chirho = format!("{}-boot", file_name_chirho);
-                if let Ok(boot_source_chirho) = read_haskell_source_file_chirho(&boot_path_chirho)
-                {
+                if let Ok(boot_source_chirho) = read_haskell_source_file_chirho(&boot_path_chirho) {
                     // Parse the boot file to extract a minimal interface
                     let boot_iface_chirho = parse_boot_iface_chirho(
                         module_name_chirho,
@@ -3109,13 +3105,40 @@ pub fn install_package_chirho(
     // without pulling the entire boot library set.
     let mut builtins_chirho = BTreeSet::new();
     for builtin_chirho in &[
-        "base", "ghc-prim", "ghc-bignum", "ghc-internal", "rts",
-        "deepseq", "array", "bytestring", "containers", "text",
-        "filepath", "directory", "process", "time", "transformers",
-        "mtl", "parsec", "template-haskell", "pretty", "binary",
-        "integer-gmp", "ghc-boot-th", "ghc-boot", "exceptions",
-        "stm", "unix", "Win32", "hashable", "unordered-containers",
-        "vector", "primitive", "tagged", "distributive", "comonad",
+        "base",
+        "ghc-prim",
+        "ghc-bignum",
+        "ghc-internal",
+        "rts",
+        "deepseq",
+        "array",
+        "bytestring",
+        "containers",
+        "text",
+        "filepath",
+        "directory",
+        "process",
+        "time",
+        "transformers",
+        "mtl",
+        "parsec",
+        "template-haskell",
+        "pretty",
+        "binary",
+        "integer-gmp",
+        "ghc-boot-th",
+        "ghc-boot",
+        "exceptions",
+        "stm",
+        "unix",
+        "Win32",
+        "hashable",
+        "unordered-containers",
+        "vector",
+        "primitive",
+        "tagged",
+        "distributive",
+        "comonad",
     ] {
         builtins_chirho.insert(builtin_chirho.to_string());
     }
@@ -3130,7 +3153,7 @@ pub fn install_package_chirho(
     let mut sources_chirho: Vec<(String, String)> = Vec::new();
 
     for (module_name_chirho, path_chirho) in &source_files_chirho {
-        match std::fs::read_to_string(path_chirho) {
+        match read_haskell_source_file_chirho(path_chirho) {
             Ok(content_chirho) => {
                 sources_chirho.push((module_name_chirho.clone(), content_chirho));
             }

@@ -6,8 +6,8 @@
 #[cfg(test)]
 mod tests_chirho {
     use crate::{
-        compile_project_dir_chirho, discover_hs_files_chirho,
-        extract_imports_chirho, extract_module_name_chirho,
+        compile_project_dir_chirho, discover_hs_files_chirho, extract_imports_chirho,
+        extract_module_name_chirho,
     };
     use haskelujah_span_chirho::SourceMapChirho;
     use std::fs;
@@ -53,8 +53,7 @@ mod tests_chirho {
 
     #[test]
     fn extract_imports_qualified_chirho() {
-        let src_chirho =
-            "module Foo where\nimport qualified Data.Map as Map\nimport Bar\n";
+        let src_chirho = "module Foo where\nimport qualified Data.Map as Map\nimport Bar\n";
         let imports_chirho = extract_imports_chirho(src_chirho);
         assert_eq!(imports_chirho, vec!["Data.Map", "Bar"]);
     }
@@ -69,11 +68,23 @@ mod tests_chirho {
     #[test]
     fn discover_hs_files_in_temp_dir_chirho() {
         let tmp_chirho = tempfile::tempdir().unwrap();
-        fs::write(tmp_chirho.path().join("Main.hs"), "module Main where\nmain = 42\n").unwrap();
-        fs::write(tmp_chirho.path().join("Lib.hs"), "module Lib where\nfoo = 1\n").unwrap();
+        fs::write(
+            tmp_chirho.path().join("Main.hs"),
+            "module Main where\nmain = 42\n",
+        )
+        .unwrap();
+        fs::write(
+            tmp_chirho.path().join("Lib.hs"),
+            "module Lib where\nfoo = 1\n",
+        )
+        .unwrap();
         let sub_chirho = tmp_chirho.path().join("Data");
         fs::create_dir_all(&sub_chirho).unwrap();
-        fs::write(sub_chirho.join("Utils.hs"), "module Data.Utils where\nbar = 2\n").unwrap();
+        fs::write(
+            sub_chirho.join("Utils.hs"),
+            "module Data.Utils where\nbar = 2\n",
+        )
+        .unwrap();
 
         let files_chirho = discover_hs_files_chirho(tmp_chirho.path());
         assert_eq!(files_chirho.len(), 3);
@@ -102,9 +113,8 @@ mod tests_chirho {
         .unwrap();
 
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_project_dir_chirho(tmp_chirho.path(), &mut sm_chirho)
-                .expect("project compilation should succeed");
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut sm_chirho)
+            .expect("project compilation should succeed");
         assert_eq!(result_chirho.compilation_order_chirho.len(), 2);
         // Lib should be compiled before Main
         assert_eq!(result_chirho.compilation_order_chirho[0], "Lib");
@@ -132,9 +142,8 @@ mod tests_chirho {
         .unwrap();
 
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_project_dir_chirho(tmp_chirho.path(), &mut sm_chirho)
-                .expect("3-module chain should compile");
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut sm_chirho)
+            .expect("3-module chain should compile");
         assert_eq!(result_chirho.compilation_order_chirho.len(), 3);
         // Base → Middle → Main
         let base_idx_chirho = result_chirho
@@ -181,9 +190,8 @@ mod tests_chirho {
         .unwrap();
 
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_project_dir_chirho(tmp_chirho.path(), &mut sm_chirho)
-                .expect("diamond deps should compile");
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut sm_chirho)
+            .expect("diamond deps should compile");
         assert_eq!(result_chirho.compilation_order_chirho.len(), 4);
         // Core must come before Left and Right, which must come before Main
         let core_idx_chirho = result_chirho
@@ -284,9 +292,8 @@ mod tests_chirho {
         .unwrap();
 
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho =
-            compile_project_dir_chirho(tmp_chirho.path(), &mut sm_chirho)
-                .expect("single module should compile");
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut sm_chirho)
+            .expect("single module should compile");
         assert_eq!(result_chirho.compilation_order_chirho, vec!["Main"]);
         assert_eq!(result_chirho.module_results_chirho.len(), 1);
     }
@@ -330,9 +337,8 @@ executable myproject
 
         let index_chirho = PackageIndexChirho::new_chirho();
         let cabal_path_chirho = tmp_chirho.path().join("myproject.cabal");
-        let result_chirho =
-            compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
-                .expect("cabal project should compile");
+        let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+            .expect("cabal project should compile");
         assert_eq!(result_chirho.package_chirho.name_chirho, "myproject");
         assert!(!result_chirho.module_results_chirho.is_empty());
     }
@@ -357,5 +363,29 @@ executable myproject
 
         let files_chirho = discover_hs_files_chirho(tmp_chirho.path());
         assert_eq!(files_chirho.len(), 1); // Only Main.hs, not Secret.hs
+    }
+
+    #[test]
+    fn compile_project_cpp_module_chirho() {
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::write(
+            tmp_chirho.path().join("Main.hs"),
+            "\
+{-# LANGUAGE CPP #-}
+module Main where
+#if __GLASGOW_HASKELL__ >= 810
+main = 42
+#else
+main = 0
+#endif
+",
+        )
+        .unwrap();
+
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut source_map_chirho)
+            .expect("project compilation should preprocess CPP modules");
+        assert_eq!(result_chirho.compilation_order_chirho, vec!["Main"]);
+        assert_eq!(result_chirho.module_results_chirho.len(), 1);
     }
 }

@@ -5,10 +5,10 @@
 
 #[allow(unused_imports)]
 use crate::{
-    check_source_file_chirho, compile_modules_chirho, compile_modules_incremental_chirho,
-    compile_source_chirho, discover_modules_chirho, eval_modules_chirho, eval_source_chirho,
-    eval_source_with_input_chirho, eval_source_with_machine_chirho,
-    eval_source_with_step_limit_chirho, render_summary_chirho,
+    check_source_file_chirho, check_source_path_chirho, compile_modules_chirho,
+    compile_modules_incremental_chirho, compile_source_chirho, discover_modules_chirho,
+    eval_modules_chirho, eval_source_chirho, eval_source_with_input_chirho,
+    eval_source_with_machine_chirho, eval_source_with_step_limit_chirho, render_summary_chirho,
 };
 #[allow(unused_imports)]
 use haskelujah_runtime_chirho::{ExecutionModeChirho, ValueChirho};
@@ -85,6 +85,32 @@ fn script_mode_uses_incremental_runtime_plan_chirho() {
             .incremental_session_chirho
     );
     assert_eq!(check_summary_chirho.module_name_chirho, "Main");
+}
+
+#[test]
+fn check_source_path_cpp_preprocesses_directives_chirho() {
+    use std::fs;
+
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should exist");
+    let file_path_chirho = temp_dir_chirho.path().join("CppMain.hs");
+    fs::write(
+        &file_path_chirho,
+        "\
+{-# LANGUAGE CPP #-}
+module CppMain where
+#if __GLASGOW_HASKELL__ >= 810
+main = 42
+#else
+main = 0
+#endif
+",
+    )
+    .expect("CPP test source should be written");
+
+    let summary_chirho =
+        check_source_path_chirho(&file_path_chirho, ExecutionModeChirho::BatchChirho)
+            .expect("CPP preprocessing should allow checking a file with directives");
+    assert_eq!(summary_chirho.module_name_chirho, "CppMain");
 }
 
 #[test]
