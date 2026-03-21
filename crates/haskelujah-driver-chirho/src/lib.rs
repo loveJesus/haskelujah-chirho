@@ -9,7 +9,9 @@
 pub mod splice_chirho;
 pub mod stg_lower_chirho;
 
+use std::io;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use haskelujah_ast_chirho::ModuleChirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_chirho;
@@ -66,6 +68,66 @@ pub struct FrontendResultChirho {
     pub infer_result_chirho: InferResultChirho,
     /// Non-fatal warnings collected from deriving and exhaustiveness checking.
     pub warnings_chirho: Vec<String>,
+}
+
+const CPP_GLASGOW_HASKELL_VERSION_CHIRHO: &str = "810";
+
+fn source_uses_cpp_chirho(source_chirho: &str) -> bool {
+    source_chirho.lines().take(64).any(|line_chirho| {
+        (line_chirho.contains("{-#")
+            && line_chirho.contains("LANGUAGE")
+            && line_chirho.contains("CPP"))
+            || (line_chirho.contains("{-#")
+                && line_chirho.contains("OPTIONS_GHC")
+                && line_chirho.contains("-cpp"))
+    })
+}
+
+fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::Result<String> {
+    if !source_uses_cpp_chirho(source_chirho) {
+        return Ok(source_chirho.to_string());
+    }
+
+    let mut cpp_cmd_chirho = Command::new("cpp");
+    cpp_cmd_chirho
+        .arg("-traditional")
+        .arg("-P")
+        .arg(format!(
+            "-D__GLASGOW_HASKELL__={CPP_GLASGOW_HASKELL_VERSION_CHIRHO}"
+        ))
+        .arg(path_chirho);
+
+    if let Some(parent_chirho) = path_chirho.parent() {
+        cpp_cmd_chirho.current_dir(parent_chirho);
+        cpp_cmd_chirho.arg(format!("-I{}", parent_chirho.display()));
+    }
+
+    let output_chirho = cpp_cmd_chirho.output()?;
+    if !output_chirho.status.success() {
+        let stderr_chirho = String::from_utf8_lossy(&output_chirho.stderr).trim().to_string();
+        return Err(io::Error::other(format!(
+            "cpp preprocessing failed for {}: {}",
+            path_chirho.display(),
+            stderr_chirho
+        )));
+    }
+
+    String::from_utf8(output_chirho.stdout).map_err(|error_chirho| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!(
+                "cpp output for {} was not valid UTF-8: {}",
+                path_chirho.display(),
+                error_chirho
+            ),
+        )
+    })
+}
+
+fn read_haskell_source_file_chirho(path_chirho: impl AsRef<Path>) -> io::Result<String> {
+    let path_ref_chirho = path_chirho.as_ref();
+    let source_chirho = std::fs::read_to_string(path_ref_chirho)?;
+    preprocess_cpp_source_chirho(path_ref_chirho, &source_chirho)
 }
 
 /// Run the shared front-end compiler phases for a single Haskell module.
@@ -429,15 +491,17 @@ pub fn check_source_path_chirho(
     execution_mode_chirho: ExecutionModeChirho,
 ) -> Result<CheckSummaryChirho, DiagnosticBundleChirho> {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let source_file_chirho =
-        SourceFileChirho::from_path_with_map_chirho(&mut source_map_chirho, &path_chirho).map_err(
-            |error_chirho| {
-                DiagnosticChirho::error_no_span_chirho(format!(
-                    "unable to read `{}`: {error_chirho}",
-                    path_chirho.as_ref().display()
-                ))
-            },
-        )?;
+    let source_chirho = read_haskell_source_file_chirho(&path_chirho).map_err(|error_chirho| {
+        DiagnosticChirho::error_no_span_chirho(format!(
+            "unable to read `{}`: {error_chirho}",
+            path_chirho.as_ref().display()
+        ))
+    })?;
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        path_chirho.as_ref().to_path_buf(),
+        source_chirho,
+    );
 
     check_source_file_chirho(source_file_chirho, execution_mode_chirho)
 }
@@ -666,6 +730,72 @@ pub fn frontend_warnings_chirho(
     Ok(frontend_result_chirho.warnings_chirho)
 }
 
+/// Preprocess source code with CPP if `{-# LANGUAGE CPP #-}` is present.
+/// Shells out to the system C preprocessor, defining `__GLASGOW_HASKELL__`
+/// for compatibility with packages that conditionally compile for GHC versions.
+pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
+    // Check if CPP extension is enabled
+    let has_cpp_chirho = source_chirho
+        .lines()
+        .take(20)
+        .any(|line_chirho| {
+            let trimmed_chirho = line_chirho.trim();
+            trimmed_chirho.contains("LANGUAGE")
+                && trimmed_chirho.contains("CPP")
+                && trimmed_chirho.starts_with("{-#")
+        });
+
+    if !has_cpp_chirho {
+        return source_chirho.to_string();
+    }
+
+    // Try running cpp (C preprocessor)
+    let result_chirho = std::process::Command::new("cpp")
+        .args([
+            "-traditional",
+            "-P",
+            "-D__GLASGOW_HASKELL__=810",
+            "-DMIN_VERSION_base(x,y,z)=1",
+            "-",
+        ])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child_chirho| {
+            use std::io::Write;
+            if let Some(ref mut stdin_chirho) = child_chirho.stdin {
+                stdin_chirho.write_all(source_chirho.as_bytes()).ok();
+            }
+            child_chirho.wait_with_output()
+        });
+
+    match result_chirho {
+        Ok(output_chirho) if output_chirho.status.success() => {
+            String::from_utf8(output_chirho.stdout).unwrap_or_else(|_| source_chirho.to_string())
+        }
+        _ => {
+            // If cpp isn't available, strip CPP directives manually
+            source_chirho
+                .lines()
+                .filter(|line_chirho| {
+                    let trimmed_chirho = line_chirho.trim();
+                    !trimmed_chirho.starts_with("#if")
+                        && !trimmed_chirho.starts_with("#else")
+                        && !trimmed_chirho.starts_with("#endif")
+                        && !trimmed_chirho.starts_with("#define")
+                        && !trimmed_chirho.starts_with("#undef")
+                        && !trimmed_chirho.starts_with("#include")
+                        && !trimmed_chirho.starts_with("#ifdef")
+                        && !trimmed_chirho.starts_with("#ifndef")
+                        && !trimmed_chirho.starts_with("#elif")
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        }
+    }
+}
+
 /// Run the full compiler pipeline: lex → layout → CST parse → AST lower →
 /// name resolve → type infer → desugar to Core → simplify.
 /// Returns the AST module and its optimized Core IR.
@@ -674,10 +804,14 @@ pub fn compile_source_chirho(
     source_map_chirho: &mut SourceMapChirho,
     file_name_chirho: &str,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    // Run CPP preprocessing if {-# LANGUAGE CPP #-} is present
+    let preprocessed_chirho = preprocess_cpp_chirho(source_chirho);
+    let effective_source_chirho = &preprocessed_chirho;
+
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
         source_map_chirho,
         file_name_chirho,
-        source_chirho,
+        effective_source_chirho,
     );
     let file_id_chirho = source_file_chirho.file_id_chirho();
 
@@ -685,7 +819,7 @@ pub fn compile_source_chirho(
     let empty_imported_types_chirho = std::collections::HashMap::new();
 
     let frontend_result_chirho = run_frontend_chirho(
-        source_chirho,
+        effective_source_chirho,
         file_id_chirho,
         &builtin_ifaces_chirho,
         &empty_imported_types_chirho,
@@ -730,7 +864,7 @@ pub fn compile_source_with_search_path_chirho(
                         .map(|n_chirho| n_chirho.to_string_lossy().to_string())
                         != Some(file_name_chirho.to_string())
                 {
-                    if let Ok(sibling_source_chirho) = std::fs::read_to_string(&p_chirho) {
+                    if let Ok(sibling_source_chirho) = read_haskell_source_file_chirho(&p_chirho) {
                         let sibling_name_chirho = p_chirho
                             .file_name()
                             .unwrap_or_default()
@@ -1655,7 +1789,7 @@ pub fn compile_project_dir_chirho(
     // Step 2: Read sources and extract module names + imports
     let mut module_sources_chirho: Vec<(String, String, String)> = Vec::new(); // (module_name, file_path, source)
     for path_chirho in &hs_files_chirho {
-        let source_chirho = std::fs::read_to_string(path_chirho).map_err(|e_chirho| {
+        let source_chirho = read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
             format!("Failed to read {}: {}", path_chirho.display(), e_chirho)
         })?;
         let module_name_chirho = extract_module_name_chirho(&source_chirho);
@@ -1712,7 +1846,8 @@ pub fn compile_project_dir_chirho(
 
                 // Look for a .hs-boot file alongside the .hs file
                 let boot_path_chirho = format!("{}-boot", file_name_chirho);
-                if let Ok(boot_source_chirho) = std::fs::read_to_string(&boot_path_chirho) {
+                if let Ok(boot_source_chirho) = read_haskell_source_file_chirho(&boot_path_chirho)
+                {
                     // Parse the boot file to extract a minimal interface
                     let boot_iface_chirho = parse_boot_iface_chirho(
                         module_name_chirho,
@@ -2030,7 +2165,7 @@ fn compile_module_files_in_dependency_order_chirho(
 ) -> Result<ProjectCompileResultChirho, String> {
     let mut module_sources_chirho: Vec<(String, String, String)> = Vec::new();
     for (module_name_chirho, path_chirho) in module_files_chirho {
-        let source_chirho = std::fs::read_to_string(path_chirho).map_err(|e_chirho| {
+        let source_chirho = read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
             format!(
                 "cannot read module {} at {}: {}",
                 module_name_chirho,
