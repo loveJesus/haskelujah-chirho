@@ -377,9 +377,7 @@ fn compile_command_chirho(
                         Path::new(output_path_chirho),
                     ) {
                         Ok(()) => {
-                            println!(
-                                "compiled (cranelift): {path_chirho} → {output_path_chirho}"
-                            );
+                            println!("compiled (cranelift): {path_chirho} → {output_path_chirho}");
                         }
                         Err(error_chirho) => {
                             eprintln!("{error_chirho}");
@@ -747,8 +745,13 @@ fn link_cranelift_object_file_chirho(
     output_path_chirho: &Path,
 ) -> Result<(), String> {
     let obj_path_chirho = output_path_chirho.with_extension("o");
-    fs::write(&obj_path_chirho, object_bytes_chirho)
-        .map_err(|error_chirho| format!("cannot write {}: {}", obj_path_chirho.display(), error_chirho))?;
+    fs::write(&obj_path_chirho, object_bytes_chirho).map_err(|error_chirho| {
+        format!(
+            "cannot write {}: {}",
+            obj_path_chirho.display(),
+            error_chirho
+        )
+    })?;
     let rts_lib_dir_chirho = ensure_rts_staticlib_chirho()?;
     let output_path_str_chirho = output_path_chirho
         .to_str()
@@ -796,12 +799,12 @@ fn ensure_rts_staticlib_chirho() -> Result<PathBuf, String> {
     let workspace_root_chirho = workspace_root_chirho();
     let cargo_status_chirho = Command::new("cargo")
         .current_dir(&workspace_root_chirho)
-        .args(["build", "-p", "haskelujah-rts-chirho", "--quiet"])
+        .args(["build", "-p", "haskelujah-rts", "--quiet"])
         .status()
-        .map_err(|e_chirho| format!("could not build haskelujah-rts-chirho: {}", e_chirho))?;
+        .map_err(|e_chirho| format!("could not build haskelujah-rts: {}", e_chirho))?;
     if !cargo_status_chirho.success() {
         return Err(format!(
-            "cargo build -p haskelujah-rts-chirho failed with exit code {}",
+            "cargo build -p haskelujah-rts failed with exit code {}",
             cargo_status_chirho.code().unwrap_or(-1)
         ));
     }
