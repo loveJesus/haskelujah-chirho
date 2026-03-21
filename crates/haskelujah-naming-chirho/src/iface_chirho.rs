@@ -2866,6 +2866,89 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.ByteString.Internal
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["c2w", "w2c", "unsafeCreate", "create", "createAndTrim", "mallocByteString", "nullForeignPtr"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("ByteString", &["BS", "PS"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.ByteString.Internal".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.ByteString.Internal.Type".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Word / Data.Int
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["Word", "Word8", "Word16", "Word32", "Word64"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Word".to_string(),
+            exports_chirho,
+        });
+        let mut int_exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["Int", "Int8", "Int16", "Int32", "Int64"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            int_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Int".to_string(),
+            exports_chirho: int_exports_chirho,
+        });
+    }
+
+    // Foreign.Ptr / Foreign.ForeignPtr / Foreign.Storable
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["nullPtr", "plusPtr", "castPtr", "minusPtr"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Ptr", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("FunPtr", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Foreign.Ptr".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        let (k_chirho, v_chirho) = mk_type_chirho("ForeignPtr", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["newForeignPtr", "withForeignPtr", "mallocForeignPtrBytes"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Foreign.ForeignPtr".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Foreign".to_string(),
+            exports_chirho,
+        });
+        let mut stor_exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["sizeOf", "alignment", "peek", "poke"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            stor_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Storable", &[]);
+        stor_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Foreign.Storable".to_string(),
+            exports_chirho: stor_exports_chirho,
+        });
+    }
+
     // Data.IORef
     {
         let mut exports_chirho = IfaceExportsChirho::default();
