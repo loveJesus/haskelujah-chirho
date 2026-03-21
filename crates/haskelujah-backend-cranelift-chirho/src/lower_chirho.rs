@@ -2030,16 +2030,15 @@ pub fn lower_primop_chirho(
     name_chirho: &str,
     args_chirho: &[CoreExprChirho],
 ) -> ClValueChirho {
-    // Evaluate operands and force any thunks (primops need unboxed values).
+    // Evaluate operands. Thunk forcing will be added here once lazy
+    // let-binding creation is enabled. For now, all values are strict.
     let lhs_raw_chirho = if !args_chirho.is_empty() {
-        let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[0]);
-        force_if_thunk_chirho(builder_chirho, ctx_chirho, val_chirho)
+        lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[0])
     } else {
         builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
     };
     let rhs_raw_chirho = if args_chirho.len() > 1 {
-        let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[1]);
-        force_if_thunk_chirho(builder_chirho, ctx_chirho, val_chirho)
+        lower_expr_chirho(builder_chirho, ctx_chirho, &args_chirho[1])
     } else {
         builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
     };
