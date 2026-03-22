@@ -12109,7 +12109,12 @@ mod tests_chirho {
         };
         let (subst_chirho, ty_chirho) = ctx_chirho.infer_expr_chirho(&expr_chirho);
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
-        assert_eq!(final_ty_chirho, TyChirho::int_chirho());
+        assert!(matches!(final_ty_chirho, TyChirho::VarChirho(_)));
+        assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 2);
+        assert!(ctx_chirho
+            .deferred_preds_chirho
+            .iter()
+            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
     }
 
     #[test]
@@ -12132,10 +12137,11 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let _ = ctx_chirho.infer_expr_chirho(&expr_chirho);
+        ctx_chirho.check_deferred_preds_chirho(&SubstChirho::empty_chirho());
         let result_chirho = ctx_chirho.finish_chirho();
         assert!(
             result_chirho.diagnostics_chirho.has_errors_chirho(),
-            "should report type mismatch for Int condition"
+            "should report type mismatch for a numeric condition"
         );
     }
 
@@ -12289,9 +12295,17 @@ mod tests_chirho {
         };
         let (subst_chirho, ty_chirho) = ctx_chirho.infer_expr_chirho(&expr_chirho);
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
-        assert_eq!(
+        assert!(matches!(
             final_ty_chirho,
-            TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::bool_chirho()])
+            TyChirho::TupleChirho(ref elems_chirho)
+                if elems_chirho.len() == 2
+                    && matches!(elems_chirho[0], TyChirho::VarChirho(_))
+                    && elems_chirho[1] == TyChirho::bool_chirho()
+        ));
+        assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 1);
+        assert_eq!(
+            ctx_chirho.deferred_preds_chirho[0].0.class_name_chirho,
+            "Num"
         );
     }
 
@@ -12309,10 +12323,16 @@ mod tests_chirho {
         };
         let (subst_chirho, ty_chirho) = ctx_chirho.infer_expr_chirho(&expr_chirho);
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
-        assert_eq!(
+        assert!(matches!(
             final_ty_chirho,
-            TyChirho::ListChirho(Box::new(TyChirho::int_chirho()))
-        );
+            TyChirho::ListChirho(ref elem_chirho)
+                if matches!(elem_chirho.as_ref(), TyChirho::VarChirho(_))
+        ));
+        assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 3);
+        assert!(ctx_chirho
+            .deferred_preds_chirho
+            .iter()
+            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
     }
 
     // -----------------------------------------------------------------------
@@ -13791,13 +13811,13 @@ mod tests_chirho {
         let use_bind_ty_chirho = result_chirho
             .subst_chirho
             .apply_ty_chirho(&use_bind_scheme_chirho.ty_chirho);
-        assert_eq!(
-            use_bind_ty_chirho,
-            TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("Result".to_string())),
-                Box::new(TyChirho::int_chirho()),
+        assert!(
+            matches!(
+                use_bind_ty_chirho,
+                TyChirho::AppChirho(ref fun_chirho, _)
+                    if fun_chirho.as_ref() == &TyChirho::ConChirho("Result".to_string())
             ),
-            "bindResult with a lambda constructor body should infer Result Int"
+            "bindResult with a lambda constructor body should infer Result _"
         );
     }
 

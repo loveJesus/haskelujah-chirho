@@ -2206,6 +2206,13 @@ pub fn lower_primop_chirho(
                     ),
                 };
             }
+            if let Some(arg_expr_chirho) = args_chirho.first() {
+                if let Some(shown_ptr_chirho) =
+                    lower_show_expr_ptr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho)
+                {
+                    return shown_ptr_chirho;
+                }
+            }
             // Call RTS haskelujah_show_int_chirho(i64) -> ptr
             let val_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             if let Some(show_ref_chirho) = ctx_chirho.show_int_ref_chirho {
