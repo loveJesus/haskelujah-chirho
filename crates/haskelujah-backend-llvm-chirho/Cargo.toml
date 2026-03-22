@@ -12,7 +12,7 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-haskelujah-core-chirho = { package = "haskelujah-core", path = "../haskelujah-core-chirho", version = "0.1.0" }
-haskelujah-rts-chirho = { package = "haskelujah-rts", path = "../haskelujah-rts-chirho", version = "0.1.0" }
-haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.0" }
-haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskelujah-typing-chirho", version = "0.1.0" }
+haskelujah-core-chirho = { package = "haskelujah-core", path = "../haskelujah-core-chirho", version = "0.1.1" }
+haskelujah-rts-chirho = { package = "haskelujah-rts", path = "../haskelujah-rts-chirho", version = "0.1.1" }
+haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.1" }
+haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskelujah-typing-chirho", version = "0.1.1" }

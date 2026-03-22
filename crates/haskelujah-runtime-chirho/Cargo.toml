@@ -12,4 +12,4 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-haskelujah-rts-chirho = { package = "haskelujah-rts", path = "../haskelujah-rts-chirho", version = "0.1.0" }
+haskelujah-rts-chirho = { package = "haskelujah-rts", path = "../haskelujah-rts-chirho", version = "0.1.1" }

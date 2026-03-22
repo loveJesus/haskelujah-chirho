@@ -17,15 +17,15 @@ name = "haskelujah"
 path = "src/main.rs"
 
 [dependencies]
-haskelujah-ast-chirho = { package = "haskelujah-ast", path = "../haskelujah-ast-chirho", version = "0.1.0" }
-haskelujah-backend-cranelift-chirho = { package = "haskelujah-backend-cranelift", path = "../haskelujah-backend-cranelift-chirho", version = "0.1.0" }
-haskelujah-backend-llvm-chirho = { package = "haskelujah-backend-llvm", path = "../haskelujah-backend-llvm-chirho", version = "0.1.0" }
-haskelujah-backend-wasm-chirho = { package = "haskelujah-backend-wasm", path = "../haskelujah-backend-wasm-chirho", version = "0.1.0" }
-haskelujah-core-chirho = { package = "haskelujah-core", path = "../haskelujah-core-chirho", version = "0.1.0" }
-haskelujah-naming-chirho = { package = "haskelujah-naming", path = "../haskelujah-naming-chirho", version = "0.1.0" }
-haskelujah-package-chirho = { package = "haskelujah-package", path = "../haskelujah-package-chirho", version = "0.1.0" }
-haskelujah-driver-chirho = { package = "haskelujah-driver", path = "../haskelujah-driver-chirho", version = "0.1.0" }
-haskelujah-runtime-chirho = { package = "haskelujah-runtime", path = "../haskelujah-runtime-chirho", version = "0.1.0" }
-haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.0" }
-haskelujah-syntax-chirho = { package = "haskelujah-syntax", path = "../haskelujah-syntax-chirho", version = "0.1.0" }
-haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskelujah-typing-chirho", version = "0.1.0" }
+haskelujah-ast-chirho = { package = "haskelujah-ast", path = "../haskelujah-ast-chirho", version = "0.1.1" }
+haskelujah-backend-cranelift-chirho = { package = "haskelujah-backend-cranelift", path = "../haskelujah-backend-cranelift-chirho", version = "0.1.1" }
+haskelujah-backend-llvm-chirho = { package = "haskelujah-backend-llvm", path = "../haskelujah-backend-llvm-chirho", version = "0.1.1" }
+haskelujah-backend-wasm-chirho = { package = "haskelujah-backend-wasm", path = "../haskelujah-backend-wasm-chirho", version = "0.1.1" }
+haskelujah-core-chirho = { package = "haskelujah-core", path = "../haskelujah-core-chirho", version = "0.1.1" }
+haskelujah-naming-chirho = { package = "haskelujah-naming", path = "../haskelujah-naming-chirho", version = "0.1.1" }
+haskelujah-package-chirho = { package = "haskelujah-package", path = "../haskelujah-package-chirho", version = "0.1.1" }
+haskelujah-driver-chirho = { package = "haskelujah-driver", path = "../haskelujah-driver-chirho", version = "0.1.1" }
+haskelujah-runtime-chirho = { package = "haskelujah-runtime", path = "../haskelujah-runtime-chirho", version = "0.1.1" }
+haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.1" }
+haskelujah-syntax-chirho = { package = "haskelujah-syntax", path = "../haskelujah-syntax-chirho", version = "0.1.1" }
+haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskelujah-typing-chirho", version = "0.1.1" }
