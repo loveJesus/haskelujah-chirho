@@ -1,0 +1,7 @@
+# For God so loved the world, that He gave His only begotten Son,
+# that all who believe in Him should not perish but have everlasting life. John 3:16
+
+name = "haskelujah-site-chirho"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".svelte-kit/cloudflare"

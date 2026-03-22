@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="360" height="150"
+ xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5"
+        markerWidth="5" markerHeight="5"
+        orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" />
+  </marker>
+  <marker id="extra-arrow" viewBox="0 0 10 10" refX="5" refY="5"
+        markerWidth="5" markerHeight="5"
+        orient="auto-start-reverse">
+      <path fill="#44f" d="M 0 0 L 10 5 L 0 10 z" />
+  </marker>
+  <style type="text/css">
+    line.arrow {
+        fill: none; stroke: black; stroke-width: 4;
+        marker-end: url(#arrow);
+    }
+    circle.action {
+        fill: #f8ddbb; stroke: black; stroke-width: 4;
+    }
+    text.action {
+        fill: black; stroke: none;
+        font-family: sans-serif; font-size: 35px;
+        dominant-baseline: central; text-anchor: middle;
+    }
+    .extra {
+        fill: none; stroke: #44f; stroke-width: 3;
+        marker-end: url(#extra-arrow);
+    }
+    circle.mappend {
+        fill: none; stroke: #44f; stroke-width: 3;
+    }
+    text.mappend {
+        fill: #44f; stroke: none;
+        font-family: sans-serif; font-size: 26px;
+        dominant-baseline: central; text-anchor: middle;
+    }
+  </style>
+</defs>
+<g transform="scale(0.6)">
+  <path class="extra" d="M 100,140 L 100,180 A 20 20 0 0 0 120,200 L 373,200"/>
+  <circle class="mappend" cx="400" cy="200" r="20"/>
+  <text class="mappend" x="400" y="200">&lt;&gt;</text>
+  <path class="extra" d="M 400,140 L 400,173"/>
+  <path class="extra" d="M 420,200 L 550,200"/>
+  <text class="mappend" x="520" y="180">w</text>
+
+  <line class="arrow" x1="140" y1="100" x2="350" y2="100"/>
+  <line class="arrow" x1="440" y1="100" x2="550" y2="100"/>
+  <circle class="action" cx="100" cy="100" r="40"/>
+  <text class="action" x="100" y="100">m</text>
+  <circle class="action" cx="400" cy="100" r="40"/>
+  <text class="action" x="400" y="100">k</text>
+</g>
+</svg>

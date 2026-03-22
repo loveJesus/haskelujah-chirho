@@ -1,0 +1,1176 @@
+pkg:HUnit 1.6.2.0
+  dir:.haskelujah-packages-chirho/HUnit-1.6.2.0
+  dep:base 1.6.2.0
+  dep:call-stack 1.6.2.0
+  dep:deepseq 1.6.2.0
+  mod:Test.HUnit.Base Test/HUnit/Base.rhi
+  mod:Test.HUnit.Lang Test/HUnit/Lang.rhi
+  mod:Test.HUnit.Terminal Test/HUnit/Terminal.rhi
+  mod:Test.HUnit.Text Test/HUnit/Text.rhi
+  mod:Test.HUnit Test/HUnit.rhi
+pkg:QuickCheck 2.18.0.0
+  dir:.haskelujah-packages-chirho/QuickCheck-2.18.0.0
+  dep:base 2.18.0.0
+  dep:containers 2.18.0.0
+  dep:random 2.18.0.0
+  dep:splitmix 2.18.0.0
+  dep:transformers 2.18.0.0
+  dep:deepseq 2.18.0.0
+  dep:template-haskell 2.18.0.0
+  dep:data-array-byte 2.18.0.0
+  mod:Test.QuickCheck.All Test/QuickCheck/All.rhi
+  mod:else else.rhi
+pkg:StateVar 1.2.2
+  dir:.haskelujah-packages-chirho/StateVar-1.2.2
+  dep:base 1.2.2
+  dep:stm 1.2.2
+  dep:transformers 1.2.2
+  mod:Data.StateVar Data/StateVar.rhi
+pkg:adjunctions 4.4.4
+  dir:.haskelujah-packages-chirho/adjunctions-4.4.4
+  dep:base 4.4.4
+  dep:comonad 4.4.4
+  dep:containers 4.4.4
+  dep:distributive 4.4.4
+  dep:free 4.4.4
+  dep:mtl 4.4.4
+  dep:profunctors 4.4.4
+  dep:tagged 4.4.4
+  dep:semigroupoids 4.4.4
+  dep:transformers 4.4.4
+  dep:contravariant 4.4.4
+  mod:Control.Comonad.Representable.Store Control/Comonad/Representable/Store.rhi
+  mod:Control.Comonad.Trans.Adjoint Control/Comonad/Trans/Adjoint.rhi
+  mod:Control.Monad.Representable.Reader Control/Monad/Representable/Reader.rhi
+  mod:Control.Monad.Representable.State Control/Monad/Representable/State.rhi
+  mod:Control.Monad.Trans.Adjoint Control/Monad/Trans/Adjoint.rhi
+  mod:Control.Monad.Trans.Contravariant.Adjoint Control/Monad/Trans/Contravariant/Adjoint.rhi
+  mod:Control.Monad.Trans.Conts Control/Monad/Trans/Conts.rhi
+  mod:Data.Functor.Adjunction Data/Functor/Adjunction.rhi
+  mod:Data.Functor.Contravariant.Adjunction Data/Functor/Contravariant/Adjunction.rhi
+  mod:Data.Functor.Contravariant.Rep Data/Functor/Contravariant/Rep.rhi
+  mod:Data.Functor.Rep Data/Functor/Rep.rhi
+pkg:aeson 2.2.3.0
+  dir:.haskelujah-packages-chirho/aeson-2.2.3.0
+  dep:base 2.2.3.0
+  dep:bytestring 2.2.3.0
+  dep:containers 2.2.3.0
+  dep:deepseq 2.2.3.0
+  dep:exceptions 2.2.3.0
+  dep:ghc-prim 2.2.3.0
+  dep:template-haskell 2.2.3.0
+  dep:text 2.2.3.0
+  dep:time 2.2.3.0
+  dep:generically 2.2.3.0
+  dep:time-compat 2.2.3.0
+  dep:integer-gmp 2.2.3.0
+  dep:character-ps 2.2.3.0
+  dep:data-fix 2.2.3.0
+  dep:dlist 2.2.3.0
+  dep:hashable 2.2.3.0
+  dep:indexed-traversable 2.2.3.0
+  dep:integer-conversion 2.2.3.0
+  dep:integer-logarithms 2.2.3.0
+  dep:network-uri 2.2.3.0
+  dep:OneTuple 2.2.3.0
+  dep:primitive 2.2.3.0
+  dep:QuickCheck 2.2.3.0
+  dep:scientific 2.2.3.0
+  dep:semialign 2.2.3.0
+  dep:strict 2.2.3.0
+  dep:tagged 2.2.3.0
+  dep:text-iso8601 2.2.3.0
+  dep:text-short 2.2.3.0
+  dep:th-abstraction 2.2.3.0
+  dep:these 2.2.3.0
+  dep:unordered-containers 2.2.3.0
+  dep:uuid-types 2.2.3.0
+  dep:vector 2.2.3.0
+  dep:witherable 2.2.3.0
+  mod:Data.Aeson Data/Aeson.rhi
+  mod:Data.Aeson.Decoding Data/Aeson/Decoding.rhi
+  mod:Data.Aeson.Decoding.ByteString Data/Aeson/Decoding/ByteString.rhi
+  mod:Data.Aeson.Decoding.ByteString.Lazy Data/Aeson/Decoding/ByteString/Lazy.rhi
+  mod:Data.Aeson.Decoding.Text Data/Aeson/Decoding/Text.rhi
+  mod:Data.Aeson.Decoding.Tokens Data/Aeson/Decoding/Tokens.rhi
+  mod:Data.Aeson.Encoding Data/Aeson/Encoding.rhi
+  mod:Data.Aeson.Encoding.Internal Data/Aeson/Encoding/Internal.rhi
+  mod:Data.Aeson.Key Data/Aeson/Key.rhi
+  mod:Data.Aeson.KeyMap Data/Aeson/KeyMap.rhi
+  mod:Data.Aeson.QQ.Simple Data/Aeson/QQ/Simple.rhi
+  mod:Data.Aeson.RFC8785 Data/Aeson/RFC8785.rhi
+  mod:Data.Aeson.Text Data/Aeson/Text.rhi
+  mod:Data.Aeson.TH Data/Aeson/TH.rhi
+  mod:Data.Aeson.Types Data/Aeson/Types.rhi
+pkg:ansi-terminal 1.1.5
+  dir:.haskelujah-packages-chirho/ansi-terminal-1.1.5
+  dep:base 1.1.5
+  dep:ansi-terminal-types 1.1.5
+  dep:colour 1.1.5
+  mod:System.Console.ANSI System/Console/ANSI.rhi
+pkg:ansi-wl-pprint 1.0.2
+  dir:.haskelujah-packages-chirho/ansi-wl-pprint-1.0.2
+  dep:base 1.0.2
+  dep:prettyprinter-compat-ansi-wl-pprint 1.0.2
+  dep:ansi-terminal 1.0.2
+  dep:prettyprinter 1.0.2
+  dep:prettyprinter-ansi-terminal 1.0.2
+  dep:text 1.0.2
+  mod:Text.PrettyPrint.ANSI.Leijen Text/PrettyPrint/ANSI/Leijen.rhi
+pkg:attoparsec 0.14.4
+  dir:.haskelujah-packages-chirho/attoparsec-0.14.4
+  dep:array 0.14.4
+  dep:base 0.14.4
+  dep:bytestring 0.14.4
+  dep:containers 0.14.4
+  dep:deepseq 0.14.4
+  dep:scientific 0.14.4
+  dep:transformers 0.14.4
+  dep:text 0.14.4
+  dep:ghc-prim 0.14.4
+  dep:attoparsec-internal 0.14.4
+  dep:fail 0.14.4
+  dep:semigroups 0.14.4
+  mod:Data.Attoparsec Data/Attoparsec.rhi
+  mod:Data.Attoparsec.ByteString Data/Attoparsec/ByteString.rhi
+  mod:Data.Attoparsec.ByteString.Char8 Data/Attoparsec/ByteString/Char8.rhi
+  mod:Data.Attoparsec.ByteString.Lazy Data/Attoparsec/ByteString/Lazy.rhi
+  mod:Data.Attoparsec.Char8 Data/Attoparsec/Char8.rhi
+  mod:Data.Attoparsec.Combinator Data/Attoparsec/Combinator.rhi
+  mod:Data.Attoparsec.Internal Data/Attoparsec/Internal.rhi
+  mod:Data.Attoparsec.Internal.Types Data/Attoparsec/Internal/Types.rhi
+  mod:Data.Attoparsec.Lazy Data/Attoparsec/Lazy.rhi
+  mod:Data.Attoparsec.Number Data/Attoparsec/Number.rhi
+  mod:Data.Attoparsec.Text Data/Attoparsec/Text.rhi
+  mod:Data.Attoparsec.Text.Lazy Data/Attoparsec/Text/Lazy.rhi
+  mod:Data.Attoparsec.Types Data/Attoparsec/Types.rhi
+  mod:Data.Attoparsec.Zepto Data/Attoparsec/Zepto.rhi
+pkg:base-orphans 0.9.4
+  dir:.haskelujah-packages-chirho/base-orphans-0.9.4
+  dep:base 0.9.4
+  mod:Data.Orphans Data/Orphans.rhi
+pkg:bifunctors 5.6.3
+  dir:.haskelujah-packages-chirho/bifunctors-5.6.3
+  dep:base 5.6.3
+  dep:assoc 5.6.3
+  dep:comonad 5.6.3
+  dep:containers 5.6.3
+  dep:template-haskell 5.6.3
+  dep:th-abstraction 5.6.3
+  dep:bifunctor-classes-compat 5.6.3
+  dep:transformers-compat 5.6.3
+  dep:tagged 5.6.3
+  dep:foldable1-classes-compat 5.6.3
+  mod:Data.Biapplicative Data/Biapplicative.rhi
+  mod:Data.Bifunctor.Biap Data/Bifunctor/Biap.rhi
+  mod:Data.Bifunctor.Biff Data/Bifunctor/Biff.rhi
+  mod:Data.Bifunctor.Clown Data/Bifunctor/Clown.rhi
+  mod:Data.Bifunctor.Fix Data/Bifunctor/Fix.rhi
+  mod:Data.Bifunctor.Flip Data/Bifunctor/Flip.rhi
+  mod:Data.Bifunctor.Functor Data/Bifunctor/Functor.rhi
+  mod:Data.Bifunctor.Join Data/Bifunctor/Join.rhi
+  mod:Data.Bifunctor.Joker Data/Bifunctor/Joker.rhi
+  mod:Data.Bifunctor.Product Data/Bifunctor/Product.rhi
+  mod:Data.Bifunctor.Sum Data/Bifunctor/Sum.rhi
+  mod:Data.Bifunctor.Tannen Data/Bifunctor/Tannen.rhi
+  mod:Data.Bifunctor.TH Data/Bifunctor/TH.rhi
+  mod:Data.Bifunctor.Wrapped Data/Bifunctor/Wrapped.rhi
+pkg:bytestring 0.12.2.0
+  dir:.haskelujah-packages-chirho/bytestring-0.12.2.0
+  dep:base 0.12.2.0
+  dep:ghc-prim 0.12.2.0
+  dep:deepseq 0.12.2.0
+  dep:template-haskell 0.12.2.0
+  dep:data-array-byte 0.12.2.0
+  mod:Data.ByteString Data/ByteString.rhi
+  mod:Data.ByteString.Char8 Data/ByteString/Char8.rhi
+  mod:Data.ByteString.Unsafe Data/ByteString/Unsafe.rhi
+  mod:Data.ByteString.Internal Data/ByteString/Internal.rhi
+  mod:Data.ByteString.Lazy Data/ByteString/Lazy.rhi
+  mod:Data.ByteString.Lazy.Char8 Data/ByteString/Lazy/Char8.rhi
+  mod:Data.ByteString.Lazy.Internal Data/ByteString/Lazy/Internal.rhi
+  mod:Data.ByteString.Short Data/ByteString/Short.rhi
+  mod:Data.ByteString.Short.Internal Data/ByteString/Short/Internal.rhi
+pkg:call-stack 0.4.0
+  dir:.haskelujah-packages-chirho/call-stack-0.4.0
+  dep:base 0.4.0
+  mod:Data.CallStack Data/CallStack.rhi
+pkg:clock 0.8.4
+  dir:.haskelujah-packages-chirho/clock-0.8.4
+  dep:base 0.8.4
+  mod:System.Clock System/Clock.rhi
+  mod:System.Clock.Seconds System/Clock/Seconds.rhi
+pkg:colour 2.3.7
+  dir:.haskelujah-packages-chirho/colour-2.3.7
+  dep:base 2.3.7
+  mod:Data.Colour Data/Colour.rhi
+  mod:Data.Colour.SRGB Data/Colour/SRGB.rhi
+  mod:Data.Colour.SRGB.Linear Data/Colour/SRGB/Linear.rhi
+  mod:Data.Colour.CIE Data/Colour/CIE.rhi
+  mod:Data.Colour.CIE.Illuminant Data/Colour/CIE/Illuminant.rhi
+  mod:Data.Colour.RGBSpace Data/Colour/RGBSpace.rhi
+  mod:Data.Colour.RGBSpace.HSL Data/Colour/RGBSpace/HSL.rhi
+  mod:Data.Colour.RGBSpace.HSV Data/Colour/RGBSpace/HSV.rhi
+  mod:Data.Colour.Names Data/Colour/Names.rhi
+  mod:Data.Colour.Ok Data/Colour/Ok.rhi
+pkg:comonad 5.0.10
+  dir:.haskelujah-packages-chirho/comonad-5.0.10
+  dep:base 5.0.10
+  dep:tagged 5.0.10
+  dep:transformers 5.0.10
+  dep:containers 5.0.10
+  dep:distributive 5.0.10
+  dep:indexed-traversable 5.0.10
+  mod:Control.Comonad Control/Comonad.rhi
+  mod:Control.Comonad.Env Control/Comonad/Env.rhi
+  mod:Control.Comonad.Env.Class Control/Comonad/Env/Class.rhi
+  mod:Control.Comonad.Hoist.Class Control/Comonad/Hoist/Class.rhi
+  mod:Control.Comonad.Identity Control/Comonad/Identity.rhi
+  mod:Control.Comonad.Store Control/Comonad/Store.rhi
+  mod:Control.Comonad.Store.Class Control/Comonad/Store/Class.rhi
+  mod:Control.Comonad.Traced Control/Comonad/Traced.rhi
+  mod:Control.Comonad.Traced.Class Control/Comonad/Traced/Class.rhi
+  mod:Control.Comonad.Trans.Class Control/Comonad/Trans/Class.rhi
+  mod:Control.Comonad.Trans.Env Control/Comonad/Trans/Env.rhi
+  mod:Control.Comonad.Trans.Identity Control/Comonad/Trans/Identity.rhi
+  mod:Control.Comonad.Trans.Store Control/Comonad/Trans/Store.rhi
+  mod:Control.Comonad.Trans.Traced Control/Comonad/Trans/Traced.rhi
+  mod:Data.Functor.Composition Data/Functor/Composition.rhi
+pkg:conduit 1.3.6.1
+  dir:.haskelujah-packages-chirho/conduit-1.3.6.1
+  dep:base 1.3.6.1
+  dep:resourcet 1.3.6.1
+  dep:transformers 1.3.6.1
+  dep:mtl 1.3.6.1
+  dep:primitive 1.3.6.1
+  dep:unliftio-core 1.3.6.1
+  dep:exceptions 1.3.6.1
+  dep:mono-traversable 1.3.6.1
+  dep:vector 1.3.6.1
+  dep:bytestring 1.3.6.1
+  dep:text 1.3.6.1
+  dep:filepath 1.3.6.1
+  dep:directory 1.3.6.1
+  dep:Win32 1.3.6.1
+  dep:unix 1.3.6.1
+  mod:Data.Conduit Data/Conduit.rhi
+  mod:Data.Conduit.Combinators Data/Conduit/Combinators.rhi
+  mod:Data.Conduit.List Data/Conduit/List.rhi
+  mod:Data.Conduit.Internal Data/Conduit/Internal.rhi
+  mod:Data.Conduit.Lift Data/Conduit/Lift.rhi
+  mod:Data.Conduit.Internal.Fusion Data/Conduit/Internal/Fusion.rhi
+  mod:Data.Conduit.Internal.List.Stream Data/Conduit/Internal/List/Stream.rhi
+  mod:Data.Conduit.Combinators.Stream Data/Conduit/Combinators/Stream.rhi
+  mod:Conduit Conduit.rhi
+pkg:containers 0.8
+  dir:.haskelujah-packages-chirho/containers-0.8
+  dep:base 0.8
+  dep:array 0.8
+  dep:deepseq 0.8
+  mod:Data.Containers.ListUtils Data/Containers/ListUtils.rhi
+  mod:Data.IntMap Data/IntMap.rhi
+  mod:Data.IntMap.Lazy Data/IntMap/Lazy.rhi
+  mod:Data.IntMap.Strict Data/IntMap/Strict.rhi
+  mod:Data.IntMap.Strict.Internal Data/IntMap/Strict/Internal.rhi
+  mod:Data.IntMap.Internal Data/IntMap/Internal.rhi
+  mod:Data.IntMap.Internal.Debug Data/IntMap/Internal/Debug.rhi
+  mod:Data.IntMap.Merge.Lazy Data/IntMap/Merge/Lazy.rhi
+  mod:Data.IntMap.Merge.Strict Data/IntMap/Merge/Strict.rhi
+  mod:Data.IntSet.Internal Data/IntSet/Internal.rhi
+  mod:Data.IntSet.Internal.IntTreeCommons Data/IntSet/Internal/IntTreeCommons.rhi
+  mod:Data.IntSet Data/IntSet.rhi
+  mod:Data.Map Data/Map.rhi
+  mod:Data.Map.Lazy Data/Map/Lazy.rhi
+  mod:Data.Map.Merge.Lazy Data/Map/Merge/Lazy.rhi
+  mod:Data.Map.Strict.Internal Data/Map/Strict/Internal.rhi
+  mod:Data.Map.Strict Data/Map/Strict.rhi
+  mod:Data.Map.Merge.Strict Data/Map/Merge/Strict.rhi
+  mod:Data.Map.Internal Data/Map/Internal.rhi
+  mod:Data.Map.Internal.Debug Data/Map/Internal/Debug.rhi
+  mod:Data.Set.Internal Data/Set/Internal.rhi
+  mod:Data.Set Data/Set.rhi
+  mod:Data.Graph Data/Graph.rhi
+  mod:Data.Sequence Data/Sequence.rhi
+  mod:Data.Sequence.Internal Data/Sequence/Internal.rhi
+  mod:Data.Sequence.Internal.Sorting Data/Sequence/Internal/Sorting.rhi
+  mod:Data.Tree Data/Tree.rhi
+pkg:contravariant 1.5.6
+  dir:.haskelujah-packages-chirho/contravariant-1.5.6
+  dep:base 1.5.6
+  dep:transformers 1.5.6
+  dep:StateVar 1.5.6
+  mod:Data.Functor.Contravariant Data/Functor/Contravariant.rhi
+pkg:data-default 0.8.0.2
+  dir:.haskelujah-packages-chirho/data-default-0.8.0.2
+  dep:base 0.8.0.2
+  dep:containers 0.8.0.2
+  mod:Data.Default Data/Default.rhi
+  mod:Data.Default.Internal Data/Default/Internal.rhi
+pkg:data-default-class 0.2.0.0
+  dir:.haskelujah-packages-chirho/data-default-class-0.2.0.0
+  dep:data-default 0.2.0.0
+  mod:Data.Default.Class Data/Default/Class.rhi
+pkg:data-fix 0.3.4
+  dir:.haskelujah-packages-chirho/data-fix-0.3.4
+  dep:base 0.3.4
+  dep:deepseq 0.3.4
+  dep:hashable 0.3.4
+  mod:Data.Fix Data/Fix.rhi
+pkg:deepseq 1.5.2.0
+  dir:.haskelujah-packages-chirho/deepseq-1.5.2.0
+  dep:ghc-prim 1.5.2.0
+  dep:base 1.5.2.0
+  mod:Control.DeepSeq Control/DeepSeq.rhi
+pkg:directory 1.3.10.1
+  dir:.haskelujah-packages-chirho/directory-1.3.10.1
+  dep:base 1.3.10.1
+  dep:file-io 1.3.10.1
+  dep:time 1.3.10.1
+  dep:if 1.3.10.1
+  dep:filepath 1.3.10.1
+  dep:os-string 1.3.10.1
+  mod:System.Directory System/Directory.rhi
+  mod:System.Directory.OsPath System/Directory/OsPath.rhi
+  mod:System.Directory.Internal System/Directory/Internal.rhi
+  mod:System.Directory.Internal.Prelude System/Directory/Internal/Prelude.rhi
+pkg:distributive 0.6.3
+  dir:.haskelujah-packages-chirho/distributive-0.6.3
+  dep:base 0.6.3
+  dep:transformers 0.6.3
+  dep:tagged 0.6.3
+  mod:Data.Distributive Data/Distributive.rhi
+  mod:Data.Distributive.Generic Data/Distributive/Generic.rhi
+pkg:exceptions 0.10.12
+  dir:.haskelujah-packages-chirho/exceptions-0.10.12
+  dep:base 0.10.12
+  dep:mtl 0.10.12
+  dep:stm 0.10.12
+  dep:transformers 0.10.12
+  mod:Control.Monad.Catch Control/Monad/Catch.rhi
+  mod:Control.Monad.Catch.Pure Control/Monad/Catch/Pure.rhi
+pkg:filepath 1.5.5.0
+  dir:.haskelujah-packages-chirho/filepath-1.5.5.0
+  dep:base 1.5.5.0
+  dep:bytestring 1.5.5.0
+  dep:deepseq 1.5.5.0
+  dep:exceptions 1.5.5.0
+  dep:os-string 1.5.5.0
+  dep:template-haskell 1.5.5.0
+  dep:template-haskell-lift 1.5.5.0
+  dep:template-haskell-quasiquoter 1.5.5.0
+  mod:System.FilePath System/FilePath.rhi
+  mod:System.FilePath.Posix System/FilePath/Posix.rhi
+  mod:System.FilePath.Windows System/FilePath/Windows.rhi
+  mod:System.OsPath System/OsPath.rhi
+  mod:System.OsPath.Encoding System/OsPath/Encoding.rhi
+  mod:System.OsPath.Internal System/OsPath/Internal.rhi
+  mod:System.OsPath.Posix System/OsPath/Posix.rhi
+  mod:System.OsPath.Posix.Internal System/OsPath/Posix/Internal.rhi
+  mod:System.OsPath.Types System/OsPath/Types.rhi
+  mod:System.OsPath.Windows System/OsPath/Windows.rhi
+  mod:System.OsPath.Windows.Internal System/OsPath/Windows/Internal.rhi
+pkg:free 5.2
+  dir:.haskelujah-packages-chirho/free-5.2
+  dep:base 5.2
+  dep:comonad 5.2
+  dep:containers 5.2
+  dep:distributive 5.2
+  dep:exceptions 5.2
+  dep:indexed-traversable 5.2
+  dep:mtl 5.2
+  dep:profunctors 5.2
+  dep:semigroupoids 5.2
+  dep:th-abstraction 5.2
+  dep:transformers 5.2
+  dep:transformers-base 5.2
+  dep:template-haskell 5.2
+  dep:bifunctor-classes-compat 5.2
+  mod:Control.Applicative.Free Control/Applicative/Free.rhi
+  mod:Control.Applicative.Free.Fast Control/Applicative/Free/Fast.rhi
+  mod:Control.Applicative.Free.Final Control/Applicative/Free/Final.rhi
+  mod:Control.Applicative.Trans.Free Control/Applicative/Trans/Free.rhi
+  mod:Control.Alternative.Free Control/Alternative/Free.rhi
+  mod:Control.Alternative.Free.Final Control/Alternative/Free/Final.rhi
+  mod:Control.Comonad.Cofree Control/Comonad/Cofree.rhi
+  mod:Control.Comonad.Cofree.Class Control/Comonad/Cofree/Class.rhi
+  mod:Control.Comonad.Trans.Cofree Control/Comonad/Trans/Cofree.rhi
+  mod:Control.Comonad.Trans.Coiter Control/Comonad/Trans/Coiter.rhi
+  mod:Control.Monad.Free Control/Monad/Free.rhi
+  mod:Control.Monad.Free.Ap Control/Monad/Free/Ap.rhi
+  mod:Control.Monad.Free.Church Control/Monad/Free/Church.rhi
+  mod:Control.Monad.Free.Class Control/Monad/Free/Class.rhi
+  mod:Control.Monad.Free.TH Control/Monad/Free/TH.rhi
+  mod:Control.Monad.Trans.Free Control/Monad/Trans/Free.rhi
+  mod:Control.Monad.Trans.Free.Ap Control/Monad/Trans/Free/Ap.rhi
+  mod:Control.Monad.Trans.Free.Church Control/Monad/Trans/Free/Church.rhi
+  mod:Control.Monad.Trans.Iter Control/Monad/Trans/Iter.rhi
+pkg:hashable 1.5.1.0
+  dir:.haskelujah-packages-chirho/hashable-1.5.1.0
+  dep:base 1.5.1.0
+  dep:bytestring 1.5.1.0
+  dep:containers 1.5.1.0
+  dep:deepseq 1.5.1.0
+  dep:text 1.5.1.0
+  dep:ghc-prim 1.5.1.0
+  dep:os-string 1.5.1.0
+  dep:filepath 1.5.1.0
+  mod:Data.Hashable Data/Hashable.rhi
+  mod:Data.Hashable.Generic Data/Hashable/Generic.rhi
+  mod:Data.Hashable.Lifted Data/Hashable/Lifted.rhi
+pkg:http-client 0.7.19
+  dir:.haskelujah-packages-chirho/http-client-0.7.19
+  dep:base 0.7.19
+  dep:bytestring 0.7.19
+  dep:text 0.7.19
+  dep:http-types 0.7.19
+  dep:blaze-builder 0.7.19
+  dep:time 0.7.19
+  dep:network 0.7.19
+  dep:streaming-commons 0.7.19
+  dep:containers 0.7.19
+  dep:transformers 0.7.19
+  dep:deepseq 0.7.19
+  dep:case-insensitive 0.7.19
+  dep:base64-bytestring 0.7.19
+  dep:cookie 0.7.19
+  dep:exceptions 0.7.19
+  dep:array 0.7.19
+  dep:random 0.7.19
+  dep:filepath 0.7.19
+  dep:mime-types 0.7.19
+  dep:ghc-prim 0.7.19
+  dep:stm 0.7.19
+  dep:iproute 0.7.19
+  dep:async 0.7.19
+  dep:network-uri 0.7.19
+  dep:semigroups 0.7.19
+  dep:unsupported-ghc-version 0.7.19
+  dep:Win32 0.7.19
+  dep:safe 0.7.19
+  mod:Network.HTTP.Client Network/HTTP/Client.rhi
+  mod:Network.HTTP.Client.MultipartFormData Network/HTTP/Client/MultipartFormData.rhi
+  mod:Network.HTTP.Client.Internal Network/HTTP/Client/Internal.rhi
+pkg:integer-logarithms 1.0.5
+  dir:.haskelujah-packages-chirho/integer-logarithms-1.0.5
+  dep:array 1.0.5
+  dep:base 1.0.5
+  dep:nats 1.0.5
+  dep:invalid-cabal-flag-settings 1.0.5
+  dep:integer-gmp 1.0.5
+  dep:integer-simple 1.0.5
+  mod:GHC.Integer.Logarithms.Compat GHC/Integer/Logarithms/Compat.rhi
+pkg:kan-extensions 5.2.8
+  dir:.haskelujah-packages-chirho/kan-extensions-5.2.8
+  dep:adjunctions 5.2.8
+  dep:base 5.2.8
+  dep:comonad 5.2.8
+  dep:contravariant 5.2.8
+  dep:distributive 5.2.8
+  dep:exceptions 5.2.8
+  dep:invariant 5.2.8
+  dep:free 5.2.8
+  dep:mtl 5.2.8
+  dep:profunctors 5.2.8
+  dep:semigroupoids 5.2.8
+  dep:transformers 5.2.8
+  mod:Control.Comonad.Density Control/Comonad/Density.rhi
+  mod:Control.Monad.Co Control/Monad/Co.rhi
+  mod:Control.Monad.Codensity Control/Monad/Codensity.rhi
+  mod:Data.Functor.Contravariant.Day Data/Functor/Contravariant/Day.rhi
+  mod:Data.Functor.Contravariant.Yoneda Data/Functor/Contravariant/Yoneda.rhi
+  mod:Data.Functor.Contravariant.Coyoneda Data/Functor/Contravariant/Coyoneda.rhi
+  mod:Data.Functor.Day Data/Functor/Day.rhi
+  mod:Data.Functor.Day.Curried Data/Functor/Day/Curried.rhi
+  mod:Data.Functor.Invariant.Day Data/Functor/Invariant/Day.rhi
+  mod:Data.Functor.Kan.Lan Data/Functor/Kan/Lan.rhi
+  mod:Data.Functor.Kan.Ran Data/Functor/Kan/Ran.rhi
+  mod:Data.Functor.Yoneda Data/Functor/Yoneda.rhi
+  mod:Data.Functor.Coyoneda Data/Functor/Coyoneda.rhi
+pkg:lens 5.3.6
+  dir:.haskelujah-packages-chirho/lens-5.3.6
+  dep:array 5.3.6
+  dep:assoc 5.3.6
+  dep:base 5.3.6
+  dep:base-orphans 5.3.6
+  dep:bifunctors 5.3.6
+  dep:bytestring 5.3.6
+  dep:call-stack 5.3.6
+  dep:comonad 5.3.6
+  dep:containers 5.3.6
+  dep:contravariant 5.3.6
+  dep:distributive 5.3.6
+  dep:exceptions 5.3.6
+  dep:filepath 5.3.6
+  dep:free 5.3.6
+  dep:hashable 5.3.6
+  dep:indexed-traversable 5.3.6
+  dep:indexed-traversable-instances 5.3.6
+  dep:kan-extensions 5.3.6
+  dep:mtl 5.3.6
+  dep:parallel 5.3.6
+  dep:profunctors 5.3.6
+  dep:reflection 5.3.6
+  dep:semigroupoids 5.3.6
+  dep:strict 5.3.6
+  dep:tagged 5.3.6
+  dep:template-haskell 5.3.6
+  dep:text 5.3.6
+  dep:th-abstraction 5.3.6
+  dep:these 5.3.6
+  dep:transformers 5.3.6
+  dep:unordered-containers 5.3.6
+  dep:vector 5.3.6
+  mod:Control.Exception.Lens Control/Exception/Lens.rhi
+  mod:Control.Lens.At Control/Lens/At.rhi
+  mod:Control.Lens.Combinators Control/Lens/Combinators.rhi
+  mod:Control.Lens.Cons Control/Lens/Cons.rhi
+  mod:Control.Lens.Each Control/Lens/Each.rhi
+  mod:Control.Lens.Empty Control/Lens/Empty.rhi
+  mod:Control.Lens.Equality Control/Lens/Equality.rhi
+  mod:Control.Lens.Extras Control/Lens/Extras.rhi
+  mod:Control.Lens.Fold Control/Lens/Fold.rhi
+  mod:Control.Lens.Getter Control/Lens/Getter.rhi
+  mod:Control.Lens.Indexed Control/Lens/Indexed.rhi
+  mod:Control.Lens.Internal Control/Lens/Internal.rhi
+  mod:Control.Lens.Internal.Bazaar Control/Lens/Internal/Bazaar.rhi
+  mod:Control.Lens.Internal.ByteString Control/Lens/Internal/ByteString.rhi
+  mod:Control.Lens.Internal.Context Control/Lens/Internal/Context.rhi
+  mod:Control.Lens.Internal.CTypes Control/Lens/Internal/CTypes.rhi
+  mod:Control.Lens.Internal.Deque Control/Lens/Internal/Deque.rhi
+  mod:Control.Lens.Internal.Doctest Control/Lens/Internal/Doctest.rhi
+  mod:Control.Lens.Internal.Exception Control/Lens/Internal/Exception.rhi
+  mod:Control.Lens.Internal.FieldTH Control/Lens/Internal/FieldTH.rhi
+  mod:Control.Lens.Internal.PrismTH Control/Lens/Internal/PrismTH.rhi
+  mod:Control.Lens.Internal.Fold Control/Lens/Internal/Fold.rhi
+  mod:Control.Lens.Internal.Getter Control/Lens/Internal/Getter.rhi
+  mod:Control.Lens.Internal.Indexed Control/Lens/Internal/Indexed.rhi
+  mod:Control.Lens.Internal.Instances Control/Lens/Internal/Instances.rhi
+  mod:Control.Lens.Internal.Iso Control/Lens/Internal/Iso.rhi
+  mod:Control.Lens.Internal.Level Control/Lens/Internal/Level.rhi
+  mod:Control.Lens.Internal.List Control/Lens/Internal/List.rhi
+  mod:Control.Lens.Internal.Magma Control/Lens/Internal/Magma.rhi
+  mod:Control.Lens.Internal.Prism Control/Lens/Internal/Prism.rhi
+  mod:Control.Lens.Internal.Profunctor Control/Lens/Internal/Profunctor.rhi
+  mod:Control.Lens.Internal.Review Control/Lens/Internal/Review.rhi
+  mod:Control.Lens.Internal.Setter Control/Lens/Internal/Setter.rhi
+  mod:Control.Lens.Internal.TH Control/Lens/Internal/TH.rhi
+  mod:Control.Lens.Internal.Zoom Control/Lens/Internal/Zoom.rhi
+  mod:Control.Lens.Iso Control/Lens/Iso.rhi
+  mod:Control.Lens.Lens Control/Lens/Lens.rhi
+  mod:Control.Lens.Level Control/Lens/Level.rhi
+  mod:Control.Lens.Operators Control/Lens/Operators.rhi
+  mod:Control.Lens.Plated Control/Lens/Plated.rhi
+  mod:Control.Lens.Prism Control/Lens/Prism.rhi
+  mod:Control.Lens.Profunctor Control/Lens/Profunctor.rhi
+  mod:Control.Lens.Reified Control/Lens/Reified.rhi
+  mod:Control.Lens.Review Control/Lens/Review.rhi
+  mod:Control.Lens.Setter Control/Lens/Setter.rhi
+  mod:Control.Lens.TH Control/Lens/TH.rhi
+  mod:Control.Lens.Traversal Control/Lens/Traversal.rhi
+  mod:Control.Lens.Tuple Control/Lens/Tuple.rhi
+  mod:Control.Lens.Type Control/Lens/Type.rhi
+  mod:Control.Lens.Unsound Control/Lens/Unsound.rhi
+  mod:Control.Lens.Wrapped Control/Lens/Wrapped.rhi
+  mod:Control.Lens.Zoom Control/Lens/Zoom.rhi
+  mod:Control.Monad.Error.Lens Control/Monad/Error/Lens.rhi
+  mod:Control.Parallel.Strategies.Lens Control/Parallel/Strategies/Lens.rhi
+  mod:Control.Seq.Lens Control/Seq/Lens.rhi
+  mod:Data.Array.Lens Data/Array/Lens.rhi
+  mod:Data.Bits.Lens Data/Bits/Lens.rhi
+  mod:Data.ByteString.Lens Data/ByteString/Lens.rhi
+  mod:Data.ByteString.Strict.Lens Data/ByteString/Strict/Lens.rhi
+  mod:Data.ByteString.Lazy.Lens Data/ByteString/Lazy/Lens.rhi
+  mod:Data.Complex.Lens Data/Complex/Lens.rhi
+  mod:Data.Data.Lens Data/Data/Lens.rhi
+  mod:Data.Dynamic.Lens Data/Dynamic/Lens.rhi
+  mod:Data.HashSet.Lens Data/HashSet/Lens.rhi
+  mod:Data.IntSet.Lens Data/IntSet/Lens.rhi
+  mod:Data.List.Lens Data/List/Lens.rhi
+  mod:Data.Map.Lens Data/Map/Lens.rhi
+  mod:Data.Sequence.Lens Data/Sequence/Lens.rhi
+  mod:Data.Set.Lens Data/Set/Lens.rhi
+  mod:Data.Text.Lens Data/Text/Lens.rhi
+  mod:Data.Text.Strict.Lens Data/Text/Strict/Lens.rhi
+  mod:Data.Text.Lazy.Lens Data/Text/Lazy/Lens.rhi
+  mod:Data.Tree.Lens Data/Tree/Lens.rhi
+  mod:Data.Typeable.Lens Data/Typeable/Lens.rhi
+  mod:Data.Vector.Lens Data/Vector/Lens.rhi
+  mod:Data.Vector.Generic.Lens Data/Vector/Generic/Lens.rhi
+  mod:GHC.Generics.Lens GHC/Generics/Lens.rhi
+  mod:System.Exit.Lens System/Exit/Lens.rhi
+  mod:System.FilePath.Lens System/FilePath/Lens.rhi
+  mod:System.IO.Error.Lens System/IO/Error/Lens.rhi
+  mod:Language.Haskell.TH.Lens Language/Haskell/TH/Lens.rhi
+  mod:Numeric.Lens Numeric/Lens.rhi
+  mod:Numeric.Natural.Lens Numeric/Natural/Lens.rhi
+pkg:megaparsec 9.7.0
+  dir:.haskelujah-packages-chirho/megaparsec-9.7.0
+  dep:array 9.7.0
+  dep:base 9.7.0
+  dep:bytestring 9.7.0
+  dep:case-insensitive 9.7.0
+  dep:containers 9.7.0
+  dep:deepseq 9.7.0
+  dep:mtl 9.7.0
+  dep:parser-combinators 9.7.0
+  dep:scientific 9.7.0
+  dep:text 9.7.0
+  dep:transformers 9.7.0
+  mod:Text.Megaparsec Text/Megaparsec.rhi
+  mod:Text.Megaparsec.Byte Text/Megaparsec/Byte.rhi
+  mod:Text.Megaparsec.Byte.Binary Text/Megaparsec/Byte/Binary.rhi
+  mod:Text.Megaparsec.Byte.Lexer Text/Megaparsec/Byte/Lexer.rhi
+  mod:Text.Megaparsec.Char Text/Megaparsec/Char.rhi
+  mod:Text.Megaparsec.Char.Lexer Text/Megaparsec/Char/Lexer.rhi
+  mod:Text.Megaparsec.Debug Text/Megaparsec/Debug.rhi
+  mod:Text.Megaparsec.Error Text/Megaparsec/Error.rhi
+  mod:Text.Megaparsec.Error.Builder Text/Megaparsec/Error/Builder.rhi
+  mod:Text.Megaparsec.Internal Text/Megaparsec/Internal.rhi
+  mod:Text.Megaparsec.Pos Text/Megaparsec/Pos.rhi
+  mod:Text.Megaparsec.State Text/Megaparsec/State.rhi
+  mod:Text.Megaparsec.Stream Text/Megaparsec/Stream.rhi
+  mod:Text.Megaparsec.Unicode Text/Megaparsec/Unicode.rhi
+pkg:mono-traversable 1.0.21.0
+  dir:.haskelujah-packages-chirho/mono-traversable-1.0.21.0
+  dep:base 1.0.21.0
+  dep:bytestring 1.0.21.0
+  dep:containers 1.0.21.0
+  dep:hashable 1.0.21.0
+  dep:split 1.0.21.0
+  dep:text 1.0.21.0
+  dep:transformers 1.0.21.0
+  dep:unordered-containers 1.0.21.0
+  dep:vector 1.0.21.0
+  dep:vector-algorithms 1.0.21.0
+  mod:Data.Containers Data/Containers.rhi
+  mod:Data.MonoTraversable Data/MonoTraversable.rhi
+  mod:Data.MonoTraversable.Unprefixed Data/MonoTraversable/Unprefixed.rhi
+  mod:Data.NonNull Data/NonNull.rhi
+  mod:Data.Sequences Data/Sequences.rhi
+pkg:mtl 2.3.2
+  dir:.haskelujah-packages-chirho/mtl-2.3.2
+  dep:base 2.3.2
+  dep:transformers 2.3.2
+  mod:Control.Monad.Cont Control/Monad/Cont.rhi
+  mod:Control.Monad.Cont.Class Control/Monad/Cont/Class.rhi
+  mod:Control.Monad.Error.Class Control/Monad/Error/Class.rhi
+  mod:Control.Monad.Except Control/Monad/Except.rhi
+  mod:Control.Monad.Identity Control/Monad/Identity.rhi
+  mod:Control.Monad.RWS Control/Monad/RWS.rhi
+  mod:Control.Monad.RWS.Class Control/Monad/RWS/Class.rhi
+  mod:Control.Monad.RWS.CPS Control/Monad/RWS/CPS.rhi
+  mod:Control.Monad.RWS.Lazy Control/Monad/RWS/Lazy.rhi
+  mod:Control.Monad.RWS.Strict Control/Monad/RWS/Strict.rhi
+  mod:Control.Monad.Reader Control/Monad/Reader.rhi
+  mod:Control.Monad.Reader.Class Control/Monad/Reader/Class.rhi
+  mod:Control.Monad.State Control/Monad/State.rhi
+  mod:Control.Monad.State.Class Control/Monad/State/Class.rhi
+  mod:Control.Monad.State.Lazy Control/Monad/State/Lazy.rhi
+  mod:Control.Monad.State.Strict Control/Monad/State/Strict.rhi
+  mod:Control.Monad.Trans Control/Monad/Trans.rhi
+  mod:Control.Monad.Writer Control/Monad/Writer.rhi
+  mod:Control.Monad.Writer.Class Control/Monad/Writer/Class.rhi
+  mod:Control.Monad.Writer.CPS Control/Monad/Writer/CPS.rhi
+  mod:Control.Monad.Writer.Lazy Control/Monad/Writer/Lazy.rhi
+  mod:Control.Monad.Writer.Strict Control/Monad/Writer/Strict.rhi
+  mod:Control.Monad.Accum Control/Monad/Accum.rhi
+  mod:Control.Monad.Select Control/Monad/Select.rhi
+pkg:nats 1.1.2
+  dir:.haskelujah-packages-chirho/nats-1.1.2
+  dep:base 1.1.2
+  dep:binary 1.1.2
+  dep:template-haskell 1.1.2
+  dep:hashable 1.1.2
+  mod:Numeric.Natural Numeric/Natural.rhi
+pkg:natural-sort 0.1.2
+  dir:.haskelujah-packages-chirho/natural-sort-0.1.2
+  dep:base 0.1.2
+  dep:parsec 0.1.2
+  dep:text 0.1.2
+  dep:bytestring 0.1.2
+  mod:Algorithms.NaturalSort Algorithms/NaturalSort.rhi
+pkg:old-locale 1.0.0.7
+  dir:.haskelujah-packages-chirho/old-locale-1.0.0.7
+  dep:base 1.0.0.7
+  mod:System.Locale System/Locale.rhi
+pkg:optparse-applicative 0.19.0.0
+  dir:.haskelujah-packages-chirho/optparse-applicative-0.19.0.0
+  dep:base 0.19.0.0
+  dep:text 0.19.0.0
+  dep:transformers 0.19.0.0
+  dep:prettyprinter 0.19.0.0
+  dep:prettyprinter-ansi-terminal 0.19.0.0
+  dep:process 0.19.0.0
+  dep:semigroups 0.19.0.0
+  dep:fail 0.19.0.0
+  mod:Options.Applicative Options/Applicative.rhi
+  mod:Options.Applicative.Arrows Options/Applicative/Arrows.rhi
+  mod:Options.Applicative.BashCompletion Options/Applicative/BashCompletion.rhi
+  mod:Options.Applicative.Builder Options/Applicative/Builder.rhi
+  mod:Options.Applicative.Builder.Completer Options/Applicative/Builder/Completer.rhi
+  mod:Options.Applicative.Builder.Internal Options/Applicative/Builder/Internal.rhi
+  mod:Options.Applicative.Common Options/Applicative/Common.rhi
+  mod:Options.Applicative.Extra Options/Applicative/Extra.rhi
+  mod:Options.Applicative.Help Options/Applicative/Help.rhi
+  mod:Options.Applicative.Help.Chunk Options/Applicative/Help/Chunk.rhi
+  mod:Options.Applicative.Help.Core Options/Applicative/Help/Core.rhi
+  mod:Options.Applicative.Help.Levenshtein Options/Applicative/Help/Levenshtein.rhi
+  mod:Options.Applicative.Help.Pretty Options/Applicative/Help/Pretty.rhi
+  mod:Options.Applicative.Help.Types Options/Applicative/Help/Types.rhi
+  mod:Options.Applicative.NonEmpty Options/Applicative/NonEmpty.rhi
+  mod:Options.Applicative.Types Options/Applicative/Types.rhi
+  mod:Options.Applicative.Internal Options/Applicative/Internal.rhi
+pkg:parsec 3.1.18.0
+  dir:.haskelujah-packages-chirho/parsec-3.1.18.0
+  dep:base 3.1.18.0
+  dep:bytestring 3.1.18.0
+  dep:mtl 3.1.18.0
+  dep:text 3.1.18.0
+  mod:Text.Parsec Text/Parsec.rhi
+  mod:Text.Parsec.ByteString Text/Parsec/ByteString.rhi
+  mod:Text.Parsec.ByteString.Lazy Text/Parsec/ByteString/Lazy.rhi
+  mod:Text.Parsec.Char Text/Parsec/Char.rhi
+  mod:Text.Parsec.Combinator Text/Parsec/Combinator.rhi
+  mod:Text.Parsec.Error Text/Parsec/Error.rhi
+  mod:Text.Parsec.Expr Text/Parsec/Expr.rhi
+  mod:Text.Parsec.Language Text/Parsec/Language.rhi
+  mod:Text.Parsec.Perm Text/Parsec/Perm.rhi
+  mod:Text.Parsec.Pos Text/Parsec/Pos.rhi
+  mod:Text.Parsec.Prim Text/Parsec/Prim.rhi
+  mod:Text.Parsec.String Text/Parsec/String.rhi
+  mod:Text.Parsec.Text Text/Parsec/Text.rhi
+  mod:Text.Parsec.Text.Lazy Text/Parsec/Text/Lazy.rhi
+  mod:Text.Parsec.Token Text/Parsec/Token.rhi
+  mod:Text.ParserCombinators.Parsec Text/ParserCombinators/Parsec.rhi
+  mod:Text.ParserCombinators.Parsec.Char Text/ParserCombinators/Parsec/Char.rhi
+  mod:Text.ParserCombinators.Parsec.Combinator Text/ParserCombinators/Parsec/Combinator.rhi
+  mod:Text.ParserCombinators.Parsec.Error Text/ParserCombinators/Parsec/Error.rhi
+  mod:Text.ParserCombinators.Parsec.Expr Text/ParserCombinators/Parsec/Expr.rhi
+  mod:Text.ParserCombinators.Parsec.Language Text/ParserCombinators/Parsec/Language.rhi
+  mod:Text.ParserCombinators.Parsec.Perm Text/ParserCombinators/Parsec/Perm.rhi
+  mod:Text.ParserCombinators.Parsec.Pos Text/ParserCombinators/Parsec/Pos.rhi
+  mod:Text.ParserCombinators.Parsec.Prim Text/ParserCombinators/Parsec/Prim.rhi
+  mod:Text.ParserCombinators.Parsec.Token Text/ParserCombinators/Parsec/Token.rhi
+pkg:pretty 1.1.3.6
+  dir:.haskelujah-packages-chirho/pretty-1.1.3.6
+  dep:base 1.1.3.6
+  dep:deepseq 1.1.3.6
+  dep:ghc-prim 1.1.3.6
+  mod:Text.PrettyPrint Text/PrettyPrint.rhi
+  mod:Text.PrettyPrint.HughesPJ Text/PrettyPrint/HughesPJ.rhi
+  mod:Text.PrettyPrint.HughesPJClass Text/PrettyPrint/HughesPJClass.rhi
+  mod:Text.PrettyPrint.Annotated Text/PrettyPrint/Annotated.rhi
+  mod:Text.PrettyPrint.Annotated.HughesPJ Text/PrettyPrint/Annotated/HughesPJ.rhi
+  mod:Text.PrettyPrint.Annotated.HughesPJClass Text/PrettyPrint/Annotated/HughesPJClass.rhi
+pkg:primitive 0.9.1.0
+  dir:.haskelujah-packages-chirho/primitive-0.9.1.0
+  dep:base 0.9.1.0
+  dep:deepseq 0.9.1.0
+  dep:transformers 0.9.1.0
+  dep:template-haskell 0.9.1.0
+  dep:data-array-byte 0.9.1.0
+  mod:Control.Monad.Primitive Control/Monad/Primitive.rhi
+  mod:Data.Primitive Data/Primitive.rhi
+  mod:Data.Primitive.MachDeps Data/Primitive/MachDeps.rhi
+  mod:Data.Primitive.Types Data/Primitive/Types.rhi
+  mod:Data.Primitive.Array Data/Primitive/Array.rhi
+  mod:Data.Primitive.ByteArray Data/Primitive/ByteArray.rhi
+  mod:Data.Primitive.PrimArray Data/Primitive/PrimArray.rhi
+  mod:Data.Primitive.SmallArray Data/Primitive/SmallArray.rhi
+  mod:Data.Primitive.Ptr Data/Primitive/Ptr.rhi
+  mod:Data.Primitive.MutVar Data/Primitive/MutVar.rhi
+  mod:Data.Primitive.MVar Data/Primitive/MVar.rhi
+  mod:Data.Primitive.PrimVar Data/Primitive/PrimVar.rhi
+pkg:profunctors 5.6.3
+  dir:.haskelujah-packages-chirho/profunctors-5.6.3
+  dep:base 5.6.3
+  dep:base-orphans 5.6.3
+  dep:bifunctors 5.6.3
+  dep:comonad 5.6.3
+  dep:contravariant 5.6.3
+  dep:distributive 5.6.3
+  dep:tagged 5.6.3
+  dep:transformers 5.6.3
+  mod:Data.Profunctor Data/Profunctor.rhi
+  mod:Data.Profunctor.Adjunction Data/Profunctor/Adjunction.rhi
+  mod:Data.Profunctor.Cayley Data/Profunctor/Cayley.rhi
+  mod:Data.Profunctor.Choice Data/Profunctor/Choice.rhi
+  mod:Data.Profunctor.Closed Data/Profunctor/Closed.rhi
+  mod:Data.Profunctor.Composition Data/Profunctor/Composition.rhi
+  mod:Data.Profunctor.Mapping Data/Profunctor/Mapping.rhi
+  mod:Data.Profunctor.Monad Data/Profunctor/Monad.rhi
+  mod:Data.Profunctor.Ran Data/Profunctor/Ran.rhi
+  mod:Data.Profunctor.Rep Data/Profunctor/Rep.rhi
+  mod:Data.Profunctor.Sieve Data/Profunctor/Sieve.rhi
+  mod:Data.Profunctor.Strong Data/Profunctor/Strong.rhi
+  mod:Data.Profunctor.Traversing Data/Profunctor/Traversing.rhi
+  mod:Data.Profunctor.Types Data/Profunctor/Types.rhi
+  mod:Data.Profunctor.Unsafe Data/Profunctor/Unsafe.rhi
+  mod:Data.Profunctor.Yoneda Data/Profunctor/Yoneda.rhi
+pkg:random 1.3.1
+  dir:.haskelujah-packages-chirho/random-1.3.1
+  dep:base 1.3.1
+  dep:bytestring 1.3.1
+  dep:deepseq 1.3.1
+  dep:mtl 1.3.1
+  dep:transformers 1.3.1
+  dep:splitmix 1.3.1
+  mod:System.Random System/Random.rhi
+  mod:System.Random.Internal System/Random/Internal.rhi
+  mod:System.Random.Stateful System/Random/Stateful.rhi
+pkg:reflection 2.1.9
+  dir:.haskelujah-packages-chirho/reflection-2.1.9
+  dep:base 2.1.9
+  dep:template-haskell 2.1.9
+  mod:Data.Reflection Data/Reflection.rhi
+pkg:safe 0.3.21
+  dir:.haskelujah-packages-chirho/safe-0.3.21
+  dep:base 0.3.21
+  mod:Safe Safe.rhi
+  mod:Safe.Exact Safe/Exact.rhi
+  mod:Safe.Foldable Safe/Foldable.rhi
+  mod:Safe.Partial Safe/Partial.rhi
+pkg:scientific 0.3.8.1
+  dir:.haskelujah-packages-chirho/scientific-0.3.8.1
+  dep:base 0.3.8.1
+  dep:binary 0.3.8.1
+  dep:bytestring 0.3.8.1
+  dep:containers 0.3.8.1
+  dep:deepseq 0.3.8.1
+  dep:hashable 0.3.8.1
+  dep:integer-logarithms 0.3.8.1
+  dep:primitive 0.3.8.1
+  dep:template-haskell 0.3.8.1
+  dep:text 0.3.8.1
+  dep:invalid-cabal-flag-settings 0.3.8.1
+  dep:integer-simple 0.3.8.1
+  dep:integer-gmp 0.3.8.1
+  mod:Data.ByteString.Builder.Scientific Data/ByteString/Builder/Scientific.rhi
+  mod:Data.Scientific Data/Scientific.rhi
+  mod:Data.Text.Lazy.Builder.Scientific Data/Text/Lazy/Builder/Scientific.rhi
+pkg:semigroupoids 6.0.2
+  dir:.haskelujah-packages-chirho/semigroupoids-6.0.2
+  dep:base 6.0.2
+  dep:base-orphans 6.0.2
+  dep:bifunctors 6.0.2
+  dep:template-haskell 6.0.2
+  dep:transformers 6.0.2
+  dep:transformers-compat 6.0.2
+  dep:foldable1-classes-compat 6.0.2
+  dep:containers 6.0.2
+  dep:contravariant 6.0.2
+  dep:comonad 6.0.2
+  dep:tagged 6.0.2
+  dep:hashable 6.0.2
+  dep:unordered-containers 6.0.2
+  mod:Data.Functor.Contravariant.Conclude Data/Functor/Contravariant/Conclude.rhi
+  mod:Data.Functor.Contravariant.Decide Data/Functor/Contravariant/Decide.rhi
+  mod:Data.Functor.Contravariant.Divise Data/Functor/Contravariant/Divise.rhi
+pkg:semigroups 0.20.1
+  dir:.haskelujah-packages-chirho/semigroups-0.20.1
+  dep:base 0.20.1
+  mod:Data.Semigroup.Generic Data/Semigroup/Generic.rhi
+pkg:servant 0.20.3.0
+  dir:.haskelujah-packages-chirho/servant-0.20.3.0
+  dep:base 0.20.3.0
+  dep:bytestring 0.20.3.0
+  dep:constraints 0.20.3.0
+  dep:containers 0.20.3.0
+  dep:mtl 0.20.3.0
+  dep:sop-core 0.20.3.0
+  dep:generics-sop 0.20.3.0
+  dep:text 0.20.3.0
+  dep:transformers 0.20.3.0
+  dep:http-api-data 0.20.3.0
+  dep:singleton-bool 0.20.3.0
+  dep:aeson 0.20.3.0
+  dep:attoparsec 0.20.3.0
+  dep:bifunctors 0.20.3.0
+  dep:case-insensitive 0.20.3.0
+  dep:deepseq 0.20.3.0
+  dep:http-media 0.20.3.0
+  dep:http-types 0.20.3.0
+  dep:mmorph 0.20.3.0
+  dep:network-uri 0.20.3.0
+  dep:QuickCheck 0.20.3.0
+  dep:vault 0.20.3.0
+  mod:Servant.Links Servant/Links.rhi
+pkg:simple-reflect 0.3.3
+  dir:.haskelujah-packages-chirho/simple-reflect-0.3.3
+  dep:base 0.3.3
+  mod:Debug.SimpleReflect Debug/SimpleReflect.rhi
+  mod:Debug.SimpleReflect.Expr Debug/SimpleReflect/Expr.rhi
+  mod:Debug.SimpleReflect.Vars Debug/SimpleReflect/Vars.rhi
+pkg:split 0.2.5
+  dir:.haskelujah-packages-chirho/split-0.2.5
+  dep:base 0.2.5
+  mod:Data.List.Split Data/List/Split.rhi
+  mod:Data.List.Split.Internals Data/List/Split/Internals.rhi
+pkg:stm 2.5.3.1
+  dir:.haskelujah-packages-chirho/stm-2.5.3.1
+  dep:nats 2.5.3.1
+  dep:semigroups 2.5.3.1
+  dep:base 2.5.3.1
+  dep:array 2.5.3.1
+  mod:Control.Concurrent.STM Control/Concurrent/STM.rhi
+  mod:Control.Concurrent.STM.TArray Control/Concurrent/STM/TArray.rhi
+  mod:Control.Concurrent.STM.TVar Control/Concurrent/STM/TVar.rhi
+  mod:Control.Concurrent.STM.TChan Control/Concurrent/STM/TChan.rhi
+  mod:Control.Concurrent.STM.TMVar Control/Concurrent/STM/TMVar.rhi
+  mod:Control.Concurrent.STM.TQueue Control/Concurrent/STM/TQueue.rhi
+  mod:Control.Concurrent.STM.TBQueue Control/Concurrent/STM/TBQueue.rhi
+  mod:Control.Concurrent.STM.TSem Control/Concurrent/STM/TSem.rhi
+  mod:Control.Monad.STM Control/Monad/STM.rhi
+pkg:tagged 0.8.10
+  dir:.haskelujah-packages-chirho/tagged-0.8.10
+  dep:base 0.8.10
+  dep:deepseq 0.8.10
+  dep:template-haskell 0.8.10
+  mod:Data.Proxy.TH Data/Proxy/TH.rhi
+pkg:text 2.1.4
+  dir:.haskelujah-packages-chirho/text-2.1.4
+  dep:base 2.1.4
+  dep:array 2.1.4
+  dep:binary 2.1.4
+  dep:bytestring 2.1.4
+  dep:deepseq 2.1.4
+  dep:ghc-prim 2.1.4
+  dep:template-haskell 2.1.4
+  dep:template-haskell-lift 2.1.4
+  dep:data-array-byte 2.1.4
+  mod:Data.Text Data/Text.rhi
+  mod:Data.Text.Array Data/Text/Array.rhi
+  mod:Data.Text.Encoding Data/Text/Encoding.rhi
+  mod:Data.Text.Encoding.Error Data/Text/Encoding/Error.rhi
+  mod:Data.Text.Foreign Data/Text/Foreign.rhi
+  mod:Data.Text.IO Data/Text/IO.rhi
+  mod:Data.Text.IO.Utf8 Data/Text/IO/Utf8.rhi
+  mod:Data.Text.Internal Data/Text/Internal.rhi
+  mod:Data.Text.Internal.ArrayUtils Data/Text/Internal/ArrayUtils.rhi
+  mod:Data.Text.Internal.Builder Data/Text/Internal/Builder.rhi
+  mod:Data.Text.Internal.Builder.Functions Data/Text/Internal/Builder/Functions.rhi
+  mod:Data.Text.Internal.Builder.Int.Digits Data/Text/Internal/Builder/Int/Digits.rhi
+  mod:Data.Text.Internal.Builder.RealFloat.Functions Data/Text/Internal/Builder/RealFloat/Functions.rhi
+  mod:Data.Text.Internal.ByteStringCompat Data/Text/Internal/ByteStringCompat.rhi
+  mod:Data.Text.Internal.PrimCompat Data/Text/Internal/PrimCompat.rhi
+  mod:Data.Text.Internal.Encoding Data/Text/Internal/Encoding.rhi
+  mod:Data.Text.Internal.Encoding.Fusion Data/Text/Internal/Encoding/Fusion.rhi
+  mod:Data.Text.Internal.Encoding.Fusion.Common Data/Text/Internal/Encoding/Fusion/Common.rhi
+  mod:Data.Text.Internal.Encoding.Utf16 Data/Text/Internal/Encoding/Utf16.rhi
+  mod:Data.Text.Internal.Encoding.Utf32 Data/Text/Internal/Encoding/Utf32.rhi
+  mod:Data.Text.Internal.Encoding.Utf8 Data/Text/Internal/Encoding/Utf8.rhi
+  mod:Data.Text.Internal.Fusion Data/Text/Internal/Fusion.rhi
+  mod:Data.Text.Internal.Fusion.CaseMapping Data/Text/Internal/Fusion/CaseMapping.rhi
+  mod:Data.Text.Internal.Fusion.Common Data/Text/Internal/Fusion/Common.rhi
+  mod:Data.Text.Internal.Fusion.Size Data/Text/Internal/Fusion/Size.rhi
+  mod:Data.Text.Internal.Fusion.Types Data/Text/Internal/Fusion/Types.rhi
+  mod:Data.Text.Internal.IO Data/Text/Internal/IO.rhi
+  mod:Data.Text.Internal.Lazy Data/Text/Internal/Lazy.rhi
+  mod:Data.Text.Internal.Lazy.Encoding.Fusion Data/Text/Internal/Lazy/Encoding/Fusion.rhi
+  mod:Data.Text.Internal.Lazy.Fusion Data/Text/Internal/Lazy/Fusion.rhi
+  mod:Data.Text.Internal.Lazy.Search Data/Text/Internal/Lazy/Search.rhi
+  mod:Data.Text.Internal.Private Data/Text/Internal/Private.rhi
+  mod:Data.Text.Internal.Read Data/Text/Internal/Read.rhi
+  mod:Data.Text.Internal.Search Data/Text/Internal/Search.rhi
+  mod:Data.Text.Internal.StrictBuilder Data/Text/Internal/StrictBuilder.rhi
+  mod:Data.Text.Internal.Unsafe Data/Text/Internal/Unsafe.rhi
+  mod:Data.Text.Internal.Unsafe.Char Data/Text/Internal/Unsafe/Char.rhi
+  mod:Data.Text.Internal.Validate Data/Text/Internal/Validate.rhi
+  mod:Data.Text.Internal.Validate.Native Data/Text/Internal/Validate/Native.rhi
+  mod:Data.Text.Lazy Data/Text/Lazy.rhi
+  mod:Data.Text.Lazy.Builder Data/Text/Lazy/Builder.rhi
+  mod:Data.Text.Lazy.Builder.Int Data/Text/Lazy/Builder/Int.rhi
+  mod:Data.Text.Lazy.Builder.RealFloat Data/Text/Lazy/Builder/RealFloat.rhi
+  mod:Data.Text.Lazy.Encoding Data/Text/Lazy/Encoding.rhi
+  mod:Data.Text.Lazy.IO Data/Text/Lazy/IO.rhi
+  mod:Data.Text.Lazy.Internal Data/Text/Lazy/Internal.rhi
+  mod:Data.Text.Lazy.Read Data/Text/Lazy/Read.rhi
+  mod:Data.Text.Read Data/Text/Read.rhi
+  mod:Data.Text.Unsafe Data/Text/Unsafe.rhi
+pkg:these 1.2.1
+  dir:.haskelujah-packages-chirho/these-1.2.1
+  dep:base 1.2.1
+  dep:binary 1.2.1
+  dep:deepseq 1.2.1
+  dep:assoc 1.2.1
+  dep:hashable 1.2.1
+  dep:foldable1-classes-compat 1.2.1
+  mod:Data.Functor.These Data/Functor/These.rhi
+  mod:Data.These Data/These.rhi
+  mod:Data.These.Combinators Data/These/Combinators.rhi
+pkg:time 1.15
+  dir:.haskelujah-packages-chirho/time-1.15
+  dep:base 1.15
+  dep:deepseq 1.15
+  dep:if 1.15
+  mod:Data.Time.Calendar Data/Time/Calendar.rhi
+  mod:Data.Time.Calendar.MonthDay Data/Time/Calendar/MonthDay.rhi
+  mod:Data.Time.Calendar.OrdinalDate Data/Time/Calendar/OrdinalDate.rhi
+  mod:Data.Time.Calendar.WeekDate Data/Time/Calendar/WeekDate.rhi
+  mod:Data.Time.Calendar.Julian Data/Time/Calendar/Julian.rhi
+  mod:Data.Time.Calendar.Easter Data/Time/Calendar/Easter.rhi
+  mod:Data.Time.Calendar.Month Data/Time/Calendar/Month.rhi
+  mod:Data.Time.Calendar.Quarter Data/Time/Calendar/Quarter.rhi
+  mod:Data.Time.Clock Data/Time/Clock.rhi
+  mod:Data.Time.Clock.System Data/Time/Clock/System.rhi
+  mod:Data.Time.Clock.POSIX Data/Time/Clock/POSIX.rhi
+  mod:Data.Time.Clock.TAI Data/Time/Clock/TAI.rhi
+  mod:Data.Time.LocalTime Data/Time/LocalTime.rhi
+  mod:Data.Time.Format Data/Time/Format.rhi
+  mod:Data.Time.Format.ISO8601 Data/Time/Format/ISO8601.rhi
+  mod:Data.Time Data/Time.rhi
+pkg:transformers 0.6.3.0
+  dir:.haskelujah-packages-chirho/transformers-0.6.3.0
+  dep:base 0.6.3.0
+  dep:ghc-prim 0.6.3.0
+  mod:Control.Applicative.Backwards Control/Applicative/Backwards.rhi
+  mod:Control.Applicative.Lift Control/Applicative/Lift.rhi
+  mod:Control.Monad.Signatures Control/Monad/Signatures.rhi
+  mod:Control.Monad.Trans.Accum Control/Monad/Trans/Accum.rhi
+  mod:Control.Monad.Trans.Class Control/Monad/Trans/Class.rhi
+  mod:Control.Monad.Trans.Cont Control/Monad/Trans/Cont.rhi
+  mod:Control.Monad.Trans.Except Control/Monad/Trans/Except.rhi
+  mod:Control.Monad.Trans.Identity Control/Monad/Trans/Identity.rhi
+  mod:Control.Monad.Trans.Maybe Control/Monad/Trans/Maybe.rhi
+  mod:Control.Monad.Trans.Reader Control/Monad/Trans/Reader.rhi
+  mod:Control.Monad.Trans.RWS Control/Monad/Trans/RWS.rhi
+  mod:Control.Monad.Trans.RWS.CPS Control/Monad/Trans/RWS/CPS.rhi
+  mod:Control.Monad.Trans.RWS.Lazy Control/Monad/Trans/RWS/Lazy.rhi
+  mod:Control.Monad.Trans.RWS.Strict Control/Monad/Trans/RWS/Strict.rhi
+  mod:Control.Monad.Trans.Select Control/Monad/Trans/Select.rhi
+  mod:Control.Monad.Trans.State Control/Monad/Trans/State.rhi
+  mod:Control.Monad.Trans.State.Lazy Control/Monad/Trans/State/Lazy.rhi
+  mod:Control.Monad.Trans.State.Strict Control/Monad/Trans/State/Strict.rhi
+  mod:Control.Monad.Trans.Writer Control/Monad/Trans/Writer.rhi
+  mod:Control.Monad.Trans.Writer.CPS Control/Monad/Trans/Writer/CPS.rhi
+  mod:Control.Monad.Trans.Writer.Lazy Control/Monad/Trans/Writer/Lazy.rhi
+  mod:Control.Monad.Trans.Writer.Strict Control/Monad/Trans/Writer/Strict.rhi
+  mod:Data.Functor.Constant Data/Functor/Constant.rhi
+  mod:Data.Functor.Reverse Data/Functor/Reverse.rhi
+pkg:unordered-containers 0.2.21
+  dir:.haskelujah-packages-chirho/unordered-containers-0.2.21
+  dep:base 0.2.21
+  dep:deepseq 0.2.21
+  dep:hashable 0.2.21
+  mod:Data.HashMap.Internal Data/HashMap/Internal.rhi
+  mod:Data.HashMap.Internal.Array Data/HashMap/Internal/Array.rhi
+  mod:Data.HashMap.Internal.Debug Data/HashMap/Internal/Debug.rhi
+  mod:Data.HashMap.Internal.List Data/HashMap/Internal/List.rhi
+  mod:Data.HashMap.Internal.Strict Data/HashMap/Internal/Strict.rhi
+  mod:Data.HashMap.Lazy Data/HashMap/Lazy.rhi
+  mod:Data.HashMap.Strict Data/HashMap/Strict.rhi
+  mod:Data.HashSet Data/HashSet.rhi
+  mod:Data.HashSet.Internal Data/HashSet/Internal.rhi
+pkg:vector 0.13.2.0
+  dir:.haskelujah-packages-chirho/vector-0.13.2.0
+  dep:base 0.13.2.0
+  dep:primitive 0.13.2.0
+  dep:deepseq 0.13.2.0
+  dep:vector-stream 0.13.2.0
+  mod:Data.Vector.Internal.Check Data/Vector/Internal/Check.rhi
+pkg:void 0.7.4
+  dir:.haskelujah-packages-chirho/void-0.7.4
+  dep:base 0.7.4
+  mod:Data.Void.Unsafe Data/Void/Unsafe.rhi
+pkg:warp 3.4.12
+  dir:.haskelujah-packages-chirho/warp-3.4.12
+  dep:base 3.4.12
+  dep:array 3.4.12
+  dep:auto-update 3.4.12
+  dep:async 3.4.12
+  dep:bsb-http-chunked 3.4.12
+  dep:bytestring 3.4.12
+  dep:case-insensitive 3.4.12
+  dep:containers 3.4.12
+  dep:ghc-prim 3.4.12
+  dep:hashable 3.4.12
+  dep:http-date 3.4.12
+  dep:http-types 3.4.12
+  dep:http2 3.4.12
+  dep:iproute 3.4.12
+  dep:recv 3.4.12
+  dep:simple-sendfile 3.4.12
+  dep:stm 3.4.12
+  dep:streaming-commons 3.4.12
+  dep:text 3.4.12
+  dep:time-manager 3.4.12
+  dep:vault 3.4.12
+  dep:wai 3.4.12
+  dep:word8 3.4.12
+  dep:crypton-x509 3.4.12
+  dep:semigroups 3.4.12
+  dep:network 3.4.12
+  dep:network-bytestring 3.4.12
+  dep:time 3.4.12
+  dep:unix-compat 3.4.12
+  dep:unix 3.4.12
+  mod:Network.Wai.Handler.Warp Network/Wai/Handler/Warp.rhi
+  mod:Network.Wai.Handler.Warp.Internal Network/Wai/Handler/Warp/Internal.rhi
+pkg:wreq 0.5.4.4
+  dir:.haskelujah-packages-chirho/wreq-0.5.4.4
+  dep:psqueues 0.5.4.4
+  dep:aeson 0.5.4.4
+  dep:attoparsec 0.5.4.4
+  dep:authenticate-oauth 0.5.4.4
+  dep:base 0.5.4.4
+  dep:base16-bytestring 0.5.4.4
+  dep:bytestring 0.5.4.4
+  dep:case-insensitive 0.5.4.4
+  dep:containers 0.5.4.4
+  dep:crypton 0.5.4.4
+  dep:exceptions 0.5.4.4
+  dep:hashable 0.5.4.4
+  dep:http-client 0.5.4.4
+  dep:http-client-tls 0.5.4.4
+  dep:http-types 0.5.4.4
+  dep:lens 0.5.4.4
+  dep:lens-aeson 0.5.4.4
+  dep:memory 0.5.4.4
+  dep:mime-types 0.5.4.4
+  dep:time-locale-compat 0.5.4.4
+  dep:template-haskell 0.5.4.4
+  dep:text 0.5.4.4
+  dep:time 0.5.4.4
+  dep:unordered-containers 0.5.4.4
+  dep:aeson-pretty 0.5.4.4
+  dep:base64-bytestring 0.5.4.4
+  dep:snap-core 0.5.4.4
+  dep:snap-server 0.5.4.4
+  dep:transformers 0.5.4.4
+  dep:unix-compat 0.5.4.4
+  dep:uuid 0.5.4.4
+  mod:Network.Wreq Network/Wreq.rhi
+  mod:Network.Wreq.Cache Network/Wreq/Cache.rhi
+  mod:Network.Wreq.Cache.Store Network/Wreq/Cache/Store.rhi
+  mod:Network.Wreq.Lens Network/Wreq/Lens.rhi
+  mod:Network.Wreq.Session Network/Wreq/Session.rhi
+  mod:Network.Wreq.Types Network/Wreq/Types.rhi
+pkg:yaml 0.11.11.2
+  dir:.haskelujah-packages-chirho/yaml-0.11.11.2
+  dep:aeson 0.11.11.2
+  dep:attoparsec 0.11.11.2
+  dep:base 0.11.11.2
+  dep:bytestring 0.11.11.2
+  dep:conduit 0.11.11.2
+  dep:containers 0.11.11.2
+  dep:directory 0.11.11.2
+  dep:filepath 0.11.11.2
+  dep:libyaml 0.11.11.2
+  dep:mtl 0.11.11.2
+  dep:resourcet 0.11.11.2
+  dep:scientific 0.11.11.2
+  dep:template-haskell 0.11.11.2
+  dep:text 0.11.11.2
+  dep:transformers 0.11.11.2
+  dep:unordered-containers 0.11.11.2
+  dep:vector 0.11.11.2
+  dep:optparse-applicative 0.11.11.2
+  mod:Data.Yaml Data/Yaml.rhi
+  mod:Data.Yaml.Aeson Data/Yaml/Aeson.rhi
+  mod:Data.Yaml.Builder Data/Yaml/Builder.rhi
+  mod:Data.Yaml.Config Data/Yaml/Config.rhi
+  mod:Data.Yaml.Include Data/Yaml/Include.rhi
+  mod:Data.Yaml.Internal Data/Yaml/Internal.rhi
+  mod:Data.Yaml.Parser Data/Yaml/Parser.rhi
+  mod:Data.Yaml.Pretty Data/Yaml/Pretty.rhi
+  mod:Data.Yaml.TH Data/Yaml/TH.rhi

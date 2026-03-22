@@ -2616,9 +2616,6 @@ impl InferCtxChirho {
         let first_chirho = &matches_chirho[0];
         let arity_chirho = first_chirho.pats_chirho.len();
         let mut subst_chirho = SubstChirho::empty_chirho();
-        let actual_param_tys_chirho: Vec<TyChirho> =
-            (0..arity_chirho).map(|_| self.fresh_var_chirho()).collect();
-        let actual_result_ty_chirho = self.fresh_var_chirho();
 
         for match_arm_chirho in matches_chirho {
             self.env_chirho.push_scope_chirho();
@@ -2784,26 +2781,6 @@ impl InferCtxChirho {
             // Unify per-equation function type with overall function type.
             // This propagates non-GADT constraints while allowing GADT
             // equations to have independently refined types.
-            for (eq_p_chirho, actual_p_chirho) in eq_param_tys_chirho
-                .iter()
-                .zip(actual_param_tys_chirho.iter())
-            {
-                let eq_p_sub_chirho = subst_chirho.apply_ty_chirho(eq_p_chirho);
-                let actual_p_sub_chirho = subst_chirho.apply_ty_chirho(actual_p_chirho);
-                match self.unify_normalized_chirho(
-                    &eq_p_sub_chirho,
-                    &actual_p_sub_chirho,
-                    span_chirho,
-                ) {
-                    Ok(s_chirho) => {
-                        subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                        self.apply_subst_all_chirho(&s_chirho);
-                    }
-                    Err(err_chirho) => {
-                        self.report_unify_error_chirho(&err_chirho);
-                    }
-                }
-            }
             for (eq_p_chirho, p_chirho) in eq_param_tys_chirho.iter().zip(param_tys_chirho.iter()) {
                 let eq_p_sub_chirho = subst_chirho.apply_ty_chirho(eq_p_chirho);
                 let p_sub_chirho = subst_chirho.apply_ty_chirho(p_chirho);
@@ -2819,21 +2796,6 @@ impl InferCtxChirho {
             // function result; for GADTs the signature check provides
             // the authoritative type.
             let eq_r_sub_chirho = subst_chirho.apply_ty_chirho(&eq_result_ty_chirho);
-            let actual_r_sub_chirho = subst_chirho.apply_ty_chirho(&actual_result_ty_chirho);
-            match self.unify_normalized_chirho(
-                &eq_r_sub_chirho,
-                &actual_r_sub_chirho,
-                span_chirho,
-            ) {
-                Ok(s_chirho) => {
-                    subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&s_chirho);
-                }
-                Err(err_chirho) => {
-                    self.report_unify_error_chirho(&err_chirho);
-                }
-            }
-            let eq_r_sub_chirho = subst_chirho.apply_ty_chirho(&eq_result_ty_chirho);
             let r_sub_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
             if let Ok(s_chirho) =
                 self.unify_normalized_chirho(&eq_r_sub_chirho, &r_sub_chirho, span_chirho)
@@ -2846,11 +2808,11 @@ impl InferCtxChirho {
         }
 
         // Build the function type: param1 -> param2 -> ... -> result
-        let final_params_chirho: Vec<TyChirho> = actual_param_tys_chirho
+        let final_params_chirho: Vec<TyChirho> = param_tys_chirho
             .iter()
             .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
             .collect();
-        let final_result_chirho = subst_chirho.apply_ty_chirho(&actual_result_ty_chirho);
+        let final_result_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
         let fun_ty_chirho = TyChirho::fun_n_chirho(final_params_chirho, final_result_chirho);
 
         (subst_chirho, fun_ty_chirho)
@@ -2907,6 +2869,23 @@ impl InferCtxChirho {
         Some((params_chirho, current_chirho))
     }
 
+    fn fun_arity_chirho(ty_chirho: &TyChirho) -> usize {
+        let mut arity_chirho = 0;
+        let mut current_chirho = ty_chirho;
+        loop {
+            match current_chirho {
+                TyChirho::ForallChirho { body_chirho, .. } => {
+                    current_chirho = body_chirho;
+                }
+                TyChirho::FunChirho(_, result_chirho, _) => {
+                    arity_chirho += 1;
+                    current_chirho = result_chirho;
+                }
+                _ => return arity_chirho,
+            }
+        }
+    }
+
     fn infer_matches_against_expected_chirho(
         &mut self,
         matches_chirho: &[MatchArmChirho],
@@ -2918,6 +2897,9 @@ impl InferCtxChirho {
         }
 
         let arity_chirho = matches_chirho[0].pats_chirho.len();
+        if Self::fun_arity_chirho(expected_ty_chirho) != arity_chirho {
+            return self.infer_matches_chirho(matches_chirho, span_chirho);
+        }
         if let Some((param_tys_chirho, result_ty_chirho)) =
             Self::split_fun_ty_for_arity_chirho(expected_ty_chirho, arity_chirho)
         {
@@ -5589,6 +5571,48 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     TyChirho::VarChirho(sw_b_chirho),
                     TyChirho::VarChirho(sw_a_chirho),
                 ]),
+            ),
+        },
+    );
+
+    // Left :: forall a b. a -> Either a b
+    let left_a_chirho = TyVarChirho(1038);
+    let left_b_chirho = TyVarChirho(1039);
+    env_chirho.bind_chirho(
+        "Left".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![left_a_chirho, left_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(left_a_chirho),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Either".to_string())),
+                        Box::new(TyChirho::VarChirho(left_a_chirho)),
+                    )),
+                    Box::new(TyChirho::VarChirho(left_b_chirho)),
+                ),
+            ),
+        },
+    );
+
+    // Right :: forall a b. b -> Either a b
+    let right_a_chirho = TyVarChirho(1040);
+    let right_b_chirho = TyVarChirho(1041);
+    env_chirho.bind_chirho(
+        "Right".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![right_a_chirho, right_b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(right_b_chirho),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Either".to_string())),
+                        Box::new(TyChirho::VarChirho(right_a_chirho)),
+                    )),
+                    Box::new(TyChirho::VarChirho(right_b_chirho)),
+                ),
             ),
         },
     );

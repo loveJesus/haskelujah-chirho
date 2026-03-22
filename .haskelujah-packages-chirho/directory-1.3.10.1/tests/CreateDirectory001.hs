@@ -1,0 +1,13 @@
+module CreateDirectory001 where
+import Prelude ()
+import System.Directory.Internal.Prelude
+import System.Directory.OsPath
+import TestUtils ()
+import Util (TestEnv)
+import qualified Util as T
+
+main :: TestEnv -> IO ()
+main _t = do
+  createDirectory testdir
+  T.expectIOErrorType _t () isAlreadyExistsError (createDirectory testdir)
+  where testdir = "dir"
