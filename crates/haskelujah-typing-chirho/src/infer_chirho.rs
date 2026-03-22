@@ -9361,11 +9361,12 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     // ExceptT monad transformer
     // -----------------------------------------------------------------------
 
-    // ExceptT :: Either e a -> ExceptT e a
-    // runExceptT :: ExceptT e a -> Either e a
+    // ExceptT :: m (Either e a) -> ExceptT e m a
+    // runExceptT :: ExceptT e m a -> m (Either e a)
     {
         let et_e_chirho = TyVarChirho(3550);
         let et_a_chirho = TyVarChirho(3551);
+        let et_m_chirho = TyVarChirho(3552);
         let either_ea_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("Either".to_string())),
@@ -9373,20 +9374,29 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             )),
             Box::new(TyChirho::VarChirho(et_a_chirho)),
         );
+        // m (Either e a)
+        let m_either_ea_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(et_m_chirho)),
+            Box::new(either_ea_chirho.clone()),
+        );
+        // ExceptT e m a
         let exceptt_ty_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ExceptT".to_string())),
-                Box::new(TyChirho::VarChirho(et_e_chirho)),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("ExceptT".to_string())),
+                    Box::new(TyChirho::VarChirho(et_e_chirho)),
+                )),
+                Box::new(TyChirho::VarChirho(et_m_chirho)),
             )),
             Box::new(TyChirho::VarChirho(et_a_chirho)),
         );
         env_chirho.bind_chirho(
             "ExceptT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![et_e_chirho, et_a_chirho],
+                vars_chirho: vec![et_e_chirho, et_m_chirho, et_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    either_ea_chirho.clone(),
+                    m_either_ea_chirho.clone(),
                     exceptt_ty_chirho.clone(),
                 ),
             },
@@ -9394,9 +9404,9 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "runExceptT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![et_e_chirho, et_a_chirho],
+                vars_chirho: vec![et_e_chirho, et_m_chirho, et_a_chirho],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(exceptt_ty_chirho, either_ea_chirho),
+                ty_chirho: TyChirho::fun_chirho(exceptt_ty_chirho, m_either_ea_chirho),
             },
         );
     }
