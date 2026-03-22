@@ -713,7 +713,7 @@ impl LowerCtxChirho {
                     TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
                         let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
                         let is_con_chirho = true;
-                        if first_name_chirho.is_none() && !in_parens_chirho {
+                        if first_name_chirho.is_none() {
                             first_name_chirho = Some((
                                 tok_chirho.text_chirho().to_string(),
                                 span_chirho,
@@ -727,7 +727,7 @@ impl LowerCtxChirho {
                     }
                     TokenKindChirho::VarIdChirho => {
                         let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
-                        if first_name_chirho.is_none() && !in_parens_chirho {
+                        if first_name_chirho.is_none() {
                             first_name_chirho =
                                 Some((tok_chirho.text_chirho().to_string(), span_chirho, false));
                         } else if in_parens_chirho {
@@ -738,9 +738,12 @@ impl LowerCtxChirho {
                     }
                     TokenKindChirho::VarSymChirho | TokenKindChirho::ConSymChirho => {
                         let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
-                        if first_name_chirho.is_none() && !in_parens_chirho {
-                            first_name_chirho =
-                                Some((tok_chirho.text_chirho().to_string(), span_chirho, false));
+                        if first_name_chirho.is_none() {
+                            first_name_chirho = Some((
+                                tok_chirho.text_chirho().to_string(),
+                                span_chirho,
+                                tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho,
+                            ));
                         } else if in_parens_chirho {
                             members_chirho.push(
                                 self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho),
@@ -6653,12 +6656,22 @@ impl LowerCtxChirho {
     // -----------------------------------------------------------------------
 
     fn name_from_text_chirho(&self, text_chirho: &str, span_chirho: SpanChirho) -> NameChirho {
-        // Split qualified names like "Data.List.sort", but NOT bare operators
-        // like "." where both qualifier and local parts would be empty.
+        // Split qualified names like "Data.List.sort" or "Data.List.+", but
+        // do NOT treat bare operator names like ":.:" as qualified just
+        // because they contain a dot character.
         if let Some(dot_pos_chirho) = text_chirho.rfind('.') {
             let qualifier_chirho = &text_chirho[..dot_pos_chirho];
             let local_chirho = &text_chirho[dot_pos_chirho + 1..];
-            if !qualifier_chirho.is_empty() && !local_chirho.is_empty() {
+            let qualifier_is_module_path_chirho = qualifier_chirho.split('.').all(|seg_chirho| {
+                !seg_chirho.is_empty()
+                    && seg_chirho
+                        .chars()
+                        .all(|c_chirho| c_chirho.is_ascii_alphanumeric() || c_chirho == '_')
+            });
+            if qualifier_is_module_path_chirho
+                && !qualifier_chirho.is_empty()
+                && !local_chirho.is_empty()
+            {
                 return NameChirho::RawChirho(RawNameChirho::qualified_chirho(
                     qualifier_chirho,
                     local_chirho,
@@ -7901,6 +7914,41 @@ mod tests_chirho {
             &spec_chirho.items_chirho[0],
             ImportItemChirho::TyConChirho { name_chirho, members_chirho: ExportMembersChirho::AllChirho }
                 if name_chirho.text_chirho() == "Map"
+        ));
+    }
+
+    #[test]
+    fn lower_import_operator_tycon_spec_chirho() {
+        let module_chirho =
+            parse_and_lower_chirho("module M where\nimport GHC.Generics ((:*:)(..))\n");
+        assert_eq!(module_chirho.imports_chirho.len(), 1);
+        let spec_chirho = module_chirho.imports_chirho[0]
+            .spec_chirho
+            .as_ref()
+            .unwrap();
+        assert!(!spec_chirho.hiding_chirho);
+        assert_eq!(spec_chirho.items_chirho.len(), 1);
+        assert!(matches!(
+            &spec_chirho.items_chirho[0],
+            ImportItemChirho::TyConChirho { name_chirho, members_chirho: ExportMembersChirho::AllChirho }
+                if name_chirho.text_chirho() == ":*:"
+        ));
+    }
+
+    #[test]
+    fn lower_import_operator_tycon_with_dot_chirho() {
+        let module_chirho =
+            parse_and_lower_chirho("module M where\nimport GHC.Generics ((:.:)(..))\n");
+        assert_eq!(module_chirho.imports_chirho.len(), 1);
+        let spec_chirho = module_chirho.imports_chirho[0]
+            .spec_chirho
+            .as_ref()
+            .unwrap();
+        assert_eq!(spec_chirho.items_chirho.len(), 1);
+        assert!(matches!(
+            &spec_chirho.items_chirho[0],
+            ImportItemChirho::TyConChirho { name_chirho, members_chirho: ExportMembersChirho::AllChirho }
+                if name_chirho.text_chirho() == ":.:"
         ));
     }
 

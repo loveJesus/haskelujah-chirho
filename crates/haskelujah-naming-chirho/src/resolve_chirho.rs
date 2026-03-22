@@ -246,6 +246,7 @@ fn resolve_imports_chirho(
         // Find the module interface.
         let iface_chirho = available_chirho
             .iter()
+            .rev()
             .find(|m_chirho| m_chirho.name_chirho == module_name_chirho);
 
         let iface_chirho = match iface_chirho {
@@ -311,7 +312,9 @@ pub fn compute_imported_names_chirho(
                 let hidden_chirho: Vec<String> = spec_chirho
                     .items_chirho
                     .iter()
-                    .flat_map(|item_chirho| import_item_names_chirho(item_chirho))
+                    .flat_map(|item_chirho| {
+                        import_item_names_chirho(item_chirho, exports_chirho)
+                    })
                     .collect();
                 all_names_chirho
                     .into_iter()
@@ -322,7 +325,9 @@ pub fn compute_imported_names_chirho(
                 let wanted_chirho: Vec<String> = spec_chirho
                     .items_chirho
                     .iter()
-                    .flat_map(|item_chirho| import_item_names_chirho(item_chirho))
+                    .flat_map(|item_chirho| {
+                        import_item_names_chirho(item_chirho, exports_chirho)
+                    })
                     .collect();
                 all_names_chirho
                     .into_iter()
@@ -359,7 +364,10 @@ fn collect_export_names_chirho(
 }
 
 /// Extract the names from an import item.
-fn import_item_names_chirho(item_chirho: &ImportItemChirho) -> Vec<String> {
+fn import_item_names_chirho(
+    item_chirho: &ImportItemChirho,
+    exports_chirho: &IfaceExportsChirho,
+) -> Vec<String> {
     match item_chirho {
         ImportItemChirho::VarChirho(name_chirho) => {
             vec![name_chirho.text_chirho().to_string()]
@@ -371,12 +379,12 @@ fn import_item_names_chirho(item_chirho: &ImportItemChirho) -> Vec<String> {
             let mut names_chirho = vec![name_chirho.text_chirho().to_string()];
             match members_chirho {
                 haskelujah_ast_chirho::module_chirho::ExportMembersChirho::AllChirho => {
-                    // Import all constructors/methods for this type.
-                    // This information comes from all_names_chirho; we return the
-                    // type name, and the caller's filter will match it. The actual
-                    // constructor names are already included in the module's value
-                    // exports, so they'll be imported via the "import everything"
-                    // path. This marker just ensures the type itself is included.
+                    if let Some(ty_chirho) =
+                        exports_chirho.types_chirho.get(name_chirho.text_chirho())
+                    {
+                        names_chirho.extend(ty_chirho.constructors_chirho.iter().cloned());
+                        names_chirho.extend(ty_chirho.methods_chirho.iter().cloned());
+                    }
                 }
                 haskelujah_ast_chirho::module_chirho::ExportMembersChirho::SomeChirho(
                     member_names_chirho,
@@ -1029,6 +1037,134 @@ mod tests_chirho {
             result_chirho
                 .env_chirho
                 .lookup_value_chirho("map")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn import_type_all_includes_constructor_members_chirho() {
+        let mut lib_chirho = mk_lib_iface_chirho();
+        lib_chirho.exports_chirho.values_chirho.insert(
+            "Wrap".to_string(),
+            IfaceValueChirho {
+                name_chirho: "Wrap".to_string(),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+        lib_chirho.exports_chirho.values_chirho.insert(
+            "unwrap".to_string(),
+            IfaceValueChirho {
+                name_chirho: "unwrap".to_string(),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+        lib_chirho.exports_chirho.types_chirho.insert(
+            "Wrap".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Wrap".to_string(),
+                constructors_chirho: vec!["Wrap".to_string()],
+                methods_chirho: vec!["unwrap".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+        let module_chirho = mk_module_chirho(
+            vec![],
+            vec![ImportDeclChirho {
+                module_chirho: dummy_name_chirho("Lib"),
+                qualified_chirho: false,
+                alias_chirho: None,
+                spec_chirho: Some(ImportSpecChirho {
+                    hiding_chirho: false,
+                    items_chirho: vec![ImportItemChirho::TyConChirho {
+                        name_chirho: dummy_name_chirho("Wrap"),
+                        members_chirho:
+                            haskelujah_ast_chirho::module_chirho::ExportMembersChirho::AllChirho,
+                    }],
+                }),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+        );
+
+        let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
+
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("Wrap")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("Wrap")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("unwrap")
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn import_prefers_latest_iface_for_same_module_name_chirho() {
+        let older_iface_chirho = ModuleIfaceChirho {
+            name_chirho: "Lib".to_string(),
+            exports_chirho: crate::iface_chirho::IfaceExportsChirho {
+                values_chirho: [(
+                    "oldOnly".to_string(),
+                    IfaceValueChirho {
+                        name_chirho: "oldOnly".to_string(),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                )]
+                .into_iter()
+                .collect(),
+                types_chirho: std::collections::HashMap::new(),
+            },
+        };
+        let newer_iface_chirho = ModuleIfaceChirho {
+            name_chirho: "Lib".to_string(),
+            exports_chirho: crate::iface_chirho::IfaceExportsChirho {
+                values_chirho: [(
+                    "newOnly".to_string(),
+                    IfaceValueChirho {
+                        name_chirho: "newOnly".to_string(),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                )]
+                .into_iter()
+                .collect(),
+                types_chirho: std::collections::HashMap::new(),
+            },
+        };
+        let module_chirho = mk_module_chirho(
+            vec![],
+            vec![ImportDeclChirho {
+                module_chirho: dummy_name_chirho("Lib"),
+                qualified_chirho: true,
+                alias_chirho: Some(dummy_name_chirho("L")),
+                spec_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+        );
+
+        let result_chirho = resolve_module_with_imports_chirho(
+            &module_chirho,
+            &[older_iface_chirho, newer_iface_chirho],
+        );
+
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("L", "newOnly", NamespaceChirho::ValueChirho)
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("L", "oldOnly", NamespaceChirho::ValueChirho)
                 .is_none()
         );
     }

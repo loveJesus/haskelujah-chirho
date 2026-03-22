@@ -1039,6 +1039,36 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
+        for (type_name_chirho, constructors_chirho, methods_chirho) in [
+            ("U1", vec!["U1"], vec![]),
+            ("K1", vec!["K1"], vec!["unK1"]),
+            ("M1", vec!["M1"], vec!["unM1"]),
+            ("Par1", vec!["Par1"], vec!["unPar1"]),
+            ("Rec1", vec!["Rec1"], vec!["unRec1"]),
+            (":*:", vec![":*:"], vec![]),
+            (":+:", vec!["L1", "R1"], vec![]),
+            (":.:", vec!["Comp1"], vec!["unComp1"]),
+        ] {
+            exports_chirho.types_chirho.insert(
+                type_name_chirho.to_string(),
+                IfaceTypeChirho {
+                    name_chirho: type_name_chirho.to_string(),
+                    constructors_chirho: constructors_chirho
+                        .into_iter()
+                        .map(str::to_string)
+                        .collect(),
+                    methods_chirho: methods_chirho
+                        .into_iter()
+                        .map(str::to_string)
+                        .collect(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            );
+        }
+        for name_chirho in &["L1", "R1"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "GHC.Generics".to_string(),
             exports_chirho,
@@ -8664,8 +8694,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("SelectT", &["SelectT"]);
-        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        exports_chirho.types_chirho.insert(
+            "SelectT".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "SelectT".to_string(),
+                constructors_chirho: vec!["SelectT".to_string()],
+                methods_chirho: vec!["runSelectT".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Control.Monad.Trans.Select".to_string(),
             exports_chirho,
@@ -9128,6 +9165,61 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             deduped_chirho.push(m_chirho);
         }
     }
+    deduped_chirho
+}
+
+/// Merge module interfaces that share the same module name, preserving the
+/// union of exported values and type members across all copies.
+pub fn merge_module_ifaces_chirho(
+    modules_chirho: Vec<ModuleIfaceChirho>,
+) -> Vec<ModuleIfaceChirho> {
+    let mut deduped_chirho: Vec<ModuleIfaceChirho> = Vec::with_capacity(modules_chirho.len());
+    let mut index_chirho: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
+
+    for module_chirho in modules_chirho {
+        if let Some(&idx_chirho) = index_chirho.get(&module_chirho.name_chirho) {
+            let existing_chirho = &mut deduped_chirho[idx_chirho];
+            for (name_chirho, value_chirho) in module_chirho.exports_chirho.values_chirho {
+                existing_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .entry(name_chirho)
+                    .or_insert(value_chirho);
+            }
+            for (name_chirho, type_chirho) in module_chirho.exports_chirho.types_chirho {
+                match existing_chirho.exports_chirho.types_chirho.get_mut(&name_chirho) {
+                    Some(existing_type_chirho) => {
+                        for constructor_chirho in type_chirho.constructors_chirho {
+                            if !existing_type_chirho
+                                .constructors_chirho
+                                .contains(&constructor_chirho)
+                            {
+                                existing_type_chirho
+                                    .constructors_chirho
+                                    .push(constructor_chirho);
+                            }
+                        }
+                        for method_chirho in type_chirho.methods_chirho {
+                            if !existing_type_chirho.methods_chirho.contains(&method_chirho) {
+                                existing_type_chirho.methods_chirho.push(method_chirho);
+                            }
+                        }
+                    }
+                    None => {
+                        existing_chirho
+                            .exports_chirho
+                            .types_chirho
+                            .insert(name_chirho, type_chirho);
+                    }
+                }
+            }
+        } else {
+            index_chirho.insert(module_chirho.name_chirho.clone(), deduped_chirho.len());
+            deduped_chirho.push(module_chirho);
+        }
+    }
+
     deduped_chirho
 }
 

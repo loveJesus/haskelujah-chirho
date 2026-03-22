@@ -1293,8 +1293,16 @@ impl InferCtxChirho {
 
             ExprChirho::VarChirho(name_chirho) => {
                 let text_chirho = name_chirho.text_chirho();
+                let full_name_chirho = name_chirho.full_name_chirho();
                 let span_chirho = name_chirho.span_chirho();
-                let scheme_opt_chirho = self.env_chirho.lookup_chirho(text_chirho).cloned();
+                let scheme_opt_chirho = if full_name_chirho == text_chirho {
+                    self.env_chirho.lookup_chirho(text_chirho).cloned()
+                } else {
+                    self.env_chirho
+                        .lookup_chirho(&full_name_chirho)
+                        .cloned()
+                        .or_else(|| self.env_chirho.lookup_chirho(text_chirho).cloned())
+                };
                 match scheme_opt_chirho {
                     Some(scheme_chirho) => {
                         let ty_chirho = self.instantiate_chirho(&scheme_chirho, span_chirho);

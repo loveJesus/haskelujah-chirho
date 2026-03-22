@@ -302,6 +302,7 @@ pub fn run_frontend_with_type_synonyms_chirho(
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
         if let Some(iface_chirho) = ifaces_chirho
             .iter()
+            .rev()
             .find(|m_chirho| m_chirho.name_chirho == module_name_chirho)
         {
             // Collect which names this import brings in.
@@ -310,9 +311,13 @@ pub fn run_frontend_with_type_synonyms_chirho(
                     &iface_chirho.exports_chirho,
                     &import_chirho.spec_chirho,
                 );
+            let qualifier_chirho = import_chirho
+                .alias_chirho
+                .as_ref()
+                .map(|a_chirho| a_chirho.text_chirho().to_string())
+                .unwrap_or_else(|| module_name_chirho.clone());
             for (name_chirho, ns_chirho, _span_chirho) in &names_chirho {
                 if ns_chirho == &haskelujah_naming_chirho::env_chirho::NamespaceChirho::ValueChirho
-                    && !merged_imported_types_chirho.contains_key(name_chirho)
                 {
                     // Assign a fully polymorphic type: forall a. a
                     // This allows the type checker to accept the name
@@ -325,11 +330,16 @@ pub fn run_frontend_with_type_synonyms_chirho(
                         preds_chirho: vec![],
                         ty_chirho: haskelujah_typing_chirho::TyChirho::VarChirho(fresh_var_chirho),
                     };
-                    merged_imported_types_chirho
-                        .insert(name_chirho.clone(), placeholder_scheme_chirho);
-                    // Also bind qualified version
-                    if !import_chirho.qualified_chirho {
-                        // Already inserted unqualified above
+                    if !import_chirho.qualified_chirho
+                        && !merged_imported_types_chirho.contains_key(name_chirho)
+                    {
+                        merged_imported_types_chirho
+                            .insert(name_chirho.clone(), placeholder_scheme_chirho.clone());
+                    }
+                    let qualified_name_chirho = format!("{qualifier_chirho}.{name_chirho}");
+                    if !merged_imported_types_chirho.contains_key(&qualified_name_chirho) {
+                        merged_imported_types_chirho
+                            .insert(qualified_name_chirho, placeholder_scheme_chirho);
                     }
                 }
             }
@@ -2638,6 +2648,9 @@ fn compile_module_sources_with_extra_ifaces_chirho(
         haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     // Add cross-package dependency interfaces
     ifaces_chirho.extend(extra_ifaces_chirho);
+    let mut ifaces_chirho = haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(
+        ifaces_chirho,
+    );
     let mut all_warnings_chirho: Vec<String> = Vec::new();
     let mut imported_types_chirho: std::collections::HashMap<
         String,
