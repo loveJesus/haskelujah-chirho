@@ -206,29 +206,11 @@ pub fn resolve_module_with_imports_chirho(
                 // Top-level pattern binding: extract bound variable names
                 bind_pat_names_chirho(&mut env_chirho, pat_chirho);
             }
-            haskelujah_ast_chirho::decl_chirho::DeclChirho::InstanceDeclChirho {
-                methods_chirho,
-                ..
-            } => {
-                // Instance method implementations create value bindings
-                for method_chirho in methods_chirho {
-                    if let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
-                        name_chirho,
-                        ..
-                    } = method_chirho
-                    {
-                        let already_bound_chirho = env_chirho
-                            .lookup_value_chirho(name_chirho.text_chirho())
-                            .is_some();
-                        if !already_bound_chirho {
-                            bind_name_chirho(
-                                &mut env_chirho,
-                                name_chirho,
-                                NamespaceChirho::ValueChirho,
-                            );
-                        }
-                    }
-                }
+            haskelujah_ast_chirho::decl_chirho::DeclChirho::InstanceDeclChirho { .. } => {
+                // Instance methods are not top-level value bindings. Leaving
+                // them out of the module env avoids shadowing imported class
+                // methods such as `mzipWith` / `contramap` inside instance
+                // bodies like `ExceptT`.
             }
             haskelujah_ast_chirho::decl_chirho::DeclChirho::PatSynDeclChirho {
                 name_chirho,

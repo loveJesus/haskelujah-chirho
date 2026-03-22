@@ -2704,8 +2704,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &["CallCC", "Catch", "Listen", "Pass"] {
-            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
-            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Control.Monad.Signatures".to_string(),

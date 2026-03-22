@@ -1222,6 +1222,90 @@ impl ClassEnvChirho {
             });
         }
 
+        // MonadZip (superclass: Monad)
+        let monadzip_var_chirho = TyVarChirho(9074);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "MonadZip".to_string(),
+            supers_chirho: vec!["Monad".to_string()],
+            var_chirho: monadzip_var_chirho,
+            methods_chirho: HashMap::from([(
+                "mzipWith".to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![
+                        monadzip_var_chirho,
+                        TyVarChirho(9075),
+                        TyVarChirho(9076),
+                        TyVarChirho(9077),
+                    ],
+                    preds_chirho: vec![],
+                    ty_chirho: TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::fun_chirho(
+                                TyChirho::VarChirho(TyVarChirho(9075)),
+                                TyChirho::fun_chirho(
+                                    TyChirho::VarChirho(TyVarChirho(9076)),
+                                    TyChirho::VarChirho(TyVarChirho(9077)),
+                                ),
+                            ),
+                            TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(monadzip_var_chirho)),
+                                Box::new(TyChirho::VarChirho(TyVarChirho(9075))),
+                            ),
+                            TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(monadzip_var_chirho)),
+                                Box::new(TyChirho::VarChirho(TyVarChirho(9076))),
+                            ),
+                        ],
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(monadzip_var_chirho)),
+                            Box::new(TyChirho::VarChirho(TyVarChirho(9077))),
+                        ),
+                    ),
+                },
+            )]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // Contravariant
+        let contravariant_var_chirho = TyVarChirho(9078);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Contravariant".to_string(),
+            supers_chirho: vec![],
+            var_chirho: contravariant_var_chirho,
+            methods_chirho: HashMap::from([(
+                "contramap".to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![
+                        contravariant_var_chirho,
+                        TyVarChirho(9079),
+                        TyVarChirho(9080),
+                    ],
+                    preds_chirho: vec![],
+                    ty_chirho: TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::fun_chirho(
+                                TyChirho::VarChirho(TyVarChirho(9079)),
+                                TyChirho::VarChirho(TyVarChirho(9080)),
+                            ),
+                            TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(contravariant_var_chirho)),
+                                Box::new(TyChirho::VarChirho(TyVarChirho(9080))),
+                            ),
+                        ],
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(contravariant_var_chirho)),
+                            Box::new(TyChirho::VarChirho(TyVarChirho(9079))),
+                        ),
+                    ),
+                },
+            )]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
         // Coercible — GHC built-in class for safe coercions between
         // types with the same representation. We treat it as a two-parameter
         // class with a universal instance: Coercible a a (reflexivity).

@@ -432,18 +432,49 @@ impl<'src> ParserChirho<'src> {
             self.builder_chirho
                 .start_node_chirho(SyntaxKindChirho::ImportSpecChirho);
 
-            // Eat tokens until comma or close paren
-            while !self.at_chirho(RawTokenKindChirho::CommaChirho)
-                && !self.at_chirho(RawTokenKindChirho::RightParenChirho)
-                && !self.at_eof_chirho()
-            {
+            let mut nested_paren_depth_chirho = 0usize;
+            let mut nested_bracket_depth_chirho = 0usize;
+
+            // Eat tokens until comma or the outer close paren, but preserve
+            // nested member lists like MonadZip(mzipWith).
+            while !self.at_eof_chirho() {
                 self.eat_trivia_chirho();
-                if !self.at_chirho(RawTokenKindChirho::CommaChirho)
-                    && !self.at_chirho(RawTokenKindChirho::RightParenChirho)
-                    && !self.at_eof_chirho()
-                {
-                    self.bump_chirho();
+                if self.at_eof_chirho() {
+                    break;
                 }
+
+                let should_end_spec_chirho = match self.current_kind_chirho() {
+                    Some(RawTokenKindChirho::CommaChirho) => {
+                        nested_paren_depth_chirho == 0 && nested_bracket_depth_chirho == 0
+                    }
+                    Some(RawTokenKindChirho::RightParenChirho) => {
+                        nested_paren_depth_chirho == 0 && nested_bracket_depth_chirho == 0
+                    }
+                    _ => false,
+                };
+                if should_end_spec_chirho {
+                    break;
+                }
+
+                match self.current_kind_chirho() {
+                    Some(RawTokenKindChirho::LeftParenChirho) => {
+                        nested_paren_depth_chirho += 1;
+                    }
+                    Some(RawTokenKindChirho::RightParenChirho) => {
+                        nested_paren_depth_chirho =
+                            nested_paren_depth_chirho.saturating_sub(1);
+                    }
+                    Some(RawTokenKindChirho::LeftBracketChirho) => {
+                        nested_bracket_depth_chirho += 1;
+                    }
+                    Some(RawTokenKindChirho::RightBracketChirho) => {
+                        nested_bracket_depth_chirho =
+                            nested_bracket_depth_chirho.saturating_sub(1);
+                    }
+                    _ => {}
+                }
+
+                self.bump_chirho();
             }
 
             self.builder_chirho.finish_node_chirho();
@@ -1391,26 +1422,75 @@ impl<'src> ParserChirho<'src> {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::MatchChirho);
 
-        // Function name or pattern head
-        if self.at_chirho(RawTokenKindChirho::VarIdChirho)
-            || self.at_chirho(RawTokenKindChirho::ConIdChirho)
-        {
-            self.bump_chirho();
+        if self.starts_infix_fun_bind_chirho() {
+            self.parse_fun_arg_pat_chirho();
             self.eat_trivia_chirho();
-        } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
-            // Operator in parens or tuple pattern
-            self.parse_apat_chirho();
-            self.eat_trivia_chirho();
-        } else if self.can_start_apat_chirho() {
-            self.parse_apat_chirho();
-            self.eat_trivia_chirho();
+
+            if self.at_chirho(RawTokenKindChirho::BacktickChirho) {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+                if !self.at_eof_chirho()
+                    && (self.at_chirho(RawTokenKindChirho::VarIdChirho)
+                        || self.at_chirho(RawTokenKindChirho::ConIdChirho)
+                        || self.at_chirho(RawTokenKindChirho::VarSymChirho)
+                        || self.at_chirho(RawTokenKindChirho::ConSymChirho))
+                {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                }
+                if self.at_chirho(RawTokenKindChirho::BacktickChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                }
+            } else if self.at_chirho(RawTokenKindChirho::VarSymChirho)
+                || self.at_chirho(RawTokenKindChirho::ConSymChirho)
+            {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+
+            if self.can_start_apat_chirho()
+                || (self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
+                    && (self.current_text_chirho() == "-" || self.current_text_chirho() == "!"))
+            {
+                self.parse_fun_arg_pat_chirho();
+                self.eat_trivia_chirho();
+            }
+        } else {
+            // Function name or pattern head
+            if self.at_chirho(RawTokenKindChirho::VarIdChirho)
+                || self.at_chirho(RawTokenKindChirho::ConIdChirho)
+            {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+                // Operator in parens or tuple pattern
+                self.parse_apat_chirho();
+                self.eat_trivia_chirho();
+            } else if self.can_start_apat_chirho() {
+                self.parse_apat_chirho();
+                self.eat_trivia_chirho();
+            }
+
+            // Parse argument patterns until = or |
+            // Use parse_fun_arg_pat_chirho which parses atomic patterns
+            // without constructor application (so `f True True` gives two
+            // separate patterns, not `True applied_to True`). Handles
+            // as-patterns, negated literals, and bang patterns.
+            while self.can_start_apat_chirho()
+                || (self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
+                    && (self.current_text_chirho() == "-" || self.current_text_chirho() == "!"))
+            {
+                let before_chirho = self.pos_chirho;
+                self.parse_fun_arg_pat_chirho();
+                self.eat_trivia_chirho();
+                if self.pos_chirho == before_chirho {
+                    break;
+                }
+            }
         }
 
-        // Parse argument patterns until = or |
-        // Use parse_fun_arg_pat_chirho which parses atomic patterns
-        // without constructor application (so `f True True` gives two
-        // separate patterns, not `True applied_to True`). Handles
-        // as-patterns, negated literals, and bang patterns.
+        // Additional argument patterns after an infix lhs.
         while self.can_start_apat_chirho()
             || (self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
                 && (self.current_text_chirho() == "-" || self.current_text_chirho() == "!"))
@@ -1441,6 +1521,42 @@ impl<'src> ParserChirho<'src> {
         }
 
         self.builder_chirho.finish_node_chirho(); // FunBind
+    }
+
+    fn starts_infix_fun_bind_chirho(&self) -> bool {
+        let Some(current_kind_chirho) = self.current_kind_chirho() else {
+            return false;
+        };
+        let starts_simple_lhs_pat_chirho = matches!(
+            current_kind_chirho,
+            RawTokenKindChirho::VarIdChirho
+                | RawTokenKindChirho::ConIdChirho
+                | RawTokenKindChirho::UnderscoreChirho
+                | RawTokenKindChirho::IntLitChirho
+                | RawTokenKindChirho::FloatLitChirho
+                | RawTokenKindChirho::CharLitChirho
+                | RawTokenKindChirho::StringLitChirho
+        );
+        if !starts_simple_lhs_pat_chirho {
+            return false;
+        }
+        let mut lookahead_idx_chirho = self.pos_chirho + 1;
+        while lookahead_idx_chirho < self.tokens_chirho.len()
+            && self.tokens_chirho[lookahead_idx_chirho]
+                .kind_chirho
+                .is_trivia_chirho()
+        {
+            lookahead_idx_chirho += 1;
+        }
+        if lookahead_idx_chirho >= self.tokens_chirho.len() {
+            return false;
+        }
+        matches!(
+            self.tokens_chirho[lookahead_idx_chirho].kind_chirho,
+            RawTokenKindChirho::BacktickChirho
+                | RawTokenKindChirho::VarSymChirho
+                | RawTokenKindChirho::ConSymChirho
+        )
     }
 
     fn parse_guarded_rhs_chirho(&mut self) {
@@ -2121,7 +2237,16 @@ impl<'src> ParserChirho<'src> {
             }
             self.eat_trivia_chirho();
 
-            self.parse_lexp_chirho();
+            if self.at_chirho(RawTokenKindChirho::BackslashChirho)
+                || self.at_chirho(RawTokenKindChirho::LetChirho)
+                || self.at_chirho(RawTokenKindChirho::IfChirho)
+                || self.at_chirho(RawTokenKindChirho::CaseChirho)
+                || self.at_chirho(RawTokenKindChirho::DoChirho)
+            {
+                self.parse_expr_chirho();
+            } else {
+                self.parse_lexp_chirho();
+            }
             self.eat_trivia_chirho();
             // Safety: break if no progress to avoid infinite loop
             if self.pos_chirho == before_chirho {

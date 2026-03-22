@@ -223,6 +223,459 @@ liftCallCC callCC f = WriterT $ callCC $ \\ c -> runWriterT (f (\\ a -> WriterT 
 }
 
 #[test]
+fn frontend_exceptt_imported_signatures_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ExceptImportMiniChirho where\n\
+import Control.Applicative\n\
+import Control.Monad.Signatures\n\
+import Control.Monad.Zip (MonadZip(mzipWith))\n\
+import Data.Functor.Contravariant\n\
+newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }\n\
+liftCallCCChirho :: CallCC m (Either e a) (Either e b) -> CallCC (ExceptTChirho e m) a b\n\
+liftCallCCChirho callCCChirho fChirho = ExceptTChirho $ callCCChirho $ \\cChirho -> runExceptTChirho (fChirho (\\aChirho -> ExceptTChirho $ cChirho (Right aChirho)))\n\
+mzipWrapChirho :: MonadZip m => (a -> b -> c) -> ExceptTChirho e m a -> ExceptTChirho e m b -> ExceptTChirho e m c\n\
+mzipWrapChirho fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith (liftA2 fChirho) aChirho bChirho\n\
+contramapWrapChirho :: Contravariant m => (a -> b) -> ExceptTChirho e m b -> ExceptTChirho e m a\n\
+contramapWrapChirho fChirho = ExceptTChirho . contramap (fmap fChirho) . runExceptTChirho\n",
+        &mut source_map_chirho,
+        "ExceptImportMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "imported Control.Monad.Signatures / MonadZip / Contravariant shapes should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_exceptt_infix_catch_trye_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ExceptInfixCatchTryEChirho where
+import Control.Monad
+newtype ExceptTChirho eChirho mChirho aChirho = ExceptTChirho { runExceptTChirho :: mChirho (Either eChirho aChirho) }
+catchEChirho :: Monad mChirho => ExceptTChirho eChirho mChirho aChirho -> (eChirho -> ExceptTChirho ePrimeChirho mChirho aChirho) -> ExceptTChirho ePrimeChirho mChirho aChirho
+mChirho `catchEChirho` hChirho = ExceptTChirho $ do
+  aChirho <- runExceptTChirho mChirho
+  case aChirho of
+    Left lChirho -> runExceptTChirho (hChirho lChirho)
+    Right rChirho -> return (Right rChirho)
+tryEChirho :: Monad mChirho => ExceptTChirho eChirho mChirho aChirho -> ExceptTChirho eChirho mChirho (Either eChirho aChirho)
+tryEChirho mChirho = catchEChirho (liftM Right mChirho) (return . Left)
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ExceptInfixCatchTryEChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "infix catchE / tryE ExceptT pattern should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_infix_catch_lambda_rhs_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ExceptInfixCatchLambdaRhsChirho where
+import Control.Monad
+newtype ExceptTChirho eChirho mChirho aChirho = ExceptTChirho { runExceptTChirho :: mChirho (Either eChirho aChirho) }
+throwEChirho :: Monad mChirho => eChirho -> ExceptTChirho eChirho mChirho aChirho
+throwEChirho = ExceptTChirho . return . Left
+catchEChirho :: Monad mChirho => ExceptTChirho eChirho mChirho aChirho -> (eChirho -> ExceptTChirho ePrimeChirho mChirho aChirho) -> ExceptTChirho ePrimeChirho mChirho aChirho
+catchEChirho mChirho hChirho = ExceptTChirho $ do
+  aChirho <- runExceptTChirho mChirho
+  case aChirho of
+    Left lChirho -> runExceptTChirho (hChirho lChirho)
+    Right rChirho -> return (Right rChirho)
+onEChirho :: Monad mChirho => ExceptTChirho eChirho mChirho aChirho -> ExceptTChirho eChirho mChirho bChirho -> ExceptTChirho eChirho mChirho aChirho
+onEChirho action1Chirho action2Chirho = action1Chirho `catchEChirho` \\eChirho -> action2Chirho >> throwEChirho eChirho
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ExceptInfixCatchLambdaRhsChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "infix catchE with lambda rhs should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_exceptt_with_exceptt_functor_operator_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ExceptWithExceptTOperatorChirho where
+newtype ExceptTChirho eChirho mChirho aChirho = ExceptTChirho { runExceptTChirho :: mChirho (Either eChirho aChirho) }
+withExceptTChirho :: Functor mChirho => (eChirho -> ePrimeChirho) -> ExceptTChirho eChirho mChirho aChirho -> ExceptTChirho ePrimeChirho mChirho aChirho
+withExceptTChirho fChirho (ExceptTChirho actionChirho) =
+  ExceptTChirho ((\\ valueChirho -> case valueChirho of
+    Left errChirho -> Left (fChirho errChirho)
+    Right okChirho -> Right okChirho) <$> actionChirho)
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ExceptWithExceptTOperatorChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "ExceptT-style withExceptT should type-check through <$>: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_exceptt_imported_top_level_methods_without_sigs_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ExceptImportTopLevelChirho where\n\
+import Control.Applicative\n\
+import Control.Monad.Zip (MonadZip(mzipWith))\n\
+import Data.Functor.Contravariant\n\
+newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }\n\
+mzipWrapChirho fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith (liftA2 fChirho) aChirho bChirho\n\
+contramapWrapChirho fChirho = ExceptTChirho . contramap (fmap fChirho) . runExceptTChirho\n",
+        &mut source_map_chirho,
+        "ExceptImportTopLevelChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "top-level ExceptT wrappers should type-check without explicit signatures: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_exceptt_imported_instance_methods_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ExceptImportInstancesChirho where
+import Control.Applicative
+import Control.Monad.Zip (MonadZip(mzipWith))
+import Data.Functor.Contravariant
+newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }
+instance (MonadZip m) => MonadZip (ExceptTChirho e m) where
+  mzipWith fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith (liftA2 fChirho) aChirho bChirho
+instance Contravariant m => Contravariant (ExceptTChirho e m) where
+  contramap fChirho = ExceptTChirho . contramap (fmap fChirho) . runExceptTChirho
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ExceptImportInstancesChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "ExceptT-style imported instance method bodies should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_exceptt_imported_instance_methods_run_frontend_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ExceptImportInstancesFrontendChirho where
+import Control.Applicative
+import Control.Monad.Zip (MonadZip(mzipWith))
+import Data.Functor.Contravariant
+newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }
+instance (MonadZip m) => MonadZip (ExceptTChirho e m) where
+  mzipWith fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith (liftA2 fChirho) aChirho bChirho
+instance Contravariant m => Contravariant (ExceptTChirho e m) where
+  contramap fChirho = ExceptTChirho . contramap (fmap fChirho) . runExceptTChirho
+";
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "ExceptImportInstancesFrontendChirho.hs",
+        source_chirho,
+    );
+    let frontend_result_chirho = crate::run_frontend_chirho(
+        source_chirho,
+        source_file_chirho.file_id_chirho(),
+        &haskelujah_naming_chirho::builtin_module_ifaces_chirho(),
+        &std::collections::HashMap::new(),
+    );
+    assert!(
+        frontend_result_chirho.is_ok(),
+        "ExceptT instance-method shapes should pass the shared frontend before backend lowering: {:?}",
+        frontend_result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_exceptt_top_level_same_method_names_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ExceptImportSameNamesChirho where\n\
+import Control.Applicative\n\
+import Control.Monad.Zip (MonadZip(mzipWith))\n\
+import Data.Functor.Contravariant\n\
+newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }\n\
+mzipWith :: MonadZip m => (a -> b -> c) -> ExceptTChirho e m a -> ExceptTChirho e m b -> ExceptTChirho e m c\n\
+mzipWith fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith (liftA2 fChirho) aChirho bChirho\n\
+contramap :: Contravariant m => (a -> b) -> ExceptTChirho e m b -> ExceptTChirho e m a\n\
+contramap fChirho = ExceptTChirho . contramap (fmap fChirho) . runExceptTChirho\n",
+        &mut source_map_chirho,
+        "ExceptImportSameNamesChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "top-level wrappers using the imported method names themselves should still type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_exceptt_top_level_same_method_names_without_sigs_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ExceptImportSameNamesNoSigChirho where\n\
+import Control.Applicative\n\
+import Control.Monad.Zip (MonadZip(mzipWith))\n\
+import Data.Functor.Contravariant\n\
+newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }\n\
+mzipWith fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith (liftA2 fChirho) aChirho bChirho\n\
+contramap fChirho = ExceptTChirho . contramap (fmap fChirho) . runExceptTChirho\n",
+        &mut source_map_chirho,
+        "ExceptImportSameNamesNoSigChirho.hs",
+    );
+    assert!(
+        result_chirho.is_err(),
+        "top-level wrappers that shadow imported class methods should stay rejected without explicit signatures"
+    );
+}
+
+#[test]
+fn frontend_exceptt_single_monadzip_instance_method_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ExceptImportSingleMonadZipChirho where
+import Control.Applicative
+import Control.Monad.Zip (MonadZip(mzipWith))
+newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }
+instance (MonadZip m) => MonadZip (ExceptTChirho e m) where
+  mzipWith fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith (liftA2 fChirho) aChirho bChirho
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ExceptImportSingleMonadZipChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "single MonadZip ExceptT instance method should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_exceptt_single_contravariant_instance_method_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ExceptImportSingleContravariantChirho where
+import Data.Functor.Contravariant
+newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }
+instance Contravariant m => Contravariant (ExceptTChirho e m) where
+  contramap fChirho = ExceptTChirho . contramap (fmap fChirho) . runExceptTChirho
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ExceptImportSingleContravariantChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "single Contravariant ExceptT instance method should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_instance_methods_stay_nested_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+    use haskelujah_naming_chirho::builtin_module_ifaces_chirho;
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module InstanceShapeMiniChirho where
+import Control.Monad.Zip (MonadZip(mzipWith))
+newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }
+instance (MonadZip m) => MonadZip (ExceptTChirho e m) where
+  mzipWith fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith fChirho aChirho bChirho
+";
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "InstanceShapeMiniChirho.hs",
+        source_chirho,
+    );
+    let parser_chirho = ParserChirho::new_chirho(source_chirho, source_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+    let frontend_chirho = crate::run_frontend_chirho(
+        source_chirho,
+        source_file_chirho.file_id_chirho(),
+        &builtin_module_ifaces_chirho(),
+        &std::collections::HashMap::new(),
+    );
+
+    let leaked_funbind_names_chirho: Vec<String> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::FunBindChirho { name_chirho, .. } => {
+                Some(name_chirho.text_chirho().to_string())
+            }
+            _ => None,
+        })
+        .collect();
+    assert!(
+        !leaked_funbind_names_chirho.iter().any(|name_chirho| name_chirho == "mzipWith"),
+        "instance method should stay nested, not leak as top-level FunBind: {:?}",
+        leaked_funbind_names_chirho
+    );
+    assert!(
+        frontend_chirho.is_ok(),
+        "frontend should accept nested instance-method shape once imports are seeded correctly: {:?}",
+        frontend_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_instance_methods_complex_shape_stay_nested_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+    use haskelujah_ast_chirho::expr_chirho::LocalBindChirho;
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module InstanceComplexShapeMiniChirho where
+import Control.Applicative
+import Control.Monad.Zip (MonadZip(mzipWith))
+import Data.Functor.Contravariant
+newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }
+instance (MonadZip m) => MonadZip (ExceptTChirho e m) where
+  mzipWith fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith (liftA2 fChirho) aChirho bChirho
+instance Contravariant m => Contravariant (ExceptTChirho e m) where
+  contramap fChirho = ExceptTChirho . contramap (fmap fChirho) . runExceptTChirho
+";
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "InstanceComplexShapeMiniChirho.hs",
+        source_chirho,
+    );
+    let parser_chirho = ParserChirho::new_chirho(source_chirho, source_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+
+    let leaked_funbind_names_chirho: Vec<String> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::FunBindChirho { name_chirho, .. } => {
+                Some(name_chirho.text_chirho().to_string())
+            }
+            _ => None,
+        })
+        .collect();
+    let leaked_funbind_slices_chirho: Vec<(String, String)> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::FunBindChirho {
+                name_chirho,
+                span_chirho,
+                ..
+            } => {
+                let start_chirho = span_chirho.start_chirho().as_usize_chirho();
+                let end_chirho = span_chirho.end_chirho().as_usize_chirho();
+                Some((
+                    name_chirho.text_chirho().to_string(),
+                    source_chirho[start_chirho..end_chirho].to_string(),
+                ))
+            }
+            _ => None,
+        })
+        .collect();
+    let decl_summaries_chirho: Vec<String> = module_chirho
+        .decls_chirho
+        .iter()
+        .map(|decl_chirho| match decl_chirho {
+            DeclChirho::FunBindChirho {
+                name_chirho,
+                matches_chirho,
+                ..
+            } => format!(
+                "FunBind({:?}, matches={})",
+                name_chirho.text_chirho(),
+                matches_chirho.len()
+            ),
+            DeclChirho::InstanceDeclChirho {
+                class_chirho,
+                methods_chirho,
+                ..
+            } => format!(
+                "Instance({:?}, methods={})",
+                class_chirho.text_chirho(),
+                methods_chirho.len()
+            ),
+            DeclChirho::NewtypeDeclChirho { name_chirho, .. } => {
+                format!("Newtype({:?})", name_chirho.text_chirho())
+            }
+            other_chirho => format!("{:?}", other_chirho),
+        })
+        .collect();
+    assert!(
+        leaked_funbind_names_chirho.is_empty(),
+        "complex instance-method source should not leak top-level FunBind declarations: {:?}; decls={:?}",
+        leaked_funbind_slices_chirho,
+        decl_summaries_chirho
+    );
+    let instance_method_arity_chirho: Vec<(String, Vec<usize>)> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::InstanceDeclChirho {
+                class_chirho,
+                methods_chirho,
+                ..
+            } => Some((
+                class_chirho.text_chirho().to_string(),
+                methods_chirho
+                    .iter()
+                    .filter_map(|method_chirho| match method_chirho {
+                        LocalBindChirho::FunBindChirho { matches_chirho, .. } => {
+                            Some(matches_chirho.iter().map(|arm_chirho| arm_chirho.pats_chirho.len()).sum())
+                        }
+                        _ => None,
+                    })
+                    .collect(),
+            )),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        instance_method_arity_chirho,
+        vec![
+            ("MonadZip".to_string(), vec![3]),
+            ("Contravariant".to_string(), vec![1]),
+        ],
+        "instance method arities should exclude the method name token"
+    );
+}
+
+#[test]
 fn multi_module_import_chirho() {
     use crate::compile_modules_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();
