@@ -1015,13 +1015,11 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "from",
-            "to",
-            "from1",
-            "to1",
-            "datatypeName",
-            "moduleName",
-            "packageName",
+            "from", "to", "from1", "to1",
+            "datatypeName", "moduleName", "packageName",
+            "selName", "conName", "conFixity", "conIsRecord",
+            ":*:", ":+:", ":.:", "Comp1", "unComp1",
+            "U1", "K1", "M1", "unK1", "unM1", "Par1", "unPar1", "Rec1", "unRec1",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -1029,6 +1027,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         for name_chirho in &[
             "Generic", "Generic1", "Rep", "Rep1", "V1", "U1", "K1", "M1", "Rec0", "Par1", "Rec1",
             "D1", "C1", "S1", "D", "C", "S", "R",
+            ":*:", ":+:", ":.:", "Selector", "Constructor", "Datatype",
+            "selName", "conName", "conFixity", "conIsRecord",
+            "Fixity", "Prefix", "Infix", "Associativity", "LeftAssociative", "RightAssociative", "NotAssociative",
+            "Meta", "MetaData", "MetaCons", "MetaSel",
+            "SourceUnpackedness", "SourceStrictness", "DecidedStrictness",
+            "NoSourceUnpackedness", "SourceNoUnpack", "SourceUnpack",
+            "NoSourceStrictness", "SourceLazy", "SourceStrict",
+            "DecidedLazy", "DecidedStrict", "DecidedUnpack",
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
