@@ -990,7 +990,7 @@ fn llvm_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)> {
         .arg(&ll_path_chirho)
         .arg("-L")
         .arg(&rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts_chirho")
+        .arg("-lhaskelujah_rts")
         .output()
         .ok()?;
 
@@ -1049,7 +1049,7 @@ fn llvm_round_trip_output_with_input_chirho(
         .arg(&ll_path_chirho)
         .arg("-L")
         .arg(&rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts_chirho")
+        .arg("-lhaskelujah_rts")
         .output()
         .ok()?;
 
@@ -1096,16 +1096,11 @@ fn cranelift_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)>
     std::fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho).ok()?;
     let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
 
-    let compile_status_chirho = std::process::Command::new("cc")
-        .arg("-o")
-        .arg(&bin_path_chirho)
-        .arg(&obj_path_chirho)
-        .arg("-Wl,-no_fixup_chains")
-        .arg("-L")
-        .arg(&rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts_chirho")
-        .status()
-        .ok()?;
+    let mut link_cmd_chirho = std::process::Command::new("cc");
+    link_cmd_chirho.arg("-o").arg(&bin_path_chirho).arg(&obj_path_chirho);
+    if cfg!(target_os = "macos") { link_cmd_chirho.arg("-Wl,-no_fixup_chains"); }
+    link_cmd_chirho.arg("-L").arg(&rts_lib_dir_chirho).arg("-lhaskelujah_rts");
+    let compile_status_chirho = link_cmd_chirho.status().ok()?;
     if !compile_status_chirho.success() {
         return None;
     }
@@ -2816,17 +2811,13 @@ main = do
         return;
     };
 
-    let compile_status_chirho = std::process::Command::new("cc")
-        .arg("-o")
-        .arg(&bin_path_chirho)
-        .arg(&obj_path_chirho)
-        .arg("-Wl,-no_fixup_chains")
-        .arg("-Wl,-stack_size,0x10000000")
-        .arg("-L")
-        .arg(&rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts_chirho")
-        .status()
-        .ok();
+    let mut link_cmd2_chirho = std::process::Command::new("cc");
+    link_cmd2_chirho.arg("-o").arg(&bin_path_chirho).arg(&obj_path_chirho);
+    if cfg!(target_os = "macos") {
+        link_cmd2_chirho.arg("-Wl,-no_fixup_chains").arg("-Wl,-stack_size,0x10000000");
+    }
+    link_cmd2_chirho.arg("-L").arg(&rts_lib_dir_chirho).arg("-lhaskelujah_rts");
+    let compile_status_chirho = link_cmd2_chirho.status().ok();
     if compile_status_chirho.map_or(true, |s| !s.success()) {
         return;
     }

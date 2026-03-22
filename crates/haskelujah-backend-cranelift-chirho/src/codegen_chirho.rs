@@ -2430,14 +2430,13 @@ mod tests_chirho {
                 "-o",
                 exe_path_chirho.to_str().expect("utf8 exe path"),
                 obj_path_chirho.to_str().expect("utf8 obj path"),
-                "-Wl,-no_fixup_chains",
                 "-L",
                 workspace_root_chirho
                     .join("target")
                     .join("debug")
                     .to_str()
                     .expect("utf8 rts lib dir"),
-                "-lhaskelujah_rts_chirho",
+                "-lhaskelujah_rts",
             ])
             .status()
             .expect("link executable");
@@ -2487,14 +2486,13 @@ mod tests_chirho {
                 "-o",
                 exe_path_chirho.to_str().expect("utf8 exe path"),
                 obj_path_chirho.to_str().expect("utf8 obj path"),
-                "-Wl,-no_fixup_chains",
                 "-L",
                 workspace_root_chirho
                     .join("target")
                     .join("debug")
                     .to_str()
                     .expect("utf8 rts lib dir"),
-                "-lhaskelujah_rts_chirho",
+                "-lhaskelujah_rts",
             ])
             .status()
             .expect("link executable");
@@ -2537,14 +2535,13 @@ mod tests_chirho {
                 "-o",
                 exe_path_chirho.to_str().expect("utf8 exe path"),
                 obj_path_chirho.to_str().expect("utf8 obj path"),
-                "-Wl,-no_fixup_chains",
                 "-L",
                 workspace_root_chirho
                     .join("target")
                     .join("debug")
                     .to_str()
                     .expect("utf8 rts lib dir"),
-                "-lhaskelujah_rts_chirho",
+                "-lhaskelujah_rts",
             ])
             .status()
             .expect("link executable");

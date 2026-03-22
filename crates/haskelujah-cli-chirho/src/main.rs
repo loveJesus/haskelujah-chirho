@@ -776,13 +776,10 @@ fn link_llvm_file_chirho(
         .ok_or_else(|| format!("non-utf8 llvm path: {}", llvm_path_chirho.display()))?;
 
     let mut clang_command_chirho = Command::new("clang");
-    clang_command_chirho.args([
-        opt_level_chirho,
-        "-o",
-        output_path_str_chirho,
-        llvm_path_str_chirho,
-        LINKER_STACK_SIZE_ARG_CHIRHO,
-    ]);
+    clang_command_chirho.args([opt_level_chirho, "-o", output_path_str_chirho, llvm_path_str_chirho]);
+    if cfg!(target_os = "macos") {
+        clang_command_chirho.arg(LINKER_STACK_SIZE_ARG_CHIRHO);
+    }
     append_rts_link_args_chirho(&mut clang_command_chirho, &rts_lib_dir_chirho);
     if suppress_stderr_chirho {
         clang_command_chirho.stderr(Stdio::null());
@@ -834,14 +831,10 @@ fn link_cranelift_object_file_chirho(
         .ok_or_else(|| format!("non-utf8 object path: {}", obj_path_chirho.display()))?;
 
     let mut linker_command_chirho = Command::new("cc");
-    linker_command_chirho.args([
-        "-o",
-        output_path_str_chirho,
-        obj_path_str_chirho,
-        "-Wl,-no_fixup_chains",
-        // 256MB stack for deeper non-tail-recursive list workloads.
-        LINKER_STACK_SIZE_ARG_CHIRHO,
-    ]);
+    linker_command_chirho.args(["-o", output_path_str_chirho, obj_path_str_chirho]);
+    if cfg!(target_os = "macos") {
+        linker_command_chirho.args(["-Wl,-no_fixup_chains", LINKER_STACK_SIZE_ARG_CHIRHO]);
+    }
     append_rts_link_args_chirho(&mut linker_command_chirho, &rts_lib_dir_chirho);
     let linker_status_chirho = linker_command_chirho.status().map_err(|error_chirho| {
         format!(
@@ -865,7 +858,7 @@ fn append_rts_link_args_chirho(clang_command_chirho: &mut Command, rts_lib_dir_c
     clang_command_chirho
         .arg("-L")
         .arg(rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts_chirho");
+        .arg("-lhaskelujah_rts");
 }
 
 fn ensure_rts_staticlib_chirho() -> Result<PathBuf, String> {

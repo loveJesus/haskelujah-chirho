@@ -60,14 +60,18 @@ fn cranelift_round_trip_stdout_chirho(src_chirho: &str) -> String {
         .expect("object file should be written");
 
     let rts_lib_dir_chirho = ensure_rts_staticlib_for_cranelift_tests_chirho();
-    let link_status_chirho = Command::new("cc")
+    let mut link_cmd_chirho = Command::new("cc");
+    link_cmd_chirho
         .arg("-o")
         .arg(&exe_path_chirho)
-        .arg(&object_path_chirho)
-        .arg("-Wl,-no_fixup_chains")
+        .arg(&object_path_chirho);
+    #[cfg(target_os = "macos")]
+    link_cmd_chirho.arg("-Wl,-no_fixup_chains");
+    link_cmd_chirho
         .arg("-L")
         .arg(&rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts_chirho")
+        .arg("-lhaskelujah_rts");
+    let link_status_chirho = link_cmd_chirho
         .status()
         .expect("linker should run");
     assert!(
@@ -106,14 +110,18 @@ fn cranelift_round_trip_stdout_with_input_chirho(src_chirho: &str, stdin_chirho:
         .expect("object file should be written");
 
     let rts_lib_dir_chirho = ensure_rts_staticlib_for_cranelift_tests_chirho();
-    let link_status_chirho = Command::new("cc")
+    let mut link_cmd2_chirho = Command::new("cc");
+    link_cmd2_chirho
         .arg("-o")
         .arg(&exe_path_chirho)
-        .arg(&object_path_chirho)
-        .arg("-Wl,-no_fixup_chains")
+        .arg(&object_path_chirho);
+    #[cfg(target_os = "macos")]
+    link_cmd2_chirho.arg("-Wl,-no_fixup_chains");
+    link_cmd2_chirho
         .arg("-L")
         .arg(&rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts_chirho")
+        .arg("-lhaskelujah_rts");
+    let link_status_chirho = link_cmd2_chirho
         .status()
         .expect("linker should run");
     assert!(
