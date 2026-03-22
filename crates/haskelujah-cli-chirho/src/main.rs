@@ -24,6 +24,30 @@ use haskelujah_span_chirho::SourceMapChirho;
 const CLANG_OPT_LEVEL_CHIRHO: &str = "-O0";
 const LINKER_STACK_SIZE_ARG_CHIRHO: &str = "-Wl,-stack_size,0x10000000";
 
+/// 2 GB virtual memory limit for compiled executables.
+const MAX_RSS_BYTES_CHIRHO: u64 = 2 * 1024 * 1024 * 1024;
+
+/// Apply memory limit to a Command before spawning (Unix only).
+#[cfg(unix)]
+fn apply_mem_limit_chirho(cmd_chirho: &mut Command) -> &mut Command {
+    use std::os::unix::process::CommandExt;
+    unsafe {
+        cmd_chirho.pre_exec(|| {
+            let limit_chirho = libc::rlimit {
+                rlim_cur: MAX_RSS_BYTES_CHIRHO,
+                rlim_max: MAX_RSS_BYTES_CHIRHO,
+            };
+            libc::setrlimit(libc::RLIMIT_AS, &limit_chirho);
+            Ok(())
+        })
+    }
+}
+
+#[cfg(not(unix))]
+fn apply_mem_limit_chirho(cmd_chirho: &mut Command) -> &mut Command {
+    cmd_chirho
+}
+
 fn main() -> ExitCode {
     main_chirho()
 }
@@ -285,7 +309,7 @@ fn run_command_chirho(
                 link_result_chirho.map_err(|_| ())
             };
             if let Ok(()) = link_result_chirho {
-                let status_chirho = Command::new(&exe_path_chirho).status();
+                let status_chirho = apply_mem_limit_chirho(&mut Command::new(&exe_path_chirho)).status();
                 let _ = fs::remove_file(&exe_path_chirho);
                 match status_chirho {
                     Ok(s_chirho) => {

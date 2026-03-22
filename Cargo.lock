@@ -389,7 +389,7 @@ checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 
 [[package]]
 name = "haskelujah"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-ast",
  "haskelujah-backend-cranelift",
@@ -403,18 +403,19 @@ dependencies = [
  "haskelujah-span",
  "haskelujah-syntax",
  "haskelujah-typing",
+ "libc",
 ]
 
 [[package]]
 name = "haskelujah-ast"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-span",
 ]
 
 [[package]]
 name = "haskelujah-backend-beam"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-core",
  "haskelujah-span",
@@ -423,7 +424,7 @@ dependencies = [
 
 [[package]]
 name = "haskelujah-backend-cranelift"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cranelift-codegen",
  "cranelift-frontend",
@@ -440,7 +441,7 @@ dependencies = [
 
 [[package]]
 name = "haskelujah-backend-jvm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-core",
  "haskelujah-span",
@@ -449,7 +450,7 @@ dependencies = [
 
 [[package]]
 name = "haskelujah-backend-llvm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-core",
  "haskelujah-rts",
@@ -459,7 +460,7 @@ dependencies = [
 
 [[package]]
 name = "haskelujah-backend-wasm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-core",
  "haskelujah-span",
@@ -468,7 +469,7 @@ dependencies = [
 
 [[package]]
 name = "haskelujah-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-ast",
  "haskelujah-span",
@@ -478,14 +479,14 @@ dependencies = [
 
 [[package]]
 name = "haskelujah-diagnostics"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-span",
 ]
 
 [[package]]
 name = "haskelujah-driver"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-ast",
  "haskelujah-backend-cranelift",
@@ -503,17 +504,18 @@ dependencies = [
  "haskelujah-test-harness",
  "haskelujah-th",
  "haskelujah-typing",
+ "libc",
  "proptest",
  "tempfile",
 ]
 
 [[package]]
 name = "haskelujah-incremental"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "haskelujah-naming"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-ast",
  "haskelujah-diagnostics",
@@ -522,7 +524,7 @@ dependencies = [
 
 [[package]]
 name = "haskelujah-package"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "flate2",
  "tar",
@@ -532,7 +534,7 @@ dependencies = [
 
 [[package]]
 name = "haskelujah-parser"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-ast",
  "haskelujah-diagnostics",
@@ -544,29 +546,29 @@ dependencies = [
 
 [[package]]
 name = "haskelujah-rts"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "haskelujah-runtime"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-rts",
 ]
 
 [[package]]
 name = "haskelujah-span"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "haskelujah-syntax"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-span",
 ]
 
 [[package]]
 name = "haskelujah-test-harness"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-diagnostics",
  "haskelujah-driver",
@@ -577,7 +579,7 @@ dependencies = [
 
 [[package]]
 name = "haskelujah-th"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-ast",
  "haskelujah-diagnostics",
@@ -586,7 +588,7 @@ dependencies = [
 
 [[package]]
 name = "haskelujah-typing"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "haskelujah-ast",
  "haskelujah-diagnostics",

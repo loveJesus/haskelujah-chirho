@@ -5,6 +5,30 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 
+/// 2 GB memory limit for compiled executables (prevents OOM on the host).
+const MAX_RSS_BYTES_CHIRHO: u64 = 2 * 1024 * 1024 * 1024;
+
+/// Apply memory limit to a Command before spawning (Unix only).
+#[cfg(unix)]
+fn apply_mem_limit_chirho(cmd_chirho: &mut Command) -> &mut Command {
+    use std::os::unix::process::CommandExt;
+    unsafe {
+        cmd_chirho.pre_exec(|| {
+            let limit_chirho = libc::rlimit {
+                rlim_cur: MAX_RSS_BYTES_CHIRHO,
+                rlim_max: MAX_RSS_BYTES_CHIRHO,
+            };
+            libc::setrlimit(libc::RLIMIT_AS, &limit_chirho);
+            Ok(())
+        })
+    }
+}
+
+#[cfg(not(unix))]
+fn apply_mem_limit_chirho(cmd_chirho: &mut Command) -> &mut Command {
+    cmd_chirho // no-op on non-Unix
+}
+
 use haskelujah_backend_cranelift_chirho::{
     TargetConfigChirho, compile_core_to_object_executable_chirho,
 };
@@ -80,7 +104,7 @@ fn cranelift_round_trip_stdout_chirho(src_chirho: &str) -> String {
         link_status_chirho.code()
     );
 
-    let output_chirho = Command::new(&exe_path_chirho)
+    let output_chirho = apply_mem_limit_chirho(Command::new(&exe_path_chirho).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()))
         .output()
         .expect("compiled executable should run");
     assert!(
@@ -130,11 +154,13 @@ fn cranelift_round_trip_stdout_with_input_chirho(src_chirho: &str, stdin_chirho:
         link_status_chirho.code()
     );
 
-    let mut child_chirho = Command::new(&exe_path_chirho)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .spawn()
-        .expect("compiled executable should run");
+    let mut child_chirho = apply_mem_limit_chirho(
+        Command::new(&exe_path_chirho)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped()),
+    )
+    .spawn()
+    .expect("compiled executable should run");
     use std::io::Write;
     child_chirho
         .stdin

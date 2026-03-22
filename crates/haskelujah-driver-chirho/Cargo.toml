@@ -32,3 +32,6 @@ haskelujah-package-chirho = { package = "haskelujah-package", path = "../haskelu
 tempfile = "3"
 proptest = "1"
 haskelujah-test-harness-chirho = { package = "haskelujah-test-harness", path = "../haskelujah-test-harness-chirho", version = "0.1.1" }
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"

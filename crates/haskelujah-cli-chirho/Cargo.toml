@@ -29,3 +29,6 @@ haskelujah-runtime-chirho = { package = "haskelujah-runtime", path = "../haskelu
 haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.1" }
 haskelujah-syntax-chirho = { package = "haskelujah-syntax", path = "../haskelujah-syntax-chirho", version = "0.1.1" }
 haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskelujah-typing-chirho", version = "0.1.1" }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
