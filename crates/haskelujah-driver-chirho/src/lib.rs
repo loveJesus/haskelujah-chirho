@@ -128,9 +128,14 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
     }
 
     let mut cpp_cmd_chirho = Command::new("cpp");
-    cpp_cmd_chirho.arg("-traditional").arg("-P").arg(format!(
-        "-D__GLASGOW_HASKELL__={CPP_GLASGOW_HASKELL_VERSION_CHIRHO}"
-    ));
+    cpp_cmd_chirho
+        .arg("-traditional")
+        .arg("-P")
+        .arg(format!("-D__GLASGOW_HASKELL__={CPP_GLASGOW_HASKELL_VERSION_CHIRHO}"))
+        .arg("-DMIN_VERSION_base(x,y,z)=1")
+        .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
+        .arg("-DMIN_VERSION_array(x,y,z)=1")
+        .arg("-DMIN_VERSION_transformers(x,y,z)=1");
 
     if let Some(parent_chirho) = path_chirho.parent() {
         cpp_cmd_chirho.current_dir(parent_chirho);
