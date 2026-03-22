@@ -39,3 +39,4 @@ Thumbs.db
 /tmp-chirho/
 .haskelujah-packages-chirho/
 Int#
+examples-chirho/*/dist-chirho/

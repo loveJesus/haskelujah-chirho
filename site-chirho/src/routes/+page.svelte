@@ -5,9 +5,9 @@
 
 	const statsChirho = [
 		{ labelChirho: 'GHC Compatibility', valueChirho: '88.8%', detailChirho: '833 / 938 tests' },
-		{ labelChirho: 'Module Interfaces', valueChirho: '351+', detailChirho: 'Synthetic Haskell module interfaces' },
-		{ labelChirho: 'Passing Tests', valueChirho: '2,500+', detailChirho: '513/513 curated, 43 CL + 82 LLVM roundtrips' },
-		{ labelChirho: 'Hackage Packages', valueChirho: '12+', detailChirho: 'comonad, exceptions, distributive, semigroupoids compile' }
+		{ labelChirho: 'Module Interfaces', valueChirho: '355+', detailChirho: 'Synthetic Haskell module interfaces' },
+		{ labelChirho: 'Passing Tests', valueChirho: '2,500+', detailChirho: '510/513 curated, 43 CL + 82 LLVM roundtrips' },
+		{ labelChirho: 'Hackage Packages', valueChirho: '16', detailChirho: 'comonad, exceptions, void, distributive, semigroupoids + 11 more' }
 	];
 
 	const heroPillsChirho = [
@@ -146,8 +146,8 @@
 				</div>
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Hackage packages</span>
-					<strong>12+ packages compile</strong>
-					<p>comonad, exceptions, distributive, semigroupoids, data-default, safe, vector, and more. Cross-package resolution enabled.</p>
+					<strong>16 packages compile</strong>
+					<p>comonad, exceptions, void, distributive, semigroupoids, data-default, safe, vector, call-stack, and more. Cross-package resolution enabled.</p>
 				</div>
 			</div>
 		</div>
@@ -359,7 +359,7 @@ main = putStrLn "Hello from a script!"</span>
 					<div class="feature-icon-chirho">H</div>
 					<div class="feature-text-chirho">
 						<h3>Hackage Packages</h3>
-						<p><code>haskelujah install aeson</code> fetches from Hackage, resolves deps, extracts <code>.cabal</code> metadata. <strong>13 packages compile</strong> including aeson, lens (17/17 core), servant, containers, scientific, comonad, tagged, HUnit. 329 module interfaces.</p>
+						<p><code>haskelujah install aeson</code> fetches from Hackage, resolves deps, extracts <code>.cabal</code> metadata. <strong>16 packages compile</strong> including comonad, exceptions, void, distributive, semigroupoids, data-default, safe, vector. 355+ module interfaces. Cross-package module resolution.</p>
 					</div>
 				</div>
 				<div class="feature-card-chirho">
@@ -427,7 +427,7 @@ main = putStrLn "Hello from a script!"</span>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Full Hackage</h3>
-					<p>13 packages compile today (aeson, lens, servant, containers). Next: mtl, transformers, parsec, QuickCheck, megaparsec, vector.</p>
+					<p>16 packages compile today (comonad, exceptions, void, distributive, semigroupoids + 11 more). Next: transformers (4 errors remaining), then mtl, parsec cascade.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Profiling</h3>
