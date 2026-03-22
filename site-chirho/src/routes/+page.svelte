@@ -7,7 +7,7 @@
 		{ labelChirho: 'GHC Compatibility', valueChirho: '88.8%', detailChirho: '833 / 938 tests' },
 		{ labelChirho: 'Module Interfaces', valueChirho: '355+', detailChirho: 'Synthetic Haskell module interfaces' },
 		{ labelChirho: 'Passing Tests', valueChirho: '2,500+', detailChirho: '510/513 curated, 43 CL + 82 LLVM roundtrips' },
-		{ labelChirho: 'Hackage Packages', valueChirho: '13+', detailChirho: 'transformers (24 modules), comonad, void, semigroupoids + more' }
+		{ labelChirho: 'Hackage Packages', valueChirho: '15', detailChirho: 'transformers + mtl (24 each), comonad, void, semigroupoids + 10 more' }
 	];
 
 	const heroPillsChirho = [
