@@ -38,55 +38,64 @@
 			titleChirho: 'Compiler',
 			descriptionChirho:
 				'Cranelift by default, LLVM for production, WebAssembly built-in. Three backends in one binary. 88.8% GHC test suite compatibility, 40+ extensions.',
-			iconChirho: '⚙'
+			iconChirho: '⚙',
+			plannedChirho: false
 		},
 		{
 			titleChirho: 'Package Manager',
 			descriptionChirho:
 				'Install Hackage packages with one command. Reads .cabal files, resolves dependencies, compiles multi-module projects. 16 packages compile today, cross-package resolution built in.',
-			iconChirho: '📦'
+			iconChirho: '📦',
+			plannedChirho: false
 		},
 		{
 			titleChirho: 'Script Runner',
 			descriptionChirho:
 				'Run Haskell files directly with a shebang line. Write #!/usr/bin/env haskelujah at the top, chmod once, and use Haskelujah like a scripting runtime.',
-			iconChirho: '▶'
+			iconChirho: '▶',
+			plannedChirho: false
 		},
 		{
 			titleChirho: 'REPL',
 			descriptionChirho:
 				'Interactive environment with :type, :info, :load, multi-line input, and expression evaluation. Explore APIs, test ideas, and debug interactively.',
-			iconChirho: '>'
+			iconChirho: '>',
+			plannedChirho: false
 		},
 		{
-			titleChirho: 'AI Integration',
+			titleChirho: 'AI / MCP Server',
 			descriptionChirho:
-				'Built-in MCP (Model Context Protocol) server. Expose Haskell type information, project structure, and compiler diagnostics to AI assistants. Claude, GPT, and Gemini can read, navigate, and refactor your code.',
-			iconChirho: '🤖'
+				'Built-in MCP (Model Context Protocol) server. Expose type info, project structure, and diagnostics to Claude, GPT, and Gemini. AI-native Haskell development.',
+			iconChirho: '🤖',
+			plannedChirho: true
 		},
 		{
-			titleChirho: 'Editor / LSP',
+			titleChirho: 'Editor',
 			descriptionChirho:
-				'Language Server Protocol support for hover types, go-to-definition, and real-time diagnostics. Works with VS Code, Neovim, Zed, and any LSP-compatible editor out of the box.',
-			iconChirho: '✏'
+				'A Haskell-extensible editor in the spirit of Emacs — programmable in the language it compiles. Built-in LSP for hover types, go-to-def, and diagnostics in any editor.',
+			iconChirho: '✏',
+			plannedChirho: true
 		},
 		{
 			titleChirho: 'Runtime',
 			descriptionChirho:
-				'Rust-based runtime system with mark-sweep GC, thunk trampolines for lazy evaluation, C ABI interop, and heap allocation tracking. No external runtime required.',
-			iconChirho: '⏱'
+				'Rust-based runtime with mark-sweep GC, thunk trampolines for lazy evaluation, C ABI interop, and heap tracking. No external runtime required.',
+			iconChirho: '⏱',
+			plannedChirho: false
 		},
 		{
 			titleChirho: 'Test Runner',
 			descriptionChirho:
-				'Compile and run test suites directly. Integrates with HUnit and QuickCheck conventions. Run haskelujah test to execute your project test suite.',
-			iconChirho: '✓'
+				'Compile and run test suites directly. Integrates with HUnit and QuickCheck. Run haskelujah test to execute your project test suite.',
+			iconChirho: '✓',
+			plannedChirho: true
 		},
 		{
 			titleChirho: 'Tool Ecosystem',
 			descriptionChirho:
-				'Interop with external tools via FFI, CPP preprocessing, and Cabal build system. Pluggable backends (Cranelift, LLVM, Wasm, JVM, BEAM) for targeting any platform.',
-			iconChirho: '🔧'
+				'Interop via FFI, CPP, and Cabal. Pluggable backends (Cranelift, LLVM, Wasm, JVM, BEAM) for targeting any platform from a single codebase.',
+			iconChirho: '🔧',
+			plannedChirho: false
 		}
 	];
 </script>
@@ -129,7 +138,7 @@
 			</h1>
 			<p class="hero-subtitle-chirho">Everything you need to develop, build, and ship Haskell</p>
 			<p class="hero-description-chirho">
-				Compiler, package manager, script runner, REPL, test runner, LSP, and AI integration — all in one binary.
+				Compiler, package manager, script runner, REPL, test runner, AI integration, and a Haskell-extensible editor — all in one binary.
 				Install once. No GHC, no Stack, no LLVM required.
 			</p>
 
@@ -193,7 +202,7 @@
 					<div class="feature-card-chirho">
 						<div class="feature-icon-chirho">{featureChirho.iconChirho}</div>
 						<div class="feature-text-chirho">
-							<h3>{featureChirho.titleChirho}</h3>
+							<h3>{featureChirho.titleChirho}{#if featureChirho.plannedChirho}<span class="planned-badge-chirho">planned</span>{/if}</h3>
 							<p>{featureChirho.descriptionChirho}</p>
 						</div>
 					</div>
@@ -886,6 +895,22 @@ main = putStrLn "Runs directly, no build step."</span>
 		margin: 0 0 0.35rem;
 		font-size: 1.05rem;
 		color: var(--text-main-chirho);
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.planned-badge-chirho {
+		font-size: 0.6rem;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		padding: 0.15rem 0.45rem;
+		border-radius: 4px;
+		background: rgba(113, 215, 209, 0.12);
+		color: var(--accent-cyan-chirho);
+		border: 1px solid rgba(113, 215, 209, 0.25);
+		white-space: nowrap;
 	}
 
 	.feature-text-chirho p {
