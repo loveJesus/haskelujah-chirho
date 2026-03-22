@@ -2312,7 +2312,16 @@ pub fn compile_cabal_project_chirho(
     let source_files_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
 
     // Scan downloaded dependency packages for stub module interfaces.
-    let dep_ifaces_chirho = scan_dependency_package_ifaces_chirho(project_dir_chirho);
+    // Exclude modules that are part of the current package to avoid conflicts
+    // between synthetic stubs and locally-compiled definitions.
+    let own_modules_chirho: std::collections::HashSet<String> = source_files_chirho
+        .iter()
+        .map(|(name_chirho, _)| name_chirho.clone())
+        .collect();
+    let dep_ifaces_chirho: Vec<_> = scan_dependency_package_ifaces_chirho(project_dir_chirho)
+        .into_iter()
+        .filter(|iface_chirho| !own_modules_chirho.contains(&iface_chirho.name_chirho))
+        .collect();
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let project_compile_result_chirho = compile_module_files_with_extra_ifaces_chirho(
