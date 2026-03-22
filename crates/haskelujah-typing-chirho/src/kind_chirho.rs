@@ -441,10 +441,10 @@ impl KindInferCtxChirho {
                 KindChirho::ConstraintChirho
             }
             TypeChirho::ConChirho(name_chirho) => {
-                let text_chirho = name_chirho.text_chirho();
+                let text_chirho = name_chirho.full_name_chirho();
                 // A named kind (e.g. `N` in `N -> Type`): look it up or
                 // create a fresh kind variable.
-                if let Some(k_chirho) = self.env_chirho.lookup_chirho(text_chirho) {
+                if let Some(k_chirho) = self.env_chirho.lookup_chirho(&text_chirho) {
                     // DataKinds: if this name has kind * in the env, it's a
                     // data type being used as a kind. At the kind level, data
                     // types are opaque sorts that classify promoted constructors.
@@ -458,7 +458,7 @@ impl KindInferCtxChirho {
                 } else {
                     let k_chirho = self.fresh_kind_chirho();
                     self.env_chirho
-                        .bind_chirho(text_chirho.to_string(), k_chirho.clone());
+                        .bind_chirho(text_chirho, k_chirho.clone());
                     k_chirho
                 }
             }
@@ -577,8 +577,8 @@ impl KindInferCtxChirho {
                 }
             }
             TypeChirho::ConChirho(name_chirho) => {
-                let text_chirho = name_chirho.text_chirho();
-                if let Some(k_chirho) = self.env_chirho.lookup_chirho(text_chirho) {
+                let text_chirho = name_chirho.full_name_chirho();
+                if let Some(k_chirho) = self.env_chirho.lookup_chirho(&text_chirho) {
                     let k_chirho = k_chirho.clone();
                     // Instantiate fresh kind variables for each use of a
                     // poly-kinded type constructor (e.g. `Proxy :: k -> Type`
@@ -592,7 +592,7 @@ impl KindInferCtxChirho {
                     // Unknown type constructor — assign a fresh kind variable.
                     let k_chirho = self.fresh_kind_chirho();
                     self.env_chirho
-                        .bind_chirho(text_chirho.to_string(), k_chirho.clone());
+                        .bind_chirho(text_chirho, k_chirho.clone());
                     k_chirho
                 }
             }
@@ -1531,6 +1531,63 @@ mod tests_chirho {
         assert_eq!(
             result_chirho.env_chirho.lookup_chirho("App"),
             Some(&expected_chirho)
+        );
+    }
+
+    #[test]
+    fn qualified_type_constructor_kind_does_not_collide_chirho() {
+        let env_chirho = KindEnvChirho::with_builtins_chirho();
+        let mut ctx_chirho = KindInferCtxChirho::new_chirho(env_chirho);
+        ctx_chirho.env_chirho.bind_chirho(
+            "Operator".to_string(),
+            KindChirho::arrow_n_chirho(
+                vec![
+                    KindChirho::StarChirho,
+                    KindChirho::StarChirho,
+                    KindChirho::StarChirho,
+                ],
+                KindChirho::StarChirho,
+            ),
+        );
+
+        let ty_chirho = TypeChirho::AppChirho {
+            fun_chirho: Box::new(TypeChirho::AppChirho {
+                fun_chirho: Box::new(TypeChirho::AppChirho {
+                    fun_chirho: Box::new(TypeChirho::AppChirho {
+                        fun_chirho: Box::new(TypeChirho::ConChirho(NameChirho::RawChirho(
+                            haskelujah_ast_chirho::name_chirho::RawNameChirho::qualified_chirho(
+                                "N",
+                                "Operator",
+                                SpanChirho::DUMMY_CHIRHO,
+                            ),
+                        ))),
+                        arg_chirho: Box::new(TypeChirho::ListChirho {
+                            element_chirho: Box::new(TypeChirho::VarChirho(mk_name_chirho("tok"))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    arg_chirho: Box::new(TypeChirho::VarChirho(mk_name_chirho("st"))),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }),
+                arg_chirho: Box::new(TypeChirho::ConChirho(NameChirho::RawChirho(
+                    haskelujah_ast_chirho::name_chirho::RawNameChirho::qualified_chirho(
+                        "Control.Monad",
+                        "Identity",
+                        SpanChirho::DUMMY_CHIRHO,
+                    ),
+                ))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            arg_chirho: Box::new(TypeChirho::VarChirho(mk_name_chirho("a"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let _kind_chirho = ctx_chirho.infer_type_kind_chirho(&ty_chirho);
+        assert!(
+            !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+            "qualified imported type constructors should not collide with local unqualified ones: {:?}",
+            ctx_chirho.diagnostics_chirho
         );
     }
 
