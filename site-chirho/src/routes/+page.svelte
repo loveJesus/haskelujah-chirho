@@ -406,10 +406,12 @@ main = putStrLn "Hello from a script!"</span>
 			<h2 class="section-title-chirho">Current Limitations</h2>
 			<p class="section-subtitle-chirho">Where we still fall short of GHC.</p>
 			<ul class="limitation-list-chirho">
+				<li><strong>Rank-N types &amp; higher-kinded inference:</strong> Most rank-2 types work, but deep higher-rank polymorphism (lens <code>LensLike'</code>, transformers <code>ExceptT</code> composition chains) still has inference gaps. Blocks some advanced Hackage packages.</li>
+				<li><strong>Quantified constraints:</strong> <code>forall a. C a => D (f a)</code> in class superclass positions needs parser-level AST support. Blocks deepseq <code>NFData1</code>.</li>
 				<li><strong>Type class dictionaries at runtime:</strong> Type checking supports full typeclasses, but compiled code uses simplified dictionary elision. Complex polymorphic dispatch is partial.</li>
-				<li><strong>String as [Char]:</strong> String literals are C strings internally. <code>unpack</code>/<code>pack</code> conversion works but isn't transparent like GHC's representation.</li>
 				<li><strong>Template Haskell:</strong> Basic splices and <code>makeLenses</code> work; full TH (typed splices, reify) is incomplete.</li>
 				<li><strong>FFI:</strong> Basic libc interop (puts, printf, malloc). Full C header parsing and foreign exports are not yet implemented.</li>
+				<li><strong>LSP / MCP / Test runner:</strong> Planned and featured in the architecture but not yet implemented. Coming soon.</li>
 			</ul>
 		</div>
 	</section>
@@ -421,28 +423,40 @@ main = putStrLn "Hello from a script!"</span>
 			<p class="section-subtitle-chirho">Where we're headed, God willing.</p>
 			<div class="roadmap-grid-chirho">
 				<div class="roadmap-item-chirho">
-					<h3>Rank-N Type Inference</h3>
-					<p>Full higher-rank polymorphism to unlock lens top-level module and advanced type-level patterns.</p>
+					<h3>MCP Server</h3>
+					<p>Expose project types, diagnostics, and structure to AI assistants via Model Context Protocol. Let Claude, GPT, and Gemini understand your Haskell code natively.</p>
 				</div>
 				<div class="roadmap-item-chirho">
-					<h3>Strictness Analysis</h3>
-					<p>Demand analysis to avoid unnecessary thunk creation. Worker-wrapper transform for strict arguments.</p>
-				</div>
-				<div class="roadmap-item-chirho">
-					<h3>Integrated IDE</h3>
-					<p>A Zed-like editor extensible via Haskell (like Emacs uses Lisp). LSP support with hover types, go-to-definition, and diagnostics.</p>
-				</div>
-				<div class="roadmap-item-chirho">
-					<h3>Cross-Compilation</h3>
-					<p>Target selection from CLI: compile to Linux, macOS, Windows, or embedded targets from a single machine.</p>
+					<h3>Language Server</h3>
+					<p>Full LSP implementation: hover types, go-to-definition, find references, real-time diagnostics, code actions. Works with VS Code, Neovim, Zed.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Full Hackage</h3>
-					<p>16 packages compile today (comonad, exceptions, void, distributive, semigroupoids + 11 more). Next: transformers (4 errors remaining), then mtl, parsec cascade.</p>
+					<p>16 packages compile today. Next: transformers (4 errors left), then mtl &rarr; parsec &rarr; aeson &rarr; lens cascade. Target: 100+ packages.</p>
+				</div>
+				<div class="roadmap-item-chirho">
+					<h3>Test Runner</h3>
+					<p><code>haskelujah test</code> to discover and run HUnit, QuickCheck, and Hspec test suites. Parallel execution, colored output, watch mode.</p>
+				</div>
+				<div class="roadmap-item-chirho">
+					<h3>Self-Hosting</h3>
+					<p>Compile a non-trivial Haskell program end-to-end to a native binary. The milestone that proves the compiler is real.</p>
+				</div>
+				<div class="roadmap-item-chirho">
+					<h3>Cross-Compilation</h3>
+					<p>Target selection from CLI: compile to Linux, macOS, Windows, Wasm, or embedded targets from a single machine.</p>
+				</div>
+				<div class="roadmap-item-chirho">
+					<h3>Strictness Analysis</h3>
+					<p>Demand analysis to avoid unnecessary thunks. Worker-wrapper transform for strict arguments. Automatic unboxing.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Profiling</h3>
-					<p>Cost-center annotation, heap profiling, and time profiling for performance optimization.</p>
+					<p>Cost-center annotation, heap profiling, time profiling, and flamegraph generation for performance optimization.</p>
+				</div>
+				<div class="roadmap-item-chirho">
+					<h3>Formatter</h3>
+					<p><code>haskelujah fmt</code> for opinionated Haskell formatting. Fast, consistent, zero-config. Like <code>rustfmt</code> for Haskell.</p>
 				</div>
 			</div>
 		</div>
