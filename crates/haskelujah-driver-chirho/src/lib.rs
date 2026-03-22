@@ -133,7 +133,8 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
         .arg("-traditional")
         .arg("-P")
         .arg(format!("-D__GLASGOW_HASKELL__={CPP_GLASGOW_HASKELL_VERSION_CHIRHO}"))
-        .arg("-DMIN_VERSION_base(x,y,z)=1")
+        // base 4.14.0 (GHC 8.10): MIN_VERSION_base(4,14,0)=1, MIN_VERSION_base(4,15,0)=0
+        .arg("-DMIN_VERSION_base(x,y,z)=((x)<4||((x)==4&&((y)<14||((y)==14&&(z)<=0))))")
         .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
         .arg("-DMIN_VERSION_array(x,y,z)=1")
         .arg("-DMIN_VERSION_transformers(x,y,z)=1");
