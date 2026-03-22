@@ -90,7 +90,20 @@ Haskell source
 
 ## Getting Started
 
-### Build
+### Install
+
+```bash
+# From crates.io (v0.1.0)
+cargo install haskelujah
+
+# From git (latest)
+cargo install --git https://github.com/loveJesus/haskelujah-chirho haskelujah
+
+# From source
+cargo install --path crates/haskelujah-cli-chirho
+```
+
+### Build from source
 
 ```bash
 cargo build --workspace
