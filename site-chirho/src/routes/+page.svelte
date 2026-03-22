@@ -269,26 +269,27 @@
 					<span class="code-title-chirho">terminal</span>
 				</div>
 				<pre class="code-content-chirho"><code
-						><span class="code-comment-chirho"># Install the CLI</span>
+						><span class="code-comment-chirho"># Install</span>
 <span class="code-prompt-chirho">$</span> cargo install haskelujah
 
-<span class="code-comment-chirho"># Or run a script directly</span>
-<span class="code-prompt-chirho">$</span> cat > hello-chirho.hs
-<span class="code-output-chirho">#!/usr/bin/env haskelujah
-main = putStrLn "Hello from a script!"</span>
+<span class="code-comment-chirho"># Create a project</span>
+<span class="code-prompt-chirho">$</span> mkdir my-app && cat > my-app/Main.hs
+<span class="code-output-chirho">module Main where
+main = putStrLn "Hello from Haskelujah!"</span>
 
-<span class="code-comment-chirho"># Create a file</span>
-<span class="code-prompt-chirho">$</span> cat > Main.hs
-<span class="code-output-chirho">main = putStrLn "Hello from Haskelujah!"</span>
-
-<span class="code-comment-chirho"># Compile with the default Cranelift backend</span>
-<span class="code-prompt-chirho">$</span> haskelujah build Main.hs
-<span class="code-output-chirho">  Compiling Main.hs ... done
-  Wrote ./main</span>
-
-<span class="code-comment-chirho"># Run it</span>
-<span class="code-prompt-chirho">$</span> ./main
+<span class="code-comment-chirho"># Build and run</span>
+<span class="code-prompt-chirho">$</span> haskelujah build my-app/
+<span class="code-output-chirho">  Compiled 1 modules in order: Main
+  Finished build in 0.09s</span>
+<span class="code-prompt-chirho">$</span> ./my-app/dist-chirho/build/my-app
 <span class="code-output-chirho">  Hello from Haskelujah!</span>
+
+<span class="code-comment-chirho"># Or skip compilation entirely — run as a script</span>
+<span class="code-prompt-chirho">$</span> cat > hello.hs
+<span class="code-output-chirho">#!/usr/bin/env haskelujah
+main = putStrLn "Runs directly, no build step!"</span>
+<span class="code-prompt-chirho">$</span> chmod +x hello.hs && ./hello.hs
+<span class="code-output-chirho">  Runs directly, no build step!</span>
 </code></pre>
 			</div>
 
