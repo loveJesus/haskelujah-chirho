@@ -4717,7 +4717,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // fromInteger :: forall a. Num a => Int -> a
+    // fromInteger :: forall a. Num a => Integer -> a
     let fi_v_chirho = TyVarChirho(1160);
     env_chirho.bind_chirho(
         "fromInteger".to_string(),
@@ -4729,7 +4729,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 extra_tys_chirho: vec![],
             }],
             ty_chirho: TyChirho::fun_chirho(
-                TyChirho::int_chirho(),
+                TyChirho::ConChirho("Integer".to_string()),
                 TyChirho::VarChirho(fi_v_chirho),
             ),
         },
@@ -5232,12 +5232,12 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
-    // toInteger :: Int -> Int
+    // toInteger :: Int -> Integer
     env_chirho.bind_chirho(
         "toInteger".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             TyChirho::int_chirho(),
-            TyChirho::int_chirho(),
+            TyChirho::ConChirho("Integer".to_string()),
         )),
     );
 
