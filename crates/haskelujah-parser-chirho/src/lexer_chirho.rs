@@ -780,7 +780,7 @@ impl<'src> LexerChirho<'src> {
                                 self.pos_chirho += 1; // skip closing backslash
                             }
                         } else {
-                            self.pos_chirho += 1; // skip escaped char
+                            self.consume_escape_sequence_chirho();
                         }
                     }
                 }
@@ -792,6 +792,55 @@ impl<'src> LexerChirho<'src> {
 
         // Unterminated string
         self.make_token_chirho(RawTokenKindChirho::ErrorChirho, start_chirho)
+    }
+
+    fn consume_escape_sequence_chirho(&mut self) {
+        if self.pos_chirho >= self.bytes_chirho.len() {
+            return;
+        }
+
+        match self.bytes_chirho[self.pos_chirho] {
+            b'o' => {
+                self.pos_chirho += 1;
+                while self.pos_chirho < self.bytes_chirho.len()
+                    && matches!(self.bytes_chirho[self.pos_chirho], b'0'..=b'7')
+                {
+                    self.pos_chirho += 1;
+                }
+            }
+            b'x' => {
+                self.pos_chirho += 1;
+                while self.pos_chirho < self.bytes_chirho.len()
+                    && self.bytes_chirho[self.pos_chirho].is_ascii_hexdigit()
+                {
+                    self.pos_chirho += 1;
+                }
+            }
+            b'^' => {
+                self.pos_chirho += 1;
+                if self.pos_chirho < self.bytes_chirho.len() {
+                    self.pos_chirho += 1;
+                }
+            }
+            b'0'..=b'9' => {
+                while self.pos_chirho < self.bytes_chirho.len()
+                    && self.bytes_chirho[self.pos_chirho].is_ascii_digit()
+                {
+                    self.pos_chirho += 1;
+                }
+            }
+            b'A'..=b'Z' => {
+                while self.pos_chirho < self.bytes_chirho.len()
+                    && (self.bytes_chirho[self.pos_chirho].is_ascii_uppercase()
+                        || self.bytes_chirho[self.pos_chirho].is_ascii_digit())
+                {
+                    self.pos_chirho += 1;
+                }
+            }
+            _ => {
+                self.pos_chirho += 1;
+            }
+        }
     }
 
     fn lex_char_chirho(&mut self, start_chirho: usize) -> RawTokenChirho {
@@ -824,9 +873,7 @@ impl<'src> LexerChirho<'src> {
 
         if self.bytes_chirho[self.pos_chirho] == b'\\' {
             self.pos_chirho += 1; // skip backslash
-            if self.pos_chirho < self.bytes_chirho.len() {
-                self.pos_chirho += 1; // skip escaped char
-            }
+            self.consume_escape_sequence_chirho();
         } else {
             self.pos_chirho += 1; // skip the character
         }
@@ -1351,6 +1398,29 @@ mod tests_chirho {
                 RawTokenKindChirho::CharLitChirho,
                 RawTokenKindChirho::EofChirho,
             ]
+        );
+    }
+
+    #[test]
+    fn lex_extended_char_escape_literals_chirho() {
+        let tokens_chirho = lex_chirho("'\\026' '\\BS' '\\DEL' '\\x41' '\\o101'");
+        let char_tokens_chirho: Vec<_> = tokens_chirho
+            .iter()
+            .filter(|token_chirho| token_chirho.kind_chirho == RawTokenKindChirho::CharLitChirho)
+            .collect();
+        assert_eq!(char_tokens_chirho.len(), 5);
+
+        let source_chirho = "'\\026' '\\BS' '\\DEL' '\\x41' '\\o101'";
+        let texts_chirho: Vec<&str> = char_tokens_chirho
+            .iter()
+            .map(|token_chirho| {
+                &source_chirho[token_chirho.span_chirho.start_chirho().as_usize_chirho()
+                    ..token_chirho.span_chirho.end_chirho().as_usize_chirho()]
+            })
+            .collect();
+        assert_eq!(
+            texts_chirho,
+            vec!["'\\026'", "'\\BS'", "'\\DEL'", "'\\x41'", "'\\o101'"]
         );
     }
 

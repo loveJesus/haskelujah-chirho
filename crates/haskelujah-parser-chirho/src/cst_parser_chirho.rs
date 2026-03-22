@@ -1570,8 +1570,48 @@ impl<'src> ParserChirho<'src> {
             self.bump_chirho(); // |
             self.eat_trivia_chirho();
 
-            // Guard expression (parse until = )
-            self.parse_guard_expr_chirho();
+            // Guard qualifiers until `=`. Supports:
+            //   | guardExpr = rhs
+            //   | pat <- expr, guardExpr = rhs
+            //   | let binds, guardExpr = rhs
+            while !self.at_chirho(RawTokenKindChirho::EqualsChirho)
+                && !self.at_eof_chirho()
+                && !self.at_decl_boundary_chirho()
+            {
+                let before_chirho = self.pos_chirho;
+                self.eat_trivia_chirho();
+
+                if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    continue;
+                }
+
+                if self.at_chirho(RawTokenKindChirho::LetChirho) {
+                    self.builder_chirho
+                        .start_node_chirho(SyntaxKindChirho::LetStmtChirho);
+                    self.bump_chirho(); // let
+                    self.eat_trivia_chirho();
+                    self.parse_layout_block_chirho();
+                    self.builder_chirho.finish_node_chirho();
+                    self.eat_trivia_chirho();
+                } else if self.scan_for_guard_bind_arrow_chirho() {
+                    self.parse_pat_chirho();
+                    self.eat_trivia_chirho();
+                    if self.at_chirho(RawTokenKindChirho::LeftArrowChirho) {
+                        self.bump_chirho(); // <-
+                        self.eat_trivia_chirho();
+                        self.parse_expr_chirho();
+                        self.eat_trivia_chirho();
+                    }
+                } else {
+                    self.parse_guard_expr_chirho();
+                }
+
+                if self.pos_chirho == before_chirho {
+                    break;
+                }
+            }
 
             if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
                 self.bump_chirho(); // =
@@ -1590,6 +1630,56 @@ impl<'src> ParserChirho<'src> {
     fn parse_guard_expr_chirho(&mut self) {
         self.parse_expr_chirho();
         self.eat_trivia_chirho();
+    }
+
+    /// Scan ahead to see whether the current guard qualifier contains a
+    /// top-level `<-` before the next comma or `=`.
+    fn scan_for_guard_bind_arrow_chirho(&self) -> bool {
+        let mut i_chirho = self.pos_chirho;
+        let mut paren_depth_chirho = 0u32;
+        let mut bracket_depth_chirho = 0u32;
+        let mut brace_depth_chirho = 0u32;
+
+        while i_chirho < self.tokens_chirho.len() {
+            let kind_chirho = self.tokens_chirho[i_chirho].kind_chirho;
+            match kind_chirho {
+                RawTokenKindChirho::LeftArrowChirho
+                    if paren_depth_chirho == 0
+                        && bracket_depth_chirho == 0
+                        && brace_depth_chirho == 0 =>
+                {
+                    return true;
+                }
+                RawTokenKindChirho::CommaChirho | RawTokenKindChirho::EqualsChirho
+                    if paren_depth_chirho == 0
+                        && bracket_depth_chirho == 0
+                        && brace_depth_chirho == 0 =>
+                {
+                    return false;
+                }
+                RawTokenKindChirho::LeftParenChirho => paren_depth_chirho += 1,
+                RawTokenKindChirho::RightParenChirho => {
+                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                }
+                RawTokenKindChirho::LeftBracketChirho => bracket_depth_chirho += 1,
+                RawTokenKindChirho::RightBracketChirho => {
+                    bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
+                }
+                RawTokenKindChirho::LeftBraceChirho | RawTokenKindChirho::VirtualLeftBraceChirho => {
+                    brace_depth_chirho += 1;
+                }
+                RawTokenKindChirho::RightBraceChirho | RawTokenKindChirho::VirtualRightBraceChirho => {
+                    brace_depth_chirho = brace_depth_chirho.saturating_sub(1);
+                }
+                RawTokenKindChirho::PipeChirho if brace_depth_chirho == 0 => {
+                    return false;
+                }
+                _ => {}
+            }
+            i_chirho += 1;
+        }
+
+        false
     }
 
     // -----------------------------------------------------------------------
@@ -2655,12 +2745,15 @@ impl<'src> ParserChirho<'src> {
         let mut i_chirho = self.pos_chirho;
         let mut paren_depth_chirho = 0u32;
         let mut bracket_depth_chirho = 0u32;
+        let mut brace_depth_chirho = 0u32;
 
         while i_chirho < self.tokens_chirho.len() {
             let k_chirho = self.tokens_chirho[i_chirho].kind_chirho;
             match k_chirho {
                 RawTokenKindChirho::LeftArrowChirho
-                    if paren_depth_chirho == 0 && bracket_depth_chirho == 0 =>
+                    if paren_depth_chirho == 0
+                        && bracket_depth_chirho == 0
+                        && brace_depth_chirho == 0 =>
                 {
                     return true;
                 }
@@ -2672,12 +2765,24 @@ impl<'src> ParserChirho<'src> {
                 RawTokenKindChirho::RightBracketChirho => {
                     bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
                 }
+                RawTokenKindChirho::LeftBraceChirho | RawTokenKindChirho::VirtualLeftBraceChirho => {
+                    brace_depth_chirho += 1;
+                }
+                RawTokenKindChirho::RightBraceChirho
+                | RawTokenKindChirho::VirtualRightBraceChirho => {
+                    if brace_depth_chirho == 0 {
+                        return false;
+                    }
+                    brace_depth_chirho = brace_depth_chirho.saturating_sub(1);
+                }
                 // Statement boundaries
                 RawTokenKindChirho::VirtualSemicolonChirho
                 | RawTokenKindChirho::SemicolonChirho
-                | RawTokenKindChirho::VirtualRightBraceChirho
-                | RawTokenKindChirho::RightBraceChirho
-                | RawTokenKindChirho::EofChirho => {
+                | RawTokenKindChirho::EofChirho
+                    if paren_depth_chirho == 0
+                        && bracket_depth_chirho == 0
+                        && brace_depth_chirho == 0 =>
+                {
                     return false;
                 }
                 _ => {}

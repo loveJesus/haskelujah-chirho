@@ -2775,8 +2775,33 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Monad", &[]);
-        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        exports_chirho.types_chirho.insert(
+            "Monad".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Monad".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec!["return".to_string(), ">>=".to_string(), ">>".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+        exports_chirho.types_chirho.insert(
+            "MonadPlus".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "MonadPlus".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec!["mzero".to_string(), "mplus".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+        exports_chirho.types_chirho.insert(
+            "MonadFail".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "MonadFail".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec!["fail".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Control.Monad".to_string(),
             exports_chirho,
@@ -9137,35 +9162,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
-    // Deduplicate: merge exports for modules with the same name.
-    // Earlier batches may define partial interfaces that later batches extend.
-    let mut deduped_chirho: Vec<ModuleIfaceChirho> = Vec::with_capacity(modules_chirho.len());
-    let mut index_chirho: std::collections::HashMap<String, usize> =
-        std::collections::HashMap::new();
-    for m_chirho in modules_chirho {
-        if let Some(&idx_chirho) = index_chirho.get(&m_chirho.name_chirho) {
-            // Merge exports into existing entry
-            let existing_chirho = &mut deduped_chirho[idx_chirho];
-            for (k_chirho, v_chirho) in m_chirho.exports_chirho.values_chirho {
-                existing_chirho
-                    .exports_chirho
-                    .values_chirho
-                    .entry(k_chirho)
-                    .or_insert(v_chirho);
-            }
-            for (k_chirho, v_chirho) in m_chirho.exports_chirho.types_chirho {
-                existing_chirho
-                    .exports_chirho
-                    .types_chirho
-                    .entry(k_chirho)
-                    .or_insert(v_chirho);
-            }
-        } else {
-            index_chirho.insert(m_chirho.name_chirho.clone(), deduped_chirho.len());
-            deduped_chirho.push(m_chirho);
-        }
-    }
-    deduped_chirho
+    merge_module_ifaces_chirho(modules_chirho)
 }
 
 /// Merge module interfaces that share the same module name, preserving the

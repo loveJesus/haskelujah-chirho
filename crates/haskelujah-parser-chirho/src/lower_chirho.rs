@@ -1137,7 +1137,7 @@ impl LowerCtxChirho {
             self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
         let mut pats_chirho = Vec::new();
         let mut rhs_expr_chirho = None;
-        let mut guarded_rhs_chirho: Option<Vec<GuardedExprChirho>> = None;
+        let mut guarded_rhs_chirho: Option<RhsChirho> = None;
         let mut saw_equals_chirho = false;
         let mut where_binds_chirho = Vec::new();
 
@@ -1170,7 +1170,7 @@ impl LowerCtxChirho {
         }
 
         let rhs_chirho = if let Some(guards_chirho) = guarded_rhs_chirho {
-            RhsChirho::GuardedChirho(guards_chirho)
+            guards_chirho
         } else {
             RhsChirho::UnguardedChirho(rhs_expr_chirho.unwrap_or(self.placeholder_expr_chirho()))
         };
@@ -1183,12 +1183,14 @@ impl LowerCtxChirho {
         }
     }
 
-    /// Lower a `GuardedRhsChirho` CST node into a list of guarded expressions.
+    /// Lower a `GuardedRhsChirho` CST node into either:
+    /// - ordinary guarded RHS arms (`| guard = body`)
+    /// - or a single nested expression when pattern/let guards are present
     fn lower_guarded_rhs_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
         base_chirho: usize,
-    ) -> Vec<GuardedExprChirho> {
+    ) -> RhsChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut guards_chirho = Vec::new();
 
@@ -1204,20 +1206,46 @@ impl LowerCtxChirho {
             }
         }
 
-        guards_chirho
+        let all_simple_expr_guards_chirho = guards_chirho.iter().all(|guard_chirho| {
+            guard_chirho.quals_chirho.len() == 1
+                && matches!(
+                    guard_chirho.quals_chirho.first(),
+                    Some(StmtChirho::ExprChirho(_))
+                )
+        });
+
+        if all_simple_expr_guards_chirho {
+            let lowered_guards_chirho = guards_chirho
+                .into_iter()
+                .map(|guard_chirho| GuardedExprChirho {
+                    guard_chirho: match guard_chirho.quals_chirho.into_iter().next() {
+                        Some(StmtChirho::ExprChirho(expr_chirho)) => expr_chirho,
+                        _ => self.placeholder_expr_chirho(),
+                    },
+                    body_chirho: guard_chirho.body_chirho,
+                    span_chirho: guard_chirho.span_chirho,
+                })
+                .collect();
+            RhsChirho::GuardedChirho(lowered_guards_chirho)
+        } else {
+            RhsChirho::UnguardedChirho(self.lower_guard_arms_to_expr_chirho(&guards_chirho))
+        }
     }
 
-    /// Lower a single `GuardChirho` CST node into a `GuardedExprChirho`.
-    /// Structure: `| guard_expr = body_expr`
+    /// Lower a single `GuardChirho` CST node into a qualifier sequence and body.
+    /// Structure:
+    ///   | guard_expr = body_expr
+    ///   | pat <- expr, guard_expr = body_expr
     fn lower_guard_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
         base_chirho: usize,
-    ) -> Option<GuardedExprChirho> {
+    ) -> Option<LoweredGuardArmChirho> {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let span_chirho =
             self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
-        let mut guard_expr_chirho = None;
+        let mut current_qual_parts_chirho: Vec<QualPartChirho> = Vec::new();
+        let mut quals_chirho: Vec<StmtChirho> = Vec::new();
         let mut body_expr_chirho = None;
         let mut saw_equals_chirho = false;
         let mut saw_pipe_chirho = false;
@@ -1228,31 +1256,55 @@ impl LowerCtxChirho {
                     if tok_chirho.kind_chirho() == TokenKindChirho::PipeChirho {
                         saw_pipe_chirho = true;
                     } else if tok_chirho.kind_chirho() == TokenKindChirho::EqualsChirho {
+                        if !current_qual_parts_chirho.is_empty() {
+                            if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                &current_qual_parts_chirho,
+                                span_chirho,
+                            ) {
+                                quals_chirho.push(qual_chirho);
+                            }
+                            current_qual_parts_chirho.clear();
+                        }
                         saw_equals_chirho = true;
                     } else if saw_pipe_chirho && !saw_equals_chirho {
-                        // Token-level guard expression (e.g., `otherwise`, `True`)
-                        if guard_expr_chirho.is_none() {
-                            let s_chirho = self
-                                .span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                            if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
-                                || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                        if tok_chirho.kind_chirho() == TokenKindChirho::CommaChirho {
+                            if let Some(qual_chirho) = self
+                                .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
                             {
-                                let name_chirho = self.name_from_token_chirho(tok_chirho, s_chirho);
-                                guard_expr_chirho = Some(
-                                    if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho {
-                                        ExprChirho::ConChirho(name_chirho)
-                                    } else {
-                                        ExprChirho::VarChirho(name_chirho)
-                                    },
-                                );
+                                quals_chirho.push(qual_chirho);
                             }
+                            current_qual_parts_chirho.clear();
+                        } else if tok_chirho.kind_chirho() == TokenKindChirho::LeftArrowChirho {
+                            current_qual_parts_chirho.push(QualPartChirho::ArrowChirho);
                         }
                     }
                 }
                 GreenElementChirho::NodeChirho(n_chirho) => {
-                    if saw_pipe_chirho && !saw_equals_chirho && guard_expr_chirho.is_none() {
-                        guard_expr_chirho =
-                            Some(self.lower_expr_chirho(n_chirho, child_chirho.start_chirho));
+                    if saw_pipe_chirho && !saw_equals_chirho {
+                        if n_chirho.kind_chirho() == SyntaxKindChirho::LetStmtChirho {
+                            if let Some(qual_chirho) = self
+                                .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+                            {
+                                quals_chirho.push(qual_chirho);
+                            }
+                            current_qual_parts_chirho.clear();
+                            quals_chirho.push(StmtChirho::LetChirho {
+                                binds_chirho: self
+                                    .lower_let_stmt_binds_chirho(n_chirho, child_chirho.start_chirho),
+                                span_chirho: self.span_chirho(
+                                    child_chirho.start_chirho,
+                                    child_chirho.end_chirho,
+                                ),
+                            });
+                        } else if is_pat_kind_chirho(n_chirho.kind_chirho()) {
+                            current_qual_parts_chirho.push(QualPartChirho::PatChirho(
+                                self.lower_pat_chirho(n_chirho, child_chirho.start_chirho),
+                            ));
+                        } else {
+                            current_qual_parts_chirho.push(QualPartChirho::ExprChirho(
+                                self.lower_expr_chirho(n_chirho, child_chirho.start_chirho),
+                            ));
+                        }
                     } else if saw_equals_chirho && body_expr_chirho.is_none() {
                         body_expr_chirho =
                             Some(self.lower_expr_chirho(n_chirho, child_chirho.start_chirho));
@@ -1261,11 +1313,113 @@ impl LowerCtxChirho {
             }
         }
 
-        Some(GuardedExprChirho {
-            guard_chirho: guard_expr_chirho.unwrap_or(self.placeholder_expr_chirho()),
+        if !current_qual_parts_chirho.is_empty() {
+            if let Some(qual_chirho) =
+                self.flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+            {
+                quals_chirho.push(qual_chirho);
+            }
+        }
+
+        Some(LoweredGuardArmChirho {
+            quals_chirho,
             body_chirho: body_expr_chirho.unwrap_or(self.placeholder_expr_chirho()),
             span_chirho,
         })
+    }
+
+    fn lower_guard_arms_to_expr_chirho(
+        &self,
+        guards_chirho: &[LoweredGuardArmChirho],
+    ) -> ExprChirho {
+        if let Some((first_guard_chirho, rest_guards_chirho)) = guards_chirho.split_first() {
+            let rest_expr_chirho = self.lower_guard_arms_to_expr_chirho(rest_guards_chirho);
+            self.lower_guard_quals_to_expr_chirho(
+                &first_guard_chirho.quals_chirho,
+                first_guard_chirho.body_chirho.clone(),
+                rest_expr_chirho,
+                first_guard_chirho.span_chirho,
+            )
+        } else {
+            let error_name_chirho =
+                NameChirho::RawChirho(RawNameChirho::unqualified_chirho("error", SpanChirho::DUMMY_CHIRHO));
+            ExprChirho::AppChirho {
+                fun_chirho: Box::new(ExprChirho::VarChirho(error_name_chirho)),
+                arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::StringChirho(
+                    "Non-exhaustive guards".to_string(),
+                    SpanChirho::DUMMY_CHIRHO,
+                ))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }
+        }
+    }
+
+    fn lower_guard_quals_to_expr_chirho(
+        &self,
+        quals_chirho: &[StmtChirho],
+        then_expr_chirho: ExprChirho,
+        else_expr_chirho: ExprChirho,
+        span_chirho: SpanChirho,
+    ) -> ExprChirho {
+        if let Some((first_qual_chirho, rest_quals_chirho)) = quals_chirho.split_first() {
+            match first_qual_chirho {
+                StmtChirho::ExprChirho(expr_chirho) => ExprChirho::IfChirho {
+                    cond_chirho: Box::new(expr_chirho.clone()),
+                    then_chirho: Box::new(self.lower_guard_quals_to_expr_chirho(
+                        rest_quals_chirho,
+                        then_expr_chirho,
+                        else_expr_chirho.clone(),
+                        span_chirho,
+                    )),
+                    else_chirho: Box::new(else_expr_chirho),
+                    span_chirho,
+                },
+                StmtChirho::BindChirho {
+                    pat_chirho,
+                    expr_chirho,
+                    span_chirho: bind_span_chirho,
+                } => ExprChirho::CaseChirho {
+                    scrutinee_chirho: Box::new(expr_chirho.clone()),
+                    alts_chirho: vec![
+                        AltChirho {
+                            pat_chirho: pat_chirho.clone(),
+                            rhs_chirho: RhsChirho::UnguardedChirho(
+                                self.lower_guard_quals_to_expr_chirho(
+                                    rest_quals_chirho,
+                                    then_expr_chirho,
+                                    else_expr_chirho.clone(),
+                                    span_chirho,
+                                ),
+                            ),
+                            where_binds_chirho: vec![],
+                            span_chirho: *bind_span_chirho,
+                        },
+                        AltChirho {
+                            pat_chirho: PatChirho::WildcardChirho(*bind_span_chirho),
+                            rhs_chirho: RhsChirho::UnguardedChirho(else_expr_chirho),
+                            where_binds_chirho: vec![],
+                            span_chirho: *bind_span_chirho,
+                        },
+                    ],
+                    span_chirho: *bind_span_chirho,
+                },
+                StmtChirho::LetChirho {
+                    binds_chirho,
+                    span_chirho: let_span_chirho,
+                } => ExprChirho::LetChirho {
+                    binds_chirho: binds_chirho.clone(),
+                    body_chirho: Box::new(self.lower_guard_quals_to_expr_chirho(
+                        rest_quals_chirho,
+                        then_expr_chirho,
+                        else_expr_chirho,
+                        span_chirho,
+                    )),
+                    span_chirho: *let_span_chirho,
+                },
+            }
+        } else {
+            then_expr_chirho
+        }
     }
 
     /// Lower a `WhereClauseChirho` CST node into a list of local bindings.
@@ -7016,14 +7170,15 @@ impl LowerCtxChirho {
         if let Some(pos_chirho) = arrow_pos_chirho {
             // Generator: parts before arrow form the pattern (as expr),
             // parts after arrow form the source expression.
-            let pat_expr_chirho = parts_chirho
+            let pat_chirho = parts_chirho
                 .iter()
                 .take(pos_chirho)
-                .filter_map(|p_chirho| match p_chirho {
-                    QualPartChirho::ExprChirho(e_chirho) => Some(e_chirho.clone()),
-                    _ => None,
+                .find_map(|p_chirho| match p_chirho {
+                    QualPartChirho::PatChirho(pat_chirho) => Some(pat_chirho.clone()),
+                    QualPartChirho::ExprChirho(e_chirho) => Some(Self::expr_to_pat_chirho(e_chirho)),
+                    QualPartChirho::ArrowChirho => None,
                 })
-                .next();
+                .unwrap_or(PatChirho::WildcardChirho(span_chirho));
 
             let src_expr_chirho = parts_chirho
                 .iter()
@@ -7033,13 +7188,6 @@ impl LowerCtxChirho {
                     _ => None,
                 })
                 .next();
-
-            // Convert the pattern expression to a PatChirho
-            let pat_chirho = if let Some(expr_chirho) = pat_expr_chirho {
-                Self::expr_to_pat_chirho(&expr_chirho)
-            } else {
-                PatChirho::WildcardChirho(span_chirho)
-            };
 
             let expr_chirho = src_expr_chirho.unwrap_or_else(|| self.placeholder_expr_chirho());
 
@@ -7096,6 +7244,69 @@ impl LowerCtxChirho {
                     .collect(),
                 span_chirho: *span_chirho,
             },
+            ExprChirho::ListChirho {
+                elements_chirho,
+                span_chirho,
+            } => PatChirho::ListChirho {
+                elements_chirho: elements_chirho
+                    .iter()
+                    .map(|e_chirho| Self::expr_to_pat_chirho(e_chirho))
+                    .collect(),
+                span_chirho: *span_chirho,
+            },
+            ExprChirho::ParenChirho {
+                inner_chirho,
+                span_chirho,
+            } => PatChirho::ParenChirho {
+                inner_chirho: Box::new(Self::expr_to_pat_chirho(inner_chirho)),
+                span_chirho: *span_chirho,
+            },
+            ExprChirho::AppChirho { .. } => {
+                let mut app_args_chirho: Vec<PatChirho> = Vec::new();
+                let mut head_expr_chirho = expr_chirho;
+                while let ExprChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } = head_expr_chirho
+                {
+                    app_args_chirho.push(Self::expr_to_pat_chirho(arg_chirho));
+                    head_expr_chirho = fun_chirho;
+                }
+                app_args_chirho.reverse();
+                match head_expr_chirho {
+                    ExprChirho::ConChirho(con_chirho) => PatChirho::ConChirho {
+                        con_chirho: con_chirho.clone(),
+                        args_chirho: app_args_chirho,
+                        span_chirho: expr_chirho.span_chirho(),
+                    },
+                    ExprChirho::VarChirho(name_chirho)
+                        if name_chirho
+                            .text_chirho()
+                            .chars()
+                            .next()
+                            .map_or(false, |c_chirho| c_chirho.is_uppercase()) =>
+                    {
+                        PatChirho::ConChirho {
+                            con_chirho: name_chirho.clone(),
+                            args_chirho: app_args_chirho,
+                            span_chirho: expr_chirho.span_chirho(),
+                        }
+                    }
+                    _ => PatChirho::WildcardChirho(expr_chirho.span_chirho()),
+                }
+            }
+            ExprChirho::InfixChirho {
+                left_chirho,
+                op_chirho,
+                right_chirho,
+                span_chirho,
+            } => PatChirho::InfixConChirho {
+                left_chirho: Box::new(Self::expr_to_pat_chirho(left_chirho)),
+                op_chirho: op_chirho.clone(),
+                right_chirho: Box::new(Self::expr_to_pat_chirho(right_chirho)),
+                span_chirho: *span_chirho,
+            },
             _ => {
                 // Fallback: wildcard
                 PatChirho::WildcardChirho(expr_chirho.span_chirho())
@@ -7112,8 +7323,17 @@ impl LowerCtxChirho {
 enum QualPartChirho {
     /// An expression or pattern.
     ExprChirho(ExprChirho),
+    /// A real pattern parsed on the left of `<-`.
+    PatChirho(PatChirho),
     /// The `<-` arrow token separating pattern from source.
     ArrowChirho,
+}
+
+#[derive(Debug, Clone)]
+struct LoweredGuardArmChirho {
+    quals_chirho: Vec<StmtChirho>,
+    body_chirho: ExprChirho,
+    span_chirho: SpanChirho,
 }
 
 struct ChildChirho<'a> {
@@ -7524,6 +7744,46 @@ fn collect_hex_escape_chirho(chars_chirho: &mut std::str::Chars<'_>) -> char {
         .unwrap_or('\u{FFFD}')
 }
 
+fn named_ascii_escape_chirho(name_chirho: &str) -> Option<char> {
+    match name_chirho {
+        "NUL" => Some('\0'),
+        "SOH" => Some('\u{0001}'),
+        "STX" => Some('\u{0002}'),
+        "ETX" => Some('\u{0003}'),
+        "EOT" => Some('\u{0004}'),
+        "ENQ" => Some('\u{0005}'),
+        "ACK" => Some('\u{0006}'),
+        "BEL" => Some('\u{0007}'),
+        "BS" => Some('\u{0008}'),
+        "HT" => Some('\t'),
+        "LF" => Some('\n'),
+        "VT" => Some('\u{000B}'),
+        "FF" => Some('\u{000C}'),
+        "CR" => Some('\r'),
+        "SO" => Some('\u{000E}'),
+        "SI" => Some('\u{000F}'),
+        "DLE" => Some('\u{0010}'),
+        "DC1" => Some('\u{0011}'),
+        "DC2" => Some('\u{0012}'),
+        "DC3" => Some('\u{0013}'),
+        "DC4" => Some('\u{0014}'),
+        "NAK" => Some('\u{0015}'),
+        "SYN" => Some('\u{0016}'),
+        "ETB" => Some('\u{0017}'),
+        "CAN" => Some('\u{0018}'),
+        "EM" => Some('\u{0019}'),
+        "SUB" => Some('\u{001A}'),
+        "ESC" => Some('\u{001B}'),
+        "FS" => Some('\u{001C}'),
+        "GS" => Some('\u{001D}'),
+        "RS" => Some('\u{001E}'),
+        "US" => Some('\u{001F}'),
+        "SP" => Some(' '),
+        "DEL" => Some('\u{007F}'),
+        _ => None,
+    }
+}
+
 /// Process Haskell escape sequences in a string literal.
 /// Handles \n, \t, \r, \\, \", \', \0, \a, \b, \f, \v,
 /// decimal (\65), octal (\o101), hex (\x41), and string gaps.
@@ -7548,6 +7808,22 @@ fn unescape_string_chirho(s_chirho: &str) -> String {
                 Some('x') => result_chirho.push(collect_hex_escape_chirho(&mut chars_chirho)),
                 Some(d_chirho) if d_chirho.is_ascii_digit() && d_chirho != '0' => {
                     result_chirho.push(collect_decimal_escape_chirho(d_chirho, &mut chars_chirho));
+                }
+                Some(c_chirho) if c_chirho.is_ascii_uppercase() => {
+                    let mut name_chirho = String::from(c_chirho);
+                    while let Some(next_chirho) = chars_chirho.clone().next() {
+                        if next_chirho.is_ascii_uppercase() || next_chirho.is_ascii_digit() {
+                            name_chirho.push(chars_chirho.next().unwrap());
+                        } else {
+                            break;
+                        }
+                    }
+                    if let Some(ch_chirho) = named_ascii_escape_chirho(&name_chirho) {
+                        result_chirho.push(ch_chirho);
+                    } else {
+                        result_chirho.push('\\');
+                        result_chirho.push_str(&name_chirho);
+                    }
                 }
                 Some(ws_chirho) if ws_chirho.is_ascii_whitespace() => {
                     // String gap: \<whitespace>\  — skip all whitespace until next backslash
@@ -7607,6 +7883,9 @@ fn unescape_char_chirho(s_chirho: &str) -> char {
                 .ok()
                 .and_then(char::from_u32)
                 .unwrap_or('\u{FFFD}'),
+            Some(c_chirho) if c_chirho.is_ascii_uppercase() => {
+                named_ascii_escape_chirho(rest_chirho).unwrap_or('\u{FFFD}')
+            }
             _ => s_chirho.chars().nth(1).unwrap_or('\0'),
         }
     } else {
@@ -7666,6 +7945,162 @@ mod tests_chirho {
         assert!(module_chirho.decls_chirho.iter().any(|d_chirho| {
             matches!(d_chirho, DeclChirho::FunBindChirho { name_chirho, .. } if name_chirho.text_chirho() == "f")
         }));
+    }
+
+    #[test]
+    fn lower_parsec_prim_state_record_decl_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module Text.Parsec.Prim where\n\
+unknownErrorChirho :: StateChirho sChirho uChirho -> ParseErrorChirho\n\
+unknownErrorChirho stateChirho = newErrorUnknownChirho (statePosChirho stateChirho)\n\
+\n\
+data StateChirho sChirho uChirho = StateChirho {\n\
+      stateInputChirho :: sChirho,\n\
+      statePosChirho   :: !SourcePosChirho,\n\
+      stateUserChirho  :: !uChirho\n\
+    }\n",
+        );
+        assert_eq!(module_chirho.decls_chirho.len(), 3);
+        match &module_chirho.decls_chirho[2] {
+            DeclChirho::DataDeclChirho {
+                constructors_chirho,
+                ..
+            } => {
+                assert_eq!(constructors_chirho.len(), 1);
+                match &constructors_chirho[0] {
+                    ConDeclChirho::RecordChirho { fields_chirho, .. } => {
+                        assert_eq!(fields_chirho.len(), 3);
+                        let lowered_field_names_chirho: Vec<Vec<String>> = fields_chirho
+                            .iter()
+                            .map(|fd_chirho| {
+                                fd_chirho
+                                    .names_chirho
+                                    .iter()
+                                    .map(|name_chirho| name_chirho.text_chirho().to_string())
+                                    .collect()
+                            })
+                            .collect();
+                        assert_eq!(
+                            lowered_field_names_chirho,
+                            vec![
+                                vec!["stateInputChirho".to_string()],
+                                vec!["statePosChirho".to_string()],
+                                vec!["stateUserChirho".to_string()]
+                            ]
+                        );
+                    }
+                    other_chirho => panic!("expected RecordChirho, got {:?}", other_chirho),
+                }
+            }
+            other_chirho => panic!("expected DataDeclChirho, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_parsec_prim_trimmed_module_shape_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            r#"{-# LANGUAGE RankNTypes #-}
+module Text.Parsec.Prim
+    ( unknownErrorChirho
+    , runParsecTChirho
+    , mkPTChirho
+    , StateChirho(..)
+    ) where
+
+unknownErrorChirho :: StateChirho sChirho uChirho -> ParseErrorChirho
+unknownErrorChirho stateChirho = newErrorUnknownChirho (statePosChirho stateChirho)
+
+{-# INLINABLE runParsecTChirho #-}
+runParsecTChirho pChirho sChirho = unParserChirho pChirho sChirho cokChirho cerrChirho eokChirho eerrChirho
+    where cokChirho aChirho s'Chirho errChirho = return (OkChirho aChirho s'Chirho errChirho)
+          cerrChirho errChirho = return (ErrorChirho errChirho)
+          eokChirho aChirho s'Chirho errChirho = return (OkChirho aChirho s'Chirho errChirho)
+          eerrChirho errChirho = return (ErrorChirho errChirho)
+
+{-# INLINABLE mkPTChirho #-}
+mkPTChirho kChirho = ParsecTChirho $ \sChirho cokChirho cerrChirho eokChirho eerrChirho -> do
+           consChirho <- kChirho sChirho
+           case consChirho of
+             ConsumedChirho mrepChirho -> do
+                       repChirho <- mrepChirho
+                       case repChirho of
+                         OkChirho xChirho s'Chirho errChirho -> cokChirho xChirho s'Chirho errChirho
+                         ErrorChirho errChirho -> cerrChirho errChirho
+             EmptyChirho mrepChirho -> do
+                       repChirho <- mrepChirho
+                       case repChirho of
+                         OkChirho xChirho s'Chirho errChirho -> eokChirho xChirho s'Chirho errChirho
+                         ErrorChirho errChirho -> eerrChirho errChirho
+
+data StateChirho sChirho uChirho = StateChirho {
+      stateInputChirho :: sChirho,
+      statePosChirho   :: !SourcePosChirho,
+      stateUserChirho  :: !uChirho
+    }
+"#,
+        );
+        assert_eq!(module_chirho.name_chirho.full_name_chirho(), "Text.Parsec.Prim");
+        assert!(
+            module_chirho.decls_chirho.iter().any(|decl_chirho| matches!(
+                decl_chirho,
+                DeclChirho::DataDeclChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "StateChirho"
+            )),
+            "expected StateChirho data declaration, got {:?}",
+            module_chirho
+                .decls_chirho
+                .iter()
+                .map(|decl_chirho| match decl_chirho {
+                    DeclChirho::TypeSigChirho { name_chirho, .. } => format!("typesig:{}", name_chirho.text_chirho()),
+                    DeclChirho::FunBindChirho { name_chirho, .. } => format!("fun:{}", name_chirho.text_chirho()),
+                    DeclChirho::DataDeclChirho { name_chirho, .. } => format!("data:{}", name_chirho.text_chirho()),
+                    DeclChirho::NewtypeDeclChirho { name_chirho, .. } => format!("newtype:{}", name_chirho.text_chirho()),
+                    DeclChirho::PatBindChirho { .. } => "patbind".to_string(),
+                    other_chirho => format!("{:?}", other_chirho),
+                })
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn lower_where_block_stays_local_in_parsect_shape_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            r#"module M where
+runParsecTChirho pChirho sChirho = unParserChirho pChirho sChirho cokChirho cerrChirho eokChirho eerrChirho
+    where cokChirho aChirho s'Chirho errChirho = return (OkChirho aChirho s'Chirho errChirho)
+          cerrChirho errChirho = return (ErrorChirho errChirho)
+          eokChirho aChirho s'Chirho errChirho = return (OkChirho aChirho s'Chirho errChirho)
+          eerrChirho errChirho = return (ErrorChirho errChirho)
+
+data TailChirho = TailChirho
+"#,
+        );
+        assert_eq!(module_chirho.decls_chirho.len(), 2, "{:?}", module_chirho.decls_chirho);
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => {
+                assert_eq!(matches_chirho.len(), 1);
+                let local_bind_names_chirho: Vec<String> = matches_chirho[0]
+                    .where_binds_chirho
+                    .iter()
+                    .filter_map(|bind_chirho| match bind_chirho {
+                        LocalBindChirho::FunBindChirho { name_chirho, .. } => {
+                            Some(name_chirho.text_chirho().to_string())
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                assert_eq!(
+                    local_bind_names_chirho,
+                    vec![
+                        "cokChirho".to_string(),
+                        "cerrChirho".to_string(),
+                        "eokChirho".to_string(),
+                        "eerrChirho".to_string()
+                    ]
+                );
+            }
+            other_chirho => panic!("expected FunBindChirho, got {:?}", other_chirho),
+        }
     }
 
     #[test]
@@ -9164,7 +9599,37 @@ class Describable a where
             other_chirho => panic!("expected application tree for nested $, got {:?}", other_chirho),
         }
     }
-}
+
+    #[test]
+    fn lower_pattern_guard_rhs_to_nested_case_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nfChirho xsChirho\n  | msgChirho : _ <- xsChirho, null msgChirho = 1\n  | otherwise = 0\n",
+        );
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "fChirho")
+            })
+            .expect("expected fChirho binding");
+
+        let rhs_expr_chirho = match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho {
+                RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+                other_chirho => panic!("expected lowered nested expression, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+
+        match rhs_expr_chirho {
+            ExprChirho::CaseChirho { alts_chirho, .. } => {
+                assert_eq!(alts_chirho.len(), 2, "pattern guard should lower to case with fallback");
+            }
+            other_chirho => panic!("expected top-level case from pattern guard lowering, got {:?}", other_chirho),
+            }
+        }
+    }
 
 /// Extensions enabled by GHC2021 (and GHC2024 which is a superset).
 /// Reference: https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/control.html#extension-GHC2021

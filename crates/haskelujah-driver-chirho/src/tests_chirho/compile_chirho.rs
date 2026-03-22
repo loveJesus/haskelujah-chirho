@@ -705,6 +705,75 @@ fn multi_module_import_chirho() {
 }
 
 #[test]
+fn multi_module_imported_try_overrides_builtin_try_chirho() {
+    use crate::compile_modules_chirho;
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho: Vec<(&str, &str)> = vec![
+        (
+            "ParserPrimMiniChirho.hs",
+            "module ParserPrimMini where\ntry x = x\n",
+        ),
+        (
+            "MainChirho.hs",
+            "module Main where\nimport ParserPrimMini\nvalue = try 1\n",
+        ),
+    ];
+
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "real imported try should override builtin exception try: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_sort_on_string_list_uses_generic_builtin_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module SortStringMiniChirho where\nimport Data.List (sort)\nvalueChirho = sort [\"beta\", \"alpha\"]\n",
+        &mut source_map_chirho,
+        "SortStringMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "Data.List.sort should stay polymorphic over [String]: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_extended_char_escape_literals_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module CharEscapeMiniChirho where\nvalueChirho = ['\\026', '\\BS', '\\DEL', '\\DC1', '\\x41', '\\o101']\n",
+        &mut source_map_chirho,
+        "CharEscapeMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "extended char escapes should lex and type-check as Char literals: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_where_helper_polymorphism_in_recursive_group_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module WherePolyMiniChirho where\nvalueChirho = (symbolChirho \"ok\", reservedChirho) where\n  reservedChirho = lexemeChirho ()\n  symbolChirho nameChirho = lexemeChirho nameChirho\n  lexemeChirho pChirho = pChirho\n",
+        &mut source_map_chirho,
+        "WherePolyMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "local where helper should generalize across String and () uses: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn exhaustiveness_check_passes_for_complete_case_chirho() {
     use crate::compile_source_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();
@@ -2358,6 +2427,21 @@ main = case safeLookupChirho 2 [40,41,42,43] of
     }
 }
 
+#[test]
+fn llvm_round_trip_pattern_guard_binds_name_output_chirho() {
+    let src_chirho = r#"module Main where
+fChirho xsChirho
+  | msgChirho : _ <- xsChirho, null msgChirho = 1
+  | _ : _ <- xsChirho = 2
+  | otherwise = 0
+main = print (fChirho ["", "x"])
+"#;
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(exit_code_chirho, 0, "pattern guard executable should exit successfully");
+        assert_eq!(stdout_chirho, "1\n");
+    }
+}
+
 // ── Cranelift backend driver integration tests ────────────────────────
 
 #[test]
@@ -2398,6 +2482,21 @@ fn cranelift_executable_arithmetic_chirho() {
         !obj_chirho.object_bytes_chirho.is_empty(),
         "object file should not be empty"
     );
+}
+
+#[test]
+fn cranelift_round_trip_pattern_guard_binds_name_output_chirho() {
+    let src_chirho = r#"module Main where
+fChirho xsChirho
+  | msgChirho : _ <- xsChirho, null msgChirho = 1
+  | _ : _ <- xsChirho = 2
+  | otherwise = 0
+main = print (fChirho ["", "x"])
+"#;
+    if let Some((exit_code_chirho, stdout_chirho)) = cranelift_round_trip_output_chirho(src_chirho) {
+        assert_eq!(exit_code_chirho, 0, "pattern guard executable should exit successfully");
+        assert_eq!(stdout_chirho, "1\n");
+    }
 }
 
 #[test]

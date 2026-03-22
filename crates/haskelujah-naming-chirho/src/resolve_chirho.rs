@@ -1108,6 +1108,81 @@ mod tests_chirho {
     }
 
     #[test]
+    fn import_builtin_class_all_includes_methods_chirho() {
+        let builtins_chirho = crate::iface_chirho::builtin_module_ifaces_chirho();
+        let control_monad_iface_chirho = builtins_chirho
+            .iter()
+            .rev()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Control.Monad")
+            .expect("Control.Monad builtin iface should exist");
+        let monad_plus_iface_chirho = control_monad_iface_chirho
+            .exports_chirho
+            .types_chirho
+            .get("MonadPlus")
+            .expect("Control.Monad should export MonadPlus");
+        assert_eq!(
+            monad_plus_iface_chirho.methods_chirho,
+            vec!["mzero".to_string(), "mplus".to_string()]
+        );
+        let spec_chirho = ImportSpecChirho {
+            hiding_chirho: false,
+            items_chirho: vec![ImportItemChirho::TyConChirho {
+                name_chirho: dummy_name_chirho("MonadPlus"),
+                members_chirho:
+                    haskelujah_ast_chirho::module_chirho::ExportMembersChirho::AllChirho,
+            }],
+        };
+        let imported_names_chirho =
+            compute_imported_names_chirho(&control_monad_iface_chirho.exports_chirho, &Some(spec_chirho.clone()));
+        let imported_value_names_chirho: Vec<String> = imported_names_chirho
+            .iter()
+            .filter(|(_, namespace_chirho, _)| *namespace_chirho == NamespaceChirho::ValueChirho)
+            .map(|(name_chirho, _, _)| name_chirho.clone())
+            .collect();
+        assert!(
+            imported_value_names_chirho.contains(&"mplus".to_string()),
+            "expected MonadPlus(..) to expand to mplus, got {:?}",
+            imported_names_chirho
+        );
+        assert!(
+            imported_value_names_chirho.contains(&"mzero".to_string()),
+            "expected MonadPlus(..) to expand to mzero, got {:?}",
+            imported_names_chirho
+        );
+        let module_chirho = mk_module_chirho(
+            vec![],
+            vec![ImportDeclChirho {
+                module_chirho: dummy_name_chirho("Control.Monad"),
+                qualified_chirho: false,
+                alias_chirho: None,
+                spec_chirho: Some(spec_chirho),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+        );
+
+        let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &builtins_chirho);
+
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("MonadPlus")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("mplus")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("mzero")
+                .is_some()
+        );
+    }
+
+    #[test]
     fn import_prefers_latest_iface_for_same_module_name_chirho() {
         let older_iface_chirho = ModuleIfaceChirho {
             name_chirho: "Lib".to_string(),

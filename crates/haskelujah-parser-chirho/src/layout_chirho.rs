@@ -392,6 +392,7 @@ impl<'src> LayoutRuleChirho<'src> {
                             RawTokenKindChirho::ThenChirho
                                 | RawTokenKindChirho::ElseChirho
                                 | RawTokenKindChirho::OfChirho
+                                | RawTokenKindChirho::WhereChirho
                         );
                         if is_cont_chirho {
                             break;
@@ -425,6 +426,7 @@ impl<'src> LayoutRuleChirho<'src> {
                                 RawTokenKindChirho::ThenChirho
                                     | RawTokenKindChirho::ElseChirho
                                     | RawTokenKindChirho::OfChirho
+                                    | RawTokenKindChirho::WhereChirho
                             );
 
                             if !is_continuation_chirho
@@ -867,5 +869,90 @@ f xs = g xs
             vlb_count_chirho, 3,
             "expected 3 layout blocks (module + outer where + inner where)"
         );
+    }
+
+    #[test]
+    fn where_after_function_rhs_opens_layout_without_semicolon_chirho() {
+        let source_chirho = "\
+module M where
+runParsecTChirho pChirho sChirho = unParserChirho pChirho sChirho cokChirho cerrChirho eokChirho eerrChirho
+    where cokChirho aChirho s'Chirho errChirho = return (OkChirho aChirho s'Chirho errChirho)
+          cerrChirho errChirho = return (ErrorChirho errChirho)
+          eokChirho aChirho s'Chirho errChirho = return (OkChirho aChirho s'Chirho errChirho)
+          eerrChirho errChirho = return (ErrorChirho errChirho)
+";
+        let kinds_chirho = layout_kinds_chirho(source_chirho);
+        let where_idx_chirho = kinds_chirho
+            .iter()
+            .position(|kind_chirho| *kind_chirho == RawTokenKindChirho::WhereChirho)
+            .expect("should find where");
+        assert_ne!(
+            kinds_chirho[where_idx_chirho.saturating_sub(1)],
+            RawTokenKindChirho::VirtualSemicolonChirho,
+            "where should continue the current declaration, not start a new one"
+        );
+        assert_eq!(
+            kinds_chirho[where_idx_chirho + 1],
+            RawTokenKindChirho::VirtualLeftBraceChirho,
+            "where should open an implicit layout block"
+        );
+        let semicolons_after_where_chirho = kinds_chirho[where_idx_chirho..]
+            .iter()
+            .filter(|kind_chirho| **kind_chirho == RawTokenKindChirho::VirtualSemicolonChirho)
+            .count();
+        assert_eq!(
+            semicolons_after_where_chirho, 3,
+            "where block with 4 local bindings should contain 3 semicolons, got {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn nested_case_do_layout_in_mkpt_chirho() {
+        let source_chirho = "\
+module M where
+mkPTChirho kChirho = ParsecTChirho $ \\sChirho cokChirho cerrChirho eokChirho eerrChirho -> do
+           consChirho <- kChirho sChirho
+           case consChirho of
+             ConsumedChirho mrepChirho -> do
+                       repChirho <- mrepChirho
+                       case repChirho of
+                         OkChirho xChirho s'Chirho errChirho -> cokChirho xChirho s'Chirho errChirho
+                         ErrorChirho errChirho -> cerrChirho errChirho
+             EmptyChirho mrepChirho -> do
+                       repChirho <- mrepChirho
+                       case repChirho of
+                         OkChirho xChirho s'Chirho errChirho -> eokChirho xChirho s'Chirho errChirho
+                         ErrorChirho errChirho -> eerrChirho errChirho
+";
+        let kinds_chirho = layout_kinds_chirho(source_chirho);
+        let do_indices_chirho: Vec<usize> = kinds_chirho
+            .iter()
+            .enumerate()
+            .filter_map(|(idx_chirho, kind_chirho)| {
+                (*kind_chirho == RawTokenKindChirho::DoChirho).then_some(idx_chirho)
+            })
+            .collect();
+        for do_idx_chirho in do_indices_chirho {
+            assert_eq!(
+                kinds_chirho[do_idx_chirho + 1],
+                RawTokenKindChirho::VirtualLeftBraceChirho,
+                "every do should open a layout block"
+            );
+        }
+        let of_indices_chirho: Vec<usize> = kinds_chirho
+            .iter()
+            .enumerate()
+            .filter_map(|(idx_chirho, kind_chirho)| {
+                (*kind_chirho == RawTokenKindChirho::OfChirho).then_some(idx_chirho)
+            })
+            .collect();
+        for of_idx_chirho in of_indices_chirho {
+            assert_eq!(
+                kinds_chirho[of_idx_chirho + 1],
+                RawTokenKindChirho::VirtualLeftBraceChirho,
+                "every of should open a layout block"
+            );
+        }
     }
 }
