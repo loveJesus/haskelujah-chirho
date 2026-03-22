@@ -759,6 +759,72 @@ fn frontend_extended_char_escape_literals_typecheck_chirho() {
 }
 
 #[test]
+fn frontend_integer_literals_unify_with_integer_annotations_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module IntegerLiteralMiniChirho where\nzeroChirho :: Integer\nzeroChirho = 0\nsuccChirho :: Integer -> Integer\nsuccChirho nChirho = nChirho + 1\n",
+        &mut source_map_chirho,
+        "IntegerLiteralMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "integer literals should stay polymorphic and unify with Integer annotations: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_ambiguous_numeric_default_prefers_integer_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module DefaultIntegerMiniChirho where\nvalueChirho = toInteger 0\n",
+        &mut source_map_chirho,
+        "DefaultIntegerMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "ambiguous numeric literals should default compatibly with Integer: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_value_operator_import_roundtrip_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "Safe/Util.hs",
+            "module Safe.Util ((.^)) where\n(.^) fChirho gChirho xChirho yChirho = fChirho (gChirho xChirho yChirho)\n",
+        ),
+        (
+            "Safe.hs",
+            "module Safe where\nimport Safe.Util ((.^))\nvalueChirho = (+ 1) .^ (+) 2 3\n",
+        ),
+    ];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "value operators should round-trip through export/import interfaces: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_same_module_operator_binding_resolves_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module PermMiniChirho where\ninfixl 1 <||>\n(<||>) fChirho xChirho = fChirho xChirho\nvalueChirho = Just <||> 1\n",
+        &mut source_map_chirho,
+        "PermMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "same-module operator function bindings should resolve under bare operator syntax: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_where_helper_polymorphism_in_recursive_group_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

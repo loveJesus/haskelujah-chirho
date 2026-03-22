@@ -53,6 +53,20 @@ pub struct ModuleIfaceChirho {
     pub exports_chirho: IfaceExportsChirho,
 }
 
+fn canonical_value_name_chirho(name_chirho: &str) -> String {
+    if name_chirho.starts_with('(') && name_chirho.ends_with(')') && name_chirho.len() > 2 {
+        let inner_chirho = &name_chirho[1..name_chirho.len() - 1];
+        if !inner_chirho.is_empty()
+            && inner_chirho
+                .chars()
+                .all(|char_chirho| !char_chirho.is_alphanumeric() && char_chirho != '_')
+        {
+            return inner_chirho.to_string();
+        }
+    }
+    name_chirho.to_string()
+}
+
 // ---------------------------------------------------------------------------
 // Building an interface from a module
 // ---------------------------------------------------------------------------
@@ -9311,7 +9325,7 @@ fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsC
                 let class_name_chirho = name_chirho.text_chirho().to_string();
                 let method_names_chirho: Vec<String> = methods_chirho
                     .iter()
-                    .map(|m_chirho| m_chirho.name_chirho.text_chirho().to_string())
+                    .map(|m_chirho| canonical_value_name_chirho(m_chirho.name_chirho.text_chirho()))
                     .collect();
 
                 // Export each method as a value
@@ -9340,7 +9354,7 @@ fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsC
                 span_chirho,
                 ..
             } => {
-                let fn_name_chirho = name_chirho.text_chirho().to_string();
+                let fn_name_chirho = canonical_value_name_chirho(name_chirho.text_chirho());
                 exports_chirho.values_chirho.insert(
                     fn_name_chirho.clone(),
                     IfaceValueChirho {
@@ -9417,12 +9431,13 @@ fn filter_exports_chirho(
     for spec_chirho in specs_chirho {
         match spec_chirho {
             ExportSpecChirho::VarChirho(name_chirho) => {
-                let text_chirho = name_chirho.text_chirho();
-                if let Some(val_chirho) = all_chirho.values_chirho.get(text_chirho) {
+                let value_text_chirho = canonical_value_name_chirho(name_chirho.text_chirho());
+                if let Some(val_chirho) = all_chirho.values_chirho.get(&value_text_chirho) {
                     result_chirho
                         .values_chirho
-                        .insert(text_chirho.to_string(), val_chirho.clone());
+                        .insert(value_text_chirho.clone(), val_chirho.clone());
                 }
+                let text_chirho = name_chirho.text_chirho();
                 // A bare name in an export list can also refer to a type
                 if let Some(ty_chirho) = all_chirho.types_chirho.get(text_chirho) {
                     result_chirho.types_chirho.insert(
@@ -9450,7 +9465,7 @@ fn filter_exports_chirho(
                         ExportMembersChirho::SomeChirho(names_chirho) => {
                             let selected_chirho: Vec<String> = names_chirho
                                 .iter()
-                                .map(|n_chirho| n_chirho.text_chirho().to_string())
+                                .map(|n_chirho| canonical_value_name_chirho(n_chirho.text_chirho()))
                                 .collect();
                             let sel_cons_chirho: Vec<String> = ty_chirho
                                 .constructors_chirho

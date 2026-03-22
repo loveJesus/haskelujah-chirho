@@ -507,6 +507,18 @@ impl InferCtxChirho {
     /// Deferred predicates are assumed to already have substitutions applied
     /// (via `apply_subst_all_chirho` during inference).
     pub fn generalize_chirho(&mut self, ty_chirho: &TyChirho) -> SchemeChirho {
+        self.generalize_with_io_defaulting_chirho(ty_chirho, true)
+    }
+
+    fn generalize_local_chirho(&mut self, ty_chirho: &TyChirho) -> SchemeChirho {
+        self.generalize_with_io_defaulting_chirho(ty_chirho, false)
+    }
+
+    fn generalize_with_io_defaulting_chirho(
+        &mut self,
+        ty_chirho: &TyChirho,
+        allow_io_defaulting_chirho: bool,
+    ) -> SchemeChirho {
         let env_fvs_chirho = self.env_chirho.free_vars_chirho();
         let ty_fvs_chirho = ty_chirho.free_vars_chirho();
         let vars_chirho: Vec<TyVarChirho> = ty_fvs_chirho
@@ -590,7 +602,7 @@ impl InferCtxChirho {
                     .insert_chirho(*var_chirho, TyChirho::ConChirho("IO".to_string()));
             }
         }
-        if !io_default_subst_chirho.is_empty_chirho() {
+        if allow_io_defaulting_chirho && !io_default_subst_chirho.is_empty_chirho() {
             // Apply IO defaulting: substitute in the type, remove defaulted
             // vars, and remove satisfied predicates.
             let defaulted_ty_chirho = io_default_subst_chirho.apply_ty_chirho(ty_chirho);
@@ -1286,10 +1298,20 @@ impl InferCtxChirho {
     /// Infer the type of an expression, returning (substitution, type).
     pub fn infer_expr_chirho(&mut self, expr_chirho: &ExprChirho) -> (SubstChirho, TyChirho) {
         match expr_chirho {
-            ExprChirho::LitChirho(lit_chirho) => {
-                let ty_chirho = infer_lit_chirho(lit_chirho);
-                (SubstChirho::empty_chirho(), ty_chirho)
-            }
+            ExprChirho::LitChirho(lit_chirho) => match lit_chirho {
+                LitChirho::IntChirho(_, span_chirho) => {
+                    let lit_ty_chirho = self.fresh_var_chirho();
+                    self.deferred_preds_chirho.push((
+                        PredChirho::new_chirho("Num", lit_ty_chirho.clone()),
+                        *span_chirho,
+                    ));
+                    (SubstChirho::empty_chirho(), lit_ty_chirho)
+                }
+                _ => {
+                    let ty_chirho = infer_lit_chirho(lit_chirho);
+                    (SubstChirho::empty_chirho(), ty_chirho)
+                }
+            },
 
             ExprChirho::VarChirho(name_chirho) => {
                 let text_chirho = name_chirho.text_chirho();
@@ -2536,7 +2558,7 @@ impl InferCtxChirho {
 
                 self.env_chirho.remove_chirho(&name_str_chirho);
                 let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
-                let generalized_chirho = self.generalize_chirho(&inferred_sub_chirho);
+                let generalized_chirho = self.generalize_local_chirho(&inferred_sub_chirho);
                 self.env_chirho
                     .bind_chirho(name_str_chirho, generalized_chirho);
             }
@@ -3632,7 +3654,7 @@ impl InferCtxChirho {
     /// can fully entail are discharged; those that can't produce diagnostics.
     ///
     /// Implements Haskell-style numeric defaulting: ambiguous type variables
-    /// constrained only by defaultable classes are resolved to `Int` (for
+    /// constrained only by defaultable classes are resolved to `Integer` (for
     /// Num/Integral/etc.) or `Double` (for Fractional/Floating/etc.) before
     /// the final constraint check.
     fn check_deferred_preds_chirho(&mut self, final_subst_chirho: &SubstChirho) {
@@ -3648,6 +3670,15 @@ impl InferCtxChirho {
             "Ord",
             "Show",
             "Read",
+            "Real",
+            "Fractional",
+            "Floating",
+            "RealFrac",
+            "RealFloat",
+        ];
+        let numeric_default_trigger_classes_chirho: &[&str] = &[
+            "Num",
+            "Integral",
             "Real",
             "Fractional",
             "Floating",
@@ -3727,15 +3758,22 @@ impl InferCtxChirho {
             if !all_defaultable_chirho {
                 continue;
             }
+            let has_numeric_trigger_chirho = classes_chirho.iter().any(|c_chirho| {
+                numeric_default_trigger_classes_chirho.contains(&c_chirho.as_str())
+            });
+            if !has_numeric_trigger_chirho {
+                continue;
+            }
             // If any constraint is a Fractional-group class, default to Double;
-            // otherwise default to Int.
+            // otherwise default to Integer, matching Haskell's standard default
+            // declaration.
             let needs_double_chirho = classes_chirho
                 .iter()
                 .any(|c_chirho| fractional_classes_chirho.contains(&c_chirho.as_str()));
             let default_ty_chirho = if needs_double_chirho {
                 TyChirho::double_chirho()
             } else {
-                TyChirho::int_chirho()
+                TyChirho::ConChirho("Integer".to_string())
             };
             default_subst_chirho.insert_chirho(*var_chirho, default_ty_chirho);
         }
@@ -11999,7 +12037,12 @@ mod tests_chirho {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         let expr_chirho = ExprChirho::LitChirho(LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO));
         let (_s_chirho, ty_chirho) = ctx_chirho.infer_expr_chirho(&expr_chirho);
-        assert_eq!(ty_chirho, TyChirho::int_chirho());
+        assert!(matches!(ty_chirho, TyChirho::VarChirho(_)));
+        assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 1);
+        assert_eq!(
+            ctx_chirho.deferred_preds_chirho[0].0.class_name_chirho,
+            "Num"
+        );
     }
 
     #[test]

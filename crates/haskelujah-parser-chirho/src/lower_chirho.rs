@@ -530,7 +530,7 @@ impl LowerCtxChirho {
                             TokenKindChirho::VarSymChirho | TokenKindChirho::ConSymChirho => {
                                 let span_chirho =
                                     self.span_chirho(elem_start_chirho, elem_end_chirho);
-                                if first_name_chirho.is_none() && !in_parens_chirho {
+                                if first_name_chirho.is_none() {
                                     first_name_chirho = Some((
                                         tok_chirho.text_chirho().to_string(),
                                         span_chirho,
@@ -888,7 +888,11 @@ impl LowerCtxChirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
                     if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho {
                         saw_double_colon_chirho = true;
-                    } else if !saw_double_colon_chirho && name_chirho.is_none() {
+                    } else if !saw_double_colon_chirho
+                        && name_chirho.is_none()
+                        && tok_chirho.kind_chirho() != TokenKindChirho::LeftParenChirho
+                        && tok_chirho.kind_chirho() != TokenKindChirho::RightParenChirho
+                    {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                         name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
@@ -1110,7 +1114,9 @@ impl LowerCtxChirho {
                     }
                     if !saw_lhs_pat_chirho
                         && (tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
-                            || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho)
+                            || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho)
                     {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);

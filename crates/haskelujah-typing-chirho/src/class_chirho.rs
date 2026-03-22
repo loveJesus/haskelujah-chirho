@@ -1424,7 +1424,7 @@ impl ClassEnvChirho {
                         preds_chirho: vec![],
                         ty_chirho: TyChirho::fun_chirho(
                             TyChirho::VarChirho(integral_var_chirho),
-                            TyChirho::int_chirho(),
+                            TyChirho::ConChirho("Integer".to_string()),
                         ),
                     },
                 ),
@@ -1457,7 +1457,7 @@ impl ClassEnvChirho {
         });
 
         // Standard instances
-        for ty_name_chirho in &["Int", "Char", "Bool"] {
+        for ty_name_chirho in &["Int", "Integer", "Char", "Bool"] {
             let ty_chirho = TyChirho::ConChirho(ty_name_chirho.to_string());
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Eq".to_string(),
@@ -1473,7 +1473,7 @@ impl ClassEnvChirho {
             });
         }
 
-        for ty_name_chirho in &["Int", "Char", "Double", "Bool"] {
+        for ty_name_chirho in &["Int", "Integer", "Char", "Double", "Bool"] {
             let ty_chirho = TyChirho::ConChirho(ty_name_chirho.to_string());
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Ord".to_string(),
@@ -1508,7 +1508,7 @@ impl ClassEnvChirho {
         });
 
         // Enum instances
-        for ty_name_chirho in &["Int", "Char", "Bool"] {
+        for ty_name_chirho in &["Int", "Integer", "Char", "Bool"] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Enum".to_string(),
                 head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
@@ -1528,15 +1528,20 @@ impl ClassEnvChirho {
         }
 
         // Integral instances
-        self.add_instance_chirho(InstDeclChirho {
-            class_name_chirho: "Integral".to_string(),
-            head_ty_chirho: TyChirho::int_chirho(),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![],
-        });
+        for ty_chirho in [
+            TyChirho::int_chirho(),
+            TyChirho::ConChirho("Integer".to_string()),
+        ] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "Integral".to_string(),
+                head_ty_chirho: ty_chirho,
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
 
         // Read instances
-        for ty_name_chirho in &["Int", "Double", "Bool"] {
+        for ty_name_chirho in &["Int", "Integer", "Double", "Bool"] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Read".to_string(),
                 head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
@@ -1555,13 +1560,18 @@ impl ClassEnvChirho {
             });
         }
 
-        // instance Num Int
-        self.add_instance_chirho(InstDeclChirho {
-            class_name_chirho: "Num".to_string(),
-            head_ty_chirho: TyChirho::int_chirho(),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![],
-        });
+        // instance Num Int / Integer
+        for ty_chirho in [
+            TyChirho::int_chirho(),
+            TyChirho::ConChirho("Integer".to_string()),
+        ] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "Num".to_string(),
+                head_ty_chirho: ty_chirho,
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
 
         // instance Num Double
         self.add_instance_chirho(InstDeclChirho {

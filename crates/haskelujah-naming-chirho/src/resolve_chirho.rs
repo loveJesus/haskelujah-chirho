@@ -32,6 +32,20 @@ pub struct ResolveResultChirho {
     pub diagnostics_chirho: DiagnosticBundleChirho,
 }
 
+fn canonical_value_name_chirho(name_chirho: &str) -> String {
+    if name_chirho.starts_with('(') && name_chirho.ends_with(')') && name_chirho.len() > 2 {
+        let inner_chirho = &name_chirho[1..name_chirho.len() - 1];
+        if !inner_chirho.is_empty()
+            && inner_chirho
+                .chars()
+                .all(|char_chirho| !char_chirho.is_alphanumeric() && char_chirho != '_')
+        {
+            return inner_chirho.to_string();
+        }
+    }
+    name_chirho.to_string()
+}
+
 /// Resolve names in a module without any imported module interfaces.
 ///
 /// Equivalent to `resolve_module_with_imports_chirho(module, &[])`.
@@ -370,7 +384,7 @@ fn import_item_names_chirho(
 ) -> Vec<String> {
     match item_chirho {
         ImportItemChirho::VarChirho(name_chirho) => {
-            vec![name_chirho.text_chirho().to_string()]
+            vec![canonical_value_name_chirho(name_chirho.text_chirho())]
         }
         ImportItemChirho::TyConChirho {
             name_chirho,
@@ -390,7 +404,8 @@ fn import_item_names_chirho(
                     member_names_chirho,
                 ) => {
                     for mn_chirho in member_names_chirho {
-                        names_chirho.push(mn_chirho.text_chirho().to_string());
+                        names_chirho
+                            .push(canonical_value_name_chirho(mn_chirho.text_chirho()));
                     }
                 }
                 haskelujah_ast_chirho::module_chirho::ExportMembersChirho::NoneChirho => {}
@@ -536,8 +551,12 @@ fn bind_name_chirho(
     name_chirho: &NameChirho,
     namespace_chirho: NamespaceChirho,
 ) {
+    let text_chirho = match namespace_chirho {
+        NamespaceChirho::ValueChirho => canonical_value_name_chirho(name_chirho.text_chirho()),
+        NamespaceChirho::TypeChirho => name_chirho.text_chirho().to_string(),
+    };
     env_chirho.bind_chirho(
-        name_chirho.text_chirho().to_string(),
+        text_chirho,
         namespace_chirho,
         name_chirho.span_chirho(),
     );

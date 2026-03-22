@@ -1464,9 +1464,38 @@ impl<'src> ParserChirho<'src> {
                 self.bump_chirho();
                 self.eat_trivia_chirho();
             } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
-                // Operator in parens or tuple pattern
-                self.parse_apat_chirho();
-                self.eat_trivia_chirho();
+                let mut lookahead_idx_chirho = self.pos_chirho + 1;
+                while lookahead_idx_chirho < self.tokens_chirho.len()
+                    && self.tokens_chirho[lookahead_idx_chirho]
+                        .kind_chirho
+                        .is_trivia_chirho()
+                {
+                    lookahead_idx_chirho += 1;
+                }
+                let is_parenthesized_operator_name_chirho = lookahead_idx_chirho
+                    < self.tokens_chirho.len()
+                    && matches!(
+                        self.tokens_chirho[lookahead_idx_chirho].kind_chirho,
+                        RawTokenKindChirho::VarSymChirho | RawTokenKindChirho::ConSymChirho
+                    );
+                if is_parenthesized_operator_name_chirho {
+                    self.bump_chirho(); // (
+                    self.eat_trivia_chirho();
+                    if self.at_chirho(RawTokenKindChirho::VarSymChirho)
+                        || self.at_chirho(RawTokenKindChirho::ConSymChirho)
+                    {
+                        self.bump_chirho(); // operator name
+                        self.eat_trivia_chirho();
+                    }
+                    if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                        self.bump_chirho(); // )
+                        self.eat_trivia_chirho();
+                    }
+                } else {
+                    // Tuple pattern or parenthesized argument
+                    self.parse_apat_chirho();
+                    self.eat_trivia_chirho();
+                }
             } else if self.can_start_apat_chirho() {
                 self.parse_apat_chirho();
                 self.eat_trivia_chirho();
