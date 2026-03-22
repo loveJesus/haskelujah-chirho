@@ -604,7 +604,8 @@ pub fn check_source_file_chirho(
     execution_mode_chirho: ExecutionModeChirho,
 ) -> Result<CheckSummaryChirho, DiagnosticBundleChirho> {
     let source_path_chirho = source_file_chirho.path_chirho().to_path_buf();
-    let source_chirho = source_file_chirho.contents_chirho().to_string();
+    let raw_source_chirho = source_file_chirho.contents_chirho().to_string();
+    let source_chirho = preprocess_cpp_chirho(&raw_source_chirho);
     let file_id_chirho = source_file_chirho.file_id_chirho();
 
     let builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
