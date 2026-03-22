@@ -12,6 +12,7 @@ pub mod stg_lower_chirho;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -140,9 +141,15 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
     if let Some(parent_chirho) = path_chirho.parent() {
         cpp_cmd_chirho.current_dir(parent_chirho);
         cpp_cmd_chirho.arg(format!("-I{}", parent_chirho.display()));
+        // Pass only the filename since we changed the working directory
+        if let Some(file_name_chirho) = path_chirho.file_name() {
+            cpp_cmd_chirho.arg(file_name_chirho);
+        } else {
+            cpp_cmd_chirho.arg(path_chirho);
+        }
+    } else {
+        cpp_cmd_chirho.arg(path_chirho);
     }
-
-    cpp_cmd_chirho.arg(path_chirho);
 
     let output_chirho = cpp_cmd_chirho.output()?;
     if !output_chirho.status.success() {
@@ -168,6 +175,25 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
     })
 }
 
+fn strip_cpp_directives_chirho(source_chirho: &str) -> String {
+    source_chirho
+        .lines()
+        .filter(|line_chirho| {
+            let t_chirho = line_chirho.trim();
+            !t_chirho.starts_with("#if")
+                && !t_chirho.starts_with("#else")
+                && !t_chirho.starts_with("#endif")
+                && !t_chirho.starts_with("#define")
+                && !t_chirho.starts_with("#undef")
+                && !t_chirho.starts_with("#include")
+                && !t_chirho.starts_with("#ifdef")
+                && !t_chirho.starts_with("#ifndef")
+                && !t_chirho.starts_with("#elif")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn read_haskell_source_file_chirho(path_chirho: impl AsRef<Path>) -> io::Result<String> {
     let path_ref_chirho = path_chirho.as_ref();
     let source_chirho = std::fs::read_to_string(path_ref_chirho)?;
@@ -175,26 +201,7 @@ fn read_haskell_source_file_chirho(path_chirho: impl AsRef<Path>) -> io::Result<
     // stripped) if cpp fails (e.g., tick characters in Haskell identifiers).
     match preprocess_cpp_source_chirho(path_ref_chirho, &source_chirho) {
         Ok(processed_chirho) => Ok(processed_chirho),
-        Err(_) => {
-            // Strip CPP directives manually as fallback
-            let stripped_chirho: String = source_chirho
-                .lines()
-                .filter(|line_chirho| {
-                    let t_chirho = line_chirho.trim();
-                    !t_chirho.starts_with("#if")
-                        && !t_chirho.starts_with("#else")
-                        && !t_chirho.starts_with("#endif")
-                        && !t_chirho.starts_with("#define")
-                        && !t_chirho.starts_with("#undef")
-                        && !t_chirho.starts_with("#include")
-                        && !t_chirho.starts_with("#ifdef")
-                        && !t_chirho.starts_with("#ifndef")
-                        && !t_chirho.starts_with("#elif")
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
-            Ok(stripped_chirho)
-        }
+        Err(_) => Ok(strip_cpp_directives_chirho(&source_chirho)),
     }
 }
 
@@ -840,49 +847,25 @@ pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
         return source_chirho.to_string();
     }
 
-    // Try running cpp (C preprocessor)
-    let result_chirho = std::process::Command::new("cpp")
-        .args([
-            "-traditional",
-            "-P",
-            "-D__GLASGOW_HASKELL__=810",
-            "-DMIN_VERSION_base(x,y,z)=1",
-            "-",
-        ])
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .and_then(|mut child_chirho| {
-            use std::io::Write;
-            if let Some(ref mut stdin_chirho) = child_chirho.stdin {
-                stdin_chirho.write_all(source_chirho.as_bytes()).ok();
-            }
-            child_chirho.wait_with_output()
-        });
+    let temp_stamp_chirho = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration_chirho| duration_chirho.as_nanos())
+        .unwrap_or(0);
+    let temp_path_chirho = std::env::temp_dir().join(format!(
+        "haskelujah-cpp-{}-{temp_stamp_chirho}.hs",
+        std::process::id()
+    ));
 
-    match result_chirho {
-        Ok(output_chirho) if output_chirho.status.success() => {
-            String::from_utf8(output_chirho.stdout).unwrap_or_else(|_| source_chirho.to_string())
+    match std::fs::write(&temp_path_chirho, source_chirho)
+        .and_then(|_| preprocess_cpp_source_chirho(&temp_path_chirho, source_chirho))
+    {
+        Ok(processed_chirho) => {
+            let _ = std::fs::remove_file(&temp_path_chirho);
+            processed_chirho
         }
         _ => {
-            // If cpp isn't available, strip CPP directives manually
-            source_chirho
-                .lines()
-                .filter(|line_chirho| {
-                    let trimmed_chirho = line_chirho.trim();
-                    !trimmed_chirho.starts_with("#if")
-                        && !trimmed_chirho.starts_with("#else")
-                        && !trimmed_chirho.starts_with("#endif")
-                        && !trimmed_chirho.starts_with("#define")
-                        && !trimmed_chirho.starts_with("#undef")
-                        && !trimmed_chirho.starts_with("#include")
-                        && !trimmed_chirho.starts_with("#ifdef")
-                        && !trimmed_chirho.starts_with("#ifndef")
-                        && !trimmed_chirho.starts_with("#elif")
-                })
-                .collect::<Vec<_>>()
-                .join("\n")
+            let _ = std::fs::remove_file(&temp_path_chirho);
+            strip_cpp_directives_chirho(source_chirho)
         }
     }
 }
