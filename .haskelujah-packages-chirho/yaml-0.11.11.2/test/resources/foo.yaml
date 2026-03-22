@@ -1,3 +1,0 @@
-foo: 23
-bar: !include bar.yaml
-baz: 42

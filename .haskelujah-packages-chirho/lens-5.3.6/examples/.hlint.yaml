@@ -1,4 +1,0 @@
-- arguments: [--cpp-ansi]
-
-- fixity: "infixr 9 ..."
-- fixity: "infixl 1 &~"

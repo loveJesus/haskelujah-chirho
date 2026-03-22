@@ -1,9 +1,0 @@
-string: str
-number: 2
-anArray:
-  - a
-  - b
-hash:
-  key1: value1
-  key2: value2
-extrastring: 1234-foo
