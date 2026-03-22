@@ -3581,11 +3581,23 @@ impl InferCtxChirho {
             } = decl_chirho
             {
                 let binding_name_chirho = name_chirho.text_chirho().to_string();
-                let pre_ty_chirho = self.fresh_var_chirho();
-                self.env_chirho.bind_chirho(
-                    binding_name_chirho.clone(),
-                    SchemeChirho::mono_chirho(pre_ty_chirho.clone()),
-                );
+                let pre_ty_chirho = if let Some(sig_ast_chirho) =
+                    type_sigs_chirho.get(&binding_name_chirho)
+                {
+                    let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
+                    let sig_ty_chirho =
+                        self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
+                    self.env_chirho
+                        .bind_chirho(binding_name_chirho.clone(), sig_scheme_chirho);
+                    sig_ty_chirho
+                } else {
+                    let fresh_ty_chirho = self.fresh_var_chirho();
+                    self.env_chirho.bind_chirho(
+                        binding_name_chirho.clone(),
+                        SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
+                    );
+                    fresh_ty_chirho
+                };
                 fun_names_chirho.push(binding_name_chirho);
                 fun_matches_refs_chirho.push(matches_chirho.as_slice());
                 fun_spans_chirho.push(*span_chirho);
@@ -3699,9 +3711,8 @@ impl InferCtxChirho {
                 self.env_chirho.remove_chirho(binding_name_chirho);
 
                 let final_ty_chirho = subst_chirho.apply_ty_chirho(inferred_ty_chirho);
-                let gen_chirho = self.generalize_chirho(&final_ty_chirho);
-                self.env_chirho
-                    .bind_chirho(binding_name_chirho.clone(), gen_chirho);
+                let inferred_scheme_chirho = self.generalize_chirho(&final_ty_chirho);
+                let mut binding_scheme_chirho = inferred_scheme_chirho.clone();
 
                 // Phase 3c: Check against type signature if one exists
                 if let Some(sig_ast_chirho) = type_sigs_chirho.get(binding_name_chirho) {
@@ -3732,6 +3743,7 @@ impl InferCtxChirho {
                         Ok(sig_s_chirho) => {
                             subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
                             self.apply_subst_all_chirho(&sig_s_chirho);
+                            binding_scheme_chirho = sig_scheme_chirho;
                         }
                         Err(_err_chirho) => {
                             self.diagnostics_chirho.push_chirho(
@@ -3748,6 +3760,9 @@ impl InferCtxChirho {
                         }
                     }
                 }
+
+                self.env_chirho
+                    .bind_chirho(binding_name_chirho.clone(), binding_scheme_chirho);
             }
         }
 
