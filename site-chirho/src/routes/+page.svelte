@@ -406,8 +406,6 @@ main = putStrLn "Hello from a script!"</span>
 			<h2 class="section-title-chirho">Current Limitations</h2>
 			<p class="section-subtitle-chirho">Where we still fall short of GHC.</p>
 			<ul class="limitation-list-chirho">
-				<li><strong>Lazy evaluation:</strong> Both Cranelift and LLVM backends have full lazy semantics &mdash; thunk trampolines, lazy constructor fields, lazy let-bindings, and <code>seq#</code>. Infinite lists like <code>take 5 (repeat 42)</code>, lazy Fibonacci, Sieve of Eratosthenes, and Hamming numbers all work.</li>
-				<li><strong>Garbage collection:</strong> Mark-sweep GC is active (threshold 1000 allocations) with root tracking at all allocation sites. Programs reclaim unused heap memory automatically.</li>
 				<li><strong>Type class dictionaries at runtime:</strong> Type checking supports full typeclasses, but compiled code uses simplified dictionary elision. Complex polymorphic dispatch is partial.</li>
 				<li><strong>String as [Char]:</strong> String literals are C strings internally. <code>unpack</code>/<code>pack</code> conversion works but isn't transparent like GHC's representation.</li>
 				<li><strong>Template Haskell:</strong> Basic splices and <code>makeLenses</code> work; full TH (typed splices, reify) is incomplete.</li>
