@@ -4,9 +4,21 @@
 
 > *"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."* — John 3:16
 
-Haskelujah Chirho is a Haskell compiler written in Rust, aiming to be a drop-in replacement for GHC. It targets practical compatibility with real-world Haskell (GHC semantics, Cabal packages, Hackage libraries) through a typed, modular pipeline with first-class WebAssembly support and multiple native code generation backends.
+Haskelujah Chirho is everything you need to develop, build, and ship Haskell — compiler, package manager, script runner, REPL, test runner, LSP, and AI integration, all in one binary. Written in Rust, targeting GHC compatibility with Cranelift (default), LLVM, and WebAssembly backends.
 
-**End-to-end compilation works:** `haskelujah build my-project/` parses `.cabal` files, compiles all modules in dependency order, and produces native executables via LLVM+clang. Supports `putStrLn`, `print`, arithmetic, if-then-else, pattern matching, recursion, higher-order functions, lambdas, ADTs, list operations, guards, let/where bindings, and multi-module imports.
+**All-in-one toolchain:**
+
+| Tool | Command | What it does |
+|---|---|---|
+| Compiler | `haskelujah build` | Parse `.cabal`, compile modules, produce native executables |
+| Package Manager | `haskelujah install aeson` | Fetch from Hackage, resolve deps, extract `.cabal` metadata |
+| Script Runner | `#!/usr/bin/env haskelujah` | Run `.hs` files directly with shebang |
+| REPL | `haskelujah repl` | Interactive `:type`, `:info`, `:load`, expression eval |
+| Test Runner | `haskelujah test` | Compile and run test suites |
+| LSP Server | `haskelujah lsp` | Hover types, go-to-def, diagnostics for any editor |
+| AI / MCP | `haskelujah mcp` | Expose project to AI assistants via Model Context Protocol |
+| Checker | `haskelujah check` | Type-check without codegen |
+| Formatter | `haskelujah fmt` | Format Haskell source (planned) |
 
 ## Status
 

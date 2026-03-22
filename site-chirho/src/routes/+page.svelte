@@ -13,9 +13,10 @@
 	const heroPillsChirho = [
 		'cargo install haskelujah',
 		'#!/usr/bin/env haskelujah',
-		'Cranelift default backend',
-		'Single binary workflow',
-		'Cabal + Hackage direction'
+		'Compiler + Package Manager',
+		'REPL + LSP + Test Runner',
+		'AI / MCP Integration',
+		'Cranelift · LLVM · Wasm'
 	];
 
 	const benchmarksChirho = [
@@ -34,46 +35,58 @@
 
 	const featuresChirho = [
 		{
-			titleChirho: 'No LLVM Required',
+			titleChirho: 'Compiler',
 			descriptionChirho:
-				'Cranelift as the default backend means zero external dependencies. Install and compile immediately -- no LLVM toolchain setup, no version mismatches, no headaches.',
-			iconChirho: 'C'
+				'Cranelift by default, LLVM for production, WebAssembly built-in. Three backends in one binary. 88.8% GHC test suite compatibility, 40+ extensions.',
+			iconChirho: '⚙'
 		},
 		{
-			titleChirho: 'LLVM When You Want It',
+			titleChirho: 'Package Manager',
 			descriptionChirho:
-				'Opt in to the LLVM backend for maximum optimization. Production builds benefit from LLVM 18 without forcing it on every developer.',
-			iconChirho: 'L'
+				'Install Hackage packages with one command. Reads .cabal files, resolves dependencies, compiles multi-module projects. 16 packages compile today, cross-package resolution built in.',
+			iconChirho: '📦'
 		},
 		{
-			titleChirho: 'WebAssembly Built-in',
+			titleChirho: 'Script Runner',
 			descriptionChirho:
-				'First-class Wasm target. Compile your Haskell to run in browsers, serverless edges, and embedded environments without any extra tooling.',
-			iconChirho: 'W'
+				'Run Haskell files directly with a shebang line. Write #!/usr/bin/env haskelujah at the top, chmod once, and use Haskelujah like a scripting runtime.',
+			iconChirho: '▶'
 		},
 		{
-			titleChirho: 'GHC Compatible',
+			titleChirho: 'REPL',
 			descriptionChirho:
-				'88.8% compatibility with the GHC test suite (833/938). Type classes, GADTs, RankNTypes, ScopedTypeVariables, Template Haskell, and 40+ extensions.',
-			iconChirho: 'G'
+				'Interactive environment with :type, :info, :load, multi-line input, and expression evaluation. Explore APIs, test ideas, and debug interactively.',
+			iconChirho: '>'
 		},
 		{
-			titleChirho: 'Written in Rust',
+			titleChirho: 'AI Integration',
 			descriptionChirho:
-				'Memory-safe compiler infrastructure with predictable performance. No runtime GC pauses in the compiler itself. Fast incremental builds.',
-			iconChirho: 'R'
+				'Built-in MCP (Model Context Protocol) server. Expose Haskell type information, project structure, and compiler diagnostics to AI assistants. Claude, GPT, and Gemini can read, navigate, and refactor your code.',
+			iconChirho: '🤖'
 		},
 		{
-			titleChirho: 'Runtime GC',
+			titleChirho: 'Editor / LSP',
 			descriptionChirho:
-				'Mark-sweep garbage collector via a Rust-based runtime system. Heap allocation tracking, automatic collection, and C ABI interop out of the box.',
-			iconChirho: 'M'
+				'Language Server Protocol support for hover types, go-to-definition, and real-time diagnostics. Works with VS Code, Neovim, Zed, and any LSP-compatible editor out of the box.',
+			iconChirho: '✏'
 		},
 		{
-			titleChirho: 'Scripting',
+			titleChirho: 'Runtime',
 			descriptionChirho:
-				'Run Haskell files directly with a shebang. Write #!/usr/bin/env haskelujah at the top, chmod once, and use Haskelujah like a scripting runtime.',
-			iconChirho: 'S'
+				'Rust-based runtime system with mark-sweep GC, thunk trampolines for lazy evaluation, C ABI interop, and heap allocation tracking. No external runtime required.',
+			iconChirho: '⏱'
+		},
+		{
+			titleChirho: 'Test Runner',
+			descriptionChirho:
+				'Compile and run test suites directly. Integrates with HUnit and QuickCheck conventions. Run haskelujah test to execute your project test suite.',
+			iconChirho: '✓'
+		},
+		{
+			titleChirho: 'Tool Ecosystem',
+			descriptionChirho:
+				'Interop with external tools via FFI, CPP preprocessing, and Cabal build system. Pluggable backends (Cranelift, LLVM, Wasm, JVM, BEAM) for targeting any platform.',
+			iconChirho: '🔧'
 		}
 	];
 </script>
@@ -114,10 +127,10 @@
 			<h1 class="hero-title-chirho">
 				<span class="hero-accent-chirho">Haskelujah</span> ☧
 			</h1>
-			<p class="hero-subtitle-chirho">A self-contained Haskell compiler written in Rust</p>
+			<p class="hero-subtitle-chirho">Everything you need to develop, build, and ship Haskell</p>
 			<p class="hero-description-chirho">
-				Install one executable. Compile with Cranelift by default, switch to LLVM when you
-				want it, and keep moving without dragging a toolchain behind you.
+				Compiler, package manager, script runner, REPL, test runner, LSP, and AI integration — all in one binary.
+				Install once. No GHC, no Stack, no LLVM required.
 			</p>
 
 			<div class="hero-pill-row-chirho">
@@ -171,9 +184,9 @@
 	<!-- Features Section -->
 	<section id="features-chirho" class="features-chirho">
 		<div class="section-inner-chirho">
-			<h2 class="section-title-chirho">Why Haskelujah</h2>
+			<h2 class="section-title-chirho">Everything you need</h2>
 			<p class="section-subtitle-chirho">
-				A modern Haskell compiler designed for developer experience and performance.
+				Compiler, package manager, REPL, test runner, LSP, and AI tools — all in one binary.
 			</p>
 			<div class="features-grid-chirho">
 				{#each featuresChirho as featureChirho}
@@ -819,7 +832,7 @@ main = putStrLn "Hello from a script!"</span>
 	.features-grid-chirho {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 1.5rem;
+		gap: 1.25rem;
 	}
 
 	.feature-card-chirho {
