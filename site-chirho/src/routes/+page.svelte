@@ -155,7 +155,7 @@
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Latest proof</span>
 					<strong>2,500+ passing tests</strong>
-					<p>513/513 curated, 43 CL + 82 LLVM roundtrips, 833/938 GHC typecheck suite. All green.</p>
+					<p>510/513 curated, 43 CL + 82 LLVM roundtrips, 833/938 GHC typecheck (88.8%).</p>
 				</div>
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Hackage packages</span>
