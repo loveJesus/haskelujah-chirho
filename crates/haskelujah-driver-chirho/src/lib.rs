@@ -2096,13 +2096,8 @@ pub fn compile_project_dir_chirho(
 
     // Step 5: Compile in dependency order, respecting SCCs
     let mut results_chirho: Vec<CompileResultChirho> = Vec::new();
-    // Filter builtin interfaces: exclude modules that will be compiled locally,
-    // so locally-defined types (e.g. newtypes) take precedence over synthetic stubs.
     let mut ifaces_chirho: Vec<ModuleIfaceChirho> =
-        haskelujah_naming_chirho::builtin_module_ifaces_chirho()
-            .into_iter()
-            .filter(|iface_chirho| !known_modules_chirho.contains(&iface_chirho.name_chirho))
-            .collect();
+        haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let mut all_warnings_chirho: Vec<String> = Vec::new();
     let mut imported_types_chirho: std::collections::HashMap<
         String,
