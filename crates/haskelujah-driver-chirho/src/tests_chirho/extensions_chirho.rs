@@ -972,6 +972,24 @@ fn cpp_extension_pragma_chirho() {
 }
 
 #[test]
+fn cpp_extension_min_version_transformers_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE CPP #-}
+module Test where
+#if MIN_VERSION_transformers(0,6,0)
+main = 42
+#else
+main = 0
+#endif
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "CPPTransformers.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
+}
+
+#[test]
 fn template_haskell_quotes_pragma_chirho() {
     let src_chirho = "{-# LANGUAGE TemplateHaskellQuotes #-}\nmodule Test where\nmain = 42\n";
     let mut sm_chirho = SourceMapChirho::new_chirho();
