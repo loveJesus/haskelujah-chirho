@@ -8897,6 +8897,40 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Data
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["Data", "DataType", "Constr", "ConstrRep", "IntConstr", "FloatConstr", "CharConstr", "mkDataType", "mkIntType", "mkFloatType", "mkCharType", "mkStringType", "mkConstr", "mkIntegralConstr", "mkRealConstr", "mkCharConstr", "mkNoRepType", "dataTypeName", "dataTypeConstrs", "dataTypeRep", "constrType", "constrRep", "constrFields", "constrFixity", "constrIndex", "showConstr", "readConstr", "isAlgType", "maxConstrIndex", "toConstr", "gunfold", "gfoldl", "gmapT", "gmapQ", "gmapQl", "gmapQr", "gmapQi", "gmapM", "gmapMp", "gmapMo", "dataTypeOf", "dataCast1", "dataCast2", "cast", "Typeable", "Fixity", "Prefix", "Infix"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Data", "DataType", "Constr", "ConstrRep", "Fixity", "Typeable"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Data".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Text.ParserCombinators.ReadPrec / Text.ParserCombinators.ReadP
+    for mod_name_chirho in &["Text.ParserCombinators.ReadPrec", "Text.ParserCombinators.ReadP"] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["ReadPrec", "ReadP", "lift", "minPrec", "step", "reset", "prec", "readPrec_to_P", "readP_to_Prec", "readPrec_to_S", "readS_to_Prec", "get", "look", "pfail", "choice", "readS_to_P", "readP_to_S", "satisfy", "char", "string", "munch", "munch1", "skipSpaces", "between", "count", "option", "optional", "many", "many1", "skipMany", "skipMany1", "sepBy", "sepBy1", "endBy", "endBy1", "chainr", "chainl", "chainr1", "chainl1", "manyTill", "readParen"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["ReadPrec", "ReadP"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
     // GHC.IO.Encoding.Failure
     {
         let mut exports_chirho = IfaceExportsChirho::default();
