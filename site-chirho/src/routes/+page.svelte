@@ -449,8 +449,8 @@ main = putStrLn "Runs directly, no build step."</span>
 					<p><code>haskelujah test</code> to discover and run HUnit, QuickCheck, and Hspec test suites. Parallel execution, colored output, watch mode.</p>
 				</div>
 				<div class="roadmap-item-chirho">
-					<h3>Self-Hosting</h3>
-					<p>Compile a non-trivial Haskell program end-to-end to a native binary. The milestone that proves the compiler is real.</p>
+					<h3>Full Self-Hosting</h3>
+					<p>We already compile non-trivial Haskell to native binaries. Next: compile a Haskell-written frontend for Haskelujah itself — a compiler that compiles its own language.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Cross-Compilation</h3>
