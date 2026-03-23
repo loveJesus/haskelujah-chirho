@@ -9206,6 +9206,40 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // ── Haskelujah stdlib (batteries included) ──────────────────────
+    // These match the modules in stdlib-chirho/Haskelujah/*.hs
+    for (mod_name_chirho, exports_list_chirho) in &[
+        ("Haskelujah.JSON", &["Value", "Object", "Array", "String", "Number", "Bool", "Null", "encode", "object", "array", ".="][..]),
+        ("Haskelujah.Test", &["Test", "test", "runTests", "assertEqual", "assertBool", "assertFailure"]),
+        ("Haskelujah.Args", &["getArgs", "getFlag", "getOption", "getPositional"]),
+        ("Haskelujah.HTTP", &["Response", "get", "post", "statusCode", "body", "headers"]),
+        ("Haskelujah.Prelude", &["trim", "words'", "unwords'", "groupBy'", "chunksOf", "nub'"]),
+        ("Haskelujah.File", &["readFileText", "writeFileText", "appendFileText", "fileExists", "listDirectory"]),
+        ("Haskelujah.Text", &["toLower", "toUpper", "capitalize", "contains", "startsWith", "endsWith", "splitOn", "lines'", "unlines'", "padLeft", "padRight", "center"]),
+        ("Haskelujah.Map", &["Map", "empty", "singleton", "fromList", "toList", "insert", "lookup", "delete", "member", "size", "keys", "elems", "mapValues", "filterMap", "unionWith"]),
+        ("Haskelujah.Set", &["Set", "empty", "singleton", "fromList", "toList", "insert", "member", "delete", "size", "union", "intersection", "difference"]),
+        ("Haskelujah.Pretty", &["Doc", "text", "int", "nest", "line", "<+>", "$$", "hsep", "vsep", "indent", "render", "parens", "brackets", "braces"]),
+        ("Haskelujah.Random", &["Gen", "mkGen", "nextInt", "nextDouble", "randomList", "shuffle", "choice"]),
+        ("Haskelujah.Process", &["shell", "exec", "ExitCode"]),
+        ("Haskelujah.Time", &["now", "sleep", "measure"]),
+        ("Haskelujah.Concurrent", &["fork", "delay", "Chan", "newChan", "writeChan", "readChan", "MVar", "newMVar", "readMVar", "takeMVar", "putMVar"]),
+        ("Haskelujah.Debug", &["trace", "traceShow", "traceIO", "assert", "todo", "unreachable"]),
+    ] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in *exports_list_chirho {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+            if name_chirho.chars().next().is_some_and(|c| c.is_uppercase()) {
+                let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+                exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+            }
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
     merge_module_ifaces_chirho(modules_chirho)
 }
 
