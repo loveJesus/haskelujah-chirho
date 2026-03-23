@@ -966,12 +966,19 @@ fn init_command_chirho(name_arg_chirho: Option<String>) -> ExitCode {
     );
 
     let main_content_chirho = "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
-         -- believes in him should not perish but have eternal life. — John 3:16\n\
-         \n\
-         module Main where\n\
-         \n\
-         main :: IO ()\n\
-         main = putStrLn \"Hello from Haskelujah Chirho!\"\n";
+-- believes in him should not perish but have eternal life. -- John 3:16\n\
+\n\
+module Main where\n\
+\n\
+import Haskelujah.JSON\n\
+import Haskelujah.Text\n\
+import Haskelujah.Debug\n\
+\n\
+main :: IO ()\n\
+main = do\n\
+    traceIO \"Starting app...\"\n\
+    let greeting = object [\"message\" .= String (capitalize \"hello world\")]\n\
+    putStrLn (encode greeting)\n";
 
     let cabal_path_chirho = project_dir_chirho.join(format!("{}.cabal", project_name_chirho));
     let main_path_chirho = project_dir_chirho.join("Main.hs");
@@ -989,12 +996,33 @@ fn init_command_chirho(name_arg_chirho: Option<String>) -> ExitCode {
         return ExitCode::from(1);
     }
 
+    // Create tests/ directory with a sample test
+    let tests_dir_chirho = project_dir_chirho.join("tests");
+    let _ = fs::create_dir_all(&tests_dir_chirho);
+    let test_content_chirho = "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
+-- believes in him should not perish but have eternal life. -- John 3:16\n\
+\n\
+module Main where\n\
+\n\
+import Haskelujah.Test\n\
+\n\
+main :: IO ()\n\
+main = runTests\n\
+    [ test \"addition\" (assertEqual 4 (2 + 2))\n\
+    , test \"string\" (assertEqual \"hello\" \"hello\")\n\
+    ]\n";
+    let _ = fs::write(tests_dir_chirho.join("Test.hs"), test_content_chirho);
+
     eprintln!("Created project `{}`", project_name_chirho);
     eprintln!("  {}", cabal_path_chirho.display());
     eprintln!("  {}", main_path_chirho.display());
+    eprintln!("  tests/Test.hs");
     eprintln!("");
-    eprintln!("To build:  haskelujah build {}", project_name_chirho);
-    eprintln!("To run:    haskelujah run {}/Main.hs", project_name_chirho);
+    eprintln!("Next steps:");
+    eprintln!("  haskelujah build {}     # compile", project_name_chirho);
+    eprintln!("  haskelujah check {}/Main.hs  # typecheck", project_name_chirho);
+    eprintln!("  haskelujah test {}      # run tests", project_name_chirho);
+    eprintln!("  haskelujah edit {}/Main.hs   # open editor", project_name_chirho);
     ExitCode::SUCCESS
 }
 
