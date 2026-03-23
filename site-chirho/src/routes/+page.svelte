@@ -86,9 +86,9 @@
 		{
 			titleChirho: 'Test Runner',
 			descriptionChirho:
-				'Compile and run test suites directly. Integrates with HUnit and QuickCheck. Run haskelujah test to execute your project test suite.',
+				'Run haskelujah test to scan test directories, type-check all .hs files, and report results. Integrates with HUnit and QuickCheck conventions.',
 			iconChirho: '✓',
-			plannedChirho: true
+			plannedChirho: false
 		},
 		{
 			titleChirho: 'Tool Ecosystem',
