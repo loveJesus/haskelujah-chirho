@@ -9,7 +9,9 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+haskelujah-diagnostics-chirho = { package = "haskelujah-diagnostics", path = "../haskelujah-diagnostics-chirho", version = "0.1.1" }
 haskelujah-driver-chirho = { package = "haskelujah-driver", path = "../haskelujah-driver-chirho", version = "0.1.1" }
+haskelujah-naming-chirho = { package = "haskelujah-naming", path = "../haskelujah-naming-chirho", version = "0.1.1" }
 haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.1" }
 lsp-server = "0.7"
 lsp-types = "0.97"

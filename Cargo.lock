@@ -544,7 +544,9 @@ version = "0.1.1"
 name = "haskelujah-lsp"
 version = "0.1.1"
 dependencies = [
+ "haskelujah-diagnostics",
  "haskelujah-driver",
+ "haskelujah-naming",
  "haskelujah-span",
  "lsp-server",
  "lsp-types",

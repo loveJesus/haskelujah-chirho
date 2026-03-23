@@ -1138,6 +1138,7 @@ fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("  clean     [dir]                 remove build artifacts (dist-chirho/)");
     eprintln!("  install   <package> <version>   fetch from Hackage and register");
     eprintln!("  repl                            interactive REPL");
+    eprintln!("  lsp                             start the Language Server Protocol server");
     eprintln!();
     eprintln!("flags:");
     eprintln!("  -o, --output <path>  output native executable or .wasm file");
