@@ -8,6 +8,12 @@
 
 use haskelujah_span_chirho::SpanChirho;
 
+/// Strip qualified import alias prefix from a type constructor name.
+/// e.g. "N.Operator" → "Operator", "Data.Map.Map" → "Map"
+fn strip_qualifier_chirho(name_chirho: &str) -> &str {
+    name_chirho.rsplit('.').next().unwrap_or(name_chirho)
+}
+
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{TyChirho, TyVarChirho};
 
@@ -51,8 +57,12 @@ pub fn unify_chirho(
     span_chirho: SpanChirho,
 ) -> Result<SubstChirho, UnifyErrorChirho> {
     match (ty1_chirho, ty2_chirho) {
-        // Two identical type constructors
-        (TyChirho::ConChirho(a_chirho), TyChirho::ConChirho(b_chirho)) if a_chirho == b_chirho => {
+        // Two identical type constructors (also match if base names equal
+        // after stripping qualified import aliases like N.Operator vs Operator)
+        (TyChirho::ConChirho(a_chirho), TyChirho::ConChirho(b_chirho))
+            if a_chirho == b_chirho
+                || strip_qualifier_chirho(a_chirho) == strip_qualifier_chirho(b_chirho) =>
+        {
             Ok(SubstChirho::empty_chirho())
         }
 
