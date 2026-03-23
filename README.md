@@ -31,6 +31,13 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | `Haskelujah.HTTP` | HTTP client |
 | `Haskelujah.Prelude` | Extended prelude (trim, chunksOf, nub') |
 | `Haskelujah.File` | File utilities |
+| `Haskelujah.Text` | toLower, toUpper, splitOn, contains, padLeft |
+| `Haskelujah.Map` | Association-list map (insert, lookup, union) |
+| `Haskelujah.Set` | Sorted-list set (insert, member, intersection) |
+| `Haskelujah.Pretty` | Pretty printer (nest, hsep, vsep, render) |
+| `Haskelujah.Random` | Pseudo-random numbers (nextInt, shuffle, choice) |
+| `Haskelujah.Process` | Shell/process execution |
+| `Haskelujah.Time` | Time utilities (now, sleep, measure) |
 
 ## Status
 
