@@ -42,13 +42,12 @@ fn try_parse_chirho(path_chirho: &Path) -> Result<(), String> {
         .to_string_lossy()
         .to_string();
 
-    // Use compile with search path to find sibling companion modules
-    let search_dir_chirho = path_chirho.parent().unwrap_or(Path::new("."));
-    haskelujah_driver::compile_source_with_search_path_chirho(
+    // Use compile_source (no sibling scan) to avoid O(n²) file reads
+    // that cause 12GB+ memory usage across 938 files.
+    haskelujah_driver::compile_source_chirho(
         &source_chirho,
         &mut sm_chirho,
         &file_name_chirho,
-        search_dir_chirho,
     )
     .map(|_| ())
     .map_err(|e_chirho| format!("{}", e_chirho))
