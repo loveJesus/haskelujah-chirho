@@ -514,116 +514,6 @@ impl InferCtxChirho {
         self.generalize_with_io_defaulting_chirho(ty_chirho, false)
     }
 
-    fn default_restricted_numeric_scheme_chirho(
-        &self,
-        scheme_chirho: &SchemeChirho,
-    ) -> SchemeChirho {
-        let defaultable_classes_chirho: &[&str] = &[
-            "Num",
-            "Integral",
-            "Enum",
-            "Bounded",
-            "Eq",
-            "Ord",
-            "Show",
-            "Read",
-            "Real",
-            "Fractional",
-            "Floating",
-            "RealFrac",
-            "RealFloat",
-        ];
-        let numeric_default_trigger_classes_chirho: &[&str] = &[
-            "Num",
-            "Integral",
-            "Real",
-            "Fractional",
-            "Floating",
-            "RealFrac",
-            "RealFloat",
-        ];
-        let fractional_classes_chirho: &[&str] =
-            &["Fractional", "Floating", "RealFrac", "RealFloat"];
-
-        let mut var_classes_chirho: HashMap<TyVarChirho, Vec<&str>> = HashMap::new();
-        for pred_chirho in &scheme_chirho.preds_chirho {
-            if let TyChirho::VarChirho(var_chirho) = &pred_chirho.ty_chirho {
-                var_classes_chirho
-                    .entry(*var_chirho)
-                    .or_default()
-                    .push(&pred_chirho.class_name_chirho);
-            }
-        }
-
-        let mut default_subst_chirho = SubstChirho::empty_chirho();
-        for var_chirho in &scheme_chirho.vars_chirho {
-            let Some(classes_chirho) = var_classes_chirho.get(var_chirho) else {
-                continue;
-            };
-            let all_defaultable_chirho = classes_chirho
-                .iter()
-                .all(|class_name_chirho| defaultable_classes_chirho.contains(class_name_chirho));
-            if !all_defaultable_chirho {
-                continue;
-            }
-            let has_numeric_trigger_chirho = classes_chirho.iter().any(|class_name_chirho| {
-                numeric_default_trigger_classes_chirho.contains(class_name_chirho)
-            });
-            if !has_numeric_trigger_chirho {
-                continue;
-            }
-            let needs_double_chirho = classes_chirho
-                .iter()
-                .any(|class_name_chirho| fractional_classes_chirho.contains(class_name_chirho));
-            let default_ty_chirho = if needs_double_chirho {
-                TyChirho::double_chirho()
-            } else {
-                TyChirho::ConChirho("Integer".to_string())
-            };
-            default_subst_chirho.insert_chirho(*var_chirho, default_ty_chirho);
-        }
-
-        if default_subst_chirho.is_empty_chirho() {
-            return scheme_chirho.clone();
-        }
-
-        SchemeChirho {
-            vars_chirho: scheme_chirho
-                .vars_chirho
-                .iter()
-                .copied()
-                .filter(|var_chirho| default_subst_chirho.lookup_chirho(var_chirho).is_none())
-                .collect(),
-            preds_chirho: scheme_chirho
-                .preds_chirho
-                .iter()
-                .filter(|pred_chirho| {
-                    if let TyChirho::VarChirho(var_chirho) = &pred_chirho.ty_chirho {
-                        default_subst_chirho.lookup_chirho(var_chirho).is_none()
-                    } else {
-                        true
-                    }
-                })
-                .map(|pred_chirho| SchemePredChirho {
-                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                    ty_chirho: default_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                    extra_tys_chirho: pred_chirho
-                        .extra_tys_chirho
-                        .iter()
-                        .map(|ty_chirho| default_subst_chirho.apply_ty_chirho(ty_chirho))
-                        .collect(),
-                })
-                .collect(),
-            ty_chirho: default_subst_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho),
-        }
-    }
-
-    fn is_restricted_binding_matches_chirho(matches_chirho: &[MatchArmChirho]) -> bool {
-        matches_chirho
-            .iter()
-            .all(|match_arm_chirho| match_arm_chirho.pats_chirho.is_empty())
-    }
-
     fn generalize_with_io_defaulting_chirho(
         &mut self,
         ty_chirho: &TyChirho,
@@ -2635,7 +2525,7 @@ impl InferCtxChirho {
         let groups_chirho = binding_groups_chirho(&fun_names_chirho, &fun_decls_for_scc_chirho);
 
         for group_chirho in &groups_chirho {
-            let mut group_inferred_chirho: Vec<(String, TyChirho, SpanChirho, bool)> = Vec::new();
+            let mut group_inferred_chirho: Vec<(String, TyChirho, SpanChirho)> = Vec::new();
             for &fun_index_chirho in group_chirho {
                 let name_str_chirho = fun_names_chirho[fun_index_chirho].clone();
                 let span_chirho = fun_spans_chirho[fun_index_chirho];
@@ -2653,20 +2543,10 @@ impl InferCtxChirho {
                     self.apply_subst_all_chirho(&unify_subst_chirho);
                 }
 
-                group_inferred_chirho.push((
-                    name_str_chirho,
-                    inferred_ty_chirho,
-                    span_chirho,
-                    Self::is_restricted_binding_matches_chirho(
-                        fun_matches_refs_chirho[fun_index_chirho],
-                    ),
-                ));
+                group_inferred_chirho.push((name_str_chirho, inferred_ty_chirho, span_chirho));
             }
 
-            for (name_str_chirho, inferred_ty_chirho, span_chirho, is_restricted_chirho) in
-                group_inferred_chirho
-            {
-                let has_sig_chirho = local_sigs_chirho.contains_key(&name_str_chirho);
+            for (name_str_chirho, inferred_ty_chirho, span_chirho) in group_inferred_chirho {
                 if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
                     let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
                     let sig_full_chirho = if sig_scheme_chirho.vars_chirho.is_empty() {
@@ -2702,11 +2582,7 @@ impl InferCtxChirho {
 
                 self.env_chirho.remove_chirho(&name_str_chirho);
                 let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
-                let mut generalized_chirho = self.generalize_local_chirho(&inferred_sub_chirho);
-                if is_restricted_chirho && !has_sig_chirho {
-                    generalized_chirho =
-                        self.default_restricted_numeric_scheme_chirho(&generalized_chirho);
-                }
+                let generalized_chirho = self.generalize_local_chirho(&inferred_sub_chirho);
                 self.env_chirho
                     .bind_chirho(name_str_chirho, generalized_chirho);
             }
@@ -3583,8 +3459,7 @@ impl InferCtxChirho {
         // 3b: Process each SCC group: infer → generalize
         for group_chirho in &groups_chirho {
             // Infer each function body in the group
-            let mut group_inferred_chirho: Vec<(usize, String, TyChirho, SpanChirho, bool)> =
-                Vec::new();
+            let mut group_inferred_chirho: Vec<(usize, String, TyChirho, SpanChirho)> = Vec::new();
             for &fi_chirho in group_chirho {
                 let binding_name_chirho = &fun_names_chirho[fi_chirho];
                 let pre_ty_chirho = &fun_pre_tys_chirho[fi_chirho];
@@ -3640,7 +3515,6 @@ impl InferCtxChirho {
                     binding_name_chirho.clone(),
                     inferred_ty_chirho,
                     span_chirho,
-                    Self::is_restricted_binding_matches_chirho(fun_matches_refs_chirho[fi_chirho]),
                 ));
 
                 // Restore scoped type variables
@@ -3648,25 +3522,13 @@ impl InferCtxChirho {
             }
 
             // Generalize all functions in the group together
-            for (
-                _,
-                binding_name_chirho,
-                inferred_ty_chirho,
-                span_chirho,
-                is_restricted_chirho,
-            ) in &group_inferred_chirho
+            for (_, binding_name_chirho, inferred_ty_chirho, span_chirho) in &group_inferred_chirho
             {
                 self.env_chirho.remove_chirho(binding_name_chirho);
 
                 let final_ty_chirho = subst_chirho.apply_ty_chirho(inferred_ty_chirho);
                 let inferred_scheme_chirho = self.generalize_chirho(&final_ty_chirho);
-                let mut binding_scheme_chirho = if *is_restricted_chirho
-                    && !type_sigs_chirho.contains_key(binding_name_chirho)
-                {
-                    self.default_restricted_numeric_scheme_chirho(&inferred_scheme_chirho)
-                } else {
-                    inferred_scheme_chirho.clone()
-                };
+                let mut binding_scheme_chirho = inferred_scheme_chirho.clone();
 
                 // Phase 3c: Check against type signature if one exists
                 if let Some(sig_ast_chirho) = type_sigs_chirho.get(binding_name_chirho) {
@@ -3796,8 +3658,6 @@ impl InferCtxChirho {
                                 .bind_chirho(name_chirho.clone(), sig_scheme_chirho);
                         } else {
                             let gen_chirho = self.generalize_chirho(&resolved_chirho);
-                            let gen_chirho =
-                                self.default_restricted_numeric_scheme_chirho(&gen_chirho);
                             self.env_chirho.bind_chirho(name_chirho.clone(), gen_chirho);
                         }
                     }
@@ -3821,7 +3681,7 @@ impl InferCtxChirho {
     /// constrained only by defaultable classes are resolved to `Integer` (for
     /// Num/Integral/etc.) or `Double` (for Fractional/Floating/etc.) before
     /// the final constraint check.
-    fn check_deferred_preds_chirho(&mut self, final_subst_chirho: &SubstChirho) -> SubstChirho {
+    fn check_deferred_preds_chirho(&mut self, final_subst_chirho: &SubstChirho) {
         let preds_chirho: Vec<(PredChirho, SpanChirho)> =
             self.deferred_preds_chirho.drain(..).collect();
 
@@ -3980,8 +3840,6 @@ impl InferCtxChirho {
                     ));
             }
         }
-
-        default_subst_chirho
     }
 
     /// Consume the context and return the final result.
@@ -12022,12 +11880,9 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
         );
     }
     let subst_chirho = ctx_chirho.infer_module_chirho(module_chirho);
-    let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
-    if !default_subst_chirho.is_empty_chirho() {
-        ctx_chirho.apply_subst_all_chirho(&default_subst_chirho);
-    }
+    ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
     let mut result_chirho = ctx_chirho.finish_chirho();
-    result_chirho.subst_chirho = default_subst_chirho.compose_chirho(&subst_chirho);
+    result_chirho.subst_chirho = subst_chirho;
     result_chirho
 }
 
