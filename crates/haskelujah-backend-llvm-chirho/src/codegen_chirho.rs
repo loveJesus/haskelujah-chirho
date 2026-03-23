@@ -1454,11 +1454,6 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(
             self.output_chirho,
-            "declare i64 @haskelujah_unpack_string_chirho(i64)"
-        )
-        .unwrap();
-        writeln!(
-            self.output_chirho,
             "declare i64 @haskelujah_main_with_large_stack_chirho(i64)"
         )
         .unwrap();
@@ -3815,13 +3810,10 @@ impl LlvmCodegenChirho {
             return self.compile_expr_chirho(&alts_chirho[0].rhs_chirho);
         }
 
-        let scrut_case_val_chirho =
-            self.maybe_unpack_string_list_scrutinee_chirho(scrut_val_chirho, alts_chirho);
-
         // Multi-alt with data constructors: use tag comparison chain
         // Each constructor gets a tag (True=1, False=0, etc.)
         let default_label_chirho = self.fresh_label_chirho("case.default");
-        let scrut_tag_tmp_chirho = self.load_constructor_tag_chirho(&scrut_case_val_chirho);
+        let scrut_tag_tmp_chirho = self.load_constructor_tag_chirho(scrut_val_chirho);
         let mut incoming_values_chirho = Vec::new();
 
         for (i_chirho, alt_chirho) in alts_chirho.iter().enumerate() {
@@ -3849,7 +3841,7 @@ impl LlvmCodegenChirho {
 
                     writeln!(self.output_chirho, "{then_label_chirho}:").unwrap();
                     self.bind_constructor_fields_chirho(
-                        &scrut_case_val_chirho,
+                        scrut_val_chirho,
                         &alt_chirho.binders_chirho,
                     );
                     let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
@@ -3868,7 +3860,7 @@ impl LlvmCodegenChirho {
                 AltConChirho::DefaultChirho => {
                     // Bind any alt binders to scrutinee
                     for binder_chirho in &alt_chirho.binders_chirho {
-                        self.bind_local_value_name_chirho(binder_chirho, &scrut_case_val_chirho);
+                        self.bind_local_value_name_chirho(binder_chirho, scrut_val_chirho);
                     }
                     let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
                     // Use a landing pad label so the phi references the
@@ -3928,10 +3920,8 @@ impl LlvmCodegenChirho {
             };
         }
 
-        let scrut_case_val_chirho =
-            self.maybe_unpack_string_list_scrutinee_chirho(scrut_val_chirho, alts_chirho);
         let default_label_chirho = self.fresh_label_chirho("case.default");
-        let scrut_tag_tmp_chirho = self.load_constructor_tag_chirho(&scrut_case_val_chirho);
+        let scrut_tag_tmp_chirho = self.load_constructor_tag_chirho(scrut_val_chirho);
         let mut incoming_values_chirho = Vec::new();
         let data_alts_chirho = alts_chirho
             .iter()
@@ -3962,7 +3952,7 @@ impl LlvmCodegenChirho {
             .unwrap();
 
             writeln!(self.output_chirho, "{then_label_chirho}:").unwrap();
-            self.bind_constructor_fields_chirho(&scrut_case_val_chirho, &alt_chirho.binders_chirho);
+            self.bind_constructor_fields_chirho(scrut_val_chirho, &alt_chirho.binders_chirho);
             match self.compile_tail_expr_chirho(&alt_chirho.rhs_chirho) {
                 TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
                     // Landing pad: compile_tail_expr may emit many blocks,
@@ -3987,7 +3977,7 @@ impl LlvmCodegenChirho {
         {
             writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
             for binder_chirho in &default_alt_chirho.binders_chirho {
-                self.bind_local_value_name_chirho(binder_chirho, &scrut_case_val_chirho);
+                self.bind_local_value_name_chirho(binder_chirho, scrut_val_chirho);
             }
             match self.compile_tail_expr_chirho(&default_alt_chirho.rhs_chirho) {
                 TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
@@ -4075,83 +4065,6 @@ impl LlvmCodegenChirho {
         scrut_tag_tmp_chirho
     }
 
-    fn maybe_unpack_string_list_scrutinee_chirho(
-        &mut self,
-        scrut_val_chirho: &str,
-        alts_chirho: &[CoreAltChirho],
-    ) -> String {
-        if !alts_are_list_case_chirho(alts_chirho) {
-            return scrut_val_chirho.to_string();
-        }
-
-        let boxed_probe_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {boxed_probe_tmp_chirho} = call i64 @haskelujah_is_heap_ptr_chirho(i64 {scrut_val_chirho})"
-        )
-        .unwrap();
-        let is_boxed_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {is_boxed_tmp_chirho} = icmp ne i64 {boxed_probe_tmp_chirho}, 0"
-        )
-        .unwrap();
-        let is_zero_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {is_zero_tmp_chirho} = icmp eq i64 {scrut_val_chirho}, 0"
-        )
-        .unwrap();
-        let not_boxed_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {not_boxed_tmp_chirho} = xor i1 {is_boxed_tmp_chirho}, true"
-        )
-        .unwrap();
-        let not_zero_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {not_zero_tmp_chirho} = xor i1 {is_zero_tmp_chirho}, true"
-        )
-        .unwrap();
-        let needs_unpack_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {needs_unpack_tmp_chirho} = and i1 {not_boxed_tmp_chirho}, {not_zero_tmp_chirho}"
-        )
-        .unwrap();
-
-        let unpack_label_chirho = self.fresh_label_chirho("case.unpack.string");
-        let passthrough_label_chirho = self.fresh_label_chirho("case.keep.string");
-        let join_label_chirho = self.fresh_label_chirho("case.unpack.join");
-        writeln!(
-            self.output_chirho,
-            "  br i1 {needs_unpack_tmp_chirho}, label %{unpack_label_chirho}, label %{passthrough_label_chirho}"
-        )
-        .unwrap();
-
-        writeln!(self.output_chirho, "{unpack_label_chirho}:").unwrap();
-        let unpacked_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {unpacked_tmp_chirho} = call i64 @haskelujah_unpack_string_chirho(i64 {scrut_val_chirho})"
-        )
-        .unwrap();
-        writeln!(self.output_chirho, "  br label %{join_label_chirho}").unwrap();
-
-        writeln!(self.output_chirho, "{passthrough_label_chirho}:").unwrap();
-        writeln!(self.output_chirho, "  br label %{join_label_chirho}").unwrap();
-
-        writeln!(self.output_chirho, "{join_label_chirho}:").unwrap();
-        let canonical_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {canonical_tmp_chirho} = phi i64 [{unpacked_tmp_chirho}, %{unpack_label_chirho}], [{scrut_val_chirho}, %{passthrough_label_chirho}]"
-        )
-        .unwrap();
-        canonical_tmp_chirho
-    }
-
     fn decode_boxed_constructor_ptr_chirho(&mut self, scrut_val_chirho: &str) -> String {
         let ptr_bits_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
@@ -4195,19 +4108,6 @@ impl LlvmCodegenChirho {
             self.bind_local_value_name_chirho(binder_chirho, &field_val_tmp_chirho);
         }
     }
-}
-
-fn alts_are_list_case_chirho(alts_chirho: &[CoreAltChirho]) -> bool {
-    let mut saw_data_alt_chirho = false;
-    for alt_chirho in alts_chirho {
-        if let AltConChirho::DataConChirho(name_chirho) = &alt_chirho.con_chirho {
-            saw_data_alt_chirho = true;
-            if name_chirho != "[]" && name_chirho != ":" {
-                return false;
-            }
-        }
-    }
-    saw_data_alt_chirho
 }
 
 /// Collect all lambda parameters from a nested chain of Lam nodes.
@@ -4384,8 +4284,6 @@ fn constructor_tag_chirho(name_chirho: &str) -> i64 {
         "LT" => 0,
         "EQ" => 1,
         "GT" => 2,
-        "[]" => 0,
-        ":" => 1,
         _ => {
             // Hash the name to get a tag (placeholder strategy)
             let mut hash_chirho: i64 = 0;
@@ -5459,8 +5357,6 @@ mod tests_chirho {
         assert_eq!(constructor_tag_chirho("True"), 1);
         assert_eq!(constructor_tag_chirho("Nothing"), 0);
         assert_eq!(constructor_tag_chirho("Just"), 1);
-        assert_eq!(constructor_tag_chirho("[]"), 0);
-        assert_eq!(constructor_tag_chirho(":"), 1);
     }
 
     #[test]
