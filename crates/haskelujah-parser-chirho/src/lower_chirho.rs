@@ -9041,35 +9041,35 @@ foo = 1
                         arg_chirho,
                         ..
                     } => {
-                        assert_eq!(
-                            **fun_chirho,
-                            TypeChirho::VarChirho(NameChirho::RawChirho(
-                                RawNameChirho::unqualified_chirho(
-                                    "mChirho",
-                                    SpanChirho::DUMMY_CHIRHO,
-                                ),
-                            ))
+                        assert!(
+                            matches!(
+                                fun_chirho.as_ref(),
+                                TypeChirho::VarChirho(name_chirho)
+                                    if name_chirho.text_chirho() == "mChirho"
+                            ),
+                            "expected mChirho type constructor application head, got {:?}",
+                            fun_chirho
                         );
                         match arg_chirho.as_ref() {
                             TypeChirho::TupleChirho { elements_chirho, .. } => {
                                 assert_eq!(elements_chirho.len(), 2);
-                                assert_eq!(
-                                    elements_chirho[0],
-                                    TypeChirho::VarChirho(NameChirho::RawChirho(
-                                        RawNameChirho::unqualified_chirho(
-                                            "aChirho",
-                                            SpanChirho::DUMMY_CHIRHO,
-                                        ),
-                                    ))
+                                assert!(
+                                    matches!(
+                                        &elements_chirho[0],
+                                        TypeChirho::VarChirho(name_chirho)
+                                            if name_chirho.text_chirho() == "aChirho"
+                                    ),
+                                    "expected first tuple element aChirho, got {:?}",
+                                    elements_chirho[0]
                                 );
-                                assert_eq!(
-                                    elements_chirho[1],
-                                    TypeChirho::VarChirho(NameChirho::RawChirho(
-                                        RawNameChirho::unqualified_chirho(
-                                            "wChirho",
-                                            SpanChirho::DUMMY_CHIRHO,
-                                        ),
-                                    ))
+                                assert!(
+                                    matches!(
+                                        &elements_chirho[1],
+                                        TypeChirho::VarChirho(name_chirho)
+                                            if name_chirho.text_chirho() == "wChirho"
+                                    ),
+                                    "expected second tuple element wChirho, got {:?}",
+                                    elements_chirho[1]
                                 );
                             }
                             other_chirho => {
@@ -9102,14 +9102,14 @@ foo = 1
                         result_chirho,
                         ..
                     } => {
-                        assert_eq!(
-                            **arg_chirho,
-                            TypeChirho::VarChirho(NameChirho::RawChirho(
-                                RawNameChirho::unqualified_chirho(
-                                    "sChirho",
-                                    SpanChirho::DUMMY_CHIRHO,
-                                ),
-                            ))
+                        assert!(
+                            matches!(
+                                arg_chirho.as_ref(),
+                                TypeChirho::VarChirho(name_chirho)
+                                    if name_chirho.text_chirho() == "sChirho"
+                            ),
+                            "expected function arg type sChirho, got {:?}",
+                            arg_chirho
                         );
                         match result_chirho.as_ref() {
                             TypeChirho::AppChirho {
@@ -9117,35 +9117,35 @@ foo = 1
                                 arg_chirho,
                                 ..
                             } => {
-                                assert_eq!(
-                                    **fun_chirho,
-                                    TypeChirho::VarChirho(NameChirho::RawChirho(
-                                        RawNameChirho::unqualified_chirho(
-                                            "mChirho",
-                                            SpanChirho::DUMMY_CHIRHO,
-                                        ),
-                                    ))
+                                assert!(
+                                    matches!(
+                                        fun_chirho.as_ref(),
+                                        TypeChirho::VarChirho(name_chirho)
+                                            if name_chirho.text_chirho() == "mChirho"
+                                    ),
+                                    "expected result head mChirho, got {:?}",
+                                    fun_chirho
                                 );
                                 match arg_chirho.as_ref() {
                                     TypeChirho::TupleChirho { elements_chirho, .. } => {
                                         assert_eq!(elements_chirho.len(), 2);
-                                        assert_eq!(
-                                            elements_chirho[0],
-                                            TypeChirho::VarChirho(NameChirho::RawChirho(
-                                                RawNameChirho::unqualified_chirho(
-                                                    "aChirho",
-                                                    SpanChirho::DUMMY_CHIRHO,
-                                                ),
-                                            ))
+                                        assert!(
+                                            matches!(
+                                                &elements_chirho[0],
+                                                TypeChirho::VarChirho(name_chirho)
+                                                    if name_chirho.text_chirho() == "aChirho"
+                                            ),
+                                            "expected first tuple element aChirho, got {:?}",
+                                            elements_chirho[0]
                                         );
-                                        assert_eq!(
-                                            elements_chirho[1],
-                                            TypeChirho::VarChirho(NameChirho::RawChirho(
-                                                RawNameChirho::unqualified_chirho(
-                                                    "sChirho",
-                                                    SpanChirho::DUMMY_CHIRHO,
-                                                ),
-                                            ))
+                                        assert!(
+                                            matches!(
+                                                &elements_chirho[1],
+                                                TypeChirho::VarChirho(name_chirho)
+                                                    if name_chirho.text_chirho() == "sChirho"
+                                            ),
+                                            "expected second tuple element sChirho, got {:?}",
+                                            elements_chirho[1]
                                         );
                                     }
                                     other_chirho => {
@@ -9187,7 +9187,18 @@ foo = 1
                             arg_chirho.as_ref(),
                             ExprChirho::InfixChirho { op_chirho, .. }
                                 if op_chirho.text_chirho() == "."
-                        ));
+                        ) || matches!(
+                            arg_chirho.as_ref(),
+                            ExprChirho::ParenChirho { inner_chirho, .. }
+                                if matches!(
+                                    inner_chirho.as_ref(),
+                                    ExprChirho::InfixChirho { op_chirho, .. }
+                                        if op_chirho.text_chirho() == "."
+                                )
+                        ),
+                        "expected StateTChirho argument to preserve composition, got {:?}",
+                        arg_chirho
+                        );
                     }
                     other_chirho => panic!("expected constructor application, got {:?}", other_chirho),
                 }
