@@ -381,8 +381,8 @@ main = putStrLn "Runs directly, no build step."</span>
 				<div class="feature-card-chirho">
 					<div class="feature-icon-chirho">H</div>
 					<div class="feature-text-chirho">
-						<h3>Hackage Packages</h3>
-						<p><code>haskelujah install aeson</code> fetches from Hackage, resolves deps, extracts <code>.cabal</code> metadata. <strong>16 packages compile</strong> including comonad, exceptions, void, distributive, semigroupoids, data-default, safe, vector. 355+ module interfaces. Cross-package module resolution.</p>
+						<h3>Hackage + Batteries Included</h3>
+						<p><code>haskelujah install aeson</code> fetches from Hackage. <strong>17 packages compile</strong> including transformers, mtl, parsec. Plus 9 built-in stdlib modules (JSON, Test, Args, HTTP, Text, Process, Time, File, Prelude) — no install needed.</p>
 					</div>
 				</div>
 				<div class="feature-card-chirho">

@@ -15,7 +15,7 @@
 
 use crossterm::{
     cursor, event, execute, queue,
-    style::{self, Stylize},
+    style::{self, Color, Stylize},
     terminal,
 };
 use std::io::{self, Write};
@@ -36,6 +36,7 @@ pub struct EditorChirho {
     pub modified_chirho: bool,
     pub running_chirho: bool,
     pub status_msg_chirho: String,
+    prompt_mode_chirho: Option<PromptModeChirho>,
 }
 
 impl EditorChirho {
@@ -50,8 +51,10 @@ impl EditorChirho {
             file_path_chirho: None,
             modified_chirho: false,
             running_chirho: true,
-            status_msg_chirho: "Haskelujah Editor — Ctrl-Q quit, Ctrl-S save, Ctrl-T typecheck"
-                .to_string(),
+            status_msg_chirho:
+                "Haskelujah Editor — Ctrl-Q quit, Ctrl-S save, Ctrl-T typecheck, Ctrl-E eval"
+                    .to_string(),
+            prompt_mode_chirho: None,
         }
     }
 
@@ -127,6 +130,101 @@ impl EditorChirho {
         }
     }
 
+    pub fn start_eval_prompt_chirho(&mut self) {
+        self.prompt_mode_chirho = Some(PromptModeChirho::EvalChirho {
+            input_chirho: String::new(),
+        });
+        self.status_msg_chirho = "Eval Haskell expression:".to_string();
+    }
+
+    pub fn handle_prompt_key_chirho(
+        &mut self,
+        key_chirho: event::KeyEvent,
+    ) -> io::Result<bool> {
+        let Some(prompt_mode_chirho) = self.prompt_mode_chirho.as_mut() else {
+            return Ok(false);
+        };
+
+        match key_chirho.code {
+            event::KeyCode::Esc => {
+                self.prompt_mode_chirho = None;
+                self.status_msg_chirho = "Cancelled prompt".to_string();
+                Ok(true)
+            }
+            event::KeyCode::Enter => {
+                let expression_chirho = match prompt_mode_chirho {
+                    PromptModeChirho::EvalChirho { input_chirho } => input_chirho.clone(),
+                };
+                self.prompt_mode_chirho = None;
+                self.eval_expression_chirho(&expression_chirho);
+                Ok(true)
+            }
+            event::KeyCode::Backspace => {
+                match prompt_mode_chirho {
+                    PromptModeChirho::EvalChirho { input_chirho } => {
+                        input_chirho.pop();
+                    }
+                }
+                Ok(true)
+            }
+            event::KeyCode::Char(c_chirho) => {
+                match prompt_mode_chirho {
+                    PromptModeChirho::EvalChirho { input_chirho } => {
+                        input_chirho.push(c_chirho);
+                    }
+                }
+                Ok(true)
+            }
+            _ => Ok(true),
+        }
+    }
+
+    pub fn eval_expression_chirho(&mut self, expression_chirho: &str) {
+        let expression_chirho = expression_chirho.trim();
+        if expression_chirho.is_empty() {
+            self.status_msg_chirho = "Eval skipped: empty expression".to_string();
+            return;
+        }
+
+        let source_chirho = format!(
+            "mainChirho :: IO ()\nmainChirho = print (({}))\n",
+            expression_chirho
+        );
+        let mut source_map_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+        match haskelujah_driver_chirho::compile_source_chirho(
+            &source_chirho,
+            &mut source_map_chirho,
+            "editor-eval-chirho.hs",
+        ) {
+            Ok(_) => match haskelujah_driver_chirho::eval_source_with_machine_chirho(
+                &source_chirho,
+                &mut source_map_chirho,
+                "editor-eval-chirho.hs",
+                Some("mainChirho"),
+            ) {
+                Ok((_value_chirho, machine_chirho)) => {
+                    let output_chirho = machine_chirho.io_output_chirho.trim();
+                    self.status_msg_chirho = if output_chirho.is_empty() {
+                        "Eval complete (no stdout)".to_string()
+                    } else {
+                        format!("Eval => {}", output_chirho)
+                    };
+                }
+                Err(error_chirho) => {
+                    self.status_msg_chirho = compact_status_msg_chirho(&error_chirho);
+                }
+            },
+            Err(diagnostics_chirho) => {
+                let rendered_chirho = haskelujah_driver_chirho::render_diagnostics_chirho(
+                    &diagnostics_chirho,
+                    &source_map_chirho,
+                    false,
+                );
+                self.status_msg_chirho = compact_status_msg_chirho(&rendered_chirho);
+            }
+        }
+    }
+
     pub fn insert_char_chirho(&mut self, c_chirho: char) {
         if self.cursor_row_chirho < self.lines_chirho.len() {
             let line_chirho = &mut self.lines_chirho[self.cursor_row_chirho];
@@ -190,12 +288,20 @@ pub fn run_editor_chirho(file_path_chirho: Option<&str>) -> io::Result<()> {
         draw_screen_chirho(&mut stdout_chirho, &editor_chirho)?;
 
         if let event::Event::Key(key_chirho) = event::read()? {
+            if editor_chirho.prompt_mode_chirho.is_some()
+                && editor_chirho.handle_prompt_key_chirho(key_chirho)?
+            {
+                continue;
+            }
             match key_chirho.code {
                 event::KeyCode::Char('q') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
                     editor_chirho.running_chirho = false;
                 }
                 event::KeyCode::Char('s') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
                     editor_chirho.save_file_chirho()?;
+                }
+                event::KeyCode::Char('e') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                    editor_chirho.start_eval_prompt_chirho();
                 }
                 event::KeyCode::Char('t') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
                     editor_chirho.typecheck_chirho();
@@ -253,12 +359,7 @@ fn draw_screen_chirho(
         queue!(stdout_chirho, cursor::MoveTo(0, i_chirho as u16))?;
         if line_idx_chirho < editor_chirho.lines_chirho.len() {
             let text_chirho = &editor_chirho.lines_chirho[line_idx_chirho].text_chirho;
-            let display_chirho = if text_chirho.len() > cols_chirho {
-                &text_chirho[..cols_chirho]
-            } else {
-                text_chirho
-            };
-            queue!(stdout_chirho, style::Print(display_chirho))?;
+            draw_highlighted_line_chirho(stdout_chirho, text_chirho, cols_chirho)?;
         } else {
             queue!(stdout_chirho, style::Print("~".dark_grey()))?;
         }
@@ -285,7 +386,7 @@ fn draw_screen_chirho(
     queue!(
         stdout_chirho,
         cursor::MoveTo(0, (rows_chirho - 1) as u16),
-        style::Print(&editor_chirho.status_msg_chirho),
+        style::Print(prompt_or_status_line_chirho(editor_chirho, cols_chirho)),
     )?;
 
     // Cursor
@@ -300,4 +401,206 @@ fn draw_screen_chirho(
 
     stdout_chirho.flush()?;
     Ok(())
+}
+
+enum PromptModeChirho {
+    EvalChirho { input_chirho: String },
+}
+
+fn draw_highlighted_line_chirho(
+    stdout_chirho: &mut io::Stdout,
+    text_chirho: &str,
+    cols_chirho: usize,
+) -> io::Result<()> {
+    let mut used_cols_chirho = 0usize;
+    for (segment_chirho, color_chirho) in highlight_segments_chirho(text_chirho) {
+        if used_cols_chirho >= cols_chirho {
+            break;
+        }
+        let mut clipped_segment_chirho = String::new();
+        for ch_chirho in segment_chirho.chars() {
+            if used_cols_chirho >= cols_chirho {
+                break;
+            }
+            clipped_segment_chirho.push(ch_chirho);
+            used_cols_chirho += 1;
+        }
+        if clipped_segment_chirho.is_empty() {
+            continue;
+        }
+        queue!(
+            stdout_chirho,
+            style::SetForegroundColor(color_chirho),
+            style::Print(clipped_segment_chirho),
+            style::SetForegroundColor(Color::Reset),
+        )?;
+    }
+    Ok(())
+}
+
+fn prompt_or_status_line_chirho(editor_chirho: &EditorChirho, cols_chirho: usize) -> String {
+    let base_text_chirho = match &editor_chirho.prompt_mode_chirho {
+        Some(PromptModeChirho::EvalChirho { input_chirho }) => {
+            format!("Eval Haskell> {}", input_chirho)
+        }
+        None => editor_chirho.status_msg_chirho.clone(),
+    };
+    if base_text_chirho.chars().count() <= cols_chirho {
+        return base_text_chirho;
+    }
+    base_text_chirho.chars().take(cols_chirho).collect()
+}
+
+fn compact_status_msg_chirho(text_chirho: &str) -> String {
+    let compacted_chirho = text_chirho
+        .lines()
+        .map(str::trim)
+        .filter(|line_chirho| !line_chirho.is_empty())
+        .take(2)
+        .collect::<Vec<_>>()
+        .join(" | ");
+    if compacted_chirho.is_empty() {
+        "Operation failed".to_string()
+    } else {
+        compacted_chirho
+    }
+}
+
+fn highlight_segments_chirho(text_chirho: &str) -> Vec<(String, Color)> {
+    let chars_chirho: Vec<char> = text_chirho.chars().collect();
+    let mut segments_chirho = Vec::new();
+    let mut idx_chirho = 0usize;
+
+    while idx_chirho < chars_chirho.len() {
+        if chars_chirho[idx_chirho] == '-' && chars_chirho.get(idx_chirho + 1) == Some(&'-') {
+            segments_chirho.push((
+                chars_chirho[idx_chirho..].iter().collect(),
+                Color::DarkGrey,
+            ));
+            break;
+        }
+
+        if chars_chirho[idx_chirho] == '{' && chars_chirho.get(idx_chirho + 1) == Some(&'-') {
+            let start_chirho = idx_chirho;
+            idx_chirho += 2;
+            while idx_chirho + 1 < chars_chirho.len() {
+                if chars_chirho[idx_chirho] == '-' && chars_chirho[idx_chirho + 1] == '}' {
+                    idx_chirho += 2;
+                    break;
+                }
+                idx_chirho += 1;
+            }
+            segments_chirho.push((
+                chars_chirho[start_chirho..idx_chirho].iter().collect(),
+                Color::DarkGrey,
+            ));
+            continue;
+        }
+
+        if chars_chirho[idx_chirho] == '"' {
+            let start_chirho = idx_chirho;
+            idx_chirho += 1;
+            while idx_chirho < chars_chirho.len() {
+                let current_chirho = chars_chirho[idx_chirho];
+                idx_chirho += 1;
+                if current_chirho == '"' && chars_chirho.get(idx_chirho.wrapping_sub(2)) != Some(&'\\') {
+                    break;
+                }
+            }
+            segments_chirho.push((
+                chars_chirho[start_chirho..idx_chirho].iter().collect(),
+                Color::Green,
+            ));
+            continue;
+        }
+
+        if chars_chirho[idx_chirho].is_ascii_alphabetic() || chars_chirho[idx_chirho] == '_' {
+            let start_chirho = idx_chirho;
+            idx_chirho += 1;
+            while idx_chirho < chars_chirho.len()
+                && (chars_chirho[idx_chirho].is_ascii_alphanumeric()
+                    || chars_chirho[idx_chirho] == '_'
+                    || chars_chirho[idx_chirho] == '\'')
+            {
+                idx_chirho += 1;
+            }
+            let token_chirho: String = chars_chirho[start_chirho..idx_chirho].iter().collect();
+            let color_chirho = if is_haskell_keyword_chirho(&token_chirho) {
+                Color::Rgb {
+                    r: 212,
+                    g: 175,
+                    b: 55,
+                }
+            } else if token_chirho
+                .chars()
+                .next()
+                .is_some_and(|first_chirho| first_chirho.is_ascii_uppercase())
+            {
+                Color::Cyan
+            } else {
+                Color::White
+            };
+            segments_chirho.push((token_chirho, color_chirho));
+            continue;
+        }
+
+        segments_chirho.push((chars_chirho[idx_chirho].to_string(), Color::White));
+        idx_chirho += 1;
+    }
+
+    segments_chirho
+}
+
+fn is_haskell_keyword_chirho(token_chirho: &str) -> bool {
+    matches!(
+        token_chirho,
+        "module"
+            | "where"
+            | "let"
+            | "in"
+            | "do"
+            | "case"
+            | "of"
+            | "if"
+            | "then"
+            | "else"
+            | "class"
+            | "instance"
+            | "data"
+            | "type"
+            | "newtype"
+            | "import"
+    )
+}
+
+#[cfg(test)]
+mod tests_chirho {
+    use super::{Color, highlight_segments_chirho, is_haskell_keyword_chirho};
+
+    #[test]
+    fn highlight_keywords_types_comments_and_strings_chirho() {
+        let segments_chirho =
+            highlight_segments_chirho("module Demo where -- comment \"ignored\"");
+        assert!(segments_chirho.iter().any(|(text_chirho, color_chirho)| {
+            text_chirho == "module"
+                && *color_chirho
+                    == Color::Rgb {
+                        r: 212,
+                        g: 175,
+                        b: 55,
+                    }
+        }));
+        assert!(segments_chirho.iter().any(|(text_chirho, color_chirho)| {
+            text_chirho == "Demo" && *color_chirho == Color::Cyan
+        }));
+        assert!(segments_chirho.iter().any(|(text_chirho, color_chirho)| {
+            text_chirho.starts_with("--") && *color_chirho == Color::DarkGrey
+        }));
+    }
+
+    #[test]
+    fn haskell_keyword_table_chirho() {
+        assert!(is_haskell_keyword_chirho("let"));
+        assert!(!is_haskell_keyword_chirho("map"));
+    }
 }
