@@ -3681,7 +3681,7 @@ impl InferCtxChirho {
     /// constrained only by defaultable classes are resolved to `Integer` (for
     /// Num/Integral/etc.) or `Double` (for Fractional/Floating/etc.) before
     /// the final constraint check.
-    fn check_deferred_preds_chirho(&mut self, final_subst_chirho: &SubstChirho) {
+    fn check_deferred_preds_chirho(&mut self, final_subst_chirho: &SubstChirho) -> SubstChirho {
         let preds_chirho: Vec<(PredChirho, SpanChirho)> =
             self.deferred_preds_chirho.drain(..).collect();
 
@@ -3840,6 +3840,7 @@ impl InferCtxChirho {
                     ));
             }
         }
+        default_subst_chirho
     }
 
     /// Consume the context and return the final result.
@@ -11880,9 +11881,12 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
         );
     }
     let subst_chirho = ctx_chirho.infer_module_chirho(module_chirho);
-    ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
+    let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
+    if !default_subst_chirho.is_empty_chirho() {
+        ctx_chirho.apply_subst_all_chirho(&default_subst_chirho);
+    }
     let mut result_chirho = ctx_chirho.finish_chirho();
-    result_chirho.subst_chirho = subst_chirho;
+    result_chirho.subst_chirho = default_subst_chirho.compose_chirho(&subst_chirho);
     result_chirho
 }
 
