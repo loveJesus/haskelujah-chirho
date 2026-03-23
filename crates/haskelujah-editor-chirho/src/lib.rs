@@ -186,41 +186,16 @@ impl EditorChirho {
             return;
         }
 
-        let source_chirho = format!(
-            "mainChirho :: IO ()\nmainChirho = print (({}))\n",
-            expression_chirho
-        );
-        let mut source_map_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
-        match haskelujah_driver_chirho::compile_source_chirho(
-            &source_chirho,
-            &mut source_map_chirho,
-            "editor-eval-chirho.hs",
-        ) {
-            Ok(_) => match haskelujah_driver_chirho::eval_source_with_machine_chirho(
-                &source_chirho,
-                &mut source_map_chirho,
-                "editor-eval-chirho.hs",
-                Some("mainChirho"),
-            ) {
-                Ok((_value_chirho, machine_chirho)) => {
-                    let output_chirho = machine_chirho.io_output_chirho.trim();
-                    self.status_msg_chirho = if output_chirho.is_empty() {
-                        "Eval complete (no stdout)".to_string()
-                    } else {
-                        format!("Eval => {}", output_chirho)
-                    };
-                }
-                Err(error_chirho) => {
-                    self.status_msg_chirho = compact_status_msg_chirho(&error_chirho);
-                }
-            },
-            Err(diagnostics_chirho) => {
-                let rendered_chirho = haskelujah_driver_chirho::render_diagnostics_chirho(
-                    &diagnostics_chirho,
-                    &source_map_chirho,
-                    false,
-                );
-                self.status_msg_chirho = compact_status_msg_chirho(&rendered_chirho);
+        match eval_haskell_expression_chirho(expression_chirho) {
+            Ok(output_chirho) => {
+                self.status_msg_chirho = if output_chirho.is_empty() {
+                    "Eval complete (no stdout)".to_string()
+                } else {
+                    format!("Eval => {}", output_chirho)
+                };
+            }
+            Err(error_chirho) => {
+                self.status_msg_chirho = compact_status_msg_chirho(&error_chirho);
             }
         }
     }
@@ -466,6 +441,34 @@ fn compact_status_msg_chirho(text_chirho: &str) -> String {
     }
 }
 
+fn eval_haskell_expression_chirho(expression_chirho: &str) -> Result<String, String> {
+    let source_chirho = format!(
+        "mainChirho :: IO ()\nmainChirho = print (({}))\n",
+        expression_chirho
+    );
+    let mut source_map_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    match haskelujah_driver_chirho::compile_source_chirho(
+        &source_chirho,
+        &mut source_map_chirho,
+        "editor-eval-chirho.hs",
+    ) {
+        Ok(_) => match haskelujah_driver_chirho::eval_source_with_machine_chirho(
+            &source_chirho,
+            &mut source_map_chirho,
+            "editor-eval-chirho.hs",
+            Some("mainChirho"),
+        ) {
+            Ok((_value_chirho, machine_chirho)) => Ok(machine_chirho.io_output_chirho.trim().to_string()),
+            Err(error_chirho) => Err(error_chirho),
+        },
+        Err(diagnostics_chirho) => Err(haskelujah_driver_chirho::render_diagnostics_chirho(
+            &diagnostics_chirho,
+            &source_map_chirho,
+            false,
+        )),
+    }
+}
+
 fn highlight_segments_chirho(text_chirho: &str) -> Vec<(String, Color)> {
     let chars_chirho: Vec<char> = text_chirho.chars().collect();
     let mut segments_chirho = Vec::new();
@@ -575,7 +578,10 @@ fn is_haskell_keyword_chirho(token_chirho: &str) -> bool {
 
 #[cfg(test)]
 mod tests_chirho {
-    use super::{Color, highlight_segments_chirho, is_haskell_keyword_chirho};
+    use super::{
+        Color, EditorChirho, eval_haskell_expression_chirho, highlight_segments_chirho,
+        is_haskell_keyword_chirho,
+    };
 
     #[test]
     fn highlight_keywords_types_comments_and_strings_chirho() {
@@ -602,5 +608,19 @@ mod tests_chirho {
     fn haskell_keyword_table_chirho() {
         assert!(is_haskell_keyword_chirho("let"));
         assert!(!is_haskell_keyword_chirho("map"));
+    }
+
+    #[test]
+    fn eval_haskell_expression_returns_rendered_result_chirho() {
+        let output_chirho =
+            eval_haskell_expression_chirho("map (+1) [1,2,3]").expect("eval should succeed");
+        assert_eq!(output_chirho, "[2,3,4]");
+    }
+
+    #[test]
+    fn editor_eval_updates_status_bar_chirho() {
+        let mut editor_chirho = EditorChirho::new_chirho();
+        editor_chirho.eval_expression_chirho("sum [1,2,3]");
+        assert_eq!(editor_chirho.status_msg_chirho, "Eval => 6");
     }
 }
