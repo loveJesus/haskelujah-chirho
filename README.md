@@ -15,10 +15,10 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | Script Runner | `#!/usr/bin/env haskelujah` | Run `.hs` files directly with shebang |
 | REPL | `haskelujah repl` | Interactive `:type`, `:info`, `:load`, expression eval |
 | Test Runner | `haskelujah test` | Compile and run test suites |
-| LSP Server | `haskelujah lsp` | Hover types, go-to-def, diagnostics for any editor |
+| LSP Server | `haskelujah lsp` | Hover types, go-to-def, diagnostics for any editor *(planned)* |
 | AI / MCP | `haskelujah mcp` | Expose project to AI assistants via Model Context Protocol |
 | Checker | `haskelujah check` | Type-check without codegen |
-| Formatter | `haskelujah fmt` | Format Haskell source (planned) |
+| Formatter | `haskelujah fmt` | Trim whitespace, normalize indentation, clean blank lines |
 
 ## Status
 
