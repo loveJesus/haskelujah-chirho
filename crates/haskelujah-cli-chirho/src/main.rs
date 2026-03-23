@@ -219,6 +219,7 @@ fn main_chirho() -> ExitCode {
         "repl" => repl_chirho::repl_command_chirho(),
         "mcp" => mcp_command_chirho(),
         "test" => test_command_chirho(path_chirho),
+        "fmt" => fmt_command_chirho(path_chirho),
         "init" => init_command_chirho(path_chirho),
         "clean" => clean_command_chirho(path_chirho),
         _ => {
@@ -1276,4 +1277,96 @@ fn collect_hs_files_chirho(dir_chirho: &std::path::Path, out_chirho: &mut Vec<st
             }
         }
     }
+}
+
+// ── Formatter ───────────────────────────────────────────────────────────
+
+fn fmt_command_chirho(path_arg_chirho: Option<String>) -> ExitCode {
+    let target_chirho = path_arg_chirho.as_deref().unwrap_or(".");
+    let target_path_chirho = std::path::Path::new(target_chirho);
+
+    let mut files_chirho = Vec::new();
+    if target_path_chirho.is_file() {
+        files_chirho.push(target_path_chirho.to_path_buf());
+    } else if target_path_chirho.is_dir() {
+        collect_hs_files_chirho(target_path_chirho, &mut files_chirho);
+    } else {
+        eprintln!("error: `{}` is not a file or directory", target_chirho);
+        return ExitCode::from(1);
+    }
+
+    if files_chirho.is_empty() {
+        eprintln!("No .hs files found");
+        return ExitCode::from(1);
+    }
+
+    let mut formatted_chirho = 0usize;
+    for file_chirho in &files_chirho {
+        let source_chirho = match std::fs::read_to_string(file_chirho) {
+            Ok(s_chirho) => s_chirho,
+            Err(e_chirho) => {
+                eprintln!("error reading {}: {}", file_chirho.display(), e_chirho);
+                continue;
+            }
+        };
+
+        let formatted_source_chirho = format_haskell_source_chirho(&source_chirho);
+        if formatted_source_chirho != source_chirho {
+            if let Err(e_chirho) = std::fs::write(file_chirho, &formatted_source_chirho) {
+                eprintln!("error writing {}: {}", file_chirho.display(), e_chirho);
+                continue;
+            }
+            eprintln!("  formatted {}", file_chirho.display());
+            formatted_chirho += 1;
+        }
+    }
+
+    eprintln!(
+        "{} file(s) checked, {} formatted",
+        files_chirho.len(),
+        formatted_chirho
+    );
+    ExitCode::SUCCESS
+}
+
+/// Basic Haskell source formatting:
+/// - Trim trailing whitespace
+/// - Ensure single newline at end of file
+/// - Normalize indent to spaces (no tabs)
+/// - Remove excess blank lines (max 2 consecutive)
+fn format_haskell_source_chirho(source_chirho: &str) -> String {
+    let mut lines_chirho: Vec<String> = source_chirho
+        .lines()
+        .map(|line_chirho| {
+            // Replace tabs with 2 spaces, trim trailing whitespace
+            line_chirho
+                .replace('\t', "  ")
+                .trim_end()
+                .to_string()
+        })
+        .collect();
+
+    // Remove excess blank lines (max 2 consecutive)
+    let mut result_chirho = Vec::with_capacity(lines_chirho.len());
+    let mut blank_count_chirho = 0u32;
+    for line_chirho in &lines_chirho {
+        if line_chirho.is_empty() {
+            blank_count_chirho += 1;
+            if blank_count_chirho <= 2 {
+                result_chirho.push(line_chirho.clone());
+            }
+        } else {
+            blank_count_chirho = 0;
+            result_chirho.push(line_chirho.clone());
+        }
+    }
+
+    // Remove trailing blank lines, ensure single newline at end
+    while result_chirho.last().is_some_and(|l| l.is_empty()) {
+        result_chirho.pop();
+    }
+
+    let mut output_chirho = result_chirho.join("\n");
+    output_chirho.push('\n');
+    output_chirho
 }
