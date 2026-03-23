@@ -223,6 +223,21 @@ liftCallCC callCC f = WriterT $ callCC $ \\ c -> runWriterT (f (\\ a -> WriterT 
 }
 
 #[test]
+fn frontend_resolves_bundled_stdlib_json_module_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module StdlibJsonDemoChirho where\nimport Haskelujah.JSON\nanswerChirho = encode (String \"hello\")\n",
+        &mut source_map_chirho,
+        "StdlibJsonDemoChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "bundled stdlib module Haskelujah.JSON should resolve without package install: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_exceptt_imported_signatures_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
