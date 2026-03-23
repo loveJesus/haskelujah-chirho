@@ -25,7 +25,7 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | Metric | Value |
 |---|---|
 | GHC Compat | **833/938 (88.8%)** typecheck/should_compile |
-| Curated Tests | **513/513 (100%)** compile-and-run correctness tests |
+| Curated Tests | **512/513 (99.8%)** compile-and-run correctness tests |
 | Total Tests | **2,500+ passing**, 0 failures |
 | Hackage Packages | **17 compile** including **transformers** (24) + **mtl** (24) + **parsec** (25) |
 | Workspace | 21 crates, 133 Rust source files |
