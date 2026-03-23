@@ -95,7 +95,17 @@ fn exported_type_synonyms_from_module_chirho(
                 .contains_key(&alias_name_chirho)
             {
                 exported_type_synonyms_chirho.insert(
-                    alias_name_chirho,
+                    alias_name_chirho.clone(),
+                    (
+                        type_vars_chirho
+                            .iter()
+                            .map(|ty_var_chirho| ty_var_chirho.text_chirho().to_string())
+                            .collect(),
+                        rhs_chirho.clone(),
+                    ),
+                );
+                exported_type_synonyms_chirho.insert(
+                    format!("{}.{}", iface_chirho.name_chirho, alias_name_chirho),
                     (
                         type_vars_chirho
                             .iter()
@@ -233,9 +243,153 @@ fn should_override_imported_scheme_chirho(
     }
 }
 
+fn qualify_imported_ast_type_chirho(
+    ty_chirho: &TypeChirho,
+    qualifiable_type_names_chirho: &std::collections::HashSet<String>,
+    qualifier_chirho: &str,
+    unqualified_type_names_chirho: &std::collections::HashSet<String>,
+) -> TypeChirho {
+    match ty_chirho {
+        TypeChirho::ConChirho(name_chirho) => {
+            let bare_name_chirho = name_chirho.text_chirho();
+            if qualifiable_type_names_chirho.contains(bare_name_chirho) {
+                let span_chirho = name_chirho.span_chirho();
+                if unqualified_type_names_chirho.contains(bare_name_chirho) {
+                    TypeChirho::ConChirho(haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
+                        haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+                            bare_name_chirho.to_string(),
+                            span_chirho,
+                        ),
+                    ))
+                } else {
+                    TypeChirho::ConChirho(haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
+                        haskelujah_ast_chirho::name_chirho::RawNameChirho::qualified_chirho(
+                            qualifier_chirho.to_string(),
+                            bare_name_chirho.to_string(),
+                            span_chirho,
+                        ),
+                    ))
+                }
+            } else {
+                ty_chirho.clone()
+            }
+        }
+        TypeChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            span_chirho,
+        } => TypeChirho::AppChirho {
+            fun_chirho: Box::new(qualify_imported_ast_type_chirho(
+                fun_chirho,
+                qualifiable_type_names_chirho,
+                qualifier_chirho,
+                unqualified_type_names_chirho,
+            )),
+            arg_chirho: Box::new(qualify_imported_ast_type_chirho(
+                arg_chirho,
+                qualifiable_type_names_chirho,
+                qualifier_chirho,
+                unqualified_type_names_chirho,
+            )),
+            span_chirho: *span_chirho,
+        },
+        TypeChirho::FunChirho {
+            arg_chirho,
+            mult_chirho,
+            result_chirho,
+            span_chirho,
+        } => TypeChirho::FunChirho {
+            arg_chirho: Box::new(qualify_imported_ast_type_chirho(
+                arg_chirho,
+                qualifiable_type_names_chirho,
+                qualifier_chirho,
+                unqualified_type_names_chirho,
+            )),
+            mult_chirho: mult_chirho.clone(),
+            result_chirho: Box::new(qualify_imported_ast_type_chirho(
+                result_chirho,
+                qualifiable_type_names_chirho,
+                qualifier_chirho,
+                unqualified_type_names_chirho,
+            )),
+            span_chirho: *span_chirho,
+        },
+        TypeChirho::TupleChirho {
+            elements_chirho,
+            span_chirho,
+        } => TypeChirho::TupleChirho {
+            elements_chirho: elements_chirho
+                .iter()
+                .map(|element_chirho| {
+                    qualify_imported_ast_type_chirho(
+                        element_chirho,
+                        qualifiable_type_names_chirho,
+                        qualifier_chirho,
+                        unqualified_type_names_chirho,
+                    )
+                })
+                .collect(),
+            span_chirho: *span_chirho,
+        },
+        TypeChirho::ListChirho {
+            element_chirho,
+            span_chirho,
+        } => TypeChirho::ListChirho {
+            element_chirho: Box::new(qualify_imported_ast_type_chirho(
+                element_chirho,
+                qualifiable_type_names_chirho,
+                qualifier_chirho,
+                unqualified_type_names_chirho,
+            )),
+            span_chirho: *span_chirho,
+        },
+        TypeChirho::ParenChirho {
+            inner_chirho,
+            span_chirho,
+        } => TypeChirho::ParenChirho {
+            inner_chirho: Box::new(qualify_imported_ast_type_chirho(
+                inner_chirho,
+                qualifiable_type_names_chirho,
+                qualifier_chirho,
+                unqualified_type_names_chirho,
+            )),
+            span_chirho: *span_chirho,
+        },
+        TypeChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+            span_chirho,
+        } => TypeChirho::QualChirho {
+            context_chirho: context_chirho.clone(),
+            body_chirho: Box::new(qualify_imported_ast_type_chirho(
+                body_chirho,
+                qualifiable_type_names_chirho,
+                qualifier_chirho,
+                unqualified_type_names_chirho,
+            )),
+            span_chirho: *span_chirho,
+        },
+        TypeChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            span_chirho,
+        } => TypeChirho::ForallChirho {
+            vars_chirho: vars_chirho.clone(),
+            body_chirho: Box::new(qualify_imported_ast_type_chirho(
+                body_chirho,
+                qualifiable_type_names_chirho,
+                qualifier_chirho,
+                unqualified_type_names_chirho,
+            )),
+            span_chirho: *span_chirho,
+        },
+        _ => ty_chirho.clone(),
+    }
+}
+
 fn qualify_imported_ty_chirho(
     ty_chirho: &haskelujah_typing_chirho::TyChirho,
-    exported_type_names_chirho: &std::collections::HashSet<String>,
+    qualifiable_type_names_chirho: &std::collections::HashSet<String>,
     qualifier_chirho: &str,
     unqualified_type_names_chirho: &std::collections::HashSet<String>,
 ) -> haskelujah_typing_chirho::TyChirho {
@@ -245,7 +399,7 @@ fn qualify_imported_ty_chirho(
                 .rsplit('.')
                 .next()
                 .unwrap_or(name_chirho.as_str());
-            if exported_type_names_chirho.contains(bare_name_chirho) {
+            if qualifiable_type_names_chirho.contains(bare_name_chirho) {
                 if unqualified_type_names_chirho.contains(bare_name_chirho) {
                     haskelujah_typing_chirho::TyChirho::ConChirho(bare_name_chirho.to_string())
                 } else {
@@ -261,13 +415,13 @@ fn qualify_imported_ty_chirho(
             haskelujah_typing_chirho::TyChirho::AppChirho(
                 Box::new(qualify_imported_ty_chirho(
                     fun_chirho,
-                    exported_type_names_chirho,
+                    qualifiable_type_names_chirho,
                     qualifier_chirho,
                     unqualified_type_names_chirho,
                 )),
                 Box::new(qualify_imported_ty_chirho(
                     arg_chirho,
-                    exported_type_names_chirho,
+                    qualifiable_type_names_chirho,
                     qualifier_chirho,
                     unqualified_type_names_chirho,
                 )),
@@ -276,13 +430,13 @@ fn qualify_imported_ty_chirho(
             haskelujah_typing_chirho::TyChirho::FunChirho(
                 Box::new(qualify_imported_ty_chirho(
                     arg_chirho,
-                    exported_type_names_chirho,
+                    qualifiable_type_names_chirho,
                     qualifier_chirho,
                     unqualified_type_names_chirho,
                 )),
                 Box::new(qualify_imported_ty_chirho(
                     result_chirho,
-                    exported_type_names_chirho,
+                    qualifiable_type_names_chirho,
                     qualifier_chirho,
                     unqualified_type_names_chirho,
                 )),
@@ -295,7 +449,7 @@ fn qualify_imported_ty_chirho(
                     .map(|element_chirho| {
                         qualify_imported_ty_chirho(
                             element_chirho,
-                            exported_type_names_chirho,
+                            qualifiable_type_names_chirho,
                             qualifier_chirho,
                             unqualified_type_names_chirho,
                         )
@@ -306,7 +460,7 @@ fn qualify_imported_ty_chirho(
             haskelujah_typing_chirho::TyChirho::ListChirho(Box::new(
                 qualify_imported_ty_chirho(
                     element_chirho,
-                    exported_type_names_chirho,
+                    qualifiable_type_names_chirho,
                     qualifier_chirho,
                     unqualified_type_names_chirho,
                 ),
@@ -318,7 +472,7 @@ fn qualify_imported_ty_chirho(
             vars_chirho: vars_chirho.clone(),
             body_chirho: Box::new(qualify_imported_ty_chirho(
                 body_chirho,
-                exported_type_names_chirho,
+                qualifiable_type_names_chirho,
                 qualifier_chirho,
                 unqualified_type_names_chirho,
             )),
@@ -329,17 +483,11 @@ fn qualify_imported_ty_chirho(
 
 fn qualify_imported_scheme_for_iface_chirho(
     scheme_chirho: &haskelujah_typing_chirho::SchemeChirho,
-    iface_chirho: &ModuleIfaceChirho,
+    qualifiable_type_names_chirho: &std::collections::HashSet<String>,
     qualifier_chirho: &str,
     unqualified_type_names_chirho: &std::collections::HashSet<String>,
 ) -> haskelujah_typing_chirho::SchemeChirho {
-    let exported_type_names_chirho: std::collections::HashSet<String> = iface_chirho
-        .exports_chirho
-        .types_chirho
-        .keys()
-        .cloned()
-        .collect();
-    if exported_type_names_chirho.is_empty() {
+    if qualifiable_type_names_chirho.is_empty() {
         return scheme_chirho.clone();
     }
     haskelujah_typing_chirho::SchemeChirho {
@@ -351,7 +499,7 @@ fn qualify_imported_scheme_for_iface_chirho(
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: qualify_imported_ty_chirho(
                     &pred_chirho.ty_chirho,
-                    &exported_type_names_chirho,
+                    qualifiable_type_names_chirho,
                     qualifier_chirho,
                     unqualified_type_names_chirho,
                 ),
@@ -361,7 +509,7 @@ fn qualify_imported_scheme_for_iface_chirho(
                     .map(|ty_chirho| {
                         qualify_imported_ty_chirho(
                             ty_chirho,
-                            &exported_type_names_chirho,
+                            qualifiable_type_names_chirho,
                             qualifier_chirho,
                             unqualified_type_names_chirho,
                         )
@@ -371,7 +519,7 @@ fn qualify_imported_scheme_for_iface_chirho(
             .collect(),
         ty_chirho: qualify_imported_ty_chirho(
             &scheme_chirho.ty_chirho,
-            &exported_type_names_chirho,
+            qualifiable_type_names_chirho,
             qualifier_chirho,
             unqualified_type_names_chirho,
         ),
@@ -470,6 +618,7 @@ pub fn run_frontend_with_type_synonyms_chirho(
     // the type checker to see imported names as polymorphic variables
     // rather than reporting them as "unbound variable" (E0202).
     let mut merged_imported_types_chirho = imported_types_chirho.clone();
+    let mut merged_imported_type_synonyms_chirho = imported_type_synonyms_chirho.clone();
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
         if let Some(iface_chirho) = ifaces_chirho
@@ -477,6 +626,21 @@ pub fn run_frontend_with_type_synonyms_chirho(
             .rev()
             .find(|m_chirho| m_chirho.name_chirho == module_name_chirho)
         {
+            let qualifiable_type_names_chirho: std::collections::HashSet<String> = iface_chirho
+                .exports_chirho
+                .types_chirho
+                .keys()
+                .cloned()
+                .chain(
+                    imported_type_synonyms_chirho
+                        .keys()
+                        .filter_map(|name_chirho| {
+                            name_chirho
+                                .strip_prefix(&format!("{module_name_chirho}."))
+                                .map(|suffix_chirho| suffix_chirho.to_string())
+                        }),
+                )
+                .collect();
             let unqualified_type_names_chirho: std::collections::HashSet<String> = module_chirho
                 .imports_chirho
                 .iter()
@@ -508,6 +672,36 @@ pub fn run_frontend_with_type_synonyms_chirho(
                 .map(|a_chirho| a_chirho.text_chirho().to_string())
                 .unwrap_or_else(|| module_name_chirho.clone());
             for (name_chirho, ns_chirho, _span_chirho) in &names_chirho {
+                if ns_chirho
+                    == &haskelujah_naming_chirho::env_chirho::NamespaceChirho::TypeChirho
+                {
+                    let module_qualified_name_chirho =
+                        format!("{module_name_chirho}.{name_chirho}");
+                    if let Some((params_chirho, rhs_chirho)) = imported_type_synonyms_chirho
+                        .get(&module_qualified_name_chirho)
+                        .cloned()
+                        .or_else(|| imported_type_synonyms_chirho.get(name_chirho).cloned())
+                    {
+                        let rewritten_rhs_chirho = qualify_imported_ast_type_chirho(
+                            &rhs_chirho,
+                            &qualifiable_type_names_chirho,
+                            &qualifier_chirho,
+                            &unqualified_type_names_chirho,
+                        );
+                        if !import_chirho.qualified_chirho {
+                            merged_imported_type_synonyms_chirho.insert(
+                                name_chirho.clone(),
+                                (params_chirho.clone(), rewritten_rhs_chirho.clone()),
+                            );
+                        }
+                        merged_imported_type_synonyms_chirho.insert(
+                            format!("{qualifier_chirho}.{name_chirho}"),
+                            (params_chirho, rewritten_rhs_chirho),
+                        );
+                    }
+                }
+            }
+            for (name_chirho, ns_chirho, _span_chirho) in &names_chirho {
                 if ns_chirho == &haskelujah_naming_chirho::env_chirho::NamespaceChirho::ValueChirho
                 {
                     let module_qualified_name_chirho =
@@ -533,7 +727,7 @@ pub fn run_frontend_with_type_synonyms_chirho(
                         });
                     let in_scope_seed_scheme_chirho = qualify_imported_scheme_for_iface_chirho(
                         &base_scheme_chirho,
-                        iface_chirho,
+                        &qualifiable_type_names_chirho,
                         &qualifier_chirho,
                         &unqualified_type_names_chirho,
                     );
@@ -562,14 +756,14 @@ pub fn run_frontend_with_type_synonyms_chirho(
     // Phase 4: Type inference — use import-aware variant when upstream
     // type schemes are available, plain variant otherwise.
     let infer_result_chirho = if merged_imported_types_chirho.is_empty()
-        && imported_type_synonyms_chirho.is_empty()
+        && merged_imported_type_synonyms_chirho.is_empty()
     {
         infer_module_chirho(&module_chirho)
     } else {
         infer_module_with_imports_and_type_synonyms_chirho(
             &module_chirho,
             &merged_imported_types_chirho,
-            imported_type_synonyms_chirho,
+            &merged_imported_type_synonyms_chirho,
         )
     };
     if !defer_errors_chirho && infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
