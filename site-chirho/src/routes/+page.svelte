@@ -65,9 +65,9 @@
 		{
 			titleChirho: 'AI / MCP Server',
 			descriptionChirho:
-				'Built-in MCP (Model Context Protocol) server. Expose type info, project structure, and diagnostics to Claude, GPT, and Gemini. AI-native Haskell development.',
+				'Built-in MCP (Model Context Protocol) server. Run haskelujah mcp to expose type info, diagnostics, and project structure to Claude, GPT, and Gemini over stdio.',
 			iconChirho: '🤖',
-			plannedChirho: true
+			plannedChirho: false
 		},
 		{
 			titleChirho: 'Editor',
