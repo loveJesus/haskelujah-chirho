@@ -2539,6 +2539,17 @@ main = print (fChirho ["", "x"])
     }
 }
 
+#[test]
+fn llvm_round_trip_null_empty_string_output_chirho() {
+    let src_chirho = r#"module Main where
+main = if null "" then print 1 else print 2
+"#;
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(exit_code_chirho, 0, "null empty string executable should exit successfully");
+        assert_eq!(stdout_chirho, "1\n");
+    }
+}
+
 // ── Cranelift backend driver integration tests ────────────────────────
 
 #[test]
