@@ -218,6 +218,7 @@ fn main_chirho() -> ExitCode {
         "install" => install_command_chirho(program_name_chirho, &positional_chirho),
         "repl" => repl_chirho::repl_command_chirho(),
         "mcp" => mcp_command_chirho(),
+        "lsp" => lsp_command_chirho(),
         "test" => test_command_chirho(path_chirho),
         "fmt" => fmt_command_chirho(path_chirho),
         "init" => init_command_chirho(path_chirho),
@@ -1369,4 +1370,17 @@ fn format_haskell_source_chirho(source_chirho: &str) -> String {
     let mut output_chirho = result_chirho.join("\n");
     output_chirho.push('\n');
     output_chirho
+}
+
+// ── LSP Server ──────────────────────────────────────────────────────────
+
+fn lsp_command_chirho() -> ExitCode {
+    eprintln!("haskelujah LSP server starting...");
+    match haskelujah_lsp_chirho::run_lsp_chirho() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e_chirho) => {
+            eprintln!("LSP error: {}", e_chirho);
+            ExitCode::from(1)
+        }
+    }
 }

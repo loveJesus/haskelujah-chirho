@@ -25,6 +25,7 @@ members = [
   "crates/haskelujah-rts-chirho",
   "crates/haskelujah-th-chirho",
   "crates/haskelujah-mcp-chirho",
+  "crates/haskelujah-lsp-chirho",
 ]
 
 [workspace.package]
