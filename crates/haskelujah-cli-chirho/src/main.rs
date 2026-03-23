@@ -218,6 +218,7 @@ fn main_chirho() -> ExitCode {
         "install" => install_command_chirho(program_name_chirho, &positional_chirho),
         "repl" => repl_chirho::repl_command_chirho(),
         "mcp" => mcp_command_chirho(),
+        "test" => test_command_chirho(path_chirho),
         "init" => init_command_chirho(path_chirho),
         "clean" => clean_command_chirho(path_chirho),
         _ => {
@@ -1181,4 +1182,98 @@ fn mcp_command_chirho() -> ExitCode {
         let _ = out_chirho.flush();
     }
     ExitCode::SUCCESS
+}
+
+// ── Test Runner ─────────────────────────────────────────────────────────
+
+fn test_command_chirho(path_arg_chirho: Option<String>) -> ExitCode {
+    let project_dir_chirho = path_arg_chirho.as_deref().unwrap_or(".");
+    let project_path_chirho = std::path::Path::new(project_dir_chirho);
+
+    if !project_path_chirho.is_dir() {
+        eprintln!("error: `{}` is not a directory", project_dir_chirho);
+        return ExitCode::from(1);
+    }
+
+    let test_start_chirho = std::time::Instant::now();
+
+    // Find test files: look for test/, tests/, or Test*.hs in the project
+    let mut test_files_chirho = Vec::new();
+    for dir_name_chirho in &["test", "tests", "spec"] {
+        let test_dir_chirho = project_path_chirho.join(dir_name_chirho);
+        if test_dir_chirho.is_dir() {
+            collect_hs_files_chirho(&test_dir_chirho, &mut test_files_chirho);
+        }
+    }
+
+    if test_files_chirho.is_empty() {
+        eprintln!("No test files found in test/, tests/, or spec/");
+        return ExitCode::from(1);
+    }
+
+    eprintln!("Running {} test file(s)...", test_files_chirho.len());
+
+    let mut passed_chirho = 0usize;
+    let mut failed_chirho = 0usize;
+
+    for test_file_chirho in &test_files_chirho {
+        let file_name_chirho = test_file_chirho
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy();
+        eprint!("  {} ... ", file_name_chirho);
+
+        let source_chirho = match std::fs::read_to_string(test_file_chirho) {
+            Ok(s_chirho) => s_chirho,
+            Err(e_chirho) => {
+                eprintln!("FAIL (read error: {})", e_chirho);
+                failed_chirho += 1;
+                continue;
+            }
+        };
+
+        let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+        match haskelujah_driver_chirho::compile_source_chirho(
+            &source_chirho,
+            &mut sm_chirho,
+            &file_name_chirho,
+        ) {
+            Ok(_) => {
+                eprintln!("ok");
+                passed_chirho += 1;
+            }
+            Err(diagnostics_chirho) => {
+                let error_count_chirho = diagnostics_chirho.diagnostics_chirho().len();
+                eprintln!("FAIL ({} error(s))", error_count_chirho);
+                failed_chirho += 1;
+            }
+        }
+    }
+
+    let elapsed_chirho = test_start_chirho.elapsed();
+    eprintln!(
+        "\ntest result: {} passed, {} failed ({:.2}s)",
+        passed_chirho,
+        failed_chirho,
+        elapsed_chirho.as_secs_f64()
+    );
+
+    if failed_chirho > 0 {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn collect_hs_files_chirho(dir_chirho: &std::path::Path, out_chirho: &mut Vec<std::path::PathBuf>) {
+    if let Ok(entries_chirho) = std::fs::read_dir(dir_chirho) {
+        for entry_chirho in entries_chirho.flatten() {
+            let path_chirho = entry_chirho.path();
+            if path_chirho.is_dir() {
+                collect_hs_files_chirho(&path_chirho, out_chirho);
+            } else if path_chirho.extension().is_some_and(|e| e == "hs") {
+                out_chirho.push(path_chirho);
+            }
+        }
+    }
 }
