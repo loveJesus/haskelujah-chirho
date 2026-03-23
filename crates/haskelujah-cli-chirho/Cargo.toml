@@ -30,5 +30,8 @@ haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-sp
 haskelujah-syntax-chirho = { package = "haskelujah-syntax", path = "../haskelujah-syntax-chirho", version = "0.1.1" }
 haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskelujah-typing-chirho", version = "0.1.1" }
 
+haskelujah-mcp-chirho = { package = "haskelujah-mcp", path = "../haskelujah-mcp-chirho", version = "0.1.1" }
+serde_json = "1"
+
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

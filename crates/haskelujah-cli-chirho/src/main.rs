@@ -217,6 +217,7 @@ fn main_chirho() -> ExitCode {
         }
         "install" => install_command_chirho(program_name_chirho, &positional_chirho),
         "repl" => repl_chirho::repl_command_chirho(),
+        "mcp" => mcp_command_chirho(),
         "init" => init_command_chirho(path_chirho),
         "clean" => clean_command_chirho(path_chirho),
         _ => {
@@ -1148,4 +1149,36 @@ fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("  {program_name_chirho} init my-project");
     eprintln!("  {program_name_chirho} build my-project");
     eprintln!("  ./my-project/dist-chirho/build/my-project");
+}
+
+// ── MCP Server ──────────────────────────────────────────────────────────
+
+fn mcp_command_chirho() -> ExitCode {
+    use std::io::{BufRead, Write};
+    eprintln!("haskelujah mcp server starting (stdio)...");
+    let stdin_chirho = std::io::stdin();
+    let stdout_chirho = std::io::stdout();
+    for line_chirho in stdin_chirho.lock().lines() {
+        let line_chirho = match line_chirho {
+            Ok(l_chirho) => l_chirho,
+            Err(_) => break,
+        };
+        if line_chirho.trim().is_empty() {
+            continue;
+        }
+        let request_chirho: haskelujah_mcp_chirho::McpRequestChirho =
+            match serde_json::from_str(&line_chirho) {
+                Ok(r_chirho) => r_chirho,
+                Err(e_chirho) => {
+                    eprintln!("invalid JSON-RPC: {}", e_chirho);
+                    continue;
+                }
+            };
+        let response_chirho = haskelujah_mcp_chirho::handle_request_chirho(&request_chirho);
+        let json_chirho = serde_json::to_string(&response_chirho).unwrap_or_default();
+        let mut out_chirho = stdout_chirho.lock();
+        let _ = writeln!(out_chirho, "{}", json_chirho);
+        let _ = out_chirho.flush();
+    }
+    ExitCode::SUCCESS
 }

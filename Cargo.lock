@@ -397,6 +397,7 @@ dependencies = [
  "haskelujah-backend-wasm",
  "haskelujah-core",
  "haskelujah-driver",
+ "haskelujah-mcp",
  "haskelujah-naming",
  "haskelujah-package",
  "haskelujah-runtime",
@@ -404,6 +405,7 @@ dependencies = [
  "haskelujah-syntax",
  "haskelujah-typing",
  "libc",
+ "serde_json",
 ]
 
 [[package]]
@@ -512,6 +514,18 @@ dependencies = [
 [[package]]
 name = "haskelujah-incremental"
 version = "0.1.1"
+
+[[package]]
+name = "haskelujah-mcp"
+version = "0.1.1"
+dependencies = [
+ "haskelujah-driver",
+ "haskelujah-naming",
+ "haskelujah-span",
+ "haskelujah-typing",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "haskelujah-naming"
@@ -987,6 +1001,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
+ "serde_derive",
 ]
 
 [[package]]

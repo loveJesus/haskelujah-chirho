@@ -24,6 +24,7 @@ members = [
   "crates/haskelujah-backend-beam-chirho",
   "crates/haskelujah-rts-chirho",
   "crates/haskelujah-th-chirho",
+  "crates/haskelujah-mcp-chirho",
 ]
 
 [workspace.package]

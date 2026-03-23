@@ -1,0 +1,17 @@
+# For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
+
+[package]
+name = "haskelujah-mcp"
+description = "Model Context Protocol server for the Haskelujah Haskell compiler"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+haskelujah-driver-chirho = { package = "haskelujah-driver", path = "../haskelujah-driver-chirho", version = "0.1.1" }
+haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.1" }
+haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskelujah-typing-chirho", version = "0.1.1" }
+haskelujah-naming-chirho = { package = "haskelujah-naming", path = "../haskelujah-naming-chirho", version = "0.1.1" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
