@@ -70,11 +70,11 @@
 			plannedChirho: false
 		},
 		{
-			titleChirho: 'Editor',
+			titleChirho: 'Editor / LSP',
 			descriptionChirho:
-				'A Haskell-extensible editor in the spirit of Emacs — programmable in the language it compiles. Built-in LSP for hover types, go-to-def, and diagnostics in any editor.',
+				'Built-in LSP server for real-time diagnostics in any editor. Run haskelujah lsp for VS Code, Neovim, Zed, Helix. Vision: a Haskell-extensible editor in the spirit of Emacs.',
 			iconChirho: '✏',
-			plannedChirho: true
+			plannedChirho: false
 		},
 		{
 			titleChirho: 'Runtime',
