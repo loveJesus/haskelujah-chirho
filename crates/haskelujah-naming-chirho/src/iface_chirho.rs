@@ -3135,8 +3135,20 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Exception", &[]);
-        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        // Exception class with methods — (..) import brings these in
+        exports_chirho.types_chirho.insert(
+            "Exception".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Exception".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec![
+                    "toException".to_string(),
+                    "fromException".to_string(),
+                    "displayException".to_string(),
+                ],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
         let (k_chirho, v_chirho) = mk_type_chirho("SomeException", &["SomeException"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("IOException", &[]);
