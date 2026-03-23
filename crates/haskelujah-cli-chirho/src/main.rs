@@ -219,6 +219,7 @@ fn main_chirho() -> ExitCode {
         "repl" => repl_chirho::repl_command_chirho(),
         "mcp" => mcp_command_chirho(),
         "lsp" => lsp_command_chirho(),
+        "edit" => edit_command_chirho(path_chirho),
         "test" => test_command_chirho(path_chirho),
         "fmt" => fmt_command_chirho(path_chirho),
         "init" => init_command_chirho(path_chirho),
@@ -1381,6 +1382,18 @@ fn lsp_command_chirho() -> ExitCode {
         Ok(()) => ExitCode::SUCCESS,
         Err(e_chirho) => {
             eprintln!("LSP error: {}", e_chirho);
+            ExitCode::from(1)
+        }
+    }
+}
+
+// ── Editor ──────────────────────────────────────────────────────────────
+
+fn edit_command_chirho(path_arg_chirho: Option<String>) -> ExitCode {
+    match haskelujah_editor_chirho::run_editor_chirho(path_arg_chirho.as_deref()) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e_chirho) => {
+            eprintln!("editor error: {}", e_chirho);
             ExitCode::from(1)
         }
     }

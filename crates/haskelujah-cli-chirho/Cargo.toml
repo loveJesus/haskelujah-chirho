@@ -32,6 +32,7 @@ haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskeluja
 
 haskelujah-mcp-chirho = { package = "haskelujah-mcp", path = "../haskelujah-mcp-chirho", version = "0.1.1" }
 haskelujah-lsp-chirho = { package = "haskelujah-lsp", path = "../haskelujah-lsp-chirho", version = "0.1.1" }
+haskelujah-editor-chirho = { package = "haskelujah-editor", path = "../haskelujah-editor-chirho", version = "0.1.1" }
 serde_json = "1"
 
 [target.'cfg(unix)'.dependencies]
