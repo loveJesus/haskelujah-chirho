@@ -752,7 +752,7 @@ impl InferCtxChirho {
                 TyChirho::VarChirho(*tv_chirho)
             }
             TypeChirho::ConChirho(name_chirho) => {
-                let text_chirho = name_chirho.text_chirho().to_string();
+                let text_chirho = name_chirho.full_name_chirho();
                 let raw_chirho = TyChirho::ConChirho(text_chirho);
                 // Eagerly expand nullary type synonyms (e.g. String → [Char])
                 self.expand_type_synonyms_chirho(&raw_chirho)
@@ -828,7 +828,7 @@ impl InferCtxChirho {
             }
             // DataKinds: promoted constructor is a type-level constant
             TypeChirho::PromotedConChirho { name_chirho, .. } => {
-                TyChirho::ConChirho(name_chirho.text_chirho().to_string())
+                TyChirho::ConChirho(name_chirho.full_name_chirho())
             }
             // DataKinds: promoted list is represented as nested type application
             TypeChirho::PromotedListChirho {
@@ -1396,8 +1396,16 @@ impl InferCtxChirho {
 
             ExprChirho::ConChirho(name_chirho) => {
                 let text_chirho = name_chirho.text_chirho();
+                let full_name_chirho = name_chirho.full_name_chirho();
                 let span_chirho = name_chirho.span_chirho();
-                let scheme_opt_chirho = self.env_chirho.lookup_chirho(text_chirho).cloned();
+                let scheme_opt_chirho = if full_name_chirho == text_chirho {
+                    self.env_chirho.lookup_chirho(text_chirho).cloned()
+                } else {
+                    self.env_chirho
+                        .lookup_chirho(&full_name_chirho)
+                        .cloned()
+                        .or_else(|| self.env_chirho.lookup_chirho(text_chirho).cloned())
+                };
                 match scheme_opt_chirho {
                     Some(scheme_chirho) => {
                         let ty_chirho = self.instantiate_chirho(&scheme_chirho, span_chirho);
@@ -1908,7 +1916,15 @@ impl InferCtxChirho {
                 span_chirho,
             } => {
                 let con_text_chirho = con_chirho.text_chirho();
-                let scheme_opt_chirho = self.env_chirho.lookup_chirho(con_text_chirho).cloned();
+                let con_full_name_chirho = con_chirho.full_name_chirho();
+                let scheme_opt_chirho = if con_full_name_chirho == con_text_chirho {
+                    self.env_chirho.lookup_chirho(con_text_chirho).cloned()
+                } else {
+                    self.env_chirho
+                        .lookup_chirho(&con_full_name_chirho)
+                        .cloned()
+                        .or_else(|| self.env_chirho.lookup_chirho(con_text_chirho).cloned())
+                };
                 match scheme_opt_chirho {
                     Some(scheme_chirho) => {
                         let con_span_chirho = con_chirho.span_chirho();
@@ -2184,7 +2200,15 @@ impl InferCtxChirho {
                 // proper argument types (enables GADT field types and
                 // higher-rank field extraction).
                 let con_text_chirho = con_chirho.text_chirho();
-                let scheme_opt_chirho = self.env_chirho.lookup_chirho(con_text_chirho).cloned();
+                let con_full_name_chirho = con_chirho.full_name_chirho();
+                let scheme_opt_chirho = if con_full_name_chirho == con_text_chirho {
+                    self.env_chirho.lookup_chirho(con_text_chirho).cloned()
+                } else {
+                    self.env_chirho
+                        .lookup_chirho(&con_full_name_chirho)
+                        .cloned()
+                        .or_else(|| self.env_chirho.lookup_chirho(con_text_chirho).cloned())
+                };
                 let mut used_con_types_chirho = false;
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 if let Some(scheme_chirho) = scheme_opt_chirho {
@@ -3848,7 +3872,7 @@ fn ast_type_to_syn_rhs_chirho(ty_chirho: &TypeChirho, params_chirho: &[String]) 
             }
         }
         TypeChirho::ConChirho(name_chirho) => {
-            TyChirho::ConChirho(name_chirho.text_chirho().to_string())
+            TyChirho::ConChirho(name_chirho.full_name_chirho())
         }
         TypeChirho::ListChirho { element_chirho, .. } => TyChirho::ListChirho(Box::new(
             ast_type_to_syn_rhs_chirho(element_chirho, params_chirho),
@@ -13857,6 +13881,53 @@ mod tests_chirho {
                 assert_eq!(*v1_chirho, *v2_chirho, "same `a` should yield same var");
             }
         }
+    }
+
+    #[test]
+    fn ast_type_conversion_preserves_qualified_tycon_spine_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let mut var_map_chirho = HashMap::new();
+        let qualified_state_t_chirho =
+            NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+                "LazyS",
+                "StateT",
+                SpanChirho::DUMMY_CHIRHO,
+            ));
+        let ast_ty_chirho = TypeChirho::AppChirho {
+            fun_chirho: Box::new(TypeChirho::AppChirho {
+                fun_chirho: Box::new(TypeChirho::AppChirho {
+                    fun_chirho: Box::new(TypeChirho::ConChirho(qualified_state_t_chirho)),
+                    arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("s"))),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }),
+                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("m"))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let ty_chirho = ctx_chirho.ast_type_to_ty_chirho(&ast_ty_chirho, &mut var_map_chirho);
+        assert_eq!(
+            ty_chirho,
+            TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("LazyS.StateT".to_string())),
+                        Box::new(TyChirho::VarChirho(
+                            *var_map_chirho.get("s").expect("s var missing"),
+                        )),
+                    )),
+                    Box::new(TyChirho::VarChirho(
+                        *var_map_chirho.get("m").expect("m var missing"),
+                    )),
+                )),
+                Box::new(TyChirho::VarChirho(
+                    *var_map_chirho.get("a").expect("a var missing"),
+                )),
+            ),
+            "qualified type constructors in local signatures must preserve their full application spine",
+        );
     }
 
     /// Test: do-notation bind statement unwraps monadic type.

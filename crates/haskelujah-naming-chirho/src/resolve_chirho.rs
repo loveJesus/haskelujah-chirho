@@ -372,6 +372,20 @@ fn collect_export_names_chirho(
             NamespaceChirho::TypeChirho,
             ty_chirho.span_chirho,
         ));
+        for con_name_chirho in &ty_chirho.constructors_chirho {
+            result_chirho.push((
+                canonical_value_name_chirho(con_name_chirho),
+                NamespaceChirho::ValueChirho,
+                ty_chirho.span_chirho,
+            ));
+        }
+        for method_name_chirho in &ty_chirho.methods_chirho {
+            result_chirho.push((
+                canonical_value_name_chirho(method_name_chirho),
+                NamespaceChirho::ValueChirho,
+                ty_chirho.span_chirho,
+            ));
+        }
     }
 
     result_chirho

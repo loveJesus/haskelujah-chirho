@@ -8290,6 +8290,118 @@ data TailChirho = TailChirho
     }
 
     #[test]
+    fn lower_where_local_sig_preserves_qualified_tycon_spine_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nimport qualified Control.Monad.Trans.State.Lazy as LazyS\nf a = g a where\n  q :: (m (a, s) -> m (a, s)) -> LazyS.StateT s m a -> LazyS.StateT s m a\n  q u (LazyS.StateT b) = LazyS.StateT (u . b)\n  g x = x\n",
+        );
+        let fun_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "f"
+                )
+            })
+            .expect("expected top-level f binding");
+        let where_binds_chirho = match fun_decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => &matches_chirho[0].where_binds_chirho,
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+        let q_sig_chirho = where_binds_chirho
+            .iter()
+            .find_map(|bind_chirho| match bind_chirho {
+                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho {
+                    name_chirho,
+                    ty_chirho,
+                    ..
+                } if name_chirho.text_chirho() == "q" => Some(ty_chirho),
+                _ => None,
+            })
+            .expect("expected local type signature for q");
+
+        let arrow_arg_chirho = match q_sig_chirho {
+            TypeChirho::FunChirho {
+                result_chirho,
+                ..
+            } => match result_chirho.as_ref() {
+                TypeChirho::FunChirho {
+                    arg_chirho,
+                    result_chirho,
+                    ..
+                } => {
+                    assert!(
+                        matches!(result_chirho.as_ref(), TypeChirho::AppChirho { .. }),
+                        "final result should stay a fully applied qualified tycon, got {:?}",
+                        result_chirho
+                    );
+                    arg_chirho.as_ref()
+                }
+                other_chirho => panic!("expected second arrow for q signature, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected function type for q signature, got {:?}", other_chirho),
+        };
+
+        match arrow_arg_chirho {
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                assert!(
+                    matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "a"),
+                    "qualified tycon should keep final type argument `a`, got {:?}",
+                    arg_chirho
+                );
+                match fun_chirho.as_ref() {
+                    TypeChirho::AppChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    } => {
+                        assert!(
+                            matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "m"),
+                            "qualified tycon should keep middle type argument `m`, got {:?}",
+                            arg_chirho
+                        );
+                        match fun_chirho.as_ref() {
+                            TypeChirho::AppChirho {
+                                fun_chirho,
+                                arg_chirho,
+                                ..
+                            } => {
+                                assert!(
+                                    matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "s"),
+                                    "qualified tycon should keep first type argument `s`, got {:?}",
+                                    arg_chirho
+                                );
+                                assert!(
+                                    matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.full_name_chirho() == "LazyS.StateT"),
+                                    "qualified constructor head should stay LazyS.StateT, got {:?}",
+                                    fun_chirho
+                                );
+                            }
+                            other_chirho => panic!(
+                                "expected left-nested type application for LazyS.StateT s m a, got {:?}",
+                                other_chirho
+                            ),
+                        }
+                    }
+                    other_chirho => panic!(
+                        "expected second application layer for LazyS.StateT s m a, got {:?}",
+                        other_chirho
+                    ),
+                }
+            }
+            other_chirho => panic!(
+                "expected qualified type constructor application in q signature, got {:?}",
+                other_chirho
+            ),
+        }
+    }
+
+    #[test]
     fn lower_import_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M where\nimport Data.List\nimport qualified Data.Map as Map\n",
