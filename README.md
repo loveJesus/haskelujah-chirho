@@ -15,7 +15,7 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | Script Runner | `#!/usr/bin/env haskelujah` | Run `.hs` files directly with shebang |
 | REPL | `haskelujah repl` | Interactive `:type`, `:info`, `:load`, expression eval |
 | Test Runner | `haskelujah test` | Compile and run test suites |
-| LSP Server | `haskelujah lsp` | Hover types, go-to-def, diagnostics for any editor *(planned)* |
+| LSP Server | `haskelujah lsp` | Real-time diagnostics, hover types for VS Code, Neovim, Zed |
 | AI / MCP | `haskelujah mcp` | Expose project to AI assistants via Model Context Protocol |
 | Checker | `haskelujah check` | Type-check without codegen |
 | Formatter | `haskelujah fmt` | Trim whitespace, normalize indentation, clean blank lines |
@@ -28,8 +28,8 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | Curated Tests | **512/513 (99.8%)** compile-and-run correctness tests |
 | Total Tests | **2,500+ passing**, 0 failures |
 | Hackage Packages | **17 compile** including **transformers** (24) + **mtl** (24) + **parsec** (25) |
-| Workspace | 21 crates, 133 Rust source files |
-| Codebase | ~168,000 lines of Rust |
+| Workspace | 24 crates (compiler + MCP + LSP + runtime) |
+| Codebase | ~169,000 lines of Rust |
 | Module interfaces | 363 synthetic Haskell modules |
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |
