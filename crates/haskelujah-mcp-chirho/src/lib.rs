@@ -53,8 +53,11 @@ pub struct McpErrorChirho {
 /// MCP tool definition.
 #[derive(Debug, Serialize)]
 pub struct McpToolChirho {
+    #[serde(rename = "name")]
     pub name_chirho: String,
+    #[serde(rename = "description")]
     pub description_chirho: String,
+    #[serde(rename = "inputSchema")]
     pub input_schema_chirho: serde_json::Value,
 }
 
