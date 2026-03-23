@@ -810,6 +810,37 @@ fn frontend_value_operator_import_roundtrip_chirho() {
 }
 
 #[test]
+fn frontend_qualified_value_import_keeps_unqualified_tycons_when_module_also_unqualified_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "ParserPrimMiniChirho.hs",
+            "module ParserPrimMiniChirho where\n\
+data IdentityChirho aChirho = IdentityChirho aChirho\n\
+newtype ParsecTChirho sChirho uChirho mChirho aChirho = ParsecTChirho { runParsecTChirho :: sChirho -> mChirho aChirho }\n\
+type ParsecChirho sChirho uChirho = ParsecTChirho sChirho uChirho IdentityChirho\n\
+runParserChirho :: ParsecTChirho sChirho uChirho IdentityChirho aChirho -> uChirho -> String -> sChirho -> aChirho\n\
+runParserChirho (ParsecTChirho fChirho) _ _ sChirho = case fChirho sChirho of IdentityChirho xChirho -> xChirho\n",
+        ),
+        (
+            "MainChirho.hs",
+            "module MainChirho where\n\
+import ParserPrimMiniChirho hiding (runParserChirho)\n\
+import qualified ParserPrimMiniChirho as NChirho\n\
+type GenParserChirho tokChirho stChirho aChirho = ParsecChirho [tokChirho] stChirho aChirho\n\
+runParserCompatChirho :: GenParserChirho tokChirho stChirho aChirho -> stChirho -> String -> [tokChirho] -> aChirho\n\
+runParserCompatChirho = NChirho.runParserChirho\n",
+        ),
+    ];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "qualified value imports should keep module-local tycons unqualified when the module is also imported unqualified: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_same_module_operator_binding_resolves_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
