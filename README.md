@@ -19,6 +19,18 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | AI / MCP | `haskelujah mcp` | Expose project to AI assistants via Model Context Protocol |
 | Checker | `haskelujah check` | Type-check without codegen |
 | Formatter | `haskelujah fmt` | Trim whitespace, normalize indentation, clean blank lines |
+| Editor | `haskelujah edit` | Terminal editor with built-in typecheck (Ctrl-T), Haskell-extensible |
+
+**Batteries-included standard library** — no `haskelujah install` needed:
+
+| Module | What it does |
+|---|---|
+| `Haskelujah.JSON` | Encode/decode JSON values |
+| `Haskelujah.Test` | Test framework (assertEqual, runTests) |
+| `Haskelujah.Args` | CLI argument parsing (getFlag, getOption) |
+| `Haskelujah.HTTP` | HTTP client |
+| `Haskelujah.Prelude` | Extended prelude (trim, chunksOf, nub') |
+| `Haskelujah.File` | File utilities |
 
 ## Status
 
