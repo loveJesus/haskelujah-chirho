@@ -29,8 +29,8 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | Total Tests | **2,500+ passing**, 0 failures |
 | Hackage Packages | **17 compile** including **transformers** (24) + **mtl** (24) + **parsec** (25) |
 | Workspace | 21 crates, 133 Rust source files |
-| Codebase | ~162,000 lines of Rust |
-| Module interfaces | 355+ synthetic Haskell modules |
+| Codebase | ~168,000 lines of Rust |
+| Module interfaces | 363 synthetic Haskell modules |
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |
 
