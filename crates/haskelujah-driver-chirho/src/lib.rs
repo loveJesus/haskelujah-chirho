@@ -619,6 +619,10 @@ pub fn run_frontend_with_type_synonyms_chirho(
     // rather than reporting them as "unbound variable" (E0202).
     let mut merged_imported_types_chirho = imported_types_chirho.clone();
     let mut merged_imported_type_synonyms_chirho = imported_type_synonyms_chirho.clone();
+    let mut merged_imported_record_field_names_chirho: std::collections::HashMap<
+        String,
+        Vec<String>,
+    > = std::collections::HashMap::new();
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
         if let Some(iface_chirho) = ifaces_chirho
@@ -671,6 +675,34 @@ pub fn run_frontend_with_type_synonyms_chirho(
                 .as_ref()
                 .map(|a_chirho| a_chirho.text_chirho().to_string())
                 .unwrap_or_else(|| module_name_chirho.clone());
+            if !import_chirho.qualified_chirho {
+                for type_info_chirho in iface_chirho.exports_chirho.types_chirho.values() {
+                    if type_info_chirho.methods_chirho.is_empty()
+                        || type_info_chirho.constructors_chirho.is_empty()
+                    {
+                        continue;
+                    }
+                    for constructor_name_chirho in &type_info_chirho.constructors_chirho {
+                        merged_imported_record_field_names_chirho
+                            .entry(constructor_name_chirho.clone())
+                            .or_insert_with(|| type_info_chirho.methods_chirho.clone());
+                        merged_imported_record_field_names_chirho
+                            .entry(format!(
+                                "{}.{}",
+                                module_name_chirho, constructor_name_chirho
+                            ))
+                            .or_insert_with(|| type_info_chirho.methods_chirho.clone());
+                        if qualifier_chirho != module_name_chirho {
+                            merged_imported_record_field_names_chirho
+                                .entry(format!(
+                                    "{}.{}",
+                                    qualifier_chirho, constructor_name_chirho
+                                ))
+                                .or_insert_with(|| type_info_chirho.methods_chirho.clone());
+                        }
+                    }
+                }
+            }
             for (name_chirho, ns_chirho, _span_chirho) in &names_chirho {
                 if ns_chirho
                     == &haskelujah_naming_chirho::env_chirho::NamespaceChirho::TypeChirho
@@ -757,6 +789,7 @@ pub fn run_frontend_with_type_synonyms_chirho(
     // type schemes are available, plain variant otherwise.
     let infer_result_chirho = if merged_imported_types_chirho.is_empty()
         && merged_imported_type_synonyms_chirho.is_empty()
+        && merged_imported_record_field_names_chirho.is_empty()
     {
         infer_module_chirho(&module_chirho)
     } else {
@@ -764,6 +797,7 @@ pub fn run_frontend_with_type_synonyms_chirho(
             &module_chirho,
             &merged_imported_types_chirho,
             &merged_imported_type_synonyms_chirho,
+            &merged_imported_record_field_names_chirho,
         )
     };
     if !defer_errors_chirho && infer_result_chirho.diagnostics_chirho.has_errors_chirho() {

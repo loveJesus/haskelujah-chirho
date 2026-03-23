@@ -388,4 +388,35 @@ main = 0
         assert_eq!(result_chirho.compilation_order_chirho, vec!["Main"]);
         assert_eq!(result_chirho.module_results_chirho.len(), 1);
     }
+
+    #[test]
+    fn compile_project_imported_record_wildcards_bind_fields_chirho() {
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::write(
+            tmp_chirho.path().join("StateMiniChirho.hs"),
+            "module StateMiniChirho where\n\
+data PosStateChirho sChirho = PosStateChirho\n\
+  { pstateInputChirho :: sChirho\n\
+  , pstateOffsetChirho :: Int\n\
+  }\n",
+        )
+        .unwrap();
+        fs::write(
+            tmp_chirho.path().join("UseMiniChirho.hs"),
+            "{-# LANGUAGE RecordWildCards #-}\n\
+module UseMiniChirho where\n\
+import StateMiniChirho\n\
+reachOffsetMiniChirho :: PosStateChirho [Int] -> Int\n\
+reachOffsetMiniChirho PosStateChirho {..} = pstateOffsetChirho\n",
+        )
+        .unwrap();
+
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut source_map_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "project compilation should bind imported RecordWildCards fields from iface metadata: {:?}",
+            result_chirho.err()
+        );
+    }
 }

@@ -11811,6 +11811,7 @@ pub fn infer_module_chirho(module_chirho: &ModuleChirho) -> InferResultChirho {
         module_chirho,
         &HashMap::new(),
         &HashMap::new(),
+        &HashMap::new(),
     )
 }
 
@@ -11824,6 +11825,7 @@ pub fn infer_module_with_imports_chirho(
     infer_module_with_imports_and_type_synonyms_chirho(
         module_chirho,
         imported_types_chirho,
+        &HashMap::new(),
         &HashMap::new(),
     )
 }
@@ -11846,6 +11848,7 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
     module_chirho: &ModuleChirho,
     imported_types_chirho: &HashMap<String, SchemeChirho>,
     imported_type_synonyms_chirho: &HashMap<String, (Vec<String>, TypeChirho)>,
+    imported_record_field_names_chirho: &HashMap<String, Vec<String>>,
 ) -> InferResultChirho {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     for (name_chirho, (params_chirho, rhs_ast_chirho)) in imported_type_synonyms_chirho {
@@ -11869,6 +11872,12 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
                 scheme_chirho.clone(),
             );
         }
+    }
+    for (constructor_name_chirho, field_names_chirho) in imported_record_field_names_chirho {
+        ctx_chirho.con_field_names_chirho.insert(
+            constructor_name_chirho.clone(),
+            field_names_chirho.clone(),
+        );
     }
     let subst_chirho = ctx_chirho.infer_module_chirho(module_chirho);
     ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
