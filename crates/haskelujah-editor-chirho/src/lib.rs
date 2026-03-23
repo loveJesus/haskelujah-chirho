@@ -52,7 +52,7 @@ impl EditorChirho {
             modified_chirho: false,
             running_chirho: true,
             status_msg_chirho:
-                "Haskelujah Editor — Ctrl-Q quit, Ctrl-S save, Ctrl-T typecheck, Ctrl-E eval"
+                "Haskelujah Editor — Ctrl-Q quit, Ctrl-S save, Ctrl-T typecheck, Ctrl-E eval, Ctrl-G goto line"
                     .to_string(),
             prompt_mode_chirho: None,
         }
@@ -137,6 +137,13 @@ impl EditorChirho {
         self.status_msg_chirho = "Eval Haskell expression:".to_string();
     }
 
+    pub fn start_goto_line_prompt_chirho(&mut self) {
+        self.prompt_mode_chirho = Some(PromptModeChirho::GotoLineChirho {
+            input_chirho: String::new(),
+        });
+        self.status_msg_chirho = "Go to line:".to_string();
+    }
+
     pub fn handle_prompt_key_chirho(
         &mut self,
         key_chirho: event::KeyEvent,
@@ -152,16 +159,22 @@ impl EditorChirho {
                 Ok(true)
             }
             event::KeyCode::Enter => {
-                let expression_chirho = match prompt_mode_chirho {
-                    PromptModeChirho::EvalChirho { input_chirho } => input_chirho.clone(),
+                let prompt_result_chirho = match prompt_mode_chirho {
+                    PromptModeChirho::EvalChirho { input_chirho } => {
+                        PromptSubmitChirho::EvalChirho(input_chirho.clone())
+                    }
+                    PromptModeChirho::GotoLineChirho { input_chirho } => {
+                        PromptSubmitChirho::GotoLineChirho(input_chirho.clone())
+                    }
                 };
                 self.prompt_mode_chirho = None;
-                self.eval_expression_chirho(&expression_chirho);
+                self.finish_prompt_chirho(prompt_result_chirho);
                 Ok(true)
             }
             event::KeyCode::Backspace => {
                 match prompt_mode_chirho {
-                    PromptModeChirho::EvalChirho { input_chirho } => {
+                    PromptModeChirho::EvalChirho { input_chirho }
+                    | PromptModeChirho::GotoLineChirho { input_chirho } => {
                         input_chirho.pop();
                     }
                 }
@@ -172,10 +185,26 @@ impl EditorChirho {
                     PromptModeChirho::EvalChirho { input_chirho } => {
                         input_chirho.push(c_chirho);
                     }
+                    PromptModeChirho::GotoLineChirho { input_chirho } => {
+                        if c_chirho.is_ascii_digit() {
+                            input_chirho.push(c_chirho);
+                        }
+                    }
                 }
                 Ok(true)
             }
             _ => Ok(true),
+        }
+    }
+
+    fn finish_prompt_chirho(&mut self, prompt_submit_chirho: PromptSubmitChirho) {
+        match prompt_submit_chirho {
+            PromptSubmitChirho::EvalChirho(expression_chirho) => {
+                self.eval_expression_chirho(&expression_chirho);
+            }
+            PromptSubmitChirho::GotoLineChirho(line_text_chirho) => {
+                self.jump_to_line_chirho(&line_text_chirho);
+            }
         }
     }
 
@@ -198,6 +227,25 @@ impl EditorChirho {
                 self.status_msg_chirho = compact_status_msg_chirho(&error_chirho);
             }
         }
+    }
+
+    pub fn jump_to_line_chirho(&mut self, line_text_chirho: &str) {
+        let Ok(line_number_chirho) = line_text_chirho.trim().parse::<usize>() else {
+            self.status_msg_chirho = "Goto line failed: invalid line number".to_string();
+            return;
+        };
+        if self.lines_chirho.is_empty() {
+            self.status_msg_chirho = "Goto line failed: buffer is empty".to_string();
+            return;
+        }
+        let target_row_chirho = line_number_chirho
+            .saturating_sub(1)
+            .min(self.lines_chirho.len().saturating_sub(1));
+        self.cursor_row_chirho = target_row_chirho;
+        let max_col_chirho = self.lines_chirho[target_row_chirho].text_chirho.len();
+        self.cursor_col_chirho = self.cursor_col_chirho.min(max_col_chirho);
+        self.scroll_offset_chirho = target_row_chirho;
+        self.status_msg_chirho = format!("Moved to line {}", target_row_chirho + 1);
     }
 
     pub fn insert_char_chirho(&mut self, c_chirho: char) {
@@ -278,6 +326,9 @@ pub fn run_editor_chirho(file_path_chirho: Option<&str>) -> io::Result<()> {
                 event::KeyCode::Char('e') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
                     editor_chirho.start_eval_prompt_chirho();
                 }
+                event::KeyCode::Char('g') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                    editor_chirho.start_goto_line_prompt_chirho();
+                }
                 event::KeyCode::Char('t') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
                     editor_chirho.typecheck_chirho();
                 }
@@ -324,6 +375,8 @@ fn draw_screen_chirho(
     let (cols_chirho, rows_chirho) = terminal::size()?;
     let rows_chirho = rows_chirho as usize;
     let cols_chirho = cols_chirho as usize;
+    let gutter_width_chirho = line_number_gutter_width_chirho(editor_chirho.lines_chirho.len());
+    let text_cols_chirho = cols_chirho.saturating_sub(gutter_width_chirho);
 
     queue!(stdout_chirho, cursor::MoveTo(0, 0), terminal::Clear(terminal::ClearType::All))?;
 
@@ -333,10 +386,24 @@ fn draw_screen_chirho(
         let line_idx_chirho = editor_chirho.scroll_offset_chirho + i_chirho;
         queue!(stdout_chirho, cursor::MoveTo(0, i_chirho as u16))?;
         if line_idx_chirho < editor_chirho.lines_chirho.len() {
+            let line_number_chirho =
+                format!("{:>width$} ", line_idx_chirho + 1, width = gutter_width_chirho - 1);
+            queue!(
+                stdout_chirho,
+                style::SetForegroundColor(Color::DarkGrey),
+                style::Print(line_number_chirho),
+                style::SetForegroundColor(Color::Reset),
+            )?;
             let text_chirho = &editor_chirho.lines_chirho[line_idx_chirho].text_chirho;
-            draw_highlighted_line_chirho(stdout_chirho, text_chirho, cols_chirho)?;
+            draw_highlighted_line_chirho(stdout_chirho, text_chirho, text_cols_chirho)?;
         } else {
-            queue!(stdout_chirho, style::Print("~".dark_grey()))?;
+            let blank_gutter_chirho = " ".repeat(gutter_width_chirho.saturating_sub(1));
+            queue!(
+                stdout_chirho,
+                style::SetForegroundColor(Color::DarkGrey),
+                style::Print(format!("{}~", blank_gutter_chirho)),
+                style::SetForegroundColor(Color::Reset),
+            )?;
         }
     }
 
@@ -369,7 +436,7 @@ fn draw_screen_chirho(
     queue!(
         stdout_chirho,
         cursor::MoveTo(
-            editor_chirho.cursor_col_chirho as u16,
+            (gutter_width_chirho + editor_chirho.cursor_col_chirho) as u16,
             cursor_row_chirho as u16,
         ),
     )?;
@@ -380,6 +447,12 @@ fn draw_screen_chirho(
 
 enum PromptModeChirho {
     EvalChirho { input_chirho: String },
+    GotoLineChirho { input_chirho: String },
+}
+
+enum PromptSubmitChirho {
+    EvalChirho(String),
+    GotoLineChirho(String),
 }
 
 fn draw_highlighted_line_chirho(
@@ -418,6 +491,9 @@ fn prompt_or_status_line_chirho(editor_chirho: &EditorChirho, cols_chirho: usize
         Some(PromptModeChirho::EvalChirho { input_chirho }) => {
             format!("Eval Haskell> {}", input_chirho)
         }
+        Some(PromptModeChirho::GotoLineChirho { input_chirho }) => {
+            format!("Go to line> {}", input_chirho)
+        }
         None => editor_chirho.status_msg_chirho.clone(),
     };
     if base_text_chirho.chars().count() <= cols_chirho {
@@ -439,6 +515,10 @@ fn compact_status_msg_chirho(text_chirho: &str) -> String {
     } else {
         compacted_chirho
     }
+}
+
+fn line_number_gutter_width_chirho(line_count_chirho: usize) -> usize {
+    line_count_chirho.max(1).to_string().len() + 1
 }
 
 fn eval_haskell_expression_chirho(expression_chirho: &str) -> Result<String, String> {
@@ -580,7 +660,7 @@ fn is_haskell_keyword_chirho(token_chirho: &str) -> bool {
 mod tests_chirho {
     use super::{
         Color, EditorChirho, eval_haskell_expression_chirho, highlight_segments_chirho,
-        is_haskell_keyword_chirho,
+        is_haskell_keyword_chirho, line_number_gutter_width_chirho, prompt_or_status_line_chirho,
     };
 
     #[test]
@@ -622,5 +702,41 @@ mod tests_chirho {
         let mut editor_chirho = EditorChirho::new_chirho();
         editor_chirho.eval_expression_chirho("sum [1,2,3]");
         assert_eq!(editor_chirho.status_msg_chirho, "Eval => 6");
+    }
+
+    #[test]
+    fn goto_line_clamps_and_updates_status_chirho() {
+        let mut editor_chirho = EditorChirho::new_chirho();
+        editor_chirho.lines_chirho = vec![
+            super::LineChirho {
+                text_chirho: "one".to_string(),
+            },
+            super::LineChirho {
+                text_chirho: "two".to_string(),
+            },
+        ];
+        editor_chirho.jump_to_line_chirho("99");
+        assert_eq!(editor_chirho.cursor_row_chirho, 1);
+        assert_eq!(editor_chirho.scroll_offset_chirho, 1);
+        assert_eq!(editor_chirho.status_msg_chirho, "Moved to line 2");
+    }
+
+    #[test]
+    fn goto_prompt_renders_input_chirho() {
+        let mut editor_chirho = EditorChirho::new_chirho();
+        editor_chirho.start_goto_line_prompt_chirho();
+        if let Some(super::PromptModeChirho::GotoLineChirho { input_chirho }) =
+            editor_chirho.prompt_mode_chirho.as_mut()
+        {
+            input_chirho.push_str("12");
+        }
+        assert_eq!(prompt_or_status_line_chirho(&editor_chirho, 80), "Go to line> 12");
+    }
+
+    #[test]
+    fn gutter_width_tracks_line_count_chirho() {
+        assert_eq!(line_number_gutter_width_chirho(1), 2);
+        assert_eq!(line_number_gutter_width_chirho(99), 3);
+        assert_eq!(line_number_gutter_width_chirho(100), 4);
     }
 }
