@@ -1278,7 +1278,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "typeOf", "typeRep", "cast", "eqT", "gcast", "gcast1", "gcast2",
+            "typeOf",
+            "typeRep",
+            "cast",
+            "eqT",
+            "gcast",
+            "gcast1",
+            "gcast2",
+            "rnfTyCon",
+            "rnfTypeRep",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -1296,8 +1304,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Functor.Identity
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Identity", &["Identity"]);
-        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        exports_chirho.types_chirho.insert(
+            "Identity".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Identity".to_string(),
+                constructors_chirho: vec!["Identity".to_string()],
+                methods_chirho: vec!["runIdentity".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
         let (k_chirho, v_chirho) = mk_val_chirho("Identity");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_val_chirho("runIdentity");
@@ -1311,7 +1326,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Type.Reflection
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["typeOf", "typeRep", "typeRepTyCon", "someTypeRep"] {
+        for name_chirho in &[
+            "typeOf",
+            "typeRep",
+            "typeRepTyCon",
+            "someTypeRep",
+            "rnfTypeRep",
+            "rnfModule",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -2843,7 +2865,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Typeable
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["typeOf", "typeRep", "cast", "eqT", "gcast", "gcast1", "gcast2", "mkTyCon", "mkTyConApp", "typeRepTyCon", "typeRepArgs", "splitTyConApp", "funResultTy", "showsTypeRep"] {
+        for name_chirho in &["typeOf", "typeRep", "cast", "eqT", "gcast", "gcast1", "gcast2", "mkTyCon", "mkTyConApp", "typeRepTyCon", "typeRepArgs", "splitTyConApp", "funResultTy", "showsTypeRep", "rnfTyCon", "rnfTypeRep"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3396,8 +3418,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Identity", &["Identity"]);
-        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        exports_chirho.types_chirho.insert(
+            "Identity".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Identity".to_string(),
+                constructors_chirho: vec!["Identity".to_string()],
+                methods_chirho: vec!["runIdentity".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Functor.Identity".to_string(),
             exports_chirho,
@@ -5368,6 +5397,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "typeRep",
             "typeRepFingerprint",
             "rnfTypeRep",
+            "rnfModule",
             "eqTypeRep",
             "typeRepTyCon",
             "withTypeable",
@@ -7663,10 +7693,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Identity"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["Identity"]);
-            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        }
+        exports_chirho.types_chirho.insert(
+            "Identity".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Identity".to_string(),
+                constructors_chirho: vec!["Identity".to_string()],
+                methods_chirho: vec!["runIdentity".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Functor.Identity".to_string(),
             exports_chirho,
@@ -7871,6 +7906,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "typeRepTyCon",
             "typeRepFingerprint",
             "mkFunTy",
+            "rnfTyCon",
+            "rnfTypeRep",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);

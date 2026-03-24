@@ -67,6 +67,22 @@ fn full_pipeline_parses_and_resolves_chirho() {
 }
 
 #[test]
+fn frontend_backticked_left_section_infers_function_type_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module DeepseqSectionChirho where\nrwhnfChirho :: aChirho -> ()\nrwhnfChirho = (`seq` ())\n",
+        &mut source_map_chirho,
+        "DeepseqSectionChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "backticked left sections should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn script_mode_uses_incremental_runtime_plan_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(

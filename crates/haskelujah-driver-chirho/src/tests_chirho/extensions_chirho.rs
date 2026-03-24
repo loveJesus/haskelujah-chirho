@@ -1308,6 +1308,25 @@ main = 42
     );
 }
 
+#[test]
+fn import_type_reflection_rnf_module_chirho() {
+    let src_chirho = r#"
+module Test where
+import qualified Type.Reflection as Reflection
+
+f :: Reflection.Module -> ()
+f = Reflection.rnfModule
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut sm_chirho, "TypeReflRnfModule.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Type.Reflection should export rnfModule: {:?}",
+        result_chirho.err()
+    );
+}
+
 // ── Module interface: Unsafe.Coerce ────────────────────────────────────
 
 #[test]
@@ -2050,6 +2069,23 @@ main = print (f (Identity 42))
     );
 }
 
+#[test]
+fn import_data_functor_identity_all_brings_runidentity_chirho() {
+    let src_chirho = r#"module Test where
+import Data.Functor.Identity (Identity(..))
+f :: Identity Int -> Int
+f = runIdentity
+main = print (f (Identity 42))
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "FunIdAll.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Identity(..) should bring runIdentity into scope: {:?}",
+        result_chirho.err()
+    );
+}
+
 /// Module interfaces: GHC.Base
 #[test]
 fn import_ghc_base_chirho() {
@@ -2650,6 +2686,28 @@ main = print "typeable ok"
     assert!(
         result_chirho.is_ok(),
         "Data.Typeable import failed: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn iface_data_typeable_rnf_exports_chirho() {
+    let src_chirho = r#"
+module IfaceTypeableRnf where
+import Data.Typeable (TyCon, TypeRep, rnfTyCon, rnfTypeRep)
+
+f :: TyCon -> ()
+f = rnfTyCon
+
+g :: TypeRep -> ()
+g = rnfTypeRep
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut sm_chirho, "IfaceTypeableRnf.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Typeable should export rnfTyCon/rnfTypeRep: {:?}",
         result_chirho.err()
     );
 }

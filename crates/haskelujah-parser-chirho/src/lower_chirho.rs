@@ -8249,6 +8249,40 @@ data TailChirho = TailChirho
     }
 
     #[test]
+    fn lower_backticked_left_section_chirho() {
+        let module_chirho = parse_and_lower_chirho("module M where\nrwhnfChirho = (`seq` ())\n");
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|decl_chirho| {
+            matches!(
+                decl_chirho,
+                DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "rwhnfChirho"
+            )
+        });
+        assert!(decl_chirho.is_some(), "should lower backticked left section");
+        if let Some(DeclChirho::FunBindChirho { matches_chirho, .. }) = decl_chirho {
+            match &matches_chirho[0].rhs_chirho {
+                RhsChirho::UnguardedChirho(ExprChirho::LeftSectionChirho {
+                    op_chirho,
+                    arg_chirho,
+                    ..
+                }) => {
+                    assert_eq!(op_chirho.text_chirho(), "seq");
+                    assert!(
+                        matches!(
+                            arg_chirho.as_ref(),
+                            ExprChirho::TupleChirho { elements_chirho, .. }
+                                if elements_chirho.is_empty()
+                        ),
+                        "expected unit tuple argument, got {:?}",
+                        arg_chirho
+                    );
+                }
+                other_chirho => panic!("expected backticked left section, got {:?}", other_chirho),
+            }
+        }
+    }
+
+    #[test]
     fn lower_infix_fun_bind_with_signature_and_do_rhs_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M where\nimport Control.Monad\nnewtype ExceptTChirho eChirho mChirho aChirho = ExceptTChirho { runExceptTChirho :: mChirho (Either eChirho aChirho) }\ncatchEChirho :: Monad mChirho => ExceptTChirho eChirho mChirho aChirho -> (eChirho -> ExceptTChirho ePrimeChirho mChirho aChirho) -> ExceptTChirho ePrimeChirho mChirho aChirho\nmChirho `catchEChirho` hChirho = ExceptTChirho $ do\n  aChirho <- runExceptTChirho mChirho\n  case aChirho of\n    Left lChirho -> runExceptTChirho (hChirho lChirho)\n    Right rChirho -> return (Right rChirho)\n",
