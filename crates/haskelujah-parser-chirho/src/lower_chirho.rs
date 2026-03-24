@@ -10489,6 +10489,48 @@ class Describable a where
     }
 
     #[test]
+    fn lower_unboxed_tuple_case_pattern_binds_names_chirho() {
+        let source_chirho = "module M where\nfChirho xChirho yChirho = case timesWord2# xChirho yChirho of\n  (# hiChirho, loChirho #) -> xor# hiChirho loChirho\n";
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let parser_chirho =
+            crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+        let green_chirho = parser_chirho.parse_chirho();
+        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "fChirho")
+            })
+            .expect("expected fChirho binding");
+
+        let rhs_expr_chirho = match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho {
+                RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+                other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+
+        match rhs_expr_chirho {
+            ExprChirho::CaseChirho { alts_chirho, .. } => match &alts_chirho[0].pat_chirho {
+                PatChirho::TupleChirho { elements_chirho, .. } => {
+                    assert_eq!(elements_chirho.len(), 2);
+                    assert!(
+                        matches!(&elements_chirho[0], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "hiChirho")
+                    );
+                    assert!(
+                        matches!(&elements_chirho[1], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "loChirho")
+                    );
+                }
+                other_chirho => panic!("expected tuple pattern from unboxed tuple syntax, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected case expression, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
     fn lower_bits_and_comparison_precedence_chirho() {
         let source_chirho = "module M where\nfChirho nChirho hChirho = nChirho .&. hChirho /= 0\n";
         let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;

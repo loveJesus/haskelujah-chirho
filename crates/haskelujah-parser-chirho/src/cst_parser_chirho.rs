@@ -3795,6 +3795,41 @@ impl<'src> ParserChirho<'src> {
         self.bump_chirho(); // (
         self.eat_trivia_chirho();
 
+        let is_unboxed_tuple_pat_chirho = self.at_chirho(RawTokenKindChirho::VarSymChirho)
+            && self.current_text_chirho() == "#";
+        if is_unboxed_tuple_pat_chirho {
+            self.bump_chirho(); // leading #
+            self.eat_trivia_chirho();
+
+            if !self.at_chirho(RawTokenKindChirho::VarSymChirho)
+                || self.current_text_chirho() != "#"
+            {
+                self.parse_pat_chirho();
+                self.eat_trivia_chirho();
+
+                while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                    self.bump_chirho(); // ,
+                    self.eat_trivia_chirho();
+                    if !(self.at_chirho(RawTokenKindChirho::VarSymChirho)
+                        && self.current_text_chirho() == "#")
+                    {
+                        self.parse_pat_chirho();
+                        self.eat_trivia_chirho();
+                    }
+                }
+            }
+
+            if self.at_chirho(RawTokenKindChirho::VarSymChirho) && self.current_text_chirho() == "#" {
+                self.bump_chirho(); // trailing #
+                self.eat_trivia_chirho();
+            }
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho();
+            }
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
         if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
             // Unit pattern ()
             self.bump_chirho();
