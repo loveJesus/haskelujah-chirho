@@ -536,6 +536,31 @@ overChirho leftChirho rightChirho = leftChirho `addChirho` rightChirho
 }
 
 #[test]
+fn frontend_infix_instance_method_with_as_pattern_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ColourAsPatternMiniChirho where
+data RGBAChirho aChirho = RGBAChirho aChirho aChirho
+class FooChirho fChirho where
+  barChirho :: fChirho aChirho -> fChirho aChirho -> fChirho aChirho
+instance FooChirho RGBAChirho where
+  xChirho@(RGBAChirho _ _) `barChirho` yChirho = xChirho
+blendChirho :: FooChirho fChirho => fChirho aChirho -> fChirho aChirho -> fChirho aChirho
+blendChirho leftChirho rightChirho = leftChirho `barChirho` rightChirho
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ColourAsPatternMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "infix instance method with as-pattern lhs should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_exceptt_with_exceptt_functor_operator_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_chirho = "\
