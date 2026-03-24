@@ -2039,6 +2039,62 @@ fn discover_hierarchical_module_chirho() {
 }
 
 #[test]
+fn discover_hsc_module_chirho() {
+    use haskelujah_package_chirho::{BuildInfoChirho, LibraryChirho, PackageDescChirho};
+    use std::fs;
+    use tempfile::tempdir;
+
+    let dir_chirho = tempdir().unwrap();
+    let src_dir_chirho = dir_chirho.path().join("System");
+    fs::create_dir_all(&src_dir_chirho).unwrap();
+    fs::write(
+        src_dir_chirho.join("Clock.hsc"),
+        "module System.Clock where\nclockValueChirho = 1\n",
+    )
+    .unwrap();
+
+    let pkg_chirho = PackageDescChirho {
+        name_chirho: "hsc-pkg".to_string(),
+        version_chirho: None,
+        cabal_version_chirho: None,
+        license_chirho: None,
+        author_chirho: None,
+        maintainer_chirho: None,
+        synopsis_chirho: None,
+        description_chirho: None,
+        category_chirho: None,
+        homepage_chirho: None,
+        bug_reports_chirho: None,
+        build_type_chirho: None,
+        library_chirho: Some(LibraryChirho {
+            exposed_modules_chirho: vec!["System.Clock".to_string()],
+            other_modules_chirho: vec![],
+            build_info_chirho: BuildInfoChirho {
+                build_depends_chirho: vec![],
+                hs_source_dirs_chirho: vec![".".to_string()],
+                default_language_chirho: None,
+                ghc_options_chirho: vec![],
+                default_extensions_chirho: vec![],
+                other_extensions_chirho: vec![],
+                imports_chirho: vec![],
+            },
+        }),
+        executables_chirho: vec![],
+        test_suites_chirho: vec![],
+        benchmarks_chirho: vec![],
+        flags_chirho: vec![],
+        source_repos_chirho: vec![],
+        common_stanzas_chirho: vec![],
+        custom_setup_chirho: None,
+    };
+
+    let modules_chirho = crate::discover_modules_chirho(&pkg_chirho, dir_chirho.path());
+    assert_eq!(modules_chirho.len(), 1);
+    assert_eq!(modules_chirho[0].0, "System.Clock");
+    assert!(modules_chirho[0].1.ends_with("System/Clock.hsc"));
+}
+
+#[test]
 fn llvm_executable_constant_chirho() {
     // main = 42 should produce LLVM IR with ret i64 42
     let mut sm_chirho = SourceMapChirho::new_chirho();

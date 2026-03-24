@@ -4585,21 +4585,16 @@ fn find_module_file_chirho(
     src_dirs_chirho: &[String],
     project_dir_chirho: &Path,
 ) -> Option<PathBuf> {
-    let relative_path_chirho = module_name_chirho.replace('.', "/") + ".hs";
+    let module_rel_dir_chirho = module_name_chirho.replace('.', "/");
 
     for dir_chirho in src_dirs_chirho {
-        let full_path_chirho = project_dir_chirho
-            .join(dir_chirho)
-            .join(&relative_path_chirho);
-        if full_path_chirho.exists() {
-            return Some(full_path_chirho);
-        }
-        // Also try .lhs (literate Haskell)
-        let lhs_path_chirho = project_dir_chirho
-            .join(dir_chirho)
-            .join(module_name_chirho.replace('.', "/") + ".lhs");
-        if lhs_path_chirho.exists() {
-            return Some(lhs_path_chirho);
+        for extension_chirho in ["hs", "lhs", "hsc"] {
+            let candidate_path_chirho = project_dir_chirho
+                .join(dir_chirho)
+                .join(format!("{module_rel_dir_chirho}.{extension_chirho}"));
+            if candidate_path_chirho.exists() {
+                return Some(candidate_path_chirho);
+            }
         }
     }
 
