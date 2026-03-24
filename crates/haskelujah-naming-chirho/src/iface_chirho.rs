@@ -7141,8 +7141,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let (k_chirho, v_chirho) = mk_type_chirho("FiniteBits", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
-            "(.&.)",
-            "(.|.)",
+            ".&.",
+            ".|.",
             "xor",
             "complement",
             "shift",
