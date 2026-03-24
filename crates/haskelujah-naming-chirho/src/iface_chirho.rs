@@ -4016,6 +4016,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "take", "drop", "splitAt", "takeWhile", "dropWhile",
             "break", "span", "filter", "find", "partition", "index",
             "elem", "notElem", "isPrefixOf", "isSuffixOf",
+            "hGetSome", "hGetNonBlocking", "hGet", "hGetContents",
+            "hPut", "hPutNonBlocking", "hPutStr",
+            "readFile", "writeFile", "appendFile",
+            "getLine", "getContents", "putStr", "putStrLn",
+            "interact", "copy", "replicate", "unfoldr", "unfoldrN",
+            "sort", "group", "groupBy", "inits", "tails",
+            "stripPrefix", "stripSuffix", "isInfixOf",
+            "zip", "zipWith", "unzip",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
