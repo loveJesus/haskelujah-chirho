@@ -1273,6 +1273,60 @@ library
 }
 
 #[test]
+fn cabal_project_imported_shift_helper_with_strict_dollar_chirho() {
+    use crate::compile_cabal_project_chirho;
+    use haskelujah_package_chirho::PackageIndexChirho;
+    use std::io::Write;
+
+    let temp_dir_chirho =
+        std::env::temp_dir().join("haskelujah_cabal_strict_dollar_shift_helper_test_chirho");
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+    std::fs::create_dir_all(temp_dir_chirho.join("Utils")).unwrap();
+
+    let cabal_path_chirho = temp_dir_chirho.join("strict-dollar-shift-helper.cabal");
+    let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
+    writeln!(
+        cabal_file_chirho,
+        r#"cabal-version: 3.0
+name: strict-dollar-shift-helper
+version: 0.1.0.0
+build-type: Simple
+
+library
+  exposed-modules: Main
+  other-modules: Utils.Prelude, Utils.BitUtil
+  hs-source-dirs: .
+  default-language: Haskell2010
+"#
+    )
+    .unwrap();
+
+    std::fs::write(
+        temp_dir_chirho.join("Utils").join("Prelude.hs"),
+        "module Utils.Prelude (module Prelude) where\nimport Prelude\n",
+    )
+    .unwrap();
+    std::fs::write(
+        temp_dir_chirho.join("Utils").join("BitUtil.hs"),
+        "module Utils.BitUtil (shiftRL) where\nimport Data.Bits (shiftR)\nshiftRL :: Word -> Int -> Word\nshiftRL = shiftR\n",
+    )
+    .unwrap();
+    std::fs::write(
+        temp_dir_chirho.join("Main.hs"),
+        "module Main where\nimport Data.Bits\nimport Utils.Prelude\nimport Prelude ()\nimport Utils.BitUtil (shiftRL)\n\ntakeWhileAntitoneBitsChirho :: Int -> (Int -> Bool) -> Word -> Word\ntakeWhileAntitoneBitsChirho prefixChirho predicateChirho bitmapChirho =\n  let nextChirho dChirho hChirho (nPrimeChirho, bPrimeChirho) =\n        if nPrimeChirho .&. hChirho /= 0 && (predicateChirho $! prefixChirho + bPrimeChirho + dChirho)\n          then (shiftRL nPrimeChirho dChirho, bPrimeChirho + dChirho)\n          else (nPrimeChirho, bPrimeChirho)\n      (_ignoreChirho, bChirho) =\n        nextChirho 1 0x2 $\n          nextChirho 2 0xC $\n            nextChirho 4 0xF0 $\n              nextChirho 8 0xFF00 $\n                nextChirho 16 0xFFFF0000 $\n                  nextChirho 32 0xFFFFFFFF00000000 $\n                    (bitmapChirho, 0)\n      mChirho =\n        if bChirho /= 0 || (bitmapChirho .&. 0x1 /= 0 && predicateChirho prefixChirho)\n          then ((2 `shiftL` bChirho) - 1)\n          else ((1 `shiftL` bChirho) - 1)\n   in bitmapChirho .&. mChirho\n",
+    )
+    .unwrap();
+
+    let index_chirho = PackageIndexChirho::new_chirho();
+    let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho);
+    assert!(
+        result_chirho.is_ok(),
+        "strict-dollar imported shift helper project should compile: {:?}",
+        result_chirho
+    );
+}
+
+#[test]
 fn cabal_project_missing_module_skipped_chirho() {
     use crate::compile_cabal_project_chirho;
     use std::io::Write;

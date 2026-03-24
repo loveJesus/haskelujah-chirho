@@ -7745,7 +7745,7 @@ enum AssocChirho {
 /// Follows Haskell's default fixities.
 fn operator_fixity_chirho(op_chirho: &str) -> (u8, AssocChirho) {
     match op_chirho {
-        "$" => (0, AssocChirho::RightChirho),
+        "$" | "$!" | "$!!" => (0, AssocChirho::RightChirho),
         "||" => (2, AssocChirho::RightChirho),
         "&&" => (3, AssocChirho::RightChirho),
         "==" | "/=" | "<" | "<=" | ">" | ">=" => (4, AssocChirho::NoneChirho),
@@ -10367,6 +10367,59 @@ class Describable a where
                         ExprChirho::LitChirho(LitChirho::IntChirho(0, _))
                     ),
                     "expected rhs zero literal, got {:?}",
+                    right_chirho
+                );
+            }
+            other_chirho => panic!("expected infix expression tree, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_strict_dollar_binds_looser_than_addition_chirho() {
+        let source_chirho = "module M where\nfChirho predicateChirho prefixChirho bPrimeChirho dChirho = predicateChirho $! prefixChirho + bPrimeChirho + dChirho\n";
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let parser_chirho =
+            crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+        let green_chirho = parser_chirho.parse_chirho();
+        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "fChirho")
+            })
+            .expect("expected fChirho binding");
+
+        let rhs_expr_chirho = match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho
+            {
+                RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+                other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+
+        match rhs_expr_chirho {
+            ExprChirho::InfixChirho {
+                left_chirho,
+                op_chirho,
+                right_chirho,
+                ..
+            } => {
+                assert_eq!(op_chirho.text_chirho(), "$!");
+                assert!(
+                    matches!(&**left_chirho, ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "predicateChirho"),
+                    "expected predicate as left operand, got {:?}",
+                    left_chirho
+                );
+                assert!(
+                    matches!(
+                        &**right_chirho,
+                        ExprChirho::InfixChirho { op_chirho, .. }
+                            if op_chirho.text_chirho() == "+"
+                    ),
+                    "expected right operand to remain an addition tree, got {:?}",
                     right_chirho
                 );
             }
