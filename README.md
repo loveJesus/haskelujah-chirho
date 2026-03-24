@@ -124,7 +124,7 @@ Haskell source
 ### Install
 
 ```bash
-# From crates.io (v0.1.0)
+# From crates.io
 cargo install haskelujah
 
 # From git (latest)

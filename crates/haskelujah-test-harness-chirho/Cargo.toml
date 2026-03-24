@@ -9,10 +9,10 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.1" }
-haskelujah-diagnostics-chirho = { package = "haskelujah-diagnostics", path = "../haskelujah-diagnostics-chirho", version = "0.1.1" }
-haskelujah-driver-chirho = { package = "haskelujah-driver", path = "../haskelujah-driver-chirho", version = "0.1.1" }
-haskelujah-runtime-chirho = { package = "haskelujah-runtime", path = "../haskelujah-runtime-chirho", version = "0.1.1" }
+haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.2" }
+haskelujah-diagnostics-chirho = { package = "haskelujah-diagnostics", path = "../haskelujah-diagnostics-chirho", version = "0.1.2" }
+haskelujah-driver-chirho = { package = "haskelujah-driver", path = "../haskelujah-driver-chirho", version = "0.1.2" }
+haskelujah-runtime-chirho = { package = "haskelujah-runtime", path = "../haskelujah-runtime-chirho", version = "0.1.2" }
 
 [dev-dependencies]
 tempfile = "3"

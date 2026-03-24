@@ -9,7 +9,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.1" }
+haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.2" }
 
 [lib]
 path = "src/lib.rs"

@@ -12,26 +12,26 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-haskelujah-ast-chirho = { package = "haskelujah-ast", path = "../haskelujah-ast-chirho", version = "0.1.1" }
-haskelujah-backend-llvm-chirho = { package = "haskelujah-backend-llvm", path = "../haskelujah-backend-llvm-chirho", version = "0.1.1" }
-haskelujah-core-chirho = { package = "haskelujah-core", path = "../haskelujah-core-chirho", version = "0.1.1" }
-haskelujah-backend-wasm-chirho = { package = "haskelujah-backend-wasm", path = "../haskelujah-backend-wasm-chirho", version = "0.1.1" }
-haskelujah-backend-cranelift-chirho = { package = "haskelujah-backend-cranelift", path = "../haskelujah-backend-cranelift-chirho", version = "0.1.1" }
-haskelujah-diagnostics-chirho = { package = "haskelujah-diagnostics", path = "../haskelujah-diagnostics-chirho", version = "0.1.1" }
-haskelujah-naming-chirho = { package = "haskelujah-naming", path = "../haskelujah-naming-chirho", version = "0.1.1" }
-haskelujah-parser-chirho = { package = "haskelujah-parser", path = "../haskelujah-parser-chirho", version = "0.1.1" }
-haskelujah-runtime-chirho = { package = "haskelujah-runtime", path = "../haskelujah-runtime-chirho", version = "0.1.1" }
-haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.1" }
-haskelujah-syntax-chirho = { package = "haskelujah-syntax", path = "../haskelujah-syntax-chirho", version = "0.1.1" }
-haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskelujah-typing-chirho", version = "0.1.1" }
-haskelujah-th-chirho = { package = "haskelujah-th", path = "../haskelujah-th-chirho", version = "0.1.1" }
-haskelujah-incremental-chirho = { package = "haskelujah-incremental", path = "../haskelujah-incremental-chirho", version = "0.1.1" }
-haskelujah-package-chirho = { package = "haskelujah-package", path = "../haskelujah-package-chirho", version = "0.1.1" }
+haskelujah-ast-chirho = { package = "haskelujah-ast", path = "../haskelujah-ast-chirho", version = "0.1.2" }
+haskelujah-backend-llvm-chirho = { package = "haskelujah-backend-llvm", path = "../haskelujah-backend-llvm-chirho", version = "0.1.2" }
+haskelujah-core-chirho = { package = "haskelujah-core", path = "../haskelujah-core-chirho", version = "0.1.2" }
+haskelujah-backend-wasm-chirho = { package = "haskelujah-backend-wasm", path = "../haskelujah-backend-wasm-chirho", version = "0.1.2" }
+haskelujah-backend-cranelift-chirho = { package = "haskelujah-backend-cranelift", path = "../haskelujah-backend-cranelift-chirho", version = "0.1.2" }
+haskelujah-diagnostics-chirho = { package = "haskelujah-diagnostics", path = "../haskelujah-diagnostics-chirho", version = "0.1.2" }
+haskelujah-naming-chirho = { package = "haskelujah-naming", path = "../haskelujah-naming-chirho", version = "0.1.2" }
+haskelujah-parser-chirho = { package = "haskelujah-parser", path = "../haskelujah-parser-chirho", version = "0.1.2" }
+haskelujah-runtime-chirho = { package = "haskelujah-runtime", path = "../haskelujah-runtime-chirho", version = "0.1.2" }
+haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.2" }
+haskelujah-syntax-chirho = { package = "haskelujah-syntax", path = "../haskelujah-syntax-chirho", version = "0.1.2" }
+haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskelujah-typing-chirho", version = "0.1.2" }
+haskelujah-th-chirho = { package = "haskelujah-th", path = "../haskelujah-th-chirho", version = "0.1.2" }
+haskelujah-incremental-chirho = { package = "haskelujah-incremental", path = "../haskelujah-incremental-chirho", version = "0.1.2" }
+haskelujah-package-chirho = { package = "haskelujah-package", path = "../haskelujah-package-chirho", version = "0.1.2" }
 
 [dev-dependencies]
 tempfile = "3"
 proptest = "1"
-haskelujah-test-harness-chirho = { package = "haskelujah-test-harness", path = "../haskelujah-test-harness-chirho", version = "0.1.1" }
+haskelujah-test-harness-chirho = { package = "haskelujah-test-harness", path = "../haskelujah-test-harness-chirho", version = "0.1.2" }
 
 [target.'cfg(unix)'.dev-dependencies]
 libc = "0.2"

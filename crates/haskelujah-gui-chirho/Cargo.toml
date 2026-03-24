@@ -15,8 +15,8 @@ path = "src/main_chirho.rs"
 [dependencies]
 eframe = "0.33"
 egui_extras = { version = "0.33", features = ["syntect"] }
-haskelujah-driver-chirho = { package = "haskelujah-driver", path = "../haskelujah-driver-chirho", version = "0.1.1" }
-haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.1" }
+haskelujah-driver-chirho = { package = "haskelujah-driver", path = "../haskelujah-driver-chirho", version = "0.1.2" }
+haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.2" }
 
 [lib]
 path = "src/lib.rs"
