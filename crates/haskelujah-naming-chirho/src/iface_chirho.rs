@@ -9696,6 +9696,39 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // System.Posix.Directory / System.Posix.Files
+    for mod_name_chirho in &[
+        "System.Posix.Directory",
+        "System.Posix.Files",
+        "System.Posix.IO",
+        "System.Posix.Process",
+    ] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "openDirStream", "readDirStream", "closeDirStream",
+            "getWorkingDirectory", "changeWorkingDirectory",
+            "createDirectory", "removeDirectory",
+            "getFileStatus", "getSymbolicLinkStatus",
+            "isDirectory", "isRegularFile", "isSymbolicLink",
+            "fileSize", "modificationTime", "accessTime",
+            "createSymbolicLink", "readSymbolicLink", "rename",
+            "removeLink", "setFileMode",
+            "openFd", "closeFd", "fdRead", "fdWrite",
+            "getProcessID", "forkProcess",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["DirStream", "FileStatus"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
     // Control.Monad.Trans.Resource (resourcet)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
