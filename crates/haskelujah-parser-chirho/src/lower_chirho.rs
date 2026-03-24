@@ -1850,6 +1850,28 @@ impl LowerCtxChirho {
                         && tok_chirho.text_chirho() == "!"
                     {
                         pending_strict_chirho = true;
+                    } else if name_chirho.is_some()
+                        && (tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho)
+                    {
+                        // Bare type variable/constructor tokens after the
+                        // constructor name (e.g. the `a` in `a :< S a`).
+                        let s_chirho =
+                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                        let n_chirho = self.name_from_token_chirho(tok_chirho, s_chirho);
+                        let ty_chirho = if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
+                        {
+                            TypeChirho::VarChirho(n_chirho)
+                        } else {
+                            TypeChirho::ConChirho(n_chirho)
+                        };
+                        let strictness_chirho = if pending_strict_chirho {
+                            pending_strict_chirho = false;
+                            StrictnessChirho::StrictChirho
+                        } else {
+                            StrictnessChirho::LazyChirho
+                        };
+                        fields_chirho.push((strictness_chirho, ty_chirho));
                     }
                 }
                 GreenElementChirho::NodeChirho(n_chirho) => {
@@ -1872,6 +1894,37 @@ impl LowerCtxChirho {
         }
 
         let con_name_chirho = name_chirho.unwrap_or_else(|| self.dummy_name_chirho());
+
+        // For infix data constructors (e.g. `a :< Seq a`), the parser may
+        // split the right-hand type application into separate fields.
+        // An infix constructor has exactly 2 fields: one before the operator
+        // and one after.  Merge excess fields (idx >= 2) into the second
+        // field via left-nested TypeChirho::AppChirho.
+        if fields_chirho.len() > 2 && !has_record_chirho {
+            let is_infix_chirho = con_name_chirho
+                .text_chirho()
+                .starts_with(':')
+                || con_name_chirho
+                    .text_chirho()
+                    .chars()
+                    .next()
+                    .map_or(false, |c_chirho| !c_chirho.is_alphanumeric() && c_chirho != '_');
+            if is_infix_chirho {
+                // fields[0] = left operand, fields[1..] = right operand parts
+                let right_parts_chirho: Vec<_> = fields_chirho.drain(1..).collect();
+                let strictness_chirho = right_parts_chirho[0].0;
+                let mut combined_chirho = right_parts_chirho[0].1.clone();
+                for part_chirho in &right_parts_chirho[1..] {
+                    combined_chirho = TypeChirho::AppChirho {
+                        fun_chirho: Box::new(combined_chirho),
+                        arg_chirho: Box::new(part_chirho.1.clone()),
+                        span_chirho,
+                    };
+                }
+                fields_chirho.push((strictness_chirho, combined_chirho));
+            }
+        }
+
         if has_record_chirho {
             ConDeclChirho::RecordChirho {
                 name_chirho: con_name_chirho,

@@ -712,9 +712,21 @@ impl<'src> ParserChirho<'src> {
                     self.bump_chirho();
                     self.eat_trivia_chirho();
                 }
-                if self.can_start_atype_chirho() {
-                    self.parse_atype_chirho();
-                    self.eat_trivia_chirho();
+                // Right operand may be a type application (e.g. `Seq a`
+                // in `a :< Seq a`), so parse all atomic types, not just one.
+                while self.can_start_atype_chirho() || self.at_strict_prefix_chirho() {
+                    let before_chirho = self.pos_chirho;
+                    if self.at_strict_prefix_chirho() {
+                        self.bump_chirho();
+                        self.eat_trivia_chirho();
+                    }
+                    if self.can_start_atype_chirho() {
+                        self.parse_atype_chirho();
+                        self.eat_trivia_chirho();
+                    }
+                    if self.pos_chirho == before_chirho {
+                        break;
+                    }
                 }
             }
         } else {
