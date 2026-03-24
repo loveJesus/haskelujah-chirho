@@ -195,6 +195,172 @@ fn stdlib_dir_is_valid_chirho(path_chirho: &Path) -> bool {
         .is_file()
 }
 
+fn collect_type_constructor_names_chirho(
+    ty_chirho: &TypeChirho,
+    names_chirho: &mut std::collections::HashSet<String>,
+) {
+    match ty_chirho {
+        TypeChirho::ConChirho(name_chirho) => {
+            names_chirho.insert(name_chirho.full_name_chirho());
+        }
+        TypeChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => {
+            collect_type_constructor_names_chirho(fun_chirho, names_chirho);
+            collect_type_constructor_names_chirho(arg_chirho, names_chirho);
+        }
+        TypeChirho::FunChirho {
+            arg_chirho,
+            result_chirho,
+            ..
+        } => {
+            collect_type_constructor_names_chirho(arg_chirho, names_chirho);
+            collect_type_constructor_names_chirho(result_chirho, names_chirho);
+        }
+        TypeChirho::TupleChirho {
+            elements_chirho, ..
+        } => {
+            for elem_chirho in elements_chirho {
+                collect_type_constructor_names_chirho(elem_chirho, names_chirho);
+            }
+        }
+        TypeChirho::ListChirho { element_chirho, .. } => {
+            collect_type_constructor_names_chirho(element_chirho, names_chirho);
+        }
+        TypeChirho::ParenChirho { inner_chirho, .. } => {
+            collect_type_constructor_names_chirho(inner_chirho, names_chirho);
+        }
+        TypeChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+            ..
+        } => {
+            for constraint_chirho in context_chirho {
+                match constraint_chirho {
+                    haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                        args_chirho,
+                        ..
+                    } => {
+                        for arg_chirho in args_chirho {
+                            collect_type_constructor_names_chirho(arg_chirho, names_chirho);
+                        }
+                    }
+                    haskelujah_ast_chirho::ty_chirho::ConstraintChirho::QuantifiedChirho {
+                        context_chirho,
+                        body_chirho,
+                        ..
+                    } => {
+                        for inner_constraint_chirho in context_chirho {
+                            if let haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                                args_chirho,
+                                ..
+                            } = inner_constraint_chirho
+                            {
+                                for arg_chirho in args_chirho {
+                                    collect_type_constructor_names_chirho(arg_chirho, names_chirho);
+                                }
+                            }
+                        }
+                        if let haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                            args_chirho,
+                            ..
+                        } = body_chirho.as_ref()
+                        {
+                            for arg_chirho in args_chirho {
+                                collect_type_constructor_names_chirho(arg_chirho, names_chirho);
+                            }
+                        }
+                    }
+                }
+            }
+            collect_type_constructor_names_chirho(body_chirho, names_chirho);
+        }
+        TypeChirho::ForallChirho { body_chirho, .. } => {
+            collect_type_constructor_names_chirho(body_chirho, names_chirho);
+        }
+        TypeChirho::PromotedListChirho {
+            elements_chirho, ..
+        } => {
+            for elem_chirho in elements_chirho {
+                collect_type_constructor_names_chirho(elem_chirho, names_chirho);
+            }
+        }
+        TypeChirho::PromotedConChirho { name_chirho, .. } => {
+            names_chirho.insert(name_chirho.full_name_chirho());
+        }
+        TypeChirho::VarChirho(_)
+        | TypeChirho::WildcardChirho { .. }
+        | TypeChirho::LitChirho { .. }
+         => {}
+    }
+}
+
+fn insert_type_synonym_with_module_alias_chirho(
+    exported_type_synonyms_chirho: &mut ImportedTypeSynonymsChirho,
+    module_name_chirho: &str,
+    alias_name_chirho: &str,
+    params_chirho: Vec<String>,
+    rhs_chirho: TypeChirho,
+) {
+    exported_type_synonyms_chirho.insert(
+        alias_name_chirho.to_string(),
+        (params_chirho.clone(), rhs_chirho.clone()),
+    );
+    exported_type_synonyms_chirho.insert(
+        format!("{module_name_chirho}.{alias_name_chirho}"),
+        (params_chirho, rhs_chirho),
+    );
+}
+
+fn seed_transitive_type_synonyms_chirho(
+    exported_type_synonyms_chirho: &mut ImportedTypeSynonymsChirho,
+    module_name_chirho: &str,
+    rhs_chirho: &TypeChirho,
+    resolved_imported_type_synonyms_chirho: &ImportedTypeSynonymsChirho,
+    seen_chirho: &mut std::collections::HashSet<String>,
+) {
+    let mut referenced_names_chirho = std::collections::HashSet::new();
+    collect_type_constructor_names_chirho(rhs_chirho, &mut referenced_names_chirho);
+    for referenced_name_chirho in referenced_names_chirho {
+        let bare_name_chirho = referenced_name_chirho
+            .rsplit_once('.')
+            .map(|(_prefix_chirho, bare_name_chirho)| bare_name_chirho)
+            .unwrap_or(referenced_name_chirho.as_str())
+            .to_string();
+        if !seen_chirho.insert(bare_name_chirho.clone()) {
+            continue;
+        }
+        let candidate_keys_chirho = [
+            referenced_name_chirho.clone(),
+            format!("{module_name_chirho}.{bare_name_chirho}"),
+            bare_name_chirho.clone(),
+        ];
+        let Some((params_chirho, transitive_rhs_chirho)) = candidate_keys_chirho
+            .iter()
+            .find_map(|key_chirho| resolved_imported_type_synonyms_chirho.get(key_chirho))
+            .cloned()
+        else {
+            continue;
+        };
+        insert_type_synonym_with_module_alias_chirho(
+            exported_type_synonyms_chirho,
+            module_name_chirho,
+            &bare_name_chirho,
+            params_chirho,
+            transitive_rhs_chirho.clone(),
+        );
+        seed_transitive_type_synonyms_chirho(
+            exported_type_synonyms_chirho,
+            module_name_chirho,
+            &transitive_rhs_chirho,
+            resolved_imported_type_synonyms_chirho,
+            seen_chirho,
+        );
+    }
+}
+
 fn exported_type_synonyms_from_module_chirho(
     module_chirho: &ModuleChirho,
     iface_chirho: &ModuleIfaceChirho,
@@ -202,6 +368,7 @@ fn exported_type_synonyms_from_module_chirho(
 ) -> ImportedTypeSynonymsChirho {
     let mut exported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
     let mut local_type_alias_names_chirho = std::collections::HashSet::new();
+    let mut transitive_seen_chirho = std::collections::HashSet::new();
     for decl_chirho in &module_chirho.decls_chirho {
         if let DeclChirho::TypeAliasDeclChirho {
             name_chirho,
@@ -217,25 +384,22 @@ fn exported_type_synonyms_from_module_chirho(
                 .types_chirho
                 .contains_key(&alias_name_chirho)
             {
-                exported_type_synonyms_chirho.insert(
-                    alias_name_chirho.clone(),
-                    (
-                        type_vars_chirho
-                            .iter()
-                            .map(|ty_var_chirho| ty_var_chirho.text_chirho().to_string())
-                            .collect(),
-                        rhs_chirho.clone(),
-                    ),
+                insert_type_synonym_with_module_alias_chirho(
+                    &mut exported_type_synonyms_chirho,
+                    &iface_chirho.name_chirho,
+                    &alias_name_chirho,
+                    type_vars_chirho
+                        .iter()
+                        .map(|ty_var_chirho| ty_var_chirho.text_chirho().to_string())
+                        .collect(),
+                    rhs_chirho.clone(),
                 );
-                exported_type_synonyms_chirho.insert(
-                    format!("{}.{}", iface_chirho.name_chirho, alias_name_chirho),
-                    (
-                        type_vars_chirho
-                            .iter()
-                            .map(|ty_var_chirho| ty_var_chirho.text_chirho().to_string())
-                            .collect(),
-                        rhs_chirho.clone(),
-                    ),
+                seed_transitive_type_synonyms_chirho(
+                    &mut exported_type_synonyms_chirho,
+                    &iface_chirho.name_chirho,
+                    rhs_chirho,
+                    resolved_imported_type_synonyms_chirho,
+                    &mut transitive_seen_chirho,
                 );
             }
         }
@@ -249,13 +413,19 @@ fn exported_type_synonyms_from_module_chirho(
         if let Some((params_chirho, rhs_chirho)) =
             resolved_imported_type_synonyms_chirho.get(exported_type_name_chirho)
         {
-            exported_type_synonyms_chirho.insert(
-                exported_type_name_chirho.clone(),
-                (params_chirho.clone(), rhs_chirho.clone()),
+            insert_type_synonym_with_module_alias_chirho(
+                &mut exported_type_synonyms_chirho,
+                &iface_chirho.name_chirho,
+                exported_type_name_chirho,
+                params_chirho.clone(),
+                rhs_chirho.clone(),
             );
-            exported_type_synonyms_chirho.insert(
-                format!("{}.{}", iface_chirho.name_chirho, exported_type_name_chirho),
-                (params_chirho.clone(), rhs_chirho.clone()),
+            seed_transitive_type_synonyms_chirho(
+                &mut exported_type_synonyms_chirho,
+                &iface_chirho.name_chirho,
+                rhs_chirho,
+                resolved_imported_type_synonyms_chirho,
+                &mut transitive_seen_chirho,
             );
         }
     }

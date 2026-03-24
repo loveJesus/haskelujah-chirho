@@ -1330,6 +1330,45 @@ coerceAliasMiniChirho parserChirho = parserChirho\n",
 }
 
 #[test]
+fn frontend_reexported_type_alias_expands_through_hidden_parent_alias_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "PrimAliasCompatMiniChirho.hs",
+            "module PrimAliasCompatMiniChirho (IdentityAliasCompatMiniChirho(..), ParsecTAliasCompatMiniChirho(..), ParsecAliasCompatMiniChirho) where\n\
+data IdentityAliasCompatMiniChirho aChirho = IdentityAliasCompatMiniChirho aChirho\n\
+newtype ParsecTAliasCompatMiniChirho sChirho uChirho mChirho aChirho = ParsecTAliasCompatMiniChirho { unParsecTAliasCompatMiniChirho :: sChirho -> mChirho aChirho }\n\
+type ParsecAliasCompatMiniChirho sChirho uChirho aChirho = ParsecTAliasCompatMiniChirho sChirho uChirho IdentityAliasCompatMiniChirho aChirho\n",
+        ),
+        (
+            "CompatPrimMiniChirho.hs",
+            "module CompatPrimMiniChirho (GenParserCompatMiniChirho) where\n\
+import PrimAliasCompatMiniChirho (ParsecAliasCompatMiniChirho)\n\
+type GenParserCompatMiniChirho tokChirho stChirho aChirho = ParsecAliasCompatMiniChirho [tokChirho] stChirho aChirho\n",
+        ),
+        (
+            "CompatTopMiniChirho.hs",
+            "module CompatTopMiniChirho (module CompatPrimMiniChirho) where\n\
+import CompatPrimMiniChirho\n",
+        ),
+        (
+            "UseCompatTopMiniChirho.hs",
+            "module UseCompatTopMiniChirho where\n\
+import PrimAliasCompatMiniChirho (IdentityAliasCompatMiniChirho, ParsecTAliasCompatMiniChirho)\n\
+import CompatTopMiniChirho (GenParserCompatMiniChirho)\n\
+coerceCompatMiniChirho :: GenParserCompatMiniChirho tokChirho stChirho aChirho -> ParsecTAliasCompatMiniChirho [tokChirho] stChirho IdentityAliasCompatMiniChirho aChirho\n\
+coerceCompatMiniChirho parserChirho = parserChirho\n",
+        ),
+    ];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "reexported aliases should keep the hidden parent alias chain needed for downstream expansion: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_explicit_import_overrides_broadly_seeded_value_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let sources_chirho = [
