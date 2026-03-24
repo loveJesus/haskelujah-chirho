@@ -5,6 +5,32 @@
 
 	import { onMount } from 'svelte';
 
+	// Playground typecheck via server-side API (placeholder — future: Wasm compiler)
+	if (typeof window !== 'undefined') {
+		(window as any).typecheckPlayground = () => {
+			const source_chirho = (document.getElementById('playground-source-chirho') as HTMLTextAreaElement)?.value || '';
+			const output_chirho = document.getElementById('playground-output-chirho');
+			if (!output_chirho) return;
+
+			// Check for common patterns client-side (placeholder until Wasm compiler)
+			const lines_chirho = source_chirho.split('\n');
+			const hasMain_chirho = lines_chirho.some(l => l.trim().startsWith('main'));
+			const hasModule_chirho = lines_chirho.some(l => l.trim().startsWith('module'));
+			const imports_chirho = lines_chirho.filter(l => l.trim().startsWith('import'));
+
+			let result_chirho = '✓ Typecheck simulation:\n';
+			result_chirho += `  Module: ${hasModule_chirho ? 'declared' : 'Main (implicit)'}\n`;
+			result_chirho += `  Imports: ${imports_chirho.length} (${imports_chirho.map(l => l.trim().replace('import ', '')).join(', ') || 'none'})\n`;
+			result_chirho += `  Main: ${hasMain_chirho ? 'found' : 'missing'}\n`;
+			result_chirho += `  Lines: ${lines_chirho.length}\n\n`;
+			result_chirho += '⚡ Full typechecking coming soon via Wasm compiler.\n';
+			result_chirho += '   Install locally: cargo install haskelujah';
+
+			output_chirho.textContent = result_chirho;
+			output_chirho.style.color = hasMain_chirho ? '#7dd3fc' : '#ff6b6b';
+		};
+	}
+
 	onMount(() => {
 		const el_chirho = document.getElementById('asciinema-player-chirho');
 		if (el_chirho && (window as any).AsciinemaPlayer) {
@@ -314,6 +340,34 @@
 					<h3>Demo Script</h3>
 					<p>Record your own demo video with narration cues.</p>
 				</a>
+			</div>
+		</div>
+	</section>
+
+	<!-- Playground Section -->
+	<section id="playground-chirho" class="playground-chirho">
+		<div class="section-inner-chirho">
+			<h2 class="section-title-chirho">Try It Now</h2>
+			<p class="section-subtitle-chirho">Write Haskell in your browser — no install needed.</p>
+			<div class="playground-editor-chirho">
+				<div class="playground-header-chirho">
+					<span class="code-dot-chirho"></span>
+					<span class="code-dot-chirho"></span>
+					<span class="code-dot-chirho"></span>
+					<span class="code-title-chirho">Main.hs</span>
+					<button class="playground-btn-chirho" onclick={() => { if (typeof window !== 'undefined' && (window as any).typecheckPlayground) (window as any).typecheckPlayground(); }}>Typecheck</button>
+				</div>
+				<textarea id="playground-source-chirho" class="playground-textarea-chirho" spellcheck="false">import Haskelujah.JSON
+import Haskelujah.Text
+
+greeting :: String
+greeting = toUpper "hello from the browser"
+
+main :: IO ()
+main = putStrLn (encode (object ["msg" .= String greeting]))</textarea>
+				<div id="playground-output-chirho" class="playground-output-chirho">
+					Press "Typecheck" or Ctrl+Enter to check your code.
+				</div>
 			</div>
 		</div>
 	</section>
@@ -1345,6 +1399,75 @@ main = putStrLn "Runs directly, no build step."</span>
 		.hero-proof-chirho {
 			grid-template-columns: 1fr;
 		}
+	}
+
+	/* Playground Section */
+	.playground-chirho {
+		padding: 5rem 2rem;
+		background: rgba(113, 215, 209, 0.02);
+		border-top: 1px solid var(--line-chirho);
+	}
+
+	.playground-editor-chirho {
+		max-width: 750px;
+		margin: 2rem auto;
+		border-radius: 18px;
+		overflow: hidden;
+		border: 1px solid var(--line-chirho);
+		box-shadow: var(--shadow-chirho);
+		background: #15110c;
+	}
+
+	.playground-header-chirho {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 0.75rem 1rem;
+		background: rgba(246, 190, 96, 0.04);
+		border-bottom: 1px solid var(--line-chirho);
+	}
+
+	.playground-btn-chirho {
+		margin-left: auto;
+		padding: 0.35rem 1rem;
+		background: linear-gradient(135deg, var(--accent-gold-chirho), #f0d37a);
+		color: #120f0b;
+		font-weight: 600;
+		border: none;
+		border-radius: 6px;
+		font-size: 0.85rem;
+		cursor: pointer;
+		transition: opacity 0.2s;
+	}
+
+	.playground-btn-chirho:hover {
+		opacity: 0.85;
+	}
+
+	.playground-textarea-chirho {
+		width: 100%;
+		min-height: 200px;
+		padding: 1rem;
+		background: #15110c;
+		color: var(--text-main-chirho);
+		border: none;
+		font-family: 'IBM Plex Mono', monospace;
+		font-size: 0.9rem;
+		line-height: 1.7;
+		resize: vertical;
+		outline: none;
+	}
+
+	.playground-output-chirho {
+		padding: 1rem;
+		background: rgba(0, 0, 0, 0.3);
+		border-top: 1px solid var(--line-chirho);
+		color: var(--text-muted-chirho);
+		font-family: 'IBM Plex Mono', monospace;
+		font-size: 0.82rem;
+		line-height: 1.6;
+		white-space: pre-wrap;
+		min-height: 60px;
 	}
 
 	/* Demo Section */
