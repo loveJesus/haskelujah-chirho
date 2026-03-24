@@ -793,6 +793,13 @@ pub fn run_frontend_with_type_synonyms_chirho(
         String,
         Vec<String>,
     > = std::collections::HashMap::new();
+    for (builtin_name_chirho, builtin_scheme_chirho) in
+        haskelujah_typing_chirho::infer_chirho::builtin_value_schemes_chirho()
+    {
+        merged_imported_types_chirho
+            .entry(builtin_name_chirho)
+            .or_insert(builtin_scheme_chirho);
+    }
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
         if let Some(iface_chirho) = ifaces_chirho
@@ -963,6 +970,15 @@ pub fn run_frontend_with_type_synonyms_chirho(
     {
         infer_module_chirho(&module_chirho)
     } else {
+        if module_chirho.name_chirho.full_name_chirho() == "Data.IntSet.Internal" {
+            for debug_name_chirho in [".&.", ".|.", "==", "countTrailingZeros", "showString", "shows"] {
+                eprintln!(
+                    "DEBUG {} => {:?}",
+                    debug_name_chirho,
+                    merged_imported_types_chirho.get(debug_name_chirho)
+                );
+            }
+        }
         infer_module_with_imports_and_type_synonyms_chirho(
             &module_chirho,
             &merged_imported_types_chirho,

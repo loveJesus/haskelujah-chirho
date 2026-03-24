@@ -1687,7 +1687,7 @@ impl ClassEnvChirho {
         });
 
         // Standard instances
-        for ty_name_chirho in &["Int", "Integer", "Char", "Bool"] {
+        for ty_name_chirho in &["Int", "Integer", "Char", "Bool", "Word"] {
             let ty_chirho = TyChirho::ConChirho(ty_name_chirho.to_string());
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Eq".to_string(),
@@ -1703,7 +1703,7 @@ impl ClassEnvChirho {
             });
         }
 
-        for ty_name_chirho in &["Int", "Integer", "Char", "Double", "Bool"] {
+        for ty_name_chirho in &["Int", "Integer", "Char", "Double", "Bool", "Word"] {
             let ty_chirho = TyChirho::ConChirho(ty_name_chirho.to_string());
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Ord".to_string(),
@@ -1738,7 +1738,7 @@ impl ClassEnvChirho {
         });
 
         // Enum instances
-        for ty_name_chirho in &["Int", "Integer", "Char", "Bool"] {
+        for ty_name_chirho in &["Int", "Integer", "Char", "Bool", "Word"] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Enum".to_string(),
                 head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
@@ -1748,7 +1748,7 @@ impl ClassEnvChirho {
         }
 
         // Bounded instances
-        for ty_name_chirho in &["Int", "Char", "Bool"] {
+        for ty_name_chirho in &["Int", "Char", "Bool", "Word"] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Bounded".to_string(),
                 head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
@@ -1761,6 +1761,7 @@ impl ClassEnvChirho {
         for ty_chirho in [
             TyChirho::int_chirho(),
             TyChirho::ConChirho("Integer".to_string()),
+            TyChirho::ConChirho("Word".to_string()),
         ] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Integral".to_string(),
@@ -1794,6 +1795,7 @@ impl ClassEnvChirho {
         for ty_chirho in [
             TyChirho::int_chirho(),
             TyChirho::ConChirho("Integer".to_string()),
+            TyChirho::ConChirho("Word".to_string()),
         ] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Num".to_string(),
@@ -2165,10 +2167,26 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
+        // instance Bits Word
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Bits".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Word".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
         // instance FiniteBits Int
         self.add_instance_chirho(InstDeclChirho {
             class_name_chirho: "FiniteBits".to_string(),
             head_ty_chirho: TyChirho::ConChirho("Int".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // instance FiniteBits Word
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "FiniteBits".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Word".to_string()),
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });

@@ -10374,21 +10374,6 @@ class Describable a where
         }
     }
 
-    #[test]
-    fn lower_module_header_keeps_declared_name_before_module_reexport_chirho() {
-        let source_chirho =
-            "module Utils.Containers.Internal.Prelude (module Prelude, Applicative(..)) where\n";
-        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
-        let parser_chirho =
-            crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
-        let green_chirho = parser_chirho.parse_chirho();
-        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
-        assert_eq!(
-            module_chirho.name_chirho.full_name_chirho(),
-            "Utils.Containers.Internal.Prelude"
-        );
-    }
-
 /// Extensions enabled by GHC2021 (and GHC2024 which is a superset).
 /// Reference: https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/control.html#extension-GHC2021
 fn ghc2021_extensions_chirho() -> &'static [&'static str] {

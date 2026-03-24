@@ -12167,6 +12167,16 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     );
 }
 
+pub fn builtin_value_schemes_chirho() -> HashMap<String, SchemeChirho> {
+    let mut env_chirho = TyEnvChirho::new_chirho();
+    seed_builtins_chirho(&mut env_chirho);
+    env_chirho
+        .all_bindings_chirho()
+        .into_iter()
+        .map(|(name_chirho, scheme_chirho)| (name_chirho.clone(), scheme_chirho.clone()))
+        .collect()
+}
+
 // ---------------------------------------------------------------------------
 // Literal type inference
 // ---------------------------------------------------------------------------
