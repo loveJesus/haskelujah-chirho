@@ -535,6 +535,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "unlines",
             "words",
             "unwords",
+            "uncons",
+            "singleton",
+            "foldl1",
+            "foldr1",
+            "scanl1",
+            "scanr",
+            "scanr1",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -1772,6 +1779,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "getDual",
             "getEndo",
             "appEndo",
+            "getAlt",
+            "getAp",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
