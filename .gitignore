@@ -40,3 +40,4 @@ Thumbs.db
 .haskelujah-packages-chirho/
 Int#
 examples-chirho/*/dist-chirho/
+spec-chirho/
