@@ -10382,35 +10382,9 @@ class Describable a where
         let parser_chirho =
             crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
         let green_chirho = parser_chirho.parse_chirho();
-        let source_children_chirho = green_chirho.children_chirho();
-        let module_header_chirho = source_children_chirho
-            .iter()
-            .find_map(|child_chirho| match child_chirho {
-                GreenElementChirho::NodeChirho(node_chirho)
-                    if node_chirho.kind_chirho() == SyntaxKindChirho::ModuleHeaderChirho =>
-                {
-                    Some(node_chirho)
-                }
-                _ => None,
-            })
-            .expect("expected module header");
-        let ctx_chirho = LowerCtxChirho::new_chirho(file_id_chirho);
-        let debug_children_chirho: Vec<String> = ctx_chirho
-            .semantic_children_chirho(module_header_chirho, 0)
-            .iter()
-            .map(|child_chirho| match child_chirho.element_chirho {
-                GreenElementChirho::TokenChirho(tok_chirho) => {
-                    format!("tok:{:?}:{}", tok_chirho.kind_chirho(), tok_chirho.text_chirho())
-                }
-                GreenElementChirho::NodeChirho(node_chirho) => {
-                    format!("node:{:?}", node_chirho.kind_chirho())
-                }
-            })
-            .collect();
-        eprintln!("module_header_children_chirho = {debug_children_chirho:?}");
         let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
         assert_eq!(
-            module_chirho.name_chirho.text_chirho(),
+            module_chirho.name_chirho.full_name_chirho(),
             "Utils.Containers.Internal.Prelude"
         );
     }
