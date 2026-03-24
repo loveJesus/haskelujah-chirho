@@ -1,0 +1,19 @@
+# For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life.
+
+[package]
+name = "haskelujah-gui"
+description = "Cross-platform GUI editor for Haskell — like Zed, powered by Haskelujah"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "haskelujah-gui"
+path = "src/main_chirho.rs"
+
+[dependencies]
+eframe = "0.33"
+egui_extras = { version = "0.33", features = ["syntect"] }
+haskelujah-driver-chirho = { package = "haskelujah-driver", path = "../haskelujah-driver-chirho", version = "0.1.1" }
+haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.1" }
