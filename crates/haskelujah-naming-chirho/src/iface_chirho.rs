@@ -7689,8 +7689,20 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.Show
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Show", &[]);
-        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        // Show class with methods for (..) import
+        exports_chirho.types_chirho.insert(
+            "Show".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Show".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec![
+                    "showsPrec".to_string(),
+                    "show".to_string(),
+                    "showList".to_string(),
+                ],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
         for name_chirho in &[
             "show",
             "showsPrec",
