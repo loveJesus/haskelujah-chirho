@@ -805,6 +805,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "Bounded",
             "Functor",
             "Applicative",
+            "Alternative",
             "Monad",
             "MonadFail",
             "Semigroup",
@@ -1110,6 +1111,12 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "<*>",
             "*>",
             "<*",
+            "empty",
+            "<|>",
+            "some",
+            "many",
+            "optional",
+            "liftA2",
             ">>",
             ">>=",
             "=<<",
@@ -9812,6 +9819,27 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Profunctor
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["dimap", "lmap", "rmap", "arr'"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Profunctor", &["dimap", "lmap", "rmap"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for sub_mod_chirho in &[
+            "Data.Profunctor",
+            "Data.Profunctor.Unsafe",
+            "Data.Profunctor.Types",
+        ] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: sub_mod_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
     normalize_builtin_class_exports_chirho(&mut modules_chirho);
     merge_module_ifaces_chirho(modules_chirho)
 }
@@ -11203,6 +11231,31 @@ mod tests_chirho {
                     .values_chirho
                     .contains_key(method_chirho),
                 "Data.Foldable should export value {method_chirho}"
+            );
+        }
+    }
+
+    #[test]
+    fn builtin_prelude_exports_alternative_helpers_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let prelude_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Prelude")
+            .expect("Prelude builtin iface should exist");
+        assert!(
+            prelude_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("Alternative"),
+            "Prelude should export Alternative"
+        );
+        for name_chirho in ["empty", "<|>", "some", "many", "optional", "liftA2"] {
+            assert!(
+                prelude_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "Prelude should export {name_chirho}"
             );
         }
     }
