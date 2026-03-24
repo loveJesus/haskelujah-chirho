@@ -311,11 +311,16 @@ fn source_uses_cpp_chirho(source_chirho: &str) -> bool {
             || (line_chirho.contains("{-#")
                 && line_chirho.contains("OPTIONS_GHC")
                 && line_chirho.contains("-cpp"))
-    })
+            })
 }
 
 fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::Result<String> {
-    if !source_uses_cpp_chirho(source_chirho) {
+    let is_hsc_chirho = path_chirho
+        .extension()
+        .and_then(|ext_chirho| ext_chirho.to_str())
+        .is_some_and(|ext_chirho| ext_chirho.eq_ignore_ascii_case("hsc"));
+
+    if !is_hsc_chirho && !source_uses_cpp_chirho(source_chirho) {
         return Ok(source_chirho.to_string());
     }
 
@@ -386,16 +391,21 @@ fn strip_cpp_directives_chirho(source_chirho: &str) -> String {
     source_chirho
         .lines()
         .filter(|line_chirho| {
-            let t_chirho = line_chirho.trim();
-            !t_chirho.starts_with("#if")
-                && !t_chirho.starts_with("#else")
-                && !t_chirho.starts_with("#endif")
-                && !t_chirho.starts_with("#define")
-                && !t_chirho.starts_with("#undef")
-                && !t_chirho.starts_with("#include")
-                && !t_chirho.starts_with("#ifdef")
-                && !t_chirho.starts_with("#ifndef")
-                && !t_chirho.starts_with("#elif")
+            let trimmed_chirho = line_chirho.trim_start();
+            let directive_chirho = trimmed_chirho
+                .strip_prefix('#')
+                .map(|rest_chirho| rest_chirho.trim_start())
+                .unwrap_or_default();
+            !(directive_chirho.starts_with("if")
+                || directive_chirho.starts_with("else")
+                || directive_chirho.starts_with("endif")
+                || directive_chirho.starts_with("define")
+                || directive_chirho.starts_with("undef")
+                || directive_chirho.starts_with("include")
+                || directive_chirho.starts_with("ifdef")
+                || directive_chirho.starts_with("ifndef")
+                || directive_chirho.starts_with("elif")
+                || directive_chirho.starts_with("let "))
         })
         .collect::<Vec<_>>()
         .join("\n")

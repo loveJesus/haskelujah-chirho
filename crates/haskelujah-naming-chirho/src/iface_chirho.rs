@@ -10023,8 +10023,22 @@ fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsC
                     },
                 );
             }
-            DeclChirho::PatBindChirho { .. } => {
-                // Pattern bindings are not exported by name
+            DeclChirho::PatBindChirho {
+                pat_chirho,
+                span_chirho,
+                ..
+            } => {
+                for bound_name_chirho in pat_bound_names_for_iface_chirho(pat_chirho) {
+                    let canonical_name_chirho =
+                        canonical_value_name_chirho(&bound_name_chirho);
+                    exports_chirho.values_chirho.insert(
+                        canonical_name_chirho.clone(),
+                        IfaceValueChirho {
+                            name_chirho: canonical_name_chirho,
+                            span_chirho: *span_chirho,
+                        },
+                    );
+                }
             }
             DeclChirho::TypeSigChirho { .. }
             | DeclChirho::InstanceDeclChirho { .. }
@@ -10075,6 +10089,75 @@ fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsC
     }
 
     exports_chirho
+}
+
+fn pat_bound_names_for_iface_chirho(
+    pat_chirho: &haskelujah_ast_chirho::pat_chirho::PatChirho,
+) -> Vec<String> {
+    use haskelujah_ast_chirho::pat_chirho::PatChirho;
+
+    let mut names_chirho = Vec::new();
+    match pat_chirho {
+        PatChirho::VarChirho(name_chirho) => {
+            names_chirho.push(name_chirho.text_chirho().to_string());
+        }
+        PatChirho::LitChirho(_)
+        | PatChirho::WildcardChirho(_)
+        | PatChirho::NegChirho { .. } => {}
+        PatChirho::TupleChirho { elements_chirho, .. }
+        | PatChirho::ListChirho { elements_chirho, .. } => {
+            for inner_pat_chirho in elements_chirho {
+                names_chirho.extend(pat_bound_names_for_iface_chirho(inner_pat_chirho));
+            }
+        }
+        PatChirho::ConChirho { args_chirho, .. } => {
+            for inner_pat_chirho in args_chirho {
+                names_chirho.extend(pat_bound_names_for_iface_chirho(inner_pat_chirho));
+            }
+        }
+        PatChirho::RecordChirho {
+            fields_chirho,
+            ..
+        } => {
+            for field_chirho in fields_chirho {
+                names_chirho.extend(pat_bound_names_for_iface_chirho(
+                    &field_chirho.pattern_chirho,
+                ));
+            }
+        }
+        PatChirho::InfixConChirho {
+            left_chirho,
+            right_chirho,
+            ..
+        } => {
+            names_chirho.extend(pat_bound_names_for_iface_chirho(left_chirho));
+            names_chirho.extend(pat_bound_names_for_iface_chirho(right_chirho));
+        }
+        PatChirho::AsChirho {
+            name_chirho,
+            pattern_chirho,
+            ..
+        } => {
+            names_chirho.push(name_chirho.text_chirho().to_string());
+            names_chirho.extend(pat_bound_names_for_iface_chirho(pattern_chirho));
+        }
+        PatChirho::BangChirho { inner_chirho, .. }
+        | PatChirho::LazyChirho { inner_chirho, .. }
+        | PatChirho::ParenChirho { inner_chirho, .. } => {
+            names_chirho.extend(pat_bound_names_for_iface_chirho(inner_chirho));
+        }
+        PatChirho::ViewChirho {
+            pat_chirho: inner_pat_chirho,
+            ..
+        }
+        | PatChirho::TypeAnnotChirho {
+            pat_chirho: inner_pat_chirho,
+            ..
+        } => {
+            names_chirho.extend(pat_bound_names_for_iface_chirho(inner_pat_chirho));
+        }
+    }
+    names_chirho
 }
 
 /// Apply an explicit export list to filter the module's definitions.

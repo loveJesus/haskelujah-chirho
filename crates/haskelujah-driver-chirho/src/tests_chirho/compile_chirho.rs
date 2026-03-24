@@ -2095,6 +2095,57 @@ fn discover_hsc_module_chirho() {
 }
 
 #[test]
+fn read_hsc_source_file_strips_spaced_cpp_directives_chirho() {
+    use std::fs;
+    use tempfile::tempdir;
+
+    let dir_chirho = tempdir().unwrap();
+    let file_path_chirho = dir_chirho.path().join("Clock.hsc");
+    fs::write(
+        &file_path_chirho,
+        "module System.Clock where\n\
+#  include <time.h>\n\
+#  ifdef CLOCK_PROCESS_CPUTIME_ID\n\
+clockFlagChirho = 1\n\
+#  endif\n",
+    )
+    .unwrap();
+
+    let processed_chirho =
+        crate::read_haskell_source_file_chirho(&file_path_chirho).expect("read hsc source");
+
+    assert!(processed_chirho.contains("module System.Clock where"));
+    assert!(processed_chirho.contains("clockFlagChirho = 1"));
+    assert!(!processed_chirho.contains("#  include"));
+    assert!(!processed_chirho.contains("#  ifdef"));
+    assert!(!processed_chirho.contains("#  endif"));
+}
+
+#[test]
+fn frontend_top_level_patbind_exports_through_iface_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "ClockSeedMiniChirho.hs",
+            "module ClockSeedMiniChirho (s2nsMiniChirho) where\n\
+s2nsMiniChirho = 10 ^ 9\n",
+        ),
+        (
+            "ClockUseMiniChirho.hs",
+            "module ClockUseMiniChirho where\n\
+import ClockSeedMiniChirho (s2nsMiniChirho)\n\
+valueMiniChirho = s2nsMiniChirho\n",
+        ),
+    ];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "top-level pattern bindings should export through module interfaces: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
 fn llvm_executable_constant_chirho() {
     // main = 42 should produce LLVM IR with ret i64 42
     let mut sm_chirho = SourceMapChirho::new_chirho();
