@@ -294,14 +294,26 @@ impl InferCtxChirho {
         self.expand_syn_chirho(ty_chirho, 0)
     }
 
+    fn lookup_type_synonym_chirho(
+        &self,
+        name_chirho: &str,
+    ) -> Option<&(Vec<String>, TyChirho)> {
+        self.type_synonyms_chirho.get(name_chirho).or_else(|| {
+            name_chirho
+                .rsplit_once('.')
+                .and_then(|(_prefix_chirho, bare_name_chirho)| {
+                    self.type_synonyms_chirho.get(bare_name_chirho)
+                })
+        })
+    }
+
     fn expand_syn_chirho(&self, ty_chirho: &TyChirho, depth_chirho: usize) -> TyChirho {
         if depth_chirho > 100 {
             return ty_chirho.clone(); // guard against cycles
         }
         match ty_chirho {
             TyChirho::ConChirho(name_chirho) => {
-                if let Some((params_chirho, rhs_chirho)) =
-                    self.type_synonyms_chirho.get(name_chirho)
+                if let Some((params_chirho, rhs_chirho)) = self.lookup_type_synonym_chirho(name_chirho)
                 {
                     if params_chirho.is_empty() {
                         // Nullary synonym — expand and recurse
@@ -315,7 +327,7 @@ impl InferCtxChirho {
                 let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
                 if let TyChirho::ConChirho(name_chirho) = &head_chirho {
                     if let Some((params_chirho, rhs_chirho)) =
-                        self.type_synonyms_chirho.get(name_chirho)
+                        self.lookup_type_synonym_chirho(name_chirho)
                     {
                         if args_chirho.len() >= params_chirho.len() {
                             // Saturated application — substitute params
@@ -11182,11 +11194,121 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // empty :: f a
+    {
+        let f_chirho = TyVarChirho(7261);
+        let a_chirho = TyVarChirho(7262);
+        env_chirho.bind_chirho(
+            "empty".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![f_chirho, a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(f_chirho)),
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                ),
+            },
+        );
+    }
+
+    // (<|>) :: f a -> f a -> f a
+    {
+        let f_chirho = TyVarChirho(7263);
+        let a_chirho = TyVarChirho(7264);
+        let fa_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(f_chirho)),
+            Box::new(TyChirho::VarChirho(a_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "<|>".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![f_chirho, a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![fa_chirho.clone(), fa_chirho.clone()],
+                    fa_chirho,
+                ),
+            },
+        );
+    }
+
+    // some :: f a -> f [a]
+    {
+        let f_chirho = TyVarChirho(7265);
+        let a_chirho = TyVarChirho(7266);
+        env_chirho.bind_chirho(
+            "some".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![f_chirho, a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(f_chirho)),
+                        Box::new(TyChirho::VarChirho(a_chirho)),
+                    ),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(f_chirho)),
+                        Box::new(TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_chirho)))),
+                    ),
+                ),
+            },
+        );
+    }
+
+    // many :: f a -> f [a]
+    {
+        let f_chirho = TyVarChirho(7267);
+        let a_chirho = TyVarChirho(7268);
+        env_chirho.bind_chirho(
+            "many".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![f_chirho, a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(f_chirho)),
+                        Box::new(TyChirho::VarChirho(a_chirho)),
+                    ),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(f_chirho)),
+                        Box::new(TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_chirho)))),
+                    ),
+                ),
+            },
+        );
+    }
+
+    // optional :: f a -> f (Maybe a)
+    {
+        let f_chirho = TyVarChirho(7269);
+        let a_chirho = TyVarChirho(7270);
+        env_chirho.bind_chirho(
+            "optional".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![f_chirho, a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(f_chirho)),
+                        Box::new(TyChirho::VarChirho(a_chirho)),
+                    ),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(f_chirho)),
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                            Box::new(TyChirho::VarChirho(a_chirho)),
+                        )),
+                    ),
+                ),
+            },
+        );
+    }
+
     // forever :: Applicative f => f a -> f b
     {
-        let f_chirho = TyVarChirho(7270);
-        let a_chirho = TyVarChirho(7271);
-        let b_chirho = TyVarChirho(7272);
+        let f_chirho = TyVarChirho(7271);
+        let a_chirho = TyVarChirho(7272);
+        let b_chirho = TyVarChirho(7273);
         env_chirho.bind_chirho(
             "forever".to_string(),
             SchemeChirho {
@@ -11200,6 +11322,44 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     TyChirho::AppChirho(
                         Box::new(TyChirho::VarChirho(f_chirho)),
                         Box::new(TyChirho::VarChirho(b_chirho)),
+                    ),
+                ),
+            },
+        );
+    }
+
+    // liftA2 :: (a -> b -> c) -> f a -> f b -> f c
+    {
+        let f_chirho = TyVarChirho(7274);
+        let a_chirho = TyVarChirho(7275);
+        let b_chirho = TyVarChirho(7276);
+        let c_chirho = TyVarChirho(7277);
+        env_chirho.bind_chirho(
+            "liftA2".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![f_chirho, a_chirho, b_chirho, c_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(a_chirho),
+                            TyChirho::fun_chirho(
+                                TyChirho::VarChirho(b_chirho),
+                                TyChirho::VarChirho(c_chirho),
+                            ),
+                        ),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(f_chirho)),
+                            Box::new(TyChirho::VarChirho(a_chirho)),
+                        ),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(f_chirho)),
+                            Box::new(TyChirho::VarChirho(b_chirho)),
+                        ),
+                    ],
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(f_chirho)),
+                        Box::new(TyChirho::VarChirho(c_chirho)),
                     ),
                 ),
             },

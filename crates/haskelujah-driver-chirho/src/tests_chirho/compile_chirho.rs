@@ -561,6 +561,28 @@ blendChirho leftChirho rightChirho = leftChirho `barChirho` rightChirho
 }
 
 #[test]
+fn frontend_prelude_exports_alternative_helpers_implicitly_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module PreludeAlternativeMiniChirho where
+choicesChirho :: [Int]
+choicesChirho = [1] <|> [2]
+pairedChirho :: [Int]
+pairedChirho = liftA2 (+) [1] [2]
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "PreludeAlternativeMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "implicit Prelude should provide <|> and liftA2: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_exceptt_with_exceptt_functor_operator_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_chirho = "\
@@ -1269,6 +1291,40 @@ permuteFieldMiniChirho (BoxPermFieldMiniChirho pChirho) = choicePermFieldMiniChi
     assert!(
         results_chirho.is_ok(),
         "partially applied re-exported type aliases should stay expanded when they appear in local data constructor fields: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_imported_type_alias_expands_through_parent_alias_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "PrimAliasMiniChirho.hs",
+            "module PrimAliasMiniChirho (IdentityAliasMiniChirho(..), ParsecTAliasMiniChirho(..), ParsecAliasMiniChirho) where\n\
+data IdentityAliasMiniChirho aChirho = IdentityAliasMiniChirho aChirho\n\
+newtype ParsecTAliasMiniChirho sChirho uChirho mChirho aChirho = ParsecTAliasMiniChirho { unParsecTAliasMiniChirho :: sChirho -> mChirho aChirho }\n\
+type ParsecAliasMiniChirho sChirho uChirho aChirho = ParsecTAliasMiniChirho sChirho uChirho IdentityAliasMiniChirho aChirho\n",
+        ),
+        (
+            "CompatAliasMiniChirho.hs",
+            "module CompatAliasMiniChirho (GenParserAliasMiniChirho) where\n\
+import PrimAliasMiniChirho (ParsecAliasMiniChirho)\n\
+type GenParserAliasMiniChirho tokChirho stChirho aChirho = ParsecAliasMiniChirho [tokChirho] stChirho aChirho\n",
+        ),
+        (
+            "UseAliasMiniChirho.hs",
+            "module UseAliasMiniChirho where\n\
+import PrimAliasMiniChirho (IdentityAliasMiniChirho, ParsecTAliasMiniChirho)\n\
+import CompatAliasMiniChirho (GenParserAliasMiniChirho)\n\
+coerceAliasMiniChirho :: GenParserAliasMiniChirho tokChirho stChirho aChirho -> ParsecTAliasMiniChirho [tokChirho] stChirho IdentityAliasMiniChirho aChirho\n\
+coerceAliasMiniChirho parserChirho = parserChirho\n",
+        ),
+    ];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "imported aliases should expand through parent aliases to the underlying constructor: {:?}",
         results_chirho.err()
     );
 }
