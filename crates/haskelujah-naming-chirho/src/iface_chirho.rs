@@ -4085,6 +4085,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "Foreign.Marshal",
             "Foreign.Marshal.Alloc",
             "Foreign.Marshal.Utils",
+            "Foreign.Marshal.Pool",
             "Foreign.C",
             "Foreign.C.Types",
             "Foreign.C.String",
@@ -9120,6 +9121,21 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // GHC.Desugar
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["AnnotationWrapper", "toAnnotationWrapper"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("AnnotationWrapper", &["AnnotationWrapper"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Desugar".to_string(),
+            exports_chirho,
+        });
+    }
+
     // GHC.Weak
     {
         let mut exports_chirho = IfaceExportsChirho::default();
@@ -9190,7 +9206,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // Control.Concurrent / Control.Concurrent.MVar
-    for mod_name_chirho in &["Control.Concurrent", "Control.Concurrent.MVar", "Control.Concurrent.Chan"] {
+    for mod_name_chirho in &["Control.Concurrent", "Control.Concurrent.MVar", "Control.Concurrent.Chan", "Control.Concurrent.QSem", "Control.Concurrent.QSemN"] {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &["ThreadId", "myThreadId", "forkIO", "forkFinally", "forkOS", "killThread", "throwTo", "threadDelay", "threadWaitRead", "threadWaitWrite", "yield", "MVar", "newMVar", "newEmptyMVar", "readMVar", "takeMVar", "putMVar", "tryTakeMVar", "tryPutMVar", "modifyMVar", "modifyMVar_", "swapMVar", "withMVar", "Chan", "newChan", "writeChan", "readChan", "dupChan", "getChanContents", "writeList2Chan"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
