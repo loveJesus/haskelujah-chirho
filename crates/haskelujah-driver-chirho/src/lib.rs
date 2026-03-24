@@ -311,7 +311,15 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
         cpp_cmd_chirho.arg(format!("-I{}", support_dir_chirho.display()));
     }
     for include_dir_chirho in cpp_include_dirs_chirho(path_chirho) {
-        cpp_cmd_chirho.arg(format!("-I{}", include_dir_chirho.display()));
+        // Use absolute path so it survives current_dir change
+        let abs_chirho = if include_dir_chirho.is_absolute() {
+            include_dir_chirho
+        } else {
+            std::env::current_dir()
+                .unwrap_or_default()
+                .join(&include_dir_chirho)
+        };
+        cpp_cmd_chirho.arg(format!("-I{}", abs_chirho.display()));
     }
 
     if let Some(parent_chirho) = path_chirho.parent() {
