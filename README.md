@@ -19,7 +19,7 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | AI / MCP | `haskelujah mcp` | Expose project to AI assistants via Model Context Protocol |
 | Checker | `haskelujah check` | Type-check without codegen |
 | Formatter | `haskelujah fmt` | Trim whitespace, normalize indentation, clean blank lines |
-| Editor | `haskelujah edit` | Terminal editor with built-in typecheck (Ctrl-T), Haskell-extensible |
+| Editor | `haskelujah edit` | Auto-detects GUI/TUI. `--gui` for cross-platform GUI, `--cli` for terminal |
 
 **Batteries-included standard library** — no `haskelujah install` needed:
 
@@ -47,8 +47,8 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | Curated Tests | **512/513 (99.8%)** compile-and-run correctness tests |
 | Total Tests | **2,500+ passing**, 0 failures |
 | Hackage Packages | **17 compile** including **transformers** (24) + **mtl** (24) + **parsec** (25) |
-| Workspace | 24 crates (compiler + MCP + LSP + runtime) |
-| Codebase | ~169,000 lines of Rust |
+| Workspace | 26 crates (compiler + MCP + LSP + GUI + runtime) |
+| Codebase | ~171,000 lines of Rust |
 | Module interfaces | 363 synthetic Haskell modules |
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |

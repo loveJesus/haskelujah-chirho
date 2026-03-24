@@ -416,12 +416,11 @@ main = putStrLn "Runs directly, no build step."</span>
 			<h2 class="section-title-chirho">Current Limitations</h2>
 			<p class="section-subtitle-chirho">Where we still fall short of GHC.</p>
 			<ul class="limitation-list-chirho">
-				<li><strong>Rank-N types &amp; higher-kinded inference:</strong> Most rank-2 types work, but deep higher-rank polymorphism (lens <code>LensLike'</code>, transformers <code>ExceptT</code> composition chains) still has inference gaps. Blocks some advanced Hackage packages.</li>
-				<li><strong>Quantified constraints:</strong> <code>forall a. C a => D (f a)</code> in class superclass positions needs parser-level AST support. Blocks deepseq <code>NFData1</code>.</li>
-				<li><strong>Type class dictionaries at runtime:</strong> Type checking supports full typeclasses, but compiled code uses simplified dictionary elision. Complex polymorphic dispatch is partial.</li>
+				<li><strong>Rank-N types:</strong> Most rank-2 types work. Lens <code>LensLike'</code> and some deep higher-rank patterns still have inference gaps.</li>
+				<li><strong>Quantified constraints:</strong> <code>forall a. C a => D (f a)</code> in class superclass positions needs parser-level AST support. Blocks deepseq.</li>
+				<li><strong>Associated type families:</strong> <code>Token s</code> / <code>Tokens s</code> normalization not yet implemented. Blocks megaparsec stage 2.</li>
 				<li><strong>Template Haskell:</strong> Basic splices and <code>makeLenses</code> work; full TH (typed splices, reify) is incomplete.</li>
 				<li><strong>FFI:</strong> Basic libc interop (puts, printf, malloc). Full C header parsing and foreign exports are not yet implemented.</li>
-				<li><strong>LSP / MCP / Test runner:</strong> Planned and featured in the architecture but not yet implemented. Coming soon.</li>
 			</ul>
 		</div>
 	</section>

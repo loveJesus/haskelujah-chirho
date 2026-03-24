@@ -219,7 +219,7 @@ fn main_chirho() -> ExitCode {
         "repl" => repl_chirho::repl_command_chirho(),
         "mcp" => mcp_command_chirho(),
         "lsp" => lsp_command_chirho(),
-        "edit" => edit_command_chirho(path_chirho),
+        "edit" => edit_command_chirho(path_chirho, &flags_chirho, &positional_chirho),
         "test" => test_command_chirho(path_chirho),
         "fmt" => fmt_command_chirho(path_chirho),
         "init" => init_command_chirho(path_chirho),
@@ -1417,7 +1417,31 @@ fn lsp_command_chirho() -> ExitCode {
 
 // ── Editor ──────────────────────────────────────────────────────────────
 
-fn edit_command_chirho(path_arg_chirho: Option<String>) -> ExitCode {
+fn edit_command_chirho(
+    path_arg_chirho: Option<String>,
+    _flags_chirho: &FlagsChirho,
+    positional_chirho: &[&str],
+) -> ExitCode {
+    // Check for --cli / --gui flags
+    let use_cli_chirho = positional_chirho.iter().any(|a| *a == "--cli");
+    let use_gui_chirho = positional_chirho.iter().any(|a| *a == "--gui");
+
+    if use_gui_chirho || (!use_cli_chirho && std::env::var("DISPLAY").is_ok()) {
+        // Try GUI editor (cross-platform: macOS/Linux/Windows)
+        match haskelujah_gui_chirho::run_gui_chirho(path_arg_chirho.as_deref()) {
+            Ok(()) => return ExitCode::SUCCESS,
+            Err(e_chirho) => {
+                if use_gui_chirho {
+                    eprintln!("GUI editor error: {}", e_chirho);
+                    return ExitCode::from(1);
+                }
+                // Fall through to TUI if GUI failed and --gui wasn't explicit
+                eprintln!("GUI unavailable, falling back to terminal editor");
+            }
+        }
+    }
+
+    // TUI editor (terminal — always works)
     match haskelujah_editor_chirho::run_editor_chirho(path_arg_chirho.as_deref()) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e_chirho) => {
