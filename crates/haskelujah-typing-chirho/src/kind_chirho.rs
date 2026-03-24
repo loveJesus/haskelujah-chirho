@@ -317,6 +317,65 @@ impl KindEnvChirho {
         // (->) :: * -> * -> *
         env_chirho.bind_chirho("->".to_string(), star2_chirho.clone());
 
+        // Poly-kinded builtins that appear in imported package signatures.
+        // We model them with free kind variables so each use site can
+        // instantiate them independently via `instantiate_kind_chirho`.
+        let typeable_kind_var_chirho = KindVarChirho(10_000);
+        env_chirho.bind_chirho(
+            "Typeable".to_string(),
+            KindChirho::arrow_chirho(
+                KindChirho::VarChirho(typeable_kind_var_chirho),
+                KindChirho::ConstraintChirho,
+            ),
+        );
+
+        let proxy_kind_var_chirho = KindVarChirho(10_001);
+        env_chirho.bind_chirho(
+            "Proxy".to_string(),
+            KindChirho::arrow_chirho(
+                KindChirho::VarChirho(proxy_kind_var_chirho),
+                KindChirho::StarChirho,
+            ),
+        );
+        let kproxy_kind_var_chirho = KindVarChirho(10_002);
+        env_chirho.bind_chirho(
+            "KProxy".to_string(),
+            KindChirho::arrow_chirho(
+                KindChirho::VarChirho(kproxy_kind_var_chirho),
+                KindChirho::StarChirho,
+            ),
+        );
+        let type_rep_kind_var_chirho = KindVarChirho(10_003);
+        env_chirho.bind_chirho(
+            "TypeRep".to_string(),
+            KindChirho::arrow_chirho(
+                KindChirho::VarChirho(type_rep_kind_var_chirho),
+                KindChirho::StarChirho,
+            ),
+        );
+        let const_second_kind_var_chirho = KindVarChirho(10_004);
+        env_chirho.bind_chirho(
+            "Const".to_string(),
+            KindChirho::arrow_n_chirho(
+                vec![
+                    KindChirho::StarChirho,
+                    KindChirho::VarChirho(const_second_kind_var_chirho),
+                ],
+                KindChirho::StarChirho,
+            ),
+        );
+        let tagged_first_kind_var_chirho = KindVarChirho(10_005);
+        env_chirho.bind_chirho(
+            "Tagged".to_string(),
+            KindChirho::arrow_n_chirho(
+                vec![
+                    KindChirho::VarChirho(tagged_first_kind_var_chirho),
+                    KindChirho::StarChirho,
+                ],
+                KindChirho::StarChirho,
+            ),
+        );
+
         env_chirho
     }
 
@@ -1774,6 +1833,36 @@ mod tests_chirho {
     #[test]
     fn constraint_kind_display_chirho() {
         assert_eq!(KindChirho::ConstraintChirho.to_string(), "Constraint");
+    }
+
+    #[test]
+    fn builtin_typeable_accepts_higher_kinded_argument_chirho() {
+        let module_chirho = mk_module_chirho(vec![DeclChirho::TypeAliasDeclChirho {
+            name_chirho: mk_name_chirho("Typeable1Chirho"),
+            type_vars_chirho: vec![],
+            rhs_chirho: TypeChirho::AppChirho {
+                fun_chirho: Box::new(TypeChirho::ConChirho(mk_name_chirho("Typeable"))),
+                arg_chirho: Box::new(TypeChirho::ConChirho(mk_name_chirho("Maybe"))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }]);
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "Typeable should accept higher-kinded arguments: {:?}",
+            result_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .iter()
+                .map(|diagnostic_chirho| diagnostic_chirho.to_string())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            result_chirho.env_chirho.lookup_chirho("Typeable1Chirho"),
+            Some(&KindChirho::ConstraintChirho)
+        );
     }
 
     #[test]
