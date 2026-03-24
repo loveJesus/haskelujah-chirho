@@ -9140,6 +9140,19 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // GHC internal modules needed by base-orphans
+    for mod_name_chirho in &[
+        "GHC.GHCi", "GHC.IO.Buffer", "GHC.IO.BufferedIO", "GHC.IO.Device",
+        "GHC.Stats", "GHC.RTS.Flags", "GHC.Event", "GHC.Conc.Signal",
+        "System.Console.GetOpt", "Text.Read.Lex",
+    ] {
+        let exports_chirho = IfaceExportsChirho::default();
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
     // GHC.Desugar
     {
         let mut exports_chirho = IfaceExportsChirho::default();
