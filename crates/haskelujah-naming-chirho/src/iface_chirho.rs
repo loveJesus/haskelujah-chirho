@@ -1785,10 +1785,23 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &[
-            "Monoid", "Sum", "Product", "First", "Last", "Any", "All", "Dual", "Endo", "Ap", "Alt",
-        ] {
+        for name_chirho in &["Monoid", "Endo"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        // Newtypes with record accessors — list constructor + accessor
+        for (type_chirho, ctors_chirho) in &[
+            ("Sum", &["Sum", "getSum"][..]),
+            ("Product", &["Product", "getProduct"][..]),
+            ("First", &["First", "getFirst"][..]),
+            ("Last", &["Last", "getLast"][..]),
+            ("Any", &["Any", "getAny"][..]),
+            ("All", &["All", "getAll"][..]),
+            ("Dual", &["Dual", "getDual"][..]),
+            ("Ap", &["Ap", "getAp"][..]),
+            ("Alt", &["Alt", "getAlt"][..]),
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(type_chirho, ctors_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
