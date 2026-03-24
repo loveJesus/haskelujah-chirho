@@ -3566,20 +3566,24 @@ fn scan_package_hs_files_chirho(
                 continue;
             }
             scan_package_hs_files_chirho(root_chirho, &path_chirho, ifaces_chirho);
-        } else if path_chirho.extension().is_some_and(|e| e == "hs") {
+        } else if path_chirho.extension().is_some_and(|extension_chirho| {
+            extension_chirho == "hs" || extension_chirho == "lhs" || extension_chirho == "hsc"
+        }) {
             let file_name_chirho = path_chirho
                 .file_name()
                 .unwrap_or_default()
                 .to_string_lossy();
-            if file_name_chirho == "Setup.hs" || file_name_chirho == "Setup.lhs" {
+            if file_name_chirho == "Setup.hs"
+                || file_name_chirho == "Setup.lhs"
+                || file_name_chirho == "Setup.hsc"
+            {
                 continue;
             }
             // Read source and extract module name + exports
-            if let Ok(source_chirho) = std::fs::read_to_string(&path_chirho) {
-                let preprocessed_source_chirho = preprocess_cpp_chirho(&source_chirho);
+            if let Ok(preprocessed_source_chirho) = read_haskell_source_file_chirho(&path_chirho) {
                 let mut stub_iface_chirho = None;
                 if let Some(mod_name_chirho) =
-                    extract_module_name_from_source_chirho(&source_chirho)
+                    extract_module_name_from_source_chirho(&preprocessed_source_chirho)
                 {
                     use haskelujah_naming_chirho::iface_chirho::{
                         IfaceExportsChirho, IfaceTypeChirho, IfaceValueChirho,
@@ -3587,7 +3591,7 @@ fn scan_package_hs_files_chirho(
                     let span_chirho = haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO;
                     let mut exports_chirho = IfaceExportsChirho::default();
                     for name_chirho in
-                        extract_exported_names_from_source_chirho(&source_chirho)
+                        extract_exported_names_from_source_chirho(&preprocessed_source_chirho)
                     {
                         let first_char_chirho = name_chirho.chars().next().unwrap_or('a');
                         if first_char_chirho.is_uppercase() {
