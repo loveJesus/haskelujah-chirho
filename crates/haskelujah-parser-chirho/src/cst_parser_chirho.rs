@@ -1318,6 +1318,9 @@ impl<'src> ParserChirho<'src> {
     /// `[x] = ...`, or literal.  A `VarIdChirho` head is always parsed as a
     /// function binding (a 0-arg function binding is semantically equivalent).
     fn starts_pat_bind_chirho(&self) -> bool {
+        if self.starts_infix_fun_bind_chirho() {
+            return false;
+        }
         match self.current_kind_chirho() {
             // Tuple / parenthesised pattern — but not an operator section
             // like `(+) x = ...`. Heuristic: if the token right after `(`
