@@ -2839,11 +2839,21 @@ impl InferCtxChirho {
             // the authoritative type.
             let eq_r_sub_chirho = subst_chirho.apply_ty_chirho(&eq_result_ty_chirho);
             let r_sub_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
-            if let Ok(s_chirho) =
-                self.unify_normalized_chirho(&eq_r_sub_chirho, &r_sub_chirho, span_chirho)
-            {
-                subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                self.apply_subst_all_chirho(&s_chirho);
+            match self.unify_normalized_chirho(&eq_r_sub_chirho, &r_sub_chirho, span_chirho) {
+                Ok(s_chirho) => {
+                    subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+                    self.apply_subst_all_chirho(&s_chirho);
+                }
+                Err(err_chirho) => {
+                    // For arity-0 bindings (e.g. x = True) there are no
+                    // GADT patterns to refine types, so a mismatch between
+                    // inferred and expected result is a real type error.
+                    // For higher-arity matches, GADT pattern matching can
+                    // refine per-equation types, so we allow the mismatch.
+                    if arity_chirho == 0 {
+                        self.report_unify_error_chirho(&err_chirho);
+                    }
+                }
             }
 
             self.env_chirho.pop_scope_chirho();
