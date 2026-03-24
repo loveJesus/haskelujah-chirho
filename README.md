@@ -46,7 +46,7 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | GHC Compat | **833/938 (88.8%)** typecheck/should_compile |
 | Curated Tests | **537/537 (100%)** compile-and-run correctness tests |
 | Total Tests | **2,500+ passing**, 0 failures |
-| Hackage Packages | **25 compile** including **transformers** + **mtl** + **parsec** + **deepseq** + **vector** + **colour** + **contravariant** |
+| Hackage Packages | **26 compile** including **transformers** + **mtl** + **parsec** + **deepseq** + **vector** + **colour** + **data-fix** |
 | Workspace | 25 crates (compiler + MCP + LSP + GUI + editor + runtime) |
 | Codebase | ~174,000 lines of Rust |
 | Module interfaces | 375 synthetic Haskell modules |
