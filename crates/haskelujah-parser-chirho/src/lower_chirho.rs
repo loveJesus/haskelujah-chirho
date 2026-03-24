@@ -4208,29 +4208,26 @@ impl LowerCtxChirho {
                     }
                 }
 
-                // Lower body type from post-arrow children
-                let body_chirho = if let Some(child_chirho) = post_arrow_chirho.iter().find(|c_chirho| {
-                    matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(n_chirho) if is_type_kind_chirho(n_chirho.kind_chirho()))
-                }) {
-                    self.lower_type_from_child_chirho(child_chirho)
-                } else {
-                    self.placeholder_type_chirho()
-                };
-
-                // Lower context from pre-arrow children
-                let context_type_chirho = pre_arrow_chirho.iter().find(|c_chirho| {
-                    matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(n_chirho) if is_type_kind_chirho(n_chirho.kind_chirho()))
-                }).map(|child_chirho| self.lower_type_from_child_chirho(child_chirho));
-
-                // Convert context type to constraints
-                let context_chirho = if let Some(ctx_ty_chirho) = context_type_chirho {
-                    Self::type_to_constraints_chirho(&ctx_ty_chirho, span_chirho)
-                } else {
-                    Vec::new()
-                };
+                let body_chirho = self.type_from_flat_children_chirho(&post_arrow_chirho, span_chirho);
+                let context_ty_chirho =
+                    self.type_from_flat_children_chirho(&pre_arrow_chirho, span_chirho);
+                let mut context_chirho =
+                    Self::type_to_constraints_chirho(&context_ty_chirho, span_chirho);
 
                 if context_chirho.is_empty() {
                     body_chirho
+                } else if let TypeChirho::QualChirho {
+                    context_chirho: nested_context_chirho,
+                    body_chirho: nested_body_chirho,
+                    ..
+                } = body_chirho
+                {
+                    context_chirho.extend(nested_context_chirho);
+                    TypeChirho::QualChirho {
+                        context_chirho,
+                        body_chirho: nested_body_chirho,
+                        span_chirho,
+                    }
                 } else {
                     TypeChirho::QualChirho {
                         context_chirho,
@@ -5878,6 +5875,43 @@ impl LowerCtxChirho {
             return self.placeholder_type_chirho();
         }
 
+        // Split on top-level `=>` (qualified type with context).
+        let double_arrow_idx_chirho =
+            self.find_top_level_token_chirho(children_chirho, TokenKindChirho::DoubleArrowChirho);
+        if let Some(idx_chirho) = double_arrow_idx_chirho {
+            let lhs_chirho = &children_chirho[..idx_chirho];
+            let rhs_chirho = &children_chirho[idx_chirho + 1..];
+            let context_ty_chirho =
+                self.type_from_flat_children_chirho(lhs_chirho, fallback_span_chirho);
+            let body_chirho = self.type_from_flat_children_chirho(rhs_chirho, fallback_span_chirho);
+            let mut context_chirho =
+                Self::type_to_constraints_chirho(&context_ty_chirho, fallback_span_chirho);
+
+            if context_chirho.is_empty() {
+                return body_chirho;
+            }
+
+            if let TypeChirho::QualChirho {
+                context_chirho: nested_context_chirho,
+                body_chirho: nested_body_chirho,
+                ..
+            } = body_chirho
+            {
+                context_chirho.extend(nested_context_chirho);
+                return TypeChirho::QualChirho {
+                    context_chirho,
+                    body_chirho: nested_body_chirho,
+                    span_chirho: fallback_span_chirho,
+                };
+            }
+
+            return TypeChirho::QualChirho {
+                context_chirho,
+                body_chirho: Box::new(body_chirho),
+                span_chirho: fallback_span_chirho,
+            };
+        }
+
         // Split on top-level `->` (function type)
         let arrow_idx_chirho = self.find_top_level_arrow_chirho(children_chirho);
         if let Some(idx_chirho) = arrow_idx_chirho {
@@ -5892,15 +5926,6 @@ impl LowerCtxChirho {
                 result_chirho: Box::new(result_chirho),
                 span_chirho: fallback_span_chirho,
             };
-        }
-
-        // Split on top-level `=>` (qualified type with context)
-        let double_arrow_idx_chirho =
-            self.find_top_level_token_chirho(children_chirho, TokenKindChirho::DoubleArrowChirho);
-        if let Some(idx_chirho) = double_arrow_idx_chirho {
-            // Context before `=>` — skip it and parse just the result type
-            let rhs_chirho = &children_chirho[idx_chirho + 1..];
-            return self.type_from_flat_children_chirho(rhs_chirho, fallback_span_chirho);
         }
 
         // Handle `forall`
@@ -8630,6 +8655,39 @@ data StrictPair a b = !a :*: !b\n",
                         2,
                         "should have 2 constraints (Eq and Show), got: {:?}",
                         context_chirho
+                    );
+                }
+                other_chirho => panic!("expected QualChirho, got: {:?}", other_chirho),
+            }
+        }
+    }
+
+    #[test]
+    fn lower_stacked_qualified_type_contexts_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nfoo :: HasCallStack => Show a => a -> String\nfoo xChirho = show xChirho\n",
+        );
+        let ty_sig_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "foo")
+        });
+        assert!(ty_sig_chirho.is_some(), "should have a TypeSig for foo");
+        if let Some(DeclChirho::TypeSigChirho { ty_chirho, .. }) = ty_sig_chirho {
+            match ty_chirho {
+                TypeChirho::QualChirho {
+                    context_chirho,
+                    body_chirho,
+                    ..
+                } => {
+                    assert_eq!(
+                        context_chirho.len(),
+                        2,
+                        "stacked contexts should merge into one qualified type: {:?}",
+                        context_chirho
+                    );
+                    assert!(
+                        matches!(body_chirho.as_ref(), TypeChirho::FunChirho { .. }),
+                        "qualified body should remain the function type, got {:?}",
+                        body_chirho
                     );
                 }
                 other_chirho => panic!("expected QualChirho, got: {:?}", other_chirho),

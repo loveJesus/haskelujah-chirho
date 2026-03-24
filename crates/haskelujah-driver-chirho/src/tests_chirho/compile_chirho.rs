@@ -187,6 +187,22 @@ fn frontend_floating_operator_exponent_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_stacked_context_type_signature_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module StackedContextChirho where\nfooChirho :: HasCallStack => Show a => a -> String\nfooChirho xChirho = show xChirho\n",
+        &mut source_map_chirho,
+        "StackedContextChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "stacked qualified contexts should lower and typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_qualified_text_uncons_uses_text_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
