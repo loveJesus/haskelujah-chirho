@@ -1036,6 +1036,21 @@ fn frontend_where_helper_polymorphism_in_recursive_group_chirho() {
 }
 
 #[test]
+fn frontend_nested_as_pattern_binder_visible_in_where_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module BitQueueMiniChirho where\ndata BitQueueBChirho = BQBChirho Int Int\nnewtype BitQueueChirho = BQChirho BitQueueBChirho\nunconsQChirho :: BitQueueChirho -> Maybe (Bool, BitQueueChirho)\nunconsQChirho (BQChirho bqChirho@(BQBChirho _ loChirho)) = Just (hdChirho, BQChirho tlChirho)\n  where\n    hdChirho = loChirho == 0\n    tlChirho = bqChirho\n",
+        &mut source_map_chirho,
+        "BitQueueMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "nested as-pattern binders should stay visible inside where clauses: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn exhaustiveness_check_passes_for_complete_case_chirho() {
     use crate::compile_source_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();
