@@ -601,6 +601,236 @@ impl ClassEnvChirho {
             defaults_chirho: HashMap::new(),
         });
 
+        // Bits
+        let bits_var_chirho = TyVarChirho(9012);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Bits".to_string(),
+            supers_chirho: vec![],
+            var_chirho: bits_var_chirho,
+            methods_chirho: HashMap::from([
+                (
+                    ".&.".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [
+                                TyChirho::VarChirho(bits_var_chirho),
+                                TyChirho::VarChirho(bits_var_chirho),
+                            ],
+                            TyChirho::VarChirho(bits_var_chirho),
+                        ),
+                    },
+                ),
+                (
+                    ".|.".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [
+                                TyChirho::VarChirho(bits_var_chirho),
+                                TyChirho::VarChirho(bits_var_chirho),
+                            ],
+                            TyChirho::VarChirho(bits_var_chirho),
+                        ),
+                    },
+                ),
+                (
+                    "xor".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [
+                                TyChirho::VarChirho(bits_var_chirho),
+                                TyChirho::VarChirho(bits_var_chirho),
+                            ],
+                            TyChirho::VarChirho(bits_var_chirho),
+                        ),
+                    },
+                ),
+                (
+                    "complement".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(bits_var_chirho),
+                            TyChirho::VarChirho(bits_var_chirho),
+                        ),
+                    },
+                ),
+                (
+                    "shift".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [TyChirho::VarChirho(bits_var_chirho), TyChirho::int_chirho()],
+                            TyChirho::VarChirho(bits_var_chirho),
+                        ),
+                    },
+                ),
+                (
+                    "shiftL".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [TyChirho::VarChirho(bits_var_chirho), TyChirho::int_chirho()],
+                            TyChirho::VarChirho(bits_var_chirho),
+                        ),
+                    },
+                ),
+                (
+                    "shiftR".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [TyChirho::VarChirho(bits_var_chirho), TyChirho::int_chirho()],
+                            TyChirho::VarChirho(bits_var_chirho),
+                        ),
+                    },
+                ),
+                (
+                    "bit".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::int_chirho(),
+                            TyChirho::VarChirho(bits_var_chirho),
+                        ),
+                    },
+                ),
+                (
+                    "setBit".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [TyChirho::VarChirho(bits_var_chirho), TyChirho::int_chirho()],
+                            TyChirho::VarChirho(bits_var_chirho),
+                        ),
+                    },
+                ),
+                (
+                    "clearBit".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [TyChirho::VarChirho(bits_var_chirho), TyChirho::int_chirho()],
+                            TyChirho::VarChirho(bits_var_chirho),
+                        ),
+                    },
+                ),
+                (
+                    "testBit".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [TyChirho::VarChirho(bits_var_chirho), TyChirho::int_chirho()],
+                            TyChirho::bool_chirho(),
+                        ),
+                    },
+                ),
+                (
+                    "bitSize".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(bits_var_chirho),
+                            TyChirho::int_chirho(),
+                        ),
+                    },
+                ),
+                (
+                    "isSigned".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(bits_var_chirho),
+                            TyChirho::bool_chirho(),
+                        ),
+                    },
+                ),
+                (
+                    "popCount".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(bits_var_chirho),
+                            TyChirho::int_chirho(),
+                        ),
+                    },
+                ),
+                (
+                    "zeroBits".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::VarChirho(bits_var_chirho),
+                    },
+                ),
+            ]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // FiniteBits (superclass: Bits)
+        let finite_bits_var_chirho = TyVarChirho(9013);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "FiniteBits".to_string(),
+            supers_chirho: vec!["Bits".to_string()],
+            var_chirho: finite_bits_var_chirho,
+            methods_chirho: HashMap::from([
+                (
+                    "finiteBitSize".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![finite_bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(finite_bits_var_chirho),
+                            TyChirho::int_chirho(),
+                        ),
+                    },
+                ),
+                (
+                    "countLeadingZeros".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![finite_bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(finite_bits_var_chirho),
+                            TyChirho::int_chirho(),
+                        ),
+                    },
+                ),
+                (
+                    "countTrailingZeros".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![finite_bits_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(finite_bits_var_chirho),
+                            TyChirho::int_chirho(),
+                        ),
+                    },
+                ),
+            ]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
         // Functor (f :: * -> *)
         // fmap :: (a -> b) -> f a -> f b
         // (<$) :: a -> f b -> f a   (has default: fmap . const)
@@ -1923,6 +2153,22 @@ impl ClassEnvChirho {
         self.add_instance_chirho(InstDeclChirho {
             class_name_chirho: "Monad".to_string(),
             head_ty_chirho: TyChirho::ConChirho("[]".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // instance Bits Int
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Bits".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Int".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // instance FiniteBits Int
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "FiniteBits".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Int".to_string()),
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });
