@@ -2675,16 +2675,27 @@ impl InferCtxChirho {
                     matches_chirho,
                     span_chirho,
                 } => {
-                    let fresh_ty_chirho = self.fresh_var_chirho();
                     let name_str_chirho = name_chirho.text_chirho().to_string();
-                    self.env_chirho.bind_chirho(
-                        name_str_chirho.clone(),
-                        SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
-                    );
+                    let pre_ty_chirho =
+                        if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
+                            let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
+                            let sig_ty_chirho =
+                                self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
+                            self.env_chirho
+                                .bind_chirho(name_str_chirho.clone(), sig_scheme_chirho);
+                            sig_ty_chirho
+                        } else {
+                            let fresh_ty_chirho = self.fresh_var_chirho();
+                            self.env_chirho.bind_chirho(
+                                name_str_chirho.clone(),
+                                SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
+                            );
+                            fresh_ty_chirho
+                        };
                     fun_names_chirho.push(name_str_chirho);
                     fun_matches_refs_chirho.push(matches_chirho.as_slice());
                     fun_spans_chirho.push(*span_chirho);
-                    fun_pre_tys_chirho.push(fresh_ty_chirho);
+                    fun_pre_tys_chirho.push(pre_ty_chirho);
                 }
                 haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
                     pat_chirho,
@@ -2708,8 +2719,31 @@ impl InferCtxChirho {
             for &fun_index_chirho in group_chirho {
                 let name_str_chirho = fun_names_chirho[fun_index_chirho].clone();
                 let span_chirho = fun_spans_chirho[fun_index_chirho];
-                let (fun_subst_chirho, inferred_ty_chirho) = self
-                    .infer_matches_chirho(fun_matches_refs_chirho[fun_index_chirho], span_chirho);
+                let prev_scoped_chirho = self.scoped_tyvars_chirho.clone();
+                if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
+                    let mut sig_var_map_chirho = HashMap::new();
+                    let _ = self.ast_type_to_ty_chirho(sig_ast_chirho, &mut sig_var_map_chirho);
+                    if Self::has_explicit_forall_chirho(sig_ast_chirho) {
+                        self.scoped_tyvars_chirho = sig_var_map_chirho;
+                    }
+                }
+
+                let (fun_subst_chirho, inferred_ty_chirho) =
+                    if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
+                        let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
+                        let sig_ty_raw_chirho =
+                            self.instantiate_chirho(&sig_scheme_chirho, span_chirho);
+                        let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(
+                            &self.expand_type_synonyms_chirho(&sig_ty_raw_chirho),
+                        );
+                        self.infer_matches_against_expected_chirho(
+                            fun_matches_refs_chirho[fun_index_chirho],
+                            span_chirho,
+                            &sig_ty_chirho,
+                        )
+                    } else {
+                        self.infer_matches_chirho(fun_matches_refs_chirho[fun_index_chirho], span_chirho)
+                    };
                 *subst_chirho = fun_subst_chirho.compose_chirho(subst_chirho);
                 self.apply_subst_all_chirho(&fun_subst_chirho);
 
@@ -2723,9 +2757,11 @@ impl InferCtxChirho {
                 }
 
                 group_inferred_chirho.push((name_str_chirho, inferred_ty_chirho, span_chirho));
+                self.scoped_tyvars_chirho = prev_scoped_chirho;
             }
 
             for (name_str_chirho, inferred_ty_chirho, span_chirho) in group_inferred_chirho {
+                let mut binding_scheme_chirho = None;
                 if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
                     let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
                     let sig_full_chirho = if sig_scheme_chirho.vars_chirho.is_empty() {
@@ -2752,6 +2788,7 @@ impl InferCtxChirho {
                         Ok(sig_subst_chirho) => {
                             *subst_chirho = sig_subst_chirho.compose_chirho(subst_chirho);
                             self.apply_subst_all_chirho(&sig_subst_chirho);
+                            binding_scheme_chirho = Some(sig_scheme_chirho);
                         }
                         Err(err_chirho) => {
                             self.report_unify_error_chirho(&err_chirho);
@@ -2761,9 +2798,9 @@ impl InferCtxChirho {
 
                 self.env_chirho.remove_chirho(&name_str_chirho);
                 let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
-                let generalized_chirho = self.generalize_local_chirho(&inferred_sub_chirho);
-                self.env_chirho
-                    .bind_chirho(name_str_chirho, generalized_chirho);
+                let generalized_chirho = binding_scheme_chirho
+                    .unwrap_or_else(|| self.generalize_local_chirho(&inferred_sub_chirho));
+                self.env_chirho.bind_chirho(name_str_chirho, generalized_chirho);
             }
         }
 

@@ -203,6 +203,22 @@ fn frontend_stacked_context_type_signature_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_local_recursive_signature_instantiates_polymorphically_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module LocalRecursiveSignatureChirho where\n{-# LANGUAGE GADTs #-}\nclass ApplyChirho fChirho where\n  apChirho :: fChirho (aChirho -> bChirho) -> fChirho aChirho -> fChirho bChirho\ndata TermChirho aChirho where\n  PureChirho :: aChirho -> TermChirho aChirho\n  ApChirho :: TermChirho (aChirho -> bChirho) -> TermChirho aChirho -> TermChirho bChirho\ninstance ApplyChirho TermChirho where\n  apChirho = ApChirho\nnormalizeChirho :: TermChirho aChirho -> TermChirho aChirho\nnormalizeChirho termChirho = goChirho termChirho\n  where\n    goChirho :: TermChirho zChirho -> TermChirho zChirho\n    goChirho (PureChirho xChirho) = PureChirho xChirho\n    goChirho (ApChirho fChirho xChirho) = apChirho (goChirho fChirho) (goChirho xChirho)\n",
+        &mut source_map_chirho,
+        "LocalRecursiveSignatureChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "local recursive bindings with explicit signatures should instantiate polymorphically: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_qualified_text_uncons_uses_text_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
