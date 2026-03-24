@@ -130,6 +130,117 @@ main = 0
 }
 
 #[test]
+fn check_source_path_cpp_finds_package_include_headers_chirho() {
+    use std::fs;
+
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should exist");
+    let src_dir_chirho = temp_dir_chirho.path().join("src");
+    let include_dir_chirho = temp_dir_chirho.path().join("include");
+    fs::create_dir_all(&src_dir_chirho).expect("src dir should exist");
+    fs::create_dir_all(&include_dir_chirho).expect("include dir should exist");
+
+    let file_path_chirho = src_dir_chirho.join("CppIncludeMain.hs");
+    fs::write(
+        include_dir_chirho.join("test-header.h"),
+        "#define CPP_INCLUDE_VALUE_CHIRHO 42\n",
+    )
+    .expect("CPP header should be written");
+    fs::write(
+        &file_path_chirho,
+        "\
+{-# LANGUAGE CPP #-}
+#include \"test-header.h\"
+module CppIncludeMain where
+main = CPP_INCLUDE_VALUE_CHIRHO
+",
+    )
+    .expect("CPP source should be written");
+
+    let summary_chirho =
+        check_source_path_chirho(&file_path_chirho, ExecutionModeChirho::BatchChirho)
+            .expect("CPP preprocessing should find package include headers");
+    assert_eq!(summary_chirho.module_name_chirho, "CppIncludeMain");
+}
+
+#[test]
+fn frontend_preprocessed_containers_intset_retains_helper_funbinds_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
+
+    let repo_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("repo root should exist")
+        .to_path_buf();
+    let path_chirho = repo_root_chirho.join(
+        ".haskelujah-packages-chirho/containers-0.8/src/Data/IntSet/Internal.hs",
+    );
+    let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
+        .expect("containers source should preprocess");
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        path_chirho,
+        &source_chirho,
+    );
+    let parser_chirho = ParserChirho::new_chirho(&source_chirho, source_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+
+    let fun_names_chirho: std::collections::HashSet<String> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::FunBindChirho { name_chirho, .. } => {
+                Some(name_chirho.text_chirho().to_string())
+            }
+            _ => None,
+        })
+        .collect();
+    let mut sorted_fun_names_chirho: Vec<_> = fun_names_chirho.iter().cloned().collect();
+    sorted_fun_names_chirho.sort();
+    let mut helper_decl_kinds_chirho: Vec<String> = Vec::new();
+    for decl_chirho in &module_chirho.decls_chirho {
+        match decl_chirho {
+            DeclChirho::FunBindChirho { name_chirho, .. }
+                if ["bin", "tip", "prefixOf", "linkKey", "symDiffTip"]
+                    .contains(&name_chirho.text_chirho()) =>
+            {
+                helper_decl_kinds_chirho.push(format!("fun:{}", name_chirho.text_chirho()));
+            }
+            DeclChirho::TypeSigChirho { name_chirho, .. }
+                if ["bin", "tip", "prefixOf", "linkKey", "symDiffTip"]
+                    .contains(&name_chirho.text_chirho()) =>
+            {
+                helper_decl_kinds_chirho.push(format!("sig:{}", name_chirho.text_chirho()));
+            }
+            DeclChirho::PatBindChirho { pat_chirho, .. } => {
+                for name_chirho in haskelujah_typing_chirho::linearity_chirho::pat_bound_names_chirho(pat_chirho) {
+                    if ["bin", "tip", "prefixOf", "linkKey", "symDiffTip"]
+                        .contains(&name_chirho.as_str())
+                    {
+                        helper_decl_kinds_chirho.push(format!("pat:{name_chirho}"));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    for helper_name_chirho in ["bin", "tip", "prefixOf", "linkKey", "symDiffTip"] {
+        assert!(
+            fun_names_chirho.contains(helper_name_chirho),
+            "preprocessed IntSet.Internal should retain top-level helper {helper_name_chirho}; got {} helpers; sample: {:?}; helper decls: {:?}",
+            fun_names_chirho.len(),
+            &sorted_fun_names_chirho[sorted_fun_names_chirho.len().saturating_sub(24)..],
+            helper_decl_kinds_chirho
+        );
+    }
+}
+
+#[test]
 fn frontend_reexported_with_frozen_call_stack_from_ghc_stack_chirho() {
     use haskelujah_naming_chirho::{build_iface_with_imports_chirho, builtin_module_ifaces_chirho};
     use haskelujah_parser_chirho::{

@@ -238,6 +238,47 @@ fn exported_type_synonyms_from_module_chirho(
 
 const CPP_GLASGOW_HASKELL_VERSION_CHIRHO: &str = "810";
 
+fn ensure_cpp_support_dir_chirho() -> io::Result<PathBuf> {
+    let support_dir_chirho = std::env::temp_dir().join("haskelujah-cpp-support-chirho");
+    std::fs::create_dir_all(&support_dir_chirho)?;
+    let machdeps_path_chirho = support_dir_chirho.join("MachDeps.h");
+    if !machdeps_path_chirho.exists() {
+        std::fs::write(
+            &machdeps_path_chirho,
+            concat!(
+                "/* For God so loved the world that he gave his only begotten Son, that whoever\n",
+                " * believes in him should not perish but have eternal life. -- John 3:16 */\n",
+                "#ifndef HASKELUJAH_SYNTHETIC_MACHDEPS_H_CHIRHO\n",
+                "#define HASKELUJAH_SYNTHETIC_MACHDEPS_H_CHIRHO\n",
+                "#define WORD_SIZE_IN_BITS 64\n",
+                "#endif\n",
+            ),
+        )?;
+    }
+    Ok(support_dir_chirho)
+}
+
+fn cpp_include_dirs_chirho(path_chirho: &Path) -> Vec<PathBuf> {
+    let mut include_dirs_chirho = Vec::new();
+    if let Some(parent_chirho) = path_chirho.parent() {
+        include_dirs_chirho.push(parent_chirho.to_path_buf());
+    }
+
+    for ancestor_chirho in path_chirho.ancestors().skip(1) {
+        let include_dir_chirho = ancestor_chirho.join("include");
+        if include_dir_chirho.is_dir() {
+            include_dirs_chirho.push(include_dir_chirho);
+        }
+        if find_cabal_in_dir_chirho(ancestor_chirho).is_some() {
+            include_dirs_chirho.push(ancestor_chirho.to_path_buf());
+        }
+    }
+
+    include_dirs_chirho.sort();
+    include_dirs_chirho.dedup();
+    include_dirs_chirho
+}
+
 fn source_uses_cpp_chirho(source_chirho: &str) -> bool {
     source_chirho.lines().take(64).any(|line_chirho| {
         (line_chirho.contains("{-#")
@@ -259,15 +300,22 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
         .arg("-traditional")
         .arg("-P")
         .arg(format!("-D__GLASGOW_HASKELL__={CPP_GLASGOW_HASKELL_VERSION_CHIRHO}"))
+        .arg("-DWORD_SIZE_IN_BITS=64")
         // base 4.14.0 (GHC 8.10): MIN_VERSION_base(4,14,0)=1, MIN_VERSION_base(4,15,0)=0
         .arg("-DMIN_VERSION_base(x,y,z)=((x)<4||((x)==4&&((y)<14||((y)==14&&(z)<=0))))")
         .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
         .arg("-DMIN_VERSION_array(x,y,z)=1")
         .arg("-DMIN_VERSION_transformers(x,y,z)=1");
 
+    if let Ok(support_dir_chirho) = ensure_cpp_support_dir_chirho() {
+        cpp_cmd_chirho.arg(format!("-I{}", support_dir_chirho.display()));
+    }
+    for include_dir_chirho in cpp_include_dirs_chirho(path_chirho) {
+        cpp_cmd_chirho.arg(format!("-I{}", include_dir_chirho.display()));
+    }
+
     if let Some(parent_chirho) = path_chirho.parent() {
         cpp_cmd_chirho.current_dir(parent_chirho);
-        cpp_cmd_chirho.arg(format!("-I{}", parent_chirho.display()));
         // Pass only the filename since we changed the working directory
         if let Some(file_name_chirho) = path_chirho.file_name() {
             cpp_cmd_chirho.arg(file_name_chirho);
