@@ -413,12 +413,22 @@ impl LowerCtxChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut name_chirho: Option<NameChirho> = None;
         let mut exports_chirho: Option<Vec<ExportSpecChirho>> = None;
+        let mut saw_module_keyword_chirho = false;
+        let mut before_export_list_chirho = true;
 
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => match tok_chirho.kind_chirho() {
-                    TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho
-                        if name_chirho.is_none() =>
+                    TokenKindChirho::ModuleKeywordChirho => {
+                        saw_module_keyword_chirho = true;
+                    }
+                    TokenKindChirho::VarIdChirho
+                    | TokenKindChirho::ConIdChirho
+                    | TokenKindChirho::QualifiedVarIdChirho
+                    | TokenKindChirho::QualifiedConIdChirho
+                        if saw_module_keyword_chirho
+                            && before_export_list_chirho
+                            && name_chirho.is_none() =>
                     {
                         let span_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
@@ -430,6 +440,7 @@ impl LowerCtxChirho {
                 GreenElementChirho::NodeChirho(n_chirho)
                     if n_chirho.kind_chirho() == SyntaxKindChirho::ExportListChirho =>
                 {
+                    before_export_list_chirho = false;
                     exports_chirho =
                         Some(self.lower_export_list_chirho(n_chirho, child_chirho.start_chirho));
                 }
@@ -10361,6 +10372,47 @@ class Describable a where
             }
             other_chirho => panic!("expected infix expression tree, got {:?}", other_chirho),
         }
+    }
+
+    #[test]
+    fn lower_module_header_keeps_declared_name_before_module_reexport_chirho() {
+        let source_chirho =
+            "module Utils.Containers.Internal.Prelude (module Prelude, Applicative(..)) where\n";
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let parser_chirho =
+            crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+        let green_chirho = parser_chirho.parse_chirho();
+        let source_children_chirho = green_chirho.children_chirho();
+        let module_header_chirho = source_children_chirho
+            .iter()
+            .find_map(|child_chirho| match child_chirho {
+                GreenElementChirho::NodeChirho(node_chirho)
+                    if node_chirho.kind_chirho() == SyntaxKindChirho::ModuleHeaderChirho =>
+                {
+                    Some(node_chirho)
+                }
+                _ => None,
+            })
+            .expect("expected module header");
+        let ctx_chirho = LowerCtxChirho::new_chirho(file_id_chirho);
+        let debug_children_chirho: Vec<String> = ctx_chirho
+            .semantic_children_chirho(module_header_chirho, 0)
+            .iter()
+            .map(|child_chirho| match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(tok_chirho) => {
+                    format!("tok:{:?}:{}", tok_chirho.kind_chirho(), tok_chirho.text_chirho())
+                }
+                GreenElementChirho::NodeChirho(node_chirho) => {
+                    format!("node:{:?}", node_chirho.kind_chirho())
+                }
+            })
+            .collect();
+        eprintln!("module_header_children_chirho = {debug_children_chirho:?}");
+        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+        assert_eq!(
+            module_chirho.name_chirho.text_chirho(),
+            "Utils.Containers.Internal.Prelude"
+        );
     }
 
 /// Extensions enabled by GHC2021 (and GHC2024 which is a superset).
