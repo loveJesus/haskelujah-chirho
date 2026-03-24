@@ -971,7 +971,17 @@ pub fn run_frontend_with_type_synonyms_chirho(
         infer_module_chirho(&module_chirho)
     } else {
         if module_chirho.name_chirho.full_name_chirho() == "Data.IntSet.Internal" {
-            for debug_name_chirho in [".&.", ".|.", "==", "countTrailingZeros", "showString", "shows"] {
+            for debug_name_chirho in [
+                ".&.",
+                ".|.",
+                "==",
+                "countTrailingZeros",
+                "shiftRL",
+                "shiftLL",
+                "unsafeShiftR",
+                "showString",
+                "shows",
+            ] {
                 eprintln!(
                     "DEBUG {} => {:?}",
                     debug_name_chirho,
