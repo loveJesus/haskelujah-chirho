@@ -2736,9 +2736,22 @@ impl InferCtxChirho {
                     }
                 }
 
+                if name_str_chirho == "next" || name_str_chirho == "nextChirho" {
+                    eprintln!(
+                        "DEBUG local {} inferred {:?} subst {:?}",
+                        name_str_chirho, inferred_ty_chirho, subst_chirho
+                    );
+                }
+
                 self.env_chirho.remove_chirho(&name_str_chirho);
                 let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
                 let generalized_chirho = self.generalize_local_chirho(&inferred_sub_chirho);
+                if name_str_chirho == "next" || name_str_chirho == "nextChirho" {
+                    eprintln!(
+                        "DEBUG local {} generalized {:?}",
+                        name_str_chirho, generalized_chirho
+                    );
+                }
                 self.env_chirho
                     .bind_chirho(name_str_chirho, generalized_chirho);
             }
