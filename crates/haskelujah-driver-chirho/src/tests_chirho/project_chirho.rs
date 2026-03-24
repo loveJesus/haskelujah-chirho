@@ -12,6 +12,14 @@ mod tests_chirho {
     use haskelujah_span_chirho::SourceMapChirho;
     use std::fs;
 
+    fn workspace_root_chirho() -> std::path::PathBuf {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|path_chirho| path_chirho.parent())
+            .unwrap()
+            .to_path_buf()
+    }
+
     #[test]
     fn extract_module_name_simple_chirho() {
         assert_eq!(
@@ -344,6 +352,636 @@ executable myproject
     }
 
     #[test]
+    fn compile_cabal_project_orders_hierarchical_other_modules_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let src_dir_chirho = tmp_chirho.path().join("src");
+        fs::create_dir_all(src_dir_chirho.join("Utils/Containers/Internal")).unwrap();
+
+        fs::write(
+            tmp_chirho.path().join("mini-containers.cabal"),
+            "\
+name: mini-containers
+version: 0.1.0.0
+library
+  exposed-modules: Utils.Containers.Internal.BitQueue
+  other-modules: Utils.Containers.Internal.BitUtil
+  hs-source-dirs: src
+",
+        )
+        .unwrap();
+
+        fs::write(
+            src_dir_chirho.join("Utils/Containers/Internal/BitUtil.hs"),
+            "module Utils.Containers.Internal.BitUtil (wordSize) where\n\
+wordSize :: Int\n\
+wordSize = 64\n",
+        )
+        .unwrap();
+        fs::write(
+            src_dir_chirho.join("Utils/Containers/Internal/BitQueue.hs"),
+            "module Utils.Containers.Internal.BitQueue (queueSizeChirho) where\n\
+import Utils.Containers.Internal.BitUtil (wordSize)\n\
+\n\
+queueSizeChirho :: Int\n\
+queueSizeChirho = wordSize\n",
+        )
+        .unwrap();
+
+        let index_chirho = PackageIndexChirho::new_chirho();
+        let cabal_path_chirho = tmp_chirho.path().join("mini-containers.cabal");
+        let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "cabal build should topo-sort hierarchical other-modules by imports: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn compile_cabal_project_nested_under_packages_dir_orders_cpp_hierarchical_modules_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let packages_root_chirho = tmp_chirho.path().join(".haskelujah-packages-chirho");
+        let package_dir_chirho = packages_root_chirho.join("mini-containers-0.1.0.0");
+        let src_dir_chirho = package_dir_chirho.join("src");
+        let include_dir_chirho = package_dir_chirho.join("include");
+        fs::create_dir_all(src_dir_chirho.join("Utils/Containers/Internal")).unwrap();
+        fs::create_dir_all(src_dir_chirho.join("Data/IntSet/Internal")).unwrap();
+        fs::create_dir_all(&include_dir_chirho).unwrap();
+
+        fs::write(include_dir_chirho.join("containers.h"), "#include \"MachDeps.h\"\n").unwrap();
+        fs::write(
+            package_dir_chirho.join("mini-containers.cabal"),
+            "\
+name: mini-containers
+version: 0.1.0.0
+library
+  build-depends: base
+  if impl(ghc)
+    build-depends: template-haskell
+  hs-source-dirs: src
+  other-extensions: CPP
+  exposed-modules: Data.IntSet.Internal.IntTreeCommons
+  other-modules:
+    Utils.Containers.Internal.BitUtil
+  include-dirs: include
+",
+        )
+        .unwrap();
+        fs::write(
+            src_dir_chirho.join("Utils/Containers/Internal/BitUtil.hs"),
+            "{-# LANGUAGE CPP #-}\n\
+#ifdef __GLASGOW_HASKELL__\n\
+{-# LANGUAGE MagicHash #-}\n\
+#endif\n\
+#include \"containers.h\"\n\
+module Utils.Containers.Internal.BitUtil (wordSize) where\n\
+\n\
+wordSize :: Int\n\
+wordSize = 64\n",
+        )
+        .unwrap();
+        fs::write(
+            src_dir_chirho.join("Data/IntSet/Internal/IntTreeCommons.hs"),
+            "module Data.IntSet.Internal.IntTreeCommons where\n\
+import Utils.Containers.Internal.BitUtil (wordSize)\n\
+\n\
+treeWordSizeChirho :: Int\n\
+treeWordSizeChirho = wordSize\n",
+        )
+        .unwrap();
+        fs::create_dir_all(packages_root_chirho.join("dummy-dep-0.1.0.0/src")).unwrap();
+        fs::write(
+            packages_root_chirho.join("dummy-dep-0.1.0.0/dummy-dep.cabal"),
+            "name: dummy-dep\nversion: 0.1.0.0\nlibrary\n  exposed-modules: Dummy\n  hs-source-dirs: src\n",
+        )
+        .unwrap();
+        fs::write(
+            packages_root_chirho.join("dummy-dep-0.1.0.0/src/Dummy.hs"),
+            "module Dummy where\ndummyValueChirho :: Int\ndummyValueChirho = 1\n",
+        )
+        .unwrap();
+
+        let index_chirho = PackageIndexChirho::new_chirho();
+        let cabal_path_chirho = package_dir_chirho.join("mini-containers.cabal");
+        let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "nested package builds should compile BitUtil before IntTreeCommons even under .haskelujah-packages-chirho scanning: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn discover_real_containers_bitutil_module_chirho() {
+        use crate::discover_modules_chirho;
+        use haskelujah_package_chirho::parse_cabal_chirho;
+
+        let cabal_path_chirho =
+            workspace_root_chirho().join(".haskelujah-packages-chirho/containers-0.8/containers.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let cabal_content_chirho = std::fs::read_to_string(&cabal_path_chirho).unwrap();
+        let package_chirho = parse_cabal_chirho(&cabal_content_chirho);
+        let project_dir_chirho = cabal_path_chirho.parent().unwrap();
+        let discovered_modules_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
+
+        assert!(
+            discovered_modules_chirho
+                .iter()
+                .any(|(module_name_chirho, _)| module_name_chirho == "Utils.Containers.Internal.BitUtil"),
+            "expected real containers discovery to include Utils.Containers.Internal.BitUtil; sample={:?}",
+            discovered_modules_chirho
+                .iter()
+                .map(|(module_name_chirho, _)| module_name_chirho.clone())
+                .take(20)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn real_containers_dep_graph_orders_bitutil_before_inttreecommons_chirho() {
+        use crate::{discover_modules_chirho, extract_imports_chirho, read_haskell_source_file_chirho};
+        use haskelujah_incremental_chirho::{DepGraphChirho, FingerprintChirho};
+        use haskelujah_package_chirho::parse_cabal_chirho;
+
+        let cabal_path_chirho =
+            workspace_root_chirho().join(".haskelujah-packages-chirho/containers-0.8/containers.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let cabal_content_chirho = std::fs::read_to_string(&cabal_path_chirho).unwrap();
+        let package_chirho = parse_cabal_chirho(&cabal_content_chirho);
+        let project_dir_chirho = cabal_path_chirho.parent().unwrap();
+        let discovered_modules_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
+
+        let mut dep_graph_chirho = DepGraphChirho::new_chirho();
+        let known_modules_chirho: std::collections::HashSet<String> = discovered_modules_chirho
+            .iter()
+            .map(|(module_name_chirho, _)| module_name_chirho.clone())
+            .collect();
+
+        for (module_name_chirho, path_chirho) in &discovered_modules_chirho {
+            let source_chirho = read_haskell_source_file_chirho(path_chirho).unwrap();
+            dep_graph_chirho.add_module_chirho(
+                module_name_chirho,
+                FingerprintChirho::from_str_chirho(&source_chirho),
+            );
+            for imported_module_chirho in extract_imports_chirho(&source_chirho) {
+                if known_modules_chirho.contains(&imported_module_chirho) {
+                    dep_graph_chirho.add_dep_chirho(module_name_chirho, &imported_module_chirho);
+                }
+            }
+        }
+
+        let compilation_order_chirho: Vec<String> = dep_graph_chirho
+            .topo_sort_sccs_chirho()
+            .into_iter()
+            .flatten()
+            .collect();
+        let bitutil_idx_chirho = compilation_order_chirho
+            .iter()
+            .position(|module_name_chirho| module_name_chirho == "Utils.Containers.Internal.BitUtil")
+            .unwrap();
+        let inttreecommons_idx_chirho = compilation_order_chirho
+            .iter()
+            .position(|module_name_chirho| {
+                module_name_chirho == "Data.IntSet.Internal.IntTreeCommons"
+            })
+            .unwrap();
+
+        assert!(
+            bitutil_idx_chirho < inttreecommons_idx_chirho,
+            "expected BitUtil before IntTreeCommons, got {:?}",
+            compilation_order_chirho
+        );
+    }
+
+    #[test]
+    fn real_containers_bitutil_cpp_keeps_module_header_chirho() {
+        use crate::read_haskell_source_file_chirho;
+        use haskelujah_parser_chirho::cst_parser_chirho::ParserChirho;
+        use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
+        use haskelujah_span_chirho::FileIdChirho;
+
+        let bitutil_path_chirho = workspace_root_chirho().join(
+            ".haskelujah-packages-chirho/containers-0.8/src/Utils/Containers/Internal/BitUtil.hs",
+        );
+        if !bitutil_path_chirho.exists() {
+            return;
+        }
+
+        let source_chirho = read_haskell_source_file_chirho(bitutil_path_chirho).unwrap();
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let green_chirho = ParserChirho::new_chirho(&source_chirho, file_id_chirho).parse_chirho();
+        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+
+        assert_eq!(
+            module_chirho.name_chirho.full_name_chirho(),
+            "Utils.Containers.Internal.BitUtil",
+            "expected CPP-read BitUtil source to keep its hierarchical module header",
+        );
+    }
+
+    #[test]
+    fn real_containers_inttreecommons_frontend_accepts_bitutil_iface_chirho() {
+        use crate::{
+            ImportedTypeSynonymsChirho, SourceMapChirho, read_haskell_source_file_chirho,
+            run_frontend_with_type_synonyms_chirho,
+        };
+        use haskelujah_naming_chirho::builtin_module_ifaces_chirho;
+        use haskelujah_naming_chirho::iface_chirho::build_iface_with_imports_chirho;
+        use haskelujah_syntax_chirho::SourceFileChirho;
+
+        let bitutil_path_chirho = workspace_root_chirho().join(
+            ".haskelujah-packages-chirho/containers-0.8/src/Utils/Containers/Internal/BitUtil.hs",
+        );
+        let inttreecommons_path_chirho = workspace_root_chirho().join(
+            ".haskelujah-packages-chirho/containers-0.8/src/Data/IntSet/Internal/IntTreeCommons.hs",
+        );
+        if !bitutil_path_chirho.exists() || !inttreecommons_path_chirho.exists() {
+            return;
+        }
+
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let bitutil_source_chirho = read_haskell_source_file_chirho(&bitutil_path_chirho).unwrap();
+        let bitutil_file_chirho = SourceFileChirho::from_source_map_chirho(
+            &mut source_map_chirho,
+            bitutil_path_chirho,
+            &bitutil_source_chirho,
+        );
+        let builtin_ifaces_chirho = builtin_module_ifaces_chirho();
+        let empty_imported_types_chirho = std::collections::HashMap::new();
+        let empty_imported_synonyms_chirho = ImportedTypeSynonymsChirho::new();
+
+        let bitutil_frontend_chirho = run_frontend_with_type_synonyms_chirho(
+            &bitutil_source_chirho,
+            bitutil_file_chirho.file_id_chirho(),
+            &builtin_ifaces_chirho,
+            &empty_imported_types_chirho,
+            &empty_imported_synonyms_chirho,
+        )
+        .expect("BitUtil frontend should succeed");
+        let bitutil_iface_chirho = build_iface_with_imports_chirho(
+            &bitutil_frontend_chirho.module_chirho,
+            &builtin_ifaces_chirho,
+        );
+
+        let inttreecommons_source_chirho =
+            read_haskell_source_file_chirho(&inttreecommons_path_chirho).unwrap();
+        let inttreecommons_file_chirho = SourceFileChirho::from_source_map_chirho(
+            &mut source_map_chirho,
+            inttreecommons_path_chirho,
+            &inttreecommons_source_chirho,
+        );
+        let mut available_ifaces_chirho = builtin_ifaces_chirho.clone();
+        available_ifaces_chirho.push(bitutil_iface_chirho);
+
+        let inttreecommons_result_chirho = run_frontend_with_type_synonyms_chirho(
+            &inttreecommons_source_chirho,
+            inttreecommons_file_chirho.file_id_chirho(),
+            &available_ifaces_chirho,
+            &empty_imported_types_chirho,
+            &empty_imported_synonyms_chirho,
+        );
+        assert!(
+            inttreecommons_result_chirho.is_ok(),
+            "expected IntTreeCommons to resolve BitUtil from a freshly-built local iface: {:?}",
+            inttreecommons_result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn real_containers_loop_has_bitutil_iface_before_inttreecommons_chirho() {
+        use crate::{
+            ImportedTypeSynonymsChirho, SourceMapChirho, discover_modules_chirho,
+            extract_imports_chirho, read_haskell_source_file_chirho,
+            run_frontend_with_type_synonyms_chirho,
+        };
+        use haskelujah_incremental_chirho::{DepGraphChirho, FingerprintChirho};
+        use haskelujah_naming_chirho::builtin_module_ifaces_chirho;
+        use haskelujah_naming_chirho::iface_chirho::build_iface_with_imports_chirho;
+        use haskelujah_package_chirho::parse_cabal_chirho;
+        use haskelujah_syntax_chirho::SourceFileChirho;
+
+        let cabal_path_chirho =
+            workspace_root_chirho().join(".haskelujah-packages-chirho/containers-0.8/containers.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let cabal_content_chirho = std::fs::read_to_string(&cabal_path_chirho).unwrap();
+        let package_chirho = parse_cabal_chirho(&cabal_content_chirho);
+        let project_dir_chirho = cabal_path_chirho.parent().unwrap();
+        let source_files_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
+        let mut module_sources_chirho = Vec::new();
+        for (module_name_chirho, path_chirho) in &source_files_chirho {
+            module_sources_chirho.push((
+                module_name_chirho.clone(),
+                path_chirho.to_string_lossy().to_string(),
+                read_haskell_source_file_chirho(path_chirho).unwrap(),
+            ));
+        }
+
+        let mut dep_graph_chirho = DepGraphChirho::new_chirho();
+        let known_modules_chirho: std::collections::HashSet<String> = module_sources_chirho
+            .iter()
+            .map(|(module_name_chirho, _, _)| module_name_chirho.clone())
+            .collect();
+        for (module_name_chirho, _, source_chirho) in &module_sources_chirho {
+            dep_graph_chirho.add_module_chirho(
+                module_name_chirho,
+                FingerprintChirho::from_str_chirho(source_chirho),
+            );
+            for imported_chirho in extract_imports_chirho(source_chirho) {
+                if known_modules_chirho.contains(&imported_chirho) {
+                    dep_graph_chirho.add_dep_chirho(module_name_chirho, &imported_chirho);
+                }
+            }
+        }
+
+        let sccs_chirho = dep_graph_chirho.topo_sort_sccs_chirho();
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let mut ifaces_chirho = builtin_module_ifaces_chirho();
+        let imported_types_chirho = std::collections::HashMap::new();
+        let imported_synonyms_chirho = ImportedTypeSynonymsChirho::new();
+
+        for scc_chirho in sccs_chirho {
+            for module_name_chirho in scc_chirho {
+                if module_name_chirho == "Data.IntSet.Internal.IntTreeCommons" {
+                    assert!(
+                        ifaces_chirho.iter().any(|iface_chirho| {
+                            iface_chirho.name_chirho == "Utils.Containers.Internal.BitUtil"
+                        }),
+                        "BitUtil iface missing before IntTreeCommons; sample={:?}",
+                        ifaces_chirho
+                            .iter()
+                            .map(|iface_chirho| iface_chirho.name_chirho.clone())
+                            .take(40)
+                            .collect::<Vec<_>>()
+                    );
+                }
+                let (_, file_name_chirho, source_chirho) = module_sources_chirho
+                    .iter()
+                    .find(|(candidate_name_chirho, _, _)| candidate_name_chirho == &module_name_chirho)
+                    .unwrap();
+                let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+                    &mut source_map_chirho,
+                    file_name_chirho,
+                    source_chirho,
+                );
+                let frontend_result_chirho = run_frontend_with_type_synonyms_chirho(
+                    source_chirho,
+                    source_file_chirho.file_id_chirho(),
+                    &ifaces_chirho,
+                    &imported_types_chirho,
+                    &imported_synonyms_chirho,
+                );
+                let frontend_result_chirho = frontend_result_chirho.unwrap_or_else(|error_chirho| {
+                    panic!(
+                        "module {} failed with ifaces {:?}: {:?}",
+                        module_name_chirho,
+                        ifaces_chirho
+                            .iter()
+                            .map(|iface_chirho| iface_chirho.name_chirho.clone())
+                            .take(50)
+                            .collect::<Vec<_>>(),
+                        error_chirho
+                    )
+                });
+                let iface_chirho =
+                    build_iface_with_imports_chirho(&frontend_result_chirho.module_chirho, &ifaces_chirho);
+                ifaces_chirho.push(iface_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn real_containers_dependency_seed_includes_bitutil_iface_chirho() {
+        let project_dir_chirho =
+            workspace_root_chirho().join(".haskelujah-packages-chirho/containers-0.8");
+        if !project_dir_chirho.exists() {
+            return;
+        }
+
+        let dependency_ifaces_chirho =
+            crate::scan_dependency_package_ifaces_chirho(&project_dir_chirho);
+        assert!(
+            dependency_ifaces_chirho
+                .iter()
+                .any(|iface_chirho| iface_chirho.name_chirho == "Utils.Containers.Internal.BitUtil"),
+            "expected dependency seed to include BitUtil; sample={:?}",
+            dependency_ifaces_chirho
+                .iter()
+                .map(|iface_chirho| iface_chirho.name_chirho.clone())
+                .take(60)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn real_containers_package_seed_still_resolves_bitutil_before_inttreecommons_chirho() {
+        use crate::{
+            SourceMapChirho, collect_local_dependency_frontend_artifacts_chirho,
+            collect_package_deps_chirho, discover_modules_chirho, extract_imports_chirho,
+            read_haskell_source_file_chirho, run_frontend_with_type_synonyms_chirho,
+            scan_dependency_package_ifaces_chirho,
+        };
+        use haskelujah_incremental_chirho::{DepGraphChirho, FingerprintChirho};
+        use haskelujah_naming_chirho::builtin_module_ifaces_chirho;
+        use haskelujah_naming_chirho::iface_chirho::{
+            build_iface_with_imports_chirho, merge_module_ifaces_chirho,
+        };
+        use haskelujah_package_chirho::parse_cabal_chirho;
+        use haskelujah_syntax_chirho::SourceFileChirho;
+
+        let cabal_path_chirho =
+            workspace_root_chirho().join(".haskelujah-packages-chirho/containers-0.8/containers.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let cabal_content_chirho = std::fs::read_to_string(&cabal_path_chirho).unwrap();
+        let package_chirho = parse_cabal_chirho(&cabal_content_chirho);
+        let project_dir_chirho = cabal_path_chirho.parent().unwrap();
+        let all_deps_chirho = collect_package_deps_chirho(&package_chirho);
+        let dep_ifaces_chirho = scan_dependency_package_ifaces_chirho(project_dir_chirho);
+        let dep_frontend_artifacts_chirho =
+            collect_local_dependency_frontend_artifacts_chirho(project_dir_chirho, &all_deps_chirho)
+                .unwrap();
+        let mut extra_ifaces_chirho = dep_ifaces_chirho;
+        extra_ifaces_chirho.extend(dep_frontend_artifacts_chirho.ifaces_chirho.clone());
+
+        let source_files_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
+        let mut module_sources_chirho = Vec::new();
+        for (module_name_chirho, path_chirho) in &source_files_chirho {
+            module_sources_chirho.push((
+                module_name_chirho.clone(),
+                path_chirho.to_string_lossy().to_string(),
+                read_haskell_source_file_chirho(path_chirho).unwrap(),
+            ));
+        }
+
+        let mut dep_graph_chirho = DepGraphChirho::new_chirho();
+        let known_modules_chirho: std::collections::HashSet<String> = module_sources_chirho
+            .iter()
+            .map(|(module_name_chirho, _, _)| module_name_chirho.clone())
+            .collect();
+        for (module_name_chirho, _, source_chirho) in &module_sources_chirho {
+            dep_graph_chirho.add_module_chirho(
+                module_name_chirho,
+                FingerprintChirho::from_str_chirho(source_chirho),
+            );
+            for imported_chirho in extract_imports_chirho(source_chirho) {
+                if known_modules_chirho.contains(&imported_chirho) {
+                    dep_graph_chirho.add_dep_chirho(module_name_chirho, &imported_chirho);
+                }
+            }
+        }
+
+        let sccs_chirho = dep_graph_chirho.topo_sort_sccs_chirho();
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let mut ifaces_chirho = builtin_module_ifaces_chirho();
+        ifaces_chirho.extend(extra_ifaces_chirho);
+        let mut ifaces_chirho = merge_module_ifaces_chirho(ifaces_chirho);
+        let imported_types_chirho = dep_frontend_artifacts_chirho.imported_types_chirho;
+        let imported_synonyms_chirho =
+            dep_frontend_artifacts_chirho.imported_type_synonyms_chirho;
+
+        for scc_chirho in sccs_chirho {
+            for module_name_chirho in scc_chirho {
+                if module_name_chirho == "Data.IntSet.Internal.IntTreeCommons" {
+                    assert!(
+                        ifaces_chirho.iter().any(|iface_chirho| {
+                            iface_chirho.name_chirho == "Utils.Containers.Internal.BitUtil"
+                        }),
+                        "BitUtil missing from package-seeded ifaces before IntTreeCommons; sample={:?}",
+                        ifaces_chirho
+                            .iter()
+                            .map(|iface_chirho| iface_chirho.name_chirho.clone())
+                            .take(80)
+                            .collect::<Vec<_>>()
+                    );
+                }
+                let (_, file_name_chirho, source_chirho) = module_sources_chirho
+                    .iter()
+                    .find(|(candidate_name_chirho, _, _)| candidate_name_chirho == &module_name_chirho)
+                    .unwrap();
+                let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+                    &mut source_map_chirho,
+                    file_name_chirho,
+                    source_chirho,
+                );
+                let frontend_result_chirho = run_frontend_with_type_synonyms_chirho(
+                    source_chirho,
+                    source_file_chirho.file_id_chirho(),
+                    &ifaces_chirho,
+                    &imported_types_chirho,
+                    &imported_synonyms_chirho,
+                );
+                let frontend_result_chirho = frontend_result_chirho.unwrap_or_else(|error_chirho| {
+                    panic!(
+                        "module {} failed with package seed; has_bitutil={} sample_ifaces={:?} error={:?}",
+                        module_name_chirho,
+                        ifaces_chirho.iter().any(|iface_chirho| {
+                            iface_chirho.name_chirho == "Utils.Containers.Internal.BitUtil"
+                        }),
+                        ifaces_chirho
+                            .iter()
+                            .map(|iface_chirho| iface_chirho.name_chirho.clone())
+                            .take(80)
+                            .collect::<Vec<_>>(),
+                        error_chirho
+                    )
+                });
+                let iface_chirho =
+                    build_iface_with_imports_chirho(&frontend_result_chirho.module_chirho, &ifaces_chirho);
+                ifaces_chirho.push(iface_chirho);
+            }
+        }
+    }
+
+    #[test]
+    fn compile_real_containers_cabal_project_moves_past_bitutil_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let cabal_path_chirho =
+            workspace_root_chirho().join(".haskelujah-packages-chirho/containers-0.8/containers.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let result_chirho =
+            compile_cabal_project_chirho(cabal_path_chirho, &PackageIndexChirho::new_chirho());
+        match result_chirho {
+            Ok(result_chirho) => {
+                assert!(
+                    !result_chirho.module_results_chirho.is_empty(),
+                    "real containers compile_cabal_project should compile modules",
+                );
+                let bitutil_idx_chirho = result_chirho
+                    .compilation_order_chirho
+                    .iter()
+                    .position(|module_name_chirho| module_name_chirho == "Utils.Containers.Internal.BitUtil")
+                    .expect("compilation order should include BitUtil");
+                let inttreecommons_idx_chirho = result_chirho
+                    .compilation_order_chirho
+                    .iter()
+                    .position(|module_name_chirho| module_name_chirho == "Data.IntSet.Internal.IntTreeCommons")
+                    .expect("compilation order should include IntTreeCommons");
+                assert!(bitutil_idx_chirho < inttreecommons_idx_chirho);
+            }
+            Err(error_chirho) => {
+                let error_text_chirho = format!("{error_chirho}");
+                assert!(
+                    !error_text_chirho.contains("could not find module Utils.Containers.Internal.BitUtil"),
+                    "containers should move past the old BitUtil failure, got: {error_text_chirho}",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn build_then_compile_real_containers_stays_past_bitutil_chirho() {
+        use crate::{build_cabal_project_chirho, compile_cabal_project_chirho};
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let cabal_path_chirho =
+            workspace_root_chirho().join(".haskelujah-packages-chirho/containers-0.8/containers.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let index_chirho = PackageIndexChirho::new_chirho();
+        let build_result_chirho = build_cabal_project_chirho(&cabal_path_chirho, &index_chirho);
+        if let Err(error_chirho) = build_result_chirho {
+            let error_text_chirho = format!("{error_chirho}");
+            assert!(
+                !error_text_chirho.contains("could not find module Utils.Containers.Internal.BitUtil"),
+                "build should stay past the old BitUtil frontier, got: {error_text_chirho}",
+            );
+        }
+
+        let compile_result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho);
+        if let Err(error_chirho) = compile_result_chirho {
+            let error_text_chirho = format!("{error_chirho}");
+            assert!(
+                !error_text_chirho.contains("could not find module Utils.Containers.Internal.BitUtil"),
+                "build-then-compile should stay past the old BitUtil frontier, got: {error_text_chirho}",
+            );
+        }
+    }
+
+    #[test]
     fn compile_project_skips_hidden_dirs_chirho() {
         let tmp_chirho = tempfile::tempdir().unwrap();
         fs::write(
@@ -474,4 +1112,5 @@ unwrapEqMiniChirho fChirho xChirho = case runEqMiniChirho fChirho xChirho of\n\
             result_chirho.err()
         );
     }
+
 }

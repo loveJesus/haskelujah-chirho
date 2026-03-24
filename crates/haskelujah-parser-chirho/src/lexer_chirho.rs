@@ -259,7 +259,7 @@ impl<'src> LexerChirho<'src> {
                 if self.peek_at_chirho(1) == Some(b'-')
                     && self
                         .peek_at_chirho(2)
-                        .is_none_or(|b_chirho| !is_symbol_char_chirho(b_chirho))
+                        .is_none_or(|b_chirho| b_chirho == b'-' || !is_symbol_char_chirho(b_chirho))
                 {
                     self.lex_line_comment_chirho(start_chirho)
                 } else if self.peek_at_chirho(1) == Some(b'>') && !self.has_more_symbol_at_chirho(2)
@@ -1469,6 +1469,18 @@ mod tests_chirho {
             .count();
         assert_eq!(doc_count_chirho, 1);
         assert_eq!(line_count_chirho, 1);
+    }
+
+    #[test]
+    fn lex_hyphen_separator_line_as_comment_chirho() {
+        let tokens_chirho =
+            lex_chirho("-----------------------------------------------------------------------------\nmodule Demo where\n");
+        assert_eq!(tokens_chirho[0].kind_chirho, RawTokenKindChirho::LineCommentChirho);
+        assert!(
+            tokens_chirho
+                .iter()
+                .any(|token_chirho| token_chirho.kind_chirho == RawTokenKindChirho::ModuleChirho)
+        );
     }
 
     #[test]

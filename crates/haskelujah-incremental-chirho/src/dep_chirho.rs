@@ -186,6 +186,10 @@ impl DepGraphChirho {
     ///
     /// Returns SCCs in dependency order (leaves first).
     pub fn topo_sort_sccs_chirho(&self) -> Vec<Vec<String>> {
+        if self.nodes_chirho.is_empty() {
+            return Vec::new();
+        }
+
         // Tarjan's SCC algorithm
         let names_chirho: Vec<&str> = self
             .nodes_chirho
@@ -282,7 +286,87 @@ impl DepGraphChirho {
             }
         }
 
-        sccs_chirho
+        let mut node_to_scc_idx_chirho: HashMap<&str, usize> = HashMap::new();
+        for (scc_idx_chirho, scc_chirho) in sccs_chirho.iter().enumerate() {
+            for member_chirho in scc_chirho {
+                node_to_scc_idx_chirho.insert(member_chirho.as_str(), scc_idx_chirho);
+            }
+        }
+
+        let mut scc_dep_counts_chirho: Vec<usize> = vec![0; sccs_chirho.len()];
+        let mut scc_rev_edges_chirho: Vec<HashSet<usize>> = vec![HashSet::new(); sccs_chirho.len()];
+
+        for (importer_chirho, imported_set_chirho) in &self.edges_chirho {
+            let Some(&importer_scc_idx_chirho) =
+                node_to_scc_idx_chirho.get(importer_chirho.as_str())
+            else {
+                continue;
+            };
+            for imported_chirho in imported_set_chirho {
+                let Some(&imported_scc_idx_chirho) =
+                    node_to_scc_idx_chirho.get(imported_chirho.as_str())
+                else {
+                    continue;
+                };
+                if importer_scc_idx_chirho == imported_scc_idx_chirho {
+                    continue;
+                }
+                if scc_rev_edges_chirho[imported_scc_idx_chirho]
+                    .insert(importer_scc_idx_chirho)
+                {
+                    scc_dep_counts_chirho[importer_scc_idx_chirho] += 1;
+                }
+            }
+        }
+
+        let mut ready_sccs_chirho: Vec<usize> = scc_dep_counts_chirho
+            .iter()
+            .enumerate()
+            .filter_map(|(idx_chirho, dep_count_chirho)| {
+                if *dep_count_chirho == 0 {
+                    Some(idx_chirho)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        ready_sccs_chirho.sort_by(|lhs_idx_chirho, rhs_idx_chirho| {
+            sccs_chirho[*lhs_idx_chirho]
+                .first()
+                .cmp(&sccs_chirho[*rhs_idx_chirho].first())
+        });
+
+        let mut ordered_sccs_chirho = Vec::with_capacity(sccs_chirho.len());
+        while let Some(scc_idx_chirho) = ready_sccs_chirho.first().copied() {
+            ready_sccs_chirho.remove(0);
+            ordered_sccs_chirho.push(sccs_chirho[scc_idx_chirho].clone());
+
+            let mut newly_ready_chirho: Vec<usize> = scc_rev_edges_chirho[scc_idx_chirho]
+                .iter()
+                .copied()
+                .filter_map(|dependent_scc_idx_chirho| {
+                    let dep_count_chirho = &mut scc_dep_counts_chirho[dependent_scc_idx_chirho];
+                    *dep_count_chirho -= 1;
+                    if *dep_count_chirho == 0 {
+                        Some(dependent_scc_idx_chirho)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            newly_ready_chirho.sort_by(|lhs_idx_chirho, rhs_idx_chirho| {
+                sccs_chirho[*lhs_idx_chirho]
+                    .first()
+                    .cmp(&sccs_chirho[*rhs_idx_chirho].first())
+            });
+            ready_sccs_chirho.extend(newly_ready_chirho);
+        }
+
+        if ordered_sccs_chirho.len() == sccs_chirho.len() {
+            ordered_sccs_chirho
+        } else {
+            sccs_chirho
+        }
     }
 }
 
@@ -444,6 +528,17 @@ mod tests_chirho {
         // A before B (dependency order)
         assert_eq!(sccs_chirho[0][0], "A");
         assert_eq!(sccs_chirho[1][0], "B");
+    }
+
+    #[test]
+    fn scc_no_cycle_reverse_insertion_still_dependency_ordered_chirho() {
+        let mut graph_chirho = DepGraphChirho::new_chirho();
+        graph_chirho.add_module_chirho("B", fp_chirho("b"));
+        graph_chirho.add_module_chirho("A", fp_chirho("a"));
+        graph_chirho.add_dep_chirho("B", "A");
+
+        let sccs_chirho = graph_chirho.topo_sort_sccs_chirho();
+        assert_eq!(sccs_chirho, vec![vec!["A".to_string()], vec!["B".to_string()]]);
     }
 
     #[test]

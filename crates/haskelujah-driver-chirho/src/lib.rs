@@ -242,19 +242,17 @@ fn ensure_cpp_support_dir_chirho() -> io::Result<PathBuf> {
     let support_dir_chirho = std::env::temp_dir().join("haskelujah-cpp-support-chirho");
     std::fs::create_dir_all(&support_dir_chirho)?;
     let machdeps_path_chirho = support_dir_chirho.join("MachDeps.h");
-    if !machdeps_path_chirho.exists() {
-        std::fs::write(
-            &machdeps_path_chirho,
-            concat!(
-                "/* For God so loved the world that he gave his only begotten Son, that whoever\n",
-                " * believes in him should not perish but have eternal life. -- John 3:16 */\n",
-                "#ifndef HASKELUJAH_SYNTHETIC_MACHDEPS_H_CHIRHO\n",
-                "#define HASKELUJAH_SYNTHETIC_MACHDEPS_H_CHIRHO\n",
-                "#define WORD_SIZE_IN_BITS 64\n",
-                "#endif\n",
-            ),
-        )?;
-    }
+    // Keep this header directive-only so cpp -traditional -P does not leak C
+    // comments into the Haskell token stream before the module header.
+    std::fs::write(
+        &machdeps_path_chirho,
+        concat!(
+            "#ifndef HASKELUJAH_SYNTHETIC_MACHDEPS_H_CHIRHO\n",
+            "#define HASKELUJAH_SYNTHETIC_MACHDEPS_H_CHIRHO\n",
+            "#define WORD_SIZE_IN_BITS 64\n",
+            "#endif\n",
+        ),
+    )?;
     Ok(support_dir_chirho)
 }
 
@@ -3177,6 +3175,8 @@ fn compile_module_files_with_frontend_seed_chirho(
 /// module interfaces. This enables cross-package module resolution.
 fn scan_dependency_package_ifaces_chirho(project_dir_chirho: &Path) -> Vec<ModuleIfaceChirho> {
     let mut ifaces_chirho = Vec::new();
+    let current_package_dir_chirho =
+        std::fs::canonicalize(project_dir_chirho).unwrap_or_else(|_| project_dir_chirho.to_path_buf());
 
     // Look for .haskelujah-packages-chirho/ relative to project dir ancestors
     let Some(packages_dir_chirho) = find_dependency_packages_dir_chirho(project_dir_chirho) else {
@@ -3192,6 +3192,11 @@ fn scan_dependency_package_ifaces_chirho(project_dir_chirho: &Path) -> Vec<Modul
     for entry_chirho in entries_chirho.flatten() {
         let pkg_dir_chirho = entry_chirho.path();
         if !pkg_dir_chirho.is_dir() {
+            continue;
+        }
+        let canonical_pkg_dir_chirho =
+            std::fs::canonicalize(&pkg_dir_chirho).unwrap_or_else(|_| pkg_dir_chirho.clone());
+        if canonical_pkg_dir_chirho == current_package_dir_chirho {
             continue;
         }
         // Recursively find .hs files and generate stub interfaces
