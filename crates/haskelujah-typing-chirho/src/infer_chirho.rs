@@ -1340,6 +1340,14 @@ impl InferCtxChirho {
                     ));
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
+                LitChirho::FloatChirho(_, span_chirho) => {
+                    let lit_ty_chirho = self.fresh_var_chirho();
+                    self.deferred_preds_chirho.push((
+                        PredChirho::new_chirho("Fractional", lit_ty_chirho.clone()),
+                        *span_chirho,
+                    ));
+                    (SubstChirho::empty_chirho(), lit_ty_chirho)
+                }
                 _ => {
                     let ty_chirho = infer_lit_chirho(lit_chirho);
                     (SubstChirho::empty_chirho(), ty_chirho)
@@ -9335,19 +9343,54 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
-    // ── Floating functions (monomorphic at Double for now) ──
-    let double_ty_chirho = TyChirho::double_chirho();
-
-    // Unary: sin, cos, tan, asin, acos, atan, exp, log, sqrt :: Double -> Double
-    for name_chirho in [
-        "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sqrt",
-    ] {
+    // ── Floating functions ──
+    // Unary: sin, cos, tan, asin, acos, atan, exp, log, sqrt, sinh, cosh,
+    // tanh, asinh, acosh, atanh :: Floating a => a -> a
+    for (index_chirho, name_chirho) in [
+        "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sqrt", "sinh", "cosh",
+        "tanh", "asinh", "acosh", "atanh",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let floating_a_chirho = TyVarChirho(3600 + index_chirho as u32);
         env_chirho.bind_chirho(
             name_chirho.to_string(),
-            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-                double_ty_chirho.clone(),
-                double_ty_chirho.clone(),
-            )),
+            SchemeChirho {
+                vars_chirho: vec![floating_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Floating".to_string(),
+                    ty_chirho: TyChirho::VarChirho(floating_a_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(floating_a_chirho),
+                    TyChirho::VarChirho(floating_a_chirho),
+                ),
+            },
+        );
+    }
+
+    // Binary floating operators/functions: (**), atan2, logBase :: Floating a => a -> a -> a
+    for (index_chirho, name_chirho) in ["**", "atan2", "logBase"].into_iter().enumerate() {
+        let floating_a_chirho = TyVarChirho(3620 + index_chirho as u32);
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            SchemeChirho {
+                vars_chirho: vec![floating_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Floating".to_string(),
+                    ty_chirho: TyChirho::VarChirho(floating_a_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::VarChirho(floating_a_chirho),
+                        TyChirho::VarChirho(floating_a_chirho),
+                    ],
+                    TyChirho::VarChirho(floating_a_chirho),
+                ),
+            },
         );
     }
 

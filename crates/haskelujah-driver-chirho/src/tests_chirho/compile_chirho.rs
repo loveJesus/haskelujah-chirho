@@ -155,6 +155,38 @@ fn frontend_sum_on_rational_list_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_fractional_literal_unifies_with_rational_annotation_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module FractionalLiteralRationalChirho where\nvalueChirho :: Rational\nvalueChirho = 0.64\n",
+        &mut source_map_chirho,
+        "FractionalLiteralRationalChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "fractional literals should stay polymorphic until context pins them: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_floating_operator_exponent_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module FloatingOperatorChirho where\npowChirho :: Floating a => a -> a\npowChirho xChirho = xChirho ** 2\n",
+        &mut source_map_chirho,
+        "FloatingOperatorChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "floating exponent operator should resolve with a Floating scheme: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_qualified_text_uncons_uses_text_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
