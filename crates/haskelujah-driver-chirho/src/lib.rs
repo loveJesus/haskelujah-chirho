@@ -72,6 +72,10 @@ pub struct FrontendResultChirho {
     /// Results of type inference, including the type environment and class
     /// environment needed by the dictionary-passing transform.
     pub infer_result_chirho: InferResultChirho,
+    /// Type synonyms that were actually in scope for this module after import
+    /// processing. This lets downstream package builds preserve re-exported
+    /// aliases such as `GenParser`.
+    pub resolved_imported_type_synonyms_chirho: ImportedTypeSynonymsChirho,
     /// Non-fatal warnings collected from deriving and exhaustiveness checking.
     pub warnings_chirho: Vec<String>,
 }
@@ -194,8 +198,10 @@ fn stdlib_dir_is_valid_chirho(path_chirho: &Path) -> bool {
 fn exported_type_synonyms_from_module_chirho(
     module_chirho: &ModuleChirho,
     iface_chirho: &ModuleIfaceChirho,
+    resolved_imported_type_synonyms_chirho: &ImportedTypeSynonymsChirho,
 ) -> ImportedTypeSynonymsChirho {
     let mut exported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
+    let mut local_type_alias_names_chirho = std::collections::HashSet::new();
     for decl_chirho in &module_chirho.decls_chirho {
         if let DeclChirho::TypeAliasDeclChirho {
             name_chirho,
@@ -205,6 +211,7 @@ fn exported_type_synonyms_from_module_chirho(
         } = decl_chirho
         {
             let alias_name_chirho = name_chirho.text_chirho().to_string();
+            local_type_alias_names_chirho.insert(alias_name_chirho.clone());
             if iface_chirho
                 .exports_chirho
                 .types_chirho
@@ -231,6 +238,25 @@ fn exported_type_synonyms_from_module_chirho(
                     ),
                 );
             }
+        }
+    }
+    for exported_type_name_chirho in iface_chirho.exports_chirho.types_chirho.keys() {
+        if local_type_alias_names_chirho.contains(exported_type_name_chirho)
+            || exported_type_synonyms_chirho.contains_key(exported_type_name_chirho)
+        {
+            continue;
+        }
+        if let Some((params_chirho, rhs_chirho)) =
+            resolved_imported_type_synonyms_chirho.get(exported_type_name_chirho)
+        {
+            exported_type_synonyms_chirho.insert(
+                exported_type_name_chirho.clone(),
+                (params_chirho.clone(), rhs_chirho.clone()),
+            );
+            exported_type_synonyms_chirho.insert(
+                format!("{}.{}", iface_chirho.name_chirho, exported_type_name_chirho),
+                (params_chirho.clone(), rhs_chirho.clone()),
+            );
         }
     }
     exported_type_synonyms_chirho
@@ -940,12 +966,12 @@ pub fn run_frontend_with_type_synonyms_chirho(
                         &qualifier_chirho,
                         &unqualified_type_names_chirho,
                     );
-                    if !import_chirho.qualified_chirho
-                        && should_override_imported_scheme_chirho(
-                            merged_imported_types_chirho.get(name_chirho),
-                            &in_scope_seed_scheme_chirho,
-                        )
-                    {
+                    if !import_chirho.qualified_chirho {
+                        // Current-module imports should win over broadly seeded
+                        // dependency names. Otherwise a previously compiled
+                        // module can pin an unqualified name like `choice` or
+                        // `pack` to the wrong specialized scheme in later
+                        // modules that explicitly import a different source.
                         merged_imported_types_chirho
                             .insert(name_chirho.clone(), in_scope_seed_scheme_chirho.clone());
                     }
@@ -1035,6 +1061,7 @@ pub fn run_frontend_with_type_synonyms_chirho(
     Ok(FrontendResultChirho {
         module_chirho,
         infer_result_chirho,
+        resolved_imported_type_synonyms_chirho: merged_imported_type_synonyms_chirho,
         warnings_chirho,
     })
 }
@@ -1551,6 +1578,7 @@ pub fn compile_source_chirho(
     let FrontendResultChirho {
         module_chirho,
         infer_result_chirho,
+        resolved_imported_type_synonyms_chirho: _resolved_imported_type_synonyms_chirho,
         warnings_chirho: _warnings_chirho,
     } = frontend_result_chirho;
 
@@ -1661,6 +1689,7 @@ pub fn compile_source_with_search_path_chirho(
     let FrontendResultChirho {
         module_chirho,
         infer_result_chirho,
+        resolved_imported_type_synonyms_chirho: _resolved_imported_type_synonyms_chirho,
         warnings_chirho: _warnings_chirho,
     } = frontend_result_chirho;
 
@@ -1927,6 +1956,7 @@ pub fn compile_modules_chirho(
         let FrontendResultChirho {
             module_chirho,
             infer_result_chirho,
+            resolved_imported_type_synonyms_chirho,
             warnings_chirho: _warnings_chirho,
         } = frontend_result_chirho;
 
@@ -1956,6 +1986,7 @@ pub fn compile_modules_chirho(
         imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
             &module_chirho,
             &iface_chirho,
+            &resolved_imported_type_synonyms_chirho,
         ));
 
         ifaces_chirho.push(iface_chirho);
@@ -2494,6 +2525,7 @@ pub fn compile_modules_incremental_chirho(
         let FrontendResultChirho {
             module_chirho,
             infer_result_chirho,
+            resolved_imported_type_synonyms_chirho: _resolved_imported_type_synonyms_chirho,
             warnings_chirho: _warnings_chirho,
         } = frontend_result_chirho;
 
@@ -2627,6 +2659,72 @@ fn extract_imports_chirho(source_chirho: &str) -> Vec<String> {
     imports_chirho
 }
 
+fn filter_seeded_type_synonyms_for_source_chirho(
+    source_chirho: &str,
+    imported_type_synonyms_chirho: &ImportedTypeSynonymsChirho,
+) -> ImportedTypeSynonymsChirho {
+    let imported_modules_chirho: std::collections::HashSet<String> =
+        extract_imports_chirho(source_chirho).into_iter().collect();
+    if imported_modules_chirho.is_empty() {
+        return ImportedTypeSynonymsChirho::new();
+    }
+
+    imported_type_synonyms_chirho
+        .iter()
+        .filter(|(name_chirho, _synonym_chirho)| {
+            imported_modules_chirho.iter().any(|module_name_chirho| {
+                name_chirho
+                    .strip_prefix(module_name_chirho)
+                    .is_some_and(|suffix_chirho| suffix_chirho.starts_with('.'))
+            })
+        })
+        .map(|(name_chirho, synonym_chirho)| (name_chirho.clone(), synonym_chirho.clone()))
+        .collect()
+}
+
+fn filter_seeded_imported_types_for_source_chirho(
+    source_chirho: &str,
+    imported_types_chirho: &std::collections::HashMap<
+        String,
+        haskelujah_typing_chirho::SchemeChirho,
+    >,
+) -> std::collections::HashMap<String, haskelujah_typing_chirho::SchemeChirho> {
+    let imported_modules_chirho: std::collections::HashSet<String> =
+        extract_imports_chirho(source_chirho).into_iter().collect();
+    if imported_modules_chirho.is_empty() {
+        return std::collections::HashMap::new();
+    }
+
+    imported_types_chirho
+        .iter()
+        .filter(|(name_chirho, _scheme_chirho)| {
+            imported_modules_chirho.iter().any(|module_name_chirho| {
+                name_chirho
+                    .strip_prefix(module_name_chirho)
+                    .is_some_and(|suffix_chirho| {
+                        if !suffix_chirho.starts_with('.') {
+                            return false;
+                        }
+                        let remainder_chirho = &suffix_chirho[1..];
+                        if let Some((first_segment_chirho, _rest_chirho)) =
+                            remainder_chirho.split_once('.')
+                        {
+                            if first_segment_chirho
+                                .chars()
+                                .next()
+                                .is_some_and(|chirho| chirho.is_uppercase())
+                            {
+                                return false;
+                            }
+                        }
+                        true
+                    })
+            })
+        })
+        .map(|(name_chirho, scheme_chirho)| (name_chirho.clone(), scheme_chirho.clone()))
+        .collect()
+}
+
 fn source_imports_stdlib_chirho(source_chirho: &str) -> bool {
     extract_imports_chirho(source_chirho)
         .iter()
@@ -2673,6 +2771,7 @@ fn parse_boot_iface_chirho(
     let FrontendResultChirho {
         module_chirho,
         infer_result_chirho,
+        resolved_imported_type_synonyms_chirho: _resolved_imported_type_synonyms_chirho,
         ..
     } = frontend_result_chirho;
 
@@ -2846,19 +2945,30 @@ pub fn compile_project_dir_chirho(
                 source_chirho,
             );
             let file_id_chirho = source_file_chirho.file_id_chirho();
+            let filtered_imported_types_chirho =
+                filter_seeded_imported_types_for_source_chirho(
+                    source_chirho,
+                    &imported_types_chirho,
+                );
+            let filtered_imported_type_synonyms_chirho =
+                filter_seeded_type_synonyms_for_source_chirho(
+                    source_chirho,
+                    &imported_type_synonyms_chirho,
+                );
 
             let frontend_result_chirho = run_frontend_with_type_synonyms_chirho(
                 source_chirho,
                 file_id_chirho,
                 &ifaces_chirho,
-                &imported_types_chirho,
-                &imported_type_synonyms_chirho,
+                &filtered_imported_types_chirho,
+                &filtered_imported_type_synonyms_chirho,
             )
             .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
 
             let FrontendResultChirho {
                 module_chirho,
                 infer_result_chirho,
+                resolved_imported_type_synonyms_chirho,
                 warnings_chirho,
             } = frontend_result_chirho;
 
@@ -2880,6 +2990,7 @@ pub fn compile_project_dir_chirho(
             imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
                 &module_chirho,
                 &iface_chirho,
+                &resolved_imported_type_synonyms_chirho,
             ));
 
             ifaces_chirho.push(iface_chirho);
@@ -3620,19 +3731,30 @@ fn collect_frontend_artifacts_from_module_sources_chirho(
                 source_chirho,
             );
             let file_id_chirho = source_file_chirho.file_id_chirho();
+            let filtered_imported_types_chirho =
+                filter_seeded_imported_types_for_source_chirho(
+                    source_chirho,
+                    &imported_types_chirho,
+                );
+            let filtered_imported_type_synonyms_chirho =
+                filter_seeded_type_synonyms_for_source_chirho(
+                    source_chirho,
+                    &imported_type_synonyms_chirho,
+                );
 
             let frontend_result_chirho = run_frontend_with_type_synonyms_chirho(
                 source_chirho,
                 file_id_chirho,
                 &ifaces_chirho,
-                &imported_types_chirho,
-                &imported_type_synonyms_chirho,
+                &filtered_imported_types_chirho,
+                &filtered_imported_type_synonyms_chirho,
             )
             .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
 
             let FrontendResultChirho {
                 module_chirho,
                 infer_result_chirho,
+                resolved_imported_type_synonyms_chirho,
                 warnings_chirho: _warnings_chirho,
             } = frontend_result_chirho;
 
@@ -3645,6 +3767,7 @@ fn collect_frontend_artifacts_from_module_sources_chirho(
             imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
                 &module_chirho,
                 &iface_chirho,
+                &resolved_imported_type_synonyms_chirho,
             ));
             ifaces_chirho.push(iface_chirho);
         }
@@ -3728,19 +3851,30 @@ fn compile_module_sources_with_extra_ifaces_chirho(
                 source_chirho,
             );
             let file_id_chirho = source_file_chirho.file_id_chirho();
+            let filtered_imported_types_chirho =
+                filter_seeded_imported_types_for_source_chirho(
+                    source_chirho,
+                    &imported_types_chirho,
+                );
+            let filtered_imported_type_synonyms_chirho =
+                filter_seeded_type_synonyms_for_source_chirho(
+                    source_chirho,
+                    &imported_type_synonyms_chirho,
+                );
 
             let frontend_result_chirho = run_frontend_with_type_synonyms_chirho(
                 source_chirho,
                 file_id_chirho,
                 &ifaces_chirho,
-                &imported_types_chirho,
-                &imported_type_synonyms_chirho,
+                &filtered_imported_types_chirho,
+                &filtered_imported_type_synonyms_chirho,
             )
             .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
 
             let FrontendResultChirho {
                 module_chirho,
                 infer_result_chirho,
+                resolved_imported_type_synonyms_chirho,
                 warnings_chirho,
             } = frontend_result_chirho;
 
@@ -3755,6 +3889,7 @@ fn compile_module_sources_with_extra_ifaces_chirho(
             imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
                 &module_chirho,
                 &iface_chirho,
+                &resolved_imported_type_synonyms_chirho,
             ));
             ifaces_chirho.push(iface_chirho);
 

@@ -83,6 +83,70 @@ fn frontend_backticked_left_section_infers_function_type_chirho() {
 }
 
 #[test]
+fn frontend_list_append_is_polymorphic_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ListAppendPolyChirho where\nvalueChirho = [Just 1] ++ [Nothing]\n",
+        &mut source_map_chirho,
+        "ListAppendPolyChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "list append should work for non-String element types: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_qualified_text_uncons_uses_text_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module TextUnconsChirho where\nimport qualified Data.Text as T\nfChirho :: T.Text -> Maybe (Char, T.Text)\nfChirho = T.uncons\n",
+        &mut source_map_chirho,
+        "TextUnconsChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Data.Text.uncons should use the Text-specific scheme: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_qualified_text_pack_unpack_use_text_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module TextPackChirho where\nimport qualified Data.Text as T\npackChirho :: [Char] -> T.Text\npackChirho = T.pack\nunpackChirho :: T.Text -> [Char]\nunpackChirho = T.unpack\n",
+        &mut source_map_chirho,
+        "TextPackChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Data.Text pack/unpack should use Text instead of String: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_qualified_bytestring_char8_uncons_uses_bytestring_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ByteStringUnconsChirho where\nimport qualified Data.ByteString.Char8 as C\nfChirho :: C.ByteString -> Maybe (Char, C.ByteString)\nfChirho = C.uncons\n",
+        &mut source_map_chirho,
+        "ByteStringUnconsChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Data.ByteString.Char8.uncons should use the ByteString-specific scheme: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn script_mode_uses_incremental_runtime_plan_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
@@ -1001,6 +1065,228 @@ runParserCompatChirho = NChirho.runParserChirho\n",
     assert!(
         results_chirho.is_ok(),
         "qualified value imports should keep module-local tycons unqualified when the module is also imported unqualified: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_reexported_type_alias_unifies_with_underlying_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "PrimMiniChirho.hs",
+            "module PrimMiniChirho (IdentityMiniChirho(..), ParsecTMiniChirho(..), ParsecMiniChirho, runMiniChirho) where\n\
+data IdentityMiniChirho aChirho = IdentityMiniChirho aChirho\n\
+newtype ParsecTMiniChirho sChirho uChirho mChirho aChirho = ParsecTMiniChirho { unParsecTMiniChirho :: sChirho -> mChirho aChirho }\n\
+type ParsecMiniChirho sChirho uChirho aChirho = ParsecTMiniChirho sChirho uChirho IdentityMiniChirho aChirho\n\
+runMiniChirho :: ParsecTMiniChirho sChirho uChirho IdentityMiniChirho aChirho -> ParsecTMiniChirho sChirho uChirho IdentityMiniChirho aChirho\n\
+runMiniChirho pChirho = pChirho\n",
+        ),
+        (
+            "ParsecMiniChirho.hs",
+            "module ParsecMiniChirho (ParsecTMiniChirho(..), ParsecMiniChirho, runMiniChirho) where\n\
+import PrimMiniChirho\n",
+        ),
+        (
+            "PermMiniChirho.hs",
+            "module PermMiniChirho where\n\
+import ParsecMiniChirho\n\
+fChirho :: ParsecMiniChirho sChirho stChirho aChirho -> ParsecMiniChirho sChirho stChirho aChirho\n\
+fChirho pChirho = runMiniChirho pChirho\n",
+        ),
+    ];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "re-exported type aliases should unify with imported value schemes that mention the underlying constructor: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_reexported_type_alias_flows_through_imported_value_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "PrimChoiceMiniChirho.hs",
+            "module PrimChoiceMiniChirho (IdentityChoiceMiniChirho(..), ParsecTChoiceMiniChirho(..), ParsecChoiceMiniChirho, choiceMiniChirho) where\n\
+data IdentityChoiceMiniChirho aChirho = IdentityChoiceMiniChirho aChirho\n\
+newtype ParsecTChoiceMiniChirho sChirho uChirho mChirho aChirho = ParsecTChoiceMiniChirho { unParsecTChoiceMiniChirho :: sChirho -> mChirho aChirho }\n\
+type ParsecChoiceMiniChirho sChirho uChirho aChirho = ParsecTChoiceMiniChirho sChirho uChirho IdentityChoiceMiniChirho aChirho\n\
+choiceMiniChirho :: [ParsecTChoiceMiniChirho sChirho uChirho IdentityChoiceMiniChirho aChirho] -> ParsecTChoiceMiniChirho sChirho uChirho IdentityChoiceMiniChirho aChirho\n\
+choiceMiniChirho (pChirho:_) = pChirho\n\
+choiceMiniChirho [] = ParsecTChoiceMiniChirho (\\_ -> error \"empty\")\n",
+        ),
+        (
+            "ParsecChoiceMiniChirho.hs",
+            "module ParsecChoiceMiniChirho (ParsecTChoiceMiniChirho(..), ParsecChoiceMiniChirho, choiceMiniChirho) where\n\
+import PrimChoiceMiniChirho\n",
+        ),
+        (
+            "PermChoiceMiniChirho.hs",
+            "module PermChoiceMiniChirho where\n\
+import ParsecChoiceMiniChirho\n\
+permuteMiniChirho :: [ParsecChoiceMiniChirho sChirho stChirho aChirho] -> ParsecChoiceMiniChirho sChirho stChirho aChirho\n\
+permuteMiniChirho xsChirho = choiceMiniChirho xsChirho\n",
+        ),
+    ];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "re-exported parser aliases should flow through imported value schemes that mention the underlying constructor: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_reexported_type_alias_in_data_field_unifies_with_underlying_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "PrimFieldMiniChirho.hs",
+            "module PrimFieldMiniChirho (IdentityFieldMiniChirho(..), ParsecTFieldMiniChirho(..), ParsecFieldMiniChirho, choiceFieldMiniChirho) where\n\
+data IdentityFieldMiniChirho aChirho = IdentityFieldMiniChirho aChirho\n\
+newtype ParsecTFieldMiniChirho sChirho uChirho mChirho aChirho = ParsecTFieldMiniChirho { unParsecTFieldMiniChirho :: sChirho -> mChirho aChirho }\n\
+type ParsecFieldMiniChirho sChirho uChirho aChirho = ParsecTFieldMiniChirho sChirho uChirho IdentityFieldMiniChirho aChirho\n\
+choiceFieldMiniChirho :: [ParsecTFieldMiniChirho sChirho uChirho IdentityFieldMiniChirho aChirho] -> ParsecTFieldMiniChirho sChirho uChirho IdentityFieldMiniChirho aChirho\n\
+choiceFieldMiniChirho (pChirho:_) = pChirho\n\
+choiceFieldMiniChirho [] = ParsecTFieldMiniChirho (\\_ -> error \"empty\")\n",
+        ),
+        (
+            "ParsecFieldMiniChirho.hs",
+            "module ParsecFieldMiniChirho (ParsecTFieldMiniChirho(..), ParsecFieldMiniChirho, choiceFieldMiniChirho) where\n\
+import PrimFieldMiniChirho\n",
+        ),
+        (
+            "PermFieldMiniChirho.hs",
+            "module PermFieldMiniChirho where\n\
+import ParsecFieldMiniChirho\n\
+data BoxFieldMiniChirho sChirho stChirho aChirho = BoxFieldMiniChirho (ParsecFieldMiniChirho sChirho stChirho aChirho)\n\
+permuteFieldMiniChirho :: BoxFieldMiniChirho sChirho stChirho aChirho -> ParsecFieldMiniChirho sChirho stChirho aChirho\n\
+permuteFieldMiniChirho (BoxFieldMiniChirho pChirho) = choiceFieldMiniChirho [pChirho]\n",
+        ),
+    ];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "re-exported parser aliases should still unify when they appear in imported data constructor fields: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_partially_applied_reexported_type_alias_flows_through_imported_value_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "PrimPermMiniChirho.hs",
+            "module PrimPermMiniChirho (IdentityPermMiniChirho(..), ParsecTPermMiniChirho(..), ParsecPermMiniChirho, choicePermMiniChirho) where\n\
+data IdentityPermMiniChirho aChirho = IdentityPermMiniChirho aChirho\n\
+newtype ParsecTPermMiniChirho sChirho uChirho mChirho aChirho = ParsecTPermMiniChirho { unParsecTPermMiniChirho :: sChirho -> mChirho aChirho }\n\
+type ParsecPermMiniChirho sChirho uChirho = ParsecTPermMiniChirho sChirho uChirho IdentityPermMiniChirho\n\
+choicePermMiniChirho :: [ParsecTPermMiniChirho sChirho uChirho IdentityPermMiniChirho aChirho] -> ParsecTPermMiniChirho sChirho uChirho IdentityPermMiniChirho aChirho\n\
+choicePermMiniChirho (pChirho:_) = pChirho\n\
+choicePermMiniChirho [] = ParsecTPermMiniChirho (\\_ -> error \"empty\")\n",
+        ),
+        (
+            "ParsecPermMiniChirho.hs",
+            "module ParsecPermMiniChirho (ParsecTPermMiniChirho(..), ParsecPermMiniChirho, choicePermMiniChirho) where\n\
+import PrimPermMiniChirho\n",
+        ),
+        (
+            "PermUseMiniChirho.hs",
+            "module PermUseMiniChirho where\n\
+import ParsecPermMiniChirho\n\
+permuteMiniChirho :: [ParsecPermMiniChirho sChirho stChirho aChirho] -> ParsecPermMiniChirho sChirho stChirho aChirho\n\
+permuteMiniChirho xsChirho = choicePermMiniChirho (map idMiniChirho xsChirho ++ emptyMiniChirho)\n\
+  where\n\
+    idMiniChirho pChirho = pChirho\n\
+    emptyMiniChirho = []\n",
+        ),
+    ];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "partially applied re-exported type aliases should flow through imported value schemes in list-producing expressions: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_partially_applied_reexported_type_alias_in_local_data_field_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "PrimPermFieldMiniChirho.hs",
+            "module PrimPermFieldMiniChirho (IdentityPermFieldMiniChirho(..), ParsecTPermFieldMiniChirho(..), ParsecPermFieldMiniChirho, choicePermFieldMiniChirho) where\n\
+data IdentityPermFieldMiniChirho aChirho = IdentityPermFieldMiniChirho aChirho\n\
+newtype ParsecTPermFieldMiniChirho sChirho uChirho mChirho aChirho = ParsecTPermFieldMiniChirho { unParsecTPermFieldMiniChirho :: sChirho -> mChirho aChirho }\n\
+type ParsecPermFieldMiniChirho sChirho uChirho = ParsecTPermFieldMiniChirho sChirho uChirho IdentityPermFieldMiniChirho\n\
+choicePermFieldMiniChirho :: [ParsecTPermFieldMiniChirho sChirho uChirho IdentityPermFieldMiniChirho aChirho] -> ParsecTPermFieldMiniChirho sChirho uChirho IdentityPermFieldMiniChirho aChirho\n\
+choicePermFieldMiniChirho (pChirho:_) = pChirho\n\
+choicePermFieldMiniChirho [] = ParsecTPermFieldMiniChirho (\\_ -> error \"empty\")\n",
+        ),
+        (
+            "ParsecPermFieldMiniChirho.hs",
+            "module ParsecPermFieldMiniChirho (ParsecTPermFieldMiniChirho(..), ParsecPermFieldMiniChirho, choicePermFieldMiniChirho) where\n\
+import PrimPermFieldMiniChirho\n",
+        ),
+        (
+            "PermFieldUseMiniChirho.hs",
+            "module PermFieldUseMiniChirho where\n\
+import ParsecPermFieldMiniChirho\n\
+data BoxPermFieldMiniChirho sChirho stChirho aChirho = BoxPermFieldMiniChirho (ParsecPermFieldMiniChirho sChirho stChirho aChirho)\n\
+permuteFieldMiniChirho :: BoxPermFieldMiniChirho sChirho stChirho aChirho -> ParsecPermFieldMiniChirho sChirho stChirho aChirho\n\
+permuteFieldMiniChirho (BoxPermFieldMiniChirho pChirho) = choicePermFieldMiniChirho [pChirho]\n",
+        ),
+    ];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "partially applied re-exported type aliases should stay expanded when they appear in local data constructor fields: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_explicit_import_overrides_broadly_seeded_value_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "TextChoiceSeedMiniChirho.hs",
+            "module TextChoiceSeedMiniChirho (TextParserMiniChirho(..), choiceMiniChirho) where\n\
+data TextParserMiniChirho aChirho = TextParserMiniChirho\n\
+choiceMiniChirho :: [TextParserMiniChirho aChirho] -> TextParserMiniChirho aChirho\n\
+choiceMiniChirho (xChirho:_) = xChirho\n\
+choiceMiniChirho [] = TextParserMiniChirho\n",
+        ),
+        (
+            "PrimPolyChoiceSeedMiniChirho.hs",
+            "module PrimPolyChoiceSeedMiniChirho (IdentityPolyChoiceMiniChirho(..), ParsecTPolyChoiceMiniChirho(..), ParsecPolyChoiceMiniChirho, choiceMiniChirho) where\n\
+data IdentityPolyChoiceMiniChirho aChirho = IdentityPolyChoiceMiniChirho aChirho\n\
+newtype ParsecTPolyChoiceMiniChirho sChirho uChirho mChirho aChirho = ParsecTPolyChoiceMiniChirho { unParsecTPolyChoiceMiniChirho :: sChirho -> mChirho aChirho }\n\
+type ParsecPolyChoiceMiniChirho sChirho uChirho aChirho = ParsecTPolyChoiceMiniChirho sChirho uChirho IdentityPolyChoiceMiniChirho aChirho\n\
+choiceMiniChirho :: [ParsecTPolyChoiceMiniChirho sChirho uChirho IdentityPolyChoiceMiniChirho aChirho] -> ParsecTPolyChoiceMiniChirho sChirho uChirho IdentityPolyChoiceMiniChirho aChirho\n\
+choiceMiniChirho (pChirho:_) = pChirho\n\
+choiceMiniChirho [] = ParsecTPolyChoiceMiniChirho (\\_ -> error \"empty\")\n",
+        ),
+        (
+            "PolyChoiceSeedMiniChirho.hs",
+            "module PolyChoiceSeedMiniChirho (ParsecTPolyChoiceMiniChirho(..), ParsecPolyChoiceMiniChirho, choiceMiniChirho) where\n\
+import PrimPolyChoiceSeedMiniChirho\n",
+        ),
+        (
+            "UsePolyChoiceSeedMiniChirho.hs",
+            "module UsePolyChoiceSeedMiniChirho where\n\
+import PolyChoiceSeedMiniChirho\n\
+permuteMiniChirho :: [ParsecPolyChoiceMiniChirho sChirho stChirho aChirho] -> ParsecPolyChoiceMiniChirho sChirho stChirho aChirho\n\
+permuteMiniChirho xsChirho = choiceMiniChirho xsChirho\n",
+        ),
+    ];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "explicit imports should override broadly seeded value schemes from earlier modules: {:?}",
         results_chirho.err()
     );
 }

@@ -6,9 +6,15 @@
 #[cfg(test)]
 mod tests_chirho {
     use crate::{
-        compile_project_dir_chirho, discover_hs_files_chirho, extract_imports_chirho,
-        extract_module_name_chirho,
+        collect_frontend_artifacts_from_module_sources_chirho,
+        compile_module_sources_with_extra_ifaces_chirho, compile_project_dir_chirho,
+        discover_hs_files_chirho, extract_imports_chirho, extract_module_name_chirho,
+        filter_seeded_imported_types_for_source_chirho, filter_seeded_type_synonyms_for_source_chirho,
     };
+    use haskelujah_typing_chirho::SchemeChirho;
+    use haskelujah_typing_chirho::TyChirho;
+    use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+    use haskelujah_ast_chirho::ty_chirho::TypeChirho;
     use haskelujah_span_chirho::SourceMapChirho;
     use std::fs;
 
@@ -74,6 +80,67 @@ mod tests_chirho {
     }
 
     #[test]
+    fn filter_seeded_type_synonyms_only_keeps_explicit_modules_chirho() {
+        let type_var_name_chirho = NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+            "a".to_string(),
+            haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+        ));
+        let source_chirho = "module Main where\nimport Text.Parsec.String\nmain = 0\n";
+        let imported_type_synonyms_chirho = std::collections::HashMap::from([
+            (
+                "Text.Parsec.String.GenParser".to_string(),
+                (
+                    vec!["tok".to_string(), "st".to_string()],
+                    TypeChirho::VarChirho(type_var_name_chirho.clone()),
+                ),
+            ),
+            (
+                "Text.Parsec.Text.GenParser".to_string(),
+                (
+                    vec!["st".to_string()],
+                    TypeChirho::VarChirho(type_var_name_chirho),
+                ),
+            ),
+        ]);
+
+        let filtered_synonyms_chirho = filter_seeded_type_synonyms_for_source_chirho(
+            source_chirho,
+            &imported_type_synonyms_chirho,
+        );
+
+        assert!(filtered_synonyms_chirho.contains_key("Text.Parsec.String.GenParser"));
+        assert!(!filtered_synonyms_chirho.contains_key("Text.Parsec.Text.GenParser"));
+    }
+
+    #[test]
+    fn filter_seeded_imported_types_only_keeps_explicit_modules_chirho() {
+        let source_chirho = "module Main where\nimport Text.Parsec\nmain = 0\n";
+        let imported_types_chirho = std::collections::HashMap::from([
+            (
+                "Text.Parsec.choice".to_string(),
+                SchemeChirho::mono_chirho(TyChirho::ConChirho("ParsecChoiceChirho".to_string())),
+            ),
+            (
+                "Text.Parsec.Text.choice".to_string(),
+                SchemeChirho::mono_chirho(TyChirho::ConChirho(
+                    "TextChoiceChirho".to_string(),
+                )),
+            ),
+            (
+                "choice".to_string(),
+                SchemeChirho::mono_chirho(TyChirho::ConChirho("UnqualifiedChoiceChirho".to_string())),
+            ),
+        ]);
+
+        let filtered_types_chirho =
+            filter_seeded_imported_types_for_source_chirho(source_chirho, &imported_types_chirho);
+
+        assert!(filtered_types_chirho.contains_key("Text.Parsec.choice"));
+        assert!(!filtered_types_chirho.contains_key("Text.Parsec.Text.choice"));
+        assert!(!filtered_types_chirho.contains_key("choice"));
+    }
+
+    #[test]
     fn discover_hs_files_in_temp_dir_chirho() {
         let tmp_chirho = tempfile::tempdir().unwrap();
         fs::write(
@@ -104,6 +171,111 @@ mod tests_chirho {
         assert!(names_chirho.contains(&"Main.hs".to_string()));
         assert!(names_chirho.contains(&"Lib.hs".to_string()));
         assert!(names_chirho.contains(&"Utils.hs".to_string()));
+    }
+
+    #[test]
+    fn real_parsec_reexport_module_seeds_choice_scheme_chirho() {
+        let package_root_chirho = workspace_root_chirho()
+            .join(".haskelujah-packages-chirho/parsec-3.1.18.0/src");
+        let module_names_chirho = [
+            "Text.Parsec.Pos",
+            "Text.Parsec.Error",
+            "Text.Parsec.Prim",
+            "Text.Parsec.Char",
+            "Text.Parsec.Combinator",
+            "Text.Parsec",
+        ];
+        let module_sources_chirho: Vec<(String, String, String)> = module_names_chirho
+            .iter()
+            .map(|module_name_chirho| {
+                let relative_path_chirho = module_name_chirho.replace('.', "/") + ".hs";
+                let path_chirho = package_root_chirho.join(relative_path_chirho);
+                let source_chirho = fs::read_to_string(&path_chirho).unwrap();
+                (
+                    (*module_name_chirho).to_string(),
+                    path_chirho.to_string_lossy().to_string(),
+                    source_chirho,
+                )
+            })
+            .collect();
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+            module_sources_chirho,
+            &mut source_map_chirho,
+            vec![],
+            std::collections::HashMap::new(),
+            std::collections::HashMap::new(),
+        )
+        .expect("real parsec frontend artifacts should build for the core module slice");
+
+        assert!(
+            artifacts_chirho
+                .imported_types_chirho
+                .contains_key("Text.Parsec.choice"),
+            "Text.Parsec should re-export choice into downstream seeded schemes"
+        );
+        assert!(
+            artifacts_chirho
+                .imported_type_synonyms_chirho
+                .contains_key("Text.Parsec.Parsec"),
+            "Text.Parsec should re-export the Parsec type synonym into downstream seeded synonyms"
+        );
+    }
+
+    #[test]
+    fn real_parsec_core_slice_orders_text_parsec_before_perm_chirho() {
+        let package_root_chirho = workspace_root_chirho()
+            .join(".haskelujah-packages-chirho/parsec-3.1.18.0/src");
+        let module_names_chirho = [
+            "Text.Parsec.Pos",
+            "Text.Parsec.Error",
+            "Text.Parsec.Prim",
+            "Text.Parsec.Char",
+            "Text.Parsec.Combinator",
+            "Text.Parsec",
+            "Text.Parsec.Perm",
+        ];
+        let module_sources_chirho: Vec<(String, String, String)> = module_names_chirho
+            .iter()
+            .map(|module_name_chirho| {
+                let relative_path_chirho = module_name_chirho.replace('.', "/") + ".hs";
+                let path_chirho = package_root_chirho.join(relative_path_chirho);
+                let source_chirho = fs::read_to_string(&path_chirho).unwrap();
+                (
+                    (*module_name_chirho).to_string(),
+                    path_chirho.to_string_lossy().to_string(),
+                    source_chirho,
+                )
+            })
+            .collect();
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let compile_result_chirho = compile_module_sources_with_extra_ifaces_chirho(
+            module_sources_chirho,
+            &mut source_map_chirho,
+            vec![],
+            std::collections::HashMap::new(),
+            std::collections::HashMap::new(),
+        );
+
+        match compile_result_chirho {
+            Ok(project_result_chirho) => {
+                let parsec_index_chirho = project_result_chirho
+                    .compilation_order_chirho
+                    .iter()
+                    .position(|name_chirho| name_chirho == "Text.Parsec")
+                    .unwrap();
+                let perm_index_chirho = project_result_chirho
+                    .compilation_order_chirho
+                    .iter()
+                    .position(|name_chirho| name_chirho == "Text.Parsec.Perm")
+                    .unwrap();
+                assert!(
+                    parsec_index_chirho < perm_index_chirho,
+                    "Text.Parsec should compile before Text.Parsec.Perm in the core parsec slice"
+                );
+            }
+            Err(error_chirho) => panic!("real parsec core slice should compile or at least expose an ordering error, got: {error_chirho}"),
+        }
     }
 
     #[test]
