@@ -540,16 +540,12 @@ main = putStrLn "Runs directly, no build step."</span>
 			<p class="section-subtitle-chirho">Where we're headed, God willing.</p>
 			<div class="roadmap-grid-chirho">
 				<div class="roadmap-item-chirho">
-					<h3>MCP Server</h3>
-					<p>Expose project types, diagnostics, and structure to AI assistants via Model Context Protocol. Let Claude, GPT, and Gemini understand your Haskell code natively.</p>
+					<h3>Wasm Playground</h3>
+					<p>Compile the Haskelujah compiler to WebAssembly so the browser playground runs the real type checker — no server needed.</p>
 				</div>
 				<div class="roadmap-item-chirho">
-					<h3>Language Server</h3>
-					<p>Full LSP implementation: hover types, go-to-definition, find references, real-time diagnostics, code actions. Works with VS Code, Neovim, Zed.</p>
-				</div>
-				<div class="roadmap-item-chirho">
-					<h3>Full Hackage</h3>
-					<p>16 packages compile today. Next: transformers (4 errors left), then mtl &rarr; parsec &rarr; aeson &rarr; lens cascade. Target: 100+ packages.</p>
+					<h3>100+ Hackage Packages</h3>
+					<p>17 packages compile today (transformers + mtl + parsec cascade). Next: aeson, lens, megaparsec, QuickCheck, deepseq.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Test Runner</h3>
@@ -598,6 +594,8 @@ main = putStrLn "Runs directly, no build step."</span>
 					target="_blank"
 					rel="noopener noreferrer">GitHub</a
 				>
+				<a href="https://kingdominvest.ing" target="_blank" rel="noopener noreferrer">Donate</a>
+				<a href="https://news.kingdominvest.ing" target="_blank" rel="noopener noreferrer">News</a>
 				<a href="mailto:haskelujah@mailer-aleluya.xjes.us">Contact</a>
 			</div>
 		</div>
