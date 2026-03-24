@@ -381,22 +381,35 @@ impl<'src> LayoutRuleChirho<'src> {
                 }
             }
 
+            if matches!(
+                token_chirho.kind_chirho,
+                RawTokenKindChirho::ThenChirho | RawTokenKindChirho::ElseChirho
+            ) {
+                while let Some(LayoutContextChirho::ImplicitChirho(
+                    indent_chirho,
+                    is_let_chirho,
+                    _,
+                    _,
+                    _,
+                )) = context_stack_chirho.last()
+                {
+                    if *is_let_chirho || *indent_chirho <= col_chirho || *indent_chirho <= 1 {
+                        break;
+                    }
+                    let vspan_chirho =
+                        self.zero_span_at_chirho(token_chirho.span_chirho.start_chirho());
+                    output_chirho.push(RawTokenChirho {
+                        kind_chirho: RawTokenKindChirho::VirtualRightBraceChirho,
+                        span_chirho: vspan_chirho,
+                    });
+                    context_stack_chirho.pop();
+                }
+            }
+
             loop {
                 match context_stack_chirho.last() {
                     Some(LayoutContextChirho::ImplicitChirho(indent_chirho, _, _, _, _)) => {
                         let indent_chirho = *indent_chirho;
-                        // `then`, `else`, `of` are always continuation keywords
-                        // — they never start new statements or close layout blocks.
-                        let is_cont_chirho = matches!(
-                            token_chirho.kind_chirho,
-                            RawTokenKindChirho::ThenChirho
-                                | RawTokenKindChirho::ElseChirho
-                                | RawTokenKindChirho::OfChirho
-                                | RawTokenKindChirho::WhereChirho
-                        );
-                        if is_cont_chirho {
-                            break;
-                        }
                         if col_chirho < indent_chirho {
                             // Close this layout block
                             let vspan_chirho =
@@ -428,8 +441,20 @@ impl<'src> LayoutRuleChirho<'src> {
                                     | RawTokenKindChirho::OfChirho
                                     | RawTokenKindChirho::WhereChirho
                             );
+                            let previous_token_continues_expr_chirho = matches!(
+                                last_nt_kind_chirho,
+                                Some(RawTokenKindChirho::EqualsChirho)
+                                    | Some(RawTokenKindChirho::RightArrowChirho)
+                                    | Some(RawTokenKindChirho::PipeChirho)
+                                    | Some(RawTokenKindChirho::LeftArrowChirho)
+                                    | Some(RawTokenKindChirho::ThenChirho)
+                                    | Some(RawTokenKindChirho::ElseChirho)
+                                    | Some(RawTokenKindChirho::InChirho)
+                                    | Some(RawTokenKindChirho::BackslashChirho)
+                            );
 
                             if !is_continuation_chirho
+                                && !previous_token_continues_expr_chirho
                                 && last_nt_kind_chirho
                                     != Some(RawTokenKindChirho::VirtualLeftBraceChirho)
                             {
@@ -640,6 +665,29 @@ mod tests_chirho {
             .collect()
     }
 
+    fn layout_tokens_chirho(source_chirho: &str) -> Vec<(RawTokenKindChirho, String)> {
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let mut lexer_chirho = LexerChirho::new_chirho(source_chirho, file_id_chirho);
+        let raw_chirho = lexer_chirho.lex_all_chirho();
+        let laid_out_chirho = apply_layout_chirho(source_chirho, raw_chirho, file_id_chirho);
+        laid_out_chirho
+            .iter()
+            .filter(|t_chirho| !t_chirho.kind_chirho.is_trivia_chirho())
+            .map(|t_chirho| {
+                (
+                    t_chirho.kind_chirho,
+                    source_chirho
+                        .get(
+                            t_chirho.span_chirho.start_chirho().as_usize_chirho()
+                                ..t_chirho.span_chirho.end_chirho().as_usize_chirho(),
+                        )
+                        .unwrap_or("")
+                        .to_string(),
+                )
+            })
+            .collect()
+    }
+
     #[test]
     fn simple_module_layout_chirho() {
         // module Main where
@@ -748,6 +796,140 @@ mod tests_chirho {
             kinds_chirho[of_idx_chirho + 1],
             RawTokenKindChirho::VirtualLeftBraceChirho,
             "virtual {{ should follow of"
+        );
+    }
+
+    #[test]
+    fn where_block_closes_before_following_split_decl_chirho() {
+        let source_chirho = r#"module M where
+spanAntitone :: (Key -> Bool) -> IntSet -> (IntSet, IntSet)
+spanAntitone predicate t =
+  case t of
+    Bin p l r
+      | signBranch p ->
+        if predicate 0
+        then
+          case go predicate l of
+            (lt :*: gt) ->
+              let !lt' = bin p lt r
+              in (lt', gt)
+        else
+          case go predicate r of
+            (lt :*: gt) ->
+              let !gt' = bin p l gt
+              in (lt, gt')
+    _ -> case go predicate t of
+          (lt :*: gt) -> (lt, gt)
+  where
+    go predicate' (Bin p l r)
+      | predicate' (unPrefix p) = case go predicate' r of (lt :*: gt) -> bin p l lt :*: gt
+      | otherwise               = case go predicate' l of (lt :*: gt) -> lt :*: bin p gt r
+    go predicate' (Tip kx bm) = let bm' = takeWhileAntitoneBits kx predicate' bm
+                                in (tip kx bm' :*: tip kx (bm `xor` bm'))
+    go _ Nil = (Nil :*: Nil)
+
+split :: Key -> IntSet -> (IntSet,IntSet)
+split x t =
+  case t of
+    Bin p l r
+      | signBranch p ->
+        if x >= 0
+        then
+          case go x l of
+            (lt :*: gt) ->
+              let !lt' = bin p lt r
+              in (lt', gt)
+        else
+          case go x r of
+            (lt :*: gt) ->
+              let !gt' = bin p l gt
+              in (lt, gt')
+    _ -> case go x t of
+          (lt :*: gt) -> (lt, gt)
+"#;
+        let tokens_chirho = layout_tokens_chirho(source_chirho);
+        let where_idx_chirho = tokens_chirho
+            .iter()
+            .position(|(kind_chirho, _)| *kind_chirho == RawTokenKindChirho::WhereChirho)
+            .expect("expected where token");
+        assert_eq!(
+            tokens_chirho[where_idx_chirho + 1].0,
+            RawTokenKindChirho::VirtualLeftBraceChirho,
+            "expected where block to open; tokens={:?}",
+            tokens_chirho
+                .iter()
+                .skip(where_idx_chirho.saturating_sub(3))
+                .take(8)
+                .collect::<Vec<_>>()
+        );
+        let split_idx_chirho = tokens_chirho
+            .iter()
+            .position(|(_, text_chirho)| text_chirho == "split")
+            .expect("expected split token");
+        assert_eq!(
+            tokens_chirho[split_idx_chirho - 2].0,
+            RawTokenKindChirho::VirtualRightBraceChirho,
+            "expected where block to close before split; tokens={:?}",
+            tokens_chirho
+                .iter()
+                .skip(split_idx_chirho.saturating_sub(8))
+                .take(10)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn multiline_if_with_case_branches_keeps_else_and_following_decl_in_same_binding_chirho() {
+        let source_chirho = r#"module M where
+split x l r =
+  if x >= 0
+  then
+    case go x l of
+      (lt :*: gt) -> let !lt' = bin p lt r in (lt', gt)
+  else
+    case go x r of
+      (lt :*: gt) -> let !gt' = bin p l gt in (lt, gt')
+
+withBar bars = bars
+"#;
+        let tokens_chirho = layout_tokens_chirho(source_chirho);
+        let else_idx_chirho = tokens_chirho
+            .iter()
+            .position(|(kind_chirho, _)| *kind_chirho == RawTokenKindChirho::ElseChirho)
+            .expect("expected else token");
+        assert_eq!(
+            tokens_chirho[else_idx_chirho - 1].0,
+            RawTokenKindChirho::VirtualRightBraceChirho,
+            "expected case-of layout to close before else; tokens={:?}",
+            tokens_chirho
+                .iter()
+                .skip(else_idx_chirho.saturating_sub(8))
+                .take(12)
+                .collect::<Vec<_>>()
+        );
+        assert_ne!(
+            tokens_chirho[else_idx_chirho.saturating_sub(2)].0,
+            RawTokenKindChirho::VirtualSemicolonChirho,
+            "did not expect semicolon before else; tokens={:?}",
+            tokens_chirho
+                .iter()
+                .skip(else_idx_chirho.saturating_sub(8))
+                .take(12)
+                .collect::<Vec<_>>()
+        );
+        let withbar_idx_chirho = tokens_chirho
+            .iter()
+            .position(|(_, text_chirho)| text_chirho == "withBar")
+            .expect("expected withBar token");
+        assert_eq!(
+            tokens_chirho[withbar_idx_chirho - 1].0,
+            RawTokenKindChirho::VirtualSemicolonChirho,
+            "expected next top-level binding to be separated after the if-expression; tokens={:?}",
+            tokens_chirho
+                .iter()
+                .skip(withbar_idx_chirho.saturating_sub(10))
+                .take(12)
+                .collect::<Vec<_>>()
         );
     }
 

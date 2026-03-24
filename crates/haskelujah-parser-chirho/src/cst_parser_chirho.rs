@@ -1447,11 +1447,7 @@ impl<'src> ParserChirho<'src> {
         if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
             self.bump_chirho();
             self.eat_trivia_chirho();
-            // Keep type signatures flat up to the declaration boundary. This
-            // avoids over-consuming following declarations in large modules
-            // like containers, and lowering reconstructs the type tree from
-            // the flat children the same way field declarations already do.
-            self.eat_until_decl_end_chirho();
+            self.parse_type_chirho();
         }
 
         self.builder_chirho.finish_node_chirho();
@@ -1598,6 +1594,10 @@ impl<'src> ParserChirho<'src> {
         let Some(current_kind_chirho) = self.current_kind_chirho() else {
             return false;
         };
+        let starts_with_name_head_chirho = matches!(
+            current_kind_chirho,
+            RawTokenKindChirho::VarIdChirho | RawTokenKindChirho::ConIdChirho
+        );
         let starts_simple_lhs_pat_chirho = matches!(
             current_kind_chirho,
             RawTokenKindChirho::VarIdChirho
@@ -1628,6 +1628,17 @@ impl<'src> ParserChirho<'src> {
         }
         if lookahead_idx_chirho >= self.tokens_chirho.len() {
             return false;
+        }
+        if starts_with_name_head_chirho
+            && self.tokens_chirho[lookahead_idx_chirho].kind_chirho == RawTokenKindChirho::VarSymChirho
+        {
+            let op_text_chirho = self.token_text_chirho(&self.tokens_chirho[lookahead_idx_chirho]);
+            if op_text_chirho == "!" || op_text_chirho == "-" {
+                // Prefer prefix function bindings with bang / negated argument
+                // patterns (e.g. `f !x !y = ...`, `g -1 y = ...`) over the rare
+                // bare infix declaration shape `x ! y = ...`.
+                return false;
+            }
         }
         matches!(
             self.tokens_chirho[lookahead_idx_chirho].kind_chirho,
@@ -1803,9 +1814,9 @@ impl<'src> ParserChirho<'src> {
             || self.at_chirho(RawTokenKindChirho::LeftBraceChirho)
         {
             self.bump_chirho(); // {
-            self.eat_trivia_chirho();
 
             loop {
+                self.eat_trivia_chirho();
                 if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
                     || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
                 {
@@ -2761,9 +2772,9 @@ impl<'src> ParserChirho<'src> {
             || self.at_chirho(RawTokenKindChirho::LeftBraceChirho)
         {
             self.bump_chirho(); // {
-            self.eat_trivia_chirho();
 
             loop {
+                self.eat_trivia_chirho();
                 if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
                     || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
                 {

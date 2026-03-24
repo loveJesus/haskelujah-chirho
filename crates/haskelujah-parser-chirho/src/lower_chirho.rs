@@ -8782,6 +8782,163 @@ data StrictPair a b = !a :*: !b\n",
     }
 
     #[test]
+    fn lower_containers_intset_preprocessed_retains_helper_funbinds_chirho() {
+        let source_path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.haskelujah-packages-chirho/containers-0.8/src/Data/IntSet/Internal.hs");
+        let source_path_chirho = std::fs::canonicalize(source_path_chirho)
+            .expect("expected canonical containers IntSet path");
+        let containers_root_chirho = source_path_chirho
+            .ancestors()
+            .nth(4)
+            .expect("expected containers root")
+            .to_path_buf();
+        let cpp_support_dir_chirho = std::env::temp_dir().join("haskelujah-cpp-support-chirho");
+        std::fs::create_dir_all(&cpp_support_dir_chirho).expect("expected cpp support dir");
+        std::fs::write(
+            cpp_support_dir_chirho.join("MachDeps.h"),
+            "#define WORD_SIZE_IN_BITS 64\n",
+        )
+        .expect("expected synthetic MachDeps.h");
+        let output_chirho = std::process::Command::new("cpp")
+            .arg("-traditional")
+            .arg("-P")
+            .arg("-D__GLASGOW_HASKELL__=810")
+            .arg("-DWORD_SIZE_IN_BITS=64")
+            .arg("-DMIN_VERSION_base(x,y,z)=((x)<4||((x)==4&&((y)<14||((y)==14&&(z)<=0))))")
+            .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
+            .arg("-DMIN_VERSION_array(x,y,z)=1")
+            .arg("-DMIN_VERSION_transformers(x,y,z)=1")
+            .arg(format!(
+                "-I{}",
+                source_path_chirho
+                    .parent()
+                    .expect("expected IntSet parent dir")
+                    .display()
+            ))
+            .arg(format!("-I{}", cpp_support_dir_chirho.display()))
+            .arg(format!("-I{}", containers_root_chirho.join("include").display()))
+            .arg(format!("-I{}", containers_root_chirho.display()))
+            .current_dir(
+                source_path_chirho
+                    .parent()
+                    .expect("expected IntSet parent dir"),
+            )
+            .arg(
+                source_path_chirho
+                    .file_name()
+                    .expect("expected IntSet file name"),
+            )
+            .output()
+            .expect("expected cpp to run");
+        assert!(
+            output_chirho.status.success(),
+            "expected cpp to succeed: {}",
+            String::from_utf8_lossy(&output_chirho.stderr)
+        );
+        let source_chirho = String::from_utf8(output_chirho.stdout).expect("expected utf-8 cpp");
+        let module_chirho = parse_and_lower_chirho(&source_chirho);
+        let funbind_names_chirho: Vec<String> = module_chirho
+            .decls_chirho
+            .iter()
+            .filter_map(|decl_chirho| match decl_chirho {
+                DeclChirho::FunBindChirho { name_chirho, .. } => {
+                    Some(name_chirho.text_chirho().to_string())
+                }
+                _ => None,
+            })
+            .collect();
+        let decl_labels_chirho: Vec<String> = module_chirho
+            .decls_chirho
+            .iter()
+            .map(|decl_chirho| match decl_chirho {
+                DeclChirho::FunBindChirho { name_chirho, .. } => {
+                    format!("fun:{}", name_chirho.text_chirho())
+                }
+                DeclChirho::PatBindChirho { .. } => "pat".to_string(),
+                DeclChirho::TypeSigChirho { name_chirho, .. } => {
+                    format!("sig:{}", name_chirho.text_chirho())
+                }
+                DeclChirho::DataDeclChirho { name_chirho, .. } => {
+                    format!("data:{}", name_chirho.text_chirho())
+                }
+                DeclChirho::ClassDeclChirho { name_chirho, .. } => {
+                    format!("class:{}", name_chirho.text_chirho())
+                }
+                DeclChirho::InstanceDeclChirho { .. } => "instance".to_string(),
+                other_chirho => format!("{:?}", other_chirho),
+            })
+            .collect();
+        for required_name_chirho in [
+            "withBar",
+            "withEmpty",
+            "bin",
+            "tip",
+            "prefixOf",
+            "lowestBitSet",
+            "highestBitSet",
+            "takeWhileAntitoneBits",
+        ] {
+            assert!(
+                funbind_names_chirho
+                    .iter()
+                    .any(|name_chirho| name_chirho == required_name_chirho),
+                "expected helper `{}` in lowered preprocessed IntSet module; sample={:?}; decl_tail={:?}",
+                required_name_chirho,
+                funbind_names_chirho.iter().rev().take(20).collect::<Vec<_>>()
+                ,
+                decl_labels_chirho.iter().rev().take(40).collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
+    fn lower_top_level_funbind_with_multiple_bang_patterns_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nsymDiffTip !t1 !kx1 !bm1 = go\n  where\n    go = t1\n",
+        );
+        let fun_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "symDiffTip"
+                )
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected symDiffTip funbind; decls={:?}",
+                    module_chirho
+                        .decls_chirho
+                        .iter()
+                        .map(|decl_chirho| match decl_chirho {
+                            DeclChirho::FunBindChirho { name_chirho, .. } => {
+                                format!("fun:{}", name_chirho.text_chirho())
+                            }
+                            DeclChirho::PatBindChirho { .. } => "pat".to_string(),
+                            DeclChirho::TypeSigChirho { name_chirho, .. } => {
+                                format!("sig:{}", name_chirho.text_chirho())
+                            }
+                            other_chirho => format!("{:?}", other_chirho),
+                        })
+                        .collect::<Vec<_>>()
+                )
+            });
+        let DeclChirho::FunBindChirho {
+            matches_chirho,
+            name_chirho,
+            ..
+        } = fun_decl_chirho
+        else {
+            unreachable!("expected symDiffTip funbind");
+        };
+        assert_eq!(name_chirho.text_chirho(), "symDiffTip");
+        assert_eq!(matches_chirho.len(), 1);
+        assert_eq!(matches_chirho[0].pats_chirho.len(), 3);
+    }
+
+    #[test]
     fn lower_import_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M where\nimport Data.List\nimport qualified Data.Map as Map\n",
