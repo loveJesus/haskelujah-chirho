@@ -3042,7 +3042,7 @@ impl LowerCtxChirho {
             }
         }
 
-        current_class_chirho.map(|class_chirho| ConstraintChirho {
+        current_class_chirho.map(|class_chirho| ConstraintChirho::ClassChirho {
             class_chirho,
             args_chirho: current_args_chirho,
             span_chirho,
@@ -3318,7 +3318,7 @@ impl LowerCtxChirho {
                 let (class_name_chirho, mut args_chirho) =
                     Self::collect_app_class_chirho(fun_chirho);
                 args_chirho.push(arg_chirho.as_ref().clone());
-                vec![ConstraintChirho {
+                vec![ConstraintChirho::ClassChirho {
                     class_chirho: class_name_chirho,
                     args_chirho,
                     span_chirho: *app_span_chirho,
@@ -3326,7 +3326,7 @@ impl LowerCtxChirho {
             }
             // Bare constructor: Typeable (zero-arg constraint)
             TypeChirho::ConChirho(name_chirho) => {
-                vec![ConstraintChirho {
+                vec![ConstraintChirho::ClassChirho {
                     class_chirho: name_chirho.clone(),
                     args_chirho: vec![],
                     span_chirho,
@@ -3334,7 +3334,7 @@ impl LowerCtxChirho {
             }
             // Anything else — wrap as a single constraint with a synthetic name
             other_chirho => {
-                vec![ConstraintChirho {
+                vec![ConstraintChirho::ClassChirho {
                     class_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
                         "?",
                         span_chirho,
@@ -8338,15 +8338,17 @@ data TailChirho = TailChirho
                     assert_eq!(context_chirho.len(), 1, "should have 1 constraint");
                     // The constraint should be the ~ operator applied to two types
                     let c_chirho = &context_chirho[0];
-                    assert_eq!(
-                        c_chirho.class_chirho.text_chirho(),
-                        "~",
-                        "constraint class should be ~"
-                    );
-                    assert_eq!(
-                        c_chirho.args_chirho.len(),
-                        2,
-                        "equality constraint should have 2 type args"
+                    assert!(
+                        matches!(
+                            c_chirho,
+                            ConstraintChirho::ClassChirho {
+                                class_chirho,
+                                args_chirho,
+                                ..
+                            } if class_chirho.text_chirho() == "~" && args_chirho.len() == 2
+                        ),
+                        "constraint should be simple (~) with 2 args, got {:?}",
+                        c_chirho
                     );
                 }
                 other_chirho => panic!("expected QualChirho, got: {:?}", other_chirho),
@@ -8737,8 +8739,18 @@ data TailChirho = TailChirho
             } => {
                 assert_eq!(class_chirho.text_chirho(), "Eq");
                 assert_eq!(context_chirho.len(), 1);
-                assert_eq!(context_chirho[0].class_chirho.text_chirho(), "Eq");
-                assert_eq!(context_chirho[0].args_chirho.len(), 1);
+                assert!(
+                    matches!(
+                        &context_chirho[0],
+                        ConstraintChirho::ClassChirho {
+                            class_chirho,
+                            args_chirho,
+                            ..
+                        } if class_chirho.text_chirho() == "Eq" && args_chirho.len() == 1
+                    ),
+                    "expected simple Eq constraint, got {:?}",
+                    context_chirho[0]
+                );
             }
             _ => unreachable!(),
         }

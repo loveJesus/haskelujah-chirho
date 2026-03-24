@@ -142,7 +142,7 @@ fn th_type_to_constraint_chirho(ty_chirho: &ThTypeChirho) -> Option<ConstraintCh
             }
             ThTypeChirho::ConTChirho(name_chirho) => {
                 args_chirho.reverse();
-                return Some(ConstraintChirho {
+                return Some(ConstraintChirho::ClassChirho {
                     class_chirho: th_name_to_ast_chirho(name_chirho),
                     args_chirho,
                     span_chirho: TH_SPAN_CHIRHO,

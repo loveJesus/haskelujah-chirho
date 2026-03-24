@@ -21,7 +21,7 @@ use std::fmt;
 
 use haskelujah_ast_chirho::decl_chirho::{AstKindChirho, DeclChirho, TyVarChirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::ty_chirho::TypeChirho;
+use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
@@ -427,6 +427,38 @@ impl KindInferCtxChirho {
         }
     }
 
+    fn infer_constraint_kind_chirho(&mut self, constraint_chirho: &ConstraintChirho) -> KindChirho {
+        match constraint_chirho {
+            ConstraintChirho::ClassChirho { args_chirho, .. } => {
+                for arg_chirho in args_chirho {
+                    let _k_chirho = self.infer_type_kind_chirho(arg_chirho);
+                }
+                KindChirho::ConstraintChirho
+            }
+            ConstraintChirho::QuantifiedChirho {
+                vars_chirho,
+                context_chirho,
+                body_chirho,
+                ..
+            } => {
+                for var_chirho in vars_chirho {
+                    let kind_chirho = if let Some(ann_chirho) = &var_chirho.kind_annotation_chirho {
+                        self.ast_kind_to_kind_ctx_chirho(ann_chirho)
+                    } else {
+                        self.fresh_kind_chirho()
+                    };
+                    self.env_chirho
+                        .bind_chirho(var_chirho.text_chirho().to_string(), kind_chirho);
+                }
+                for inner_constraint_chirho in context_chirho {
+                    let _k_chirho = self.infer_constraint_kind_chirho(inner_constraint_chirho);
+                }
+                let _k_chirho = self.infer_constraint_kind_chirho(body_chirho);
+                KindChirho::ConstraintChirho
+            }
+        }
+    }
+
     /// Interpret a `TypeChirho` as a kind (for standalone kind signatures like
     /// `data V :: N -> Type where`).  This converts the *type-level*
     /// representation of a kind back into a `KindChirho`.
@@ -711,9 +743,7 @@ impl KindInferCtxChirho {
                 // Constraint arguments like `f` in `Functor f` have kind `* -> *`.
                 // We just infer their kinds and let unification propagate.
                 for constraint_chirho in context_chirho {
-                    for arg_chirho in &constraint_chirho.args_chirho {
-                        let _k_chirho = self.infer_type_kind_chirho(arg_chirho);
-                    }
+                    let _k_chirho = self.infer_constraint_kind_chirho(constraint_chirho);
                 }
                 // The body determines the kind of the qualified type:
                 // - Num a => a -> a  has kind * (normal qualified type)
@@ -1119,9 +1149,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                 // Kind-check superclass constraints — do NOT force args to *,
                 // since constraint args like `f` in `Applicative f` may be `* -> *`.
                 for constraint_chirho in context_chirho {
-                    for arg_chirho in &constraint_chirho.args_chirho {
-                        let _k_chirho = ctx_chirho.infer_type_kind_chirho(arg_chirho);
-                    }
+                    let _k_chirho = ctx_chirho.infer_constraint_kind_chirho(constraint_chirho);
                 }
                 // Kind-check method type signatures.
                 for method_chirho in methods_chirho {

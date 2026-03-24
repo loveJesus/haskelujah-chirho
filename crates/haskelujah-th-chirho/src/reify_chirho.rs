@@ -13,9 +13,46 @@
 use haskelujah_ast_chirho::decl_chirho::{
     ClassMethodChirho, ConDeclChirho, DeclChirho, FieldDeclChirho, TyVarChirho,
 };
-use haskelujah_ast_chirho::ty_chirho::TypeChirho;
+use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 
 use crate::th_ast_chirho::*;
+
+fn ast_constraint_to_th_chirho(constraint_chirho: &ConstraintChirho) -> ThTypeChirho {
+    match constraint_chirho {
+        ConstraintChirho::ClassChirho {
+            class_chirho,
+            args_chirho,
+            ..
+        } => {
+            let mut result_chirho = ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+                class_chirho.text_chirho(),
+            ));
+            for arg_chirho in args_chirho {
+                result_chirho = ThTypeChirho::AppTChirho(
+                    Box::new(result_chirho),
+                    Box::new(ast_type_to_th_chirho(arg_chirho)),
+                );
+            }
+            result_chirho
+        }
+        ConstraintChirho::QuantifiedChirho {
+            vars_chirho,
+            context_chirho,
+            body_chirho,
+            ..
+        } => ThTypeChirho::ForallTChirho(
+            vars_chirho
+                .iter()
+                .map(ast_tyvar_to_th_chirho)
+                .collect(),
+            context_chirho
+                .iter()
+                .map(ast_constraint_to_th_chirho)
+                .collect(),
+            Box::new(ast_constraint_to_th_chirho(body_chirho)),
+        ),
+    }
+}
 
 /// Convert a haskelujah AST type to a TH type.
 pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
@@ -81,28 +118,14 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
             context_chirho,
             body_chirho,
             ..
-        } => {
-            let cxt_chirho: Vec<ThTypeChirho> = context_chirho
+        } => ThTypeChirho::ForallTChirho(
+            vec![],
+            context_chirho
                 .iter()
-                .map(|c_chirho| {
-                    let mut result_chirho = ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
-                        c_chirho.class_chirho.text_chirho(),
-                    ));
-                    for arg_chirho in &c_chirho.args_chirho {
-                        result_chirho = ThTypeChirho::AppTChirho(
-                            Box::new(result_chirho),
-                            Box::new(ast_type_to_th_chirho(arg_chirho)),
-                        );
-                    }
-                    result_chirho
-                })
-                .collect();
-            ThTypeChirho::ForallTChirho(
-                vec![],
-                cxt_chirho,
-                Box::new(ast_type_to_th_chirho(body_chirho)),
-            )
-        }
+                .map(ast_constraint_to_th_chirho)
+                .collect(),
+            Box::new(ast_type_to_th_chirho(body_chirho)),
+        ),
         TypeChirho::ParenChirho { inner_chirho, .. } => ast_type_to_th_chirho(inner_chirho),
         TypeChirho::PromotedConChirho { name_chirho, .. } => {
             ThTypeChirho::PromotedTChirho(ThNameChirho::mk_name_chirho(name_chirho.text_chirho()))
@@ -351,18 +374,7 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
                 .collect();
             let th_cxt_chirho: ThCxtChirho = context_chirho
                 .iter()
-                .map(|c_chirho| {
-                    let mut t_chirho = ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
-                        c_chirho.class_chirho.text_chirho(),
-                    ));
-                    for arg_chirho in &c_chirho.args_chirho {
-                        t_chirho = ThTypeChirho::AppTChirho(
-                            Box::new(t_chirho),
-                            Box::new(ast_type_to_th_chirho(arg_chirho)),
-                        );
-                    }
-                    t_chirho
-                })
+                .map(ast_constraint_to_th_chirho)
                 .collect();
             let th_fundeps_chirho: Vec<ThFunDepChirho> = fundeps_chirho
                 .iter()

@@ -111,15 +111,46 @@ pub enum TypeChirho {
     },
 }
 
-/// A class constraint in a type context (e.g. `Eq a`, `Show (Maybe a)`).
+/// A constraint in a type context.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ConstraintChirho {
-    /// The class name being applied.
-    pub class_chirho: NameChirho,
-    /// Type arguments supplied to the class.
-    pub args_chirho: Vec<TypeChirho>,
-    /// Span covering the whole constraint.
-    pub span_chirho: SpanChirho,
+pub enum ConstraintChirho {
+    /// A simple class constraint such as `Eq a` or `Show (Maybe a)`.
+    ClassChirho {
+        class_chirho: NameChirho,
+        args_chirho: Vec<TypeChirho>,
+        span_chirho: SpanChirho,
+    },
+    /// A quantified constraint such as `forall a. Eq a => Show (f a)`.
+    QuantifiedChirho {
+        vars_chirho: Vec<TyVarChirho>,
+        context_chirho: Vec<ConstraintChirho>,
+        body_chirho: Box<ConstraintChirho>,
+        span_chirho: SpanChirho,
+    },
+}
+
+impl ConstraintChirho {
+    pub fn span_chirho(&self) -> SpanChirho {
+        match self {
+            Self::ClassChirho { span_chirho, .. } | Self::QuantifiedChirho { span_chirho, .. } => {
+                *span_chirho
+            }
+        }
+    }
+
+    pub fn simple_class_chirho(&self) -> Option<&NameChirho> {
+        match self {
+            Self::ClassChirho { class_chirho, .. } => Some(class_chirho),
+            Self::QuantifiedChirho { .. } => None,
+        }
+    }
+
+    pub fn simple_args_chirho(&self) -> Option<&[TypeChirho]> {
+        match self {
+            Self::ClassChirho { args_chirho, .. } => Some(args_chirho.as_slice()),
+            Self::QuantifiedChirho { .. } => None,
+        }
+    }
 }
 
 impl TypeChirho {

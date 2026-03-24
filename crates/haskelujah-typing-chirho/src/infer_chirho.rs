@@ -889,22 +889,29 @@ impl InferCtxChirho {
         let mut equality_pairs_chirho: Vec<(TyChirho, TyChirho)> = Vec::new();
 
         for c_chirho in &preds_chirho {
-            let class_name_chirho = c_chirho.class_chirho.text_chirho().to_string();
-            if class_name_chirho == "~" && c_chirho.args_chirho.len() >= 2 {
+            let AstConstraintChirho::ClassChirho {
+                class_chirho,
+                args_chirho,
+                ..
+            } = c_chirho
+            else {
+                continue;
+            };
+            let class_name_chirho = class_chirho.text_chirho().to_string();
+            if class_name_chirho == "~" && args_chirho.len() >= 2 {
                 // Type equality constraint: a ~ b
                 let lhs_chirho =
-                    self.ast_type_to_ty_chirho(&c_chirho.args_chirho[0], &mut var_map_chirho);
+                    self.ast_type_to_ty_chirho(&args_chirho[0], &mut var_map_chirho);
                 let rhs_chirho =
-                    self.ast_type_to_ty_chirho(&c_chirho.args_chirho[1], &mut var_map_chirho);
+                    self.ast_type_to_ty_chirho(&args_chirho[1], &mut var_map_chirho);
                 equality_pairs_chirho.push((lhs_chirho, rhs_chirho));
             } else {
-                let pred_ty_chirho = if let Some(first_arg_chirho) = c_chirho.args_chirho.first() {
+                let pred_ty_chirho = if let Some(first_arg_chirho) = args_chirho.first() {
                     self.ast_type_to_ty_chirho(first_arg_chirho, &mut var_map_chirho)
                 } else {
                     self.fresh_var_chirho()
                 };
-                let extra_tys_chirho: Vec<TyChirho> = c_chirho
-                    .args_chirho
+                let extra_tys_chirho: Vec<TyChirho> = args_chirho
                     .iter()
                     .skip(1)
                     .map(|arg_chirho| self.ast_type_to_ty_chirho(arg_chirho, &mut var_map_chirho))
@@ -1043,7 +1050,11 @@ impl InferCtxChirho {
             // Superclasses from context
             let supers_chirho: Vec<String> = context_chirho
                 .iter()
-                .map(|c_chirho| c_chirho.class_chirho.text_chirho().to_string())
+                .filter_map(|c_chirho| {
+                    c_chirho
+                        .simple_class_chirho()
+                        .map(|class_chirho| class_chirho.text_chirho().to_string())
+                })
                 .collect();
 
             // Method signatures and optional default implementations
@@ -1135,14 +1146,21 @@ impl InferCtxChirho {
             // Context constraints (e.g., `Eq a` in `instance Eq a => Eq [a]`)
             let inst_context_chirho: Vec<PredChirho> = context_chirho
                 .iter()
-                .map(|c_chirho| {
-                    let cn_chirho = c_chirho.class_chirho.text_chirho().to_string();
-                    let ct_chirho = if let Some(arg_chirho) = c_chirho.args_chirho.first() {
-                        self.ast_type_to_ty_chirho(arg_chirho, &mut var_map_chirho)
-                    } else {
-                        self.fresh_var_chirho()
-                    };
-                    PredChirho::new_chirho(&cn_chirho, ct_chirho)
+                .filter_map(|c_chirho| match c_chirho {
+                    AstConstraintChirho::ClassChirho {
+                        class_chirho,
+                        args_chirho,
+                        ..
+                    } => {
+                        let cn_chirho = class_chirho.text_chirho().to_string();
+                        let ct_chirho = if let Some(arg_chirho) = args_chirho.first() {
+                            self.ast_type_to_ty_chirho(arg_chirho, &mut var_map_chirho)
+                        } else {
+                            self.fresh_var_chirho()
+                        };
+                        Some(PredChirho::new_chirho(&cn_chirho, ct_chirho))
+                    }
+                    AstConstraintChirho::QuantifiedChirho { .. } => None,
                 })
                 .collect();
 
@@ -12864,7 +12882,7 @@ mod tests_chirho {
             exports_chirho: None,
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::ClassDeclChirho {
-                context_chirho: vec![AstConstraintChirho {
+                context_chirho: vec![AstConstraintChirho::ClassChirho {
                     class_chirho: dummy_name_chirho("Eq"),
                     args_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("a"))],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,

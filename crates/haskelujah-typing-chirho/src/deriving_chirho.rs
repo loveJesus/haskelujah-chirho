@@ -1007,7 +1007,7 @@ fn derive_eq_chirho(
     let context_chirho: Vec<_> = type_vars_chirho
         .iter()
         .map(
-            |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho {
+            |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
                 class_chirho: var_name_chirho("Eq"),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
@@ -1156,7 +1156,7 @@ fn derive_ord_chirho(
     let context_chirho: Vec<_> = type_vars_chirho
         .iter()
         .map(
-            |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho {
+            |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
                 class_chirho: var_name_chirho("Ord"),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
@@ -1244,7 +1244,7 @@ fn derive_show_chirho(
     let context_chirho: Vec<_> = type_vars_chirho
         .iter()
         .map(
-            |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho {
+            |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
                 class_chirho: var_name_chirho("Show"),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
@@ -1635,7 +1635,7 @@ fn derive_read_chirho(
     let context_chirho: Vec<_> = type_vars_chirho
         .iter()
         .map(
-            |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho {
+            |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
                 class_chirho: var_name_chirho("Read"),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
@@ -1700,7 +1700,7 @@ fn derive_newtype_gnd_chirho(
     };
 
     // Build context: ClassChirho underlyingType
-    let context_chirho = vec![haskelujah_ast_chirho::ty_chirho::ConstraintChirho {
+    let context_chirho = vec![haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
         class_chirho: class_name_chirho.clone(),
         args_chirho: vec![underlying_type_chirho],
         span_chirho: gen_span_chirho(),
@@ -1843,7 +1843,7 @@ fn derive_functor_chirho(
         .iter()
         .filter(|_| false) // No Functor constraints on other vars needed
         .map(
-            |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho {
+            |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
                 class_chirho: var_name_chirho("Functor"),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
@@ -2581,8 +2581,24 @@ mod tests_chirho {
             DeclChirho::InstanceDeclChirho { context_chirho, .. } => {
                 // Should have Eq a, Eq b context
                 assert_eq!(context_chirho.len(), 2);
-                assert_eq!(context_chirho[0].class_chirho.text_chirho(), "Eq");
-                assert_eq!(context_chirho[1].class_chirho.text_chirho(), "Eq");
+                assert!(
+                    matches!(
+                        &context_chirho[0],
+                        haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                            class_chirho,
+                            ..
+                        } if class_chirho.text_chirho() == "Eq"
+                    )
+                );
+                assert!(
+                    matches!(
+                        &context_chirho[1],
+                        haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                            class_chirho,
+                            ..
+                        } if class_chirho.text_chirho() == "Eq"
+                    )
+                );
             }
             _ => panic!("expected InstanceDeclChirho"),
         }
@@ -2914,7 +2930,15 @@ mod tests_chirho {
         match &result_chirho.instances_chirho[0] {
             DeclChirho::InstanceDeclChirho { context_chirho, .. } => {
                 assert_eq!(context_chirho.len(), 1);
-                assert_eq!(context_chirho[0].class_chirho.text_chirho(), "Read");
+                assert!(
+                    matches!(
+                        &context_chirho[0],
+                        haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                            class_chirho,
+                            ..
+                        } if class_chirho.text_chirho() == "Read"
+                    )
+                );
             }
             _ => panic!("expected InstanceDeclChirho"),
         }
@@ -3027,11 +3051,24 @@ mod tests_chirho {
                 assert_eq!(class_chirho.text_chirho(), "Num");
                 // Context should have Num Int
                 assert_eq!(context_chirho.len(), 1);
-                assert_eq!(context_chirho[0].class_chirho.text_chirho(), "Num");
-                assert_eq!(context_chirho[0].args_chirho.len(), 1);
-                match &context_chirho[0].args_chirho[0] {
-                    TypeChirho::ConChirho(n_chirho) => assert_eq!(n_chirho.text_chirho(), "Int"),
-                    other_chirho => panic!("expected ConChirho(Int), got {:?}", other_chirho),
+                match &context_chirho[0] {
+                    haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                        class_chirho,
+                        args_chirho,
+                        ..
+                    } => {
+                        assert_eq!(class_chirho.text_chirho(), "Num");
+                        assert_eq!(args_chirho.len(), 1);
+                        match &args_chirho[0] {
+                            TypeChirho::ConChirho(n_chirho) => {
+                                assert_eq!(n_chirho.text_chirho(), "Int")
+                            }
+                            other_chirho => {
+                                panic!("expected ConChirho(Int), got {:?}", other_chirho)
+                            }
+                        }
+                    }
+                    other_chirho => panic!("expected simple Num constraint, got {:?}", other_chirho),
                 }
                 // Instance type should be Age
                 assert_eq!(types_chirho.len(), 1);

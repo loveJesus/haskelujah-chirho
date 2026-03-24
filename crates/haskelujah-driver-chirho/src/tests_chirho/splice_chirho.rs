@@ -316,7 +316,11 @@ fn type_mentions_functor_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::Ty
         } => {
             let in_context_chirho = context_chirho
                 .iter()
-                .any(|c_chirho| c_chirho.class_chirho.text_chirho() == "Functor");
+                .any(|c_chirho| {
+                    c_chirho
+                        .simple_class_chirho()
+                        .is_some_and(|class_chirho| class_chirho.text_chirho() == "Functor")
+                });
             in_context_chirho || type_mentions_functor_chirho(body_chirho)
         }
         TypeChirho::AppChirho {
