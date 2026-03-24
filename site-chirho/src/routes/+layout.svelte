@@ -10,6 +10,8 @@
 
 <svelte:head>
 	<title>Haskelujah Chirho -- A Haskell Compiler Written in Rust</title>
+	<link rel="stylesheet" type="text/css" href="https://unpkg.com/asciinema-player@3.8.0/dist/bundle/asciinema-player.css" />
+	<script src="https://unpkg.com/asciinema-player@3.8.0/dist/bundle/asciinema-player.min.js"></script>
 </svelte:head>
 
 {@render childrenChirho()}

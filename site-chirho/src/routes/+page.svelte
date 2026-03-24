@@ -3,6 +3,22 @@
 <script lang="ts">
 	// For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. John 3:16
 
+	import { onMount } from 'svelte';
+
+	onMount(() => {
+		const el_chirho = document.getElementById('asciinema-player-chirho');
+		if (el_chirho && (window as any).AsciinemaPlayer) {
+			(window as any).AsciinemaPlayer.create('/demo-chirho.cast', el_chirho, {
+				theme: 'monokai',
+				cols: 80,
+				rows: 24,
+				autoPlay: false,
+				speed: 1.5,
+				idleTimeLimit: 2,
+			});
+		}
+	});
+
 	const statsChirho = [
 		{ labelChirho: 'GHC Compatibility', valueChirho: '88.8%', detailChirho: '833 / 938 tests' },
 		{ labelChirho: 'Module Interfaces', valueChirho: '363', detailChirho: 'Synthetic Haskell module interfaces' },
@@ -110,7 +126,8 @@
 			</a>
 			<div class="nav-links-chirho">
 				<a href="#features-chirho">Features</a>
-				<a href="#performance-chirho">Performance</a>
+				<a href="#demo-chirho">Demo</a>
+				<a href="#docs-chirho">Docs</a>
 				<a href="#get-started-chirho">Get Started</a>
 				<a
 					href="https://github.com/loveJesus/haskelujah-chirho"
@@ -261,6 +278,43 @@
 				Benchmarks on Apple M-series. Both Cranelift and LLVM backends support tail-call optimization (TCO).
 				Cranelift beats GHC -O2 on recursive workloads; LLVM excels at list-heavy operations.
 			</p>
+		</div>
+	</section>
+
+	<!-- Demo Section -->
+	<section id="demo-chirho" class="demo-chirho">
+		<div class="section-inner-chirho">
+			<h2 class="section-title-chirho">See It In Action</h2>
+			<p class="section-subtitle-chirho">3-minute demo: init, check, test, format, AI — all from one binary.</p>
+			<div class="demo-player-chirho">
+				<div id="asciinema-player-chirho"></div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Documentation Section -->
+	<section id="docs-chirho" class="docs-section-chirho">
+		<div class="section-inner-chirho">
+			<h2 class="section-title-chirho">Documentation</h2>
+			<p class="section-subtitle-chirho">Everything you need to get started.</p>
+			<div class="docs-grid-chirho">
+				<a href="https://github.com/loveJesus/haskelujah-chirho/blob/main_chirho/docs-chirho/getting-started-chirho.md" target="_blank" rel="noopener" class="doc-card-chirho">
+					<h3>Getting Started</h3>
+					<p>Install, create a project, build, test, and edit — step by step.</p>
+				</a>
+				<a href="https://github.com/loveJesus/haskelujah-chirho/blob/main_chirho/docs-chirho/stdlib-chirho.md" target="_blank" rel="noopener" class="doc-card-chirho">
+					<h3>Standard Library</h3>
+					<p>15 built-in modules: JSON, Test, Text, Map, Set, Pretty, Random, and more.</p>
+				</a>
+				<a href="https://github.com/loveJesus/haskelujah-chirho/blob/main_chirho/docs-chirho/mcp-chirho.md" target="_blank" rel="noopener" class="doc-card-chirho">
+					<h3>MCP Server</h3>
+					<p>AI integration via Model Context Protocol — Claude, GPT, Gemini.</p>
+				</a>
+				<a href="https://github.com/loveJesus/haskelujah-chirho/blob/main_chirho/docs-chirho/demo-script-chirho.md" target="_blank" rel="noopener" class="doc-card-chirho">
+					<h3>Demo Script</h3>
+					<p>Record your own demo video with narration cues.</p>
+				</a>
+			</div>
 		</div>
 	</section>
 
@@ -1291,5 +1345,61 @@ main = putStrLn "Runs directly, no build step."</span>
 		.hero-proof-chirho {
 			grid-template-columns: 1fr;
 		}
+	}
+
+	/* Demo Section */
+	.demo-chirho {
+		padding: 5rem 2rem;
+		background: rgba(18, 15, 11, 0.6);
+		border-top: 1px solid var(--line-chirho);
+	}
+
+	.demo-player-chirho {
+		max-width: 800px;
+		margin: 2rem auto;
+		border-radius: 12px;
+		overflow: hidden;
+		border: 1px solid var(--line-chirho);
+		box-shadow: var(--shadow-chirho);
+	}
+
+	/* Documentation Section */
+	.docs-section-chirho {
+		padding: 5rem 2rem;
+		background: rgba(25, 20, 14, 0.5);
+	}
+
+	.docs-grid-chirho {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+		gap: 1.25rem;
+		margin-top: 2rem;
+	}
+
+	.doc-card-chirho {
+		background: var(--panel-chirho);
+		border: 1px solid var(--line-chirho);
+		border-radius: 12px;
+		padding: 1.5rem;
+		text-decoration: none;
+		transition: border-color 0.2s, transform 0.2s ease;
+	}
+
+	.doc-card-chirho:hover {
+		border-color: rgba(246, 190, 96, 0.28);
+		transform: translateY(-3px);
+	}
+
+	.doc-card-chirho h3 {
+		color: var(--accent-gold-chirho);
+		margin: 0 0 0.5rem;
+		font-size: 1.1rem;
+	}
+
+	.doc-card-chirho p {
+		color: var(--text-soft-chirho);
+		margin: 0;
+		font-size: 0.9rem;
+		line-height: 1.5;
 	}
 </style>
