@@ -8708,6 +8708,44 @@ data TailChirho = TailChirho
     }
 
     #[test]
+    fn lower_containers_intset_retains_helper_funbinds_chirho() {
+        let source_path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.haskelujah-packages-chirho/containers-0.8/src/Data/IntSet/Internal.hs");
+        let source_chirho =
+            std::fs::read_to_string(&source_path_chirho).expect("expected containers IntSet source");
+        let module_chirho = parse_and_lower_chirho(&source_chirho);
+        let funbind_names_chirho: Vec<String> = module_chirho
+            .decls_chirho
+            .iter()
+            .filter_map(|decl_chirho| match decl_chirho {
+                DeclChirho::FunBindChirho { name_chirho, .. } => {
+                    Some(name_chirho.text_chirho().to_string())
+                }
+                _ => None,
+            })
+            .collect();
+        for required_name_chirho in [
+            "withBar",
+            "withEmpty",
+            "bin",
+            "tip",
+            "prefixOf",
+            "lowestBitSet",
+            "highestBitSet",
+            "takeWhileAntitoneBits",
+        ] {
+            assert!(
+                funbind_names_chirho
+                    .iter()
+                    .any(|name_chirho| name_chirho == required_name_chirho),
+                "expected helper `{}` in lowered IntSet module; sample={:?}",
+                required_name_chirho,
+                funbind_names_chirho.iter().rev().take(20).collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
     fn lower_import_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M where\nimport Data.List\nimport qualified Data.Map as Map\n",

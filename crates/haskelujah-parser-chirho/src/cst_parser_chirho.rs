@@ -4405,33 +4405,48 @@ impl<'src> ParserChirho<'src> {
     fn is_type_sig_chirho(&self) -> bool {
         let mut i_chirho = self.pos_chirho;
 
-        // Skip the name(s) — could be `(+!)` for operator type sigs
-        if i_chirho < self.tokens_chirho.len() {
-            let k_chirho = self.tokens_chirho[i_chirho].kind_chirho;
-            if k_chirho == RawTokenKindChirho::VarIdChirho
-                || k_chirho == RawTokenKindChirho::ConIdChirho
+        loop {
+            // Skip one name — could be `(+!)` for operator type sigs
+            if i_chirho < self.tokens_chirho.len() {
+                let k_chirho = self.tokens_chirho[i_chirho].kind_chirho;
+                if k_chirho == RawTokenKindChirho::VarIdChirho
+                    || k_chirho == RawTokenKindChirho::ConIdChirho
+                {
+                    i_chirho += 1;
+                } else if k_chirho == RawTokenKindChirho::LeftParenChirho {
+                    // Operator in parens: (+!)
+                    i_chirho += 1;
+                    while i_chirho < self.tokens_chirho.len()
+                        && self.tokens_chirho[i_chirho].kind_chirho
+                            != RawTokenKindChirho::RightParenChirho
+                    {
+                        i_chirho += 1;
+                    }
+                    if i_chirho < self.tokens_chirho.len() {
+                        i_chirho += 1; // skip )
+                    }
+                }
+            }
+
+            // Skip trivia after the current name.
+            while i_chirho < self.tokens_chirho.len()
+                && self.tokens_chirho[i_chirho].kind_chirho.is_trivia_chirho()
             {
                 i_chirho += 1;
-            } else if k_chirho == RawTokenKindChirho::LeftParenChirho {
-                // Operator in parens: (+!)
+            }
+
+            if i_chirho < self.tokens_chirho.len()
+                && self.tokens_chirho[i_chirho].kind_chirho == RawTokenKindChirho::CommaChirho
+            {
                 i_chirho += 1;
                 while i_chirho < self.tokens_chirho.len()
-                    && self.tokens_chirho[i_chirho].kind_chirho
-                        != RawTokenKindChirho::RightParenChirho
+                    && self.tokens_chirho[i_chirho].kind_chirho.is_trivia_chirho()
                 {
                     i_chirho += 1;
                 }
-                if i_chirho < self.tokens_chirho.len() {
-                    i_chirho += 1; // skip )
-                }
+                continue;
             }
-        }
-
-        // Skip trivia
-        while i_chirho < self.tokens_chirho.len()
-            && self.tokens_chirho[i_chirho].kind_chirho.is_trivia_chirho()
-        {
-            i_chirho += 1;
+            break;
         }
 
         // Check for ::
