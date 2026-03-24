@@ -3538,7 +3538,11 @@ impl<'src> ParserChirho<'src> {
                             self.eat_trivia_chirho();
                             continue;
                         }
-                        self.parse_apat_chirho();
+                        // Constructor arguments are atomic/function-argument
+                        // patterns, and this path must preserve nested
+                        // as-patterns like `BQ bq@(BQB _ lo)` instead of
+                        // truncating them to `BQ bq`.
+                        self.parse_fun_arg_pat_chirho();
                         self.eat_trivia_chirho();
                         if self.pos_chirho == before_chirho {
                             break;

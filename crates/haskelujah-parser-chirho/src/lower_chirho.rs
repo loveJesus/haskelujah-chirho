@@ -8580,6 +8580,70 @@ data TailChirho = TailChirho
     }
 
     #[test]
+    fn lower_nested_as_pattern_vars_remain_visible_to_where_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module Main where\ndata BitQueueB = BQB Int Int\nnewtype BitQueue = BQ BitQueueB\nunconsQ (BQ bq@(BQB _ lo)) = Just (hd, BQ tl)\n  where\n    hd = lo == 0\n    tl = bq\n",
+        );
+        let fun_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "unconsQ"
+                )
+            })
+            .expect("expected unconsQ fun bind");
+
+        let DeclChirho::FunBindChirho { matches_chirho, .. } = fun_decl_chirho else {
+            panic!("expected function binding");
+        };
+        assert_eq!(matches_chirho.len(), 1);
+        assert_eq!(matches_chirho[0].where_binds_chirho.len(), 2);
+
+        let PatChirho::ParenChirho { inner_chirho, .. } = &matches_chirho[0].pats_chirho[0] else {
+            panic!(
+                "expected parenthesized outer pattern, got {:?}",
+                matches_chirho[0].pats_chirho[0]
+            );
+        };
+        let PatChirho::ConChirho { args_chirho, .. } = inner_chirho.as_ref() else {
+            panic!("expected outer constructor pattern, got {:?}", inner_chirho);
+        };
+        let PatChirho::AsChirho {
+            name_chirho,
+            pattern_chirho,
+            ..
+        } = &args_chirho[0]
+        else {
+            panic!("expected nested as pattern");
+        };
+        assert_eq!(name_chirho.text_chirho(), "bq");
+
+        let inner_pattern_chirho = match pattern_chirho.as_ref() {
+            PatChirho::ParenChirho { inner_chirho, .. } => inner_chirho.as_ref(),
+            other_chirho => other_chirho,
+        };
+        let PatChirho::ConChirho {
+            args_chirho: inner_args_chirho,
+            ..
+        } = inner_pattern_chirho
+        else {
+            panic!("expected inner constructor pattern, got {:?}", inner_pattern_chirho);
+        };
+        assert_eq!(inner_args_chirho.len(), 2);
+        assert!(matches!(
+            &inner_args_chirho[0],
+            PatChirho::WildcardChirho(_)
+        ));
+        assert!(matches!(
+            &inner_args_chirho[1],
+            PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "lo"
+        ));
+    }
+
+    #[test]
     fn lower_import_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M where\nimport Data.List\nimport qualified Data.Map as Map\n",
