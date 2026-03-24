@@ -3443,6 +3443,8 @@ fn scan_package_hs_files_chirho(
             }
             // Read source and extract module name + exports
             if let Ok(source_chirho) = std::fs::read_to_string(&path_chirho) {
+                let preprocessed_source_chirho = preprocess_cpp_chirho(&source_chirho);
+                let mut stub_iface_chirho = None;
                 if let Some(mod_name_chirho) =
                     extract_module_name_from_source_chirho(&source_chirho)
                 {
@@ -3482,10 +3484,32 @@ fn scan_package_hs_files_chirho(
                             );
                         }
                     }
-                    ifaces_chirho.push(ModuleIfaceChirho {
+                    stub_iface_chirho = Some(ModuleIfaceChirho {
                         name_chirho: mod_name_chirho,
                         exports_chirho,
                     });
+                }
+
+                let real_iface_result_chirho =
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        let mut source_map_chirho = SourceMapChirho::new_chirho();
+                        let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+                            &mut source_map_chirho,
+                            &path_chirho,
+                            &preprocessed_source_chirho,
+                        );
+                        let file_id_chirho = source_file_chirho.file_id_chirho();
+                        let parser_chirho =
+                            ParserChirho::new_chirho(&preprocessed_source_chirho, file_id_chirho);
+                        let green_chirho = parser_chirho.parse_chirho();
+                        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+                        build_iface_with_imports_chirho(&module_chirho, ifaces_chirho)
+                    }));
+
+                if let Ok(real_iface_chirho) = real_iface_result_chirho {
+                    ifaces_chirho.push(real_iface_chirho);
+                } else if let Some(stub_iface_chirho) = stub_iface_chirho {
+                    ifaces_chirho.push(stub_iface_chirho);
                 }
             }
         }

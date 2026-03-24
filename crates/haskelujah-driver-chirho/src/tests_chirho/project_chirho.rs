@@ -419,4 +419,59 @@ reachOffsetMiniChirho PosStateChirho {..} = pstateOffsetChirho\n",
             result_chirho.err()
         );
     }
+
+    #[test]
+    fn compile_cabal_project_imported_infix_constructor_member_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let src_dir_chirho = tmp_chirho.path().join("src");
+        fs::create_dir_all(&src_dir_chirho).unwrap();
+
+        fs::write(
+            tmp_chirho.path().join("containers-mini.cabal"),
+            "\
+name: containers-mini
+version: 0.1.0.0
+library
+  exposed-modules: Utils.Containers.Internal.StrictPair, Utils.Containers.Internal.EqOrdUtil
+  hs-source-dirs: src
+",
+        )
+        .unwrap();
+
+        let utils_dir_chirho = src_dir_chirho.join("Utils/Containers/Internal");
+        fs::create_dir_all(&utils_dir_chirho).unwrap();
+        fs::write(
+            utils_dir_chirho.join("StrictPair.hs"),
+            "module Utils.Containers.Internal.StrictPair (StrictPair(..), toPair) where\n\
+data StrictPair a b = !a :*: !b\n\
+infixr 1 :*:\n\
+toPair :: StrictPair a b -> (a, b)\n\
+toPair (x :*: y) = (x, y)\n",
+        )
+        .unwrap();
+        fs::write(
+            utils_dir_chirho.join("EqOrdUtil.hs"),
+            "module Utils.Containers.Internal.EqOrdUtil where\n\
+import Utils.Containers.Internal.StrictPair\n\
+\n\
+data EqMiniChirho a = EqMiniChirho { runEqMiniChirho :: a -> StrictPair Bool a }\n\
+\n\
+unwrapEqMiniChirho :: EqMiniChirho a -> a -> StrictPair Bool a\n\
+unwrapEqMiniChirho fChirho xChirho = case runEqMiniChirho fChirho xChirho of\n\
+  rChirho@(eChirho :*: xPrimeChirho) -> if eChirho then True :*: xPrimeChirho else rChirho\n",
+        )
+        .unwrap();
+
+        let index_chirho = PackageIndexChirho::new_chirho();
+        let cabal_path_chirho = tmp_chirho.path().join("containers-mini.cabal");
+        let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "cabal build should import infix constructor members from same-package ifaces: {:?}",
+            result_chirho.err()
+        );
+    }
 }

@@ -912,6 +912,8 @@ impl LowerCtxChirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
                     if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho {
                         saw_double_colon_chirho = true;
+                    } else if saw_double_colon_chirho {
+                        type_children_chirho.push(child_chirho);
                     } else if !saw_double_colon_chirho
                         && tok_chirho.kind_chirho() != TokenKindChirho::LeftParenChirho
                         && tok_chirho.kind_chirho() != TokenKindChirho::RightParenChirho
@@ -933,7 +935,7 @@ impl LowerCtxChirho {
             if let GreenElementChirho::NodeChirho(n_chirho) = tc_chirho.element_chirho {
                 self.lower_type_chirho(n_chirho, tc_chirho.start_chirho)
             } else {
-                self.placeholder_type_chirho()
+                self.type_from_flat_children_chirho(&type_children_chirho, span_chirho)
             }
         } else {
             self.placeholder_type_chirho()

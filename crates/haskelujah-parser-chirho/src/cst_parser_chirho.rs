@@ -1422,7 +1422,11 @@ impl<'src> ParserChirho<'src> {
         if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
             self.bump_chirho();
             self.eat_trivia_chirho();
-            self.parse_type_chirho();
+            // Keep type signatures flat up to the declaration boundary. This
+            // avoids over-consuming following declarations in large modules
+            // like containers, and lowering reconstructs the type tree from
+            // the flat children the same way field declarations already do.
+            self.eat_until_decl_end_chirho();
         }
 
         self.builder_chirho.finish_node_chirho();
