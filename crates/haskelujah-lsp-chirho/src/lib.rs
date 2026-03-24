@@ -8,12 +8,10 @@
 use std::collections::HashMap;
 
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, SeverityChirho};
-use haskelujah_driver_chirho::{
-    compile_source_chirho, preprocess_cpp_chirho, run_frontend_chirho,
-};
+use haskelujah_driver_chirho::{preprocess_cpp_chirho, run_frontend_chirho};
 use haskelujah_naming_chirho::builtin_module_ifaces_chirho;
 use haskelujah_span_chirho::{LineColChirho, SourceMapChirho, SpanChirho};
-use lsp_server::{Connection, Message, Notification, Request, Response, ResponseError};
+use lsp_server::{Connection, Message, Notification, Request, Response};
 use lsp_types::{
     Diagnostic, DiagnosticSeverity, DidOpenTextDocumentParams, Hover, HoverContents,
     HoverParams, HoverProviderCapability, InitializeParams, MarkedString, Position,

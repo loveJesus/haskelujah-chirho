@@ -1366,7 +1366,7 @@ fn fmt_command_chirho(path_arg_chirho: Option<String>) -> ExitCode {
 /// - Normalize indent to spaces (no tabs)
 /// - Remove excess blank lines (max 2 consecutive)
 fn format_haskell_source_chirho(source_chirho: &str) -> String {
-    let mut lines_chirho: Vec<String> = source_chirho
+    let lines_chirho: Vec<String> = source_chirho
         .lines()
         .map(|line_chirho| {
             // Replace tabs with 2 spaces, trim trailing whitespace
