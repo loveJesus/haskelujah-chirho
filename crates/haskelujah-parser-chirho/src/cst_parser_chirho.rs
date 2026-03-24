@@ -1566,10 +1566,17 @@ impl<'src> ParserChirho<'src> {
                 | RawTokenKindChirho::CharLitChirho
                 | RawTokenKindChirho::StringLitChirho
         );
-        if !starts_simple_lhs_pat_chirho {
+        let mut lookahead_idx_chirho = self.pos_chirho;
+        if starts_simple_lhs_pat_chirho {
+            lookahead_idx_chirho += 1;
+        } else if current_kind_chirho == RawTokenKindChirho::LeftParenChirho {
+            lookahead_idx_chirho = match self.peek_after_parenthesized_apat_chirho(self.pos_chirho) {
+                Some(idx_chirho) => idx_chirho,
+                None => return false,
+            };
+        } else {
             return false;
         }
-        let mut lookahead_idx_chirho = self.pos_chirho + 1;
         while lookahead_idx_chirho < self.tokens_chirho.len()
             && self.tokens_chirho[lookahead_idx_chirho]
                 .kind_chirho
@@ -1586,6 +1593,33 @@ impl<'src> ParserChirho<'src> {
                 | RawTokenKindChirho::VarSymChirho
                 | RawTokenKindChirho::ConSymChirho
         )
+    }
+
+    fn peek_after_parenthesized_apat_chirho(&self, start_idx_chirho: usize) -> Option<usize> {
+        if self.tokens_chirho.get(start_idx_chirho)?.kind_chirho != RawTokenKindChirho::LeftParenChirho
+        {
+            return None;
+        }
+
+        let mut depth_chirho = 0usize;
+        let mut idx_chirho = start_idx_chirho;
+        while idx_chirho < self.tokens_chirho.len() {
+            match self.tokens_chirho[idx_chirho].kind_chirho {
+                RawTokenKindChirho::LeftParenChirho => {
+                    depth_chirho += 1;
+                }
+                RawTokenKindChirho::RightParenChirho => {
+                    depth_chirho = depth_chirho.saturating_sub(1);
+                    if depth_chirho == 0 {
+                        return Some(idx_chirho + 1);
+                    }
+                }
+                _ => {}
+            }
+            idx_chirho += 1;
+        }
+
+        None
     }
 
     fn parse_guarded_rhs_chirho(&mut self) {

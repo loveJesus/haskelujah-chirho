@@ -338,6 +338,29 @@ onEChirho action1Chirho action2Chirho = action1Chirho `catchEChirho` \\eChirho -
 }
 
 #[test]
+fn frontend_constructor_pattern_infix_funbind_enters_scope_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ColourMiniChirho where
+newtype ChanChirho pChirho aChirho = ChanChirho aChirho
+addChirho :: Num aChirho => ChanChirho pChirho aChirho -> ChanChirho pChirho aChirho -> ChanChirho pChirho aChirho
+(ChanChirho aChirho) `addChirho` (ChanChirho bChirho) = ChanChirho (aChirho + bChirho)
+overChirho :: Num aChirho => ChanChirho pChirho aChirho -> ChanChirho pChirho aChirho -> ChanChirho pChirho aChirho
+overChirho leftChirho rightChirho = leftChirho `addChirho` rightChirho
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ColourMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "constructor-pattern infix funbind should be in scope for later bindings: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_exceptt_with_exceptt_functor_operator_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_chirho = "\

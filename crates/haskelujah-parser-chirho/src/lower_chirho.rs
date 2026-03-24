@@ -8312,6 +8312,28 @@ data TailChirho = TailChirho
     }
 
     #[test]
+    fn lower_infix_fun_bind_with_parenthesized_constructor_pats_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nnewtype ChanChirho pChirho aChirho = ChanChirho aChirho\naddChirho :: Num aChirho => ChanChirho pChirho aChirho -> ChanChirho pChirho aChirho -> ChanChirho pChirho aChirho\n(ChanChirho aChirho) `addChirho` (ChanChirho bChirho) = ChanChirho (aChirho + bChirho)\n",
+        );
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|decl_chirho| {
+            matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "addChirho")
+        });
+        assert!(
+            decl_chirho.is_some(),
+            "should lower constructor-pattern infix funbind name"
+        );
+        if let Some(DeclChirho::FunBindChirho { matches_chirho, .. }) = decl_chirho {
+            assert_eq!(
+                matches_chirho[0].pats_chirho.len(),
+                2,
+                "constructor-pattern infix funbind should keep both lhs operands as patterns"
+            );
+        }
+    }
+
+    #[test]
     fn lower_infix_expr_with_lambda_rhs_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M where\nonEChirho action1Chirho action2Chirho = action1Chirho `catchEChirho` \\eChirho -> action2Chirho >> throwEChirho eChirho\n",
