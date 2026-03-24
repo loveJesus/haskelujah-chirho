@@ -1021,6 +1021,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "proxy#",
             "void#",
             "coerce",
+            // Bitwise/shift primops (also in GHC.Prim)
+            "and#", "or#", "xor#", "not#",
+            "uncheckedIShiftL#", "uncheckedIShiftRA#", "uncheckedIShiftRL#",
+            "uncheckedShiftL#", "uncheckedShiftRL#",
+            "popCnt#", "clz#", "ctz#", "byteSwap#",
+            "narrow8Int#", "narrow16Int#", "narrow32Int#",
+            "narrow8Word#", "narrow16Word#", "narrow32Word#",
             "I#",
             "W#",
             "D#",
