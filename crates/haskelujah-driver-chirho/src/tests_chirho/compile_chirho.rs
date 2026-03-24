@@ -1559,6 +1559,62 @@ library
 }
 
 #[test]
+fn cabal_project_conditional_hs_source_dirs_chirho() {
+    use crate::compile_cabal_project_chirho;
+    use std::io::Write;
+
+    let temp_dir_chirho = std::env::temp_dir().join("haskelujah_cabal_conditional_srcdir_test_chirho");
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+    std::fs::create_dir_all(temp_dir_chirho.join("unix")).unwrap();
+    std::fs::create_dir_all(temp_dir_chirho.join("win")).unwrap();
+
+    let cabal_path_chirho = temp_dir_chirho.join("conditional-srcdir.cabal");
+    let mut cabal_file_chirho = std::fs::File::create(&cabal_path_chirho).unwrap();
+    write!(
+        cabal_file_chirho,
+        r#"cabal-version: 3.0
+name:         conditional-srcdir
+version:      0.1.0.0
+
+library
+  exposed-modules: Lib
+  if os(windows)
+    hs-source-dirs: win
+  else
+    hs-source-dirs: unix
+  build-depends:   base >=4.14 && <5
+"#
+    )
+    .unwrap();
+
+    std::fs::write(
+        temp_dir_chirho.join("unix/Lib.hs"),
+        "module Lib where\nvalueChirho = 42\n",
+    )
+    .unwrap();
+    std::fs::write(
+        temp_dir_chirho.join("win/Lib.hs"),
+        "module Lib where\nvalueChirho = 7\n",
+    )
+    .unwrap();
+
+    let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
+    let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+        .expect("conditional hs-source-dirs cabal project should compile");
+
+    assert_eq!(result_chirho.module_results_chirho.len(), 1);
+    let source_dir_chirho = &result_chirho.package_chirho.library_chirho.as_ref().unwrap().build_info_chirho.hs_source_dirs_chirho;
+    let expected_dir_chirho = if cfg!(target_os = "windows") {
+        "win"
+    } else {
+        "unix"
+    };
+    assert_eq!(source_dir_chirho, &vec![expected_dir_chirho.to_string()]);
+
+    let _ = std::fs::remove_dir_all(&temp_dir_chirho);
+}
+
+#[test]
 fn cabal_project_imported_shift_helper_with_strict_dollar_chirho() {
     use crate::compile_cabal_project_chirho;
     use haskelujah_package_chirho::PackageIndexChirho;

@@ -196,7 +196,8 @@ enum StanzaChirho {
 
 /// Parse a `.cabal` file string into a `PackageDescChirho`.
 pub fn parse_cabal_chirho(input_chirho: &str) -> PackageDescChirho {
-    let fields_chirho = lex_fields_chirho(input_chirho);
+    let preprocessed_chirho = preprocess_cabal_conditionals_chirho(input_chirho);
+    let fields_chirho = lex_fields_chirho(&preprocessed_chirho);
     let stanzas_chirho = group_stanzas_chirho(&fields_chirho);
 
     let mut pkg_chirho = PackageDescChirho {
@@ -266,6 +267,151 @@ pub fn parse_cabal_chirho(input_chirho: &str) -> PackageDescChirho {
     apply_imports_chirho(&mut pkg_chirho);
 
     pkg_chirho
+}
+
+/// Pre-process cabal file to resolve `if os(...)` / `else` blocks inline.
+///
+/// On Linux/Unix, `if os(windows)` blocks are removed and `else` blocks are
+/// kept (with indentation reduced).  On Windows, the reverse applies.
+/// `if impl(ghc ...)` and `if flag(...)` are treated as true by default.
+fn preprocess_cabal_conditionals_chirho(input_chirho: &str) -> String {
+    let lines_chirho: Vec<&str> = input_chirho.lines().collect();
+    let mut result_chirho: Vec<String> = Vec::with_capacity(lines_chirho.len());
+    let mut i_chirho = 0;
+
+    while i_chirho < lines_chirho.len() {
+        let line_chirho = lines_chirho[i_chirho];
+        let trimmed_chirho = line_chirho.trim();
+
+        // Detect `if <condition>` at any indentation
+        if let Some(cond_text_chirho) = trimmed_chirho.strip_prefix("if ") {
+            let if_indent_chirho = line_chirho.len() - line_chirho.trim_start().len();
+            let cond_chirho = parse_condition_chirho(cond_text_chirho.trim());
+            let is_true_chirho = eval_condition_simple_chirho(&cond_chirho);
+
+            i_chirho += 1;
+
+            // Collect the then-block (indented deeper than the if line)
+            let mut then_block_chirho: Vec<&str> = Vec::new();
+            while i_chirho < lines_chirho.len() {
+                let l_chirho = lines_chirho[i_chirho];
+                let l_trim_chirho = l_chirho.trim();
+                if l_trim_chirho.is_empty() {
+                    then_block_chirho.push(l_chirho);
+                    i_chirho += 1;
+                    continue;
+                }
+                let l_indent_chirho = l_chirho.len() - l_chirho.trim_start().len();
+                if l_indent_chirho <= if_indent_chirho
+                    && !l_trim_chirho.eq_ignore_ascii_case("else")
+                {
+                    break;
+                }
+                if l_trim_chirho.eq_ignore_ascii_case("else") {
+                    i_chirho += 1;
+                    break;
+                }
+                then_block_chirho.push(l_chirho);
+                i_chirho += 1;
+            }
+
+            // Collect the else-block (if present)
+            let mut else_block_chirho: Vec<&str> = Vec::new();
+            while i_chirho < lines_chirho.len() {
+                let l_chirho = lines_chirho[i_chirho];
+                let l_trim_chirho = l_chirho.trim();
+                if l_trim_chirho.is_empty() {
+                    else_block_chirho.push(l_chirho);
+                    i_chirho += 1;
+                    continue;
+                }
+                let l_indent_chirho = l_chirho.len() - l_chirho.trim_start().len();
+                if l_indent_chirho <= if_indent_chirho {
+                    break;
+                }
+                else_block_chirho.push(l_chirho);
+                i_chirho += 1;
+            }
+
+            // Include the appropriate block, recursively preprocessing nested
+            // conditionals and dedenting it back to the surrounding stanza
+            // level so fields are not swallowed as continuations.
+            let chosen_chirho = if is_true_chirho {
+                &then_block_chirho
+            } else {
+                &else_block_chirho
+            };
+            let min_block_indent_chirho = chosen_chirho
+                .iter()
+                .filter_map(|line_chirho| {
+                    let trimmed_line_chirho = line_chirho.trim();
+                    if trimmed_line_chirho.is_empty() {
+                        None
+                    } else {
+                        Some(line_chirho.len() - line_chirho.trim_start().len())
+                    }
+                })
+                .min()
+                .unwrap_or(if_indent_chirho);
+            let dedent_width_chirho = min_block_indent_chirho.saturating_sub(if_indent_chirho);
+            let dedented_block_chirho = chosen_chirho
+                .iter()
+                .map(|line_chirho| {
+                    if line_chirho.trim().is_empty() {
+                        String::new()
+                    } else {
+                        line_chirho
+                            .get(dedent_width_chirho..)
+                            .unwrap_or(line_chirho)
+                            .to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let nested_preprocessed_chirho =
+                preprocess_cabal_conditionals_chirho(&dedented_block_chirho);
+            result_chirho.extend(
+                nested_preprocessed_chirho
+                    .lines()
+                    .map(|line_chirho| line_chirho.to_string()),
+            );
+        } else {
+            result_chirho.push(line_chirho.to_string());
+            i_chirho += 1;
+        }
+    }
+
+    result_chirho.join("\n")
+}
+
+/// Simple condition evaluator for cabal `if` blocks.
+/// - `os(windows)` → false on non-Windows, true on Windows
+/// - `os(linux)` / `os(osx)` → true on respective OS
+/// - `impl(ghc ...)` → always true (we emulate GHC)
+/// - `flag(...)` → true by default
+/// - `!`, `&&`, `||` — evaluated recursively
+fn eval_condition_simple_chirho(cond_chirho: &ConditionChirho) -> bool {
+    let current_os_chirho = if cfg!(target_os = "windows") {
+        "windows"
+    } else if cfg!(target_os = "macos") {
+        "osx"
+    } else {
+        "linux"
+    };
+    let mut default_flags_chirho = std::collections::HashMap::new();
+    default_flags_chirho.insert("example".to_string(), false);
+    eval_condition_chirho(
+        cond_chirho,
+        &default_flags_chirho,
+        current_os_chirho,
+        if cfg!(target_arch = "x86_64") {
+            "x86_64"
+        } else if cfg!(target_arch = "aarch64") {
+            "aarch64"
+        } else {
+            "x86_64"
+        },
+    )
 }
 
 /// Lex the input into logical fields (key-value pairs with continuations merged).
@@ -1614,6 +1760,63 @@ executable cli
             "linux",
             "x86_64"
         ));
+    }
+
+    #[test]
+    fn parse_cabal_conditional_hs_source_dirs_dedent_chirho() {
+        let input_chirho = r#"
+name: ansi-mini
+version: 0.1
+
+library
+  exposed-modules: Mini
+  if os(windows)
+    hs-source-dirs: win
+  else
+    hs-source-dirs: unix
+  build-depends: base
+"#;
+        let pkg_chirho = parse_cabal_chirho(input_chirho);
+        let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
+        let expected_dir_chirho = if cfg!(target_os = "windows") {
+            "win"
+        } else {
+            "unix"
+        };
+        assert_eq!(
+            lib_chirho.build_info_chirho.hs_source_dirs_chirho,
+            vec![expected_dir_chirho.to_string()]
+        );
+        assert_eq!(
+            lib_chirho.build_info_chirho.build_depends_chirho[0].package_chirho,
+            "base"
+        );
+    }
+
+    #[test]
+    fn preprocess_cabal_nested_conditionals_dedent_chirho() {
+        let input_chirho = r#"
+library
+  if os(windows)
+    hs-source-dirs: win
+  else
+    if arch(aarch64)
+      hs-source-dirs: arm
+    else
+      hs-source-dirs: unix
+  build-depends: base
+"#;
+        let preprocessed_chirho = preprocess_cabal_conditionals_chirho(input_chirho);
+        assert!(
+            preprocessed_chirho.contains("hs-source-dirs:"),
+            "expected chosen branch to survive preprocessing: {}",
+            preprocessed_chirho
+        );
+        assert!(
+            preprocessed_chirho.contains("build-depends: base"),
+            "dedenting should keep following sibling fields intact: {}",
+            preprocessed_chirho
+        );
     }
 
     #[test]
