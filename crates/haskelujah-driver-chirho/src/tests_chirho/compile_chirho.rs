@@ -99,6 +99,22 @@ fn frontend_list_append_is_polymorphic_chirho() {
 }
 
 #[test]
+fn frontend_traversable_sequencea_instance_method_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module TaggedSequenceAChirho where\nnewtype TaggedChirho sChirho aChirho = TaggedChirho aChirho\ninstance Functor (TaggedChirho sChirho) where\n  fmap fChirho (TaggedChirho xChirho) = TaggedChirho (fChirho xChirho)\ninstance Foldable (TaggedChirho sChirho) where\n  foldMap fChirho (TaggedChirho xChirho) = fChirho xChirho\ninstance Traversable (TaggedChirho sChirho) where\n  traverse fChirho (TaggedChirho xChirho) = TaggedChirho <$> fChirho xChirho\n  sequenceA (TaggedChirho xChirho) = TaggedChirho <$> xChirho\n",
+        &mut source_map_chirho,
+        "TaggedSequenceAChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Traversable sequenceA instance methods should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_qualified_text_uncons_uses_text_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

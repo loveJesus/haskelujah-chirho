@@ -9457,33 +9457,86 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         let trav_a_chirho = TyVarChirho(9084);
         let trav_b_chirho = TyVarChirho(9085);
         let trav_f_chirho = TyVarChirho(9086);
-        env_chirho.bind_chirho(
-            "traverse".to_string(),
-            SchemeChirho {
-                vars_chirho: vec![trav_t_chirho, trav_a_chirho, trav_b_chirho, trav_f_chirho],
-                preds_chirho: vec![],
-                ty_chirho: TyChirho::FunChirho(
-                    Box::new(TyChirho::FunChirho(
+        let traverse_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![trav_t_chirho, trav_a_chirho, trav_b_chirho, trav_f_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::FunChirho(
+                Box::new(TyChirho::FunChirho(
+                    Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                        Box::new(TyChirho::VarChirho(trav_b_chirho)),
+                    )),
+                    MultChirho::ManyChirho,
+                )),
+                Box::new(TyChirho::FunChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav_t_chirho)),
                         Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                    )),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav_f_chirho)),
                         Box::new(TyChirho::AppChirho(
-                            Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                            Box::new(TyChirho::VarChirho(trav_t_chirho)),
                             Box::new(TyChirho::VarChirho(trav_b_chirho)),
                         )),
-                        MultChirho::ManyChirho,
                     )),
-                    Box::new(TyChirho::FunChirho(
+                    MultChirho::ManyChirho,
+                )),
+                MultChirho::ManyChirho,
+            ),
+        };
+        env_chirho.bind_chirho(
+            "traverse".to_string(),
+            traverse_scheme_chirho.clone(),
+        );
+        env_chirho.bind_chirho(
+            "mapM".to_string(),
+            traverse_scheme_chirho,
+        );
+        env_chirho.bind_chirho(
+            "sequenceA".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![trav_t_chirho, trav_a_chirho, trav_f_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav_t_chirho)),
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                            Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                        )),
+                    )),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav_f_chirho)),
                         Box::new(TyChirho::AppChirho(
                             Box::new(TyChirho::VarChirho(trav_t_chirho)),
                             Box::new(TyChirho::VarChirho(trav_a_chirho)),
                         )),
+                    )),
+                    MultChirho::ManyChirho,
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "sequence".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![trav_t_chirho, trav_a_chirho, trav_f_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav_t_chirho)),
                         Box::new(TyChirho::AppChirho(
                             Box::new(TyChirho::VarChirho(trav_f_chirho)),
-                            Box::new(TyChirho::AppChirho(
-                                Box::new(TyChirho::VarChirho(trav_t_chirho)),
-                                Box::new(TyChirho::VarChirho(trav_b_chirho)),
-                            )),
+                            Box::new(TyChirho::VarChirho(trav_a_chirho)),
                         )),
-                        MultChirho::ManyChirho,
+                    )),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(trav_t_chirho)),
+                            Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                        )),
                     )),
                     MultChirho::ManyChirho,
                 ),

@@ -519,7 +519,7 @@ impl ClassEnvChirho {
                         vars_chirho: vec![num_var_chirho],
                         preds_chirho: vec![],
                         ty_chirho: TyChirho::fun_chirho(
-                            TyChirho::int_chirho(),
+                            TyChirho::ConChirho("Integer".to_string()),
                             TyChirho::VarChirho(num_var_chirho),
                         ),
                     },
@@ -1050,46 +1050,103 @@ impl ClassEnvChirho {
 
         // Traversable (superclass: Functor, Foldable)
         // traverse :: Applicative f => (a -> f b) -> t a -> f (t b)
+        // sequenceA :: Applicative f => t (f a) -> f (t a)
+        // mapM :: Monad m => (a -> m b) -> t a -> m (t b)
+        // sequence :: Monad m => t (m a) -> m (t a)
         let trav_t_chirho = TyVarChirho(9083);
         let trav_a_chirho = TyVarChirho(9084);
         let trav_b_chirho = TyVarChirho(9085);
         let trav_f_chirho = TyVarChirho(9086);
+        let traverse_ty_chirho = TyChirho::FunChirho(
+            Box::new(TyChirho::FunChirho(
+                Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                    Box::new(TyChirho::VarChirho(trav_b_chirho)),
+                )),
+                MultChirho::ManyChirho,
+            )),
+            Box::new(TyChirho::FunChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(trav_t_chirho)),
+                    Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                )),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav_t_chirho)),
+                        Box::new(TyChirho::VarChirho(trav_b_chirho)),
+                    )),
+                )),
+                MultChirho::ManyChirho,
+            )),
+            MultChirho::ManyChirho,
+        );
+        let sequence_a_ty_chirho = TyChirho::FunChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::VarChirho(trav_t_chirho)),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                    Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                )),
+            )),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::VarChirho(trav_f_chirho)),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(trav_t_chirho)),
+                    Box::new(TyChirho::VarChirho(trav_a_chirho)),
+                )),
+            )),
+            MultChirho::ManyChirho,
+        );
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Traversable".to_string(),
             supers_chirho: vec!["Functor".to_string(), "Foldable".to_string()],
             var_chirho: trav_t_chirho,
-            methods_chirho: HashMap::from([(
-                "traverse".to_string(),
-                SchemeChirho {
-                    vars_chirho: vec![trav_t_chirho, trav_a_chirho, trav_b_chirho, trav_f_chirho],
-                    preds_chirho: vec![],
-                    ty_chirho: TyChirho::FunChirho(
-                        Box::new(TyChirho::FunChirho(
-                            Box::new(TyChirho::VarChirho(trav_a_chirho)),
-                            Box::new(TyChirho::AppChirho(
-                                Box::new(TyChirho::VarChirho(trav_f_chirho)),
-                                Box::new(TyChirho::VarChirho(trav_b_chirho)),
-                            )),
-                            MultChirho::ManyChirho,
-                        )),
-                        Box::new(TyChirho::FunChirho(
-                            Box::new(TyChirho::AppChirho(
-                                Box::new(TyChirho::VarChirho(trav_t_chirho)),
-                                Box::new(TyChirho::VarChirho(trav_a_chirho)),
-                            )),
-                            Box::new(TyChirho::AppChirho(
-                                Box::new(TyChirho::VarChirho(trav_f_chirho)),
-                                Box::new(TyChirho::AppChirho(
-                                    Box::new(TyChirho::VarChirho(trav_t_chirho)),
-                                    Box::new(TyChirho::VarChirho(trav_b_chirho)),
-                                )),
-                            )),
-                            MultChirho::ManyChirho,
-                        )),
-                        MultChirho::ManyChirho,
-                    ),
-                },
-            )]),
+            methods_chirho: HashMap::from([
+                (
+                    "traverse".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![
+                            trav_t_chirho,
+                            trav_a_chirho,
+                            trav_b_chirho,
+                            trav_f_chirho,
+                        ],
+                        preds_chirho: vec![],
+                        ty_chirho: traverse_ty_chirho.clone(),
+                    },
+                ),
+                (
+                    "sequenceA".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![trav_t_chirho, trav_a_chirho, trav_f_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: sequence_a_ty_chirho.clone(),
+                    },
+                ),
+                (
+                    "mapM".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![
+                            trav_t_chirho,
+                            trav_a_chirho,
+                            trav_b_chirho,
+                            trav_f_chirho,
+                        ],
+                        preds_chirho: vec![],
+                        ty_chirho: traverse_ty_chirho,
+                    },
+                ),
+                (
+                    "sequence".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![trav_t_chirho, trav_a_chirho, trav_f_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: sequence_a_ty_chirho,
+                    },
+                ),
+            ]),
             extra_vars_chirho: vec![],
             fundeps_chirho: vec![],
             defaults_chirho: HashMap::new(),
