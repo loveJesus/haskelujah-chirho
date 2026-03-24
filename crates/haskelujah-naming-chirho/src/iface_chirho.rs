@@ -72,6 +72,67 @@ fn canonical_value_name_chirho(name_chirho: &str) -> String {
     name_chirho.to_string()
 }
 
+fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'static str]> {
+    match class_name_chirho {
+        "Monad" => Some(&["return", ">>=", ">>"]),
+        "Functor" => Some(&["fmap", "<$"]),
+        "Applicative" => Some(&["pure", "<*>", "*>", "<*"]),
+        "Foldable" => Some(&[
+            "foldr",
+            "foldl",
+            "foldMap",
+            "length",
+            "null",
+            "elem",
+            "sum",
+            "product",
+            "maximum",
+            "minimum",
+            "toList",
+        ]),
+        "Traversable" => Some(&["traverse", "sequenceA", "mapM", "sequence"]),
+        "Monoid" => Some(&["mempty", "mappend", "mconcat"]),
+        "Semigroup" => Some(&["<>"]),
+        _ => None,
+    }
+}
+
+fn normalize_builtin_class_exports_chirho(modules_chirho: &mut [ModuleIfaceChirho]) {
+    for module_chirho in modules_chirho {
+        let class_names_chirho: Vec<String> = module_chirho
+            .exports_chirho
+            .types_chirho
+            .keys()
+            .cloned()
+            .collect();
+        for class_name_chirho in class_names_chirho {
+            let Some(methods_chirho) = builtin_class_methods_chirho(&class_name_chirho) else {
+                continue;
+            };
+            if let Some(ty_chirho) = module_chirho
+                .exports_chirho
+                .types_chirho
+                .get_mut(&class_name_chirho)
+            {
+                for method_chirho in methods_chirho {
+                    let method_name_chirho = method_chirho.to_string();
+                    if !ty_chirho.methods_chirho.contains(&method_name_chirho) {
+                        ty_chirho.methods_chirho.push(method_name_chirho.clone());
+                    }
+                    module_chirho
+                        .exports_chirho
+                        .values_chirho
+                        .entry(method_name_chirho.clone())
+                        .or_insert_with(|| IfaceValueChirho {
+                            name_chirho: method_name_chirho,
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        });
+                }
+            }
+        }
+    }
+}
+
 fn merge_imported_exports_chirho(
     result_chirho: &mut IfaceExportsChirho,
     iface_exports_chirho: &IfaceExportsChirho,
@@ -9564,6 +9625,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    normalize_builtin_class_exports_chirho(&mut modules_chirho);
     merge_module_ifaces_chirho(modules_chirho)
 }
 
@@ -10681,5 +10743,75 @@ mod tests_chirho {
             s_chirho.exports_chirho.values_chirho.contains_key("peek"),
             "Foreign.Storable should export 'peek'"
         );
+    }
+
+    #[test]
+    fn builtin_control_monad_class_methods_exported_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let control_monad_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Control.Monad")
+            .expect("Control.Monad builtin iface should exist");
+        let monad_chirho = control_monad_chirho
+            .exports_chirho
+            .types_chirho
+            .get("Monad")
+            .expect("Control.Monad should export Monad");
+        assert!(monad_chirho.methods_chirho.contains(&"return".to_string()));
+        assert!(monad_chirho.methods_chirho.contains(&">>=".to_string()));
+        assert!(monad_chirho.methods_chirho.contains(&">>".to_string()));
+        assert!(
+            control_monad_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("return")
+        );
+        assert!(
+            control_monad_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key(">>=")
+        );
+    }
+
+    #[test]
+    fn builtin_data_foldable_class_methods_exported_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let foldable_mod_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.Foldable")
+            .expect("Data.Foldable builtin iface should exist");
+        let foldable_chirho = foldable_mod_chirho
+            .exports_chirho
+            .types_chirho
+            .get("Foldable")
+            .expect("Data.Foldable should export Foldable");
+        for method_chirho in [
+            "foldr",
+            "foldl",
+            "foldMap",
+            "length",
+            "null",
+            "elem",
+            "sum",
+            "product",
+            "maximum",
+            "minimum",
+            "toList",
+        ] {
+            assert!(
+                foldable_chirho
+                    .methods_chirho
+                    .contains(&method_chirho.to_string()),
+                "Foldable should expose {method_chirho} via (..)"
+            );
+            assert!(
+                foldable_mod_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(method_chirho),
+                "Data.Foldable should export value {method_chirho}"
+            );
+        }
     }
 }
