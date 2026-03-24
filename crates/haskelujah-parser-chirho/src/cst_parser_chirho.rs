@@ -1392,21 +1392,31 @@ impl<'src> ParserChirho<'src> {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::TypeSigDeclChirho);
 
-        // Name (or operator in parens)
-        if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
-            // Operator in parens: (+!)
-            self.bump_chirho(); // (
+        loop {
+            // Name (or operator in parens)
+            if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+                // Operator in parens: (+!)
+                self.bump_chirho(); // (
+                self.eat_trivia_chirho();
+                while !self.at_chirho(RawTokenKindChirho::RightParenChirho) && !self.at_eof_chirho()
+                {
+                    self.bump_chirho();
+                }
+                if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                    self.bump_chirho();
+                }
+            } else {
+                self.bump_chirho(); // name
+            }
             self.eat_trivia_chirho();
-            while !self.at_chirho(RawTokenKindChirho::RightParenChirho) && !self.at_eof_chirho() {
-                self.bump_chirho();
+
+            if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                self.bump_chirho(); // ,
+                self.eat_trivia_chirho();
+                continue;
             }
-            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
-                self.bump_chirho();
-            }
-        } else {
-            self.bump_chirho(); // name
+            break;
         }
-        self.eat_trivia_chirho();
 
         // ::
         if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {

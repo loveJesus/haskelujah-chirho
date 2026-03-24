@@ -323,6 +323,14 @@ impl LowerCtxChirho {
                             self.lower_import_decl_chirho(n_chirho, child_chirho.start_chirho),
                         );
                     }
+                    SyntaxKindChirho::TypeSigDeclChirho => {
+                        let decls_from_sig_chirho = self.lower_type_sigs_chirho(
+                            n_chirho,
+                            child_chirho.start_chirho,
+                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
+                        );
+                        decls_chirho.extend(decls_from_sig_chirho);
+                    }
                     _ => {
                         if let Some(decl_chirho) =
                             self.lower_decl_chirho(n_chirho, child_chirho.start_chirho)
@@ -878,8 +886,24 @@ impl LowerCtxChirho {
         base_chirho: usize,
         span_chirho: SpanChirho,
     ) -> DeclChirho {
+        self.lower_type_sigs_chirho(node_chirho, base_chirho, span_chirho)
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| DeclChirho::TypeSigChirho {
+                name_chirho: self.dummy_name_chirho(),
+                ty_chirho: self.placeholder_type_chirho(),
+                span_chirho,
+            })
+    }
+
+    fn lower_type_sigs_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        span_chirho: SpanChirho,
+    ) -> Vec<DeclChirho> {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-        let mut name_chirho = None;
+        let mut names_chirho = Vec::new();
         let mut saw_double_colon_chirho = false;
         let mut type_children_chirho = Vec::new();
 
@@ -889,13 +913,13 @@ impl LowerCtxChirho {
                     if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho {
                         saw_double_colon_chirho = true;
                     } else if !saw_double_colon_chirho
-                        && name_chirho.is_none()
                         && tok_chirho.kind_chirho() != TokenKindChirho::LeftParenChirho
                         && tok_chirho.kind_chirho() != TokenKindChirho::RightParenChirho
+                        && tok_chirho.kind_chirho() != TokenKindChirho::CommaChirho
                     {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
+                        names_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
                     }
                 }
                 GreenElementChirho::NodeChirho(n_chirho) if saw_double_colon_chirho => {
@@ -915,11 +939,18 @@ impl LowerCtxChirho {
             self.placeholder_type_chirho()
         };
 
-        DeclChirho::TypeSigChirho {
-            name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
-            ty_chirho,
-            span_chirho,
+        if names_chirho.is_empty() {
+            names_chirho.push(self.dummy_name_chirho());
         }
+
+        names_chirho
+            .into_iter()
+            .map(|name_chirho| DeclChirho::TypeSigChirho {
+                name_chirho,
+                ty_chirho: ty_chirho.clone(),
+                span_chirho,
+            })
+            .collect()
     }
 
     /// Lower a `PatBindChirho` CST node into a `LocalBindChirho::PatBindChirho`.
@@ -1474,22 +1505,24 @@ impl LowerCtxChirho {
                 } else if n_chirho.kind_chirho() == SyntaxKindChirho::TypeSigDeclChirho {
                     let child_span_chirho =
                         self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                    let decl_chirho = self.lower_type_sig_chirho(
+                    let decls_chirho = self.lower_type_sigs_chirho(
                         n_chirho,
                         child_chirho.start_chirho,
                         child_span_chirho,
                     );
-                    if let DeclChirho::TypeSigChirho {
-                        name_chirho,
-                        ty_chirho,
-                        span_chirho,
-                    } = decl_chirho
-                    {
-                        binds_chirho.push(LocalBindChirho::TypeSigChirho {
+                    for decl_chirho in decls_chirho {
+                        if let DeclChirho::TypeSigChirho {
                             name_chirho,
                             ty_chirho,
                             span_chirho,
-                        });
+                        } = decl_chirho
+                        {
+                            binds_chirho.push(LocalBindChirho::TypeSigChirho {
+                                name_chirho,
+                                ty_chirho,
+                                span_chirho,
+                            });
+                        }
                     }
                 }
             }
@@ -1535,22 +1568,24 @@ impl LowerCtxChirho {
                 } else if n_chirho.kind_chirho() == SyntaxKindChirho::TypeSigDeclChirho {
                     let child_span_chirho =
                         self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                    let decl_chirho = self.lower_type_sig_chirho(
+                    let decls_chirho = self.lower_type_sigs_chirho(
                         n_chirho,
                         child_chirho.start_chirho,
                         child_span_chirho,
                     );
-                    if let DeclChirho::TypeSigChirho {
-                        name_chirho,
-                        ty_chirho,
-                        span_chirho,
-                    } = decl_chirho
-                    {
-                        binds_chirho.push(LocalBindChirho::TypeSigChirho {
+                    for decl_chirho in decls_chirho {
+                        if let DeclChirho::TypeSigChirho {
                             name_chirho,
                             ty_chirho,
                             span_chirho,
-                        });
+                        } = decl_chirho
+                        {
+                            binds_chirho.push(LocalBindChirho::TypeSigChirho {
+                                name_chirho,
+                                ty_chirho,
+                                span_chirho,
+                            });
+                        }
                     }
                 } else if n_chirho.kind_chirho() == SyntaxKindChirho::PatBindChirho {
                     let child_span_chirho =
@@ -3385,7 +3420,13 @@ impl LowerCtxChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         for child_chirho in &children_chirho {
             if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
-                if let Some(decl_chirho) =
+                if n_chirho.kind_chirho() == SyntaxKindChirho::TypeSigDeclChirho {
+                    out_chirho.extend(self.lower_type_sigs_chirho(
+                        n_chirho,
+                        child_chirho.start_chirho,
+                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
+                    ));
+                } else if let Some(decl_chirho) =
                     self.lower_decl_chirho(n_chirho, child_chirho.start_chirho)
                 {
                     out_chirho.push(decl_chirho);
@@ -4915,22 +4956,24 @@ impl LowerCtxChirho {
                                     child_chirho.start_chirho,
                                     child_chirho.end_chirho,
                                 );
-                                let decl_chirho = self.lower_type_sig_chirho(
+                                let decls_chirho = self.lower_type_sigs_chirho(
                                     n_chirho,
                                     child_chirho.start_chirho,
                                     child_span_chirho,
                                 );
-                                if let DeclChirho::TypeSigChirho {
-                                    name_chirho,
-                                    ty_chirho,
-                                    span_chirho,
-                                } = decl_chirho
-                                {
-                                    binds_chirho.push(LocalBindChirho::TypeSigChirho {
+                                for decl_chirho in decls_chirho {
+                                    if let DeclChirho::TypeSigChirho {
                                         name_chirho,
                                         ty_chirho,
                                         span_chirho,
-                                    });
+                                    } = decl_chirho
+                                    {
+                                        binds_chirho.push(LocalBindChirho::TypeSigChirho {
+                                            name_chirho,
+                                            ty_chirho,
+                                            span_chirho,
+                                        });
+                                    }
                                 }
                             }
                         }
@@ -8577,6 +8620,27 @@ data TailChirho = TailChirho
                 other_chirho
             ),
         }
+    }
+
+    #[test]
+    fn lower_grouped_type_sig_decl_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nwithBarChirho, withEmptyChirho :: [String] -> [String]\nwithBarChirho xsChirho = xsChirho\nwithEmptyChirho xsChirho = xsChirho\n",
+        );
+        let type_sig_names_chirho: Vec<String> = module_chirho
+            .decls_chirho
+            .iter()
+            .filter_map(|decl_chirho| match decl_chirho {
+                DeclChirho::TypeSigChirho { name_chirho, .. } => {
+                    Some(name_chirho.text_chirho().to_string())
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            type_sig_names_chirho,
+            vec!["withBarChirho".to_string(), "withEmptyChirho".to_string()]
+        );
     }
 
     #[test]
