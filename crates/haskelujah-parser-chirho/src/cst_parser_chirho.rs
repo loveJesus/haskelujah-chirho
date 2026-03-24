@@ -665,7 +665,7 @@ impl<'src> ParserChirho<'src> {
             }
         }
 
-        // Constructor name
+        // Prefix constructor name
         if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
             self.bump_chirho();
             self.eat_trivia_chirho();
@@ -690,6 +690,31 @@ impl<'src> ParserChirho<'src> {
                     if self.pos_chirho == before_chirho {
                         break;
                     }
+                }
+            }
+        } else if self.can_start_atype_chirho() || self.at_strict_prefix_chirho() {
+            // Infix constructor declaration: `!a :*: !b`
+            let before_left_chirho = self.pos_chirho;
+            if self.at_strict_prefix_chirho() {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+            if self.can_start_atype_chirho() {
+                self.parse_atype_chirho();
+                self.eat_trivia_chirho();
+            }
+
+            if self.pos_chirho != before_left_chirho && self.at_chirho(RawTokenKindChirho::ConSymChirho)
+            {
+                self.bump_chirho(); // constructor operator
+                self.eat_trivia_chirho();
+                if self.at_strict_prefix_chirho() {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                }
+                if self.can_start_atype_chirho() {
+                    self.parse_atype_chirho();
+                    self.eat_trivia_chirho();
                 }
             }
         } else {

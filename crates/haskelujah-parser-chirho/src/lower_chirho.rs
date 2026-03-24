@@ -1828,7 +1828,8 @@ impl LowerCtxChirho {
         for child_chirho in children_chirho.iter().skip(start_idx_chirho) {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
-                    if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                    if (tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                        || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho)
                         && name_chirho.is_none()
                     {
                         let s_chirho =
@@ -8324,6 +8325,39 @@ data TailChirho = TailChirho
                 }
                 other_chirho => panic!("expected backticked left section, got {:?}", other_chirho),
             }
+        }
+    }
+
+    #[test]
+    fn lower_infix_data_constructor_with_strict_fields_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module Utils.Containers.Internal.StrictPair where\n\
+data StrictPair a b = !a :*: !b\n",
+        );
+        assert_eq!(module_chirho.decls_chirho.len(), 1);
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho {
+                name_chirho,
+                constructors_chirho,
+                ..
+            } => {
+                assert_eq!(name_chirho.text_chirho(), "StrictPair");
+                assert_eq!(constructors_chirho.len(), 1);
+                match &constructors_chirho[0] {
+                    ConDeclChirho::OrdinaryChirho {
+                        name_chirho,
+                        fields_chirho,
+                        ..
+                    } => {
+                        assert_eq!(name_chirho.text_chirho(), ":*:");
+                        assert_eq!(fields_chirho.len(), 2);
+                        assert_eq!(fields_chirho[0].0, StrictnessChirho::StrictChirho);
+                        assert_eq!(fields_chirho[1].0, StrictnessChirho::StrictChirho);
+                    }
+                    other_chirho => panic!("expected ordinary infix constructor, got {:?}", other_chirho),
+                }
+            }
+            other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
         }
     }
 
