@@ -4261,10 +4261,39 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Bits", "FiniteBits"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
-            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        }
+        // Bits class with methods — (..) import brings these in
+        exports_chirho.types_chirho.insert(
+            "Bits".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Bits".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec![
+                    ".&.".to_string(), ".|.".to_string(), "xor".to_string(),
+                    "complement".to_string(), "shift".to_string(),
+                    "shiftL".to_string(), "shiftR".to_string(),
+                    "rotate".to_string(), "rotateL".to_string(), "rotateR".to_string(),
+                    "bit".to_string(), "setBit".to_string(), "clearBit".to_string(),
+                    "complementBit".to_string(), "testBit".to_string(),
+                    "bitSizeMaybe".to_string(), "bitSize".to_string(),
+                    "isSigned".to_string(), "popCount".to_string(), "zeroBits".to_string(),
+                    "unsafeShiftL".to_string(), "unsafeShiftR".to_string(),
+                ],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+        exports_chirho.types_chirho.insert(
+            "FiniteBits".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "FiniteBits".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec![
+                    "finiteBitSize".to_string(),
+                    "countLeadingZeros".to_string(),
+                    "countTrailingZeros".to_string(),
+                ],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Bits".to_string(),
             exports_chirho,
