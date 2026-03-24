@@ -1829,7 +1829,7 @@ impl ClassEnvChirho {
         }
 
         // Read instances
-        for ty_name_chirho in &["Int", "Integer", "Double", "Bool"] {
+        for ty_name_chirho in &["Int", "Integer", "Double", "Bool", "Rational"] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Read".to_string(),
                 head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
@@ -1852,6 +1852,7 @@ impl ClassEnvChirho {
         for ty_chirho in [
             TyChirho::int_chirho(),
             TyChirho::ConChirho("Integer".to_string()),
+            TyChirho::ConChirho("Rational".to_string()),
             TyChirho::ConChirho("Word".to_string()),
         ] {
             self.add_instance_chirho(InstDeclChirho {
@@ -1877,6 +1878,12 @@ impl ClassEnvChirho {
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Fractional".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Rational".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
 
         // instance Eq Double
         self.add_instance_chirho(InstDeclChirho {
@@ -1885,11 +1892,42 @@ impl ClassEnvChirho {
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Eq".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Rational".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Ord".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Rational".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
 
         // instance Show Double
         self.add_instance_chirho(InstDeclChirho {
             class_name_chirho: "Show".to_string(),
             head_ty_chirho: TyChirho::ConChirho("Double".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Show".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Rational".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Real".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Rational".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "RealFrac".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Rational".to_string()),
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });

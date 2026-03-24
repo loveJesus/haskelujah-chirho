@@ -115,6 +115,30 @@ fn frontend_traversable_sequencea_instance_method_typechecks_chirho() {
 }
 
 #[test]
+fn multi_module_default_rational_propagates_to_imported_helpers_chirho() {
+    use crate::compile_modules_chirho;
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho: Vec<(&str, &str)> = vec![
+        (
+            "MatrixChirho.hs",
+            "module MatrixChirho where\ndefault (Rational)\ninverseChirho mChirho = mChirho\nmultChirho _Chirho xsChirho = xsChirho\n",
+        ),
+        (
+            "RgbChirho.hs",
+            "module RgbChirho where\nimport MatrixChirho\nvalueChirho :: [Rational]\nvalueChirho = multChirho (inverseChirho []) [1 / 2, 1, 3 / 2]\n",
+        ),
+    ];
+
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "module default (Rational) should propagate through imported helpers: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_qualified_text_uncons_uses_text_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

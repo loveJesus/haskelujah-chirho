@@ -69,6 +69,8 @@ pub struct InferCtxChirho {
     /// Record constructor field names: maps constructor name → ordered list of field names.
     /// Used for RecordWildCards expansion (`Foo{..}` fills in missing fields).
     con_field_names_chirho: HashMap<String, Vec<String>>,
+    /// Module-local numeric default declaration candidates from `default (...)`.
+    module_default_types_chirho: Vec<TyChirho>,
 }
 
 impl InferCtxChirho {
@@ -217,6 +219,7 @@ impl InferCtxChirho {
             type_families_chirho: HashMap::new(),
             scoped_tyvars_chirho: HashMap::new(),
             con_field_names_chirho: HashMap::new(),
+            module_default_types_chirho: Vec::new(),
         }
     }
 
@@ -3202,6 +3205,18 @@ impl InferCtxChirho {
             }
         }
 
+        self.module_default_types_chirho.clear();
+        for decl_chirho in &module_chirho.decls_chirho {
+            if let DeclChirho::DefaultDeclChirho { types_chirho, .. } = decl_chirho {
+                let mut default_var_map_chirho = HashMap::new();
+                for default_type_chirho in types_chirho {
+                    let default_ty_chirho =
+                        self.ast_type_to_ty_chirho(default_type_chirho, &mut default_var_map_chirho);
+                    self.module_default_types_chirho.push(default_ty_chirho);
+                }
+            }
+        }
+
         // Phase -0.5: Register type families and type family instances
         for decl_chirho in &module_chirho.decls_chirho {
             match decl_chirho {
@@ -3965,6 +3980,27 @@ impl InferCtxChirho {
             });
             if !has_numeric_trigger_chirho {
                 continue;
+            }
+            if !self.module_default_types_chirho.is_empty() {
+                let mut matched_default_chirho = None;
+                for candidate_ty_chirho in &self.module_default_types_chirho {
+                    let candidate_matches_chirho = classes_chirho.iter().all(|class_name_chirho| {
+                        self.class_env_chirho
+                            .resolve_chirho(&PredChirho::new_chirho(
+                                class_name_chirho,
+                                candidate_ty_chirho.clone(),
+                            ))
+                            .is_some()
+                    });
+                    if candidate_matches_chirho {
+                        matched_default_chirho = Some(candidate_ty_chirho.clone());
+                        break;
+                    }
+                }
+                if let Some(default_ty_chirho) = matched_default_chirho {
+                    default_subst_chirho.insert_chirho(*var_chirho, default_ty_chirho);
+                    continue;
+                }
             }
             // If any constraint is a Fractional-group class, default to Double;
             // otherwise default to Integer, matching Haskell's standard default
