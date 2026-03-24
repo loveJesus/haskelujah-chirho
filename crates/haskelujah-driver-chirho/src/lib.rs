@@ -2627,51 +2627,6 @@ fn extract_imports_chirho(source_chirho: &str) -> Vec<String> {
     imports_chirho
 }
 
-fn filter_seeded_imports_for_source_chirho(
-    source_chirho: &str,
-    imported_types_chirho: &std::collections::HashMap<
-        String,
-        haskelujah_typing_chirho::ty_chirho::SchemeChirho,
-    >,
-    imported_type_synonyms_chirho: &ImportedTypeSynonymsChirho,
-) -> (
-    std::collections::HashMap<String, haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
-    ImportedTypeSynonymsChirho,
-) {
-    let imported_modules_chirho: std::collections::HashSet<String> =
-        extract_imports_chirho(source_chirho).into_iter().collect();
-    if imported_modules_chirho.is_empty() {
-        return (
-            std::collections::HashMap::new(),
-            ImportedTypeSynonymsChirho::new(),
-        );
-    }
-
-    let seeded_key_is_reachable_chirho = |name_chirho: &str| {
-        imported_modules_chirho.iter().any(|module_name_chirho| {
-            name_chirho
-                .strip_prefix(module_name_chirho)
-                .is_some_and(|suffix_chirho| suffix_chirho.starts_with('.'))
-        })
-    };
-
-    let filtered_imported_types_chirho = imported_types_chirho
-        .iter()
-        .filter(|(name_chirho, _scheme_chirho)| seeded_key_is_reachable_chirho(name_chirho))
-        .map(|(name_chirho, scheme_chirho)| (name_chirho.clone(), scheme_chirho.clone()))
-        .collect();
-    let filtered_imported_type_synonyms_chirho = imported_type_synonyms_chirho
-        .iter()
-        .filter(|(name_chirho, _synonym_chirho)| seeded_key_is_reachable_chirho(name_chirho))
-        .map(|(name_chirho, synonym_chirho)| (name_chirho.clone(), synonym_chirho.clone()))
-        .collect();
-
-    (
-        filtered_imported_types_chirho,
-        filtered_imported_type_synonyms_chirho,
-    )
-}
-
 fn source_imports_stdlib_chirho(source_chirho: &str) -> bool {
     extract_imports_chirho(source_chirho)
         .iter()
@@ -2891,21 +2846,13 @@ pub fn compile_project_dir_chirho(
                 source_chirho,
             );
             let file_id_chirho = source_file_chirho.file_id_chirho();
-            let (
-                filtered_imported_types_chirho,
-                filtered_imported_type_synonyms_chirho,
-            ) = filter_seeded_imports_for_source_chirho(
-                source_chirho,
-                &imported_types_chirho,
-                &imported_type_synonyms_chirho,
-            );
 
             let frontend_result_chirho = run_frontend_with_type_synonyms_chirho(
                 source_chirho,
                 file_id_chirho,
                 &ifaces_chirho,
-                &filtered_imported_types_chirho,
-                &filtered_imported_type_synonyms_chirho,
+                &imported_types_chirho,
+                &imported_type_synonyms_chirho,
             )
             .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
 
@@ -3673,21 +3620,13 @@ fn collect_frontend_artifacts_from_module_sources_chirho(
                 source_chirho,
             );
             let file_id_chirho = source_file_chirho.file_id_chirho();
-            let (
-                filtered_imported_types_chirho,
-                filtered_imported_type_synonyms_chirho,
-            ) = filter_seeded_imports_for_source_chirho(
-                source_chirho,
-                &imported_types_chirho,
-                &imported_type_synonyms_chirho,
-            );
 
             let frontend_result_chirho = run_frontend_with_type_synonyms_chirho(
                 source_chirho,
                 file_id_chirho,
                 &ifaces_chirho,
-                &filtered_imported_types_chirho,
-                &filtered_imported_type_synonyms_chirho,
+                &imported_types_chirho,
+                &imported_type_synonyms_chirho,
             )
             .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
 

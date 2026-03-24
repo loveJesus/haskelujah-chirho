@@ -7,13 +7,9 @@
 mod tests_chirho {
     use crate::{
         compile_project_dir_chirho, discover_hs_files_chirho, extract_imports_chirho,
-        extract_module_name_chirho, filter_seeded_imports_for_source_chirho,
+        extract_module_name_chirho,
     };
-    use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
-    use haskelujah_ast_chirho::ty_chirho::TypeChirho;
-    use haskelujah_span_chirho::{SourceMapChirho, SpanChirho};
-    use haskelujah_typing_chirho::ty_chirho::MultChirho;
-    use haskelujah_typing_chirho::{SchemeChirho, TyChirho, TyVarChirho};
+    use haskelujah_span_chirho::SourceMapChirho;
     use std::fs;
 
     fn workspace_root_chirho() -> std::path::PathBuf {
@@ -75,56 +71,6 @@ mod tests_chirho {
         let src_chirho = "module Foo where\nimport Bar (baz, quux)\n";
         let imports_chirho = extract_imports_chirho(src_chirho);
         assert_eq!(imports_chirho, vec!["Bar"]);
-    }
-
-    #[test]
-    fn filter_seeded_imports_only_keeps_explicit_modules_chirho() {
-        let type_var_name_chirho =
-            NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                "a".to_string(),
-                SpanChirho::DUMMY_CHIRHO,
-            ));
-        let source_chirho = "module Main where\nimport qualified Data.Bits as Bits\nmain = 0\n";
-        let scheme_chirho = SchemeChirho {
-            vars_chirho: vec![TyVarChirho(1)],
-            preds_chirho: vec![],
-            ty_chirho: TyChirho::FunChirho(
-                Box::new(TyChirho::VarChirho(TyVarChirho(1))),
-                Box::new(TyChirho::VarChirho(TyVarChirho(1))),
-                MultChirho::ManyChirho,
-            ),
-        };
-        let imported_types_chirho = std::collections::HashMap::from([
-            ("Data.Bits..&.".to_string(), scheme_chirho.clone()),
-            ("Data.Hashable.hash".to_string(), scheme_chirho.clone()),
-            ("hash".to_string(), scheme_chirho.clone()),
-        ]);
-        let imported_type_synonyms_chirho = std::collections::HashMap::from([
-            (
-                "Data.Bits.BitSize".to_string(),
-                (
-                    vec!["a".to_string()],
-                    TypeChirho::VarChirho(type_var_name_chirho.clone()),
-                ),
-            ),
-            (
-                "Data.Hashable.HashValue".to_string(),
-                (vec!["a".to_string()], TypeChirho::VarChirho(type_var_name_chirho)),
-            ),
-        ]);
-
-        let (filtered_types_chirho, filtered_synonyms_chirho) =
-            filter_seeded_imports_for_source_chirho(
-                source_chirho,
-                &imported_types_chirho,
-                &imported_type_synonyms_chirho,
-            );
-
-        assert!(filtered_types_chirho.contains_key("Data.Bits..&."));
-        assert!(!filtered_types_chirho.contains_key("Data.Hashable.hash"));
-        assert!(!filtered_types_chirho.contains_key("hash"));
-        assert!(filtered_synonyms_chirho.contains_key("Data.Bits.BitSize"));
-        assert!(!filtered_synonyms_chirho.contains_key("Data.Hashable.HashValue"));
     }
 
     #[test]

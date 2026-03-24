@@ -4316,6 +4316,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "bitSize",
             "isSigned",
             "popCount",
+            "popCountDefault",
             "zeroBits",
             "finiteBitSize",
         ] {
@@ -7158,6 +7159,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "rotateL",
             "rotateR",
             "popCount",
+            "popCountDefault",
             "bitSize",
             "bitSizeMaybe",
             "isSigned",

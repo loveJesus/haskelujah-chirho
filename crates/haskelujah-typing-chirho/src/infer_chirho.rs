@@ -5091,7 +5091,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         },
     );
-    for int_result_bits_name_chirho in ["bitSize", "popCount"] {
+    for int_result_bits_name_chirho in ["bitSize", "popCount", "popCountDefault"] {
         env_chirho.bind_chirho(
             int_result_bits_name_chirho.to_string(),
             SchemeChirho {
