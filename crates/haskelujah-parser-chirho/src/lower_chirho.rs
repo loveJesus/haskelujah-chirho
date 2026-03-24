@@ -2495,24 +2495,33 @@ impl LowerCtxChirho {
         let mut fundep_from_chirho: Vec<String> = Vec::new();
         let mut fundep_to_chirho: Vec<String> = Vec::new();
         let mut in_to_chirho = false; // true after seeing `->`
+        let mut paren_depth_chirho = 0usize;
 
         let mut idx_chirho = 0;
         while idx_chirho < children_chirho.len() {
             let child_chirho = &children_chirho[idx_chirho];
             if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
-                if tok_chirho.kind_chirho() == TokenKindChirho::ClassKeywordChirho {
+                if tok_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
+                    paren_depth_chirho += 1;
+                } else if tok_chirho.kind_chirho() == TokenKindChirho::RightParenChirho {
+                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                } else if tok_chirho.kind_chirho() == TokenKindChirho::ClassKeywordChirho {
                     saw_class_chirho = true;
-                } else if tok_chirho.kind_chirho() == TokenKindChirho::WhereKeywordChirho {
+                } else if tok_chirho.kind_chirho() == TokenKindChirho::WhereKeywordChirho
+                    && paren_depth_chirho == 0
+                {
                     saw_where_chirho = true;
                 } else if tok_chirho.kind_chirho() == TokenKindChirho::DoubleArrowChirho
                     && saw_class_chirho
                     && !saw_where_chirho
                     && !saw_pipe_chirho
+                    && paren_depth_chirho == 0
                 {
                     saw_fat_arrow_chirho = true;
                 } else if tok_chirho.kind_chirho() == TokenKindChirho::PipeChirho
                     && saw_class_chirho
                     && !saw_where_chirho
+                    && paren_depth_chirho == 0
                 {
                     saw_pipe_chirho = true;
                 } else if saw_pipe_chirho && !saw_where_chirho {
@@ -2785,6 +2794,7 @@ impl LowerCtxChirho {
         let mut saw_instance_chirho = false;
         let mut saw_where_chirho = false;
         let mut saw_fat_arrow_chirho = false;
+        let mut paren_depth_chirho = 0usize;
 
         // Tokens before `=>` (if any).
         let mut pre_arrow_tokens_chirho: Vec<(&GreenTokenChirho, SpanChirho)> = Vec::new();
@@ -2798,15 +2808,25 @@ impl LowerCtxChirho {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
                     let kind_chirho = tok_chirho.kind_chirho();
+                    if kind_chirho == TokenKindChirho::LeftParenChirho {
+                        paren_depth_chirho += 1;
+                    }
+                    if kind_chirho == TokenKindChirho::RightParenChirho {
+                        paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                    }
                     if kind_chirho == TokenKindChirho::InstanceKeywordChirho {
                         saw_instance_chirho = true;
                         continue;
                     }
-                    if kind_chirho == TokenKindChirho::WhereKeywordChirho {
+                    if kind_chirho == TokenKindChirho::WhereKeywordChirho
+                        && paren_depth_chirho == 0
+                    {
                         saw_where_chirho = true;
                         continue;
                     }
-                    if kind_chirho == TokenKindChirho::DoubleArrowChirho {
+                    if kind_chirho == TokenKindChirho::DoubleArrowChirho
+                        && paren_depth_chirho == 0
+                    {
                         saw_fat_arrow_chirho = true;
                         continue;
                     }
@@ -2946,42 +2966,87 @@ impl LowerCtxChirho {
         tokens_chirho: &[(&GreenTokenChirho, SpanChirho)],
     ) -> Vec<ConstraintChirho> {
         let mut constraints_chirho = Vec::new();
-        let mut current_class_chirho: Option<NameChirho> = None;
-        let mut current_args_chirho: Vec<TypeChirho> = Vec::new();
+        let mut segment_start_chirho = 0usize;
+        let mut paren_depth_chirho = 0usize;
 
-        for (tok_chirho, s_chirho) in tokens_chirho {
+        for (idx_chirho, (tok_chirho, _span_chirho)) in tokens_chirho.iter().enumerate() {
             match tok_chirho.kind_chirho() {
-                TokenKindChirho::ConIdChirho => {
-                    // If we already have a class, flush it.
-                    if let Some(cls_chirho) = current_class_chirho.take() {
-                        constraints_chirho.push(ConstraintChirho {
-                            class_chirho: cls_chirho,
-                            args_chirho: std::mem::take(&mut current_args_chirho),
-                            span_chirho: *s_chirho,
-                        });
+                TokenKindChirho::LeftParenChirho => {
+                    paren_depth_chirho += 1;
+                }
+                TokenKindChirho::RightParenChirho => {
+                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                }
+                TokenKindChirho::CommaChirho if paren_depth_chirho == 0 => {
+                    if let Some(constraint_chirho) = self
+                        .parse_simple_constraint_segment_chirho(
+                            &tokens_chirho[segment_start_chirho..idx_chirho],
+                        )
+                    {
+                        constraints_chirho.push(constraint_chirho);
                     }
-                    current_class_chirho = Some(self.name_from_token_chirho(tok_chirho, *s_chirho));
+                    segment_start_chirho = idx_chirho + 1;
                 }
-                TokenKindChirho::VarIdChirho => {
-                    current_args_chirho.push(TypeChirho::VarChirho(
-                        self.name_from_token_chirho(tok_chirho, *s_chirho),
-                    ));
-                }
-                // Skip parens, commas, etc.
                 _ => {}
             }
         }
 
-        // Flush the last constraint.
-        if let Some(cls_chirho) = current_class_chirho {
-            constraints_chirho.push(ConstraintChirho {
-                class_chirho: cls_chirho,
-                args_chirho: current_args_chirho,
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            });
+        if let Some(constraint_chirho) =
+            self.parse_simple_constraint_segment_chirho(&tokens_chirho[segment_start_chirho..])
+        {
+            constraints_chirho.push(constraint_chirho);
         }
 
         constraints_chirho
+    }
+
+    fn parse_simple_constraint_segment_chirho(
+        &self,
+        tokens_chirho: &[(&GreenTokenChirho, SpanChirho)],
+    ) -> Option<ConstraintChirho> {
+        // Quantified/specialized superclass constraints are not representable in
+        // ConstraintChirho yet. Ignore them here rather than mislowering them
+        // into bogus simple class applications like deepseq's
+        // `forall a. NFData a => NFData (f a)`.
+        if tokens_chirho.iter().any(|(tok_chirho, _)| {
+            matches!(
+                tok_chirho.kind_chirho(),
+                TokenKindChirho::ForallKeywordChirho | TokenKindChirho::DoubleArrowChirho
+            )
+        }) {
+            return None;
+        }
+
+        let mut current_class_chirho: Option<NameChirho> = None;
+        let mut current_args_chirho: Vec<TypeChirho> = Vec::new();
+        let mut span_chirho = SpanChirho::DUMMY_CHIRHO;
+
+        for (tok_chirho, token_span_chirho) in tokens_chirho {
+            match tok_chirho.kind_chirho() {
+                TokenKindChirho::ConSymChirho
+                | TokenKindChirho::QualifiedConSymChirho
+                | TokenKindChirho::ConIdChirho
+                | TokenKindChirho::QualifiedConIdChirho => {
+                    if current_class_chirho.is_none() {
+                        current_class_chirho =
+                            Some(self.name_from_token_chirho(tok_chirho, *token_span_chirho));
+                        span_chirho = *token_span_chirho;
+                    }
+                }
+                TokenKindChirho::VarIdChirho => {
+                    current_args_chirho.push(TypeChirho::VarChirho(
+                        self.name_from_token_chirho(tok_chirho, *token_span_chirho),
+                    ));
+                }
+                _ => {}
+            }
+        }
+
+        current_class_chirho.map(|class_chirho| ConstraintChirho {
+            class_chirho,
+            args_chirho: current_args_chirho,
+            span_chirho,
+        })
     }
 
     fn lower_instance_head_types_chirho(

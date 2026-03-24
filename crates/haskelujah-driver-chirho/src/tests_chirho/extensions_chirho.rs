@@ -209,6 +209,20 @@ main = foo
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
+#[test]
+fn quantified_constraint_superclass_class_decl_parses_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE QuantifiedConstraints #-}
+module Test where
+class (forall a. Show a => Eq (f a)) => MyClassChirho f where
+  myMethodChirho :: f Int -> Int
+main = 42
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "QCSuper.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
 // ── LambdaCase ──────────────────────────────────────────────────────────
 
 #[test]
