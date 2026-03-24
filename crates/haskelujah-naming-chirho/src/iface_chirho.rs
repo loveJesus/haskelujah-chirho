@@ -749,19 +749,43 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "newTVar",
             "readTVar",
             "writeTVar",
+            "modifyTVar",
+            "modifyTVar'",
+            "swapTVar",
             "newTVarIO",
             "readTVarIO",
+            "newTMVar",
+            "readTMVar",
+            "putTMVar",
+            "takeTMVar",
+            "newTMVarIO",
+            "newEmptyTMVar",
+            "newEmptyTMVarIO",
             "atomically",
             "retry",
             "orElse",
+            "check",
+            "throwSTM",
+            "catchSTM",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
+        for name_chirho in &["STM", "TVar", "TMVar"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Control.Concurrent.STM".to_string(),
-            exports_chirho,
+            exports_chirho: exports_chirho.clone(),
         });
+        // Also expose as GHC.Conc / Control.Concurrent.STM.TVar
+        for sub_mod_chirho in &["Control.Concurrent.STM.TVar", "Control.Concurrent.STM.TMVar", "GHC.Conc"] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: sub_mod_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
     }
 
     // Prelude — the implicit import every Haskell module gets
@@ -1742,11 +1766,36 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "stderr",
             "withFile",
             "openFile",
+            "openBinaryFile",
+            "hSetBinaryMode",
+            "hIsEOF",
+            "isEOF",
+            "hGetChar",
+            "hGetLine",
+            "hLookAhead",
+            "hReady",
+            "hPutChar",
+            "hPrint",
+            "hTell",
+            "hSeek",
+            "hFileSize",
+            "hIsOpen",
+            "hIsClosed",
+            "hIsReadable",
+            "hIsWritable",
+            "hIsSeekable",
+            "hSetNewlineMode",
+            "hGetEncoding",
+            "mkTextEncoding",
+            "utf8",
+            "utf16",
+            "latin1",
+            "char8",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["IO", "Handle", "IOMode", "BufferMode"] {
+        for name_chirho in &["IO", "Handle", "IOMode", "BufferMode", "SeekMode", "NewlineMode", "Newline", "TextEncoding"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
