@@ -8470,31 +8470,45 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // sum :: [Int] -> Int  (Int-specialized)
-    env_chirho.bind_chirho(
-        "sum".to_string(),
-        SchemeChirho {
-            vars_chirho: vec![],
-            preds_chirho: vec![],
-            ty_chirho: TyChirho::fun_chirho(
-                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
-                TyChirho::int_chirho(),
-            ),
-        },
-    );
+    // sum :: Num a => [a] -> a
+    {
+        let sum_a_chirho = TyVarChirho(3498);
+        env_chirho.bind_chirho(
+            "sum".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![sum_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Num".to_string(),
+                    ty_chirho: TyChirho::VarChirho(sum_a_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(sum_a_chirho))),
+                    TyChirho::VarChirho(sum_a_chirho),
+                ),
+            },
+        );
+    }
 
-    // product :: [Int] -> Int  (Int-specialized)
-    env_chirho.bind_chirho(
-        "product".to_string(),
-        SchemeChirho {
-            vars_chirho: vec![],
-            preds_chirho: vec![],
-            ty_chirho: TyChirho::fun_chirho(
-                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
-                TyChirho::int_chirho(),
-            ),
-        },
-    );
+    // product :: Num a => [a] -> a
+    {
+        let product_a_chirho = TyVarChirho(3499);
+        env_chirho.bind_chirho(
+            "product".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![product_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Num".to_string(),
+                    ty_chirho: TyChirho::VarChirho(product_a_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(product_a_chirho))),
+                    TyChirho::VarChirho(product_a_chirho),
+                ),
+            },
+        );
+    }
 
     // concatMap :: forall a b. (a -> [b]) -> [a] -> [b]
     let cm_a_chirho = TyVarChirho(3140);
@@ -8579,31 +8593,45 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // minimum :: [Int] -> Int  (Int-specialized)
-    env_chirho.bind_chirho(
-        "minimum".to_string(),
-        SchemeChirho {
-            vars_chirho: vec![],
-            preds_chirho: vec![],
-            ty_chirho: TyChirho::fun_chirho(
-                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
-                TyChirho::int_chirho(),
-            ),
-        },
-    );
+    // minimum :: Ord a => [a] -> a
+    {
+        let minimum_a_chirho = TyVarChirho(3502);
+        env_chirho.bind_chirho(
+            "minimum".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![minimum_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(minimum_a_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(minimum_a_chirho))),
+                    TyChirho::VarChirho(minimum_a_chirho),
+                ),
+            },
+        );
+    }
 
-    // maximum :: [Int] -> Int  (Int-specialized)
-    env_chirho.bind_chirho(
-        "maximum".to_string(),
-        SchemeChirho {
-            vars_chirho: vec![],
-            preds_chirho: vec![],
-            ty_chirho: TyChirho::fun_chirho(
-                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
-                TyChirho::int_chirho(),
-            ),
-        },
-    );
+    // maximum :: Ord a => [a] -> a
+    {
+        let maximum_a_chirho = TyVarChirho(3503);
+        env_chirho.bind_chirho(
+            "maximum".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![maximum_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(maximum_a_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(maximum_a_chirho))),
+                    TyChirho::VarChirho(maximum_a_chirho),
+                ),
+            },
+        );
+    }
 
     // sort :: forall a. Ord a => [a] -> [a]
     {
