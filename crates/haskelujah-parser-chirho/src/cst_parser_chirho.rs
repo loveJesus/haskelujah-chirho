@@ -3026,8 +3026,15 @@ impl<'src> ParserChirho<'src> {
             Some(RawTokenKindChirho::VarSymChirho) | Some(RawTokenKindChirho::ConSymChirho)
         );
         let is_minus_chirho = is_op_chirho && self.current_text_chirho() == "-";
-        if is_op_chirho && !is_minus_chirho && !self.is_operator_section_chirho() {
-            self.bump_chirho(); // the operator
+        let is_backticked_left_section_chirho = self.is_backticked_left_section_start_chirho();
+        if (is_op_chirho && !is_minus_chirho && !self.is_operator_section_chirho())
+            || is_backticked_left_section_chirho
+        {
+            if is_backticked_left_section_chirho {
+                self.bump_backticked_operator_chirho();
+            } else {
+                self.bump_chirho(); // the operator
+            }
             self.eat_trivia_chirho();
             self.parse_expr_chirho();
             self.eat_trivia_chirho();
@@ -3049,23 +3056,32 @@ impl<'src> ParserChirho<'src> {
                 self.current_kind_chirho(),
                 Some(RawTokenKindChirho::VarSymChirho) | Some(RawTokenKindChirho::ConSymChirho)
             );
-            if is_right_op_chirho {
+            let is_backticked_right_section_chirho = self.is_backticked_right_section_chirho();
+            if is_right_op_chirho || is_backticked_right_section_chirho {
                 // Look ahead past operator + trivia for ')'
-                let mut look_chirho = self.pos_chirho + 1;
-                while look_chirho < self.tokens_chirho.len()
-                    && self.tokens_chirho[look_chirho]
-                        .kind_chirho
-                        .is_trivia_chirho()
-                {
-                    look_chirho += 1;
-                }
-                let is_right_section_chirho = look_chirho < self.tokens_chirho.len()
-                    && self.tokens_chirho[look_chirho].kind_chirho
-                        == RawTokenKindChirho::RightParenChirho;
+                let is_right_section_chirho = if is_backticked_right_section_chirho {
+                    true
+                } else {
+                    let mut look_chirho = self.pos_chirho + 1;
+                    while look_chirho < self.tokens_chirho.len()
+                        && self.tokens_chirho[look_chirho]
+                            .kind_chirho
+                            .is_trivia_chirho()
+                    {
+                        look_chirho += 1;
+                    }
+                    look_chirho < self.tokens_chirho.len()
+                        && self.tokens_chirho[look_chirho].kind_chirho
+                            == RawTokenKindChirho::RightParenChirho
+                };
 
                 if is_right_section_chirho {
                     // Right section: emit the operator token; lowerer detects it
-                    self.bump_chirho(); // the operator
+                    if is_backticked_right_section_chirho {
+                        self.bump_backticked_operator_chirho();
+                    } else {
+                        self.bump_chirho(); // the operator
+                    }
                     self.eat_trivia_chirho();
                     if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
                         self.bump_chirho();
@@ -4165,6 +4181,100 @@ impl<'src> ParserChirho<'src> {
         }
         look_chirho < self.tokens_chirho.len()
             && self.tokens_chirho[look_chirho].kind_chirho == RawTokenKindChirho::RightParenChirho
+    }
+
+    fn peek_backticked_operator_end_chirho(&self, start_pos_chirho: usize) -> Option<usize> {
+        if self
+            .tokens_chirho
+            .get(start_pos_chirho)
+            .is_none_or(|token_chirho| token_chirho.kind_chirho != RawTokenKindChirho::BacktickChirho)
+        {
+            return None;
+        }
+
+        let mut look_chirho = start_pos_chirho + 1;
+        while look_chirho < self.tokens_chirho.len()
+            && self.tokens_chirho[look_chirho].kind_chirho.is_trivia_chirho()
+        {
+            look_chirho += 1;
+        }
+        if look_chirho >= self.tokens_chirho.len()
+            || !matches!(
+                self.tokens_chirho[look_chirho].kind_chirho,
+                RawTokenKindChirho::VarIdChirho
+                    | RawTokenKindChirho::ConIdChirho
+                    | RawTokenKindChirho::QualifiedIdChirho
+                    | RawTokenKindChirho::VarSymChirho
+                    | RawTokenKindChirho::ConSymChirho
+            )
+        {
+            return None;
+        }
+
+        look_chirho += 1;
+        while look_chirho < self.tokens_chirho.len()
+            && self.tokens_chirho[look_chirho].kind_chirho.is_trivia_chirho()
+        {
+            look_chirho += 1;
+        }
+
+        if look_chirho < self.tokens_chirho.len()
+            && self.tokens_chirho[look_chirho].kind_chirho == RawTokenKindChirho::BacktickChirho
+        {
+            Some(look_chirho)
+        } else {
+            None
+        }
+    }
+
+    fn is_backticked_left_section_start_chirho(&self) -> bool {
+        self.peek_backticked_operator_end_chirho(self.pos_chirho)
+            .is_some_and(|end_pos_chirho| {
+                let mut look_chirho = end_pos_chirho + 1;
+                while look_chirho < self.tokens_chirho.len()
+                    && self.tokens_chirho[look_chirho].kind_chirho.is_trivia_chirho()
+                {
+                    look_chirho += 1;
+                }
+                look_chirho < self.tokens_chirho.len()
+                    && self.tokens_chirho[look_chirho].kind_chirho
+                        != RawTokenKindChirho::RightParenChirho
+            })
+    }
+
+    fn is_backticked_right_section_chirho(&self) -> bool {
+        self.peek_backticked_operator_end_chirho(self.pos_chirho)
+            .is_some_and(|end_pos_chirho| {
+                let mut look_chirho = end_pos_chirho + 1;
+                while look_chirho < self.tokens_chirho.len()
+                    && self.tokens_chirho[look_chirho].kind_chirho.is_trivia_chirho()
+                {
+                    look_chirho += 1;
+                }
+                look_chirho < self.tokens_chirho.len()
+                    && self.tokens_chirho[look_chirho].kind_chirho
+                        == RawTokenKindChirho::RightParenChirho
+            })
+    }
+
+    fn bump_backticked_operator_chirho(&mut self) {
+        if !self.at_chirho(RawTokenKindChirho::BacktickChirho) {
+            return;
+        }
+        self.bump_chirho();
+        self.eat_trivia_chirho();
+        if self.at_chirho(RawTokenKindChirho::VarIdChirho)
+            || self.at_chirho(RawTokenKindChirho::ConIdChirho)
+            || self.at_chirho(RawTokenKindChirho::QualifiedIdChirho)
+            || self.at_chirho(RawTokenKindChirho::VarSymChirho)
+            || self.at_chirho(RawTokenKindChirho::ConSymChirho)
+        {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+        }
+        if self.at_chirho(RawTokenKindChirho::BacktickChirho) {
+            self.bump_chirho();
+        }
     }
 
     fn current_text_chirho(&self) -> &str {

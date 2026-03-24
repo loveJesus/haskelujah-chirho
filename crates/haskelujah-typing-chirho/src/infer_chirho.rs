@@ -1869,6 +1869,90 @@ impl InferCtxChirho {
 
             ExprChirho::ParenChirho { inner_chirho, .. } => self.infer_expr_chirho(inner_chirho),
 
+            ExprChirho::LeftSectionChirho {
+                op_chirho,
+                arg_chirho,
+                span_chirho,
+            } => {
+                let (s1_chirho, arg_ty_chirho) = self.infer_expr_chirho(arg_chirho);
+                self.apply_subst_all_chirho(&s1_chirho);
+
+                let (s2_chirho, op_ty_chirho) =
+                    self.infer_expr_chirho(&ExprChirho::VarChirho(op_chirho.clone()));
+                self.apply_subst_all_chirho(&s2_chirho);
+
+                let left_ty_chirho = self.fresh_var_chirho();
+                let result_ty_chirho = self.fresh_var_chirho();
+                let arg_ty_sub_chirho = s2_chirho.apply_ty_chirho(&arg_ty_chirho);
+                let expected_op_ty_chirho = TyChirho::fun_chirho(
+                    left_ty_chirho.clone(),
+                    TyChirho::fun_chirho(arg_ty_sub_chirho, result_ty_chirho.clone()),
+                );
+
+                match self.unify_normalized_chirho(
+                    &s2_chirho.apply_ty_chirho(&op_ty_chirho),
+                    &expected_op_ty_chirho,
+                    *span_chirho,
+                ) {
+                    Ok(s3_chirho) => {
+                        let combined_chirho =
+                            s3_chirho.compose_chirho(&s2_chirho.compose_chirho(&s1_chirho));
+                        self.apply_subst_all_chirho(&s3_chirho);
+                        let final_ty_chirho = TyChirho::fun_chirho(
+                            combined_chirho.apply_ty_chirho(&left_ty_chirho),
+                            combined_chirho.apply_ty_chirho(&result_ty_chirho),
+                        );
+                        (combined_chirho, final_ty_chirho)
+                    }
+                    Err(err_chirho) => {
+                        self.report_unify_error_chirho(&err_chirho);
+                        (s2_chirho.compose_chirho(&s1_chirho), self.fresh_var_chirho())
+                    }
+                }
+            }
+
+            ExprChirho::RightSectionChirho {
+                arg_chirho,
+                op_chirho,
+                span_chirho,
+            } => {
+                let (s1_chirho, arg_ty_chirho) = self.infer_expr_chirho(arg_chirho);
+                self.apply_subst_all_chirho(&s1_chirho);
+
+                let (s2_chirho, op_ty_chirho) =
+                    self.infer_expr_chirho(&ExprChirho::VarChirho(op_chirho.clone()));
+                self.apply_subst_all_chirho(&s2_chirho);
+
+                let right_ty_chirho = self.fresh_var_chirho();
+                let result_ty_chirho = self.fresh_var_chirho();
+                let arg_ty_sub_chirho = s2_chirho.apply_ty_chirho(&arg_ty_chirho);
+                let expected_op_ty_chirho = TyChirho::fun_chirho(
+                    arg_ty_sub_chirho,
+                    TyChirho::fun_chirho(right_ty_chirho.clone(), result_ty_chirho.clone()),
+                );
+
+                match self.unify_normalized_chirho(
+                    &s2_chirho.apply_ty_chirho(&op_ty_chirho),
+                    &expected_op_ty_chirho,
+                    *span_chirho,
+                ) {
+                    Ok(s3_chirho) => {
+                        let combined_chirho =
+                            s3_chirho.compose_chirho(&s2_chirho.compose_chirho(&s1_chirho));
+                        self.apply_subst_all_chirho(&s3_chirho);
+                        let final_ty_chirho = TyChirho::fun_chirho(
+                            combined_chirho.apply_ty_chirho(&right_ty_chirho),
+                            combined_chirho.apply_ty_chirho(&result_ty_chirho),
+                        );
+                        (combined_chirho, final_ty_chirho)
+                    }
+                    Err(err_chirho) => {
+                        self.report_unify_error_chirho(&err_chirho);
+                        (s2_chirho.compose_chirho(&s1_chirho), self.fresh_var_chirho())
+                    }
+                }
+            }
+
             ExprChirho::AnnChirho {
                 expr_chirho,
                 ty_chirho: ann_ty_chirho,

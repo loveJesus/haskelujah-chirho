@@ -714,7 +714,7 @@ impl KindInferCtxChirho {
             TypeChirho::ForallChirho {
                 vars_chirho,
                 body_chirho,
-                span_chirho,
+                span_chirho: _,
             } => {
                 // Bind each quantified variable: use annotation if present,
                 // otherwise a fresh kind variable.
@@ -736,7 +736,7 @@ impl KindInferCtxChirho {
             TypeChirho::QualChirho {
                 context_chirho,
                 body_chirho,
-                span_chirho,
+                span_chirho: _,
             } => {
                 // Kind-check each constraint in the context.
                 // NOTE: We do NOT force constraint arguments to kind *.
