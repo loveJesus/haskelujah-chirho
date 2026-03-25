@@ -1749,6 +1749,28 @@ mod tests_chirho {
     }
 
     #[test]
+    fn lex_magic_hash_identifiers_stay_single_tokens_chirho() {
+        let source_chirho =
+            "module T where\nfooChirho :: Int# -> Int#\nfooChirho xChirho = newPinnedByteArray# xChirho\n";
+        let kinds_chirho = non_trivia_kinds_chirho(source_chirho);
+        assert!(kinds_chirho.contains(&RawTokenKindChirho::ConIdChirho));
+        assert!(kinds_chirho.contains(&RawTokenKindChirho::VarIdChirho));
+
+        let tokens_chirho = lex_chirho(source_chirho);
+        let texts_chirho: Vec<_> = tokens_chirho
+            .iter()
+            .filter(|token_chirho| !token_chirho.kind_chirho.is_trivia_chirho())
+            .map(|token_chirho| {
+                &source_chirho[token_chirho.span_chirho.start_chirho().as_usize_chirho()
+                    ..token_chirho.span_chirho.end_chirho().as_usize_chirho()]
+            })
+            .collect();
+        assert!(texts_chirho.contains(&"Int#"));
+        assert!(texts_chirho.contains(&"newPinnedByteArray#"));
+        assert!(!texts_chirho.contains(&"#"));
+    }
+
+    #[test]
     fn lex_th_name_quote_value_chirho() {
         let kinds_chirho = non_trivia_kinds_chirho("'bimapConst");
         assert_eq!(
