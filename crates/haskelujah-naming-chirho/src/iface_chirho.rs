@@ -4148,12 +4148,26 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "freezeCallStack",
             "emptyCallStack",
             "pushCallStack",
+            "srcLocFile",
+            "srcLocModule",
+            "srcLocPackage",
+            "srcLocStartLine",
+            "srcLocStartCol",
+            "srcLocEndLine",
+            "srcLocEndCol",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["CallStack", "HasCallStack", "SrcLoc"] {
+        for name_chirho in &["CallStack", "HasCallStack"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        {
+            let (k_chirho, v_chirho) = mk_type_chirho("SrcLoc", &[
+                "SrcLoc", "srcLocFile", "srcLocModule", "srcLocPackage",
+                "srcLocStartLine", "srcLocStartCol", "srcLocEndLine", "srcLocEndCol",
+            ]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
