@@ -1855,8 +1855,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         let (k_chirho, v_chirho) = mk_type_chirho("NonEmpty", &["(:|)"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_val_chirho("(:|)");
-        exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        for con_name_chirho in &["(:|)", ":|"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(con_name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.List.NonEmpty".to_string(),
             exports_chirho,
