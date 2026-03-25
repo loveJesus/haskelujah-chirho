@@ -17138,6 +17138,50 @@ mod tests_chirho {
     }
 
     #[test]
+    fn infer_composition_with_tuple_family_projection_preserves_applied_rep_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let arg_ty_chirho = ctx_chirho.fresh_var_chirho();
+        let h_ty_chirho = TyChirho::fun_chirho(
+            arg_ty_chirho,
+            TyChirho::TupleChirho(vec![
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("f".to_string())),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("g".to_string())),
+                ),
+            ]),
+        );
+        ctx_chirho
+            .env_chirho
+            .bind_chirho("h".to_string(), SchemeChirho::mono_chirho(h_ty_chirho));
+        let expr_chirho = ExprChirho::InfixChirho {
+            left_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("fst"))),
+            op_chirho: dummy_name_chirho("."),
+            right_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("h"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let (subst_chirho, inferred_ty_chirho) = ctx_chirho.infer_expr_chirho(&expr_chirho);
+        let final_ty_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
+
+        match final_ty_chirho {
+            TyChirho::FunChirho(_, result_chirho, _) => {
+                assert_eq!(
+                    *result_chirho,
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Rep".to_string())),
+                        Box::new(TyChirho::ForallVarChirho("f".to_string()))
+                    )
+                );
+            }
+            other_chirho => panic!("expected composed function type, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
     fn type_family_oversaturated_application_reduces_and_reapplies_args_chirho() {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         ctx_chirho.register_type_family_instance_chirho(

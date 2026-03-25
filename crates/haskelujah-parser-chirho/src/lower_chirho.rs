@@ -11530,6 +11530,68 @@ class Describable a where
     }
 
     #[test]
+    fn lower_instance_assoc_family_rhs_preserves_applied_tycons_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nclass C f where\n  type Rep f\ninstance C (Product f g) where\n  type Rep (Product f g) = (Rep f, Rep g)\n",
+        );
+        let inst_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
+            .expect("should lower instance decl");
+        match inst_decl_chirho {
+            DeclChirho::InstanceDeclChirho {
+                assoc_tf_instances_chirho,
+                ..
+            } => {
+                assert_eq!(assoc_tf_instances_chirho.len(), 1);
+                match &assoc_tf_instances_chirho[0].rhs_chirho {
+                    TypeChirho::TupleChirho { elements_chirho, .. } => {
+                        assert_eq!(elements_chirho.len(), 2);
+                        assert!(
+                            matches!(elements_chirho[0], TypeChirho::AppChirho { .. }),
+                            "first rhs tuple element should preserve `Rep f` application, got {:?}",
+                            elements_chirho[0]
+                        );
+                        assert!(
+                            matches!(elements_chirho[1], TypeChirho::AppChirho { .. }),
+                            "second rhs tuple element should preserve `Rep g` application, got {:?}",
+                            elements_chirho[1]
+                        );
+                    }
+                    other_chirho => panic!("expected tuple rhs, got {:?}", other_chirho),
+                }
+            }
+            other_chirho => panic!("expected instance decl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_class_method_type_preserves_assoc_family_application_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nclass Representable f where\n  type Rep f\n  tabulate :: (a -> Rep f) -> f a\n",
+        );
+        let class_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::ClassDeclChirho { .. }))
+            .expect("should lower class decl");
+        match class_decl_chirho {
+            DeclChirho::ClassDeclChirho { methods_chirho, .. } => {
+                assert_eq!(methods_chirho.len(), 1);
+                let method_ty_chirho = &methods_chirho[0].ty_chirho;
+                let method_ty_debug_chirho = format!("{:?}", method_ty_chirho);
+                assert!(
+                    method_ty_debug_chirho.contains("Rep") && method_ty_debug_chirho.contains("f"),
+                    "class method type should preserve `Rep f`, got {:?}",
+                    method_ty_chirho
+                );
+            }
+            other_chirho => panic!("expected class decl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
     fn lower_th_splice_parens_chirho() {
         // $(expr) lowers to ExprChirho::SpliceChirho wrapping the inner expression
         let module_chirho = parse_and_lower_chirho("module M where\nx = $(makeLenses foo)\n");
