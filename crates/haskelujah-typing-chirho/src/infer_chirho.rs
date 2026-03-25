@@ -17182,6 +17182,91 @@ mod tests_chirho {
     }
 
     #[test]
+    fn infer_tabulate_application_after_tuple_projection_keeps_component_functor_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+            context_chirho: vec![],
+            name_chirho: dummy_name_chirho("Representable"),
+            type_vars_chirho: vec![dummy_name_chirho("f").into()],
+            methods_chirho: vec![haskelujah_ast_chirho::decl_chirho::ClassMethodChirho {
+                name_chirho: dummy_name_chirho("tabulate"),
+                ty_chirho: TypeChirho::FunChirho {
+                    arg_chirho: Box::new(TypeChirho::FunChirho {
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        mult_chirho: None,
+                        result_chirho: Box::new(TypeChirho::AppChirho {
+                            fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Rep"))),
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    mult_chirho: None,
+                    result_chirho: Box::new(TypeChirho::AppChirho {
+                        fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                default_chirho: None,
+                default_sig_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                name_chirho: dummy_name_chirho("Rep"),
+                type_vars_chirho: vec![dummy_name_chirho("f")],
+                default_rhs_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            fundeps_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        ctx_chirho.process_class_decl_chirho(&class_decl_ast_chirho);
+
+        let h_arg_ty_chirho = ctx_chirho.fresh_var_chirho();
+        ctx_chirho.env_chirho.bind_chirho(
+            "h".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                h_arg_ty_chirho.clone(),
+                TyChirho::TupleChirho(vec![
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Rep".to_string())),
+                        Box::new(TyChirho::ForallVarChirho("f".to_string())),
+                    ),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Rep".to_string())),
+                        Box::new(TyChirho::ForallVarChirho("g".to_string())),
+                    ),
+                ]),
+            )),
+        );
+
+        let projected_fun_chirho = ExprChirho::InfixChirho {
+            left_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("fst"))),
+            op_chirho: dummy_name_chirho("."),
+            right_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("h"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let expr_chirho = ExprChirho::AppChirho {
+            fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("tabulate"))),
+            arg_chirho: Box::new(projected_fun_chirho),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let (subst_chirho, inferred_ty_chirho) = ctx_chirho.infer_expr_chirho(&expr_chirho);
+        let final_ty_chirho = ctx_chirho.reduce_type_families_in_ty_chirho(
+            &subst_chirho.apply_ty_chirho(&inferred_ty_chirho),
+        );
+
+        assert!(
+            matches!(final_ty_chirho, TyChirho::AppChirho(_, _)),
+            "tabulate (fst . h) should infer an applied component functor, got {:?}",
+            final_ty_chirho
+        );
+    }
+
+    #[test]
     fn type_family_oversaturated_application_reduces_and_reapplies_args_chirho() {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         ctx_chirho.register_type_family_instance_chirho(

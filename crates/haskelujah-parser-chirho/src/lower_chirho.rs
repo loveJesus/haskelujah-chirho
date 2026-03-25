@@ -11592,6 +11592,48 @@ class Describable a where
     }
 
     #[test]
+    fn lower_tabulate_projection_argument_keeps_dot_operator_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nclass Representable f where\n  type Rep f\n  tabulate :: (a -> Rep f) -> f a\ninstance (Representable f, Representable g) => Representable (Product f g) where\n  type Rep (Product f g) = (Rep f, Rep g)\n  tabulate h = Pair (tabulate (fst . h)) (tabulate (snd . h))\n",
+        );
+        let inst_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
+            .expect("should lower instance decl");
+        match inst_decl_chirho {
+            DeclChirho::InstanceDeclChirho { methods_chirho, .. } => {
+                let tabulate_bind_chirho = methods_chirho
+                    .iter()
+                    .find(|bind_chirho| {
+                        matches!(
+                            bind_chirho,
+                            haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                                name_chirho,
+                                ..
+                            } if name_chirho.text_chirho() == "tabulate"
+                        )
+                    })
+                    .expect("should lower tabulate method");
+                let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                    matches_chirho,
+                    ..
+                } = tabulate_bind_chirho
+                else {
+                    unreachable!();
+                };
+                let rhs_debug_chirho = format!("{:?}", matches_chirho[0].rhs_chirho);
+                assert!(
+                    rhs_debug_chirho.contains("\".\""),
+                    "tabulate rhs should preserve composition operator, got {:?}",
+                    matches_chirho[0].rhs_chirho
+                );
+            }
+            other_chirho => panic!("expected instance decl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
     fn lower_th_splice_parens_chirho() {
         // $(expr) lowers to ExprChirho::SpliceChirho wrapping the inner expression
         let module_chirho = parse_and_lower_chirho("module M where\nx = $(makeLenses foo)\n");
