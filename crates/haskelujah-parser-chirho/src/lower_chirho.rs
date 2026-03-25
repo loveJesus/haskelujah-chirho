@@ -3237,11 +3237,19 @@ impl LowerCtxChirho {
                     rhs_chirho: ta_rhs_chirho,
                     span_chirho: ta_span_chirho,
                 } => {
-                    // LHS types are the type variables from the alias declaration
-                    let lhs_tys_chirho: Vec<TypeChirho> = ta_tvs_chirho
-                        .iter()
-                        .map(|tv_chirho| TypeChirho::VarChirho(tv_chirho.name_chirho.clone()))
-                        .collect();
+                    // In instance bodies, associated type family equations like
+                    // `type Rep Proxy = ()` are temporarily lowered through the
+                    // type-alias path. Concrete heads such as `Proxy` are not
+                    // alias type variables, so preserve the enclosing instance
+                    // head when no alias variables were captured.
+                    let lhs_tys_chirho: Vec<TypeChirho> = if ta_tvs_chirho.is_empty() {
+                        instance_type_chirho.clone()
+                    } else {
+                        ta_tvs_chirho
+                            .iter()
+                            .map(|tv_chirho| TypeChirho::VarChirho(tv_chirho.name_chirho.clone()))
+                            .collect()
+                    };
                     assoc_tf_insts_chirho.push(
                         haskelujah_ast_chirho::decl_chirho::AssocTfInstanceChirho {
                             family_name_chirho: ta_name_chirho,
@@ -11453,6 +11461,40 @@ class Describable a where
             } else {
                 panic!("expected unguarded RHS");
             }
+        }
+    }
+
+    #[test]
+    fn lower_instance_assoc_type_family_with_concrete_lhs_uses_instance_head_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nclass C f where\n  type Rep f\ninstance C Proxy where\n  type Rep Proxy = ()\n",
+        );
+        let inst_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
+            .expect("should lower instance decl");
+        match inst_decl_chirho {
+            DeclChirho::InstanceDeclChirho {
+                assoc_tf_instances_chirho,
+                ..
+            } => {
+                assert_eq!(assoc_tf_instances_chirho.len(), 1);
+                assert_eq!(
+                    assoc_tf_instances_chirho[0]
+                        .family_name_chirho
+                        .text_chirho(),
+                    "Rep"
+                );
+                assert_eq!(assoc_tf_instances_chirho[0].lhs_types_chirho.len(), 1);
+                match &assoc_tf_instances_chirho[0].lhs_types_chirho[0] {
+                    TypeChirho::ConChirho(name_chirho) => {
+                        assert_eq!(name_chirho.text_chirho(), "Proxy");
+                    }
+                    other_chirho => panic!("expected concrete Proxy lhs, got {:?}", other_chirho),
+                }
+            }
+            other_chirho => panic!("expected instance decl, got {:?}", other_chirho),
         }
     }
 

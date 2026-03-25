@@ -1407,12 +1407,15 @@ impl InferCtxChirho {
             // Register associated type family instances from this instance decl
             for atfi_chirho in assoc_tf_instances_chirho {
                 let fname_chirho = atfi_chirho.family_name_chirho.text_chirho().to_string();
+                let inst_params_chirho =
+                    collect_free_type_vars_from_ast_chirho(&atfi_chirho.lhs_types_chirho);
                 let lhs_chirho: Vec<TyChirho> = atfi_chirho
                     .lhs_types_chirho
                     .iter()
-                    .map(|t_chirho| ast_type_to_syn_rhs_chirho(t_chirho, &[]))
+                    .map(|t_chirho| ast_type_to_syn_rhs_chirho(t_chirho, &inst_params_chirho))
                     .collect();
-                let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(&atfi_chirho.rhs_chirho, &[]);
+                let rhs_ty_chirho =
+                    ast_type_to_syn_rhs_chirho(&atfi_chirho.rhs_chirho, &inst_params_chirho);
                 self.register_type_family_instance_chirho(fname_chirho, lhs_chirho, rhs_ty_chirho);
             }
         }
@@ -14076,7 +14079,7 @@ fn substitute_type_vars_chirho(
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
-    use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+    use haskelujah_ast_chirho::decl_chirho::{AssocTfInstanceChirho, ConDeclChirho, DeclChirho};
     use haskelujah_ast_chirho::expr_chirho::AltChirho;
     use haskelujah_ast_chirho::module_chirho::ModuleChirho;
     use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
@@ -16911,6 +16914,75 @@ mod tests_chirho {
             result_chirho,
             Some(TyChirho::bool_chirho()),
             "open F Int should reduce to Bool"
+        );
+    }
+
+    #[test]
+    fn assoc_type_family_instance_uses_lhs_free_vars_as_pattern_vars_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let product_lhs_chirho = TypeChirho::AppChirho {
+            fun_chirho: Box::new(TypeChirho::AppChirho {
+                fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Product"))),
+                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("g"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let assoc_inst_decl_chirho = DeclChirho::InstanceDeclChirho {
+            context_chirho: vec![],
+            class_chirho: dummy_name_chirho("Representable"),
+            types_chirho: vec![product_lhs_chirho.clone()],
+            methods_chirho: vec![],
+            assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+                family_name_chirho: dummy_name_chirho("Rep"),
+                lhs_types_chirho: vec![product_lhs_chirho],
+                rhs_chirho: TypeChirho::TupleChirho {
+                    elements_chirho: vec![
+                        TypeChirho::AppChirho {
+                            fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Rep"))),
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                        TypeChirho::AppChirho {
+                            fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Rep"))),
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("g"))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                    ],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        ctx_chirho.process_instance_decl_chirho(&assoc_inst_decl_chirho);
+
+        let reduced_chirho = ctx_chirho.reduce_type_family_chirho(
+            "Rep",
+            &[TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Product".to_string())),
+                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
+                )),
+                Box::new(TyChirho::ConChirho("U1".to_string())),
+            )],
+        );
+
+        assert_eq!(
+            reduced_chirho,
+            Some(TyChirho::TupleChirho(vec![
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep".to_string())),
+                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep".to_string())),
+                    Box::new(TyChirho::ConChirho("U1".to_string())),
+                ),
+            ])),
+            "associated type family instance should treat lhs free vars as pattern variables"
         );
     }
 
