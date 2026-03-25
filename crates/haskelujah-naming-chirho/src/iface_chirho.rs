@@ -10098,6 +10098,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Control.Monad.Trans.Instances (transformers-compat — re-exports)
+    {
+        let exports_chirho = IfaceExportsChirho::default();
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.Trans.Instances".to_string(),
+            exports_chirho,
+        });
+    }
+
     // System.Random (random package — needed by QuickCheck)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
