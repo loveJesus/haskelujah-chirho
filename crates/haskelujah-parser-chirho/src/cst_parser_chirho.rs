@@ -1555,7 +1555,7 @@ impl<'src> ParserChirho<'src> {
             .start_node_chirho(SyntaxKindChirho::MatchChirho);
 
         if self.starts_infix_fun_bind_chirho() {
-            self.parse_fun_arg_pat_chirho();
+            self.parse_lpat_chirho();
             self.eat_trivia_chirho();
 
             if self.at_chirho(RawTokenKindChirho::BacktickChirho) {
@@ -1581,11 +1581,8 @@ impl<'src> ParserChirho<'src> {
                 self.eat_trivia_chirho();
             }
 
-            if self.can_start_apat_chirho()
-                || (self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
-                    && (self.current_text_chirho() == "-" || self.current_text_chirho() == "!"))
-            {
-                self.parse_fun_arg_pat_chirho();
+            if self.can_start_fun_arg_pat_chirho() {
+                self.parse_lpat_chirho();
                 self.eat_trivia_chirho();
             }
         } else {
@@ -1732,7 +1729,7 @@ impl<'src> ParserChirho<'src> {
                 }
             }
             RawTokenKindChirho::ConIdChirho | RawTokenKindChirho::QualifiedIdChirho => {
-                let idx_chirho = self.skip_trivia_idx_chirho(start_idx_chirho + 1);
+                let mut idx_chirho = self.skip_trivia_idx_chirho(start_idx_chirho + 1);
                 if self
                     .tokens_chirho
                     .get(idx_chirho)
@@ -1740,14 +1737,21 @@ impl<'src> ParserChirho<'src> {
                         token_chirho.kind_chirho == RawTokenKindChirho::LeftBraceChirho
                     })
                 {
-                    self.peek_after_balanced_group_chirho(
+                    return self.peek_after_balanced_group_chirho(
                         idx_chirho,
                         RawTokenKindChirho::LeftBraceChirho,
                         RawTokenKindChirho::RightBraceChirho,
-                    )
-                } else {
-                    Some(idx_chirho)
+                    );
                 }
+
+                while self.can_start_fun_arg_pat_idx_chirho(idx_chirho) {
+                    let after_arg_chirho = self.peek_after_fun_arg_pat_chirho(idx_chirho)?;
+                    if after_arg_chirho == idx_chirho {
+                        break;
+                    }
+                    idx_chirho = self.skip_trivia_idx_chirho(after_arg_chirho);
+                }
+                Some(idx_chirho)
             }
             RawTokenKindChirho::VarSymChirho => {
                 let token_text_chirho = self.token_text_chirho(&self.tokens_chirho[start_idx_chirho]);
@@ -4439,6 +4443,37 @@ impl<'src> ParserChirho<'src> {
                 | Some(RawTokenKindChirho::LeftBracketChirho)
                 | Some(RawTokenKindChirho::TildeChirho)
         )
+    }
+
+    fn can_start_fun_arg_pat_chirho(&self) -> bool {
+        self.can_start_fun_arg_pat_idx_chirho(self.pos_chirho)
+    }
+
+    fn can_start_fun_arg_pat_idx_chirho(&self, idx_chirho: usize) -> bool {
+        matches!(
+            self.tokens_chirho
+                .get(idx_chirho)
+                .map(|token_chirho| token_chirho.kind_chirho),
+            Some(RawTokenKindChirho::VarIdChirho)
+                | Some(RawTokenKindChirho::ConIdChirho)
+                | Some(RawTokenKindChirho::QualifiedIdChirho)
+                | Some(RawTokenKindChirho::IntLitChirho)
+                | Some(RawTokenKindChirho::FloatLitChirho)
+                | Some(RawTokenKindChirho::CharLitChirho)
+                | Some(RawTokenKindChirho::StringLitChirho)
+                | Some(RawTokenKindChirho::UnderscoreChirho)
+                | Some(RawTokenKindChirho::LeftParenChirho)
+                | Some(RawTokenKindChirho::LeftBracketChirho)
+                | Some(RawTokenKindChirho::TildeChirho)
+                | Some(RawTokenKindChirho::VarSymChirho)
+        ) && !self
+            .tokens_chirho
+            .get(idx_chirho)
+            .is_some_and(|token_chirho| {
+                token_chirho.kind_chirho == RawTokenKindChirho::VarSymChirho
+                    && self.token_text_chirho(token_chirho) != "-"
+                    && self.token_text_chirho(token_chirho) != "!"
+            })
     }
 
     /// Is the current token an infix operator?
