@@ -286,6 +286,27 @@ placesChirho = ceiling (logBase 10 (fromIntegral (5 :: Int)) - 2 :: Double) `max
 }
 
 #[test]
+fn frontend_system_io_buffering_and_terminal_queries_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module QuickCheckIOMiniChirho where\n\
+import System.IO\n\
+fooChirho :: Handle -> IO BufferMode\n\
+fooChirho = hGetBuffering\n\
+barChirho :: Handle -> IO Bool\n\
+barChirho = hIsTerminalDevice\n",
+        &mut source_map_chirho,
+        "QuickCheckIOMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "System.IO buffering and terminal query helpers should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_proxy_hash_preserves_higher_kinded_class_param_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

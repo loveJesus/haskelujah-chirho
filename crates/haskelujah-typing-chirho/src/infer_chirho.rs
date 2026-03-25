@@ -13536,6 +13536,24 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
+    // hGetBuffering :: Handle -> IO BufferMode
+    env_chirho.bind_chirho(
+        "hGetBuffering".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::ConChirho("Handle".to_string()),
+            TyChirho::io_chirho(TyChirho::ConChirho("BufferMode".to_string())),
+        )),
+    );
+
+    // hIsTerminalDevice :: Handle -> IO Bool
+    env_chirho.bind_chirho(
+        "hIsTerminalDevice".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::ConChirho("Handle".to_string()),
+            TyChirho::io_chirho(TyChirho::bool_chirho()),
+        )),
+    );
+
     // hSetEncoding :: Handle -> TextEncoding -> IO ()
     env_chirho.bind_chirho(
         "hSetEncoding".to_string(),
