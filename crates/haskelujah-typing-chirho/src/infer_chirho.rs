@@ -54,6 +54,8 @@ pub struct InferCtxChirho {
     class_env_chirho: ClassEnvChirho,
     /// Deferred (wanted) typeclass predicates collected during inference.
     deferred_preds_chirho: Vec<(PredChirho, SpanChirho)>,
+    /// Given predicates currently in scope from explicit type signatures.
+    given_preds_chirho: Vec<PredChirho>,
     /// Accumulated diagnostics.
     diagnostics_chirho: DiagnosticBundleChirho,
     /// Type synonym environment: name → (param names, expanded RHS TyChirho).
@@ -282,6 +284,7 @@ impl InferCtxChirho {
             env_chirho,
             class_env_chirho,
             deferred_preds_chirho: Vec::new(),
+            given_preds_chirho: Vec::new(),
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             type_synonyms_chirho,
             type_families_chirho: HashMap::new(),
@@ -548,15 +551,12 @@ impl InferCtxChirho {
         TyChirho::VarChirho(var_chirho)
     }
 
-    /// Instantiate a type scheme with fresh unification variables.
-    /// Any predicates on the scheme are also instantiated and deferred.
-    pub fn instantiate_chirho(
+    fn instantiate_scheme_parts_chirho(
         &mut self,
         scheme_chirho: &SchemeChirho,
-        span_chirho: SpanChirho,
-    ) -> TyChirho {
+    ) -> (TyChirho, Vec<PredChirho>) {
         if scheme_chirho.vars_chirho.is_empty() && scheme_chirho.preds_chirho.is_empty() {
-            return scheme_chirho.ty_chirho.clone();
+            return (scheme_chirho.ty_chirho.clone(), Vec::new());
         }
 
         let mut subst_chirho = SubstChirho::empty_chirho();
@@ -564,22 +564,59 @@ impl InferCtxChirho {
             subst_chirho.insert_chirho(*v_chirho, self.fresh_var_chirho());
         }
 
-        // Instantiate and defer predicates
-        for pred_chirho in &scheme_chirho.preds_chirho {
-            let instantiated_ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
-            let instantiated_extra_chirho: Vec<TyChirho> = pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
-                .collect();
-            let mut pred_inst_chirho =
-                PredChirho::new_chirho(&pred_chirho.class_name_chirho, instantiated_ty_chirho);
-            pred_inst_chirho.extra_tys_chirho = instantiated_extra_chirho;
+        let instantiated_preds_chirho: Vec<PredChirho> = scheme_chirho
+            .preds_chirho
+            .iter()
+            .map(|pred_chirho| {
+                let instantiated_ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
+                let instantiated_extra_chirho: Vec<TyChirho> = pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
+                    .collect();
+                let mut pred_inst_chirho =
+                    PredChirho::new_chirho(&pred_chirho.class_name_chirho, instantiated_ty_chirho);
+                pred_inst_chirho.extra_tys_chirho = instantiated_extra_chirho;
+                pred_inst_chirho
+            })
+            .collect();
+
+        (
+            subst_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho),
+            instantiated_preds_chirho,
+        )
+    }
+
+    /// Instantiate a type scheme with fresh unification variables.
+    /// Any predicates on the scheme are also instantiated and deferred.
+    pub fn instantiate_chirho(
+        &mut self,
+        scheme_chirho: &SchemeChirho,
+        span_chirho: SpanChirho,
+    ) -> TyChirho {
+        let (instantiated_ty_chirho, instantiated_preds_chirho) =
+            self.instantiate_scheme_parts_chirho(scheme_chirho);
+        for pred_inst_chirho in instantiated_preds_chirho {
             self.deferred_preds_chirho
                 .push((pred_inst_chirho, span_chirho));
         }
+        instantiated_ty_chirho
+    }
 
-        subst_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho)
+    fn with_given_preds_chirho<TChirho, FChirho>(
+        &mut self,
+        preds_chirho: Vec<PredChirho>,
+        f_chirho: FChirho,
+    ) -> TChirho
+    where
+        FChirho: FnOnce(&mut Self) -> TChirho,
+    {
+        let given_start_chirho = self.given_preds_chirho.len();
+        self.given_preds_chirho.extend(preds_chirho);
+        let result_chirho = f_chirho(self);
+        self.discharge_deferred_with_current_givens_chirho();
+        self.given_preds_chirho.truncate(given_start_chirho);
+        result_chirho
     }
 
     /// Generalize a type into a scheme by quantifying over all free variables
@@ -602,7 +639,13 @@ impl InferCtxChirho {
         ty_chirho: &TyChirho,
         allow_io_defaulting_chirho: bool,
     ) -> SchemeChirho {
-        let env_fvs_chirho = self.env_chirho.free_vars_chirho();
+        let mut env_fvs_chirho = self.env_chirho.free_vars_chirho();
+        for pred_chirho in &self.given_preds_chirho {
+            env_fvs_chirho.extend(pred_chirho.ty_chirho.free_vars_chirho());
+            for extra_ty_chirho in &pred_chirho.extra_tys_chirho {
+                env_fvs_chirho.extend(extra_ty_chirho.free_vars_chirho());
+            }
+        }
         let ty_fvs_chirho = ty_chirho.free_vars_chirho();
         let vars_chirho: Vec<TyVarChirho> = ty_fvs_chirho
             .into_iter()
@@ -742,6 +785,41 @@ impl InferCtxChirho {
         for (pred_chirho, _span_chirho) in &mut self.deferred_preds_chirho {
             pred_chirho.ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
         }
+        for pred_chirho in &mut self.given_preds_chirho {
+            pred_chirho.ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
+            pred_chirho.extra_tys_chirho = pred_chirho
+                .extra_tys_chirho
+                .iter()
+                .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
+                .collect();
+        }
+    }
+
+    fn pred_entailed_by_givens_chirho(
+        &self,
+        pred_chirho: &PredChirho,
+        givens_chirho: &[PredChirho],
+    ) -> bool {
+        givens_chirho.iter().any(|given_chirho| {
+            pred_chirho.ty_chirho == given_chirho.ty_chirho
+                && pred_chirho.extra_tys_chirho == given_chirho.extra_tys_chirho
+                && (pred_chirho.class_name_chirho == given_chirho.class_name_chirho
+                    || self.is_transitive_superclass_chirho(
+                        &pred_chirho.class_name_chirho,
+                        &given_chirho.class_name_chirho,
+                    ))
+        })
+    }
+
+    fn discharge_deferred_with_current_givens_chirho(&mut self) {
+        let givens_chirho = self.given_preds_chirho.clone();
+        let deferred_preds_chirho = std::mem::take(&mut self.deferred_preds_chirho);
+        self.deferred_preds_chirho = deferred_preds_chirho
+            .into_iter()
+            .filter(|(pred_chirho, _span_chirho)| {
+                !self.pred_entailed_by_givens_chirho(pred_chirho, &givens_chirho)
+            })
+            .collect();
     }
 
     /// Unify two types after normalizing: expand type synonyms and reduce
@@ -2812,8 +2890,8 @@ impl InferCtxChirho {
                     let pre_ty_chirho =
                         if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
                             let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                            let sig_ty_chirho =
-                                self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
+                            let (sig_ty_chirho, _sig_preds_chirho) =
+                                self.instantiate_scheme_parts_chirho(&sig_scheme_chirho);
                             self.env_chirho
                                 .bind_chirho(name_str_chirho.clone(), sig_scheme_chirho);
                             sig_ty_chirho
@@ -2864,16 +2942,18 @@ impl InferCtxChirho {
                 let (fun_subst_chirho, inferred_ty_chirho) =
                     if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
                         let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                        let sig_ty_raw_chirho =
-                            self.instantiate_chirho(&sig_scheme_chirho, span_chirho);
+                        let (sig_ty_raw_chirho, sig_preds_chirho) =
+                            self.instantiate_scheme_parts_chirho(&sig_scheme_chirho);
                         let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(
                             &self.expand_type_synonyms_chirho(&sig_ty_raw_chirho),
                         );
-                        self.infer_matches_against_expected_chirho(
-                            fun_matches_refs_chirho[fun_index_chirho],
-                            span_chirho,
-                            &sig_ty_chirho,
-                        )
+                        self.with_given_preds_chirho(sig_preds_chirho, |self_chirho| {
+                            self_chirho.infer_matches_against_expected_chirho(
+                                fun_matches_refs_chirho[fun_index_chirho],
+                                span_chirho,
+                                &sig_ty_chirho,
+                            )
+                        })
                     } else {
                         self.infer_matches_chirho(fun_matches_refs_chirho[fun_index_chirho], span_chirho)
                     };
@@ -2958,31 +3038,41 @@ impl InferCtxChirho {
     }
 
     /// Infer the type of a set of match arms (function equations).
-    fn freshen_match_seed_chirho(
+    fn freshen_match_seed_and_givens_chirho(
         &mut self,
         param_tys_chirho: &[TyChirho],
         result_ty_chirho: &TyChirho,
-    ) -> (Vec<TyChirho>, TyChirho) {
+        preds_chirho: &[PredChirho],
+    ) -> Option<(Vec<TyChirho>, TyChirho, Vec<PredChirho>)> {
         let seed_fun_ty_chirho =
             TyChirho::fun_n_chirho(param_tys_chirho.to_vec(), result_ty_chirho.clone());
         let mut seed_vars_chirho: Vec<TyVarChirho> =
             seed_fun_ty_chirho.free_vars_chirho().into_iter().collect();
+        for pred_chirho in preds_chirho {
+            seed_vars_chirho.extend(pred_chirho.ty_chirho.free_vars_chirho());
+            for extra_ty_chirho in &pred_chirho.extra_tys_chirho {
+                seed_vars_chirho.extend(extra_ty_chirho.free_vars_chirho());
+            }
+        }
         seed_vars_chirho.sort_by_key(|tv_chirho| tv_chirho.0);
+        seed_vars_chirho.dedup();
         let seed_scheme_chirho = SchemeChirho {
             vars_chirho: seed_vars_chirho,
-            preds_chirho: vec![],
+            preds_chirho: preds_chirho
+                .iter()
+                .map(|pred_chirho| SchemePredChirho {
+                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                    ty_chirho: pred_chirho.ty_chirho.clone(),
+                    extra_tys_chirho: pred_chirho.extra_tys_chirho.clone(),
+                })
+                .collect(),
             ty_chirho: seed_fun_ty_chirho,
         };
-        let fresh_fun_ty_chirho =
-            self.instantiate_chirho(&seed_scheme_chirho, SpanChirho::DUMMY_CHIRHO);
-        Self::split_fun_ty_for_arity_chirho(&fresh_fun_ty_chirho, param_tys_chirho.len())
-            .unwrap_or_else(|| {
-                let fresh_params_chirho: Vec<TyChirho> = (0..param_tys_chirho.len())
-                    .map(|_| self.fresh_var_chirho())
-                    .collect();
-                let fresh_result_chirho = self.fresh_var_chirho();
-                (fresh_params_chirho, fresh_result_chirho)
-            })
+        let (fresh_fun_ty_chirho, fresh_preds_chirho) =
+            self.instantiate_scheme_parts_chirho(&seed_scheme_chirho);
+        let (fresh_params_chirho, fresh_result_chirho) =
+            Self::split_fun_ty_for_arity_chirho(&fresh_fun_ty_chirho, param_tys_chirho.len())?;
+        Some((fresh_params_chirho, fresh_result_chirho, fresh_preds_chirho))
     }
 
     fn infer_matches_with_seed_chirho(
@@ -3000,6 +3090,11 @@ impl InferCtxChirho {
         let first_chirho = &matches_chirho[0];
         let arity_chirho = first_chirho.pats_chirho.len();
         let mut subst_chirho = SubstChirho::empty_chirho();
+        let signature_givens_chirho = if authoritative_seed_chirho {
+            self.given_preds_chirho.clone()
+        } else {
+            Vec::new()
+        };
 
         for match_arm_chirho in matches_chirho {
             self.env_chirho.push_scope_chirho();
@@ -3010,14 +3105,31 @@ impl InferCtxChirho {
             // seeded function type per equation so relationships like
             // `ASeq f u -> f u` stay linked within that equation, but do not
             // leak refinements such as `u ~ ()` from one equation into the next.
-            let (eq_param_tys_chirho, eq_result_ty_chirho) = if authoritative_seed_chirho {
-                self.freshen_match_seed_chirho(&param_tys_chirho, &result_ty_chirho)
-            } else {
-                (
-                    (0..arity_chirho).map(|_| self.fresh_var_chirho()).collect(),
-                    self.fresh_var_chirho(),
-                )
-            };
+            let (eq_param_tys_chirho, eq_result_ty_chirho, eq_given_preds_chirho) =
+                if authoritative_seed_chirho {
+                    self.freshen_match_seed_and_givens_chirho(
+                        &param_tys_chirho,
+                        &result_ty_chirho,
+                        &signature_givens_chirho,
+                    )
+                    .unwrap_or_else(|| {
+                        let fresh_params_chirho: Vec<TyChirho> = (0..arity_chirho)
+                            .map(|_| self.fresh_var_chirho())
+                            .collect();
+                        let fresh_result_chirho = self.fresh_var_chirho();
+                        (fresh_params_chirho, fresh_result_chirho, Vec::new())
+                    })
+                } else {
+                    (
+                        (0..arity_chirho).map(|_| self.fresh_var_chirho()).collect(),
+                        self.fresh_var_chirho(),
+                        Vec::new(),
+                    )
+                };
+            let given_start_chirho = self.given_preds_chirho.len();
+            if authoritative_seed_chirho {
+                self.given_preds_chirho.extend(eq_given_preds_chirho);
+            }
 
             // Bind pattern variables against per-equation fresh types
             for (pat_chirho, pat_ty_chirho) in match_arm_chirho
@@ -3100,6 +3212,8 @@ impl InferCtxChirho {
             }
 
             self.env_chirho.pop_scope_chirho();
+            self.discharge_deferred_with_current_givens_chirho();
+            self.given_preds_chirho.truncate(given_start_chirho);
         }
 
         // Build the function type: param1 -> param2 -> ... -> result
@@ -3899,8 +4013,8 @@ impl InferCtxChirho {
                     type_sigs_chirho.get(&binding_name_chirho)
                 {
                     let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                    let sig_ty_chirho =
-                        self.instantiate_chirho(&sig_scheme_chirho, *span_chirho);
+                    let (sig_ty_chirho, _sig_preds_chirho) =
+                        self.instantiate_scheme_parts_chirho(&sig_scheme_chirho);
                     self.env_chirho
                         .bind_chirho(binding_name_chirho.clone(), sig_scheme_chirho);
                     sig_ty_chirho
@@ -3976,16 +4090,18 @@ impl InferCtxChirho {
                 let (s_chirho, inferred_ty_chirho) =
                     if let Some(sig_ast_chirho) = type_sigs_chirho.get(binding_name_chirho) {
                         let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                        let sig_ty_raw_chirho =
-                            self.instantiate_chirho(&sig_scheme_chirho, span_chirho);
+                        let (sig_ty_raw_chirho, sig_preds_chirho) =
+                            self.instantiate_scheme_parts_chirho(&sig_scheme_chirho);
                         let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(
                             &self.expand_type_synonyms_chirho(&sig_ty_raw_chirho),
                         );
-                        self.infer_matches_against_expected_chirho(
-                            fun_matches_refs_chirho[fi_chirho],
-                            span_chirho,
-                            &sig_ty_chirho,
-                        )
+                        self.with_given_preds_chirho(sig_preds_chirho, |self_chirho| {
+                            self_chirho.infer_matches_against_expected_chirho(
+                                fun_matches_refs_chirho[fi_chirho],
+                                span_chirho,
+                                &sig_ty_chirho,
+                            )
+                        })
                     } else {
                         self.infer_matches_chirho(fun_matches_refs_chirho[fi_chirho], span_chirho)
                     };
@@ -4119,8 +4235,8 @@ impl InferCtxChirho {
                         // Check against type signature if one exists
                         if let Some(sig_ast_chirho) = type_sigs_chirho.get(name_chirho) {
                             let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                            let sig_ty_raw_chirho = self
-                                .instantiate_chirho(&sig_scheme_chirho, SpanChirho::DUMMY_CHIRHO);
+                            let (sig_ty_raw_chirho, _sig_preds_chirho) = self
+                                .instantiate_scheme_parts_chirho(&sig_scheme_chirho);
                             let sig_ty_chirho =
                                 self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
                             let inferred_sub_chirho =
@@ -4182,6 +4298,25 @@ impl InferCtxChirho {
     fn check_deferred_preds_chirho(&mut self, final_subst_chirho: &SubstChirho) -> SubstChirho {
         let preds_chirho: Vec<(PredChirho, SpanChirho)> =
             self.deferred_preds_chirho.drain(..).collect();
+        let resolved_given_preds_chirho: Vec<PredChirho> = self
+            .given_preds_chirho
+            .iter()
+            .map(|pred_chirho| PredChirho {
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: self.expand_type_synonyms_chirho(
+                    &final_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                ),
+                extra_tys_chirho: pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|t_chirho| {
+                        self.expand_type_synonyms_chirho(
+                            &final_subst_chirho.apply_ty_chirho(t_chirho),
+                        )
+                    })
+                    .collect(),
+            })
+            .collect();
 
         let defaultable_classes_chirho: &[&str] = &[
             "Num",
@@ -4250,6 +4385,12 @@ impl InferCtxChirho {
 
             // Collect bare type-variable constraints for defaulting
             if let TyChirho::VarChirho(v_chirho) = &resolved_pred_chirho.ty_chirho {
+                if self.pred_entailed_by_givens_chirho(
+                    &resolved_pred_chirho,
+                    &resolved_given_preds_chirho,
+                ) {
+                    continue;
+                }
                 var_classes_chirho
                     .entry(*v_chirho)
                     .or_default()
@@ -4323,6 +4464,9 @@ impl InferCtxChirho {
 
         // Phase 3: apply defaults and check all predicates
         for (pred_chirho, span_chirho) in resolved_preds_chirho {
+            if self.pred_entailed_by_givens_chirho(&pred_chirho, &resolved_given_preds_chirho) {
+                continue;
+            }
             let defaulted_pred_chirho = PredChirho {
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: default_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),

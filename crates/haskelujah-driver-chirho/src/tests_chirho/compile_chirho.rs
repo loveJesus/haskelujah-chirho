@@ -194,6 +194,32 @@ fn frontend_sum_on_rational_list_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_signature_givens_prevent_local_bounded_defaulting_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ColourBoundedMiniChirho where\n\
+data RGBChirho aChirho = RGBChirho aChirho\n\
+fmapRGBChirho :: (xChirho -> yChirho) -> RGBChirho xChirho -> RGBChirho yChirho\n\
+fmapRGBChirho fChirho (RGBChirho xChirho) = RGBChirho (fChirho xChirho)\n\
+quantizeChirho :: (RealFrac bChirho, Integral aChirho, Bounded aChirho) => bChirho -> aChirho\n\
+quantizeChirho = undefined\n\
+fooChirho :: (RealFrac bChirho, Floating bChirho, Integral aChirho, Bounded aChirho) => RGBChirho bChirho -> RGBChirho aChirho\n\
+fooChirho cChirho = fmapRGBChirho fChirho cChirho\n\
+ where\n\
+  fChirho xChirho = quantizeChirho (mChirho * xChirho)\n\
+  mChirho = fromIntegral $ maxBound `asTypeOf` (fChirho undefined)\n",
+        &mut source_map_chirho,
+        "ColourBoundedMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "signature givens should keep local Integral/Bounded vars polymorphic: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_fractional_literal_unifies_with_rational_annotation_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
