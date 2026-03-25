@@ -441,10 +441,11 @@ impl KindEnvChirho {
                 ),
             );
         }
+        let rep_arg_kind_chirho = KindVarChirho(10_008);
         env_chirho.bind_chirho(
             "Rep".to_string(),
             KindChirho::arrow_chirho(
-                KindChirho::StarChirho,
+                KindChirho::VarChirho(rep_arg_kind_chirho),
                 rep_functor_kind_chirho.clone(),
             ),
         );
@@ -1768,6 +1769,41 @@ mod tests_chirho {
         assert!(
             !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
             "qualified imported type constructors should not collide with local unqualified ones: {:?}",
+            ctx_chirho.diagnostics_chirho
+        );
+    }
+
+    #[test]
+    fn rep_kind_accepts_higher_kinded_argument_chirho() {
+        let env_chirho = KindEnvChirho::with_builtins_chirho();
+        let mut ctx_chirho = KindInferCtxChirho::new_chirho(env_chirho);
+        ctx_chirho.env_chirho.bind_chirho(
+            "QChirho".to_string(),
+            KindChirho::arrow_n_chirho(
+                vec![
+                    KindChirho::StarChirho,
+                    KindChirho::StarChirho,
+                    KindChirho::StarChirho,
+                ],
+                KindChirho::StarChirho,
+            ),
+        );
+
+        let ty_chirho = TypeChirho::AppChirho {
+            fun_chirho: Box::new(TypeChirho::ConChirho(mk_name_chirho("Rep"))),
+            arg_chirho: Box::new(TypeChirho::ConChirho(mk_name_chirho("QChirho"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let kind_chirho = ctx_chirho.infer_type_kind_chirho(&ty_chirho);
+        let normalized_kind_chirho = ctx_chirho.subst_chirho.apply_chirho(&kind_chirho);
+        assert_eq!(
+            normalized_kind_chirho,
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho)
+        );
+        assert!(
+            !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+            "Rep should accept higher-kinded arguments without diagnostics: {:?}",
             ctx_chirho.diagnostics_chirho
         );
     }
