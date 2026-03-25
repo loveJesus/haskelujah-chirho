@@ -5487,6 +5487,24 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             format!("{module_name_chirho}.uncons"),
             SchemeChirho::mono_chirho(maybe_byte_string_uncons_ty_chirho.clone()),
         );
+        env_chirho.bind_chirho(
+            format!("{module_name_chirho}.readFile"),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                TyChirho::string_chirho(),
+                TyChirho::io_chirho(byte_string_ty_chirho.clone()),
+            )),
+        );
+        env_chirho.bind_chirho(
+            format!("{module_name_chirho}.writeFile"),
+            SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+                vec![TyChirho::string_chirho(), byte_string_ty_chirho.clone()],
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
+            )),
+        );
+        env_chirho.bind_chirho(
+            format!("{module_name_chirho}.getContents"),
+            SchemeChirho::mono_chirho(TyChirho::io_chirho(byte_string_ty_chirho.clone())),
+        );
     }
 
     // toUpper :: Char -> Char

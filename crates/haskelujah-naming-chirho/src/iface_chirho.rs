@@ -5696,6 +5696,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "concat",
             "take",
             "drop",
+            "readFile",
+            "writeFile",
+            "getContents",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);

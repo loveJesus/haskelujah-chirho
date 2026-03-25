@@ -1126,7 +1126,13 @@ pub fn run_frontend_with_type_synonyms_chirho(
                     let base_scheme_chirho = merged_imported_types_chirho
                         .get(&module_qualified_name_chirho)
                         .cloned()
-                        .or_else(|| merged_imported_types_chirho.get(name_chirho).cloned())
+                        .or_else(|| {
+                            if import_chirho.qualified_chirho {
+                                None
+                            } else {
+                                merged_imported_types_chirho.get(name_chirho).cloned()
+                            }
+                        })
                         .unwrap_or_else(|| {
                             // Assign a fully polymorphic type: forall a. a
                             // This allows the type checker to accept the name

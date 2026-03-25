@@ -519,6 +519,38 @@ fn frontend_qualified_bytestring_char8_uncons_uses_bytestring_scheme_chirho() {
 }
 
 #[test]
+fn frontend_qualified_bytestring_char8_read_file_uses_bytestring_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ByteStringReadFileChirho where\nimport qualified Data.ByteString.Char8 as C\nfChirho :: FilePath -> IO C.ByteString\nfChirho = C.readFile\n",
+        &mut source_map_chirho,
+        "ByteStringReadFileChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Data.ByteString.Char8.readFile should use the ByteString-specific scheme: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_qualified_lazy_bytestring_char8_read_file_uses_bytestring_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module LazyByteStringReadFileChirho where\nimport qualified Data.ByteString.Lazy.Char8 as C\nfChirho :: FilePath -> IO C.ByteString\nfChirho = C.readFile\n",
+        &mut source_map_chirho,
+        "LazyByteStringReadFileChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Data.ByteString.Lazy.Char8.readFile should use the lazy ByteString-specific scheme: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn script_mode_uses_incremental_runtime_plan_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
