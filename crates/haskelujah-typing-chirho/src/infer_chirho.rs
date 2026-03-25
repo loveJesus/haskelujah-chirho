@@ -7035,6 +7035,188 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // System.Random / System.Random.SplitMix
+    let randomgen_g_chirho = TyVarChirho(1690);
+    let split_pair_ty_chirho = TyChirho::TupleChirho(vec![
+        TyChirho::VarChirho(randomgen_g_chirho),
+        TyChirho::VarChirho(randomgen_g_chirho),
+    ]);
+    env_chirho.bind_chirho(
+        "split".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![randomgen_g_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "RandomGen".to_string(),
+                ty_chirho: TyChirho::VarChirho(randomgen_g_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(randomgen_g_chirho),
+                split_pair_ty_chirho.clone(),
+            ),
+        },
+    );
+    env_chirho.bind_chirho(
+        "splitGen".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![randomgen_g_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "SplitGen".to_string(),
+                ty_chirho: TyChirho::VarChirho(randomgen_g_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(randomgen_g_chirho),
+                split_pair_ty_chirho,
+            ),
+        },
+    );
+    env_chirho.bind_chirho(
+        "next".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![randomgen_g_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "RandomGen".to_string(),
+                ty_chirho: TyChirho::VarChirho(randomgen_g_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(randomgen_g_chirho),
+                TyChirho::TupleChirho(vec![
+                    TyChirho::int_chirho(),
+                    TyChirho::VarChirho(randomgen_g_chirho),
+                ]),
+            ),
+        },
+    );
+    env_chirho.bind_chirho(
+        "genRange".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![randomgen_g_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "RandomGen".to_string(),
+                ty_chirho: TyChirho::VarChirho(randomgen_g_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(randomgen_g_chirho),
+                TyChirho::TupleChirho(vec![
+                    TyChirho::int_chirho(),
+                    TyChirho::int_chirho(),
+                ]),
+            ),
+        },
+    );
+    env_chirho.bind_chirho(
+        "mkStdGen".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::ConChirho("StdGen".to_string()),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "newStdGen".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::io_chirho(TyChirho::ConChirho(
+            "StdGen".to_string(),
+        ))),
+    );
+
+    let smgen_ty_chirho = TyChirho::ConChirho("SMGen".to_string());
+    let word64_ty_chirho = TyChirho::ConChirho("Word64".to_string());
+    env_chirho.bind_chirho(
+        "newSMGen".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::io_chirho(smgen_ty_chirho.clone())),
+    );
+    let mk_smgen_a_chirho = TyVarChirho(1691);
+    env_chirho.bind_chirho(
+        "mkSMGen".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![mk_smgen_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Integral".to_string(),
+                ty_chirho: TyChirho::VarChirho(mk_smgen_a_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(mk_smgen_a_chirho),
+                smgen_ty_chirho.clone(),
+            ),
+        },
+    );
+    env_chirho.bind_chirho(
+        "splitSMGen".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            smgen_ty_chirho.clone(),
+            TyChirho::TupleChirho(vec![smgen_ty_chirho.clone(), smgen_ty_chirho.clone()]),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "nextInt".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            smgen_ty_chirho.clone(),
+            TyChirho::TupleChirho(vec![TyChirho::int_chirho(), smgen_ty_chirho.clone()]),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "nextWord64".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            smgen_ty_chirho.clone(),
+            TyChirho::TupleChirho(vec![word64_ty_chirho.clone(), smgen_ty_chirho.clone()]),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "seedSMGen".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![word64_ty_chirho.clone(), word64_ty_chirho.clone()],
+            smgen_ty_chirho.clone(),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "unseedSMGen".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            smgen_ty_chirho.clone(),
+            TyChirho::TupleChirho(vec![word64_ty_chirho.clone(), word64_ty_chirho.clone()]),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "nextDouble".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            smgen_ty_chirho.clone(),
+            TyChirho::TupleChirho(vec![TyChirho::double_chirho(), smgen_ty_chirho.clone()]),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "nextFloat".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            smgen_ty_chirho.clone(),
+            TyChirho::TupleChirho(vec![
+                TyChirho::ConChirho("Float".to_string()),
+                smgen_ty_chirho.clone(),
+            ]),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "nextInteger".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![
+                TyChirho::ConChirho("Integer".to_string()),
+                TyChirho::ConChirho("Integer".to_string()),
+                smgen_ty_chirho.clone(),
+            ],
+            TyChirho::TupleChirho(vec![
+                TyChirho::ConChirho("Integer".to_string()),
+                smgen_ty_chirho.clone(),
+            ]),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "bitmaskWithRejection64'".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), smgen_ty_chirho.clone()],
+            TyChirho::TupleChirho(vec![word64_ty_chirho, smgen_ty_chirho]),
+        )),
+    );
+
     // return :: forall m a. Monad m => a -> m a
     let return_m_chirho = TyVarChirho(1700);
     let return_a_chirho = TyVarChirho(1701);

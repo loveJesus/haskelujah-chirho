@@ -1926,6 +1926,21 @@ fn frontend_pattern_bind_where_binds_are_in_scope_chirho() {
 }
 
 #[test]
+fn frontend_system_random_split_and_splitmix_surface_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module RandomMiniChirho where\nimport System.Random\nimport System.Random.SplitMix\nsplitStdMiniChirho :: RandomGen g => g -> (g, g)\nsplitStdMiniChirho = split\nsplitSmMiniChirho :: SMGen -> (SMGen, SMGen)\nsplitSmMiniChirho = splitSMGen\nnextSmMiniChirho :: SMGen -> (Int, SMGen)\nnextSmMiniChirho = nextInt\n",
+        &mut source_map_chirho,
+        "RandomMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "System.Random / SplitMix builtin surface should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn exhaustiveness_check_passes_for_complete_case_chirho() {
     use crate::compile_source_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();

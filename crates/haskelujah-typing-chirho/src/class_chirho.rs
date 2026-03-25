@@ -1555,6 +1555,86 @@ impl ClassEnvChirho {
             defaults_chirho: HashMap::new(),
         });
 
+        // RandomGen
+        let randomgen_var_chirho = TyVarChirho(90741);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "RandomGen".to_string(),
+            supers_chirho: vec![],
+            var_chirho: randomgen_var_chirho,
+            methods_chirho: HashMap::from([
+                (
+                    "split".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![randomgen_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(randomgen_var_chirho),
+                            TyChirho::TupleChirho(vec![
+                                TyChirho::VarChirho(randomgen_var_chirho),
+                                TyChirho::VarChirho(randomgen_var_chirho),
+                            ]),
+                        ),
+                    },
+                ),
+                (
+                    "genRange".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![randomgen_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(randomgen_var_chirho),
+                            TyChirho::TupleChirho(vec![
+                                TyChirho::int_chirho(),
+                                TyChirho::int_chirho(),
+                            ]),
+                        ),
+                    },
+                ),
+                (
+                    "next".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![randomgen_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::VarChirho(randomgen_var_chirho),
+                            TyChirho::TupleChirho(vec![
+                                TyChirho::int_chirho(),
+                                TyChirho::VarChirho(randomgen_var_chirho),
+                            ]),
+                        ),
+                    },
+                ),
+            ]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // SplitGen (superclass: RandomGen)
+        let splitgen_var_chirho = TyVarChirho(90742);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "SplitGen".to_string(),
+            supers_chirho: vec!["RandomGen".to_string()],
+            var_chirho: splitgen_var_chirho,
+            methods_chirho: HashMap::from([(
+                "splitGen".to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![splitgen_var_chirho],
+                    preds_chirho: vec![],
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::VarChirho(splitgen_var_chirho),
+                        TyChirho::TupleChirho(vec![
+                            TyChirho::VarChirho(splitgen_var_chirho),
+                            TyChirho::VarChirho(splitgen_var_chirho),
+                        ]),
+                    ),
+                },
+            )]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
         // Contravariant
         let contravariant_var_chirho = TyVarChirho(9078);
         self.add_class_chirho(ClassDeclChirho {
