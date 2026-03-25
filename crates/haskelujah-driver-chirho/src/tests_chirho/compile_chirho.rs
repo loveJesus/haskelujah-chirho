@@ -1853,6 +1853,21 @@ fn frontend_nested_as_pattern_binder_visible_in_where_chirho() {
 }
 
 #[test]
+fn frontend_pattern_bind_where_binds_are_in_scope_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module PatBindWhereMiniChirho where\n(discardChirho, isDiscardChirho) = (msgChirho, msgChirho == \"x\")\n  where\n    msgChirho = \"x\"\n",
+        &mut source_map_chirho,
+        "PatBindWhereMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "pattern binding where clauses should stay in scope for the rhs: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn exhaustiveness_check_passes_for_complete_case_chirho() {
     use crate::compile_source_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();
