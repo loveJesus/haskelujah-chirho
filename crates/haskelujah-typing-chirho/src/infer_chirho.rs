@@ -2958,12 +2958,40 @@ impl InferCtxChirho {
     }
 
     /// Infer the type of a set of match arms (function equations).
+    fn freshen_match_seed_chirho(
+        &mut self,
+        param_tys_chirho: &[TyChirho],
+        result_ty_chirho: &TyChirho,
+    ) -> (Vec<TyChirho>, TyChirho) {
+        let seed_fun_ty_chirho =
+            TyChirho::fun_n_chirho(param_tys_chirho.to_vec(), result_ty_chirho.clone());
+        let mut seed_vars_chirho: Vec<TyVarChirho> =
+            seed_fun_ty_chirho.free_vars_chirho().into_iter().collect();
+        seed_vars_chirho.sort_by_key(|tv_chirho| tv_chirho.0);
+        let seed_scheme_chirho = SchemeChirho {
+            vars_chirho: seed_vars_chirho,
+            preds_chirho: vec![],
+            ty_chirho: seed_fun_ty_chirho,
+        };
+        let fresh_fun_ty_chirho =
+            self.instantiate_chirho(&seed_scheme_chirho, SpanChirho::DUMMY_CHIRHO);
+        Self::split_fun_ty_for_arity_chirho(&fresh_fun_ty_chirho, param_tys_chirho.len())
+            .unwrap_or_else(|| {
+                let fresh_params_chirho: Vec<TyChirho> = (0..param_tys_chirho.len())
+                    .map(|_| self.fresh_var_chirho())
+                    .collect();
+                let fresh_result_chirho = self.fresh_var_chirho();
+                (fresh_params_chirho, fresh_result_chirho)
+            })
+    }
+
     fn infer_matches_with_seed_chirho(
         &mut self,
         matches_chirho: &[MatchArmChirho],
         span_chirho: SpanChirho,
         param_tys_chirho: Vec<TyChirho>,
         result_ty_chirho: TyChirho,
+        authoritative_seed_chirho: bool,
     ) -> (SubstChirho, TyChirho) {
         if matches_chirho.is_empty() {
             return (SubstChirho::empty_chirho(), self.fresh_var_chirho());
@@ -2978,9 +3006,18 @@ impl InferCtxChirho {
 
             // Each equation gets its own fresh param/result types so GADT
             // pattern matching can refine types independently per equation.
-            let eq_param_tys_chirho: Vec<TyChirho> =
-                (0..arity_chirho).map(|_| self.fresh_var_chirho()).collect();
-            let eq_result_ty_chirho = self.fresh_var_chirho();
+            // For explicit signatures / expected types, freshen the entire
+            // seeded function type per equation so relationships like
+            // `ASeq f u -> f u` stay linked within that equation, but do not
+            // leak refinements such as `u ~ ()` from one equation into the next.
+            let (eq_param_tys_chirho, eq_result_ty_chirho) = if authoritative_seed_chirho {
+                self.freshen_match_seed_chirho(&param_tys_chirho, &result_ty_chirho)
+            } else {
+                (
+                    (0..arity_chirho).map(|_| self.fresh_var_chirho()).collect(),
+                    self.fresh_var_chirho(),
+                )
+            };
 
             // Bind pattern variables against per-equation fresh types
             for (pat_chirho, pat_ty_chirho) in match_arm_chirho
@@ -2997,8 +3034,11 @@ impl InferCtxChirho {
             self.infer_local_binds_chirho(&match_arm_chirho.where_binds_chirho, &mut subst_chirho);
 
             // Infer RHS
-            let expected_result_sub_chirho =
-                subst_chirho.apply_ty_chirho(&result_ty_chirho);
+            let expected_result_sub_chirho = if authoritative_seed_chirho {
+                subst_chirho.apply_ty_chirho(&eq_result_ty_chirho)
+            } else {
+                subst_chirho.apply_ty_chirho(&result_ty_chirho)
+            };
             let (sr_chirho, rhs_ty_chirho) = self.infer_rhs_against_expected_chirho(
                 &match_arm_chirho.rhs_chirho,
                 &expected_result_sub_chirho,
@@ -3019,38 +3059,42 @@ impl InferCtxChirho {
                 }
             }
 
-            // Unify per-equation function type with overall function type.
-            // This propagates non-GADT constraints while allowing GADT
-            // equations to have independently refined types.
-            for (eq_p_chirho, p_chirho) in eq_param_tys_chirho.iter().zip(param_tys_chirho.iter()) {
-                let eq_p_sub_chirho = subst_chirho.apply_ty_chirho(eq_p_chirho);
-                let p_sub_chirho = subst_chirho.apply_ty_chirho(p_chirho);
-                if let Ok(s_chirho) =
-                    self.unify_normalized_chirho(&eq_p_sub_chirho, &p_sub_chirho, span_chirho)
+            if !authoritative_seed_chirho {
+                // Unify per-equation function type with overall function type.
+                // This propagates non-GADT constraints while allowing GADT
+                // equations to have independently refined types.
+                for (eq_p_chirho, p_chirho) in
+                    eq_param_tys_chirho.iter().zip(param_tys_chirho.iter())
                 {
-                    subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&s_chirho);
+                    let eq_p_sub_chirho = subst_chirho.apply_ty_chirho(eq_p_chirho);
+                    let p_sub_chirho = subst_chirho.apply_ty_chirho(p_chirho);
+                    if let Ok(s_chirho) =
+                        self.unify_normalized_chirho(&eq_p_sub_chirho, &p_sub_chirho, span_chirho)
+                    {
+                        subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&s_chirho);
+                    }
                 }
-            }
-            // Unify per-equation result with overall result type.
-            // For non-GADT cases this propagates the body type to the
-            // function result; for GADTs the signature check provides
-            // the authoritative type.
-            let eq_r_sub_chirho = subst_chirho.apply_ty_chirho(&eq_result_ty_chirho);
-            let r_sub_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
-            match self.unify_normalized_chirho(&eq_r_sub_chirho, &r_sub_chirho, span_chirho) {
-                Ok(s_chirho) => {
-                    subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&s_chirho);
-                }
-                Err(err_chirho) => {
-                    // For arity-0 bindings (e.g. x = True) there are no
-                    // GADT patterns to refine types, so a mismatch between
-                    // inferred and expected result is a real type error.
-                    // For higher-arity matches, GADT pattern matching can
-                    // refine per-equation types, so we allow the mismatch.
-                    if arity_chirho == 0 {
-                        self.report_unify_error_chirho(&err_chirho);
+                // Unify per-equation result with overall result type.
+                // For non-GADT cases this propagates the body type to the
+                // function result; for GADTs the signature check provides
+                // the authoritative type.
+                let eq_r_sub_chirho = subst_chirho.apply_ty_chirho(&eq_result_ty_chirho);
+                let r_sub_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
+                match self.unify_normalized_chirho(&eq_r_sub_chirho, &r_sub_chirho, span_chirho) {
+                    Ok(s_chirho) => {
+                        subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&s_chirho);
+                    }
+                    Err(err_chirho) => {
+                        // For arity-0 bindings (e.g. x = True) there are no
+                        // GADT patterns to refine types, so a mismatch between
+                        // inferred and expected result is a real type error.
+                        // For higher-arity matches, GADT pattern matching can
+                        // refine per-equation types, so we allow the mismatch.
+                        if arity_chirho == 0 {
+                            self.report_unify_error_chirho(&err_chirho);
+                        }
                     }
                 }
             }
@@ -3087,6 +3131,7 @@ impl InferCtxChirho {
             span_chirho,
             param_tys_chirho,
             result_ty_chirho,
+            false,
         )
     }
 
@@ -3154,6 +3199,7 @@ impl InferCtxChirho {
                 span_chirho,
                 vec![],
                 expected_ty_chirho.clone(),
+                true,
             );
         }
         if Self::fun_arity_chirho(expected_ty_chirho) != arity_chirho {
@@ -3167,6 +3213,7 @@ impl InferCtxChirho {
                 span_chirho,
                 param_tys_chirho,
                 result_ty_chirho,
+                true,
             )
         } else {
             self.infer_matches_chirho(matches_chirho, span_chirho)
@@ -15441,6 +15488,213 @@ mod tests_chirho {
             },
             other_chirho => panic!("expected function type, got {other_chirho}"),
         }
+    }
+
+    #[test]
+    fn infer_gadt_equations_freshen_expected_signature_per_equation_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("FreeASeqMiniChirho"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![
+                DeclChirho::DataDeclChirho {
+                    name_chirho: dummy_name_chirho("ASeq"),
+                    type_vars_chirho: vec![
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(
+                            dummy_name_chirho("fChirho"),
+                        ),
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(
+                            dummy_name_chirho("aChirho"),
+                        ),
+                    ],
+                    constructors_chirho: vec![
+                        ConDeclChirho::GadtChirho {
+                            name_chirho: dummy_name_chirho("ANil"),
+                            ty_chirho: TypeChirho::AppChirho {
+                                fun_chirho: Box::new(TypeChirho::AppChirho {
+                                    fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
+                                        "ASeq",
+                                    ))),
+                                    arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "fChirho",
+                                    ))),
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                arg_chirho: Box::new(TypeChirho::TupleChirho {
+                                    elements_chirho: vec![],
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            },
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                        ConDeclChirho::GadtChirho {
+                            name_chirho: dummy_name_chirho("ACons"),
+                            ty_chirho: TypeChirho::FunChirho {
+                                arg_chirho: Box::new(TypeChirho::AppChirho {
+                                    fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "fChirho",
+                                    ))),
+                                    arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "aChirho",
+                                    ))),
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                mult_chirho: None,
+                                result_chirho: Box::new(TypeChirho::FunChirho {
+                                    arg_chirho: Box::new(TypeChirho::AppChirho {
+                                        fun_chirho: Box::new(TypeChirho::AppChirho {
+                                            fun_chirho: Box::new(TypeChirho::ConChirho(
+                                                dummy_name_chirho("ASeq"),
+                                            )),
+                                            arg_chirho: Box::new(TypeChirho::VarChirho(
+                                                dummy_name_chirho("fChirho"),
+                                            )),
+                                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                        }),
+                                        arg_chirho: Box::new(TypeChirho::VarChirho(
+                                            dummy_name_chirho("uChirho"),
+                                        )),
+                                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                    }),
+                                    mult_chirho: None,
+                                    result_chirho: Box::new(TypeChirho::AppChirho {
+                                        fun_chirho: Box::new(TypeChirho::AppChirho {
+                                            fun_chirho: Box::new(TypeChirho::ConChirho(
+                                                dummy_name_chirho("ASeq"),
+                                            )),
+                                            arg_chirho: Box::new(TypeChirho::VarChirho(
+                                                dummy_name_chirho("fChirho"),
+                                            )),
+                                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                        }),
+                                        arg_chirho: Box::new(TypeChirho::TupleChirho {
+                                            elements_chirho: vec![
+                                                TypeChirho::VarChirho(dummy_name_chirho("aChirho")),
+                                                TypeChirho::VarChirho(dummy_name_chirho("uChirho")),
+                                            ],
+                                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                        }),
+                                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                    }),
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            },
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                    ],
+                    deriving_chirho: vec![],
+                    kind_sig_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::TypeSigChirho {
+                    name_chirho: dummy_name_chirho("reduceASeqChirho"),
+                    ty_chirho: TypeChirho::FunChirho {
+                        arg_chirho: Box::new(TypeChirho::AppChirho {
+                            fun_chirho: Box::new(TypeChirho::AppChirho {
+                                fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
+                                    "ASeq",
+                                ))),
+                                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                    "fChirho",
+                                ))),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                "uChirho",
+                            ))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        mult_chirho: None,
+                        result_chirho: Box::new(TypeChirho::AppChirho {
+                            fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                "fChirho",
+                            ))),
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                "uChirho",
+                            ))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::FunBindChirho {
+                    name_chirho: dummy_name_chirho("reduceASeqChirho"),
+                    matches_chirho: vec![
+                        MatchArmChirho {
+                            pats_chirho: vec![PatChirho::ConChirho {
+                                con_chirho: dummy_name_chirho("ANil"),
+                                args_chirho: vec![],
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }],
+                            rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::AppChirho {
+                                fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho(
+                                    "pure",
+                                ))),
+                                arg_chirho: Box::new(ExprChirho::TupleChirho {
+                                    elements_chirho: vec![],
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            where_binds_chirho: vec![],
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                        MatchArmChirho {
+                            pats_chirho: vec![PatChirho::ConChirho {
+                                con_chirho: dummy_name_chirho("ACons"),
+                                args_chirho: vec![
+                                    PatChirho::VarChirho(dummy_name_chirho("xChirho")),
+                                    PatChirho::VarChirho(dummy_name_chirho("xsChirho")),
+                                ],
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }],
+                            rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::InfixChirho {
+                                left_chirho: Box::new(ExprChirho::InfixChirho {
+                                    left_chirho: Box::new(ExprChirho::ConChirho(dummy_name_chirho(
+                                        "(,)",
+                                    ))),
+                                    op_chirho: dummy_name_chirho("<$>"),
+                                    right_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho(
+                                        "xChirho",
+                                    ))),
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                op_chirho: dummy_name_chirho("<*>"),
+                                right_chirho: Box::new(ExprChirho::AppChirho {
+                                    fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho(
+                                        "reduceASeqChirho",
+                                    ))),
+                                    arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho(
+                                        "xsChirho",
+                                    ))),
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            where_binds_chirho: vec![],
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                    ],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "GADT equations should freshen explicit signature vars per equation: {:?}",
+            result_chirho.diagnostics_chirho
+        );
     }
 
     #[test]
