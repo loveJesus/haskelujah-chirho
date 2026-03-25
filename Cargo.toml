@@ -34,5 +34,5 @@ members = [
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.93.0"
-version = "0.1.12"
+version = "0.1.13"
 
