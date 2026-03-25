@@ -9758,6 +9758,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
+        // Add integer logarithm primops
+        for name_chirho in &[
+            "integerLog2#", "integerLogBase#", "wordLog2#",
+            "integerLog2", "integerLogBase", "wordLog2",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
         for mod_name_chirho in &["GHC.Integer", "GHC.Integer.Logarithms", "GHC.Integer.Logarithms.Compat"] {
             modules_chirho.push(ModuleIfaceChirho {
                 name_chirho: mod_name_chirho.to_string(),
