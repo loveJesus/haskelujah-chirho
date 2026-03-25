@@ -1816,7 +1816,9 @@ impl LowerCtxChirho {
                     } else if saw_data_chirho && !saw_equals_chirho && !saw_double_colon_chirho {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                        if (tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho)
                             && name_chirho.is_none()
                         {
                             name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
@@ -2356,7 +2358,9 @@ impl LowerCtxChirho {
                     } else if saw_newtype_chirho && !saw_equals_chirho {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                        if (tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho)
                             && name_chirho.is_none()
                         {
                             name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
@@ -10358,6 +10362,31 @@ foo = 1
                     type_vars_chirho[0].kind_annotation_chirho,
                     Some(AstKindChirho::StarChirho)
                 );
+            }
+            other_chirho => panic!("expected NewtypeDecl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_data_decl_with_operator_type_name_chirho() {
+        let module_chirho =
+            parse_and_lower_chirho("module M where\ndata (::+:) f g a = InLChirho (f a) | InRChirho (g a)\n");
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho { name_chirho, .. } => {
+                assert_eq!(name_chirho.text_chirho(), "::+:");
+            }
+            other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_newtype_decl_with_operator_type_name_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nnewtype (::*:) f g a = ProdChirho (f a, g a)\n",
+        );
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::NewtypeDeclChirho { name_chirho, .. } => {
+                assert_eq!(name_chirho.text_chirho(), "::*:");
             }
             other_chirho => panic!("expected NewtypeDecl, got {:?}", other_chirho),
         }
