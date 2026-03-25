@@ -3841,6 +3841,20 @@ main = print (fChirho ["", "x"])
     }
 }
 
+#[test]
+fn frontend_case_alt_pattern_guard_binds_constructor_arg_chirho() {
+    let src_chirho = r#"module Main where
+data FooChirho = MkFooChirho Int
+gChirho xChirho = case () of
+  _ | MkFooChirho nChirho <- xChirho -> nChirho
+  _ -> 0
+main = print (gChirho (MkFooChirho 42))
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs")
+        .expect("guarded case alt pattern binder should compile");
+}
+
 // ── Cranelift backend driver integration tests ────────────────────────
 
 #[test]

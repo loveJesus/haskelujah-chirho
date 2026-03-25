@@ -6709,11 +6709,53 @@ impl LowerCtxChirho {
         let mut rhs_chirho = None;
         let mut where_binds_chirho = Vec::new();
         let mut saw_arrow_chirho = false;
+        let mut saw_pipe_chirho = false;
+        let mut in_guard_body_chirho = false;
+        let mut current_qual_parts_chirho: Vec<QualPartChirho> = Vec::new();
+        let mut current_guard_quals_chirho: Vec<StmtChirho> = Vec::new();
+        let mut current_guard_body_chirho = None;
+        let mut guarded_arms_chirho: Vec<LoweredGuardArmChirho> = Vec::new();
 
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
-                    if tok_chirho.kind_chirho() == TokenKindChirho::RightArrowChirho {
+                    if tok_chirho.kind_chirho() == TokenKindChirho::PipeChirho {
+                        saw_pipe_chirho = true;
+                        in_guard_body_chirho = false;
+                        if current_guard_body_chirho.is_some() {
+                            guarded_arms_chirho.push(LoweredGuardArmChirho {
+                                quals_chirho: std::mem::take(&mut current_guard_quals_chirho),
+                                body_chirho: current_guard_body_chirho
+                                    .take()
+                                    .unwrap_or_else(|| self.placeholder_expr_chirho()),
+                                span_chirho,
+                            });
+                        }
+                    } else if tok_chirho.kind_chirho() == TokenKindChirho::CommaChirho
+                        && saw_pipe_chirho
+                        && !in_guard_body_chirho
+                    {
+                        if let Some(qual_chirho) =
+                            self.flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+                        {
+                            current_guard_quals_chirho.push(qual_chirho);
+                        }
+                        current_qual_parts_chirho.clear();
+                    } else if tok_chirho.kind_chirho() == TokenKindChirho::LeftArrowChirho
+                        && saw_pipe_chirho
+                        && !in_guard_body_chirho
+                    {
+                        current_qual_parts_chirho.push(QualPartChirho::ArrowChirho);
+                    } else if tok_chirho.kind_chirho() == TokenKindChirho::RightArrowChirho {
+                        if saw_pipe_chirho {
+                            if let Some(qual_chirho) =
+                                self.flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+                            {
+                                current_guard_quals_chirho.push(qual_chirho);
+                            }
+                            current_qual_parts_chirho.clear();
+                            in_guard_body_chirho = true;
+                        }
                         saw_arrow_chirho = true;
                     }
                 }
@@ -6721,11 +6763,40 @@ impl LowerCtxChirho {
                     if !saw_arrow_chirho && pat_chirho.is_none() {
                         pat_chirho =
                             Some(self.lower_pat_chirho(n_chirho, child_chirho.start_chirho));
+                    } else if saw_pipe_chirho
+                        && !in_guard_body_chirho
+                        && n_chirho.kind_chirho() == SyntaxKindChirho::LetStmtChirho
+                    {
+                        if let Some(qual_chirho) =
+                            self.flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+                        {
+                            current_guard_quals_chirho.push(qual_chirho);
+                        }
+                        current_qual_parts_chirho.clear();
+                        current_guard_quals_chirho.push(StmtChirho::LetChirho {
+                            binds_chirho: self
+                                .lower_let_stmt_binds_chirho(n_chirho, child_chirho.start_chirho),
+                            span_chirho: self
+                                .span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
+                        });
+                    } else if saw_pipe_chirho && !in_guard_body_chirho {
+                        if is_pat_kind_chirho(n_chirho.kind_chirho()) {
+                            current_qual_parts_chirho.push(QualPartChirho::PatChirho(
+                                self.lower_pat_chirho(n_chirho, child_chirho.start_chirho),
+                            ));
+                        } else {
+                            current_qual_parts_chirho.push(QualPartChirho::ExprChirho(
+                                self.lower_expr_chirho(n_chirho, child_chirho.start_chirho),
+                            ));
+                        }
                     } else if saw_arrow_chirho
                         && n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho
                     {
                         where_binds_chirho =
                             self.lower_where_clause_chirho(n_chirho, child_chirho.start_chirho);
+                    } else if saw_pipe_chirho && in_guard_body_chirho && current_guard_body_chirho.is_none() {
+                        current_guard_body_chirho =
+                            Some(self.lower_expr_chirho(n_chirho, child_chirho.start_chirho));
                     } else if saw_arrow_chirho && rhs_chirho.is_none() {
                         rhs_chirho =
                             Some(self.lower_expr_chirho(n_chirho, child_chirho.start_chirho));
@@ -6734,11 +6805,57 @@ impl LowerCtxChirho {
             }
         }
 
+        let rhs_chirho = if saw_pipe_chirho {
+            if !current_qual_parts_chirho.is_empty() {
+                if let Some(qual_chirho) =
+                    self.flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+                {
+                    current_guard_quals_chirho.push(qual_chirho);
+                }
+            }
+            if !current_guard_quals_chirho.is_empty() || current_guard_body_chirho.is_some() {
+                guarded_arms_chirho.push(LoweredGuardArmChirho {
+                    quals_chirho: current_guard_quals_chirho,
+                    body_chirho: current_guard_body_chirho
+                        .unwrap_or_else(|| self.placeholder_expr_chirho()),
+                    span_chirho,
+                });
+            }
+
+            let all_simple_expr_guards_chirho = guarded_arms_chirho.iter().all(|guard_chirho| {
+                guard_chirho.quals_chirho.len() == 1
+                    && matches!(
+                        guard_chirho.quals_chirho.first(),
+                        Some(StmtChirho::ExprChirho(_))
+                    )
+            });
+
+            if all_simple_expr_guards_chirho {
+                RhsChirho::GuardedChirho(
+                    guarded_arms_chirho
+                        .into_iter()
+                        .map(|guard_chirho| GuardedExprChirho {
+                            guard_chirho: match guard_chirho.quals_chirho.into_iter().next() {
+                                Some(StmtChirho::ExprChirho(expr_chirho)) => expr_chirho,
+                                _ => self.placeholder_expr_chirho(),
+                            },
+                            body_chirho: guard_chirho.body_chirho,
+                            span_chirho: guard_chirho.span_chirho,
+                        })
+                        .collect(),
+                )
+            } else {
+                RhsChirho::UnguardedChirho(self.lower_guard_arms_to_expr_chirho(&guarded_arms_chirho))
+            }
+        } else {
+            RhsChirho::UnguardedChirho(
+                rhs_chirho.unwrap_or_else(|| self.placeholder_expr_chirho()),
+            )
+        };
+
         AltChirho {
             pat_chirho: pat_chirho.unwrap_or(PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO)),
-            rhs_chirho: RhsChirho::UnguardedChirho(
-                rhs_chirho.unwrap_or_else(|| self.placeholder_expr_chirho()),
-            ),
+            rhs_chirho,
             where_binds_chirho,
             span_chirho,
         }
