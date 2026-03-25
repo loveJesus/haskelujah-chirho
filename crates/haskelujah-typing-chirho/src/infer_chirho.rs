@@ -1329,6 +1329,9 @@ impl InferCtxChirho {
                     continue;
                 };
 
+                let env_snapshot_chirho = self.env_chirho.clone();
+                let class_env_snapshot_chirho = self.class_env_chirho.clone();
+                let scoped_tyvars_snapshot_chirho = self.scoped_tyvars_chirho.clone();
                 let deferred_checkpoint_chirho = self.deferred_preds_chirho.len();
                 let expected_ty_chirho = self.instantiate_instance_method_expected_ty_chirho(
                     &class_decl_chirho,
@@ -1363,6 +1366,9 @@ impl InferCtxChirho {
 
                 self.deferred_preds_chirho
                     .truncate(deferred_checkpoint_chirho);
+                self.env_chirho = env_snapshot_chirho;
+                self.class_env_chirho = class_env_snapshot_chirho;
+                self.scoped_tyvars_chirho = scoped_tyvars_snapshot_chirho;
             }
         }
     }
@@ -2686,6 +2692,22 @@ impl InferCtxChirho {
         }
     }
 
+    fn infer_rhs_against_expected_chirho(
+        &mut self,
+        rhs_chirho: &RhsChirho,
+        expected_ty_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> (SubstChirho, TyChirho) {
+        match rhs_chirho {
+            RhsChirho::UnguardedChirho(expr_chirho) => self.infer_expr_against_expected_chirho(
+                expr_chirho,
+                expected_ty_chirho,
+                span_chirho,
+            ),
+            RhsChirho::GuardedChirho(_) => self.infer_rhs_chirho(rhs_chirho),
+        }
+    }
+
     fn infer_local_binds_chirho(
         &mut self,
         binds_chirho: &[haskelujah_ast_chirho::expr_chirho::LocalBindChirho],
@@ -2907,7 +2929,13 @@ impl InferCtxChirho {
             self.infer_local_binds_chirho(&match_arm_chirho.where_binds_chirho, &mut subst_chirho);
 
             // Infer RHS
-            let (sr_chirho, rhs_ty_chirho) = self.infer_rhs_chirho(&match_arm_chirho.rhs_chirho);
+            let expected_result_sub_chirho =
+                subst_chirho.apply_ty_chirho(&result_ty_chirho);
+            let (sr_chirho, rhs_ty_chirho) = self.infer_rhs_against_expected_chirho(
+                &match_arm_chirho.rhs_chirho,
+                &expected_result_sub_chirho,
+                span_chirho,
+            );
             subst_chirho = sr_chirho.compose_chirho(&subst_chirho);
             self.apply_subst_all_chirho(&sr_chirho);
 

@@ -295,6 +295,77 @@ fn frontend_local_recursive_signature_instantiates_polymorphically_chirho() {
 }
 
 #[test]
+fn frontend_instance_method_expected_result_guides_free_alt_body_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module FreeAltExpectedBodyChirho where\n\
+{-# LANGUAGE GADTs #-}\n\
+data AltFChirho fChirho aChirho where\n\
+  PureChirho :: aChirho -> AltFChirho fChirho aChirho\n\
+newtype AltChirho fChirho aChirho = AltChirho { alternativesChirho :: [AltFChirho fChirho aChirho] }\n\
+instance Functor (AltFChirho fChirho) where\n\
+  fmap fChirho (PureChirho aChirho) = PureChirho (fChirho aChirho)\n\
+instance Functor (AltChirho fChirho) where\n\
+  fmap fChirho (AltChirho xsChirho) = AltChirho (map (fmap fChirho) xsChirho)\n\
+instance Applicative (AltFChirho fChirho) where\n\
+  pure = PureChirho\n\
+  (PureChirho fChirho) <*> yChirho = fmap fChirho yChirho\n\
+instance Applicative (AltChirho fChirho) where\n\
+  pure aChirho = AltChirho [pure aChirho]\n\
+  (AltChirho xsChirho) <*> ysChirho = keepChirho xsChirho ysChirho\n\
+    where\n\
+      keepChirho :: [AltFChirho fChirho (aChirho -> bChirho)] -> AltChirho fChirho aChirho -> AltChirho fChirho bChirho\n\
+      keepChirho _ _ = AltChirho []\n",
+        &mut source_map_chirho,
+        "FreeAltExpectedBodyChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "instance method expected result type should guide overloaded RHS inference: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_free_alt_bind_and_composition_precedence_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module FreeAltBindPrecedenceChirho where\n\
+{-# LANGUAGE GADTs #-}\n\
+data AltFChirho fChirho aChirho where\n\
+  ApChirho :: fChirho aChirho -> AltChirho fChirho (aChirho -> bChirho) -> AltFChirho fChirho bChirho\n\
+  PureChirho :: aChirho -> AltFChirho fChirho aChirho\n\
+newtype AltChirho fChirho aChirho = AltChirho { alternativesChirho :: [AltFChirho fChirho aChirho] }\n\
+instance Functor (AltFChirho fChirho) where\n\
+  fmap fChirho (PureChirho aChirho) = PureChirho (fChirho aChirho)\n\
+  fmap fChirho (ApChirho xChirho gChirho) = ApChirho xChirho (fmap (fChirho .) gChirho)\n\
+instance Functor (AltChirho fChirho) where\n\
+  fmap fChirho (AltChirho xsChirho) = AltChirho (map (fmap fChirho) xsChirho)\n\
+instance Applicative (AltFChirho fChirho) where\n\
+  pure = PureChirho\n\
+  (PureChirho fChirho) <*> yChirho = fmap fChirho yChirho\n\
+  yChirho <*> (PureChirho aChirho) = fmap ($ aChirho) yChirho\n\
+  (ApChirho aChirho fChirho) <*> bChirho = ApChirho aChirho (flip <$> fChirho <*> (AltChirho [bChirho]))\n\
+instance Applicative (AltChirho fChirho) where\n\
+  pure aChirho = AltChirho [pure aChirho]\n\
+  (AltChirho xsChirho) <*> ysChirho = AltChirho (xsChirho >>= alternativesChirho . (`apPrimeChirho` ysChirho))\n\
+    where\n\
+      apPrimeChirho :: AltFChirho fChirho (aChirho -> bChirho) -> AltChirho fChirho aChirho -> AltChirho fChirho bChirho\n\
+      PureChirho fChirho `apPrimeChirho` uChirho = fmap fChirho uChirho\n\
+      (ApChirho uChirho fChirho) `apPrimeChirho` vChirho = AltChirho [ApChirho uChirho (flip <$> fChirho <*> vChirho)]\n",
+        &mut source_map_chirho,
+        "FreeAltBindPrecedenceChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "instance methods should respect >>= and . fixities in free Alt bodies: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_higher_rank_class_methods_retain_class_predicate_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
