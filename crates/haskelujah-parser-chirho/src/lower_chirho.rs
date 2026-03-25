@@ -995,6 +995,7 @@ impl LowerCtxChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut pat_chirho = None;
         let mut rhs_expr_chirho = None;
+        let mut where_binds_chirho = Vec::new();
         let mut past_eq_chirho = false;
 
         for child_chirho in &children_chirho {
@@ -1013,11 +1014,13 @@ impl LowerCtxChirho {
                 }
                 GreenElementChirho::NodeChirho(n_chirho) if past_eq_chirho => {
                     // After '=': the RHS expression
-                    if rhs_expr_chirho.is_none() {
-                        if is_expr_kind_chirho(n_chirho.kind_chirho()) {
-                            rhs_expr_chirho =
-                                Some(self.lower_expr_chirho(n_chirho, child_chirho.start_chirho));
-                        }
+                    if n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho {
+                        where_binds_chirho =
+                            self.lower_where_clause_chirho(n_chirho, child_chirho.start_chirho);
+                    } else if rhs_expr_chirho.is_none() && is_expr_kind_chirho(n_chirho.kind_chirho())
+                    {
+                        rhs_expr_chirho =
+                            Some(self.lower_expr_chirho(n_chirho, child_chirho.start_chirho));
                     }
                 }
                 _ => {}
@@ -1026,7 +1029,18 @@ impl LowerCtxChirho {
 
         let pat_final_chirho = pat_chirho.unwrap_or(PatChirho::WildcardChirho(span_chirho));
         let rhs_final_chirho = match rhs_expr_chirho {
-            Some(expr_chirho) => RhsChirho::UnguardedChirho(expr_chirho),
+            Some(expr_chirho) => {
+                let expr_chirho = if where_binds_chirho.is_empty() {
+                    expr_chirho
+                } else {
+                    ExprChirho::LetChirho {
+                        binds_chirho: merge_local_fun_binds_chirho(where_binds_chirho),
+                        body_chirho: Box::new(expr_chirho),
+                        span_chirho,
+                    }
+                };
+                RhsChirho::UnguardedChirho(expr_chirho)
+            }
             None => RhsChirho::UnguardedChirho(ExprChirho::LitChirho(LitChirho::IntChirho(
                 0,
                 span_chirho,
@@ -1051,6 +1065,7 @@ impl LowerCtxChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut pat_chirho = None;
         let mut rhs_expr_chirho = None;
+        let mut where_binds_chirho = Vec::new();
         let mut past_eq_chirho = false;
 
         for child_chirho in &children_chirho {
@@ -1067,11 +1082,13 @@ impl LowerCtxChirho {
                     }
                 }
                 GreenElementChirho::NodeChirho(n_chirho) if past_eq_chirho => {
-                    if rhs_expr_chirho.is_none() {
-                        if is_expr_kind_chirho(n_chirho.kind_chirho()) {
-                            rhs_expr_chirho =
-                                Some(self.lower_expr_chirho(n_chirho, child_chirho.start_chirho));
-                        }
+                    if n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho {
+                        where_binds_chirho =
+                            self.lower_where_clause_chirho(n_chirho, child_chirho.start_chirho);
+                    } else if rhs_expr_chirho.is_none() && is_expr_kind_chirho(n_chirho.kind_chirho())
+                    {
+                        rhs_expr_chirho =
+                            Some(self.lower_expr_chirho(n_chirho, child_chirho.start_chirho));
                     }
                 }
                 _ => {}
@@ -1080,7 +1097,18 @@ impl LowerCtxChirho {
 
         let pat_final_chirho = pat_chirho.unwrap_or(PatChirho::WildcardChirho(span_chirho));
         let rhs_final_chirho = match rhs_expr_chirho {
-            Some(expr_chirho) => RhsChirho::UnguardedChirho(expr_chirho),
+            Some(expr_chirho) => {
+                let expr_chirho = if where_binds_chirho.is_empty() {
+                    expr_chirho
+                } else {
+                    ExprChirho::LetChirho {
+                        binds_chirho: merge_local_fun_binds_chirho(where_binds_chirho),
+                        body_chirho: Box::new(expr_chirho),
+                        span_chirho,
+                    }
+                };
+                RhsChirho::UnguardedChirho(expr_chirho)
+            }
             None => RhsChirho::UnguardedChirho(ExprChirho::LitChirho(LitChirho::IntChirho(
                 0,
                 span_chirho,
