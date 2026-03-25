@@ -376,6 +376,93 @@ impl KindEnvChirho {
             ),
         );
 
+        // GHC.Generics representation constructors and classes.
+        let rep_functor_kind_chirho =
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho);
+        let generic_meta_kind_chirho = KindVarChirho(10_006);
+        let generic_meta_kind2_chirho = KindVarChirho(10_007);
+        env_chirho.bind_chirho("V1".to_string(), rep_functor_kind_chirho.clone());
+        env_chirho.bind_chirho("U1".to_string(), rep_functor_kind_chirho.clone());
+        env_chirho.bind_chirho("Par1".to_string(), rep_functor_kind_chirho.clone());
+        env_chirho.bind_chirho(
+            "Rec1".to_string(),
+            KindChirho::arrow_chirho(
+                rep_functor_kind_chirho.clone(),
+                rep_functor_kind_chirho.clone(),
+            ),
+        );
+        env_chirho.bind_chirho(
+            "K1".to_string(),
+            KindChirho::arrow_n_chirho(
+                vec![
+                    KindChirho::VarChirho(generic_meta_kind_chirho),
+                    KindChirho::StarChirho,
+                    KindChirho::StarChirho,
+                ],
+                KindChirho::StarChirho,
+            ),
+        );
+        env_chirho.bind_chirho(
+            "Rec0".to_string(),
+            KindChirho::arrow_n_chirho(
+                vec![KindChirho::StarChirho, KindChirho::StarChirho],
+                KindChirho::StarChirho,
+            ),
+        );
+        env_chirho.bind_chirho(
+            "M1".to_string(),
+            KindChirho::arrow_n_chirho(
+                vec![
+                    KindChirho::VarChirho(generic_meta_kind_chirho),
+                    KindChirho::VarChirho(generic_meta_kind2_chirho),
+                    rep_functor_kind_chirho.clone(),
+                    KindChirho::StarChirho,
+                ],
+                KindChirho::StarChirho,
+            ),
+        );
+        for generic_sum_name_chirho in &[":+:", ":*:", ":.:"] {
+            env_chirho.bind_chirho(
+                (*generic_sum_name_chirho).to_string(),
+                KindChirho::arrow_n_chirho(
+                    vec![
+                        rep_functor_kind_chirho.clone(),
+                        rep_functor_kind_chirho.clone(),
+                        KindChirho::StarChirho,
+                    ],
+                    KindChirho::StarChirho,
+                ),
+            );
+        }
+        env_chirho.bind_chirho(
+            "Rep".to_string(),
+            KindChirho::arrow_chirho(
+                KindChirho::StarChirho,
+                rep_functor_kind_chirho.clone(),
+            ),
+        );
+        env_chirho.bind_chirho(
+            "Rep1".to_string(),
+            KindChirho::arrow_chirho(
+                rep_functor_kind_chirho.clone(),
+                rep_functor_kind_chirho.clone(),
+            ),
+        );
+        env_chirho.bind_chirho(
+            "Generic".to_string(),
+            KindChirho::arrow_chirho(
+                KindChirho::StarChirho,
+                KindChirho::ConstraintChirho,
+            ),
+        );
+        env_chirho.bind_chirho(
+            "Generic1".to_string(),
+            KindChirho::arrow_chirho(
+                rep_functor_kind_chirho,
+                KindChirho::ConstraintChirho,
+            ),
+        );
+
         env_chirho
     }
 
@@ -1862,6 +1949,99 @@ mod tests_chirho {
         assert_eq!(
             result_chirho.env_chirho.lookup_chirho("Typeable1Chirho"),
             Some(&KindChirho::ConstraintChirho)
+        );
+    }
+
+    #[test]
+    fn builtin_ghc_generics_representations_accept_partial_apps_chirho() {
+        let unit_ty_chirho = TypeChirho::TupleChirho {
+            elements_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let module_chirho = mk_module_chirho(vec![
+            DeclChirho::TypeAliasDeclChirho {
+                name_chirho: mk_name_chirho("GK1Chirho"),
+                type_vars_chirho: vec![],
+                rhs_chirho: mk_app_chirho(
+                    mk_app_chirho(
+                        TypeChirho::ConChirho(mk_name_chirho("K1")),
+                        unit_ty_chirho.clone(),
+                    ),
+                    TypeChirho::ConChirho(mk_name_chirho("Int")),
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::TypeAliasDeclChirho {
+                name_chirho: mk_name_chirho("GM1Chirho"),
+                type_vars_chirho: vec![],
+                rhs_chirho: mk_app_chirho(
+                    mk_app_chirho(
+                        mk_app_chirho(
+                            TypeChirho::ConChirho(mk_name_chirho("M1")),
+                            unit_ty_chirho.clone(),
+                        ),
+                        unit_ty_chirho.clone(),
+                    ),
+                    TypeChirho::ConChirho(mk_name_chirho("U1")),
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::TypeAliasDeclChirho {
+                name_chirho: mk_name_chirho("GSumChirho"),
+                type_vars_chirho: vec![],
+                rhs_chirho: mk_app_chirho(
+                    mk_app_chirho(
+                        TypeChirho::ConChirho(mk_name_chirho(":+:")),
+                        TypeChirho::ConChirho(mk_name_chirho("U1")),
+                    ),
+                    TypeChirho::ConChirho(mk_name_chirho("U1")),
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::TypeAliasDeclChirho {
+                name_chirho: mk_name_chirho("GProdChirho"),
+                type_vars_chirho: vec![],
+                rhs_chirho: mk_app_chirho(
+                    mk_app_chirho(
+                        TypeChirho::ConChirho(mk_name_chirho(":*:")),
+                        TypeChirho::ConChirho(mk_name_chirho("U1")),
+                    ),
+                    TypeChirho::ConChirho(mk_name_chirho("U1")),
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ]);
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "GHC.Generics representation constructors should kind-check when partially applied: {:?}",
+            result_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .iter()
+                .map(|diagnostic_chirho| diagnostic_chirho.to_string())
+                .collect::<Vec<_>>()
+        );
+        let expected_rep_functor_kind_chirho = KindChirho::arrow_chirho(
+            KindChirho::StarChirho,
+            KindChirho::StarChirho,
+        );
+        assert_eq!(
+            result_chirho.env_chirho.lookup_chirho("GK1Chirho"),
+            Some(&expected_rep_functor_kind_chirho)
+        );
+        assert_eq!(
+            result_chirho.env_chirho.lookup_chirho("GM1Chirho"),
+            Some(&expected_rep_functor_kind_chirho)
+        );
+        assert_eq!(
+            result_chirho.env_chirho.lookup_chirho("GSumChirho"),
+            Some(&expected_rep_functor_kind_chirho)
+        );
+        assert_eq!(
+            result_chirho.env_chirho.lookup_chirho("GProdChirho"),
+            Some(&expected_rep_functor_kind_chirho)
         );
     }
 
