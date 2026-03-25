@@ -4948,6 +4948,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "Q",
             "runQ",
             "newName",
+            "lookupTypeName",
+            "lookupValueName",
             "reify",
             "reifyRoles",
             "reifyAnnotations",
@@ -5123,6 +5125,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "Q",
             "runQ",
             "newName",
+            "lookupTypeName",
+            "lookupValueName",
             "reify",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);

@@ -410,8 +410,25 @@ fn import_item_names_chirho(
                     if let Some(ty_chirho) =
                         exports_chirho.types_chirho.get(name_chirho.text_chirho())
                     {
-                        names_chirho.extend(ty_chirho.constructors_chirho.iter().cloned());
-                        names_chirho.extend(ty_chirho.methods_chirho.iter().cloned());
+                        for con_chirho in &ty_chirho.constructors_chirho {
+                            names_chirho.push(con_chirho.clone());
+                            // Also add bare operator form: (:|) -> :|
+                            if con_chirho.starts_with('(') && con_chirho.ends_with(')') {
+                                let bare_chirho = &con_chirho[1..con_chirho.len() - 1];
+                                if !bare_chirho.is_empty() {
+                                    names_chirho.push(bare_chirho.to_string());
+                                }
+                            }
+                        }
+                        for method_chirho in &ty_chirho.methods_chirho {
+                            names_chirho.push(method_chirho.clone());
+                            if method_chirho.starts_with('(') && method_chirho.ends_with(')') {
+                                let bare_chirho = &method_chirho[1..method_chirho.len() - 1];
+                                if !bare_chirho.is_empty() {
+                                    names_chirho.push(bare_chirho.to_string());
+                                }
+                            }
+                        }
                     }
                 }
                 haskelujah_ast_chirho::module_chirho::ExportMembersChirho::SomeChirho(
