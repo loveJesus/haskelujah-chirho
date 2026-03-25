@@ -1772,6 +1772,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "writeFile",
             "appendFile",
             "hSetBuffering",
+            "hGetBuffering",
+            "hIsTerminalDevice",
             "hGetContents",
             "hPutStr",
             "hPutStrLn",
@@ -1801,6 +1803,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "hIsReadable",
             "hIsWritable",
             "hIsSeekable",
+            "hIsTerminalDevice",
             "hSetNewlineMode",
             "hGetEncoding",
             "mkTextEncoding",
@@ -3785,7 +3788,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // System.IO
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["hFlush", "hPutStr", "hPutStrLn", "hGetLine", "hSetBuffering", "hSetEncoding", "hClose", "openFile", "withFile", "stdin", "stdout", "stderr", "utf8", "hGetContents", "hPrint", "putStr", "putStrLn", "print", "getLine", "getContents", "readFile", "writeFile", "appendFile"] {
+        for name_chirho in &["hFlush", "hPutStr", "hPutStrLn", "hGetLine", "hSetBuffering", "hGetBuffering", "hSetEncoding", "hClose", "openFile", "withFile", "stdin", "stdout", "stderr", "utf8", "hGetContents", "hPrint", "putStr", "putStrLn", "print", "getLine", "getContents", "readFile", "writeFile", "appendFile", "hIsTerminalDevice"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9599,7 +9602,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.IO / GHC.IO.Handle / GHC.IO.Handle.Types
     for mod_name_chirho in &["GHC.IO", "GHC.IO.Handle", "GHC.IO.Handle.Types", "GHC.IO.Handle.FD", "GHC.IO.Handle.Text"] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["IO", "Handle", "stdin", "stdout", "stderr", "HandleType", "HandlePosition", "hClose", "hFlush", "hGetContents", "hSetBuffering", "hSetEncoding", "hSetNewlineMode", "BufferMode", "NoBuffering", "LineBuffering", "BlockBuffering", "NewlineMode", "universalNewlineMode", "nativeNewlineMode", "noNewlineTranslation", "Newline", "LF", "CRLF", "IOMode", "ReadMode", "WriteMode", "AppendMode", "ReadWriteMode", "openFile", "withFile", "hPutStr", "hPutStrLn", "hGetLine", "hGetChar", "hPutChar", "hPrint", "hIsEOF", "hSeek", "SeekMode", "AbsoluteSeek", "RelativeSeek", "SeekFromEnd", "hTell", "hFileSize", "hSetFileSize", "hIsOpen", "hIsClosed", "hIsReadable", "hIsWritable", "hIsSeekable"] {
+        for name_chirho in &["IO", "Handle", "stdin", "stdout", "stderr", "HandleType", "HandlePosition", "hClose", "hFlush", "hGetContents", "hSetBuffering", "hGetBuffering", "hSetEncoding", "hSetNewlineMode", "BufferMode", "NoBuffering", "LineBuffering", "BlockBuffering", "NewlineMode", "universalNewlineMode", "nativeNewlineMode", "noNewlineTranslation", "Newline", "LF", "CRLF", "IOMode", "ReadMode", "WriteMode", "AppendMode", "ReadWriteMode", "openFile", "withFile", "hPutStr", "hPutStrLn", "hGetLine", "hGetChar", "hPutChar", "hPrint", "hIsEOF", "hIsTerminalDevice", "hSeek", "SeekMode", "AbsoluteSeek", "RelativeSeek", "SeekFromEnd", "hTell", "hFileSize", "hSetFileSize", "hIsOpen", "hIsClosed", "hIsReadable", "hIsWritable", "hIsSeekable"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
