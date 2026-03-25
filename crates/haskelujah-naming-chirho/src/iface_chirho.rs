@@ -5109,6 +5109,40 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Language.Haskell.TH.Datatype (th-abstraction)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "reifyDatatype", "reifyConstructor", "reifyRecord",
+            "normalizeInfo", "normalizeDec", "normalizeCon",
+            "datatypeName", "datatypeVars", "datatypeCons",
+            "datatypeInstTypes", "datatypeVariant",
+            "constructorName", "constructorFields", "constructorStrictness",
+            "constructorVariant", "constructorVars",
+            "resolveTypeSynonyms", "quantifyType", "freeVariables",
+            "freshenFreeVariables", "unifyTypes",
+            "applySubstitution", "freeVariablesWellScoped",
+            "tvName", "tvKind", "datatypeReturnKind",
+            "starK", "isStarOrConstraint", "equalPred",
+            "classPred", "asEqualPred", "asClassPred",
+            "constructorType",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &[
+            "DatatypeInfo", "ConstructorInfo", "DatatypeVariant",
+            "ConstructorVariant", "FieldStrictness", "Unpackedness", "Strictness",
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Language.Haskell.TH.Datatype".to_string(),
+            exports_chirho,
+        });
+    }
+
     // GHC.Conc — concurrent primitives
     {
         let mut exports_chirho = IfaceExportsChirho::default();
