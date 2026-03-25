@@ -757,10 +757,10 @@ fn parse_library_chirho(fields_chirho: &[&FieldChirho]) -> LibraryChirho {
     for field_chirho in fields_chirho {
         match field_chirho.key_chirho.as_str() {
             "exposed-modules" => {
-                exposed_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
+                exposed_chirho = parse_modules_chirho(&field_chirho.value_chirho);
             }
             "other-modules" => {
-                other_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
+                other_chirho = parse_modules_chirho(&field_chirho.value_chirho);
             }
             _ => {}
         }
@@ -784,7 +784,7 @@ fn parse_executable_chirho(name_chirho: &str, fields_chirho: &[&FieldChirho]) ->
                 main_is_chirho = Some(field_chirho.value_chirho.clone());
             }
             "other-modules" => {
-                other_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
+                other_chirho = parse_modules_chirho(&field_chirho.value_chirho);
             }
             _ => {}
         }
@@ -813,7 +813,7 @@ fn parse_test_suite_chirho(name_chirho: &str, fields_chirho: &[&FieldChirho]) ->
                 main_is_chirho = Some(field_chirho.value_chirho.clone());
             }
             "other-modules" => {
-                other_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
+                other_chirho = parse_modules_chirho(&field_chirho.value_chirho);
             }
             _ => {}
         }
@@ -843,7 +843,7 @@ fn parse_benchmark_chirho(name_chirho: &str, fields_chirho: &[&FieldChirho]) -> 
                 main_is_chirho = Some(field_chirho.value_chirho.clone());
             }
             "other-modules" => {
-                other_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
+                other_chirho = parse_modules_chirho(&field_chirho.value_chirho);
             }
             _ => {}
         }
@@ -933,10 +933,10 @@ fn parse_common_stanza_chirho(
     for field_chirho in fields_chirho {
         match field_chirho.key_chirho.as_str() {
             "exposed-modules" => {
-                exposed_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
+                exposed_chirho = parse_modules_chirho(&field_chirho.value_chirho);
             }
             "other-modules" => {
-                other_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
+                other_chirho = parse_modules_chirho(&field_chirho.value_chirho);
             }
             _ => {}
         }
@@ -1790,42 +1790,6 @@ library
         assert_eq!(
             lib_chirho.build_info_chirho.build_depends_chirho[0].package_chirho,
             "base"
-        );
-    }
-
-    #[test]
-    fn parse_cabal_repeated_module_fields_extend_instead_of_overwrite_chirho() {
-        let input_chirho = r#"
-name: quickcheck-mini
-version: 0.1
-
-library
-  exposed-modules:
-    Test.QuickCheck
-    Test.QuickCheck.Arbitrary
-  other-modules:
-    Test.QuickCheck.Property
-  if impl(ghc)
-    exposed-modules: Test.QuickCheck.Function
-    other-modules: Test.QuickCheck.State
-  build-depends: base
-"#;
-        let pkg_chirho = parse_cabal_chirho(input_chirho);
-        let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
-        assert_eq!(
-            lib_chirho.exposed_modules_chirho,
-            vec![
-                "Test.QuickCheck".to_string(),
-                "Test.QuickCheck.Arbitrary".to_string(),
-                "Test.QuickCheck.Function".to_string(),
-            ]
-        );
-        assert_eq!(
-            lib_chirho.other_modules_chirho,
-            vec![
-                "Test.QuickCheck.Property".to_string(),
-                "Test.QuickCheck.State".to_string(),
-            ]
         );
     }
 
