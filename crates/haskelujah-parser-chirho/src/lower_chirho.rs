@@ -11499,6 +11499,37 @@ class Describable a where
     }
 
     #[test]
+    fn lower_single_parameter_instance_head_keeps_parenthesized_type_application_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nclass C f where\ninstance C (Product f g) where\n",
+        );
+        let inst_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
+            .expect("should lower instance decl");
+        match inst_decl_chirho {
+            DeclChirho::InstanceDeclChirho { types_chirho, .. } => {
+                assert_eq!(
+                    types_chirho.len(),
+                    1,
+                    "single-parameter class instance head should stay a single applied type"
+                );
+                assert!(
+                    matches!(
+                        &types_chirho[0],
+                        TypeChirho::ParenChirho { inner_chirho, .. }
+                            if matches!(inner_chirho.as_ref(), TypeChirho::AppChirho { .. })
+                    ),
+                    "instance head should preserve the parenthesized type application, got {:?}",
+                    types_chirho[0]
+                );
+            }
+            other_chirho => panic!("expected instance decl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
     fn lower_th_splice_parens_chirho() {
         // $(expr) lowers to ExprChirho::SpliceChirho wrapping the inner expression
         let module_chirho = parse_and_lower_chirho("module M where\nx = $(makeLenses foo)\n");

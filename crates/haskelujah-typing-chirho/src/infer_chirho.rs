@@ -13953,6 +13953,9 @@ fn collect_free_type_vars_from_ast_chirho(types_chirho: &[TypeChirho]) -> Vec<St
                     walk_chirho(e_chirho, vars_chirho);
                 }
             }
+            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                walk_chirho(inner_chirho, vars_chirho);
+            }
             _ => {}
         }
     }
@@ -17115,6 +17118,23 @@ mod tests_chirho {
             }
             other_chirho => panic!("expected function type, got {:?}", other_chirho),
         }
+    }
+
+    #[test]
+    fn collect_free_type_vars_walks_parenthesized_assoc_family_lhs_chirho() {
+        let vars_chirho = collect_free_type_vars_from_ast_chirho(&[TypeChirho::ParenChirho {
+            inner_chirho: Box::new(TypeChirho::AppChirho {
+                fun_chirho: Box::new(TypeChirho::AppChirho {
+                    fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Product"))),
+                    arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }),
+                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("g"))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }]);
+        assert_eq!(vars_chirho, vec!["f".to_string(), "g".to_string()]);
     }
 
     #[test]
