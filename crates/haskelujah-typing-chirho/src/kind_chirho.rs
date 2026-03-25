@@ -283,7 +283,22 @@ impl KindEnvChirho {
 
         // Primitive types: kind *
         for name_chirho in &[
-            "Int", "Bool", "Char", "Double", "Float", "Integer", "String",
+            "Int",
+            "Int8",
+            "Int16",
+            "Int32",
+            "Int64",
+            "Word",
+            "Word8",
+            "Word16",
+            "Word32",
+            "Word64",
+            "Bool",
+            "Char",
+            "Double",
+            "Float",
+            "Integer",
+            "String",
         ] {
             env_chirho.bind_chirho(name_chirho.to_string(), KindChirho::StarChirho);
         }
@@ -1606,6 +1621,18 @@ mod tests_chirho {
         let env_chirho = KindEnvChirho::with_builtins_chirho();
         assert_eq!(
             env_chirho.lookup_chirho("Int"),
+            Some(&KindChirho::StarChirho)
+        );
+        assert_eq!(
+            env_chirho.lookup_chirho("Int64"),
+            Some(&KindChirho::StarChirho)
+        );
+        assert_eq!(
+            env_chirho.lookup_chirho("Word32"),
+            Some(&KindChirho::StarChirho)
+        );
+        assert_eq!(
+            env_chirho.lookup_chirho("Word64"),
             Some(&KindChirho::StarChirho)
         );
         assert_eq!(
