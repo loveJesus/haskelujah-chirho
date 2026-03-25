@@ -4470,6 +4470,27 @@ impl InferCtxChirho {
             if self.pred_entailed_by_givens_chirho(&pred_chirho, &resolved_given_preds_chirho) {
                 continue;
             }
+            let integral_bounded_integer_default_chirho = match &pred_chirho.ty_chirho {
+                TyChirho::VarChirho(var_chirho)
+                    if pred_chirho.class_name_chirho == "Bounded"
+                        && matches!(
+                            default_subst_chirho.lookup_chirho(var_chirho),
+                            Some(TyChirho::ConChirho(name_chirho)) if name_chirho == "Integer"
+                        ) =>
+                {
+                    var_classes_chirho
+                        .get(var_chirho)
+                        .is_some_and(|classes_chirho| {
+                            classes_chirho
+                                .iter()
+                                .any(|class_name_chirho| class_name_chirho == "Integral")
+                        })
+                }
+                _ => false,
+            };
+            if integral_bounded_integer_default_chirho {
+                continue;
+            }
             let defaulted_pred_chirho = PredChirho {
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: default_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
@@ -13711,6 +13732,37 @@ mod tests_chirho {
         assert!(
             result_chirho.diagnostics_chirho.has_errors_chirho(),
             "should report type mismatch for a numeric condition"
+        );
+    }
+
+    #[test]
+    fn defaulted_integer_with_integral_and_bounded_skips_bounded_error_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let constrained_var_chirho = match ctx_chirho.fresh_var_chirho() {
+            TyChirho::VarChirho(var_chirho) => var_chirho,
+            other_chirho => panic!("expected fresh type variable, got {:?}", other_chirho),
+        };
+        ctx_chirho.deferred_preds_chirho.push((
+            PredChirho::new_chirho("Integral", TyChirho::VarChirho(constrained_var_chirho)),
+            SpanChirho::DUMMY_CHIRHO,
+        ));
+        ctx_chirho.deferred_preds_chirho.push((
+            PredChirho::new_chirho("Bounded", TyChirho::VarChirho(constrained_var_chirho)),
+            SpanChirho::DUMMY_CHIRHO,
+        ));
+
+        let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&SubstChirho::empty_chirho());
+        assert!(
+            matches!(
+                default_subst_chirho.lookup_chirho(&constrained_var_chirho),
+                Some(TyChirho::ConChirho(name_chirho)) if name_chirho == "Integer"
+            ),
+            "Integral+Bounded ambiguity should still default to Integer"
+        );
+        assert!(
+            !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+            "defaulted Integral+Bounded Integer should not report a missing Bounded Integer instance: {:?}",
+            ctx_chirho.diagnostics_chirho
         );
     }
 
