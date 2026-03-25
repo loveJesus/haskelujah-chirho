@@ -6407,24 +6407,6 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
-    // max :: Int -> Int -> Int
-    env_chirho.bind_chirho(
-        "max".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
-            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
-            TyChirho::int_chirho(),
-        )),
-    );
-
-    // min :: Int -> Int -> Int
-    env_chirho.bind_chirho(
-        "min".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
-            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
-            TyChirho::int_chirho(),
-        )),
-    );
-
     // fst :: forall a b. (a, b) -> a
     let fst_a_chirho = TyVarChirho(1003);
     let fst_b_chirho = TyVarChirho(1004);

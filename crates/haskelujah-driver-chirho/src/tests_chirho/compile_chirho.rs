@@ -268,6 +268,24 @@ fn frontend_ceiling_can_return_integer_chirho() {
 }
 
 #[test]
+fn frontend_max_stays_polymorphic_for_integer_ceiling_result_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module QuickCheckTextMiniChirho where\n\
+placesChirho :: Integer\n\
+placesChirho = ceiling (logBase 10 (fromIntegral (5 :: Int)) - 2 :: Double) `max` 0\n",
+        &mut source_map_chirho,
+        "QuickCheckTextMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "max should stay polymorphic so Integer-valued ceiling expressions typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_proxy_hash_preserves_higher_kinded_class_param_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
