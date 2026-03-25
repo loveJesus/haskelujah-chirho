@@ -235,6 +235,22 @@ fn frontend_local_recursive_signature_instantiates_polymorphically_chirho() {
 }
 
 #[test]
+fn frontend_higher_rank_class_methods_retain_class_predicate_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module HigherRankClassMethodsChirho where\n{-# LANGUAGE RankNTypes #-}\n{-# LANGUAGE TypeOperators #-}\ntype (:->) pChirho qChirho = forall aChirho bChirho. pChirho aChirho bChirho -> qChirho aChirho bChirho\ninfixr 0 :->\nclass BifunctorMonadChirho tChirho where\n  bireturnChirho :: pChirho :-> tChirho pChirho\n  bibindChirho :: (pChirho :-> tChirho qChirho) -> tChirho pChirho :-> tChirho qChirho\nbiliftMChirho :: BifunctorMonadChirho tChirho => (pChirho :-> qChirho) -> tChirho pChirho :-> tChirho qChirho\nbiliftMChirho fChirho = bibindChirho (bireturnChirho . fChirho)\n",
+        &mut source_map_chirho,
+        "HigherRankClassMethodsChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "class methods should retain the enclosing class predicate: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_qualified_text_uncons_uses_text_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

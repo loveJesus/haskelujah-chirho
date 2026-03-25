@@ -957,8 +957,19 @@ impl InferCtxChirho {
         // Vars bound by inner ForallChirho are NOT free and should not be in scheme vars.
         let free_in_ty_chirho = inner_ty_chirho.free_vars_chirho();
         let vars_chirho: Vec<TyVarChirho> = if !outer_forall_vars_chirho.is_empty() {
-            // Top-level forall: use those vars as the scheme vars
-            outer_forall_vars_chirho
+            // A top-level forall from source syntax or a type synonym expansion
+            // does not make other free variables monomorphic. Quantify the
+            // explicit forall binders first, then any remaining free variables
+            // from the surrounding signature scope.
+            let mut combined_vars_chirho = outer_forall_vars_chirho;
+            for var_chirho in var_map_chirho.values().copied() {
+                if free_in_ty_chirho.contains(&var_chirho)
+                    && !combined_vars_chirho.contains(&var_chirho)
+                {
+                    combined_vars_chirho.push(var_chirho);
+                }
+            }
+            combined_vars_chirho
         } else {
             // No explicit forall: quantify over all free vars from var_map
             var_map_chirho
@@ -1062,6 +1073,22 @@ impl InferCtxChirho {
                 })
                 .collect();
 
+            let mut class_scoped_tyvars_chirho = HashMap::new();
+            if let Some(first_var_chirho) = type_vars_chirho.first() {
+                class_scoped_tyvars_chirho.insert(
+                    first_var_chirho.text_chirho().to_string(),
+                    class_tv_chirho,
+                );
+            }
+            for (ast_var_chirho, ty_var_chirho) in type_vars_chirho
+                .iter()
+                .skip(1)
+                .zip(extra_vars_chirho.iter().copied())
+            {
+                class_scoped_tyvars_chirho
+                    .insert(ast_var_chirho.text_chirho().to_string(), ty_var_chirho);
+            }
+
             // Superclasses from context
             let supers_chirho: Vec<String> = context_chirho
                 .iter()
@@ -1077,7 +1104,23 @@ impl InferCtxChirho {
             let mut defaults_map_chirho = HashMap::new();
             for method_chirho in methods_chirho {
                 let method_name_chirho = method_chirho.name_chirho.text_chirho().to_string();
-                let scheme_chirho = self.ast_type_to_scheme_chirho(&method_chirho.ty_chirho);
+                let prev_scoped_tyvars_chirho = self.scoped_tyvars_chirho.clone();
+                self.scoped_tyvars_chirho = class_scoped_tyvars_chirho.clone();
+                let mut scheme_chirho = self.ast_type_to_scheme_chirho(&method_chirho.ty_chirho);
+                self.scoped_tyvars_chirho = prev_scoped_tyvars_chirho;
+
+                let class_pred_chirho = SchemePredChirho {
+                    class_name_chirho: class_name_chirho.clone(),
+                    ty_chirho: TyChirho::VarChirho(class_tv_chirho),
+                    extra_tys_chirho: extra_vars_chirho
+                        .iter()
+                        .copied()
+                        .map(TyChirho::VarChirho)
+                        .collect(),
+                };
+                if !scheme_chirho.preds_chirho.contains(&class_pred_chirho) {
+                    scheme_chirho.preds_chirho.push(class_pred_chirho);
+                }
                 method_map_chirho.insert(method_name_chirho.clone(), scheme_chirho.clone());
 
                 // Also add method to the type environment so it can be used
@@ -4771,6 +4814,17 @@ fn subst_named_var_chirho(
                 .map(|e_chirho| subst_named_var_chirho(e_chirho, name_chirho, replacement_chirho))
                 .collect(),
         ),
+        TyChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+        } => TyChirho::ForallChirho {
+            vars_chirho: vars_chirho.clone(),
+            body_chirho: Box::new(subst_named_var_chirho(
+                body_chirho,
+                name_chirho,
+                replacement_chirho,
+            )),
+        },
         _ => ty_chirho.clone(),
     }
 }
@@ -13935,6 +13989,222 @@ mod tests_chirho {
             .class_env_chirho
             .superclasses_chirho("MyOrdChirho");
         assert_eq!(supers_chirho, vec!["Eq".to_string()]);
+    }
+
+    #[test]
+    fn infer_user_class_method_scheme_keeps_outer_forall_and_free_vars_chirho() {
+        use haskelujah_ast_chirho::decl_chirho::ClassMethodChirho;
+
+        let pa_chirho = TypeChirho::AppChirho {
+            fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("p"))),
+            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let pab_chirho = TypeChirho::AppChirho {
+            fun_chirho: Box::new(pa_chirho),
+            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let tp_chirho = TypeChirho::AppChirho {
+            fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("t"))),
+            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("p"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let tpa_chirho = TypeChirho::AppChirho {
+            fun_chirho: Box::new(tp_chirho),
+            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let tpab_chirho = TypeChirho::AppChirho {
+            fun_chirho: Box::new(tpa_chirho),
+            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("HigherRankClassScheme"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::ClassDeclChirho {
+                context_chirho: vec![],
+                name_chirho: dummy_name_chirho("BifunctorMonadChirho"),
+                type_vars_chirho: vec![dummy_name_chirho("t").into()],
+                methods_chirho: vec![ClassMethodChirho {
+                    name_chirho: dummy_name_chirho("bireturnChirho"),
+                    ty_chirho: TypeChirho::ForallChirho {
+                        vars_chirho: vec![
+                            dummy_name_chirho("a").into(),
+                            dummy_name_chirho("b").into(),
+                        ],
+                        body_chirho: Box::new(TypeChirho::FunChirho {
+                            arg_chirho: Box::new(pab_chirho),
+                            mult_chirho: None,
+                            result_chirho: Box::new(tpab_chirho),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    default_chirho: None,
+                    default_sig_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                associated_tfs_chirho: vec![],
+                fundeps_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "higher-rank class method scheme should infer without errors: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+
+        let class_decl_chirho = result_chirho
+            .class_env_chirho
+            .classes_chirho
+            .get("BifunctorMonadChirho")
+            .expect("class should be registered");
+        let scheme_chirho = class_decl_chirho
+            .methods_chirho
+            .get("bireturnChirho")
+            .expect("method scheme should be registered");
+
+        assert_eq!(
+            scheme_chirho.vars_chirho.len(),
+            4,
+            "scheme should quantify a, b, p, and t: {scheme_chirho}"
+        );
+        assert!(
+            scheme_chirho
+                .preds_chirho
+                .iter()
+                .any(|pred_chirho| pred_chirho.class_name_chirho == "BifunctorMonadChirho"),
+            "scheme should retain the enclosing class predicate: {scheme_chirho}"
+        );
+    }
+
+    #[test]
+    fn infer_user_class_method_scheme_through_type_alias_keeps_free_vars_chirho() {
+        use haskelujah_ast_chirho::decl_chirho::ClassMethodChirho;
+
+        let p_to_t_p_chirho = TypeChirho::AppChirho {
+            fun_chirho: Box::new(TypeChirho::AppChirho {
+                fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(":->"))),
+                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("p"))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            arg_chirho: Box::new(TypeChirho::AppChirho {
+                fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("t"))),
+                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("p"))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("HigherRankAliasClassScheme"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![
+                DeclChirho::TypeAliasDeclChirho {
+                    name_chirho: dummy_name_chirho(":->"),
+                    type_vars_chirho: vec![
+                        dummy_name_chirho("p").into(),
+                        dummy_name_chirho("q").into(),
+                    ],
+                    rhs_chirho: TypeChirho::ForallChirho {
+                        vars_chirho: vec![
+                            dummy_name_chirho("a").into(),
+                            dummy_name_chirho("b").into(),
+                        ],
+                        body_chirho: Box::new(TypeChirho::FunChirho {
+                            arg_chirho: Box::new(TypeChirho::AppChirho {
+                                fun_chirho: Box::new(TypeChirho::AppChirho {
+                                    fun_chirho: Box::new(TypeChirho::VarChirho(
+                                        dummy_name_chirho("p"),
+                                    )),
+                                    arg_chirho: Box::new(TypeChirho::VarChirho(
+                                        dummy_name_chirho("a"),
+                                    )),
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            mult_chirho: None,
+                            result_chirho: Box::new(TypeChirho::AppChirho {
+                                fun_chirho: Box::new(TypeChirho::AppChirho {
+                                    fun_chirho: Box::new(TypeChirho::VarChirho(
+                                        dummy_name_chirho("q"),
+                                    )),
+                                    arg_chirho: Box::new(TypeChirho::VarChirho(
+                                        dummy_name_chirho("a"),
+                                    )),
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::ClassDeclChirho {
+                    context_chirho: vec![],
+                    name_chirho: dummy_name_chirho("BifunctorMonadChirho"),
+                    type_vars_chirho: vec![dummy_name_chirho("t").into()],
+                    methods_chirho: vec![ClassMethodChirho {
+                        name_chirho: dummy_name_chirho("bireturnChirho"),
+                        ty_chirho: p_to_t_p_chirho,
+                        default_chirho: None,
+                        default_sig_chirho: None,
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    associated_tfs_chirho: vec![],
+                    fundeps_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "alias-based class method scheme should infer without errors: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+
+        let class_decl_chirho = result_chirho
+            .class_env_chirho
+            .classes_chirho
+            .get("BifunctorMonadChirho")
+            .expect("class should be registered");
+        let scheme_chirho = class_decl_chirho
+            .methods_chirho
+            .get("bireturnChirho")
+            .expect("method scheme should be registered");
+
+        assert_eq!(
+            scheme_chirho.vars_chirho.len(),
+            4,
+            "alias-based scheme should quantify a, b, p, and t: {scheme_chirho}"
+        );
     }
 
     /// Test: user-defined instance declaration registers in class env.
