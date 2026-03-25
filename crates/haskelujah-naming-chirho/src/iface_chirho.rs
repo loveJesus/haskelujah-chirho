@@ -3241,7 +3241,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Applicative (base)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["pure", "<*>", "*>", "<*", "liftA", "liftA2", "liftA3", "empty", "<|>", "some", "many", "optional", "asum", "guard", "when", "unless"] {
+        for name_chirho in &["pure", "<*>", "*>", "<*", "<**>", "liftA", "liftA2", "liftA3", "empty", "<|>", "some", "many", "optional", "asum", "guard", "when", "unless"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -4930,6 +4930,20 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "mkName",
             "nameBase",
             "nameModule",
+            "ConT",
+            "VarT",
+            "AppT",
+            "SigT",
+            "ForallT",
+            "InfixT",
+            "ParensT",
+            "TupleT",
+            "UnboxedTupleT",
+            "ArrowT",
+            "ListT",
+            "StarT",
+            "PlainTV",
+            "KindedTV",
             // Expression constructors
             "litE",
             "varE",
@@ -5010,8 +5024,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "Con",
             "Strict",
             "FunDep",
+            "Kind",
             "Pred",
+            "Cxt",
             "TyVarBndr",
+            "TypeQ",
+            "ExpQ",
+            "PatQ",
+            "DecQ",
+            "DecsQ",
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -5031,6 +5052,20 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "liftTyped",
             "mkName",
             "nameBase",
+            "ConT",
+            "VarT",
+            "AppT",
+            "SigT",
+            "ForallT",
+            "InfixT",
+            "ParensT",
+            "TupleT",
+            "UnboxedTupleT",
+            "ArrowT",
+            "ListT",
+            "StarT",
+            "PlainTV",
+            "KindedTV",
             "Q",
             "runQ",
             "newName",
@@ -5039,8 +5074,40 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Name", "Exp", "Pat", "Type", "Dec", "Lit"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+        for (name_chirho, ctors_chirho) in [
+            ("Name", vec![]),
+            ("Exp", vec![]),
+            ("Pat", vec![]),
+            (
+                "Type",
+                vec![
+                    "ForallT",
+                    "AppT",
+                    "SigT",
+                    "VarT",
+                    "ConT",
+                    "InfixT",
+                    "ParensT",
+                    "TupleT",
+                    "UnboxedTupleT",
+                    "ArrowT",
+                    "ListT",
+                    "StarT",
+                ],
+            ),
+            ("Dec", vec![]),
+            ("Lit", vec![]),
+            ("Kind", vec![]),
+            ("Pred", vec![]),
+            ("Cxt", vec![]),
+            ("TyVarBndr", vec!["PlainTV", "KindedTV"]),
+            ("TypeQ", vec![]),
+            ("ExpQ", vec![]),
+            ("PatQ", vec![]),
+            ("DecQ", vec![]),
+            ("DecsQ", vec![]),
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &ctors_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
