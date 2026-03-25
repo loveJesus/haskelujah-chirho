@@ -6586,15 +6586,6 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
-    // fromIntegral :: Int -> Double
-    env_chirho.bind_chirho(
-        "fromIntegral".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::double_chirho(),
-        )),
-    );
-
     // ceiling/floor/round/truncate :: (RealFrac a, Integral b) => a -> b
     for name_chirho in ["ceiling", "floor", "round", "truncate"] {
         let realfrac_a_chirho = TyVarChirho(10101);

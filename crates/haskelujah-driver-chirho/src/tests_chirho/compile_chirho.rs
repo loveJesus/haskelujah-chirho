@@ -307,6 +307,28 @@ barChirho = hIsTerminalDevice\n",
 }
 
 #[test]
+fn frontend_from_integral_can_target_word64_in_subtraction_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module QuickCheckGenMiniChirho where\n\
+import Data.Int\n\
+import Data.Word\n\
+chooseUpToChirho :: Word64 -> Word64\n\
+chooseUpToChirho = id\n\
+fooChirho :: Int64 -> Int64 -> Word64\n\
+fooChirho loChirho hiChirho = chooseUpToChirho (fromIntegral hiChirho - fromIntegral loChirho)\n",
+        &mut source_map_chirho,
+        "QuickCheckGenMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "fromIntegral should stay polymorphic enough to target Word64 in QuickCheck-style subtraction: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_proxy_hash_preserves_higher_kinded_class_param_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
