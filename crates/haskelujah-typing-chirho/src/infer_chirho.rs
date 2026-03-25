@@ -9234,6 +9234,23 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         },
     );
+    env_chirho.bind_chirho(
+        "Data.List.NonEmpty.reverse".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![reverse_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("NonEmpty".to_string())),
+                    Box::new(TyChirho::VarChirho(reverse_a_chirho)),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("NonEmpty".to_string())),
+                    Box::new(TyChirho::VarChirho(reverse_a_chirho)),
+                ),
+            ),
+        },
+    );
 
     // zip :: forall a b. [a] -> [b] -> [(a, b)]
     let zip_a_chirho = TyVarChirho(3090);

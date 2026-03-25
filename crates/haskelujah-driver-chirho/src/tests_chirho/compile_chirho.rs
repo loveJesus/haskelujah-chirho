@@ -637,6 +637,22 @@ fn frontend_qualified_lazy_bytestring_char8_read_file_uses_bytestring_scheme_chi
 }
 
 #[test]
+fn frontend_qualified_nonempty_reverse_uses_nonempty_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module NonEmptyReverseChirho where\nimport qualified Data.List.NonEmpty as NonEmpty\nfChirho :: NonEmpty.NonEmpty a -> NonEmpty.NonEmpty a\nfChirho = NonEmpty.reverse\n",
+        &mut source_map_chirho,
+        "NonEmptyReverseChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Data.List.NonEmpty.reverse should use the NonEmpty-specific scheme: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn script_mode_uses_incremental_runtime_plan_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
