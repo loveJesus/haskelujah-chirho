@@ -10483,11 +10483,25 @@ fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsC
                     );
                 }
             }
+            DeclChirho::ForeignDeclChirho {
+                name_chirho,
+                span_chirho,
+                ..
+            } => {
+                let foreign_value_name_chirho =
+                    canonical_value_name_chirho(name_chirho.text_chirho());
+                exports_chirho.values_chirho.insert(
+                    foreign_value_name_chirho.clone(),
+                    IfaceValueChirho {
+                        name_chirho: foreign_value_name_chirho,
+                        span_chirho: *span_chirho,
+                    },
+                );
+            }
             DeclChirho::TypeSigChirho { .. }
             | DeclChirho::InstanceDeclChirho { .. }
             | DeclChirho::FixityDeclChirho { .. }
-            | DeclChirho::DefaultDeclChirho { .. }
-            | DeclChirho::ForeignDeclChirho { .. } => {}
+            | DeclChirho::DefaultDeclChirho { .. } => {}
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho,
                 span_chirho,
@@ -10800,7 +10814,9 @@ fn con_decl_name_chirho(decl_chirho: &ConDeclChirho) -> &str {
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
+    use haskelujah_ast_chirho::decl_chirho::ForeignDirectionChirho;
     use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+    use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
     fn mk_name_chirho(s_chirho: &str) -> NameChirho {
         NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
@@ -11673,5 +11689,37 @@ mod tests_chirho {
                 "Prelude should export {name_chirho}"
             );
         }
+    }
+
+    #[test]
+    fn iface_exports_foreign_import_names_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: mk_name_chirho("ForeignIfaceChirho"),
+            exports_chirho: Some(vec![ExportSpecChirho::VarChirho(mk_name_chirho(
+                "sinChirho",
+            ))]),
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::ForeignDeclChirho {
+                direction_chirho: ForeignDirectionChirho::ImportChirho,
+                name_chirho: mk_name_chirho("sinChirho"),
+                ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Double")),
+                calling_conv_chirho: "ccall".to_string(),
+                safety_chirho: Some("unsafe".to_string()),
+                foreign_name_chirho: Some("sin".to_string()),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let iface_chirho = build_iface_chirho(&module_chirho);
+        assert!(
+            iface_chirho.exports_chirho.values_chirho.contains_key("sinChirho"),
+            "foreign import names should be exported through module interfaces"
+        );
     }
 }
