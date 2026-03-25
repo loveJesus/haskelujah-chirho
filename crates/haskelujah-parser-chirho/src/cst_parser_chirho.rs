@@ -3846,10 +3846,19 @@ impl<'src> ParserChirho<'src> {
                 self.builder_chirho.finish_node_chirho();
             }
             Some(RawTokenKindChirho::ConIdChirho) | Some(RawTokenKindChirho::QualifiedIdChirho) => {
-                self.builder_chirho
-                    .start_node_chirho(SyntaxKindChirho::ConPatChirho);
+                let cp_chirho = self.builder_chirho.checkpoint_chirho();
                 self.bump_chirho();
-                self.builder_chirho.finish_node_chirho();
+                self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+                    self.builder_chirho
+                        .start_node_at_chirho(cp_chirho, SyntaxKindChirho::RecordPatChirho);
+                    self.parse_record_pat_fields_chirho();
+                    self.builder_chirho.finish_node_chirho();
+                } else {
+                    self.builder_chirho
+                        .start_node_at_chirho(cp_chirho, SyntaxKindChirho::ConPatChirho);
+                    self.builder_chirho.finish_node_chirho();
+                }
             }
             Some(RawTokenKindChirho::IntLitChirho)
             | Some(RawTokenKindChirho::FloatLitChirho)

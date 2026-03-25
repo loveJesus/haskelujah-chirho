@@ -9493,6 +9493,67 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
     }
 
     #[test]
+    fn lower_instance_method_with_as_and_lazy_parameter_pattern_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module Main where\nclass ExtendChirho wChirho where\n  extendedChirho :: (wChirho aChirho -> bChirho) -> wChirho aChirho -> wChirho bChirho\ndata NonEmptyChirho aChirho = aChirho :| [aChirho]\ninstance ExtendChirho NonEmptyChirho where\n  extendedChirho fChirho wChirho@(~(_ :| aasChirho)) = fChirho wChirho :| aasChirho\n",
+        );
+        let instance_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
+            .expect("expected instance declaration");
+        let DeclChirho::InstanceDeclChirho { methods_chirho, .. } = instance_decl_chirho else {
+            panic!("expected instance declaration");
+        };
+        assert_eq!(methods_chirho.len(), 1);
+        let LocalBindChirho::FunBindChirho { name_chirho, matches_chirho, .. } = &methods_chirho[0]
+        else {
+            panic!("expected instance method fun bind");
+        };
+        assert_eq!(name_chirho.text_chirho(), "extendedChirho");
+        assert_eq!(matches_chirho.len(), 1);
+        assert_eq!(matches_chirho[0].pats_chirho.len(), 2);
+        assert!(matches!(
+            &matches_chirho[0].pats_chirho[0],
+            PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "fChirho"
+        ));
+        assert!(
+            matches!(&matches_chirho[0].pats_chirho[1], PatChirho::AsChirho { .. }),
+            "expected second instance method argument to stay as an as-pattern, got {:?}",
+            matches_chirho[0].pats_chirho[1]
+        );
+    }
+
+    #[test]
+    fn lower_instance_method_with_as_and_record_constructor_pattern_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module Main where\ndata Par1Chirho aChirho = Par1Chirho {}\nclass ExtendChirho wChirho where\n  extendedChirho :: (wChirho aChirho -> bChirho) -> wChirho aChirho -> wChirho bChirho\ninstance ExtendChirho Par1Chirho where\n  extendedChirho fChirho wChirho@Par1Chirho{} = Par1Chirho {}\n",
+        );
+        let instance_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
+            .expect("expected instance declaration");
+        let DeclChirho::InstanceDeclChirho { methods_chirho, .. } = instance_decl_chirho else {
+            panic!("expected instance declaration");
+        };
+        let LocalBindChirho::FunBindChirho { matches_chirho, .. } = &methods_chirho[0] else {
+            panic!("expected instance method fun bind");
+        };
+        assert_eq!(matches_chirho[0].pats_chirho.len(), 2);
+        match &matches_chirho[0].pats_chirho[1] {
+            PatChirho::AsChirho { pattern_chirho, .. } => {
+                assert!(
+                    matches!(pattern_chirho.as_ref(), PatChirho::RecordChirho { .. }),
+                    "expected record constructor pattern inside as-pattern, got {:?}",
+                    pattern_chirho
+                );
+            }
+            other_chirho => panic!("expected as-pattern parameter, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
     fn lower_containers_intset_retains_helper_funbinds_chirho() {
         let source_path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../.haskelujah-packages-chirho/containers-0.8/src/Data/IntSet/Internal.hs");
