@@ -387,7 +387,7 @@ fn preprocess_cabal_conditionals_chirho(input_chirho: &str) -> String {
 /// Simple condition evaluator for cabal `if` blocks.
 /// - `os(windows)` → false on non-Windows, true on Windows
 /// - `os(linux)` / `os(osx)` → true on respective OS
-/// - `impl(ghc ...)` → always true (we emulate GHC)
+/// - `impl(ghc ...)` → evaluated against the emulated GHC version
 /// - `flag(...)` → true by default
 /// - `!`, `&&`, `||` — evaluated recursively
 fn eval_condition_simple_chirho(cond_chirho: &ConditionChirho) -> bool {
@@ -757,10 +757,10 @@ fn parse_library_chirho(fields_chirho: &[&FieldChirho]) -> LibraryChirho {
     for field_chirho in fields_chirho {
         match field_chirho.key_chirho.as_str() {
             "exposed-modules" => {
-                exposed_chirho = parse_modules_chirho(&field_chirho.value_chirho);
+                exposed_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
             }
             "other-modules" => {
-                other_chirho = parse_modules_chirho(&field_chirho.value_chirho);
+                other_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
             }
             _ => {}
         }
@@ -784,7 +784,7 @@ fn parse_executable_chirho(name_chirho: &str, fields_chirho: &[&FieldChirho]) ->
                 main_is_chirho = Some(field_chirho.value_chirho.clone());
             }
             "other-modules" => {
-                other_chirho = parse_modules_chirho(&field_chirho.value_chirho);
+                other_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
             }
             _ => {}
         }
@@ -813,7 +813,7 @@ fn parse_test_suite_chirho(name_chirho: &str, fields_chirho: &[&FieldChirho]) ->
                 main_is_chirho = Some(field_chirho.value_chirho.clone());
             }
             "other-modules" => {
-                other_chirho = parse_modules_chirho(&field_chirho.value_chirho);
+                other_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
             }
             _ => {}
         }
@@ -843,7 +843,7 @@ fn parse_benchmark_chirho(name_chirho: &str, fields_chirho: &[&FieldChirho]) -> 
                 main_is_chirho = Some(field_chirho.value_chirho.clone());
             }
             "other-modules" => {
-                other_chirho = parse_modules_chirho(&field_chirho.value_chirho);
+                other_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
             }
             _ => {}
         }
@@ -933,10 +933,10 @@ fn parse_common_stanza_chirho(
     for field_chirho in fields_chirho {
         match field_chirho.key_chirho.as_str() {
             "exposed-modules" => {
-                exposed_chirho = parse_modules_chirho(&field_chirho.value_chirho);
+                exposed_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
             }
             "other-modules" => {
-                other_chirho = parse_modules_chirho(&field_chirho.value_chirho);
+                other_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
             }
             _ => {}
         }
@@ -1066,10 +1066,7 @@ pub fn eval_condition_chirho(
         }
         ConditionChirho::OsChirho(name_chirho) => os_chirho.eq_ignore_ascii_case(name_chirho),
         ConditionChirho::ArchChirho(name_chirho) => arch_chirho.eq_ignore_ascii_case(name_chirho),
-        ConditionChirho::ImplChirho(_) => {
-            // For now, treat impl conditions as true (we are haskelujah)
-            true
-        }
+        ConditionChirho::ImplChirho(spec_chirho) => eval_impl_condition_chirho(spec_chirho),
         ConditionChirho::NotChirho(inner_chirho) => {
             !eval_condition_chirho(inner_chirho, flags_chirho, os_chirho, arch_chirho)
         }
@@ -1084,6 +1081,130 @@ pub fn eval_condition_chirho(
         ConditionChirho::TrueChirho => true,
         ConditionChirho::FalseChirho => false,
     }
+}
+
+const EMULATED_GHC_VERSION_CHIRHO: &str = "8.10";
+
+fn eval_impl_condition_chirho(spec_chirho: &str) -> bool {
+    let trimmed_spec_chirho = spec_chirho.trim();
+    if trimmed_spec_chirho.is_empty() {
+        return false;
+    }
+
+    let compiler_end_chirho = trimmed_spec_chirho
+        .find(|chirho: char| chirho.is_ascii_whitespace() || matches!(chirho, '<' | '>' | '='))
+        .unwrap_or(trimmed_spec_chirho.len());
+    let compiler_name_chirho = trimmed_spec_chirho[..compiler_end_chirho]
+        .trim()
+        .to_ascii_lowercase();
+    let compiler_req_chirho = trimmed_spec_chirho[compiler_end_chirho..].trim();
+
+    match compiler_name_chirho.as_str() {
+        "ghc" => eval_version_requirements_chirho(EMULATED_GHC_VERSION_CHIRHO, compiler_req_chirho),
+        _ => false,
+    }
+}
+
+fn eval_version_requirements_chirho(
+    current_version_chirho: &str,
+    requirements_chirho: &str,
+) -> bool {
+    if requirements_chirho.is_empty() {
+        return true;
+    }
+
+    let current_components_chirho = match parse_version_components_chirho(current_version_chirho) {
+        Some(components_chirho) => components_chirho,
+        None => return false,
+    };
+
+    requirements_chirho
+        .split("&&")
+        .map(str::trim)
+        .all(|clause_chirho| eval_version_clause_chirho(&current_components_chirho, clause_chirho))
+}
+
+fn eval_version_clause_chirho(current_components_chirho: &[u32], clause_chirho: &str) -> bool {
+    let trimmed_clause_chirho = clause_chirho.trim();
+    if trimmed_clause_chirho.is_empty() {
+        return true;
+    }
+
+    let (op_chirho, version_text_chirho) =
+        if let Some(version_chirho) = trimmed_clause_chirho.strip_prefix(">=") {
+            (">=", version_chirho.trim())
+        } else if let Some(version_chirho) = trimmed_clause_chirho.strip_prefix("<=") {
+            ("<=", version_chirho.trim())
+        } else if let Some(version_chirho) = trimmed_clause_chirho.strip_prefix("==") {
+            ("==", version_chirho.trim())
+        } else if let Some(version_chirho) = trimmed_clause_chirho.strip_prefix(">") {
+            (">", version_chirho.trim())
+        } else if let Some(version_chirho) = trimmed_clause_chirho.strip_prefix("<") {
+            ("<", version_chirho.trim())
+        } else {
+            return false;
+        };
+
+    let target_components_chirho = match parse_version_components_chirho(version_text_chirho) {
+        Some(components_chirho) => components_chirho,
+        None => return false,
+    };
+    let ordering_chirho =
+        compare_version_components_chirho(current_components_chirho, &target_components_chirho);
+
+    match op_chirho {
+        ">=" => ordering_chirho.is_ge(),
+        "<=" => ordering_chirho.is_le(),
+        "==" => ordering_chirho.is_eq(),
+        ">" => ordering_chirho.is_gt(),
+        "<" => ordering_chirho.is_lt(),
+        _ => false,
+    }
+}
+
+fn parse_version_components_chirho(version_text_chirho: &str) -> Option<Vec<u32>> {
+    let trimmed_version_chirho = version_text_chirho.trim();
+    if trimmed_version_chirho.is_empty() {
+        return None;
+    }
+
+    let mut components_chirho = Vec::new();
+    for part_chirho in trimmed_version_chirho.split('.') {
+        let digits_chirho: String = part_chirho
+            .chars()
+            .take_while(|chirho| chirho.is_ascii_digit())
+            .collect();
+        if digits_chirho.is_empty() {
+            return None;
+        }
+        components_chirho.push(digits_chirho.parse().ok()?);
+    }
+
+    if components_chirho.is_empty() {
+        None
+    } else {
+        Some(components_chirho)
+    }
+}
+
+fn compare_version_components_chirho(
+    lhs_components_chirho: &[u32],
+    rhs_components_chirho: &[u32],
+) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+
+    let max_len_chirho = lhs_components_chirho
+        .len()
+        .max(rhs_components_chirho.len());
+    for idx_chirho in 0..max_len_chirho {
+        let lhs_component_chirho = *lhs_components_chirho.get(idx_chirho).unwrap_or(&0);
+        let rhs_component_chirho = *rhs_components_chirho.get(idx_chirho).unwrap_or(&0);
+        match lhs_component_chirho.cmp(&rhs_component_chirho) {
+            Ordering::Equal => continue,
+            non_eq_chirho => return non_eq_chirho,
+        }
+    }
+    Ordering::Equal
 }
 
 /// Merge `from` build info into `into`.
@@ -1686,6 +1807,42 @@ executable cli
     }
 
     #[test]
+    fn eval_condition_impl_ghc_version_true_chirho() {
+        let flags_chirho = HashMap::new();
+        let cond_chirho = parse_condition_chirho("impl(ghc >= 8.0 && < 9.0)");
+        assert!(eval_condition_chirho(
+            &cond_chirho,
+            &flags_chirho,
+            "linux",
+            "x86_64"
+        ));
+    }
+
+    #[test]
+    fn eval_condition_impl_ghc_version_false_chirho() {
+        let flags_chirho = HashMap::new();
+        let cond_chirho = parse_condition_chirho("impl(ghc < 7.11)");
+        assert!(!eval_condition_chirho(
+            &cond_chirho,
+            &flags_chirho,
+            "linux",
+            "x86_64"
+        ));
+    }
+
+    #[test]
+    fn eval_condition_impl_non_ghc_false_chirho() {
+        let flags_chirho = HashMap::new();
+        let cond_chirho = parse_condition_chirho("impl(hugs)");
+        assert!(!eval_condition_chirho(
+            &cond_chirho,
+            &flags_chirho,
+            "linux",
+            "x86_64"
+        ));
+    }
+
+    #[test]
     fn eval_condition_flag_true_chirho() {
         let mut flags_chirho = HashMap::new();
         flags_chirho.insert("debug".to_string(), true);
@@ -1816,6 +1973,43 @@ library
             preprocessed_chirho.contains("build-depends: base"),
             "dedenting should keep following sibling fields intact: {}",
             preprocessed_chirho
+        );
+    }
+
+    #[test]
+    fn parse_library_conditional_module_lists_extend_per_stanza_chirho() {
+        let input_chirho = r#"
+name: quickcheck-mini
+version: 0.1
+
+library
+  exposed-modules:
+    Test.QuickCheck
+  if impl(ghc)
+    exposed-modules: Test.QuickCheck.Function
+    other-modules: Test.QuickCheck.Internal
+
+test-suite qc-test
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  other-modules: Test.Driver
+  if impl(ghc)
+    other-modules: Test.Driver.Ghc
+"#;
+        let pkg_chirho = parse_cabal_chirho(input_chirho);
+        let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
+        assert_eq!(
+            lib_chirho.exposed_modules_chirho,
+            vec!["Test.QuickCheck", "Test.QuickCheck.Function"]
+        );
+        assert_eq!(
+            lib_chirho.other_modules_chirho,
+            vec!["Test.QuickCheck.Internal"]
+        );
+        assert_eq!(pkg_chirho.test_suites_chirho.len(), 1);
+        assert_eq!(
+            pkg_chirho.test_suites_chirho[0].other_modules_chirho,
+            vec!["Test.Driver", "Test.Driver.Ghc"]
         );
     }
 
