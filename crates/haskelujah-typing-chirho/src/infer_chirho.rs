@@ -1479,6 +1479,9 @@ impl InferCtxChirho {
                 let class_env_snapshot_chirho = self.class_env_chirho.clone();
                 let scoped_tyvars_snapshot_chirho = self.scoped_tyvars_chirho.clone();
                 let deferred_checkpoint_chirho = self.deferred_preds_chirho.len();
+                let mut instance_scoped_tyvars_chirho = scoped_tyvars_snapshot_chirho.clone();
+                instance_scoped_tyvars_chirho.extend(instance_var_map_chirho.clone());
+                self.scoped_tyvars_chirho = instance_scoped_tyvars_chirho;
                 let expected_ty_chirho = self.instantiate_instance_method_expected_ty_chirho(
                     &class_decl_chirho,
                     method_scheme_chirho,
