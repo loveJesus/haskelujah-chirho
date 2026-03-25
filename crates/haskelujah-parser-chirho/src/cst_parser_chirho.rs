@@ -1441,6 +1441,19 @@ impl<'src> ParserChirho<'src> {
             return false;
         }
         match self.current_kind_chirho() {
+            Some(RawTokenKindChirho::VarIdChirho) => {
+                let Some(lookahead_idx_chirho) =
+                    self.peek_after_fun_arg_pat_chirho(self.pos_chirho)
+                else {
+                    return false;
+                };
+                let lookahead_idx_chirho = self.skip_trivia_idx_chirho(lookahead_idx_chirho);
+                self.tokens_chirho
+                    .get(lookahead_idx_chirho)
+                    .is_some_and(|token_chirho| {
+                        token_chirho.kind_chirho == RawTokenKindChirho::ConSymChirho
+                    })
+            }
             // Tuple / parenthesised pattern — but not an operator section
             // like `(+) x = ...`. Heuristic: if the token right after `(`
             // is NOT a VarSym/ConSym (i.e. not an operator), treat as
@@ -1712,7 +1725,6 @@ impl<'src> ParserChirho<'src> {
             self.tokens_chirho[lookahead_idx_chirho].kind_chirho,
             RawTokenKindChirho::BacktickChirho
                 | RawTokenKindChirho::VarSymChirho
-                | RawTokenKindChirho::ConSymChirho
         )
     }
 

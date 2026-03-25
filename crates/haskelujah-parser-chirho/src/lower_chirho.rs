@@ -9554,6 +9554,57 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
     }
 
     #[test]
+    fn lower_where_pattern_bind_with_infix_constructor_and_primed_names_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module Main where\ndata ComplexChirho aChirho = aChirho :+ aChirho\nclass BindChirho mChirho where\n  bindChirho :: mChirho aChirho -> (aChirho -> mChirho bChirho) -> mChirho bChirho\ninstance BindChirho ComplexChirho where\n  bindChirho (aChirho :+ bChirho) fChirho = aPrimeChirho :+ bPrimeChirho where\n    aPrimeChirho :+ _ = fChirho aChirho\n    _ :+ bPrimeChirho = fChirho bChirho\n",
+        );
+        let instance_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
+            .expect("expected instance declaration");
+        let DeclChirho::InstanceDeclChirho { methods_chirho, .. } = instance_decl_chirho else {
+            panic!("expected instance declaration");
+        };
+        let LocalBindChirho::FunBindChirho { matches_chirho, .. } = &methods_chirho[0] else {
+            panic!("expected instance method fun bind");
+        };
+        assert_eq!(matches_chirho.len(), 1);
+        assert!(
+            matches_chirho[0].where_binds_chirho.iter().any(|bind_chirho| {
+                matches!(
+                    bind_chirho,
+                    LocalBindChirho::PatBindChirho { pat_chirho, .. }
+                        if matches!(
+                            pat_chirho,
+                            PatChirho::InfixConChirho { left_chirho, op_chirho, .. }
+                                if matches!(left_chirho.as_ref(), PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "aPrimeChirho")
+                                    && op_chirho.text_chirho() == ":+"
+                        )
+                )
+            }),
+            "expected aPrimeChirho where binding to stay a pattern binding with infix constructor, got {:?}",
+            matches_chirho[0].where_binds_chirho
+        );
+        assert!(
+            matches_chirho[0].where_binds_chirho.iter().any(|bind_chirho| {
+                matches!(
+                    bind_chirho,
+                    LocalBindChirho::PatBindChirho { pat_chirho, .. }
+                        if matches!(
+                            pat_chirho,
+                            PatChirho::InfixConChirho { right_chirho, op_chirho, .. }
+                                if matches!(right_chirho.as_ref(), PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "bPrimeChirho")
+                                    && op_chirho.text_chirho() == ":+"
+                        )
+                )
+            }),
+            "expected bPrimeChirho where binding to stay a pattern binding with infix constructor, got {:?}",
+            matches_chirho[0].where_binds_chirho
+        );
+    }
+
+    #[test]
     fn lower_containers_intset_retains_helper_funbinds_chirho() {
         let source_path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../.haskelujah-packages-chirho/containers-0.8/src/Data/IntSet/Internal.hs");
