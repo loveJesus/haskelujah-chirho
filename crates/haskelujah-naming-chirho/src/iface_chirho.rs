@@ -1309,6 +1309,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "sizeofMutableArray#",
             "newByteArray#",
             "newPinnedByteArray#",
+            "newAlignedPinnedByteArray#",
             "readIntArray#",
             "readWord8Array#",
             "writeIntArray#",
@@ -4378,6 +4379,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "sizeofMutableArray#",
             "newByteArray#",
             "newPinnedByteArray#",
+            "newAlignedPinnedByteArray#",
             "readIntArray#",
             "readWord8Array#",
             "writeIntArray#",
@@ -11753,6 +11755,22 @@ mod tests_chirho {
                 .values_chirho
                 .contains_key("unsafeWithForeignPtr"),
             "GHC.ForeignPtr should export unsafeWithForeignPtr"
+        );
+    }
+
+    #[test]
+    fn builtin_ghc_exts_exports_aligned_byte_array_primop_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_exts_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Exts")
+            .expect("GHC.Exts builtin iface should exist");
+        assert!(
+            ghc_exts_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("newAlignedPinnedByteArray#"),
+            "GHC.Exts should export newAlignedPinnedByteArray#"
         );
     }
 
