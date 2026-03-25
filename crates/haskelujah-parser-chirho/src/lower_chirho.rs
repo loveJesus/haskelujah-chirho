@@ -3313,6 +3313,16 @@ impl LowerCtxChirho {
             tuple_parts_chirho.push(&tokens_chirho[part_start_chirho..]);
         }
         if !tuple_parts_chirho.is_empty() {
+            if tuple_parts_chirho
+                .iter()
+                .all(|part_chirho| part_chirho.is_empty())
+            {
+                let commas_chirho = tuple_parts_chirho.len().saturating_sub(1);
+                let tuple_name_chirho = format!("({})", ",".repeat(commas_chirho));
+                return TypeChirho::ConChirho(NameChirho::RawChirho(
+                    RawNameChirho::unqualified_chirho(&tuple_name_chirho, span_chirho),
+                ));
+            }
             return TypeChirho::TupleChirho {
                 elements_chirho: tuple_parts_chirho
                     .into_iter()
@@ -9511,6 +9521,94 @@ data StrictPair a b = !a :*: !b\n",
                 }
             }
             _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn lower_zero_arity_instance_method_tuple_constructor_rhs_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nclass BiapplicativeChirho pChirho where\n  bipureChirho :: aChirho -> bChirho -> pChirho aChirho bChirho\ninstance BiapplicativeChirho (,) where\n  bipureChirho = (,)\n",
+        );
+        let inst_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
+            .expect("expected an InstanceDeclChirho");
+
+        let methods_chirho = match inst_chirho {
+            DeclChirho::InstanceDeclChirho { methods_chirho, .. } => methods_chirho,
+            _ => unreachable!(),
+        };
+        let method_chirho = methods_chirho
+            .iter()
+            .find(|bind_chirho| match bind_chirho {
+                LocalBindChirho::FunBindChirho { name_chirho, .. } => {
+                    name_chirho.text_chirho() == "bipureChirho"
+                }
+                _ => false,
+            })
+            .expect("expected bipureChirho instance method");
+
+        let matches_chirho = match method_chirho {
+            LocalBindChirho::FunBindChirho { matches_chirho, .. } => matches_chirho,
+            _ => unreachable!(),
+        };
+        assert_eq!(matches_chirho.len(), 1);
+        assert_eq!(matches_chirho[0].pats_chirho.len(), 0);
+        match &matches_chirho[0].rhs_chirho {
+            RhsChirho::UnguardedChirho(ExprChirho::LamChirho { pats_chirho, .. }) => {
+                assert_eq!(pats_chirho.len(), 2, "(,) should lower to a 2-arg lambda");
+            }
+            other_chirho => panic!("expected tuple constructor rhs to lower to lambda, got {other_chirho:?}"),
+        }
+    }
+
+    #[test]
+    fn lower_instance_tuple_type_constructor_head_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nclass BiapplicativeChirho pChirho where\n  bipureChirho :: aChirho -> bChirho -> pChirho aChirho bChirho\ninstance BiapplicativeChirho (,) where\n  bipureChirho = (,)\ninstance Monoid xChirho => BiapplicativeChirho ((,,) xChirho) where\n  bipureChirho = (,,) mempty\n",
+        );
+        let insts_chirho: Vec<_> = module_chirho
+            .decls_chirho
+            .iter()
+            .filter_map(|decl_chirho| match decl_chirho {
+                DeclChirho::InstanceDeclChirho { types_chirho, .. } => Some(types_chirho),
+                _ => None,
+            })
+            .collect();
+
+        assert_eq!(insts_chirho.len(), 2);
+        match &insts_chirho[0][0] {
+            TypeChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
+                TypeChirho::ConChirho(name_chirho) => {
+                    assert_eq!(name_chirho.text_chirho(), "(,)");
+                }
+                other_chirho => panic!("expected tuple type constructor, got {other_chirho:?}"),
+            },
+            other_chirho => panic!("expected parenthesized tuple constructor, got {other_chirho:?}"),
+        }
+        match &insts_chirho[1][0] {
+            TypeChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
+                TypeChirho::AppChirho { fun_chirho, arg_chirho, .. } => {
+                    match fun_chirho.as_ref() {
+                        TypeChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
+                            TypeChirho::ConChirho(name_chirho) => {
+                                assert_eq!(name_chirho.text_chirho(), "(,,)");
+                            }
+                            other_chirho => panic!("expected (,,) constructor, got {other_chirho:?}"),
+                        },
+                        other_chirho => panic!("expected parenthesized tuple constructor application, got {other_chirho:?}"),
+                    }
+                    match arg_chirho.as_ref() {
+                        TypeChirho::VarChirho(name_chirho) => {
+                            assert_eq!(name_chirho.text_chirho(), "xChirho");
+                        }
+                        other_chirho => panic!("expected xChirho arg, got {other_chirho:?}"),
+                    }
+                }
+                other_chirho => panic!("expected applied tuple constructor type, got {other_chirho:?}"),
+            },
+            other_chirho => panic!("expected parenthesized applied tuple constructor, got {other_chirho:?}"),
         }
     }
 

@@ -251,6 +251,72 @@ fn frontend_higher_rank_class_methods_retain_class_predicate_chirho() {
 }
 
 #[test]
+fn frontend_zero_arity_instance_method_accepts_tuple_constructor_rhs_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module TupleInstanceMethodChirho where\nclass BiapplicativeChirho pChirho where\n  bipureChirho :: aChirho -> bChirho -> pChirho aChirho bChirho\n  pairApChirho :: pChirho (aChirho -> bChirho) (cChirho -> dChirho) -> pChirho aChirho cChirho -> pChirho bChirho dChirho\ninstance BiapplicativeChirho (,) where\n  bipureChirho = (,)\n  pairApChirho ~(fChirho, gChirho) ~(aChirho, bChirho) = (fChirho aChirho, gChirho bChirho)\ninstance Monoid xChirho => BiapplicativeChirho ((,,) xChirho) where\n  bipureChirho = (,,) mempty\n  pairApChirho ~(xChirho, fChirho, gChirho) ~(x2Chirho, aChirho, bChirho) = (mappend xChirho x2Chirho, fChirho aChirho, gChirho bChirho)\n",
+        &mut source_map_chirho,
+        "TupleInstanceMethodChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "zero-arity instance methods should typecheck against tuple constructor rhs: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_parsed_biapplicative_class_method_keeps_applied_result_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho =
+        "module BiapplicativeParsedChirho where\nclass BiapplicativeChirho pChirho where\n  bipureChirho :: aChirho -> bChirho -> pChirho aChirho bChirho\n";
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "BiapplicativeParsedChirho.hs",
+        source_chirho,
+    );
+    let frontend_result_chirho = crate::run_frontend_chirho(
+        source_chirho,
+        source_file_chirho.file_id_chirho(),
+        &haskelujah_naming_chirho::builtin_module_ifaces_chirho(),
+        &std::collections::HashMap::new(),
+    )
+    .expect("frontend should succeed");
+
+    let class_decl_chirho = frontend_result_chirho
+        .infer_result_chirho
+        .class_env_chirho
+        .classes_chirho
+        .get("BiapplicativeChirho")
+        .expect("class should be registered");
+    let scheme_chirho = class_decl_chirho
+        .methods_chirho
+        .get("bipureChirho")
+        .expect("method scheme should be registered");
+
+    let result_slot_chirho = match &scheme_chirho.ty_chirho {
+        haskelujah_typing_chirho::TyChirho::FunChirho(_, result_chirho, _) => {
+            match result_chirho.as_ref() {
+                haskelujah_typing_chirho::TyChirho::FunChirho(_, result2_chirho, _) => {
+                    result2_chirho.as_ref()
+                }
+                other_chirho => panic!("expected second function arrow, got: {other_chirho}"),
+            }
+        }
+        other_chirho => panic!("expected function type, got: {other_chirho}"),
+    };
+
+    assert!(
+        matches!(
+            result_slot_chirho,
+            haskelujah_typing_chirho::TyChirho::AppChirho(_, _)
+        ),
+        "parsed class method result should keep p a b application rather than collapsing to bare p: {scheme_chirho}"
+    );
+}
+
+#[test]
 fn frontend_qualified_text_uncons_uses_text_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

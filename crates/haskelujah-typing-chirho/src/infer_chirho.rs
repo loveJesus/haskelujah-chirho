@@ -3052,6 +3052,14 @@ impl InferCtxChirho {
         }
 
         let arity_chirho = matches_chirho[0].pats_chirho.len();
+        if arity_chirho == 0 {
+            return self.infer_matches_with_seed_chirho(
+                matches_chirho,
+                span_chirho,
+                vec![],
+                expected_ty_chirho.clone(),
+            );
+        }
         if Self::fun_arity_chirho(expected_ty_chirho) != arity_chirho {
             return self.infer_matches_chirho(matches_chirho, span_chirho);
         }
@@ -14204,6 +14212,227 @@ mod tests_chirho {
             scheme_chirho.vars_chirho.len(),
             4,
             "alias-based scheme should quantify a, b, p, and t: {scheme_chirho}"
+        );
+    }
+
+    #[test]
+    fn infer_user_class_method_scheme_keeps_applied_class_parameter_chirho() {
+        use haskelujah_ast_chirho::decl_chirho::ClassMethodChirho;
+
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("BiapplicativeScheme"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::ClassDeclChirho {
+                context_chirho: vec![],
+                name_chirho: dummy_name_chirho("BiapplicativeChirho"),
+                type_vars_chirho: vec![dummy_name_chirho("p").into()],
+                methods_chirho: vec![ClassMethodChirho {
+                    name_chirho: dummy_name_chirho("bipureChirho"),
+                    ty_chirho: TypeChirho::FunChirho {
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        mult_chirho: None,
+                        result_chirho: Box::new(TypeChirho::FunChirho {
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
+                            mult_chirho: None,
+                            result_chirho: Box::new(TypeChirho::AppChirho {
+                                fun_chirho: Box::new(TypeChirho::AppChirho {
+                                    fun_chirho: Box::new(TypeChirho::VarChirho(
+                                        dummy_name_chirho("p"),
+                                    )),
+                                    arg_chirho: Box::new(TypeChirho::VarChirho(
+                                        dummy_name_chirho("a"),
+                                    )),
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    default_chirho: None,
+                    default_sig_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                associated_tfs_chirho: vec![],
+                fundeps_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "biapplicative class scheme should infer without errors: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+
+        let class_decl_chirho = result_chirho
+            .class_env_chirho
+            .classes_chirho
+            .get("BiapplicativeChirho")
+            .expect("class should be registered");
+        let scheme_chirho = class_decl_chirho
+            .methods_chirho
+            .get("bipureChirho")
+            .expect("method scheme should be registered");
+
+        let result_slot_chirho = match &scheme_chirho.ty_chirho {
+            TyChirho::FunChirho(_, result_chirho, _) => match result_chirho.as_ref() {
+                TyChirho::FunChirho(_, result2_chirho, _) => result2_chirho.as_ref().clone(),
+                other_chirho => panic!("expected second function arrow, got: {other_chirho}"),
+            },
+            other_chirho => panic!("expected function type, got: {other_chirho}"),
+        };
+
+        assert!(
+            matches!(result_slot_chirho, TyChirho::AppChirho(_, _)),
+            "method result should keep p a b application rather than collapsing to bare p: {scheme_chirho}"
+        );
+    }
+
+    #[test]
+    fn instantiate_instance_method_expected_ty_keeps_tuple_application_chirho() {
+        use haskelujah_ast_chirho::decl_chirho::ClassMethodChirho;
+
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("BiapplicativeExpected"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![DeclChirho::ClassDeclChirho {
+                context_chirho: vec![],
+                name_chirho: dummy_name_chirho("BiapplicativeChirho"),
+                type_vars_chirho: vec![dummy_name_chirho("p").into()],
+                methods_chirho: vec![ClassMethodChirho {
+                    name_chirho: dummy_name_chirho("bipureChirho"),
+                    ty_chirho: TypeChirho::FunChirho {
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        mult_chirho: None,
+                        result_chirho: Box::new(TypeChirho::FunChirho {
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
+                            mult_chirho: None,
+                            result_chirho: Box::new(TypeChirho::AppChirho {
+                                fun_chirho: Box::new(TypeChirho::AppChirho {
+                                    fun_chirho: Box::new(TypeChirho::VarChirho(
+                                        dummy_name_chirho("p"),
+                                    )),
+                                    arg_chirho: Box::new(TypeChirho::VarChirho(
+                                        dummy_name_chirho("a"),
+                                    )),
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    default_chirho: None,
+                    default_sig_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                associated_tfs_chirho: vec![],
+                fundeps_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let _ = ctx_chirho.infer_module_chirho(&module_chirho);
+        let class_decl_chirho = ctx_chirho
+            .class_env_chirho
+            .classes_chirho
+            .get("BiapplicativeChirho")
+            .cloned()
+            .expect("class should be registered");
+        let method_scheme_chirho = class_decl_chirho
+            .methods_chirho
+            .get("bipureChirho")
+            .expect("method scheme should be registered");
+        let expected_ty_chirho = ctx_chirho.instantiate_instance_method_expected_ty_chirho(
+            &class_decl_chirho,
+            method_scheme_chirho,
+            &[TyChirho::ConChirho("(,)".to_string())],
+        );
+
+        let result_slot_chirho = match expected_ty_chirho {
+            TyChirho::FunChirho(_, result_chirho, _) => match *result_chirho {
+                TyChirho::FunChirho(_, result2_chirho, _) => *result2_chirho,
+                other_chirho => panic!("expected second function arrow, got: {other_chirho}"),
+            },
+            other_chirho => panic!("expected function type, got: {other_chirho}"),
+        };
+
+        assert!(
+            matches!(result_slot_chirho, TyChirho::AppChirho(_, _)),
+            "instantiated method result should remain tuple constructor application"
+        );
+    }
+
+    #[test]
+    fn infer_zero_arity_match_against_tuple_constructor_expected_ty_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let a_var_chirho = ctx_chirho.fresh_var_chirho();
+        let b_var_chirho = ctx_chirho.fresh_var_chirho();
+        let expected_ty_chirho = TyChirho::fun_n_chirho(
+            vec![a_var_chirho.clone(), b_var_chirho.clone()],
+            TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("(,)".to_string())),
+                    Box::new(a_var_chirho),
+                )),
+                Box::new(b_var_chirho),
+            ),
+        );
+        let match_arm_chirho = MatchArmChirho {
+            pats_chirho: vec![],
+            rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LamChirho {
+                pats_chirho: vec![
+                    PatChirho::VarChirho(dummy_name_chirho("xChirho")),
+                    PatChirho::VarChirho(dummy_name_chirho("yChirho")),
+                ],
+                body_chirho: Box::new(ExprChirho::TupleChirho {
+                    elements_chirho: vec![
+                        ExprChirho::VarChirho(dummy_name_chirho("xChirho")),
+                        ExprChirho::VarChirho(dummy_name_chirho("yChirho")),
+                    ],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            where_binds_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let (_subst_chirho, inferred_ty_chirho) = ctx_chirho.infer_matches_against_expected_chirho(
+            &[match_arm_chirho],
+            SpanChirho::DUMMY_CHIRHO,
+            &expected_ty_chirho,
+        );
+
+        assert!(
+            !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+            "zero-arity tuple-constructor matches should infer against the expected function type: {:?}",
+            ctx_chirho.diagnostics_chirho
+        );
+        assert!(
+            matches!(inferred_ty_chirho, TyChirho::FunChirho(_, _, _)),
+            "expected function result, got: {inferred_ty_chirho}"
         );
     }
 
