@@ -960,6 +960,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "fromString",
             "fromList",
             "toList",
+            "bimap",
             // Comparison
             "compare",
             // String ops
@@ -11637,7 +11638,7 @@ mod tests_chirho {
                 .contains_key("Alternative"),
             "Prelude should export Alternative"
         );
-        for name_chirho in ["empty", "<|>", "some", "many", "optional", "liftA2"] {
+        for name_chirho in ["empty", "<|>", "some", "many", "optional", "liftA2", "bimap"] {
             assert!(
                 prelude_chirho
                     .exports_chirho
