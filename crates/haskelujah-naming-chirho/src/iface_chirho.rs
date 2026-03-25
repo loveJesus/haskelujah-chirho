@@ -3636,7 +3636,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.ByteString.Internal
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["c2w", "w2c", "unsafeCreate", "create", "createAndTrim", "mallocByteString", "nullForeignPtr"] {
+        for name_chirho in &[
+            "c2w",
+            "w2c",
+            "unsafeCreate",
+            "create",
+            "createAndTrim",
+            "mallocByteString",
+            "nullForeignPtr",
+            "accursedUnutterablePerformIO",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -4461,6 +4470,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
             "unsafePerformIO",
+            "inlinePerformIO",
             "unsafeInterleaveIO",
             "unsafeDupablePerformIO",
         ] {
@@ -7038,6 +7048,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
             "unsafePerformIO",
+            "inlinePerformIO",
             "unsafeInterleaveIO",
             "unsafeDupablePerformIO",
             "unsafeFixIO",
@@ -11687,6 +11698,36 @@ mod tests_chirho {
                     .values_chirho
                     .contains_key(name_chirho),
                 "Prelude should export {name_chirho}"
+            );
+        }
+    }
+
+    #[test]
+    fn builtin_bytestring_internal_and_system_io_unsafe_exports_effect_helpers_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let bytestring_internal_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.ByteString.Internal")
+            .expect("Data.ByteString.Internal builtin iface should exist");
+        assert!(
+            bytestring_internal_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("accursedUnutterablePerformIO"),
+            "Data.ByteString.Internal should export accursedUnutterablePerformIO"
+        );
+
+        let system_io_unsafe_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "System.IO.Unsafe")
+            .expect("System.IO.Unsafe builtin iface should exist");
+        for name_chirho in ["unsafePerformIO", "inlinePerformIO"] {
+            assert!(
+                system_io_unsafe_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "System.IO.Unsafe should export {name_chirho}"
             );
         }
     }
