@@ -3253,14 +3253,23 @@ impl LowerCtxChirho {
                             .1
                             .merge_chirho(head_tokens_chirho[end_idx_chirho].1)
                             .unwrap_or(span_chirho);
-                        let element_ty_chirho = self.lower_type_from_token_slice_chirho(
-                            inner_tokens_chirho,
-                            head_span_chirho,
-                        );
-                        types_chirho.push(TypeChirho::ListChirho {
-                            element_chirho: Box::new(element_ty_chirho),
-                            span_chirho: head_span_chirho,
-                        });
+                        if inner_tokens_chirho.is_empty() {
+                            types_chirho.push(TypeChirho::ConChirho(
+                                NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                                    "[]",
+                                    head_span_chirho,
+                                )),
+                            ));
+                        } else {
+                            let element_ty_chirho = self.lower_type_from_token_slice_chirho(
+                                inner_tokens_chirho,
+                                head_span_chirho,
+                            );
+                            types_chirho.push(TypeChirho::ListChirho {
+                                element_chirho: Box::new(element_ty_chirho),
+                                span_chirho: head_span_chirho,
+                            });
+                        }
                         idx_chirho = end_idx_chirho + 1;
                     } else {
                         idx_chirho += 1;
@@ -3379,12 +3388,21 @@ impl LowerCtxChirho {
                         TokenKindChirho::RightBracketChirho,
                     ) {
                         let inner_tokens_chirho = &tokens_chirho[idx_chirho + 1..end_idx_chirho];
-                        let element_ty_chirho =
-                            self.lower_type_from_token_slice_chirho(inner_tokens_chirho, span_chirho);
-                        atom_tys_chirho.push(TypeChirho::ListChirho {
-                            element_chirho: Box::new(element_ty_chirho),
-                            span_chirho,
-                        });
+                        if inner_tokens_chirho.is_empty() {
+                            atom_tys_chirho.push(TypeChirho::ConChirho(
+                                NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                                    "[]",
+                                    span_chirho,
+                                )),
+                            ));
+                        } else {
+                            let element_ty_chirho = self
+                                .lower_type_from_token_slice_chirho(inner_tokens_chirho, span_chirho);
+                            atom_tys_chirho.push(TypeChirho::ListChirho {
+                                element_chirho: Box::new(element_ty_chirho),
+                                span_chirho,
+                            });
+                        }
                         idx_chirho = end_idx_chirho + 1;
                     } else {
                         idx_chirho += 1;
@@ -9609,6 +9627,29 @@ data StrictPair a b = !a :*: !b\n",
                 other_chirho => panic!("expected applied tuple constructor type, got {other_chirho:?}"),
             },
             other_chirho => panic!("expected parenthesized applied tuple constructor, got {other_chirho:?}"),
+        }
+    }
+
+    #[test]
+    fn lower_instance_list_type_constructor_head_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nclass NFData1Chirho fChirho where\n  liftRnfChirho :: (aChirho -> ()) -> fChirho aChirho -> ()\ninstance NFData1Chirho [] where\n  liftRnfChirho fChirho = foldr (\\xChirho rChirho -> fChirho xChirho `seq` rChirho) ()\n",
+        );
+        let inst_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
+            .expect("expected an InstanceDeclChirho");
+        let types_chirho = match inst_chirho {
+            DeclChirho::InstanceDeclChirho { types_chirho, .. } => types_chirho,
+            _ => unreachable!(),
+        };
+        assert_eq!(types_chirho.len(), 1);
+        match &types_chirho[0] {
+            TypeChirho::ConChirho(name_chirho) => {
+                assert_eq!(name_chirho.text_chirho(), "[]");
+            }
+            other_chirho => panic!("expected list type constructor head, got {other_chirho:?}"),
         }
     }
 

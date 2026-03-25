@@ -6772,7 +6772,20 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     }
 
     // ── STM (Software Transactional Memory) operations ──
-    // newTVar :: a -> IO (TVar a)  (TVar a ≈ Int at runtime)
+    let mk_tvar_ty_chirho = |inner_ty_chirho: TyChirho| {
+        TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("TVar".to_string())),
+            Box::new(inner_ty_chirho),
+        )
+    };
+    let mk_stm_ty_chirho = |inner_ty_chirho: TyChirho| {
+        TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("STM".to_string())),
+            Box::new(inner_ty_chirho),
+        )
+    };
+
+    // newTVar :: a -> IO (TVar a)
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3290));
         env_chirho.bind_chirho(
@@ -6781,8 +6794,8 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 vars_chirho: vec![TyVarChirho(3290)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    a_chirho,
-                    TyChirho::io_chirho(TyChirho::int_chirho()),
+                    a_chirho.clone(),
+                    TyChirho::io_chirho(mk_tvar_ty_chirho(a_chirho)),
                 ),
             },
         );
@@ -6797,14 +6810,14 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 vars_chirho: vec![TyVarChirho(3291)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    a_chirho,
-                    TyChirho::io_chirho(TyChirho::int_chirho()),
+                    a_chirho.clone(),
+                    TyChirho::io_chirho(mk_tvar_ty_chirho(a_chirho)),
                 ),
             },
         );
     }
 
-    // readTVar :: TVar a -> IO a
+    // readTVar :: TVar a -> STM a
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3292));
         env_chirho.bind_chirho(
@@ -6813,8 +6826,8 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 vars_chirho: vec![TyVarChirho(3292)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    TyChirho::int_chirho(),
-                    TyChirho::io_chirho(a_chirho),
+                    mk_tvar_ty_chirho(a_chirho.clone()),
+                    mk_stm_ty_chirho(a_chirho),
                 ),
             },
         );
@@ -6829,14 +6842,14 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 vars_chirho: vec![TyVarChirho(3293)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    TyChirho::int_chirho(),
+                    mk_tvar_ty_chirho(a_chirho.clone()),
                     TyChirho::io_chirho(a_chirho),
                 ),
             },
         );
     }
 
-    // writeTVar :: TVar a -> a -> IO ()
+    // writeTVar :: TVar a -> a -> STM ()
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3294));
         env_chirho.bind_chirho(
@@ -6845,14 +6858,14 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 vars_chirho: vec![TyVarChirho(3294)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
-                    vec![TyChirho::int_chirho(), a_chirho],
-                    TyChirho::io_chirho(TyChirho::unit_chirho()),
+                    vec![mk_tvar_ty_chirho(a_chirho.clone()), a_chirho],
+                    mk_stm_ty_chirho(TyChirho::unit_chirho()),
                 ),
             },
         );
     }
 
-    // atomically :: STM a -> IO a  (single-threaded: identity)
+    // atomically :: STM a -> IO a
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3295));
         env_chirho.bind_chirho(
@@ -6861,14 +6874,14 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 vars_chirho: vec![TyVarChirho(3295)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    TyChirho::io_chirho(a_chirho.clone()),
+                    mk_stm_ty_chirho(a_chirho.clone()),
                     TyChirho::io_chirho(a_chirho),
                 ),
             },
         );
     }
 
-    // retry :: STM a  (returns IO a in our single-threaded model)
+    // retry :: STM a
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3296));
         env_chirho.bind_chirho(
@@ -6876,12 +6889,12 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![TyVarChirho(3296)],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::io_chirho(a_chirho),
+                ty_chirho: mk_stm_ty_chirho(a_chirho),
             },
         );
     }
 
-    // orElse :: STM a -> STM a -> STM a  (simplified: IO a -> IO a -> IO a)
+    // orElse :: STM a -> STM a -> STM a
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3297));
         env_chirho.bind_chirho(
@@ -6891,10 +6904,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
-                        TyChirho::io_chirho(a_chirho.clone()),
-                        TyChirho::io_chirho(a_chirho.clone()),
+                        mk_stm_ty_chirho(a_chirho.clone()),
+                        mk_stm_ty_chirho(a_chirho.clone()),
                     ],
-                    TyChirho::io_chirho(a_chirho),
+                    mk_stm_ty_chirho(a_chirho),
                 ),
             },
         );
