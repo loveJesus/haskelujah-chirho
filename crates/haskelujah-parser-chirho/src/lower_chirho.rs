@@ -2026,7 +2026,7 @@ impl LowerCtxChirho {
                     span_chirho,
                 ));
             }
-        } else if fields_chirho.len() > 2 && !has_record_chirho {
+        } else if is_infix_chirho && fields_chirho.len() > 2 && !has_record_chirho {
             let right_parts_chirho: Vec<_> = fields_chirho.drain(1..).collect();
             let strictness_chirho = right_parts_chirho[0].0;
             let mut combined_chirho = right_parts_chirho[0].1.clone();
@@ -8746,6 +8746,61 @@ data ViewRChirho a = EmptyRChirho | SeqChirho a :> a\n",
                 }
             }
             other_chirho => panic!("expected ViewRChirho data decl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_prefix_data_constructor_keeps_all_fields_separate_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module PosMiniChirho where\n\
+type SourceNameChirho = String\n\
+type LineChirho = Int\n\
+type ColumnChirho = Int\n\
+data SourcePosChirho = SourcePosChirho SourceNameChirho !LineChirho !ColumnChirho\n",
+        );
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| match decl_chirho {
+                DeclChirho::DataDeclChirho { name_chirho, .. } => {
+                    name_chirho.text_chirho() == "SourcePosChirho"
+                }
+                _ => false,
+            })
+            .expect("expected SourcePosChirho data decl");
+        match decl_chirho {
+            DeclChirho::DataDeclChirho {
+                constructors_chirho, ..
+            } => match &constructors_chirho[0] {
+                ConDeclChirho::OrdinaryChirho {
+                    name_chirho,
+                    fields_chirho,
+                    ..
+                } => {
+                    assert_eq!(name_chirho.text_chirho(), "SourcePosChirho");
+                    assert_eq!(fields_chirho.len(), 3);
+                    assert_eq!(fields_chirho[0].0, StrictnessChirho::LazyChirho);
+                    assert_eq!(fields_chirho[1].0, StrictnessChirho::StrictChirho);
+                    assert_eq!(fields_chirho[2].0, StrictnessChirho::StrictChirho);
+                    assert!(matches!(
+                        &fields_chirho[0].1,
+                        TypeChirho::ConChirho(name_chirho)
+                            if name_chirho.text_chirho() == "SourceNameChirho"
+                    ));
+                    assert!(matches!(
+                        &fields_chirho[1].1,
+                        TypeChirho::ConChirho(name_chirho)
+                            if name_chirho.text_chirho() == "LineChirho"
+                    ));
+                    assert!(matches!(
+                        &fields_chirho[2].1,
+                        TypeChirho::ConChirho(name_chirho)
+                            if name_chirho.text_chirho() == "ColumnChirho"
+                    ));
+                }
+                other_chirho => panic!("expected ordinary constructor, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected SourcePosChirho data decl, got {:?}", other_chirho),
         }
     }
 
