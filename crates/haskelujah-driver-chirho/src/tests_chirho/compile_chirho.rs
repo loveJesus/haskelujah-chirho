@@ -138,6 +138,22 @@ fn frontend_list_append_is_polymorphic_chirho() {
 }
 
 #[test]
+fn frontend_ghc_foreign_ptr_unsafe_with_foreign_ptr_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ForeignPtrUnsafeMiniChirho where\nimport Foreign.Ptr (Ptr)\nimport GHC.ForeignPtr (ForeignPtr, unsafeWithForeignPtr)\nusePtrChirho :: ForeignPtr aChirho -> (Ptr aChirho -> IO bChirho) -> IO bChirho\nusePtrChirho = unsafeWithForeignPtr\n",
+        &mut source_map_chirho,
+        "ForeignPtrUnsafeMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.ForeignPtr.unsafeWithForeignPtr should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_traversable_sequencea_instance_method_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

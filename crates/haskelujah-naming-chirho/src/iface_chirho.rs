@@ -3722,7 +3722,12 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
         let (k_chirho, v_chirho) = mk_type_chirho("ForeignPtr", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        for name_chirho in &["newForeignPtr", "withForeignPtr", "mallocForeignPtrBytes"] {
+        for name_chirho in &[
+            "newForeignPtr",
+            "withForeignPtr",
+            "unsafeWithForeignPtr",
+            "mallocForeignPtrBytes",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -4672,6 +4677,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "allocaBytes",
             "newForeignPtr",
             "withForeignPtr",
+            "unsafeWithForeignPtr",
             "mallocForeignPtr",
             "newStablePtr",
             "deRefStablePtr",
@@ -5886,6 +5892,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "newForeignPtr",
             "newForeignPtr_",
             "withForeignPtr",
+            "unsafeWithForeignPtr",
             "castForeignPtr",
             "mallocForeignPtr",
             "FinalizerPtr",
@@ -6229,6 +6236,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "ForeignPtr",
             "newForeignPtr",
             "withForeignPtr",
+            "unsafeWithForeignPtr",
             "finalizeForeignPtr",
             "castForeignPtr",
             "plusForeignPtr",
@@ -11730,6 +11738,22 @@ mod tests_chirho {
                 "System.IO.Unsafe should export {name_chirho}"
             );
         }
+    }
+
+    #[test]
+    fn builtin_foreign_ptr_exports_unsafe_with_foreign_ptr_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_foreign_ptr_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.ForeignPtr")
+            .expect("GHC.ForeignPtr builtin iface should exist");
+        assert!(
+            ghc_foreign_ptr_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("unsafeWithForeignPtr"),
+            "GHC.ForeignPtr should export unsafeWithForeignPtr"
+        );
     }
 
     #[test]

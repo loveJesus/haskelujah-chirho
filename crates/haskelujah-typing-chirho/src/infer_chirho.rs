@@ -7136,6 +7136,38 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         ))),
     );
 
+    let foreign_ptr_a_chirho = TyVarChirho(1692);
+    let foreign_ptr_b_chirho = TyVarChirho(1693);
+    let foreign_ptr_ty_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho("ForeignPtr".to_string())),
+        Box::new(TyChirho::VarChirho(foreign_ptr_a_chirho)),
+    );
+    let ptr_ty_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho("Ptr".to_string())),
+        Box::new(TyChirho::VarChirho(foreign_ptr_a_chirho)),
+    );
+    let io_foreign_ptr_result_ty_chirho =
+        TyChirho::io_chirho(TyChirho::VarChirho(foreign_ptr_b_chirho));
+    let with_foreign_ptr_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![foreign_ptr_a_chirho, foreign_ptr_b_chirho],
+        preds_chirho: vec![],
+        ty_chirho: TyChirho::fun_n_chirho(
+            vec![
+                foreign_ptr_ty_chirho,
+                TyChirho::fun_chirho(ptr_ty_chirho, io_foreign_ptr_result_ty_chirho.clone()),
+            ],
+            io_foreign_ptr_result_ty_chirho,
+        ),
+    };
+    env_chirho.bind_chirho(
+        "withForeignPtr".to_string(),
+        with_foreign_ptr_scheme_chirho.clone(),
+    );
+    env_chirho.bind_chirho(
+        "unsafeWithForeignPtr".to_string(),
+        with_foreign_ptr_scheme_chirho,
+    );
+
     let smgen_ty_chirho = TyChirho::ConChirho("SMGen".to_string());
     let word64_ty_chirho = TyChirho::ConChirho("Word64".to_string());
     env_chirho.bind_chirho(
