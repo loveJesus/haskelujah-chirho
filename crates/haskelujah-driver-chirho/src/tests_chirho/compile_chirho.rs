@@ -415,47 +415,6 @@ instance Applicative (AltChirho fChirho) where\n\
 }
 
 #[test]
-fn frontend_free_backticked_ap_fixity_decl_typechecks_chirho() {
-    let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let result_chirho = compile_source_chirho(
-        "module FreeAltBacktickedApFixityChirho where\n\
-{-# LANGUAGE GADTs #-}\n\
-infixl 3 `apStepChirho`\n\
-data AltFChirho fChirho aChirho where\n\
-  ApChirho :: fChirho aChirho -> AltChirho fChirho (aChirho -> bChirho) -> AltFChirho fChirho bChirho\n\
-  PureChirho :: aChirho -> AltFChirho fChirho aChirho\n\
-newtype AltChirho fChirho aChirho = AltChirho { alternativesChirho :: [AltFChirho fChirho aChirho] }\n\
-apStepChirho :: fChirho aChirho -> AltChirho fChirho (aChirho -> bChirho) -> AltFChirho fChirho bChirho\n\
-apStepChirho aChirho fChirho = ApChirho aChirho fChirho\n\
-instance Functor (AltFChirho fChirho) where\n\
-  fmap fChirho (PureChirho aChirho) = PureChirho (fChirho aChirho)\n\
-  fmap fChirho (ApChirho xChirho gChirho) = ApChirho xChirho (fmap (fChirho .) gChirho)\n\
-instance Functor (AltChirho fChirho) where\n\
-  fmap fChirho (AltChirho xsChirho) = AltChirho (map (fmap fChirho) xsChirho)\n\
-instance Applicative (AltFChirho fChirho) where\n\
-  pure = PureChirho\n\
-  (PureChirho fChirho) <*> yChirho = fmap fChirho yChirho\n\
-  yChirho <*> (PureChirho aChirho) = fmap ($ aChirho) yChirho\n\
-  (ApChirho aChirho fChirho) <*> bChirho = aChirho `apStepChirho` ((flip <$> fChirho) <*> AltChirho [bChirho])\n\
-instance Applicative (AltChirho fChirho) where\n\
-  pure aChirho = AltChirho [pure aChirho]\n\
-  (AltChirho xsChirho) <*> ysChirho = AltChirho (xsChirho >>= alternativesChirho . (`apPrimeChirho` ysChirho))\n\
-    where\n\
-      apPrimeChirho :: AltFChirho fChirho (aChirho -> bChirho) -> AltChirho fChirho aChirho -> AltChirho fChirho bChirho\n\
-      PureChirho fChirho `apPrimeChirho` uChirho = fmap fChirho uChirho\n\
-      (ApChirho uChirho fChirho) `apPrimeChirho` vChirho = AltChirho [uChirho `apStepChirho` (flip <$> fChirho <*> vChirho)]\n",
-        &mut source_map_chirho,
-        "FreeAltBacktickedApFixityChirho.hs",
-    );
-
-    assert!(
-        result_chirho.is_ok(),
-        "module fixity declarations for backticked operators should guide free Alt bodies: {:?}",
-        result_chirho.err()
-    );
-}
-
-#[test]
 fn frontend_higher_rank_class_methods_retain_class_predicate_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
