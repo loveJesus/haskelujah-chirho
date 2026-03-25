@@ -11679,6 +11679,35 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho("unsafeCoerce#".to_string(), scheme_chirho);
     }
 
+    // GHC.Integer.Logarithms / Compat
+    {
+        let integer_ty_chirho = TyChirho::ConChirho("Integer".to_string());
+        let int_hash_ty_chirho = TyChirho::ConChirho("Int#".to_string());
+        let word_hash_ty_chirho = TyChirho::ConChirho("Word#".to_string());
+
+        env_chirho.bind_chirho(
+            "integerLog2#".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                integer_ty_chirho.clone(),
+                int_hash_ty_chirho.clone(),
+            )),
+        );
+        env_chirho.bind_chirho(
+            "integerLogBase#".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+                vec![integer_ty_chirho.clone(), integer_ty_chirho],
+                int_hash_ty_chirho.clone(),
+            )),
+        );
+        env_chirho.bind_chirho(
+            "wordLog2#".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                word_hash_ty_chirho,
+                int_hash_ty_chirho,
+            )),
+        );
+    }
+
     // cast :: (Typeable a, Typeable b) => a -> Maybe b
     {
         let a_chirho = TyVarChirho(7120);
