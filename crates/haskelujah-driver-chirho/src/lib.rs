@@ -2170,6 +2170,14 @@ pub fn compile_modules_chirho(
                     imported_types_chirho.insert(con_name_chirho.clone(), scheme_chirho.clone());
                 }
             }
+            for method_name_chirho in &ty_info_chirho.methods_chirho {
+                if let Some(scheme_chirho) = infer_result_chirho
+                    .env_chirho
+                    .lookup_chirho(method_name_chirho)
+                {
+                    imported_types_chirho.insert(method_name_chirho.clone(), scheme_chirho.clone());
+                }
+            }
         }
 
         imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
@@ -3856,6 +3864,16 @@ fn insert_exported_schemes_into_imports_chirho(
                 imported_types_chirho.insert(con_name_chirho.clone(), scheme_chirho.clone());
                 imported_types_chirho.insert(
                     format!("{}.{}", iface_chirho.name_chirho, con_name_chirho),
+                    scheme_chirho.clone(),
+                );
+            }
+        }
+        for method_name_chirho in &ty_info_chirho.methods_chirho {
+            if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(method_name_chirho)
+            {
+                imported_types_chirho.insert(method_name_chirho.clone(), scheme_chirho.clone());
+                imported_types_chirho.insert(
+                    format!("{}.{}", iface_chirho.name_chirho, method_name_chirho),
                     scheme_chirho.clone(),
                 );
             }

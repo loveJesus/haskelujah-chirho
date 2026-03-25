@@ -1398,6 +1398,30 @@ instance Contravariant m => Contravariant (ExceptTChirho e m) where
 }
 
 #[test]
+fn frontend_imported_user_class_methods_seed_real_schemes_chirho() {
+    use crate::compile_modules_chirho;
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho: Vec<(&str, &str)> = vec![
+        (
+            "ApplyProviderChirho.hs",
+            "module ApplyProviderChirho (ApplyChirho(..)) where\nclass Functor fChirho => ApplyChirho fChirho where\n  (<.>) :: fChirho (aChirho -> bChirho) -> fChirho aChirho -> fChirho bChirho\n",
+        ),
+        (
+            "ApplyConsumerChirho.hs",
+            "module ApplyConsumerChirho where\nimport Data.Functor\nimport ApplyProviderChirho (ApplyChirho(..))\nliftF3Chirho :: ApplyChirho wChirho => (aChirho -> bChirho -> cChirho -> dChirho) -> wChirho aChirho -> wChirho bChirho -> wChirho cChirho -> wChirho dChirho\nliftF3Chirho fChirho aChirho bChirho cChirho = fChirho <$> aChirho <.> bChirho <.> cChirho\n",
+        ),
+    ];
+
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "imported user class methods should carry their declared schemes across modules: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
 fn multi_module_import_chirho() {
     use crate::compile_modules_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();
