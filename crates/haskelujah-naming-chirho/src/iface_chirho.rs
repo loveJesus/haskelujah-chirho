@@ -9881,6 +9881,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             exports_chirho,
         });
     }
+    for mod_name_chirho in &[
+        "Data.Functor.WithIndex.Instances",
+        "Data.Foldable.WithIndex.Instances",
+        "Data.Traversable.WithIndex.Instances",
+    ] {
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho: IfaceExportsChirho::default(),
+        });
+    }
 
     // Data.Bifunctor.Swap (bifunctors)
     {
@@ -11842,6 +11852,23 @@ mod tests_chirho {
                 .contains_key("newAlignedPinnedByteArray#"),
             "GHC.Exts should export newAlignedPinnedByteArray#"
         );
+    }
+
+    #[test]
+    fn builtin_with_index_instances_modules_exist_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        for module_name_chirho in &[
+            "Data.Functor.WithIndex.Instances",
+            "Data.Foldable.WithIndex.Instances",
+            "Data.Traversable.WithIndex.Instances",
+        ] {
+            assert!(
+                ifaces_chirho
+                    .iter()
+                    .any(|iface_chirho| iface_chirho.name_chirho == *module_name_chirho),
+                "{module_name_chirho} builtin iface should exist"
+            );
+        }
     }
 
     #[test]
