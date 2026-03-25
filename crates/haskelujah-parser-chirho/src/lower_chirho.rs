@@ -564,7 +564,10 @@ impl LowerCtxChirho {
                                     ));
                                 }
                             }
-                            TokenKindChirho::VarSymChirho | TokenKindChirho::ConSymChirho => {
+                            TokenKindChirho::VarSymChirho
+                            | TokenKindChirho::ConSymChirho
+                            | TokenKindChirho::QualifiedVarSymChirho
+                            | TokenKindChirho::QualifiedConSymChirho => {
                                 let span_chirho =
                                     self.span_chirho(elem_start_chirho, elem_end_chirho);
                                 if first_name_chirho.is_none() {
@@ -773,13 +776,20 @@ impl LowerCtxChirho {
                             );
                         }
                     }
-                    TokenKindChirho::VarSymChirho | TokenKindChirho::ConSymChirho => {
+                    TokenKindChirho::VarSymChirho
+                    | TokenKindChirho::ConSymChirho
+                    | TokenKindChirho::QualifiedVarSymChirho
+                    | TokenKindChirho::QualifiedConSymChirho => {
                         let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
                         if first_name_chirho.is_none() {
                             first_name_chirho = Some((
                                 tok_chirho.text_chirho().to_string(),
                                 span_chirho,
-                                tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho,
+                                matches!(
+                                    tok_chirho.kind_chirho(),
+                                    TokenKindChirho::ConSymChirho
+                                        | TokenKindChirho::QualifiedConSymChirho
+                                ),
                             ));
                         } else if in_parens_chirho {
                             members_chirho.push(
@@ -1188,8 +1198,12 @@ impl LowerCtxChirho {
                     if saw_backtick_chirho
                         && (tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
                             || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedVarIdChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedConIdChirho
                             || tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
-                            || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho)
+                            || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedVarSymChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedConSymChirho)
                     {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
@@ -1197,7 +1211,9 @@ impl LowerCtxChirho {
                     }
                     if saw_lhs_operand_chirho
                         && (tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
-                            || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho)
+                            || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedVarSymChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedConSymChirho)
                     {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
@@ -1206,8 +1222,12 @@ impl LowerCtxChirho {
                     if fallback_name_chirho.is_none()
                         && (tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
                             || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedVarIdChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedConIdChirho
                             || tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
-                            || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho)
+                            || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedVarSymChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedConSymChirho)
                     {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
@@ -1218,6 +1238,7 @@ impl LowerCtxChirho {
                         TokenKindChirho::VarIdChirho
                             | TokenKindChirho::ConIdChirho
                             | TokenKindChirho::QualifiedVarIdChirho
+                            | TokenKindChirho::QualifiedConIdChirho
                             | TokenKindChirho::UnderscoreReservedIdChirho
                             | TokenKindChirho::IntegerLiteralChirho
                             | TokenKindChirho::FloatLiteralChirho
@@ -1228,7 +1249,10 @@ impl LowerCtxChirho {
                             | TokenKindChirho::TildeChirho
                     ) {
                         saw_lhs_operand_chirho = true;
-                    } else if tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho {
+                    } else if matches!(
+                        tok_chirho.kind_chirho(),
+                        TokenKindChirho::VarSymChirho | TokenKindChirho::QualifiedVarSymChirho
+                    ) {
                         let tok_text_chirho = self
                             .name_from_token_chirho(
                                 tok_chirho,
@@ -3899,10 +3923,16 @@ impl LowerCtxChirho {
                     TokenKindChirho::BacktickChirho => {
                         in_backticks_chirho = !in_backticks_chirho;
                     }
-                    TokenKindChirho::VarSymChirho | TokenKindChirho::ConSymChirho => {
+                    TokenKindChirho::VarSymChirho
+                    | TokenKindChirho::ConSymChirho
+                    | TokenKindChirho::QualifiedVarSymChirho
+                    | TokenKindChirho::QualifiedConSymChirho => {
                         ops_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
                     }
-                    TokenKindChirho::VarIdChirho | TokenKindChirho::ConIdChirho
+                    TokenKindChirho::VarIdChirho
+                    | TokenKindChirho::ConIdChirho
+                    | TokenKindChirho::QualifiedVarIdChirho
+                    | TokenKindChirho::QualifiedConIdChirho
                         if in_backticks_chirho =>
                     {
                         ops_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
@@ -5397,12 +5427,19 @@ impl LowerCtxChirho {
                                         | TokenKindChirho::QualifiedConIdChirho
                                         | TokenKindChirho::VarSymChirho
                                         | TokenKindChirho::ConSymChirho
+                                        | TokenKindChirho::QualifiedVarSymChirho
+                                        | TokenKindChirho::QualifiedConSymChirho
                                 )
                             {
                                 backtick_op_text_chirho =
                                     Some(tok_chirho.text_chirho().to_string());
-                            } else if kind_chirho == TokenKindChirho::VarSymChirho
-                                || kind_chirho == TokenKindChirho::ConSymChirho
+                            } else if matches!(
+                                kind_chirho,
+                                TokenKindChirho::VarSymChirho
+                                    | TokenKindChirho::ConSymChirho
+                                    | TokenKindChirho::QualifiedVarSymChirho
+                                    | TokenKindChirho::QualifiedConSymChirho
+                            )
                             {
                                 if expr_nodes_chirho.is_empty() {
                                     leading_op_chirho = Some(tok_chirho.text_chirho().to_string());
@@ -5419,10 +5456,7 @@ impl LowerCtxChirho {
                     if let Some(arg_child_chirho) = expr_nodes_chirho.first() {
                         let arg_expr_chirho = self.lower_expr_from_child_chirho(arg_child_chirho);
                         return ExprChirho::LeftSectionChirho {
-                            op_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                                op_text_chirho.clone(),
-                                span_chirho,
-                            )),
+                            op_chirho: self.name_from_text_chirho(op_text_chirho, span_chirho),
                             arg_chirho: Box::new(arg_expr_chirho),
                             span_chirho,
                         };
@@ -5435,10 +5469,7 @@ impl LowerCtxChirho {
                         let arg_expr_chirho = self.lower_expr_from_child_chirho(arg_child_chirho);
                         return ExprChirho::RightSectionChirho {
                             arg_chirho: Box::new(arg_expr_chirho),
-                            op_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                                op_text_chirho.clone(),
-                                span_chirho,
-                            )),
+                            op_chirho: self.name_from_text_chirho(op_text_chirho, span_chirho),
                             span_chirho,
                         };
                     }
@@ -6083,7 +6114,10 @@ impl LowerCtxChirho {
                             name_text_chirho = Some(tok_chirho.text_chirho().to_string());
                         }
                     }
-                    TokenKindChirho::VarSymChirho | TokenKindChirho::ConSymChirho => {
+                    TokenKindChirho::VarSymChirho
+                    | TokenKindChirho::ConSymChirho
+                    | TokenKindChirho::QualifiedVarSymChirho
+                    | TokenKindChirho::QualifiedConSymChirho => {
                         if inside_parens_chirho {
                             paren_text_chirho.push_str(tok_chirho.text_chirho());
                         } else if name_text_chirho.is_none() {
@@ -7211,7 +7245,8 @@ impl LowerCtxChirho {
                             let child_span_chirho =
                                 self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                             match tok_chirho.kind_chirho() {
-                                TokenKindChirho::VarSymChirho => {
+                                TokenKindChirho::VarSymChirho
+                                | TokenKindChirho::QualifiedVarSymChirho => {
                                     paren_op_pat_chirho = Some(PatChirho::VarChirho(
                                         self.name_from_token_chirho(tok_chirho, child_span_chirho),
                                     ));
@@ -7627,6 +7662,8 @@ impl LowerCtxChirho {
                     | TokenKindChirho::QualifiedVarIdChirho
                     | TokenKindChirho::VarSymChirho
                     | TokenKindChirho::ConSymChirho
+                    | TokenKindChirho::QualifiedVarSymChirho
+                    | TokenKindChirho::QualifiedConSymChirho
                     | TokenKindChirho::UnderscoreReservedIdChirho => {
                         let span_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
@@ -10014,6 +10051,53 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
         assert!(
             matches!(&spec1_chirho.items_chirho[0], ImportItemChirho::VarChirho(n_chirho) if n_chirho.text_chirho() == "map")
         );
+    }
+
+    #[test]
+    fn lower_qualified_infix_operator_expr_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nimport qualified Data.Map as Map\nfChirho mChirho kChirho = mChirho Map.! kChirho\n",
+        );
+        let fun_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "fChirho"
+                )
+            })
+            .unwrap_or_else(|| panic!("expected fChirho funbind"));
+
+        let DeclChirho::FunBindChirho { matches_chirho, .. } = fun_decl_chirho else {
+            panic!("expected function binding");
+        };
+        let RhsChirho::UnguardedChirho(rhs_expr_chirho) = &matches_chirho[0].rhs_chirho else {
+            panic!("expected unguarded rhs");
+        };
+
+        match rhs_expr_chirho {
+            ExprChirho::InfixChirho {
+                left_chirho,
+                op_chirho,
+                right_chirho,
+                ..
+            } => {
+                assert_eq!(op_chirho.text_chirho(), "Map.!");
+                assert!(
+                    matches!(&**left_chirho, ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "mChirho"),
+                    "expected left operand mChirho, got {:?}",
+                    left_chirho
+                );
+                assert!(
+                    matches!(&**right_chirho, ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "kChirho"),
+                    "expected right operand kChirho, got {:?}",
+                    right_chirho
+                );
+            }
+            other_chirho => panic!("expected infix expression, got {:?}", other_chirho),
+        }
     }
 
     #[test]

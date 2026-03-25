@@ -30,6 +30,42 @@ use haskelujah_span_chirho::FileIdChirho;
 // Token mapping: RawTokenKindChirho → TokenKindChirho
 // ---------------------------------------------------------------------------
 
+fn is_symbol_start_char_chirho(ch_chirho: char) -> bool {
+    matches!(
+        ch_chirho,
+        '!' | '#'
+            | '$'
+            | '%'
+            | '&'
+            | '*'
+            | '+'
+            | '.'
+            | '/'
+            | '<'
+            | '='
+            | '>'
+            | '?'
+            | '@'
+            | '\\'
+            | '^'
+            | '|'
+            | '-'
+            | '~'
+            | ':'
+    )
+}
+
+fn qualified_local_text_chirho(text_chirho: &str) -> &str {
+    text_chirho.rsplit('.').next().unwrap_or(text_chirho)
+}
+
+fn qualified_name_is_operator_chirho(text_chirho: &str) -> bool {
+    qualified_local_text_chirho(text_chirho)
+        .chars()
+        .next()
+        .is_some_and(is_symbol_start_char_chirho)
+}
+
 fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho, text_chirho: &str) -> TokenKindChirho {
     match raw_chirho {
         // Keywords
@@ -63,11 +99,18 @@ fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho, text_chirho: &str) -> T
         RawTokenKindChirho::VarSymChirho => TokenKindChirho::VarSymChirho,
         RawTokenKindChirho::ConSymChirho => TokenKindChirho::ConSymChirho,
         RawTokenKindChirho::QualifiedIdChirho => {
-            // Distinguish qualified variable (Data.List.sort) from qualified
-            // constructor (Data.Map.Map) by checking if the local part after
-            // the last '.' starts with a lowercase letter.
-            let local_chirho = text_chirho.rsplit('.').next().unwrap_or(text_chirho);
+            let local_chirho = qualified_local_text_chirho(text_chirho);
             if local_chirho
+                .chars()
+                .next()
+                .is_some_and(is_symbol_start_char_chirho)
+            {
+                if local_chirho.starts_with(':') {
+                    TokenKindChirho::QualifiedConSymChirho
+                } else {
+                    TokenKindChirho::QualifiedVarSymChirho
+                }
+            } else if local_chirho
                 .starts_with(|c_chirho: char| c_chirho.is_ascii_lowercase() || c_chirho == '_')
             {
                 TokenKindChirho::QualifiedVarIdChirho
@@ -3416,7 +3459,8 @@ impl<'src> ParserChirho<'src> {
         let is_op_chirho = matches!(
             self.current_kind_chirho(),
             Some(RawTokenKindChirho::VarSymChirho) | Some(RawTokenKindChirho::ConSymChirho)
-        );
+        ) || self.current_kind_chirho() == Some(RawTokenKindChirho::QualifiedIdChirho)
+            && qualified_name_is_operator_chirho(self.current_text_chirho());
         let is_minus_chirho = is_op_chirho && self.current_text_chirho() == "-";
         let is_backticked_left_section_chirho = self.is_backticked_left_section_start_chirho();
         if (is_op_chirho && !is_minus_chirho && !self.is_operator_section_chirho())
@@ -3447,7 +3491,8 @@ impl<'src> ParserChirho<'src> {
             let is_right_op_chirho = matches!(
                 self.current_kind_chirho(),
                 Some(RawTokenKindChirho::VarSymChirho) | Some(RawTokenKindChirho::ConSymChirho)
-            );
+            ) || self.current_kind_chirho() == Some(RawTokenKindChirho::QualifiedIdChirho)
+                && qualified_name_is_operator_chirho(self.current_text_chirho());
             let is_backticked_right_section_chirho = self.is_backticked_right_section_chirho();
             if is_right_op_chirho || is_backticked_right_section_chirho {
                 // Look ahead past operator + trivia for ')'
@@ -4532,7 +4577,7 @@ impl<'src> ParserChirho<'src> {
                 | Some(RawTokenKindChirho::ThOpenTypedExpQuoteChirho)
                 // TypedHoles: `_` in expression position
                 | Some(RawTokenKindChirho::UnderscoreChirho)
-        )
+        ) && !self.current_is_qualified_operator_chirho()
     }
 
     /// Can the current token start an atomic pattern?
@@ -4594,7 +4639,12 @@ impl<'src> ParserChirho<'src> {
             Some(RawTokenKindChirho::VarSymChirho)
                 | Some(RawTokenKindChirho::ConSymChirho)
                 | Some(RawTokenKindChirho::BacktickChirho)
-        )
+        ) || self.current_is_qualified_operator_chirho()
+    }
+
+    fn current_is_qualified_operator_chirho(&self) -> bool {
+        self.current_kind_chirho() == Some(RawTokenKindChirho::QualifiedIdChirho)
+            && qualified_name_is_operator_chirho(self.current_text_chirho())
     }
 
     /// Is the current token at a declaration boundary?
@@ -4670,7 +4720,7 @@ impl<'src> ParserChirho<'src> {
         let is_op_chirho = matches!(
             self.current_kind_chirho(),
             Some(RawTokenKindChirho::VarSymChirho) | Some(RawTokenKindChirho::ConSymChirho)
-        );
+        ) || self.current_is_qualified_operator_chirho();
         if !is_op_chirho {
             return false;
         }
