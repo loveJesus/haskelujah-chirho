@@ -10098,6 +10098,28 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // System.Random.SplitMix (splitmix package — needed by random/QuickCheck)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "newSMGen", "mkSMGen", "seedSMGen", "seedSMGen'",
+            "unseedSMGen", "splitSMGen", "nextWord64", "nextWord32",
+            "nextTwoWord32", "nextInt", "nextDouble", "nextFloat",
+            "bitmaskWithRejection32", "bitmaskWithRejection64",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("SMGen", &["SMGen"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for mod_chirho in &["System.Random.SplitMix", "System.Random.SplitMix.Init"] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
     // Data.Profunctor
     {
         let mut exports_chirho = IfaceExportsChirho::default();
