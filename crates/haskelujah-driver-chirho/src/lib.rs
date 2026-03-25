@@ -504,6 +504,7 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
         .arg("-DMIN_VERSION_base(x,y,z)=((x)<4||((x)==4&&((y)<14||((y)==14&&(z)<=0))))")
         .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
         .arg("-DMIN_VERSION_array(x,y,z)=1")
+        .arg("-DMIN_VERSION_random(x,y,z)=1")
         .arg("-DMIN_VERSION_transformers(x,y,z)=1")
         .arg("-DMIN_VERSION_deepseq(x,y,z)=1")
         .arg("-DMIN_VERSION_hashable(x,y,z)=1");
