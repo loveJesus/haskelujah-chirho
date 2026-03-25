@@ -4932,7 +4932,15 @@ impl LowerCtxChirho {
                                 in_backtick_chirho = !in_backtick_chirho;
                             } else if in_backtick_chirho
                                 && (tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
-                                    || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho)
+                                    || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                                    || tok_chirho.kind_chirho()
+                                        == TokenKindChirho::QualifiedVarIdChirho
+                                    || tok_chirho.kind_chirho()
+                                        == TokenKindChirho::QualifiedConIdChirho
+                                    || tok_chirho.kind_chirho()
+                                        == TokenKindChirho::QualifiedVarSymChirho
+                                    || tok_chirho.kind_chirho()
+                                        == TokenKindChirho::QualifiedConSymChirho)
                             {
                                 // Backtick-enclosed name used as infix operator:
                                 // `div`, `mod`, `elem`, etc.
@@ -4943,6 +4951,10 @@ impl LowerCtxChirho {
                                 ops_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
                             } else if tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
                                 || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho
+                                || tok_chirho.kind_chirho()
+                                    == TokenKindChirho::QualifiedVarSymChirho
+                                || tok_chirho.kind_chirho()
+                                    == TokenKindChirho::QualifiedConSymChirho
                             {
                                 let s_chirho = self.span_chirho(
                                     child_chirho.start_chirho,
@@ -10084,7 +10096,7 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                 right_chirho,
                 ..
             } => {
-                assert_eq!(op_chirho.text_chirho(), "Map.!");
+                assert_eq!(op_chirho.full_name_chirho(), "Map.!");
                 assert!(
                     matches!(&**left_chirho, ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "mChirho"),
                     "expected left operand mChirho, got {:?}",
