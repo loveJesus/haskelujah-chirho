@@ -1718,6 +1718,30 @@ coerceCompatMiniChirho parserChirho = parserChirho\n",
 }
 
 #[test]
+fn frontend_template_haskell_quoted_names_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [(
+        "TemplateHaskellQuotedNamesMiniChirho.hs",
+        "module TemplateHaskellQuotedNamesMiniChirho where\n\
+import Language.Haskell.TH.Syntax\n\
+bimapConstMiniChirho :: Int -> Int\n\
+bimapConstMiniChirho xChirho = xChirho\n\
+valueNameMiniChirho :: Name\n\
+valueNameMiniChirho = 'bimapConstMiniChirho\n\
+typeNameMiniChirho :: Name\n\
+typeNameMiniChirho = ''Name\n\
+opNameMiniChirho :: Name\n\
+opNameMiniChirho = '(.)\n",
+    )];
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "Template Haskell quoted names should lower to Name values: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_explicit_import_overrides_broadly_seeded_value_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let sources_chirho = [

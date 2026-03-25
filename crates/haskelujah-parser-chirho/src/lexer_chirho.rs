@@ -858,6 +858,35 @@ impl<'src> LexerChirho<'src> {
     }
 
     fn lex_char_chirho(&mut self, start_chirho: usize) -> RawTokenChirho {
+        // Template Haskell quoted names: 'foo, ''Bar, '(+)
+        if let Some(next_chirho) = self.peek_at_chirho(1) {
+            if next_chirho == b'\'' {
+                if let Some(after_second_chirho) = self.peek_at_chirho(2) {
+                    if after_second_chirho == b'('
+                        || after_second_chirho == b'['
+                        || after_second_chirho == b'_'
+                        || after_second_chirho.is_ascii_alphabetic()
+                    {
+                        self.pos_chirho += 1;
+                        return self.make_token_chirho(RawTokenKindChirho::TickChirho, start_chirho);
+                    }
+                }
+            }
+            if next_chirho == b'_' || next_chirho.is_ascii_lowercase() {
+                let mut lookahead_chirho = self.pos_chirho + 1;
+                while lookahead_chirho < self.bytes_chirho.len()
+                    && (self.bytes_chirho[lookahead_chirho].is_ascii_alphanumeric()
+                        || self.bytes_chirho[lookahead_chirho] == b'_')
+                {
+                    lookahead_chirho += 1;
+                }
+                if self.bytes_chirho.get(lookahead_chirho) != Some(&b'\'') {
+                    self.pos_chirho += 1;
+                    return self.make_token_chirho(RawTokenKindChirho::TickChirho, start_chirho);
+                }
+            }
+        }
+
         // DataKinds: if `'` is followed by an uppercase letter (promoted
         // constructor like 'True, 'Just) or `[` (promoted list like '[Int]),
         // emit a Tick token and let the parser handle it.
@@ -1717,5 +1746,32 @@ mod tests_chirho {
         // [1, 2, 3] should not be affected by TH quote lexing
         let kinds_chirho = non_trivia_kinds_chirho("[1, 2, 3]");
         assert_eq!(kinds_chirho[0], RawTokenKindChirho::LeftBracketChirho);
+    }
+
+    #[test]
+    fn lex_th_name_quote_value_chirho() {
+        let kinds_chirho = non_trivia_kinds_chirho("'bimapConst");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::TickChirho,
+                RawTokenKindChirho::VarIdChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_th_name_quote_type_chirho() {
+        let kinds_chirho = non_trivia_kinds_chirho("''Functor");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::TickChirho,
+                RawTokenKindChirho::TickChirho,
+                RawTokenKindChirho::ConIdChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
     }
 }

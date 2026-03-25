@@ -4606,6 +4606,9 @@ impl LowerCtxChirho {
                 let lit_chirho = self.lower_lit_chirho(node_chirho, base_chirho);
                 ExprChirho::LitChirho(lit_chirho)
             }
+            SyntaxKindChirho::QuotedNameExprChirho => {
+                self.lower_quoted_name_expr_chirho(node_chirho, base_chirho)
+            }
             SyntaxKindChirho::TypeAppExprChirho => {
                 // TypeApplications: expr @Type
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
@@ -5817,6 +5820,81 @@ impl LowerCtxChirho {
             self.lower_expr_chirho(n_chirho, child_chirho.start_chirho)
         } else {
             self.placeholder_expr_chirho()
+        }
+    }
+
+    fn lower_quoted_name_expr_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> ExprChirho {
+        let span_chirho =
+            self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let mut quote_count_chirho = 0usize;
+        let mut inside_parens_chirho = false;
+        let mut paren_text_chirho = String::new();
+        let mut name_text_chirho: Option<String> = None;
+
+        for child_chirho in &children_chirho {
+            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
+                match tok_chirho.kind_chirho() {
+                    TokenKindChirho::TickChirho => {
+                        quote_count_chirho += 1;
+                    }
+                    TokenKindChirho::LeftParenChirho => {
+                        inside_parens_chirho = true;
+                    }
+                    TokenKindChirho::RightParenChirho => {
+                        inside_parens_chirho = false;
+                    }
+                    TokenKindChirho::VarIdChirho
+                    | TokenKindChirho::ConIdChirho
+                    | TokenKindChirho::QualifiedVarIdChirho
+                    | TokenKindChirho::QualifiedConIdChirho => {
+                        if inside_parens_chirho {
+                            paren_text_chirho.push_str(tok_chirho.text_chirho());
+                        } else if name_text_chirho.is_none() {
+                            name_text_chirho = Some(tok_chirho.text_chirho().to_string());
+                        }
+                    }
+                    TokenKindChirho::VarSymChirho | TokenKindChirho::ConSymChirho => {
+                        if inside_parens_chirho {
+                            paren_text_chirho.push_str(tok_chirho.text_chirho());
+                        } else if name_text_chirho.is_none() {
+                            name_text_chirho = Some(tok_chirho.text_chirho().to_string());
+                        }
+                    }
+                    TokenKindChirho::CommaChirho => {
+                        if inside_parens_chirho {
+                            paren_text_chirho.push(',');
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        let quoted_name_text_chirho = if !paren_text_chirho.is_empty() {
+            if quote_count_chirho >= 2 && paren_text_chirho.chars().all(|c_chirho| c_chirho == ',')
+            {
+                format!("({paren_text_chirho})")
+            } else {
+                paren_text_chirho
+            }
+        } else {
+            name_text_chirho.unwrap_or_else(|| "_".to_string())
+        };
+
+        ExprChirho::AppChirho {
+            fun_chirho: Box::new(ExprChirho::VarChirho(NameChirho::RawChirho(
+                RawNameChirho::unqualified_chirho("mkName", span_chirho),
+            ))),
+            arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::StringChirho(
+                quoted_name_text_chirho,
+                span_chirho,
+            ))),
+            span_chirho,
         }
     }
 
@@ -7850,6 +7928,7 @@ fn is_expr_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::RecordUpdateExprChirho
             | SyntaxKindChirho::LiteralExprChirho
             | SyntaxKindChirho::NameExprChirho
+            | SyntaxKindChirho::QuotedNameExprChirho
             | SyntaxKindChirho::SpliceExprChirho
             | SyntaxKindChirho::TypedSpliceExprChirho
             | SyntaxKindChirho::QuoteExprChirho
@@ -10604,6 +10683,56 @@ class Describable a where
             } else {
                 panic!("expected unguarded RHS");
             }
+        }
+    }
+
+    #[test]
+    fn lower_th_name_quote_value_chirho() {
+        let module_chirho = parse_and_lower_chirho("module M where\nx = 'bimapConst\n");
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "x")
+        });
+        if let Some(DeclChirho::FunBindChirho { matches_chirho, .. }) = decl_chirho {
+            if let RhsChirho::UnguardedChirho(ExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            }) = &matches_chirho[0].rhs_chirho
+            {
+                assert!(
+                    matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "mkName")
+                );
+                assert!(
+                    matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _)) if text_chirho == "bimapConst")
+                );
+            } else {
+                panic!("quoted TH value name should lower to mkName application");
+            }
+        } else {
+            panic!("expected funbind for x");
+        }
+    }
+
+    #[test]
+    fn lower_th_name_quote_operator_chirho() {
+        let module_chirho = parse_and_lower_chirho("module M where\nx = '(.)\n");
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "x")
+        });
+        if let Some(DeclChirho::FunBindChirho { matches_chirho, .. }) = decl_chirho {
+            if let RhsChirho::UnguardedChirho(ExprChirho::AppChirho { arg_chirho, .. }) =
+                &matches_chirho[0].rhs_chirho
+            {
+                assert!(
+                    matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _)) if text_chirho == ".")
+                );
+            } else {
+                panic!("quoted TH operator name should lower to mkName application");
+            }
+        } else {
+            panic!("expected funbind for x");
         }
     }
 

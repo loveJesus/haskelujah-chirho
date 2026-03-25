@@ -117,6 +117,74 @@ impl InferCtxChirho {
         );
         // type FilePath = String
         type_synonyms_chirho.insert("FilePath".to_string(), (vec![], TyChirho::string_chirho()));
+        // Template Haskell aliases
+        type_synonyms_chirho.insert(
+            "Kind".to_string(),
+            (vec![], TyChirho::ConChirho("Type".to_string())),
+        );
+        type_synonyms_chirho.insert(
+            "Pred".to_string(),
+            (vec![], TyChirho::ConChirho("Type".to_string())),
+        );
+        type_synonyms_chirho.insert(
+            "Cxt".to_string(),
+            (
+                vec![],
+                TyChirho::ListChirho(Box::new(TyChirho::ConChirho("Pred".to_string()))),
+            ),
+        );
+        type_synonyms_chirho.insert(
+            "TypeQ".to_string(),
+            (
+                vec![],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Q".to_string())),
+                    Box::new(TyChirho::ConChirho("Type".to_string())),
+                ),
+            ),
+        );
+        type_synonyms_chirho.insert(
+            "ExpQ".to_string(),
+            (
+                vec![],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Q".to_string())),
+                    Box::new(TyChirho::ConChirho("Exp".to_string())),
+                ),
+            ),
+        );
+        type_synonyms_chirho.insert(
+            "PatQ".to_string(),
+            (
+                vec![],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Q".to_string())),
+                    Box::new(TyChirho::ConChirho("Pat".to_string())),
+                ),
+            ),
+        );
+        type_synonyms_chirho.insert(
+            "DecQ".to_string(),
+            (
+                vec![],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Q".to_string())),
+                    Box::new(TyChirho::ConChirho("Dec".to_string())),
+                ),
+            ),
+        );
+        type_synonyms_chirho.insert(
+            "DecsQ".to_string(),
+            (
+                vec![],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Q".to_string())),
+                    Box::new(TyChirho::ListChirho(Box::new(TyChirho::ConChirho(
+                        "Dec".to_string(),
+                    )))),
+                ),
+            ),
+        );
         // Control.Monad.Signatures
         type_synonyms_chirho.insert(
             "CallCC".to_string(),
@@ -4946,6 +5014,153 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         "False".to_string(),
         SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
     );
+
+    let th_name_ty_chirho = TyChirho::ConChirho("Name".to_string());
+    let th_type_ty_chirho = TyChirho::ConChirho("Type".to_string());
+    let th_kind_ty_chirho = TyChirho::ConChirho("Kind".to_string());
+    let th_pred_ty_chirho = TyChirho::ConChirho("Pred".to_string());
+    let th_cxt_ty_chirho = TyChirho::ConChirho("Cxt".to_string());
+    let th_tyvar_bndr_ty_chirho = TyChirho::ConChirho("TyVarBndr".to_string());
+    let th_q_tycon_ty_chirho = TyChirho::ConChirho("Q".to_string());
+
+    env_chirho.bind_chirho(
+        "mkName".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::string_chirho(),
+            th_name_ty_chirho.clone(),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "nameBase".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            th_name_ty_chirho.clone(),
+            TyChirho::string_chirho(),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "conT".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            th_name_ty_chirho.clone(),
+            TyChirho::AppChirho(
+                Box::new(th_q_tycon_ty_chirho.clone()),
+                Box::new(th_type_ty_chirho.clone()),
+            ),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "varT".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            th_name_ty_chirho.clone(),
+            TyChirho::AppChirho(
+                Box::new(th_q_tycon_ty_chirho.clone()),
+                Box::new(th_type_ty_chirho.clone()),
+            ),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "appT".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![
+                TyChirho::AppChirho(
+                    Box::new(th_q_tycon_ty_chirho.clone()),
+                    Box::new(th_type_ty_chirho.clone()),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(th_q_tycon_ty_chirho.clone()),
+                    Box::new(th_type_ty_chirho.clone()),
+                ),
+            ],
+            TyChirho::AppChirho(
+                Box::new(th_q_tycon_ty_chirho.clone()),
+                Box::new(th_type_ty_chirho.clone()),
+            ),
+        )),
+    );
+    for (name_chirho, ty_chirho) in [
+        (
+            "ConT",
+            TyChirho::fun_chirho(th_name_ty_chirho.clone(), th_type_ty_chirho.clone()),
+        ),
+        (
+            "VarT",
+            TyChirho::fun_chirho(th_name_ty_chirho.clone(), th_type_ty_chirho.clone()),
+        ),
+        (
+            "AppT",
+            TyChirho::fun_n_chirho(
+                vec![th_type_ty_chirho.clone(), th_type_ty_chirho.clone()],
+                th_type_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "SigT",
+            TyChirho::fun_n_chirho(
+                vec![th_type_ty_chirho.clone(), th_kind_ty_chirho.clone()],
+                th_type_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "ForallT",
+            TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::ListChirho(Box::new(th_tyvar_bndr_ty_chirho.clone())),
+                    th_cxt_ty_chirho.clone(),
+                    th_type_ty_chirho.clone(),
+                ],
+                th_type_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "InfixT",
+            TyChirho::fun_n_chirho(
+                vec![
+                    th_type_ty_chirho.clone(),
+                    th_name_ty_chirho.clone(),
+                    th_type_ty_chirho.clone(),
+                ],
+                th_type_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "ParensT",
+            TyChirho::fun_chirho(th_type_ty_chirho.clone(), th_type_ty_chirho.clone()),
+        ),
+        ("ArrowT", th_type_ty_chirho.clone()),
+        ("ListT", th_type_ty_chirho.clone()),
+        ("StarT", th_type_ty_chirho.clone()),
+        (
+            "TupleT",
+            TyChirho::fun_chirho(TyChirho::int_chirho(), th_type_ty_chirho.clone()),
+        ),
+        (
+            "UnboxedTupleT",
+            TyChirho::fun_chirho(TyChirho::int_chirho(), th_type_ty_chirho.clone()),
+        ),
+        (
+            "PlainTV",
+            TyChirho::fun_chirho(th_name_ty_chirho.clone(), th_tyvar_bndr_ty_chirho.clone()),
+        ),
+        (
+            "KindedTV",
+            TyChirho::fun_n_chirho(
+                vec![th_name_ty_chirho.clone(), th_kind_ty_chirho.clone()],
+                th_tyvar_bndr_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "classPred",
+            TyChirho::fun_n_chirho(
+                vec![
+                    th_name_ty_chirho.clone(),
+                    TyChirho::ListChirho(Box::new(th_type_ty_chirho.clone())),
+                ],
+                th_pred_ty_chirho.clone(),
+            ),
+        ),
+        ("starK", th_kind_ty_chirho.clone()),
+    ] {
+        env_chirho.bind_chirho(name_chirho.to_string(), SchemeChirho::mono_chirho(ty_chirho));
+    }
 
     // not :: Bool -> Bool
     env_chirho.bind_chirho(

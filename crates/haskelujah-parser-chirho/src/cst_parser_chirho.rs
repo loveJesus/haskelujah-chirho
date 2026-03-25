@@ -3058,6 +3058,9 @@ impl<'src> ParserChirho<'src> {
                 self.bump_chirho();
                 self.builder_chirho.finish_node_chirho();
             }
+            Some(RawTokenKindChirho::TickChirho) => {
+                self.parse_quoted_name_expr_chirho();
+            }
             Some(RawTokenKindChirho::ConIdChirho) | Some(RawTokenKindChirho::QualifiedIdChirho) => {
                 self.builder_chirho
                     .start_node_chirho(SyntaxKindChirho::NameExprChirho);
@@ -3149,6 +3152,43 @@ impl<'src> ParserChirho<'src> {
                 self.builder_chirho.finish_node_chirho();
             }
         }
+    }
+
+    fn parse_quoted_name_expr_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::QuotedNameExprChirho);
+
+        while self.at_chirho(RawTokenKindChirho::TickChirho) {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+        }
+
+        match self.current_kind_chirho() {
+            Some(RawTokenKindChirho::VarIdChirho)
+            | Some(RawTokenKindChirho::ConIdChirho)
+            | Some(RawTokenKindChirho::QualifiedIdChirho) => {
+                self.bump_chirho();
+            }
+            Some(RawTokenKindChirho::LeftParenChirho) => {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+                while !self.at_chirho(RawTokenKindChirho::RightParenChirho) && !self.at_eof_chirho()
+                {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                }
+                if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                    self.bump_chirho();
+                }
+            }
+            _ => {
+                if !self.at_eof_chirho() {
+                    self.bump_chirho();
+                }
+            }
+        }
+
+        self.builder_chirho.finish_node_chirho();
     }
 
     /// Parse a parenthesized expression, tuple, section, or unit.
@@ -4270,6 +4310,7 @@ impl<'src> ParserChirho<'src> {
             Some(RawTokenKindChirho::VarIdChirho)
                 | Some(RawTokenKindChirho::ConIdChirho)
                 | Some(RawTokenKindChirho::QualifiedIdChirho)
+                | Some(RawTokenKindChirho::TickChirho)
                 | Some(RawTokenKindChirho::IntLitChirho)
                 | Some(RawTokenKindChirho::FloatLitChirho)
                 | Some(RawTokenKindChirho::CharLitChirho)

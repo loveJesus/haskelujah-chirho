@@ -5075,12 +5075,12 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         for (name_chirho, ctors_chirho) in [
-            ("Name", vec![]),
-            ("Exp", vec![]),
-            ("Pat", vec![]),
+            ("Name", &[][..]),
+            ("Exp", &[][..]),
+            ("Pat", &[][..]),
             (
                 "Type",
-                vec![
+                &[
                     "ForallT",
                     "AppT",
                     "SigT",
@@ -5093,21 +5093,21 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "ArrowT",
                     "ListT",
                     "StarT",
-                ],
+                ][..],
             ),
-            ("Dec", vec![]),
-            ("Lit", vec![]),
-            ("Kind", vec![]),
-            ("Pred", vec![]),
-            ("Cxt", vec![]),
-            ("TyVarBndr", vec!["PlainTV", "KindedTV"]),
-            ("TypeQ", vec![]),
-            ("ExpQ", vec![]),
-            ("PatQ", vec![]),
-            ("DecQ", vec![]),
-            ("DecsQ", vec![]),
+            ("Dec", &[][..]),
+            ("Lit", &[][..]),
+            ("Kind", &[][..]),
+            ("Pred", &[][..]),
+            ("Cxt", &[][..]),
+            ("TyVarBndr", &["PlainTV", "KindedTV"][..]),
+            ("TypeQ", &[][..]),
+            ("ExpQ", &[][..]),
+            ("PatQ", &[][..]),
+            ("DecQ", &[][..]),
+            ("DecsQ", &[][..]),
         ] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &ctors_chirho);
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, ctors_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {

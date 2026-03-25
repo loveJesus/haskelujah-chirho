@@ -150,6 +150,8 @@ pub enum SyntaxKindChirho {
     LiteralExprChirho,
     /// A name expression (variable or constructor reference).
     NameExprChirho,
+    /// A Template Haskell quoted name expression (`'foo`, `''Bar`, `'(.)`).
+    QuotedNameExprChirho,
 
     // -- Patterns --
     /// Constructor pattern (`Con p1 p2`).
@@ -294,6 +296,7 @@ impl SyntaxKindChirho {
                 | Self::RecordUpdateExprChirho
                 | Self::LiteralExprChirho
                 | Self::NameExprChirho
+                | Self::QuotedNameExprChirho
                 | Self::SpliceExprChirho
                 | Self::TypedSpliceExprChirho
                 | Self::QuoteExprChirho
