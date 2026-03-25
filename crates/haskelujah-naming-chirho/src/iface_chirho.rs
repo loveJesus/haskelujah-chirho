@@ -648,6 +648,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "find",
             "elemIndex",
             "findIndex",
+            "!!",
             "union",
             "lines",
             "unlines",
@@ -919,6 +920,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "zip",
             "zipWith",
             "unzip",
+            "!!",
             "elem",
             "notElem",
             "lookup",
@@ -1140,6 +1142,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "<*",
             "Const",
             "getConst",
+            "!!",
             "empty",
             "<|>",
             "some",
@@ -11848,6 +11851,7 @@ mod tests_chirho {
             "bimap",
             "Const",
             "getConst",
+            "!!",
         ] {
             assert!(
                 prelude_chirho

@@ -1642,6 +1642,21 @@ fn frontend_qualified_data_list_union_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_prelude_list_index_operator_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module PreludeListIndexMiniChirho where\nvalueChirho = [10, 20, 30] !! 1\n",
+        &mut source_map_chirho,
+        "PreludeListIndexMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "Prelude !! should resolve and type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_extended_char_escape_literals_typecheck_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

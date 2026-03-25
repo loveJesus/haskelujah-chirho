@@ -13264,6 +13264,23 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // (!!) :: forall a. [a] -> Int -> a
+    {
+        let a_chirho = TyVarChirho(7504);
+        let list_a_chirho = TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_chirho)));
+        env_chirho.bind_chirho(
+            "!!".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![list_a_chirho, TyChirho::int_chirho()],
+                    TyChirho::VarChirho(a_chirho),
+                ),
+            },
+        );
+    }
+
     // isInfixOf :: forall a. Eq a => [a] -> [a] -> Bool
     {
         let a_chirho = TyVarChirho(7503);
