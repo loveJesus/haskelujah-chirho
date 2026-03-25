@@ -2006,21 +2006,32 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Semigroup
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["(<>)", "sconcat", "stimes"] {
+        for name_chirho in &[
+            "(<>)", "sconcat", "stimes",
+            "getMin", "getMax", "getFirst", "getLast",
+            "getWrappedMonoid", "unwrapMonoid",
+            "getOption", "option",
+            "diff", "cycle1",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         for name_chirho in &[
             "Semigroup",
-            "Min",
-            "Max",
-            "First",
-            "Last",
-            "WrappedMonoid",
-            "Option",
-            "Arg",
         ] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["(<>)", "sconcat", "stimes"]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for (type_chirho, ctors_chirho) in &[
+            ("Min", &["Min", "getMin"][..]),
+            ("Max", &["Max", "getMax"][..]),
+            ("First", &["First", "getFirst"][..]),
+            ("Last", &["Last", "getLast"][..]),
+            ("WrappedMonoid", &["WrapMonoid", "unwrapMonoid", "getWrappedMonoid"][..]),
+            ("Option", &["Option", "getOption"][..]),
+            ("Arg", &["Arg"][..]),
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(type_chirho, ctors_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
