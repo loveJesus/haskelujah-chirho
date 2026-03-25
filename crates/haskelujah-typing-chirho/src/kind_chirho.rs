@@ -1292,6 +1292,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                 name_chirho,
                 type_vars_chirho,
                 methods_chirho,
+                associated_tfs_chirho,
                 span_chirho,
                 ..
             } => {
@@ -1300,6 +1301,40 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                     type_vars_chirho,
                     *span_chirho,
                 );
+                for assoc_tf_chirho in associated_tfs_chirho {
+                    let mut param_kinds_chirho = Vec::new();
+                    for type_var_name_chirho in &assoc_tf_chirho.type_vars_chirho {
+                        let text_chirho = type_var_name_chirho.text_chirho();
+                        let kind_chirho = if let Some(existing_chirho) =
+                            ctx_chirho.env_chirho.lookup_chirho(text_chirho)
+                        {
+                            existing_chirho.clone()
+                        } else {
+                            let fresh_kind_chirho = ctx_chirho.fresh_kind_chirho();
+                            ctx_chirho
+                                .env_chirho
+                                .bind_chirho(text_chirho.to_string(), fresh_kind_chirho.clone());
+                            fresh_kind_chirho
+                        };
+                        param_kinds_chirho.push(kind_chirho);
+                    }
+
+                    let result_kind_chirho = if let Some(default_rhs_chirho) =
+                        &assoc_tf_chirho.default_rhs_chirho
+                    {
+                        ctx_chirho.infer_type_kind_chirho(default_rhs_chirho)
+                    } else {
+                        ctx_chirho.fresh_kind_chirho()
+                    };
+
+                    let family_kind_chirho =
+                        KindChirho::arrow_n_chirho(param_kinds_chirho, result_kind_chirho.clone());
+                    let assoc_name_text_chirho = assoc_tf_chirho.name_chirho.text_chirho();
+                    ctx_chirho.env_chirho.bind_chirho(
+                        assoc_name_text_chirho.to_string(),
+                        family_kind_chirho,
+                    );
+                }
                 // Kind-check superclass constraints — do NOT force args to *,
                 // since constraint args like `f` in `Applicative f` may be `* -> *`.
                 for constraint_chirho in context_chirho {
@@ -1372,7 +1407,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
 mod tests_chirho {
     use super::*;
     use haskelujah_ast_chirho::decl_chirho::{
-        ClassMethodChirho, ConDeclChirho, DeclChirho, StrictnessChirho,
+        AssocTypeFamilyChirho, ClassMethodChirho, ConDeclChirho, DeclChirho, StrictnessChirho,
     };
     use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
     use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -1889,6 +1924,81 @@ mod tests_chirho {
             Some(&KindChirho::arrow_chirho(
                 KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho),
                 KindChirho::ConstraintChirho
+            ))
+        );
+    }
+
+    #[test]
+    fn class_associated_type_family_shadows_builtin_rep_chirho() {
+        let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
+            context_chirho: vec![ConstraintChirho::ClassChirho {
+                class_chirho: mk_name_chirho("Contravariant"),
+                args_chirho: vec![TypeChirho::VarChirho(mk_name_chirho("f"))],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            name_chirho: mk_name_chirho("Representable"),
+            type_vars_chirho: vec![mk_name_chirho("f").into()],
+            methods_chirho: vec![
+                ClassMethodChirho {
+                    name_chirho: mk_name_chirho("tabulate"),
+                    ty_chirho: mk_fun_chirho(
+                        mk_fun_chirho(
+                            TypeChirho::VarChirho(mk_name_chirho("a")),
+                            mk_app_chirho(
+                                TypeChirho::ConChirho(mk_name_chirho("Rep")),
+                                TypeChirho::VarChirho(mk_name_chirho("f")),
+                            ),
+                        ),
+                        mk_app_chirho(
+                            TypeChirho::VarChirho(mk_name_chirho("f")),
+                            TypeChirho::VarChirho(mk_name_chirho("a")),
+                        ),
+                    ),
+                    default_chirho: None,
+                    default_sig_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                ClassMethodChirho {
+                    name_chirho: mk_name_chirho("index"),
+                    ty_chirho: mk_fun_chirho(
+                        mk_app_chirho(
+                            TypeChirho::VarChirho(mk_name_chirho("f")),
+                            TypeChirho::VarChirho(mk_name_chirho("a")),
+                        ),
+                        mk_fun_chirho(
+                            TypeChirho::VarChirho(mk_name_chirho("a")),
+                            mk_app_chirho(
+                                TypeChirho::ConChirho(mk_name_chirho("Rep")),
+                                TypeChirho::VarChirho(mk_name_chirho("f")),
+                            ),
+                        ),
+                    ),
+                    default_chirho: None,
+                    default_sig_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+                name_chirho: mk_name_chirho("Rep"),
+                type_vars_chirho: vec![mk_name_chirho("f")],
+                default_rhs_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            fundeps_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }]);
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "associated Rep family should kind-check inside class methods: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        assert_eq!(
+            result_chirho.env_chirho.lookup_chirho("Rep"),
+            Some(&KindChirho::arrow_chirho(
+                KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho),
+                KindChirho::StarChirho
             ))
         );
     }
