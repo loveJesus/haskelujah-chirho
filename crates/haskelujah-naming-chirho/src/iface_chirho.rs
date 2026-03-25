@@ -3637,6 +3637,28 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.ByteString.Short / Data.ByteString.Short.Internal
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "toShort", "fromShort", "pack", "unpack", "empty",
+            "null", "length", "index", "head", "last",
+            "tail", "init", "cons", "snoc", "append",
+            "isPrefixOf", "isSuffixOf", "concat",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("ShortByteString", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for mod_chirho in &["Data.ByteString.Short", "Data.ByteString.Short.Internal"] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
     // Data.Word / Data.Int
     {
         let mut exports_chirho = IfaceExportsChirho::default();
