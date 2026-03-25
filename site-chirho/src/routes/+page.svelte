@@ -49,7 +49,7 @@
 		{ labelChirho: 'GHC Compatibility', valueChirho: '88.8%', detailChirho: '833 / 938 tests' },
 		{ labelChirho: 'Module Interfaces', valueChirho: '375', detailChirho: 'Synthetic Haskell module interfaces' },
 		{ labelChirho: 'Passing Tests', valueChirho: '2,500+', detailChirho: '537/537 curated, 43 CL + 82 LLVM roundtrips' },
-		{ labelChirho: 'Hackage Packages', valueChirho: '26', detailChirho: 'transformers + mtl + parsec + deepseq + vector + colour + data-fix + 19 more' }
+		{ labelChirho: 'Hackage Packages', valueChirho: '27', detailChirho: 'transformers + mtl + parsec + deepseq + vector + colour + HUnit + 20 more' }
 	];
 
 	const heroPillsChirho = [
@@ -86,7 +86,7 @@
 		{
 			titleChirho: 'Package Manager',
 			descriptionChirho:
-				'Install Hackage packages with one command. Reads .cabal files, resolves dependencies, compiles multi-module projects. 26 packages compile today, cross-package resolution built in.',
+				'Install Hackage packages with one command. Reads .cabal files, resolves dependencies, compiles multi-module projects. 27 packages compile today, cross-package resolution built in.',
 			iconChirho: '📦',
 			plannedChirho: false
 		},
@@ -211,7 +211,7 @@
 				</div>
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Hackage packages</span>
-					<strong>26 packages compile</strong>
+					<strong>27 packages compile</strong>
 					<p>transformers, mtl, deepseq, vector, exceptions, comonad, distributive, void, semigroupoids, semigroups, data-default, safe, and more. Cross-package resolution enabled.</p>
 				</div>
 			</div>
@@ -490,7 +490,7 @@ main = putStrLn "Runs directly, no build step."</span>
 					<div class="feature-icon-chirho">H</div>
 					<div class="feature-text-chirho">
 						<h3>Hackage + Batteries Included</h3>
-						<p><code>haskelujah install aeson</code> fetches from Hackage. <strong>26 packages compile</strong> including transformers, mtl, deepseq, vector, exceptions. Plus 15 built-in stdlib modules (JSON, Test, Args, HTTP, Text, Process, Time, File, Prelude, Map, Set, Pretty, Random, Concurrent, Debug) — no install needed.</p>
+						<p><code>haskelujah install aeson</code> fetches from Hackage. <strong>27 packages compile</strong> including transformers, mtl, deepseq, vector, exceptions. Plus 15 built-in stdlib modules (JSON, Test, Args, HTTP, Text, Process, Time, File, Prelude, Map, Set, Pretty, Random, Concurrent, Debug) — no install needed.</p>
 					</div>
 				</div>
 				<div class="feature-card-chirho">
@@ -545,7 +545,7 @@ main = putStrLn "Runs directly, no build step."</span>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>100+ Hackage Packages</h3>
-					<p>26 packages compile today (transformers + mtl + deepseq + vector + exceptions). Next: aeson, lens, containers, megaparsec, QuickCheck.</p>
+					<p>27 packages compile today (transformers + mtl + deepseq + vector + exceptions). Next: aeson, lens, containers, megaparsec, QuickCheck.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Test Runner</h3>
