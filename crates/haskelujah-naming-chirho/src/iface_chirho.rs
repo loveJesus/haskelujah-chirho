@@ -5039,8 +5039,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Language.Haskell.TH".to_string(),
-            exports_chirho,
+            exports_chirho: exports_chirho.clone(),
         });
+        // Sub-modules that re-export from the main TH interface
+        for sub_chirho in &["Language.Haskell.TH.Ppr", "Language.Haskell.TH.PprLib"] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: sub_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
     }
 
     // Language.Haskell.TH.Syntax
@@ -5206,6 +5213,11 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Language.Haskell.TH.Datatype".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        // Also expose as TyVarBndr sub-module
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Language.Haskell.TH.Datatype.TyVarBndr".to_string(),
             exports_chirho,
         });
     }
@@ -10046,6 +10058,36 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                 exports_chirho: exports_chirho.clone(),
             });
         }
+    }
+
+    // Data.Bifunctor.Assoc / Data.Bifunctor.Swap (assoc package)
+    for mod_name_chirho in &["Data.Bifunctor.Assoc", "Data.Bifunctor.Swap"] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["assoc", "unassoc", "swap"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Assoc", "Swap"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["assoc", "unassoc", "swap"]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: mod_name_chirho.to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Bifunctor.Functor (bifunctor-classes-compat)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["QualifiedBifunctor", "WrappedBifunctor"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Bifunctor.Functor".to_string(),
+            exports_chirho,
+        });
     }
 
     normalize_builtin_class_exports_chirho(&mut modules_chirho);
