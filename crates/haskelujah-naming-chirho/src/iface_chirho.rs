@@ -9670,11 +9670,70 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Functor.Apply / Data.Functor.Bind / Data.Functor.Alt / Data.Functor.Plus (semigroupoids)
     for mod_name_chirho in &["Data.Functor.Apply", "Data.Functor.Bind", "Data.Functor.Bind.Class", "Data.Functor.Alt", "Data.Functor.Plus"] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Apply", "liftF2", "liftF3", "Bind", ">>-", "join", "Alt", "<!>", "some", "many", "Plus", "zero", "MaybeApply", "WrappedApplicative"] {
+        for name_chirho in &[
+            "Apply",
+            "<.>",
+            ".>",
+            "<.",
+            "liftF2",
+            "liftF3",
+            "Bind",
+            ">>-",
+            "join",
+            "Alt",
+            "<!>",
+            "some",
+            "many",
+            "Plus",
+            "zero",
+            "MaybeApply",
+            "WrappedApplicative",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Apply", "Bind", "Alt", "Plus", "MaybeApply", "WrappedApplicative"] {
+        exports_chirho.types_chirho.insert(
+            "Apply".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Apply".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec![
+                    "<.>".to_string(),
+                    ".>".to_string(),
+                    "<.".to_string(),
+                    "liftF2".to_string(),
+                ],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+        exports_chirho.types_chirho.insert(
+            "Bind".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Bind".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec![">>-".to_string(), "join".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+        exports_chirho.types_chirho.insert(
+            "Alt".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Alt".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec!["<!>".to_string(), "some".to_string(), "many".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+        exports_chirho.types_chirho.insert(
+            "Plus".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Plus".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec!["zero".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+        for name_chirho in &["MaybeApply", "WrappedApplicative"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
