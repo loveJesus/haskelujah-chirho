@@ -1537,6 +1537,34 @@ impl InferCtxChirho {
         }
     }
 
+    fn lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+        &self,
+        full_name_chirho: &str,
+        bare_name_chirho: &str,
+    ) -> Option<SchemeChirho> {
+        if full_name_chirho == bare_name_chirho {
+            return self.env_chirho.lookup_chirho(bare_name_chirho).cloned();
+        }
+
+        if let Some(scheme_chirho) = self.env_chirho.lookup_chirho(full_name_chirho) {
+            return Some(scheme_chirho.clone());
+        }
+
+        let suffix_chirho = format!(".{full_name_chirho}");
+        let mut suffix_matches_chirho = self
+            .env_chirho
+            .all_bindings_chirho()
+            .into_iter()
+            .filter(|(name_chirho, _scheme_chirho)| name_chirho.ends_with(&suffix_chirho))
+            .map(|(_name_chirho, scheme_chirho)| scheme_chirho.clone());
+        let first_match_chirho = suffix_matches_chirho.next();
+        if first_match_chirho.is_some() && suffix_matches_chirho.next().is_none() {
+            return first_match_chirho;
+        }
+
+        self.env_chirho.lookup_chirho(bare_name_chirho).cloned()
+    }
+
     // -----------------------------------------------------------------------
     // Expression inference
     // -----------------------------------------------------------------------
@@ -1571,14 +1599,11 @@ impl InferCtxChirho {
                 let text_chirho = name_chirho.text_chirho();
                 let full_name_chirho = name_chirho.full_name_chirho();
                 let span_chirho = name_chirho.span_chirho();
-                let scheme_opt_chirho = if full_name_chirho == text_chirho {
-                    self.env_chirho.lookup_chirho(text_chirho).cloned()
-                } else {
-                    self.env_chirho
-                        .lookup_chirho(&full_name_chirho)
-                        .cloned()
-                        .or_else(|| self.env_chirho.lookup_chirho(text_chirho).cloned())
-                };
+                let scheme_opt_chirho = self
+                    .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+                        &full_name_chirho,
+                        text_chirho,
+                    );
                 match scheme_opt_chirho {
                     Some(scheme_chirho) => {
                         let ty_chirho = self.instantiate_chirho(&scheme_chirho, span_chirho);
@@ -1652,14 +1677,11 @@ impl InferCtxChirho {
                 let text_chirho = name_chirho.text_chirho();
                 let full_name_chirho = name_chirho.full_name_chirho();
                 let span_chirho = name_chirho.span_chirho();
-                let scheme_opt_chirho = if full_name_chirho == text_chirho {
-                    self.env_chirho.lookup_chirho(text_chirho).cloned()
-                } else {
-                    self.env_chirho
-                        .lookup_chirho(&full_name_chirho)
-                        .cloned()
-                        .or_else(|| self.env_chirho.lookup_chirho(text_chirho).cloned())
-                };
+                let scheme_opt_chirho = self
+                    .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+                        &full_name_chirho,
+                        text_chirho,
+                    );
                 match scheme_opt_chirho {
                     Some(scheme_chirho) => {
                         let ty_chirho = self.instantiate_chirho(&scheme_chirho, span_chirho);
@@ -2255,14 +2277,11 @@ impl InferCtxChirho {
             } => {
                 let con_text_chirho = con_chirho.text_chirho();
                 let con_full_name_chirho = con_chirho.full_name_chirho();
-                let scheme_opt_chirho = if con_full_name_chirho == con_text_chirho {
-                    self.env_chirho.lookup_chirho(con_text_chirho).cloned()
-                } else {
-                    self.env_chirho
-                        .lookup_chirho(&con_full_name_chirho)
-                        .cloned()
-                        .or_else(|| self.env_chirho.lookup_chirho(con_text_chirho).cloned())
-                };
+                let scheme_opt_chirho = self
+                    .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+                        &con_full_name_chirho,
+                        con_text_chirho,
+                    );
                 match scheme_opt_chirho {
                     Some(scheme_chirho) => {
                         let con_span_chirho = con_chirho.span_chirho();
@@ -2539,14 +2558,11 @@ impl InferCtxChirho {
                 // higher-rank field extraction).
                 let con_text_chirho = con_chirho.text_chirho();
                 let con_full_name_chirho = con_chirho.full_name_chirho();
-                let scheme_opt_chirho = if con_full_name_chirho == con_text_chirho {
-                    self.env_chirho.lookup_chirho(con_text_chirho).cloned()
-                } else {
-                    self.env_chirho
-                        .lookup_chirho(&con_full_name_chirho)
-                        .cloned()
-                        .or_else(|| self.env_chirho.lookup_chirho(con_text_chirho).cloned())
-                };
+                let scheme_opt_chirho = self
+                    .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+                        &con_full_name_chirho,
+                        con_text_chirho,
+                    );
                 let mut used_con_types_chirho = false;
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 if let Some(scheme_chirho) = scheme_opt_chirho {
@@ -2646,14 +2662,11 @@ impl InferCtxChirho {
             } => {
                 let op_text_chirho = op_chirho.text_chirho();
                 let op_full_name_chirho = op_chirho.full_name_chirho();
-                let scheme_opt_chirho = if op_full_name_chirho == op_text_chirho {
-                    self.env_chirho.lookup_chirho(op_text_chirho).cloned()
-                } else {
-                    self.env_chirho
-                        .lookup_chirho(&op_full_name_chirho)
-                        .cloned()
-                        .or_else(|| self.env_chirho.lookup_chirho(op_text_chirho).cloned())
-                };
+                let scheme_opt_chirho = self
+                    .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+                        &op_full_name_chirho,
+                        op_text_chirho,
+                    );
 
                 let mut used_con_types_chirho = false;
                 let mut subst_chirho = SubstChirho::empty_chirho();
@@ -7997,11 +8010,48 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 ),
             },
         );
+        env_chirho.bind_chirho(
+            "Data.Map.lookup".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![k_chirho, v_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(k_chirho),
+                    TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::VarChirho(v_chirho)),
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "Data.Map.!".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![k_chirho, v_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::fun_chirho(TyChirho::VarChirho(k_chirho), TyChirho::VarChirho(v_chirho)),
+                ),
+            },
+        );
     }
 
     // mapSize :: Map k v -> Int
     env_chirho.bind_chirho(
         "mapSize".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::int_chirho(),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "Data.Map.size".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             TyChirho::int_chirho(),
             TyChirho::int_chirho(),
@@ -8026,6 +8076,21 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 ),
             },
         );
+        env_chirho.bind_chirho(
+            "Data.Map.member".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![k_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(k_chirho),
+                    TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::bool_chirho()),
+                ),
+            },
+        );
     }
 
     // mapFromList :: Ord k => [(k, v)] -> Map k v
@@ -8034,6 +8099,24 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         let v_chirho = TyVarChirho(3214);
         env_chirho.bind_chirho(
             "mapFromList".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![k_chirho, v_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ListChirho(Box::new(TyChirho::TupleChirho(vec![
+                        TyChirho::VarChirho(k_chirho),
+                        TyChirho::VarChirho(v_chirho),
+                    ]))),
+                    TyChirho::int_chirho(),
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "Data.Map.fromList".to_string(),
             SchemeChirho {
                 vars_chirho: vec![k_chirho, v_chirho],
                 preds_chirho: vec![SchemePredChirho {
@@ -8094,6 +8177,13 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     // mapKeys :: Map -> [Int]
     env_chirho.bind_chirho(
         "mapKeys".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "Data.Map.keys".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             TyChirho::int_chirho(),
             TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
