@@ -7821,15 +7821,26 @@ impl LowerCtxChirho {
         if let Some(pos_chirho) = arrow_pos_chirho {
             // Generator: parts before arrow form the pattern (as expr),
             // parts after arrow form the source expression.
-            let pat_chirho = parts_chirho
+            let mut pat_parts_chirho: Vec<PatChirho> = parts_chirho
                 .iter()
                 .take(pos_chirho)
-                .find_map(|p_chirho| match p_chirho {
+                .filter_map(|p_chirho| match p_chirho {
                     QualPartChirho::PatChirho(pat_chirho) => Some(pat_chirho.clone()),
-                    QualPartChirho::ExprChirho(e_chirho) => Some(Self::expr_to_pat_chirho(e_chirho)),
+                    QualPartChirho::ExprChirho(e_chirho) => {
+                        Some(Self::expr_to_pat_chirho(e_chirho))
+                    }
                     QualPartChirho::ArrowChirho => None,
                 })
-                .unwrap_or(PatChirho::WildcardChirho(span_chirho));
+                .collect();
+            let pat_chirho = if pat_parts_chirho.is_empty() {
+                PatChirho::WildcardChirho(span_chirho)
+            } else {
+                let mut merged_pat_chirho = pat_parts_chirho.remove(0);
+                if let PatChirho::ConChirho { args_chirho, .. } = &mut merged_pat_chirho {
+                    args_chirho.extend(pat_parts_chirho);
+                }
+                merged_pat_chirho
+            };
 
             let src_expr_chirho = parts_chirho
                 .iter()
@@ -11416,6 +11427,52 @@ class Describable a where
             }
             other_chirho => panic!("expected top-level case from pattern guard lowering, got {:?}", other_chirho),
             }
+        }
+    }
+
+    #[test]
+    fn lower_pattern_guard_constructor_binder_chirho() {
+        let source_chirho = "module M where\n\
+data TupleSortChirho = TupleTChirho Int | OtherTChirho\n\
+fChirho tupSortChirho\n  | TupleTChirho lenChirho <- tupSortChirho = lenChirho\n  | otherwise = 0\n";
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let parser_chirho =
+            crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+        let green_chirho = parser_chirho.parse_chirho();
+        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "fChirho")
+            })
+            .expect("expected fChirho binding");
+
+        let rhs_expr_chirho = match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho {
+                RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+                other_chirho => panic!("expected lowered nested expression, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+
+        match rhs_expr_chirho {
+            ExprChirho::CaseChirho { alts_chirho, .. } => match &alts_chirho[0].pat_chirho {
+                PatChirho::ConChirho {
+                    con_chirho,
+                    args_chirho,
+                    ..
+                } => {
+                    assert_eq!(con_chirho.text_chirho(), "TupleTChirho");
+                    assert_eq!(args_chirho.len(), 1);
+                    assert!(
+                        matches!(&args_chirho[0], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "lenChirho")
+                    );
+                }
+                other_chirho => panic!("expected constructor pattern from pattern guard, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected case expression from pattern guard lowering, got {:?}", other_chirho),
         }
     }
 
