@@ -1125,7 +1125,8 @@ impl LowerCtxChirho {
     ) -> Option<NameChirho> {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut saw_backtick_chirho = false;
-        let mut saw_lhs_pat_chirho = false;
+        let mut saw_lhs_operand_chirho = false;
+        let mut fallback_name_chirho = None;
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
@@ -1148,7 +1149,7 @@ impl LowerCtxChirho {
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                         return Some(self.name_from_token_chirho(tok_chirho, s_chirho));
                     }
-                    if saw_lhs_pat_chirho
+                    if saw_lhs_operand_chirho
                         && (tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
                             || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho)
                     {
@@ -1156,7 +1157,7 @@ impl LowerCtxChirho {
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                         return Some(self.name_from_token_chirho(tok_chirho, s_chirho));
                     }
-                    if !saw_lhs_pat_chirho
+                    if fallback_name_chirho.is_none()
                         && (tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
                             || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
                             || tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
@@ -1164,17 +1165,47 @@ impl LowerCtxChirho {
                     {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        return Some(self.name_from_token_chirho(tok_chirho, s_chirho));
+                        fallback_name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
+                    }
+                    if matches!(
+                        tok_chirho.kind_chirho(),
+                        TokenKindChirho::VarIdChirho
+                            | TokenKindChirho::ConIdChirho
+                            | TokenKindChirho::QualifiedVarIdChirho
+                            | TokenKindChirho::UnderscoreReservedIdChirho
+                            | TokenKindChirho::IntegerLiteralChirho
+                            | TokenKindChirho::FloatLiteralChirho
+                            | TokenKindChirho::CharLiteralChirho
+                            | TokenKindChirho::StringLiteralChirho
+                            | TokenKindChirho::LeftParenChirho
+                            | TokenKindChirho::LeftBracketChirho
+                            | TokenKindChirho::TildeChirho
+                    ) {
+                        saw_lhs_operand_chirho = true;
+                    } else if tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho {
+                        let tok_text_chirho = self
+                            .name_from_token_chirho(
+                                tok_chirho,
+                                self.span_chirho(
+                                    child_chirho.start_chirho,
+                                    child_chirho.end_chirho,
+                                ),
+                            )
+                            .text_chirho()
+                            .to_string();
+                        if tok_text_chirho == "!" || tok_text_chirho == "-" {
+                            saw_lhs_operand_chirho = true;
+                        }
                     }
                 }
                 GreenElementChirho::NodeChirho(n_chirho) => {
                     if is_pat_kind_chirho(n_chirho.kind_chirho()) {
-                        saw_lhs_pat_chirho = true;
+                        saw_lhs_operand_chirho = true;
                     }
                 }
             }
         }
-        None
+        fallback_name_chirho
     }
 
     fn lower_match_arm_chirho(
@@ -8557,6 +8588,26 @@ data StrictPair a b = !a :*: !b\n",
                 }
             }
             other_chirho => panic!("expected instance declaration, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_symbolic_infix_fun_bind_with_var_operands_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\ninfixr 0 ~:\n(~:) :: [Char] -> Int -> ([Char], Int)\nlabelChirho ~: valueChirho = (labelChirho, valueChirho)\n",
+        );
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|decl_chirho| {
+            matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "~:")
+        });
+        assert!(decl_chirho.is_some(), "should lower symbolic infix funbind name");
+        if let Some(DeclChirho::FunBindChirho { matches_chirho, .. }) = decl_chirho {
+            assert_eq!(matches_chirho.len(), 1);
+            assert_eq!(
+                matches_chirho[0].pats_chirho.len(),
+                2,
+                "symbolic infix funbind should keep both lhs operands as patterns"
+            );
         }
     }
 

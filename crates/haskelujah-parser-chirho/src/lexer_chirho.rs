@@ -443,12 +443,26 @@ impl<'src> LexerChirho<'src> {
                 }
             }
             b'@' => {
-                self.pos_chirho += 1;
-                self.make_token_chirho(RawTokenKindChirho::AtChirho, start_chirho)
+                if self
+                    .peek_at_chirho(1)
+                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
+                {
+                    self.lex_operator_chirho(start_chirho)
+                } else {
+                    self.pos_chirho += 1;
+                    self.make_token_chirho(RawTokenKindChirho::AtChirho, start_chirho)
+                }
             }
             b'~' => {
-                self.pos_chirho += 1;
-                self.make_token_chirho(RawTokenKindChirho::TildeChirho, start_chirho)
+                if self
+                    .peek_at_chirho(1)
+                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
+                {
+                    self.lex_operator_chirho(start_chirho)
+                } else {
+                    self.pos_chirho += 1;
+                    self.make_token_chirho(RawTokenKindChirho::TildeChirho, start_chirho)
+                }
             }
 
             // Template Haskell splice: $ or $$
@@ -1262,6 +1276,23 @@ mod tests_chirho {
                 RawTokenKindChirho::ModuleChirho,
                 RawTokenKindChirho::ConIdChirho,
                 RawTokenKindChirho::WhereChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_tilde_and_at_prefixed_symbolic_operators_chirho() {
+        let kinds_chirho = non_trivia_kinds_chirho("(~:) (@?)");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::LeftParenChirho,
+                RawTokenKindChirho::VarSymChirho,
+                RawTokenKindChirho::RightParenChirho,
+                RawTokenKindChirho::LeftParenChirho,
+                RawTokenKindChirho::VarSymChirho,
+                RawTokenKindChirho::RightParenChirho,
                 RawTokenKindChirho::EofChirho,
             ]
         );

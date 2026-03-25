@@ -83,6 +83,22 @@ fn frontend_backticked_left_section_infers_function_type_chirho() {
 }
 
 #[test]
+fn frontend_symbolic_infix_fun_bind_with_var_operands_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module SymbolicInfixFunBindChirho where\ninfixr 0 ~:\n(~:) :: [Char] -> Int -> ([Char], Int)\nlabelChirho ~: valueChirho = (labelChirho, valueChirho)\nvalueOutChirho = \"ok\" ~: 1\n",
+        &mut source_map_chirho,
+        "SymbolicInfixFunBindChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "symbolic infix function bindings should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_list_append_is_polymorphic_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
