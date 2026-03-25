@@ -1450,6 +1450,21 @@ fn frontend_sort_on_string_list_uses_generic_builtin_chirho() {
 }
 
 #[test]
+fn frontend_qualified_data_list_union_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module QualifiedUnionMiniChirho where\nimport qualified Data.List as List\nvalueChirho = List.union [1, 2] [2, 3]\n",
+        &mut source_map_chirho,
+        "QualifiedUnionMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Data.List.union should resolve and type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_extended_char_escape_literals_typecheck_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

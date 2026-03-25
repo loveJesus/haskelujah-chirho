@@ -648,6 +648,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "find",
             "elemIndex",
             "findIndex",
+            "union",
             "lines",
             "unlines",
             "words",
