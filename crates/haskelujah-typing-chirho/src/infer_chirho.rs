@@ -6594,41 +6594,33 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
-    // ceiling :: Double -> Int
-    env_chirho.bind_chirho(
-        "ceiling".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::double_chirho(),
-            TyChirho::int_chirho(),
-        )),
-    );
-
-    // floor :: Double -> Int
-    env_chirho.bind_chirho(
-        "floor".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::double_chirho(),
-            TyChirho::int_chirho(),
-        )),
-    );
-
-    // round :: Double -> Int
-    env_chirho.bind_chirho(
-        "round".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::double_chirho(),
-            TyChirho::int_chirho(),
-        )),
-    );
-
-    // truncate :: Double -> Int
-    env_chirho.bind_chirho(
-        "truncate".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::double_chirho(),
-            TyChirho::int_chirho(),
-        )),
-    );
+    // ceiling/floor/round/truncate :: (RealFrac a, Integral b) => a -> b
+    for name_chirho in ["ceiling", "floor", "round", "truncate"] {
+        let realfrac_a_chirho = TyVarChirho(10101);
+        let integral_b_chirho = TyVarChirho(10102);
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            SchemeChirho {
+                vars_chirho: vec![realfrac_a_chirho, integral_b_chirho],
+                preds_chirho: vec![
+                    SchemePredChirho {
+                        class_name_chirho: "RealFrac".to_string(),
+                        ty_chirho: TyChirho::VarChirho(realfrac_a_chirho),
+                        extra_tys_chirho: vec![],
+                    },
+                    SchemePredChirho {
+                        class_name_chirho: "Integral".to_string(),
+                        ty_chirho: TyChirho::VarChirho(integral_b_chirho),
+                        extra_tys_chirho: vec![],
+                    },
+                ],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(realfrac_a_chirho),
+                    TyChirho::VarChirho(integral_b_chirho),
+                ),
+            },
+        );
+    }
 
     // isJust :: forall a. Maybe a -> Bool
     let is_just_a_chirho = TyVarChirho(1020);

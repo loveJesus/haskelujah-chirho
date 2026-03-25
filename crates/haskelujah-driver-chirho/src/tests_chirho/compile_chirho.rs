@@ -236,6 +236,22 @@ fooChirho cChirho = fmapRGBChirho fChirho cChirho\n\
 }
 
 #[test]
+fn frontend_ceiling_can_return_integer_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module CeilingIntegerMiniChirho where\nplacesChirho :: Integer\nplacesChirho = ceiling (1.5 :: Double)\n",
+        &mut source_map_chirho,
+        "CeilingIntegerMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "ceiling should support Integral result types beyond Int: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_fractional_literal_unifies_with_rational_annotation_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
