@@ -757,13 +757,10 @@ fn parse_library_chirho(fields_chirho: &[&FieldChirho]) -> LibraryChirho {
     for field_chirho in fields_chirho {
         match field_chirho.key_chirho.as_str() {
             "exposed-modules" => {
-                // Use extend (not assign) because cabal conditional
-                // preprocessing can produce multiple exposed-modules fields
-                // within the same library stanza.
-                exposed_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
+                exposed_chirho = parse_modules_chirho(&field_chirho.value_chirho);
             }
             "other-modules" => {
-                other_chirho.extend(parse_modules_chirho(&field_chirho.value_chirho));
+                other_chirho = parse_modules_chirho(&field_chirho.value_chirho);
             }
             _ => {}
         }
@@ -1069,49 +1066,9 @@ pub fn eval_condition_chirho(
         }
         ConditionChirho::OsChirho(name_chirho) => os_chirho.eq_ignore_ascii_case(name_chirho),
         ConditionChirho::ArchChirho(name_chirho) => arch_chirho.eq_ignore_ascii_case(name_chirho),
-        ConditionChirho::ImplChirho(spec_chirho) => {
-            // We emulate GHC 8.10.7. Parse version constraints.
-            let s_chirho = spec_chirho.trim();
-            if !s_chirho.starts_with("ghc") && !s_chirho.starts_with("mhs") {
-                return false; // unknown compiler
-            }
-            let after_compiler_chirho = s_chirho
-                .strip_prefix("ghc")
-                .or_else(|| s_chirho.strip_prefix("mhs"))
-                .unwrap_or("")
-                .trim();
-            if after_compiler_chirho.is_empty() {
-                return true; // bare `impl(ghc)` → true
-            }
-            // Parse operator + version: ">= 8.0", "< 7.11", etc.
-            let (op_chirho, ver_str_chirho) = if let Some(rest_chirho) = after_compiler_chirho.strip_prefix(">=") {
-                (">=", rest_chirho.trim())
-            } else if let Some(rest_chirho) = after_compiler_chirho.strip_prefix("<=") {
-                ("<=", rest_chirho.trim())
-            } else if let Some(rest_chirho) = after_compiler_chirho.strip_prefix('>') {
-                (">", rest_chirho.trim())
-            } else if let Some(rest_chirho) = after_compiler_chirho.strip_prefix('<') {
-                ("<", rest_chirho.trim())
-            } else if let Some(rest_chirho) = after_compiler_chirho.strip_prefix("==") {
-                ("==", rest_chirho.trim())
-            } else {
-                return true; // can't parse → assume true
-            };
-            // Our emulated version: 8.10.7
-            let our_version_chirho: Vec<u32> = vec![8, 10, 7];
-            let their_version_chirho: Vec<u32> = ver_str_chirho
-                .split('.')
-                .filter_map(|p_chirho| p_chirho.parse().ok())
-                .collect();
-            let cmp_chirho = our_version_chirho.cmp(&their_version_chirho);
-            match op_chirho {
-                ">=" => cmp_chirho != std::cmp::Ordering::Less,
-                ">"  => cmp_chirho == std::cmp::Ordering::Greater,
-                "<=" => cmp_chirho != std::cmp::Ordering::Greater,
-                "<"  => cmp_chirho == std::cmp::Ordering::Less,
-                "==" => cmp_chirho == std::cmp::Ordering::Equal,
-                _ => true,
-            }
+        ConditionChirho::ImplChirho(_) => {
+            // For now, treat impl conditions as true (we are haskelujah)
+            true
         }
         ConditionChirho::NotChirho(inner_chirho) => {
             !eval_condition_chirho(inner_chirho, flags_chirho, os_chirho, arch_chirho)
