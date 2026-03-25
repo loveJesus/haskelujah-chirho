@@ -170,6 +170,22 @@ fn frontend_traversable_sequencea_instance_method_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_semigroup_traversable_traverse1_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module SemigroupTraverse1MiniChirho where\nimport Data.Functor.Apply (Apply)\nimport Data.Semigroup.Traversable (Traversable1(traverse1))\nuseTraverse1Chirho :: (Traversable1 tChirho, Apply fChirho) => (aChirho -> fChirho bChirho) -> tChirho aChirho -> fChirho (tChirho bChirho)\nuseTraverse1Chirho = traverse1\n",
+        &mut source_map_chirho,
+        "SemigroupTraverse1MiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Semigroup.Traversable.traverse1 should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn multi_module_default_rational_propagates_to_imported_helpers_chirho() {
     use crate::compile_modules_chirho;
 

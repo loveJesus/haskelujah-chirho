@@ -4160,6 +4160,50 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Semigroup.Foldable / Data.Semigroup.Traversable compat surface
+    for mod_name_chirho in &[
+        "Data.Semigroup.Foldable",
+        "Data.Semigroup.Traversable",
+        "Data.Semigroup.Traversable.Class",
+    ] {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "foldMap1",
+            "fold1",
+            "toNonEmpty",
+            "maximum1",
+            "minimum1",
+            "head1",
+            "last1",
+            "foldrMap1",
+            "foldlMap1",
+            "traverse1",
+            "sequence1",
+            "traverse1Maybe",
+            "gtraverse1",
+            "gsequence1",
+            "foldMap1Default",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Foldable1", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        exports_chirho.types_chirho.insert(
+            "Traversable1".to_string(),
+            IfaceTypeChirho {
+                name_chirho: "Traversable1".to_string(),
+                constructors_chirho: vec![],
+                methods_chirho: vec!["traverse1".to_string(), "sequence1".to_string()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: (*mod_name_chirho).to_string(),
+            exports_chirho,
+        });
+    }
+
     // Prelude.Experimental
     {
         let mut exports_chirho = IfaceExportsChirho::default();
@@ -11889,6 +11933,29 @@ mod tests_chirho {
                 "{module_name_chirho} builtin iface should exist"
             );
         }
+    }
+
+    #[test]
+    fn builtin_semigroup_traversable_exports_traverse1_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let semigroup_traversable_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.Semigroup.Traversable")
+            .expect("Data.Semigroup.Traversable builtin iface should exist");
+        assert!(
+            semigroup_traversable_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("traverse1"),
+            "Data.Semigroup.Traversable should export traverse1"
+        );
+        assert!(
+            semigroup_traversable_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("Traversable1"),
+            "Data.Semigroup.Traversable should export Traversable1"
+        );
     }
 
     #[test]

@@ -10638,6 +10638,95 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 ),
             },
         );
+
+        let trav1_t_chirho = TyVarChirho(9087);
+        let trav1_a_chirho = TyVarChirho(9088);
+        let trav1_b_chirho = TyVarChirho(9089);
+        let trav1_f_chirho = TyVarChirho(9090);
+        let traverse1_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![
+                trav1_t_chirho,
+                trav1_a_chirho,
+                trav1_b_chirho,
+                trav1_f_chirho,
+            ],
+            preds_chirho: vec![
+                SchemePredChirho {
+                    class_name_chirho: "Traversable1".to_string(),
+                    ty_chirho: TyChirho::VarChirho(trav1_t_chirho),
+                    extra_tys_chirho: vec![],
+                },
+                SchemePredChirho {
+                    class_name_chirho: "Apply".to_string(),
+                    ty_chirho: TyChirho::VarChirho(trav1_f_chirho),
+                    extra_tys_chirho: vec![],
+                },
+            ],
+            ty_chirho: TyChirho::FunChirho(
+                Box::new(TyChirho::FunChirho(
+                    Box::new(TyChirho::VarChirho(trav1_a_chirho)),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav1_f_chirho)),
+                        Box::new(TyChirho::VarChirho(trav1_b_chirho)),
+                    )),
+                    MultChirho::ManyChirho,
+                )),
+                Box::new(TyChirho::FunChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav1_t_chirho)),
+                        Box::new(TyChirho::VarChirho(trav1_a_chirho)),
+                    )),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav1_f_chirho)),
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(trav1_t_chirho)),
+                            Box::new(TyChirho::VarChirho(trav1_b_chirho)),
+                        )),
+                    )),
+                    MultChirho::ManyChirho,
+                )),
+                MultChirho::ManyChirho,
+            ),
+        };
+        env_chirho.bind_chirho(
+            "traverse1".to_string(),
+            traverse1_scheme_chirho.clone(),
+        );
+        env_chirho.bind_chirho(
+            "sequence1".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![trav1_t_chirho, trav1_a_chirho, trav1_f_chirho],
+                preds_chirho: vec![
+                    SchemePredChirho {
+                        class_name_chirho: "Traversable1".to_string(),
+                        ty_chirho: TyChirho::VarChirho(trav1_t_chirho),
+                        extra_tys_chirho: vec![],
+                    },
+                    SchemePredChirho {
+                        class_name_chirho: "Apply".to_string(),
+                        ty_chirho: TyChirho::VarChirho(trav1_f_chirho),
+                        extra_tys_chirho: vec![],
+                    },
+                ],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav1_t_chirho)),
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(trav1_f_chirho)),
+                            Box::new(TyChirho::VarChirho(trav1_a_chirho)),
+                        )),
+                    )),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(trav1_f_chirho)),
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(trav1_t_chirho)),
+                            Box::new(TyChirho::VarChirho(trav1_a_chirho)),
+                        )),
+                    )),
+                    MultChirho::ManyChirho,
+                ),
+            },
+        );
     }
 
     // ── Monad transformer infrastructure ──
