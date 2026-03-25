@@ -838,6 +838,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "Foldable",
             "Traversable",
             "Coercible",
+            "Const",
             "Word",
             "Integral",
             "Fractional",
@@ -1137,6 +1138,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "<*>",
             "*>",
             "<*",
+            "Const",
+            "getConst",
             "empty",
             "<|>",
             "some",
@@ -11781,7 +11784,24 @@ mod tests_chirho {
                 .contains_key("Alternative"),
             "Prelude should export Alternative"
         );
-        for name_chirho in ["empty", "<|>", "some", "many", "optional", "liftA2", "bimap"] {
+        assert!(
+            prelude_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("Const"),
+            "Prelude should export Const"
+        );
+        for name_chirho in [
+            "empty",
+            "<|>",
+            "some",
+            "many",
+            "optional",
+            "liftA2",
+            "bimap",
+            "Const",
+            "getConst",
+        ] {
             assert!(
                 prelude_chirho
                     .exports_chirho
