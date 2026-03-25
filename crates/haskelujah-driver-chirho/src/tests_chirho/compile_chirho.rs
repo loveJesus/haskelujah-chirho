@@ -252,6 +252,34 @@ fn frontend_ceiling_can_return_integer_chirho() {
 }
 
 #[test]
+fn frontend_proxy_hash_preserves_higher_kinded_class_param_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE DefaultSignatures #-}\n{-# LANGUAGE MagicHash #-}\nmodule ProxyHashKindMiniChirho where\nimport GHC.Exts (Proxy#)\nimport GHC.Generics\n\
+data CardinalityMiniChirho = ShiftMiniChirho Int | CardMiniChirho Integer\n\
+class FiniteMiniChirho a where\n\
+  cardinalityMiniChirho :: Proxy# a -> CardinalityMiniChirho\n\
+  toFiniteMiniChirho :: Integer -> a\n\
+  fromFiniteMiniChirho :: a -> Integer\n\
+  default cardinalityMiniChirho :: (Generic a, GFiniteMiniChirho (Rep a)) => Proxy# a -> CardinalityMiniChirho\n\
+  default toFiniteMiniChirho :: (Generic a, GFiniteMiniChirho (Rep a)) => Integer -> a\n\
+  default fromFiniteMiniChirho :: (Generic a, GFiniteMiniChirho (Rep a)) => a -> Integer\n\
+class GFiniteMiniChirho f where\n\
+  gcardinalityMiniChirho :: Proxy# f -> CardinalityMiniChirho\n\
+  toGFiniteMiniChirho :: Integer -> f a\n\
+  fromGFiniteMiniChirho :: f a -> Integer\n",
+        &mut source_map_chirho,
+        "ProxyHashKindMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Proxy# should stay poly-kinded across earlier default signatures: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_fractional_literal_unifies_with_rational_annotation_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

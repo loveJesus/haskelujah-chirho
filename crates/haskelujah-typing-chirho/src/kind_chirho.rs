@@ -337,6 +337,13 @@ impl KindEnvChirho {
                 KindChirho::StarChirho,
             ),
         );
+        env_chirho.bind_chirho(
+            "Proxy#".to_string(),
+            KindChirho::arrow_chirho(
+                KindChirho::VarChirho(proxy_kind_var_chirho),
+                KindChirho::StarChirho,
+            ),
+        );
         let kproxy_kind_var_chirho = KindVarChirho(10_002);
         env_chirho.bind_chirho(
             "KProxy".to_string(),
