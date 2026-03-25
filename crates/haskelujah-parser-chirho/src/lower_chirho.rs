@@ -54,6 +54,7 @@ pub fn lower_module_chirho(
 struct LowerCtxChirho {
     file_id_chirho: FileIdChirho,
     offset_chirho: usize,
+    fixity_overrides_chirho: HashMap<String, (u8, FixityChirho)>,
 }
 
 /// Parse an integer literal that may have a hex (0x/0X), octal (0o/0O),
@@ -91,6 +92,7 @@ impl LowerCtxChirho {
         Self {
             file_id_chirho,
             offset_chirho: 0,
+            fixity_overrides_chirho: HashMap::new(),
         }
     }
 
@@ -308,6 +310,22 @@ impl LowerCtxChirho {
         let mut exports_chirho: Option<Vec<ExportSpecChirho>> = None;
         let mut imports_chirho = Vec::new();
         let mut decls_chirho = Vec::new();
+
+        for child_chirho in &children_chirho {
+            if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
+                if n_chirho.kind_chirho() == SyntaxKindChirho::FixityDeclChirho {
+                    let (fixity_chirho, precedence_chirho, ops_chirho) =
+                        self.extract_fixity_decl_parts_chirho(n_chirho, child_chirho.start_chirho);
+                    let stored_precedence_chirho = precedence_chirho.unwrap_or(9);
+                    for op_chirho in ops_chirho {
+                        self.fixity_overrides_chirho.insert(
+                            op_chirho.text_chirho().to_string(),
+                            (stored_precedence_chirho, fixity_chirho.clone()),
+                        );
+                    }
+                }
+            }
+        }
 
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
@@ -3755,10 +3773,27 @@ impl LowerCtxChirho {
         base_chirho: usize,
         span_chirho: SpanChirho,
     ) -> DeclChirho {
+        let (fixity_chirho, precedence_chirho, ops_chirho) =
+            self.extract_fixity_decl_parts_chirho(node_chirho, base_chirho);
+
+        DeclChirho::FixityDeclChirho {
+            fixity_chirho,
+            precedence_chirho,
+            ops_chirho,
+            span_chirho,
+        }
+    }
+
+    fn extract_fixity_decl_parts_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> (FixityChirho, Option<u8>, Vec<NameChirho>) {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut fixity_chirho = FixityChirho::InfixlChirho;
         let mut precedence_chirho = None;
         let mut ops_chirho = Vec::new();
+        let mut in_backticks_chirho = false;
 
         for child_chirho in &children_chirho {
             if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
@@ -3776,7 +3811,15 @@ impl LowerCtxChirho {
                     TokenKindChirho::IntegerLiteralChirho => {
                         precedence_chirho = tok_chirho.text_chirho().parse::<u8>().ok();
                     }
+                    TokenKindChirho::BacktickChirho => {
+                        in_backticks_chirho = !in_backticks_chirho;
+                    }
                     TokenKindChirho::VarSymChirho | TokenKindChirho::ConSymChirho => {
+                        ops_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
+                    }
+                    TokenKindChirho::VarIdChirho | TokenKindChirho::ConIdChirho
+                        if in_backticks_chirho =>
+                    {
                         ops_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
                     }
                     _ => {}
@@ -3784,12 +3827,7 @@ impl LowerCtxChirho {
             }
         }
 
-        DeclChirho::FixityDeclChirho {
-            fixity_chirho,
-            precedence_chirho,
-            ops_chirho,
-            span_chirho,
-        }
+        (fixity_chirho, precedence_chirho, ops_chirho)
     }
 
     /// Lower a `foreign import/export` declaration from CST to AST.
@@ -4808,7 +4846,7 @@ impl LowerCtxChirho {
                         .unwrap_or_else(|| self.placeholder_expr_chirho());
                 }
 
-                resolve_infix_precedence_chirho(exprs_chirho, ops_chirho, span_chirho)
+                self.resolve_infix_precedence_chirho(exprs_chirho, ops_chirho, span_chirho)
             }
             SyntaxKindChirho::LambdaExprChirho => {
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
@@ -5419,7 +5457,7 @@ impl LowerCtxChirho {
                                             )
                                         })
                                         .collect();
-                                    resolve_infix_precedence_chirho(
+                                    self.resolve_infix_precedence_chirho(
                                         sub_exprs_chirho,
                                         sub_ops_chirho,
                                         span_chirho,
@@ -8089,7 +8127,7 @@ enum AssocChirho {
 
 /// Return (precedence, associativity) for a known operator.
 /// Follows Haskell's default fixities.
-fn operator_fixity_chirho(op_chirho: &str) -> (u8, AssocChirho) {
+fn builtin_operator_fixity_chirho(op_chirho: &str) -> (u8, AssocChirho) {
     match op_chirho {
         "$" | "$!" | "$!!" => (0, AssocChirho::RightChirho),
         ">>" | ">>=" => (1, AssocChirho::LeftChirho),
@@ -8115,11 +8153,27 @@ fn operator_fixity_chirho(op_chirho: &str) -> (u8, AssocChirho) {
 ///
 /// Algorithm: find the lowest-precedence operator to split at (using
 /// associativity to break ties), then recursively resolve each side.
-fn resolve_infix_precedence_chirho(
-    exprs_chirho: Vec<ExprChirho>,
-    ops_chirho: Vec<NameChirho>,
-    span_chirho: SpanChirho,
-) -> ExprChirho {
+impl LowerCtxChirho {
+    fn operator_fixity_chirho(&self, op_chirho: &str) -> (u8, AssocChirho) {
+        if let Some((precedence_chirho, fixity_chirho)) = self.fixity_overrides_chirho.get(op_chirho)
+        {
+            let assoc_chirho = match fixity_chirho {
+                FixityChirho::InfixChirho => AssocChirho::NoneChirho,
+                FixityChirho::InfixlChirho => AssocChirho::LeftChirho,
+                FixityChirho::InfixrChirho => AssocChirho::RightChirho,
+            };
+            (*precedence_chirho, assoc_chirho)
+        } else {
+            builtin_operator_fixity_chirho(op_chirho)
+        }
+    }
+
+    fn resolve_infix_precedence_chirho(
+        &self,
+        exprs_chirho: Vec<ExprChirho>,
+        ops_chirho: Vec<NameChirho>,
+        span_chirho: SpanChirho,
+    ) -> ExprChirho {
     // Gracefully handle mismatched expr/op counts from malformed input.
     if exprs_chirho.is_empty() {
         return ExprChirho::LitChirho(LitChirho::IntChirho(0, span_chirho));
@@ -8153,10 +8207,10 @@ fn resolve_infix_precedence_chirho(
     // rightmost occurrence so the left side groups first.
     // For right-associative, pick the leftmost occurrence.
     let mut split_idx_chirho = 0usize;
-    let (mut split_prec_chirho, _) = operator_fixity_chirho(ops_chirho[0].text_chirho());
+    let (mut split_prec_chirho, _) = self.operator_fixity_chirho(ops_chirho[0].text_chirho());
 
     for (i_chirho, op_chirho) in ops_chirho.iter().enumerate().skip(1) {
-        let (prec_chirho, _assoc_chirho) = operator_fixity_chirho(op_chirho.text_chirho());
+        let (prec_chirho, _assoc_chirho) = self.operator_fixity_chirho(op_chirho.text_chirho());
         if prec_chirho < split_prec_chirho {
             // Strictly lower precedence — always split here
             split_idx_chirho = i_chirho;
@@ -8165,8 +8219,8 @@ fn resolve_infix_precedence_chirho(
             // Same precedence — for left-associative, prefer rightmost
             // split (so the left side stays grouped); for right-
             // associative, keep the leftmost split.
-            let (_, cur_assoc_chirho) =
-                operator_fixity_chirho(ops_chirho[split_idx_chirho].text_chirho());
+            let (_, cur_assoc_chirho) = self
+                .operator_fixity_chirho(ops_chirho[split_idx_chirho].text_chirho());
             if cur_assoc_chirho == AssocChirho::LeftChirho {
                 split_idx_chirho = i_chirho;
             }
@@ -8196,9 +8250,9 @@ fn resolve_infix_precedence_chirho(
     let right_ops_chirho: Vec<NameChirho> = ops_chirho[split_idx_chirho + 1..].to_vec();
 
     let left_chirho =
-        resolve_infix_precedence_chirho(left_exprs_chirho, left_ops_chirho, span_chirho);
+        self.resolve_infix_precedence_chirho(left_exprs_chirho, left_ops_chirho, span_chirho);
     let right_chirho =
-        resolve_infix_precedence_chirho(right_exprs_chirho, right_ops_chirho, span_chirho);
+        self.resolve_infix_precedence_chirho(right_exprs_chirho, right_ops_chirho, span_chirho);
 
     if split_op_chirho.text_chirho() == "$" {
         ExprChirho::AppChirho {
@@ -8214,6 +8268,7 @@ fn resolve_infix_precedence_chirho(
             span_chirho,
         }
     }
+}
 }
 
 // ---------------------------------------------------------------------------
@@ -11158,6 +11213,62 @@ class Describable a where
                         ExprChirho::LitChirho(LitChirho::IntChirho(0, _))
                     ),
                     "expected rhs zero literal, got {:?}",
+                    right_chirho
+                );
+            }
+            other_chirho => panic!("expected infix expression tree, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_module_fixity_decl_for_backticked_operator_chirho() {
+        let source_chirho = "module M where\ninfixl 3 `ApChirho`\nvalueChirho = uChirho `ApChirho` (flipChirho <$> fChirho) <*> vChirho\n";
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let parser_chirho =
+            crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+        let green_chirho = parser_chirho.parse_chirho();
+        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "valueChirho")
+            })
+            .expect("expected valueChirho binding");
+
+        let rhs_expr_chirho = match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho
+            {
+                RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+                other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+
+        match rhs_expr_chirho {
+            ExprChirho::InfixChirho {
+                left_chirho,
+                op_chirho,
+                right_chirho,
+                ..
+            } => {
+                assert_eq!(op_chirho.text_chirho(), "ApChirho");
+                assert!(
+                    matches!(
+                        &**left_chirho,
+                        ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "uChirho"
+                    ),
+                    "expected left operand to remain uChirho, got {:?}",
+                    left_chirho
+                );
+                assert!(
+                    matches!(
+                        &**right_chirho,
+                        ExprChirho::InfixChirho { op_chirho, .. }
+                            if op_chirho.text_chirho() == "<*>"
+                    ),
+                    "expected <*> to stay grouped on the right of ApChirho, got {:?}",
                     right_chirho
                 );
             }
