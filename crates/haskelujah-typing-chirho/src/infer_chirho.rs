@@ -329,9 +329,17 @@ impl InferCtxChirho {
         family_name_chirho: &str,
         args_chirho: &[TyChirho],
     ) -> Option<TyChirho> {
+        self.reduce_type_family_application_chirho(family_name_chirho, args_chirho)
+    }
+
+    fn reduce_type_family_application_chirho(
+        &self,
+        family_name_chirho: &str,
+        args_chirho: &[TyChirho],
+    ) -> Option<TyChirho> {
         let equations_chirho = self.type_families_chirho.get(family_name_chirho)?;
         for (lhs_chirho, rhs_chirho) in equations_chirho {
-            if lhs_chirho.len() != args_chirho.len() {
+            if lhs_chirho.len() > args_chirho.len() {
                 continue;
             }
             // Try to match each LHS pattern against the corresponding arg
@@ -344,7 +352,14 @@ impl InferCtxChirho {
                 }
             }
             if matched_chirho {
-                return Some(substitute_type_vars_chirho(rhs_chirho, &bindings_chirho));
+                let mut reduced_chirho = substitute_type_vars_chirho(rhs_chirho, &bindings_chirho);
+                for extra_arg_chirho in &args_chirho[lhs_chirho.len()..] {
+                    reduced_chirho = TyChirho::AppChirho(
+                        Box::new(reduced_chirho),
+                        Box::new(extra_arg_chirho.clone()),
+                    );
+                }
+                return Some(reduced_chirho);
             }
         }
         None
@@ -488,7 +503,7 @@ impl InferCtxChirho {
                         .map(|a_chirho| self.reduce_families_chirho(a_chirho, depth_chirho + 1))
                         .collect();
                     if let Some(result_chirho) =
-                        self.reduce_type_family_chirho(name_chirho, &reduced_args_chirho)
+                        self.reduce_type_family_application_chirho(name_chirho, &reduced_args_chirho)
                     {
                         return self.reduce_families_chirho(&result_chirho, depth_chirho + 1);
                     }
@@ -16655,6 +16670,32 @@ mod tests_chirho {
             result_chirho,
             Some(TyChirho::bool_chirho()),
             "open F Int should reduce to Bool"
+        );
+    }
+
+    #[test]
+    fn type_family_oversaturated_application_reduces_and_reapplies_args_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.register_type_family_instance_chirho(
+            "F".to_string(),
+            vec![TyChirho::int_chirho()],
+            TyChirho::ConChirho("Maybe".to_string()),
+        );
+        let app_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("F".to_string())),
+                Box::new(TyChirho::int_chirho()),
+            )),
+            Box::new(TyChirho::char_chirho()),
+        );
+        let reduced_chirho = ctx_chirho.reduce_type_families_in_ty_chirho(&app_ty_chirho);
+        assert_eq!(
+            reduced_chirho,
+            TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                Box::new(TyChirho::char_chirho()),
+            ),
+            "oversaturated family application should reduce the family head and reapply leftover args"
         );
     }
 
