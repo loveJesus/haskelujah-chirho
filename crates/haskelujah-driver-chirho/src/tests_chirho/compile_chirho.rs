@@ -99,6 +99,29 @@ fn frontend_symbolic_infix_fun_bind_with_var_operands_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_infix_data_constructor_value_and_pattern_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ViewRScopeMiniChirho where\n\
+data SeqChirho aChirho = SeqChirho aChirho\n\
+data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n\
+useCtorChirho :: SeqChirho aChirho -> aChirho -> ViewRChirho aChirho\n\
+useCtorChirho xsChirho xChirho = (:>) xsChirho xChirho\n\
+usePatChirho :: ViewRChirho aChirho -> SeqChirho aChirho\n\
+usePatChirho (xsChirho :> _xChirho) = xsChirho\n\
+usePatChirho EmptyRChirho = SeqChirho (error \"boom\")\n",
+        &mut source_map_chirho,
+        "ViewRScopeMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "infix data constructors should enter scope for both value and pattern use: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_list_append_is_polymorphic_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

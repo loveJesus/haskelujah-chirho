@@ -665,8 +665,54 @@ impl<'src> ParserChirho<'src> {
             }
         }
 
+        let starts_infix_con_decl_chirho = self.starts_infix_con_decl_chirho();
+
+        if starts_infix_con_decl_chirho {
+            while self.can_start_atype_chirho() || self.at_strict_prefix_chirho() {
+                let before_chirho = self.pos_chirho;
+                if self.at_strict_prefix_chirho() {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                }
+                if self.can_start_atype_chirho() {
+                    self.parse_atype_chirho();
+                    self.eat_trivia_chirho();
+                }
+                let lookahead_idx_chirho = self.skip_trivia_idx_chirho(self.pos_chirho);
+                if self
+                    .tokens_chirho
+                    .get(lookahead_idx_chirho)
+                    .is_some_and(|token_chirho| {
+                        token_chirho.kind_chirho == RawTokenKindChirho::ConSymChirho
+                    })
+                {
+                    break;
+                }
+                if self.pos_chirho == before_chirho {
+                    break;
+                }
+            }
+
+            if self.at_chirho(RawTokenKindChirho::ConSymChirho) {
+                self.bump_chirho(); // constructor operator
+                self.eat_trivia_chirho();
+                while self.can_start_atype_chirho() || self.at_strict_prefix_chirho() {
+                    let before_chirho = self.pos_chirho;
+                    if self.at_strict_prefix_chirho() {
+                        self.bump_chirho();
+                        self.eat_trivia_chirho();
+                    }
+                    if self.can_start_atype_chirho() {
+                        self.parse_atype_chirho();
+                        self.eat_trivia_chirho();
+                    }
+                    if self.pos_chirho == before_chirho {
+                        break;
+                    }
+                }
+            }
         // Prefix constructor name
-        if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
+        } else if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
             self.bump_chirho();
             self.eat_trivia_chirho();
 
@@ -742,6 +788,42 @@ impl<'src> ParserChirho<'src> {
         }
 
         self.builder_chirho.finish_node_chirho();
+    }
+
+    fn starts_infix_con_decl_chirho(&self) -> bool {
+        let mut idx_chirho = self.skip_trivia_idx_chirho(self.pos_chirho);
+
+        loop {
+            if self
+                .tokens_chirho
+                .get(idx_chirho)
+                .is_some_and(|token_chirho| {
+                    token_chirho.kind_chirho == RawTokenKindChirho::VarSymChirho
+                        && self.token_text_chirho(token_chirho) == "!"
+                })
+            {
+                idx_chirho = self.skip_trivia_idx_chirho(idx_chirho + 1);
+            }
+
+            let Some(after_atype_chirho) = self.peek_after_apat_chirho(idx_chirho) else {
+                return false;
+            };
+
+            let lookahead_idx_chirho = self.skip_trivia_idx_chirho(after_atype_chirho);
+            let Some(lookahead_token_chirho) = self.tokens_chirho.get(lookahead_idx_chirho) else {
+                return false;
+            };
+
+            if lookahead_token_chirho.kind_chirho == RawTokenKindChirho::ConSymChirho {
+                return true;
+            }
+
+            if !self.can_start_atype_idx_chirho(lookahead_idx_chirho) {
+                return false;
+            }
+
+            idx_chirho = lookahead_idx_chirho;
+        }
     }
 
     /// Parse a GADT constructor declaration: `Con :: forall a. Ctx => Arg -> ... -> T a`
@@ -4280,8 +4362,12 @@ impl<'src> ParserChirho<'src> {
 
     /// Can the current token start an atomic type?
     fn can_start_atype_chirho(&self) -> bool {
+        self.can_start_atype_idx_chirho(self.pos_chirho)
+    }
+
+    fn can_start_atype_idx_chirho(&self, idx_chirho: usize) -> bool {
         matches!(
-            self.current_kind_chirho(),
+            self.tokens_chirho.get(idx_chirho).map(|token_chirho| token_chirho.kind_chirho),
             Some(RawTokenKindChirho::VarIdChirho)
                 | Some(RawTokenKindChirho::ConIdChirho)
                 | Some(RawTokenKindChirho::QualifiedIdChirho)
