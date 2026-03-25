@@ -6783,10 +6783,38 @@ impl LowerCtxChirho {
                         span_chirho,
                     }
                 } else {
-                    PatChirho::TupleChirho {
+                    let mut paren_op_pat_chirho = None;
+                    for child_chirho in &children_chirho {
+                        if let GreenElementChirho::TokenChirho(tok_chirho) =
+                            child_chirho.element_chirho
+                        {
+                            let child_span_chirho =
+                                self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                            match tok_chirho.kind_chirho() {
+                                TokenKindChirho::VarSymChirho => {
+                                    paren_op_pat_chirho = Some(PatChirho::VarChirho(
+                                        self.name_from_token_chirho(tok_chirho, child_span_chirho),
+                                    ));
+                                    break;
+                                }
+                                TokenKindChirho::ConSymChirho
+                                | TokenKindChirho::QualifiedConSymChirho => {
+                                    paren_op_pat_chirho = Some(PatChirho::ConChirho {
+                                        con_chirho: self
+                                            .name_from_token_chirho(tok_chirho, child_span_chirho),
+                                        args_chirho: vec![],
+                                        span_chirho: child_span_chirho,
+                                    });
+                                    break;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    paren_op_pat_chirho.unwrap_or(PatChirho::TupleChirho {
                         elements_chirho: vec![],
                         span_chirho,
-                    }
+                    })
                 }
             }
             SyntaxKindChirho::ListPatChirho => {
@@ -9196,6 +9224,43 @@ data StrictPair a b = !a :*: !b\n",
         assert_eq!(name_chirho.text_chirho(), "symDiffTip");
         assert_eq!(matches_chirho.len(), 1);
         assert_eq!(matches_chirho[0].pats_chirho.len(), 3);
+    }
+
+    #[test]
+    fn lower_parenthesized_operator_parameter_pattern_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\n\
+             data DigitChirho aChirho = OneChirho aChirho | TwoChirho aChirho aChirho\n\
+             foldDigitChirho :: (bChirho -> bChirho -> bChirho) -> (aChirho -> bChirho) -> DigitChirho aChirho -> bChirho\n\
+             foldDigitChirho (<+>) fChirho (TwoChirho aChirho bChirho) = fChirho aChirho <+> fChirho bChirho\n",
+        );
+
+        let fun_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "foldDigitChirho"
+                )
+            })
+            .unwrap_or_else(|| panic!("expected foldDigitChirho funbind"));
+
+        let DeclChirho::FunBindChirho { matches_chirho, .. } = fun_decl_chirho else {
+            panic!("expected foldDigitChirho funbind");
+        };
+
+        match &matches_chirho[0].pats_chirho[0] {
+            PatChirho::ParenChirho { inner_chirho, .. } => {
+                assert!(
+                    matches!(inner_chirho.as_ref(), PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "<+>"),
+                    "expected parenthesized operator binder, got {:?}",
+                    inner_chirho
+                );
+            }
+            other_chirho => panic!("expected parenthesized operator pattern, got {:?}", other_chirho),
+        }
     }
 
     #[test]

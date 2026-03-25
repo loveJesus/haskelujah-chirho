@@ -219,6 +219,66 @@ fn frontend_stacked_context_type_signature_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_concat_remains_polymorphic_for_nested_lists_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ConcatPolymorphismChirho where\ndata NodeChirho = ListItemChirho Int | LabelChirho String\ntype PathChirho = [NodeChirho]\ndata TestChirho = TestCaseChirho Int | TestListChirho [TestChirho] | TestLabelChirho String TestChirho\ntestCasePathsChirho :: TestChirho -> [PathChirho]\ntestCasePathsChirho t0Chirho = tcpChirho t0Chirho []\n where\n  tcpChirho (TestCaseChirho _) pChirho = [pChirho]\n  tcpChirho (TestListChirho tsChirho) pChirho = concat [ tcpChirho tChirho (ListItemChirho nChirho : pChirho) | (tChirho, nChirho) <- zip tsChirho [0..] ]\n  tcpChirho (TestLabelChirho lChirho tChirho) pChirho = tcpChirho tChirho (LabelChirho lChirho : pChirho)\n",
+        &mut source_map_chirho,
+        "ConcatPolymorphismChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "concat should stay polymorphic over nested lists: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_parenthesized_operator_parameter_pattern_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module OperatorParamPatternChirho where\n\
+         data DigitChirho aChirho = OneChirho aChirho | TwoChirho aChirho aChirho\n\
+         foldDigitChirho :: (bChirho -> bChirho -> bChirho) -> (aChirho -> bChirho) -> DigitChirho aChirho -> bChirho\n\
+         foldDigitChirho _ fChirho (OneChirho aChirho) = fChirho aChirho\n\
+         foldDigitChirho (<+>) fChirho (TwoChirho aChirho bChirho) = fChirho aChirho <+> fChirho bChirho\n",
+        &mut source_map_chirho,
+        "OperatorParamPatternChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "parenthesized operator parameters should bind as ordinary variables: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_list_literals_push_expected_type_into_overloaded_elements_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ExpectedListElementTypeChirho where\n\
+         data AltFChirho fChirho aChirho = PureAltFChirho aChirho\n\
+         newtype AltChirho fChirho aChirho = AltChirho [AltFChirho fChirho aChirho]\n\
+         class ApplicativeLikeChirho tChirho where\n\
+           pureLikeChirho :: aChirho -> tChirho aChirho\n\
+         instance ApplicativeLikeChirho (AltFChirho fChirho) where\n\
+           pureLikeChirho = PureAltFChirho\n\
+         instance ApplicativeLikeChirho (AltChirho fChirho) where\n\
+           pureLikeChirho aChirho = AltChirho [pureLikeChirho aChirho]\n",
+        &mut source_map_chirho,
+        "ExpectedListElementTypeChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "list literals should pass expected element types into overloaded expressions: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_local_recursive_signature_instantiates_polymorphically_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

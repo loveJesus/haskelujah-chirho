@@ -3252,6 +3252,72 @@ impl InferCtxChirho {
                     *infix_span_chirho,
                 )
             }
+            ExprChirho::ListChirho {
+                elements_chirho,
+                span_chirho: list_span_chirho,
+            } => {
+                let expected_norm_chirho =
+                    self.expand_type_synonyms_chirho(expected_ty_chirho);
+                let TyChirho::ListChirho(expected_elem_ty_chirho) = expected_norm_chirho else {
+                    let (s_chirho, actual_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                    match self.unify_normalized_chirho(
+                        &actual_ty_chirho,
+                        expected_ty_chirho,
+                        span_chirho,
+                    ) {
+                        Ok(su_chirho) => {
+                            let combined_chirho = su_chirho.compose_chirho(&s_chirho);
+                            let final_ty_chirho =
+                                combined_chirho.apply_ty_chirho(expected_ty_chirho);
+                            self.apply_subst_all_chirho(&su_chirho);
+                            return (combined_chirho, final_ty_chirho);
+                        }
+                        Err(err_chirho) => {
+                            self.report_unify_error_chirho(&err_chirho);
+                            return (s_chirho, actual_ty_chirho);
+                        }
+                    }
+                };
+
+                let mut subst_chirho = SubstChirho::empty_chirho();
+                let mut elem_expected_ty_chirho = (*expected_elem_ty_chirho).clone();
+
+                for elem_chirho in elements_chirho {
+                    let elem_expected_sub_chirho =
+                        subst_chirho.apply_ty_chirho(&elem_expected_ty_chirho);
+                    let (elem_subst_chirho, elem_ty_chirho) = self
+                        .infer_expr_against_expected_chirho(
+                            elem_chirho,
+                            &elem_expected_sub_chirho,
+                            *list_span_chirho,
+                        );
+                    subst_chirho = elem_subst_chirho.compose_chirho(&subst_chirho);
+                    self.apply_subst_all_chirho(&elem_subst_chirho);
+
+                    let elem_expected_final_chirho =
+                        subst_chirho.apply_ty_chirho(&elem_expected_ty_chirho);
+                    let elem_actual_final_chirho =
+                        subst_chirho.apply_ty_chirho(&elem_ty_chirho);
+                    match self.unify_normalized_chirho(
+                        &elem_actual_final_chirho,
+                        &elem_expected_final_chirho,
+                        *list_span_chirho,
+                    ) {
+                        Ok(su_chirho) => {
+                            subst_chirho = su_chirho.compose_chirho(&subst_chirho);
+                            self.apply_subst_all_chirho(&su_chirho);
+                            elem_expected_ty_chirho =
+                                subst_chirho.apply_ty_chirho(&elem_expected_ty_chirho);
+                        }
+                        Err(err_chirho) => {
+                            self.report_unify_error_chirho(&err_chirho);
+                        }
+                    }
+                }
+
+                let final_ty_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
+                (subst_chirho, final_ty_chirho)
+            }
             _ => {
                 let (s_chirho, actual_ty_chirho) = self.infer_expr_chirho(expr_chirho);
                 match self.unify_normalized_chirho(&actual_ty_chirho, expected_ty_chirho, span_chirho)
@@ -5991,13 +6057,20 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
-    // concat :: [String] -> String
+    // concat :: forall a. [[a]] -> [a]
+    let concat_elem_var_chirho = TyVarChirho(3064);
     env_chirho.bind_chirho(
         "concat".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::ListChirho(Box::new(TyChirho::string_chirho())),
-            TyChirho::string_chirho(),
-        )),
+        SchemeChirho {
+            vars_chirho: vec![concat_elem_var_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(TyChirho::ListChirho(Box::new(
+                    TyChirho::VarChirho(concat_elem_var_chirho),
+                )))),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(concat_elem_var_chirho))),
+            ),
+        },
     );
 
     // intercalate :: String -> [String] -> String

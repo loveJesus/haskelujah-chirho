@@ -3837,6 +3837,37 @@ impl<'src> ParserChirho<'src> {
             return;
         }
 
+        if matches!(
+            self.current_kind_chirho(),
+            Some(RawTokenKindChirho::VarSymChirho) | Some(RawTokenKindChirho::ConSymChirho)
+        ) {
+            let mut lookahead_idx_chirho = self.pos_chirho + 1;
+            while lookahead_idx_chirho < self.tokens_chirho.len()
+                && self.tokens_chirho[lookahead_idx_chirho]
+                    .kind_chirho
+                    .is_trivia_chirho()
+            {
+                lookahead_idx_chirho += 1;
+            }
+            if lookahead_idx_chirho < self.tokens_chirho.len()
+                && self.tokens_chirho[lookahead_idx_chirho].kind_chirho
+                    == RawTokenKindChirho::RightParenChirho
+            {
+                let pat_kind_chirho = if self.at_chirho(RawTokenKindChirho::VarSymChirho) {
+                    SyntaxKindChirho::VarPatChirho
+                } else {
+                    SyntaxKindChirho::ConPatChirho
+                };
+                self.builder_chirho.start_node_chirho(pat_kind_chirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+                self.eat_trivia_chirho();
+                self.bump_chirho(); // )
+                self.builder_chirho.finish_node_chirho();
+                return;
+            }
+        }
+
         self.parse_pat_chirho();
         self.eat_trivia_chirho();
 
