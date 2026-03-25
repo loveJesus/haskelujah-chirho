@@ -1500,10 +1500,13 @@ impl InferCtxChirho {
                 let mut instance_scoped_tyvars_chirho = scoped_tyvars_snapshot_chirho.clone();
                 instance_scoped_tyvars_chirho.extend(instance_var_map_chirho.clone());
                 self.scoped_tyvars_chirho = instance_scoped_tyvars_chirho;
-                let expected_ty_chirho = self.instantiate_instance_method_expected_ty_chirho(
+                let raw_expected_ty_chirho = self.instantiate_instance_method_expected_ty_chirho(
                     &class_decl_chirho,
                     method_scheme_chirho,
                     &instance_head_tys_chirho,
+                );
+                let expected_ty_chirho = self.reduce_type_families_in_ty_chirho(
+                    &self.expand_type_synonyms_chirho(&raw_expected_ty_chirho),
                 );
                 let (method_subst_chirho, inferred_ty_chirho) =
                     self.infer_matches_against_expected_chirho(
@@ -16984,6 +16987,134 @@ mod tests_chirho {
             ])),
             "associated type family instance should treat lhs free vars as pattern variables"
         );
+    }
+
+    #[test]
+    fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
+        let product_head_ast_chirho = TypeChirho::AppChirho {
+            fun_chirho: Box::new(TypeChirho::AppChirho {
+                fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Product"))),
+                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("g"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+            context_chirho: vec![],
+            name_chirho: dummy_name_chirho("Representable"),
+            type_vars_chirho: vec![dummy_name_chirho("f").into()],
+            methods_chirho: vec![haskelujah_ast_chirho::decl_chirho::ClassMethodChirho {
+                name_chirho: dummy_name_chirho("tabulate"),
+                ty_chirho: TypeChirho::FunChirho {
+                    arg_chirho: Box::new(TypeChirho::FunChirho {
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        mult_chirho: None,
+                        result_chirho: Box::new(TypeChirho::AppChirho {
+                            fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Rep"))),
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    mult_chirho: None,
+                    result_chirho: Box::new(TypeChirho::AppChirho {
+                        fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                default_chirho: None,
+                default_sig_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                name_chirho: dummy_name_chirho("Rep"),
+                type_vars_chirho: vec![dummy_name_chirho("f")],
+                default_rhs_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            fundeps_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let instance_decl_ast_chirho = DeclChirho::InstanceDeclChirho {
+            context_chirho: vec![],
+            class_chirho: dummy_name_chirho("Representable"),
+            types_chirho: vec![product_head_ast_chirho.clone()],
+            methods_chirho: vec![],
+            assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+                family_name_chirho: dummy_name_chirho("Rep"),
+                lhs_types_chirho: vec![product_head_ast_chirho],
+                rhs_chirho: TypeChirho::TupleChirho {
+                    elements_chirho: vec![
+                        TypeChirho::AppChirho {
+                            fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Rep"))),
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                        TypeChirho::AppChirho {
+                            fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Rep"))),
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("g"))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                    ],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.process_class_decl_chirho(&class_decl_ast_chirho);
+        ctx_chirho.process_instance_decl_chirho(&instance_decl_ast_chirho);
+
+        let class_decl_chirho = ctx_chirho
+            .class_env_chirho
+            .classes_chirho
+            .get("Representable")
+            .cloned()
+            .expect("class should register");
+        let method_scheme_chirho = class_decl_chirho
+            .methods_chirho
+            .get("tabulate")
+            .expect("method scheme should register");
+        let raw_expected_ty_chirho = ctx_chirho.instantiate_instance_method_expected_ty_chirho(
+            &class_decl_chirho,
+            method_scheme_chirho,
+            &[TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Product".to_string())),
+                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
+                )),
+                Box::new(TyChirho::ConChirho("U1".to_string())),
+            )],
+        );
+        let normalized_expected_ty_chirho = ctx_chirho.reduce_type_families_in_ty_chirho(
+            &ctx_chirho.expand_type_synonyms_chirho(&raw_expected_ty_chirho),
+        );
+
+        match normalized_expected_ty_chirho {
+            TyChirho::FunChirho(arg_chirho, result_chirho, _) => {
+                match *arg_chirho {
+                    TyChirho::FunChirho(_, inner_result_chirho, _) => {
+                        assert!(
+                            matches!(*inner_result_chirho, TyChirho::TupleChirho(ref elems_chirho) if elems_chirho.len() == 2),
+                            "tabulate argument should return a 2-tuple after associated family reduction"
+                        );
+                    }
+                    other_chirho => panic!("expected function argument, got {:?}", other_chirho),
+                }
+                assert!(
+                    matches!(*result_chirho, TyChirho::AppChirho(_, _)),
+                    "tabulate result should remain applied Product"
+                );
+            }
+            other_chirho => panic!("expected function type, got {:?}", other_chirho),
+        }
     }
 
     #[test]
