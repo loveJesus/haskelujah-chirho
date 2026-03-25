@@ -1866,6 +1866,49 @@ impl LowerCtxChirho {
             }
         }
 
+        let infix_operator_idx_chirho = children_chirho
+            .iter()
+            .enumerate()
+            .skip(start_idx_chirho)
+            .find_map(|(idx_chirho, child_chirho)| match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(tok_chirho)
+                    if tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho =>
+                {
+                    Some(idx_chirho)
+                }
+                _ => None,
+            });
+
+        if let Some(infix_operator_idx_chirho) = infix_operator_idx_chirho {
+            if let GreenElementChirho::TokenChirho(operator_token_chirho) =
+                children_chirho[infix_operator_idx_chirho].element_chirho
+            {
+                let operator_span_chirho = self.span_chirho(
+                    children_chirho[infix_operator_idx_chirho].start_chirho,
+                    children_chirho[infix_operator_idx_chirho].end_chirho,
+                );
+                let operator_name_chirho =
+                    self.name_from_token_chirho(operator_token_chirho, operator_span_chirho);
+                let left_field_chirho = self.lower_constructor_field_from_children_chirho(
+                    &children_chirho[start_idx_chirho..infix_operator_idx_chirho],
+                    span_chirho,
+                );
+                let right_field_chirho = self.lower_constructor_field_from_children_chirho(
+                    &children_chirho[infix_operator_idx_chirho + 1..],
+                    span_chirho,
+                );
+                if let (Some(left_field_chirho), Some(right_field_chirho)) =
+                    (left_field_chirho, right_field_chirho)
+                {
+                    return ConDeclChirho::OrdinaryChirho {
+                        name_chirho: operator_name_chirho,
+                        fields_chirho: vec![left_field_chirho, right_field_chirho],
+                        span_chirho,
+                    };
+                }
+            }
+        }
+
         let mut pending_strict_chirho = false;
         for child_chirho in children_chirho.iter().skip(start_idx_chirho) {
             match child_chirho.element_chirho {
@@ -1969,6 +2012,65 @@ impl LowerCtxChirho {
                 span_chirho,
             }
         }
+    }
+
+    fn lower_constructor_field_from_children_chirho(
+        &self,
+        children_chirho: &[ChildChirho<'_>],
+        span_chirho: SpanChirho,
+    ) -> Option<(StrictnessChirho, TypeChirho)> {
+        let mut pending_strict_chirho = false;
+        let mut strictness_chirho = StrictnessChirho::LazyChirho;
+        let mut parts_chirho: Vec<TypeChirho> = Vec::new();
+
+        for child_chirho in children_chirho {
+            match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(tok_chirho) => {
+                    match tok_chirho.kind_chirho() {
+                        TokenKindChirho::VarSymChirho if tok_chirho.text_chirho() == "!" => {
+                            pending_strict_chirho = true;
+                        }
+                        TokenKindChirho::VarIdChirho | TokenKindChirho::ConIdChirho => {
+                            let s_chirho =
+                                self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                            let name_chirho = self.name_from_token_chirho(tok_chirho, s_chirho);
+                            let ty_chirho =
+                                if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
+                                    TypeChirho::VarChirho(name_chirho)
+                                } else {
+                                    TypeChirho::ConChirho(name_chirho)
+                                };
+                            if pending_strict_chirho {
+                                strictness_chirho = StrictnessChirho::StrictChirho;
+                                pending_strict_chirho = false;
+                            }
+                            parts_chirho.push(ty_chirho);
+                        }
+                        _ => {}
+                    }
+                }
+                GreenElementChirho::NodeChirho(node_chirho) if is_type_kind_chirho(node_chirho.kind_chirho()) => {
+                    if pending_strict_chirho {
+                        strictness_chirho = StrictnessChirho::StrictChirho;
+                        pending_strict_chirho = false;
+                    }
+                    parts_chirho.push(self.lower_type_chirho(node_chirho, child_chirho.start_chirho));
+                }
+                _ => {}
+            }
+        }
+
+        let mut parts_iter_chirho = parts_chirho.into_iter();
+        let mut combined_chirho = parts_iter_chirho.next()?;
+        for part_chirho in parts_iter_chirho {
+            combined_chirho = TypeChirho::AppChirho {
+                fun_chirho: Box::new(combined_chirho),
+                arg_chirho: Box::new(part_chirho),
+                span_chirho,
+            };
+        }
+
+        Some((strictness_chirho, combined_chirho))
     }
 
     /// Lower a GADT constructor `Con :: forall a. Ctx => Arg -> ... -> T a`
@@ -8618,6 +8720,94 @@ data StrictPair a b = !a :*: !b\n",
                 }
             }
             other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_infix_data_constructor_with_right_type_application_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module ViewLMiniChirho where\n\
+data SeqChirho aChirho = SeqChirho\n\
+data ViewLChirho aChirho = EmptyLChirho | aChirho :< SeqChirho aChirho\n",
+        );
+        match &module_chirho.decls_chirho[1] {
+            DeclChirho::DataDeclChirho {
+                constructors_chirho, ..
+            } => match &constructors_chirho[1] {
+                ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
+                    assert_eq!(fields_chirho.len(), 2, "{:?}", fields_chirho);
+                    assert!(
+                        matches!(
+                            &fields_chirho[1].1,
+                            TypeChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                                if matches!(
+                                    fun_chirho.as_ref(),
+                                    TypeChirho::ConChirho(name_chirho)
+                                        if name_chirho.text_chirho() == "SeqChirho"
+                                ) && matches!(
+                                    arg_chirho.as_ref(),
+                                    TypeChirho::VarChirho(name_chirho)
+                                        if name_chirho.text_chirho() == "aChirho"
+                                )
+                        ),
+                        "expected right field SeqChirho aChirho, got {:?}",
+                        fields_chirho[1].1
+                    );
+                }
+                other_chirho => panic!("expected ordinary constructor, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected second declaration to be data, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_infix_data_constructor_with_left_type_application_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module ViewRMiniChirho where\n\
+data SeqChirho aChirho = SeqChirho\n\
+data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
+        );
+        match &module_chirho.decls_chirho[1] {
+            DeclChirho::DataDeclChirho {
+                constructors_chirho, ..
+            } => match &constructors_chirho[1] {
+                ConDeclChirho::OrdinaryChirho {
+                    name_chirho,
+                    fields_chirho,
+                    ..
+                } => {
+                    assert_eq!(name_chirho.text_chirho(), ":>");
+                    assert_eq!(fields_chirho.len(), 2, "{:?}", fields_chirho);
+                    assert!(
+                        matches!(
+                            &fields_chirho[0].1,
+                            TypeChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                                if matches!(
+                                    fun_chirho.as_ref(),
+                                    TypeChirho::ConChirho(name_chirho)
+                                        if name_chirho.text_chirho() == "SeqChirho"
+                                ) && matches!(
+                                    arg_chirho.as_ref(),
+                                    TypeChirho::VarChirho(name_chirho)
+                                        if name_chirho.text_chirho() == "aChirho"
+                                )
+                        ),
+                        "expected left field SeqChirho aChirho, got {:?}",
+                        fields_chirho[0].1
+                    );
+                    assert!(
+                        matches!(
+                            &fields_chirho[1].1,
+                            TypeChirho::VarChirho(name_chirho)
+                                if name_chirho.text_chirho() == "aChirho"
+                        ),
+                        "expected right field aChirho, got {:?}",
+                        fields_chirho[1].1
+                    );
+                }
+                other_chirho => panic!("expected ordinary constructor, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected second declaration to be data, got {:?}", other_chirho),
         }
     }
 
