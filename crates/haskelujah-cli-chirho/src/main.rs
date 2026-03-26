@@ -314,7 +314,8 @@ fn run_command_chirho(
                 link_result_chirho.map_err(|_| ())
             };
             if let Ok(()) = link_result_chirho {
-                let status_chirho = apply_mem_limit_chirho(&mut Command::new(&exe_path_chirho)).status();
+                let status_chirho =
+                    apply_mem_limit_chirho(&mut Command::new(&exe_path_chirho)).status();
                 let _ = fs::remove_file(&exe_path_chirho);
                 match status_chirho {
                     Ok(s_chirho) => {
@@ -436,17 +437,35 @@ fn compile_command_chirho(
                         let trimmed_chirho = line_chirho.trim().to_lowercase();
                         if trimmed_chirho.starts_with("hs-source-dirs:") {
                             // Value on same line?
-                            let after_chirho = line_chirho.trim()
-                                [line_chirho.trim().to_lowercase().find("hs-source-dirs:").unwrap() + "hs-source-dirs:".len()..]
+                            let after_chirho = line_chirho.trim()[line_chirho
+                                .trim()
+                                .to_lowercase()
+                                .find("hs-source-dirs:")
+                                .unwrap()
+                                + "hs-source-dirs:".len()..]
                                 .trim();
                             if !after_chirho.is_empty() {
-                                return Some(after_chirho.split(',').next().unwrap_or(".").trim().to_string());
+                                return Some(
+                                    after_chirho
+                                        .split(',')
+                                        .next()
+                                        .unwrap_or(".")
+                                        .trim()
+                                        .to_string(),
+                                );
                             }
                             // Value on next indented line
                             if idx_chirho + 1 < lines_chirho.len() {
                                 let next_chirho = lines_chirho[idx_chirho + 1].trim();
                                 if !next_chirho.is_empty() && !next_chirho.contains(':') {
-                                    return Some(next_chirho.split(',').next().unwrap_or(".").trim().to_string());
+                                    return Some(
+                                        next_chirho
+                                            .split(',')
+                                            .next()
+                                            .unwrap_or(".")
+                                            .trim()
+                                            .to_string(),
+                                    );
                                 }
                             }
                         }
@@ -805,7 +824,12 @@ fn link_llvm_file_chirho(
         .ok_or_else(|| format!("non-utf8 llvm path: {}", llvm_path_chirho.display()))?;
 
     let mut clang_command_chirho = Command::new("clang");
-    clang_command_chirho.args([opt_level_chirho, "-o", output_path_str_chirho, llvm_path_str_chirho]);
+    clang_command_chirho.args([
+        opt_level_chirho,
+        "-o",
+        output_path_str_chirho,
+        llvm_path_str_chirho,
+    ]);
     if cfg!(target_os = "macos") {
         clang_command_chirho.arg(LINKER_STACK_SIZE_ARG_CHIRHO);
     }
@@ -1020,9 +1044,15 @@ main = runTests\n\
     eprintln!("");
     eprintln!("Next steps:");
     eprintln!("  haskelujah build {}     # compile", project_name_chirho);
-    eprintln!("  haskelujah check {}/Main.hs  # typecheck", project_name_chirho);
+    eprintln!(
+        "  haskelujah check {}/Main.hs  # typecheck",
+        project_name_chirho
+    );
     eprintln!("  haskelujah test {}      # run tests", project_name_chirho);
-    eprintln!("  haskelujah edit {}/Main.hs   # open editor", project_name_chirho);
+    eprintln!(
+        "  haskelujah edit {}/Main.hs   # open editor",
+        project_name_chirho
+    );
     ExitCode::SUCCESS
 }
 
@@ -1370,10 +1400,7 @@ fn format_haskell_source_chirho(source_chirho: &str) -> String {
         .lines()
         .map(|line_chirho| {
             // Replace tabs with 2 spaces, trim trailing whitespace
-            line_chirho
-                .replace('\t', "  ")
-                .trim_end()
-                .to_string()
+            line_chirho.replace('\t', "  ").trim_end().to_string()
         })
         .collect();
 

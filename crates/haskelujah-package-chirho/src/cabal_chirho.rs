@@ -1193,9 +1193,7 @@ fn compare_version_components_chirho(
 ) -> std::cmp::Ordering {
     use std::cmp::Ordering;
 
-    let max_len_chirho = lhs_components_chirho
-        .len()
-        .max(rhs_components_chirho.len());
+    let max_len_chirho = lhs_components_chirho.len().max(rhs_components_chirho.len());
     for idx_chirho in 0..max_len_chirho {
         let lhs_component_chirho = *lhs_components_chirho.get(idx_chirho).unwrap_or(&0);
         let rhs_component_chirho = *rhs_components_chirho.get(idx_chirho).unwrap_or(&0);

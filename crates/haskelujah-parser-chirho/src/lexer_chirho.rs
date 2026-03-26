@@ -511,7 +511,7 @@ impl<'src> LexerChirho<'src> {
                 .is_some_and(|b_chirho| b_chirho.is_ascii_lowercase() || b_chirho == b'_') =>
             {
                 self.pos_chirho += 1; // skip '?'
-                                      // Consume the identifier part
+                // Consume the identifier part
                 while self.pos_chirho < self.bytes_chirho.len()
                     && is_ident_char_chirho(self.bytes_chirho[self.pos_chirho])
                 {
@@ -1542,15 +1542,18 @@ mod tests_chirho {
 
     #[test]
     fn lex_hyphen_separator_line_as_comment_chirho() {
-        let tokens_chirho =
-            lex_chirho("-----------------------------------------------------------------------------\nmodule Demo where\n");
+        let tokens_chirho = lex_chirho(
+            "-----------------------------------------------------------------------------\nmodule Demo where\n",
+        );
         assert_eq!(
             tokens_chirho[0].kind_chirho,
             RawTokenKindChirho::LineCommentChirho
         );
-        assert!(tokens_chirho
-            .iter()
-            .any(|token_chirho| token_chirho.kind_chirho == RawTokenKindChirho::ModuleChirho));
+        assert!(
+            tokens_chirho
+                .iter()
+                .any(|token_chirho| token_chirho.kind_chirho == RawTokenKindChirho::ModuleChirho)
+        );
     }
 
     #[test]
@@ -1760,8 +1763,7 @@ mod tests_chirho {
 
     #[test]
     fn lex_magic_hash_identifiers_stay_single_tokens_chirho() {
-        let source_chirho =
-            "module T where\nfooChirho :: Int# -> Int#\nfooChirho xChirho = newPinnedByteArray# xChirho\n";
+        let source_chirho = "module T where\nfooChirho :: Int# -> Int#\nfooChirho xChirho = newPinnedByteArray# xChirho\n";
         let kinds_chirho = non_trivia_kinds_chirho(source_chirho);
         assert!(kinds_chirho.contains(&RawTokenKindChirho::ConIdChirho));
         assert!(kinds_chirho.contains(&RawTokenKindChirho::VarIdChirho));

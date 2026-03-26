@@ -10028,8 +10028,11 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                     .any(|name_chirho| name_chirho == required_name_chirho),
                 "expected helper `{}` in lowered preprocessed IntSet module; sample={:?}; decl_tail={:?}",
                 required_name_chirho,
-                funbind_names_chirho.iter().rev().take(20).collect::<Vec<_>>()
-                ,
+                funbind_names_chirho
+                    .iter()
+                    .rev()
+                    .take(20)
+                    .collect::<Vec<_>>(),
                 decl_labels_chirho.iter().rev().take(40).collect::<Vec<_>>()
             );
         }
@@ -10588,13 +10591,18 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                     ..
                 } => {
                     match fun_chirho.as_ref() {
-                        TypeChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
+                        TypeChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref()
+                        {
                             TypeChirho::ConChirho(name_chirho) => {
                                 assert_eq!(name_chirho.text_chirho(), "(,,)");
                             }
-                            other_chirho => panic!("expected (,,) constructor, got {other_chirho:?}"),
+                            other_chirho => {
+                                panic!("expected (,,) constructor, got {other_chirho:?}")
+                            }
                         },
-                        other_chirho => panic!("expected parenthesized tuple constructor application, got {other_chirho:?}"),
+                        other_chirho => panic!(
+                            "expected parenthesized tuple constructor application, got {other_chirho:?}"
+                        ),
                     }
                     match arg_chirho.as_ref() {
                         TypeChirho::VarChirho(name_chirho) => {
@@ -10668,23 +10676,46 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                                 ..
                             } => {
                                 match fun_chirho.as_ref() {
-                                TypeChirho::AppChirho { fun_chirho, arg_chirho, .. } => {
-                                    match fun_chirho.as_ref() {
-                                        TypeChirho::AppChirho { fun_chirho, arg_chirho, .. } => {
-                                            match fun_chirho.as_ref() {
-                                                TypeChirho::AppChirho { fun_chirho, arg_chirho, .. } => {
-                                                    match fun_chirho.as_ref() {
-                                                        TypeChirho::ConChirho(name_chirho) => {
-                                                            assert_eq!(name_chirho.text_chirho(), "OverChirho");
+                                    TypeChirho::AppChirho {
+                                        fun_chirho,
+                                        arg_chirho,
+                                        ..
+                                    } => {
+                                        match fun_chirho.as_ref() {
+                                            TypeChirho::AppChirho {
+                                                fun_chirho,
+                                                arg_chirho,
+                                                ..
+                                            } => {
+                                                match fun_chirho.as_ref() {
+                                                    TypeChirho::AppChirho {
+                                                        fun_chirho,
+                                                        arg_chirho,
+                                                        ..
+                                                    } => {
+                                                        match fun_chirho.as_ref() {
+                                                            TypeChirho::ConChirho(name_chirho) => {
+                                                                assert_eq!(
+                                                                    name_chirho.text_chirho(),
+                                                                    "OverChirho"
+                                                                );
+                                                            }
+                                                            other_chirho => panic!(
+                                                                "expected OverChirho head, got {other_chirho:?}"
+                                                            ),
                                                         }
-                                                        other_chirho => panic!(
-                                                            "expected OverChirho head, got {other_chirho:?}"
-                                                        ),
-                                                    }
-                                                    match arg_chirho.as_ref() {
-                                                        TypeChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
-                                                            TypeChirho::AppChirho { fun_chirho, arg_chirho, .. } => {
-                                                                match fun_chirho.as_ref() {
+                                                        match arg_chirho.as_ref() {
+                                                            TypeChirho::ParenChirho {
+                                                                inner_chirho,
+                                                                ..
+                                                            } => {
+                                                                match inner_chirho.as_ref() {
+                                                                    TypeChirho::AppChirho {
+                                                                        fun_chirho,
+                                                                        arg_chirho,
+                                                                        ..
+                                                                    } => {
+                                                                        match fun_chirho.as_ref() {
                                                                     TypeChirho::ConChirho(name_chirho) => {
                                                                         assert_eq!(name_chirho.text_chirho(), "(,)");
                                                                     }
@@ -10700,7 +10731,7 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                                                                         "expected tuple constructor head, got {other_chirho:?}"
                                                                     ),
                                                                 }
-                                                                match arg_chirho.as_ref() {
+                                                                        match arg_chirho.as_ref() {
                                                                     TypeChirho::VarChirho(name_chirho) => {
                                                                         assert_eq!(name_chirho.text_chirho(), "rChirho");
                                                                     }
@@ -10708,26 +10739,39 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                                                                         "expected tuple constructor argument, got {other_chirho:?}"
                                                                     ),
                                                                 }
+                                                                    }
+                                                                    other_chirho => panic!(
+                                                                        "expected partial tuple application, got {other_chirho:?}"
+                                                                    ),
+                                                                }
                                                             }
                                                             other_chirho => panic!(
-                                                                "expected partial tuple application, got {other_chirho:?}"
+                                                                "expected parenthesized partial tuple application, got {other_chirho:?}"
                                                             ),
-                                                        },
-                                                        other_chirho => panic!(
-                                                            "expected parenthesized partial tuple application, got {other_chirho:?}"
-                                                        ),
+                                                        }
                                                     }
+                                                    other_chirho => panic!(
+                                                        "expected OverChirho application spine, got {other_chirho:?}"
+                                                    ),
                                                 }
-                                                other_chirho => panic!("expected OverChirho application spine, got {other_chirho:?}"),
+                                                assert!(matches!(
+                                                    arg_chirho.as_ref(),
+                                                    TypeChirho::VarChirho(_)
+                                                ));
                                             }
-                                            assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
+                                            other_chirho => panic!(
+                                                "expected OverChirho application spine, got {other_chirho:?}"
+                                            ),
                                         }
-                                        other_chirho => panic!("expected OverChirho application spine, got {other_chirho:?}"),
+                                        assert!(matches!(
+                                            arg_chirho.as_ref(),
+                                            TypeChirho::VarChirho(_)
+                                        ));
                                     }
-                                    assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
+                                    other_chirho => panic!(
+                                        "expected OverChirho application spine, got {other_chirho:?}"
+                                    ),
                                 }
-                                other_chirho => panic!("expected OverChirho application spine, got {other_chirho:?}"),
-                            }
                                 assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
                             }
                             other_chirho => panic!(

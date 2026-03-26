@@ -17,9 +17,7 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Haskelujah Editor",
         options_chirho,
-        Box::new(|cc_chirho| {
-            Ok(Box::new(HaskelujahAppChirho::new_chirho(cc_chirho)))
-        }),
+        Box::new(|cc_chirho| Ok(Box::new(HaskelujahAppChirho::new_chirho(cc_chirho)))),
     )
 }
 
@@ -60,10 +58,7 @@ impl HaskelujahAppChirho {
 
     fn typecheck_chirho(&mut self) {
         let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
-        let file_name_chirho = self
-            .file_path_chirho
-            .as_deref()
-            .unwrap_or("Main.hs");
+        let file_name_chirho = self.file_path_chirho.as_deref().unwrap_or("Main.hs");
 
         match haskelujah_driver_chirho::compile_source_chirho(
             &self.source_chirho,
@@ -83,10 +78,7 @@ impl HaskelujahAppChirho {
                     .iter()
                     .map(|d_chirho| d_chirho.message_chirho.clone())
                     .collect();
-                self.status_chirho = format!(
-                    "{} error(s)",
-                    self.diagnostics_chirho.len()
-                );
+                self.status_chirho = format!("{} error(s)", self.diagnostics_chirho.len());
             }
         }
     }
@@ -140,7 +132,10 @@ impl eframe::App for HaskelujahAppChirho {
                 });
                 ui_chirho.menu_button("View", |ui_chirho| {
                     ui_chirho.checkbox(&mut self.line_numbers_chirho, "Line Numbers");
-                    ui_chirho.add(egui::Slider::new(&mut self.font_size_chirho, 10.0..=32.0).text("Font Size"));
+                    ui_chirho.add(
+                        egui::Slider::new(&mut self.font_size_chirho, 10.0..=32.0)
+                            .text("Font Size"),
+                    );
                 });
             });
         });
@@ -167,10 +162,8 @@ impl eframe::App for HaskelujahAppChirho {
                     ui_chirho.heading("Diagnostics");
                     egui::ScrollArea::vertical().show(ui_chirho, |ui_chirho| {
                         for diag_chirho in &self.diagnostics_chirho {
-                            ui_chirho.colored_label(
-                                egui::Color32::from_rgb(255, 100, 100),
-                                diag_chirho,
-                            );
+                            ui_chirho
+                                .colored_label(egui::Color32::from_rgb(255, 100, 100), diag_chirho);
                         }
                     });
                 });
@@ -179,16 +172,14 @@ impl eframe::App for HaskelujahAppChirho {
         // Main editor area
         egui::CentralPanel::default().show(ctx_chirho, |ui_chirho| {
             // Keyboard shortcuts
-            if ctx_chirho.input(|i_chirho| {
-                i_chirho.key_pressed(egui::Key::Enter)
-                    && i_chirho.modifiers.ctrl
-            }) {
+            if ctx_chirho
+                .input(|i_chirho| i_chirho.key_pressed(egui::Key::Enter) && i_chirho.modifiers.ctrl)
+            {
                 self.typecheck_chirho();
             }
-            if ctx_chirho.input(|i_chirho| {
-                i_chirho.key_pressed(egui::Key::S)
-                    && i_chirho.modifiers.ctrl
-            }) {
+            if ctx_chirho
+                .input(|i_chirho| i_chirho.key_pressed(egui::Key::S) && i_chirho.modifiers.ctrl)
+            {
                 self.save_file_chirho();
             }
 

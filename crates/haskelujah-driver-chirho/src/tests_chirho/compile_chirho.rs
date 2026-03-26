@@ -36,8 +36,10 @@ fn builds_a_check_summary_for_batch_mode_chirho() {
             .runtime_plan_chirho
             .incremental_session_chirho
     );
-    assert!(render_summary_chirho(&check_summary_chirho)
-        .contains("llvm_preview: ; haskelujah llvm stub"));
+    assert!(
+        render_summary_chirho(&check_summary_chirho)
+            .contains("llvm_preview: ; haskelujah llvm stub")
+    );
 }
 
 #[test]
@@ -622,8 +624,7 @@ fn frontend_zero_arity_instance_method_accepts_tuple_constructor_rhs_chirho() {
 #[test]
 fn frontend_parsed_biapplicative_class_method_keeps_applied_result_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let source_chirho =
-        "module BiapplicativeParsedChirho where\nclass BiapplicativeChirho pChirho where\n  bipureChirho :: aChirho -> bChirho -> pChirho aChirho bChirho\n";
+    let source_chirho = "module BiapplicativeParsedChirho where\nclass BiapplicativeChirho pChirho where\n  bipureChirho :: aChirho -> bChirho -> pChirho aChirho bChirho\n";
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
         &mut source_map_chirho,
         "BiapplicativeParsedChirho.hs",
@@ -2624,16 +2625,22 @@ executable hello-app
         result_chirho.executables_chirho[0].compilation_order_chirho,
         vec!["Lib".to_string(), "Main".to_string()]
     );
-    assert!(!result_chirho.executables_chirho[0]
-        .core_chirho
-        .bindings_chirho
-        .is_empty());
-    assert!(result_chirho.executables_chirho[0]
-        .llvm_ir_chirho
-        .contains("define i32 @main()"));
-    assert!(result_chirho.executables_chirho[0]
-        .llvm_ir_chirho
-        .contains("@haskelujah_main"));
+    assert!(
+        !result_chirho.executables_chirho[0]
+            .core_chirho
+            .bindings_chirho
+            .is_empty()
+    );
+    assert!(
+        result_chirho.executables_chirho[0]
+            .llvm_ir_chirho
+            .contains("define i32 @main()")
+    );
+    assert!(
+        result_chirho.executables_chirho[0]
+            .llvm_ir_chirho
+            .contains("@haskelujah_main")
+    );
 
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
 }
@@ -2642,7 +2649,7 @@ executable hello-app
 fn cabal_project_cranelift_dedups_duplicate_prelude_bindings_chirho() {
     use crate::build_cabal_project_chirho;
     use haskelujah_backend_cranelift_chirho::{
-        compile_core_to_object_executable_chirho, TargetConfigChirho,
+        TargetConfigChirho, compile_core_to_object_executable_chirho,
     };
     use std::io::Write;
 

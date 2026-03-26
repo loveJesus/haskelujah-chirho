@@ -13,10 +13,9 @@ use haskelujah_naming_chirho::builtin_module_ifaces_chirho;
 use haskelujah_span_chirho::{LineColChirho, SourceMapChirho, SpanChirho};
 use lsp_server::{Connection, Message, Notification, Request, Response};
 use lsp_types::{
-    Diagnostic, DiagnosticSeverity, DidOpenTextDocumentParams, Hover, HoverContents,
-    HoverParams, HoverProviderCapability, InitializeParams, MarkedString, Position,
-    PublishDiagnosticsParams, Range, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, Uri,
+    Diagnostic, DiagnosticSeverity, DidOpenTextDocumentParams, Hover, HoverContents, HoverParams,
+    HoverProviderCapability, InitializeParams, MarkedString, Position, PublishDiagnosticsParams,
+    Range, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
 };
 
 #[derive(Debug, Clone)]
@@ -31,9 +30,7 @@ pub fn run_lsp_chirho() -> Result<(), Box<dyn std::error::Error>> {
     let mut open_documents_chirho: HashMap<String, OpenDocumentChirho> = HashMap::new();
 
     let capabilities_chirho = serde_json::to_value(ServerCapabilities {
-        text_document_sync: Some(TextDocumentSyncCapability::Kind(
-            TextDocumentSyncKind::FULL,
-        )),
+        text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..Default::default()
     })?;
@@ -74,23 +71,19 @@ fn handle_request_chirho(
     if req_chirho.method == "textDocument/hover" {
         let hover_result_chirho = serde_json::from_value::<HoverParams>(req_chirho.params.clone())
             .ok()
-            .and_then(|params_chirho| hover_result_for_params_chirho(&params_chirho, open_documents_chirho).ok())
+            .and_then(|params_chirho| {
+                hover_result_for_params_chirho(&params_chirho, open_documents_chirho).ok()
+            })
             .flatten();
         let resp_chirho = Response::new_ok(req_chirho.id, hover_result_chirho);
-        conn_chirho
-            .sender
-            .send(Message::Response(resp_chirho))
-            .ok();
+        conn_chirho.sender.send(Message::Response(resp_chirho)).ok();
     } else {
         let resp_chirho = Response::new_err(
             req_chirho.id,
             -32601,
             format!("unsupported request: {}", req_chirho.method),
         );
-        conn_chirho
-            .sender
-            .send(Message::Response(resp_chirho))
-            .ok();
+        conn_chirho.sender.send(Message::Response(resp_chirho)).ok();
     }
 }
 
@@ -120,11 +113,7 @@ fn handle_notification_chirho(
 }
 
 fn publish_diagnostics_chirho(conn_chirho: &Connection, uri_chirho: Uri, source_chirho: &str) {
-    let file_name_chirho = uri_chirho
-        .as_str()
-        .rsplit('/')
-        .next()
-        .unwrap_or("Main.hs");
+    let file_name_chirho = uri_chirho.as_str().rsplit('/').next().unwrap_or("Main.hs");
 
     let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
     let diagnostics_chirho = match haskelujah_driver_chirho::compile_source_chirho(
@@ -269,7 +258,8 @@ fn span_to_range_chirho(span_chirho: SpanChirho, source_map_chirho: &SourceMapCh
         .map(str::len)
         .unwrap_or(0);
     let clamped_span_chirho = span_chirho.clamp_to_source_chirho(source_len_chirho);
-    let start_line_col_chirho = line_index_chirho.line_col_chirho(clamped_span_chirho.start_chirho());
+    let start_line_col_chirho =
+        line_index_chirho.line_col_chirho(clamped_span_chirho.start_chirho());
     let end_line_col_chirho = line_index_chirho.line_col_chirho(clamped_span_chirho.end_chirho());
     Range::new(
         line_col_to_position_chirho(start_line_col_chirho),
@@ -334,18 +324,36 @@ fn token_bounds_at_offset_chirho(
     }
     let max_offset_chirho = source_chirho.len().saturating_sub(1);
     let clamped_offset_chirho = byte_offset_chirho.min(max_offset_chirho);
-    scan_token_bounds_chirho(source_chirho, clamped_offset_chirho, is_identifier_char_chirho)
-        .or_else(|| {
-            clamped_offset_chirho.checked_sub(1).and_then(|prev_offset_chirho| {
-                scan_token_bounds_chirho(source_chirho, prev_offset_chirho, is_identifier_char_chirho)
+    scan_token_bounds_chirho(
+        source_chirho,
+        clamped_offset_chirho,
+        is_identifier_char_chirho,
+    )
+    .or_else(|| {
+        clamped_offset_chirho
+            .checked_sub(1)
+            .and_then(|prev_offset_chirho| {
+                scan_token_bounds_chirho(
+                    source_chirho,
+                    prev_offset_chirho,
+                    is_identifier_char_chirho,
+                )
             })
-        })
-        .or_else(|| scan_token_bounds_chirho(source_chirho, clamped_offset_chirho, is_operator_char_chirho))
-        .or_else(|| {
-            clamped_offset_chirho.checked_sub(1).and_then(|prev_offset_chirho| {
+    })
+    .or_else(|| {
+        scan_token_bounds_chirho(
+            source_chirho,
+            clamped_offset_chirho,
+            is_operator_char_chirho,
+        )
+    })
+    .or_else(|| {
+        clamped_offset_chirho
+            .checked_sub(1)
+            .and_then(|prev_offset_chirho| {
                 scan_token_bounds_chirho(source_chirho, prev_offset_chirho, is_operator_char_chirho)
             })
-        })
+    })
 }
 
 fn scan_token_bounds_chirho(
@@ -408,7 +416,24 @@ fn is_identifier_char_chirho(char_chirho: char) -> bool {
 fn is_operator_char_chirho(char_chirho: char) -> bool {
     matches!(
         char_chirho,
-        '!' | '#' | '$' | '%' | '&' | '*' | '+' | '.' | '/' | '<' | '=' | '>' | '?' | '@'
-            | '\\' | '^' | '|' | '-' | '~' | ':'
+        '!' | '#'
+            | '$'
+            | '%'
+            | '&'
+            | '*'
+            | '+'
+            | '.'
+            | '/'
+            | '<'
+            | '='
+            | '>'
+            | '?'
+            | '@'
+            | '\\'
+            | '^'
+            | '|'
+            | '-'
+            | '~'
+            | ':'
     )
 }

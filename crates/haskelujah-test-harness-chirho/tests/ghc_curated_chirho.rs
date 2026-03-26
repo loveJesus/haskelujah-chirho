@@ -4,9 +4,7 @@
 //! Integration test that runs the curated GHC test suite from
 //! `ghc-tests-chirho/` through the Haskelujah pipeline.
 
-use haskelujah_test_harness::ghc_suite_chirho::{
-    discover_ghc_tests_chirho, run_ghc_suite_chirho,
-};
+use haskelujah_test_harness::ghc_suite_chirho::{discover_ghc_tests_chirho, run_ghc_suite_chirho};
 use std::path::Path;
 
 /// Run all curated GHC tests and assert a minimum pass rate.

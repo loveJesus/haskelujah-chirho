@@ -1354,8 +1354,7 @@ f :: Reflection.Module -> ()
 f = Reflection.rnfModule
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho =
-        compile_source_chirho(src_chirho, &mut sm_chirho, "TypeReflRnfModule.hs");
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "TypeReflRnfModule.hs");
     assert!(
         result_chirho.is_ok(),
         "Type.Reflection should export rnfModule: {:?}",
@@ -2739,8 +2738,7 @@ g :: TypeRep -> ()
 g = rnfTypeRep
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho =
-        compile_source_chirho(src_chirho, &mut sm_chirho, "IfaceTypeableRnf.hs");
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "IfaceTypeableRnf.hs");
     assert!(
         result_chirho.is_ok(),
         "Data.Typeable should export rnfTyCon/rnfTypeRep: {:?}",

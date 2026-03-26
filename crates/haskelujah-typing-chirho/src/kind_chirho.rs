@@ -283,22 +283,8 @@ impl KindEnvChirho {
 
         // Primitive types: kind *
         for name_chirho in &[
-            "Int",
-            "Int8",
-            "Int16",
-            "Int32",
-            "Int64",
-            "Word",
-            "Word8",
-            "Word16",
-            "Word32",
-            "Word64",
-            "Bool",
-            "Char",
-            "Double",
-            "Float",
-            "Integer",
-            "String",
+            "Int", "Int8", "Int16", "Int32", "Int64", "Word", "Word8", "Word16", "Word32",
+            "Word64", "Bool", "Char", "Double", "Float", "Integer", "String",
         ] {
             env_chirho.bind_chirho(name_chirho.to_string(), KindChirho::StarChirho);
         }
@@ -473,17 +459,11 @@ impl KindEnvChirho {
         );
         env_chirho.bind_chirho(
             "Generic".to_string(),
-            KindChirho::arrow_chirho(
-                KindChirho::StarChirho,
-                KindChirho::ConstraintChirho,
-            ),
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::ConstraintChirho),
         );
         env_chirho.bind_chirho(
             "Generic1".to_string(),
-            KindChirho::arrow_chirho(
-                rep_functor_kind_chirho,
-                KindChirho::ConstraintChirho,
-            ),
+            KindChirho::arrow_chirho(rep_functor_kind_chirho, KindChirho::ConstraintChirho),
         );
 
         env_chirho
@@ -658,8 +638,7 @@ impl KindInferCtxChirho {
                     }
                 } else {
                     let k_chirho = self.fresh_kind_chirho();
-                    self.env_chirho
-                        .bind_chirho(text_chirho, k_chirho.clone());
+                    self.env_chirho.bind_chirho(text_chirho, k_chirho.clone());
                     k_chirho
                 }
             }
@@ -792,8 +771,7 @@ impl KindInferCtxChirho {
                 } else {
                     // Unknown type constructor — assign a fresh kind variable.
                     let k_chirho = self.fresh_kind_chirho();
-                    self.env_chirho
-                        .bind_chirho(text_chirho, k_chirho.clone());
+                    self.env_chirho.bind_chirho(text_chirho, k_chirho.clone());
                     k_chirho
                 }
             }
@@ -1334,21 +1312,19 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                         param_kinds_chirho.push(kind_chirho);
                     }
 
-                    let result_kind_chirho = if let Some(default_rhs_chirho) =
-                        &assoc_tf_chirho.default_rhs_chirho
-                    {
-                        ctx_chirho.infer_type_kind_chirho(default_rhs_chirho)
-                    } else {
-                        ctx_chirho.fresh_kind_chirho()
-                    };
+                    let result_kind_chirho =
+                        if let Some(default_rhs_chirho) = &assoc_tf_chirho.default_rhs_chirho {
+                            ctx_chirho.infer_type_kind_chirho(default_rhs_chirho)
+                        } else {
+                            ctx_chirho.fresh_kind_chirho()
+                        };
 
                     let family_kind_chirho =
                         KindChirho::arrow_n_chirho(param_kinds_chirho, result_kind_chirho.clone());
                     let assoc_name_text_chirho = assoc_tf_chirho.name_chirho.text_chirho();
-                    ctx_chirho.env_chirho.bind_chirho(
-                        assoc_name_text_chirho.to_string(),
-                        family_kind_chirho,
-                    );
+                    ctx_chirho
+                        .env_chirho
+                        .bind_chirho(assoc_name_text_chirho.to_string(), family_kind_chirho);
                 }
                 // Kind-check superclass constraints — do NOT force args to *,
                 // since constraint args like `f` in `Applicative f` may be `* -> *`.
@@ -2203,10 +2179,8 @@ mod tests_chirho {
                 .map(|diagnostic_chirho| diagnostic_chirho.to_string())
                 .collect::<Vec<_>>()
         );
-        let expected_rep_functor_kind_chirho = KindChirho::arrow_chirho(
-            KindChirho::StarChirho,
-            KindChirho::StarChirho,
-        );
+        let expected_rep_functor_kind_chirho =
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho);
         assert_eq!(
             result_chirho.env_chirho.lookup_chirho("GK1Chirho"),
             Some(&expected_rep_functor_kind_chirho)

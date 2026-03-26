@@ -44,13 +44,9 @@ fn try_parse_chirho(path_chirho: &Path) -> Result<(), String> {
 
     // Use compile_source (no sibling scan) to avoid O(n²) file reads
     // that cause 12GB+ memory usage across 938 files.
-    haskelujah_driver::compile_source_chirho(
-        &source_chirho,
-        &mut sm_chirho,
-        &file_name_chirho,
-    )
-    .map(|_| ())
-    .map_err(|e_chirho| format!("{}", e_chirho))
+    haskelujah_driver::compile_source_chirho(&source_chirho, &mut sm_chirho, &file_name_chirho)
+        .map(|_| ())
+        .map_err(|e_chirho| format!("{}", e_chirho))
 }
 
 /// Discover all .hs files under a directory, recursively.

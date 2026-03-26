@@ -66,7 +66,8 @@ pub fn list_tools_chirho() -> Vec<McpToolChirho> {
     vec![
         McpToolChirho {
             name_chirho: "typecheck".to_string(),
-            description_chirho: "Type-check a Haskell source file and return diagnostics".to_string(),
+            description_chirho: "Type-check a Haskell source file and return diagnostics"
+                .to_string(),
             input_schema_chirho: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -129,7 +130,8 @@ pub fn handle_request_chirho(request_chirho: &McpRequestChirho) -> McpResponseCh
             Ok(serde_json::json!({ "tools": tools_chirho }))
         }
         "tools/call" => {
-            let tool_name_chirho = request_chirho.params_chirho
+            let tool_name_chirho = request_chirho
+                .params_chirho
                 .get("name")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
@@ -175,12 +177,11 @@ fn handle_typecheck_chirho(
             message_chirho: "missing file_path argument".to_string(),
         })?;
 
-    let source_chirho = std::fs::read_to_string(file_path_chirho).map_err(|e_chirho| {
-        McpErrorChirho {
+    let source_chirho =
+        std::fs::read_to_string(file_path_chirho).map_err(|e_chirho| McpErrorChirho {
             code_chirho: -32602,
             message_chirho: format!("cannot read {}: {}", file_path_chirho, e_chirho),
-        }
-    })?;
+        })?;
 
     let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
     match haskelujah_driver_chirho::compile_source_chirho(

@@ -101,10 +101,7 @@ impl EditorChirho {
             .map(|l_chirho| l_chirho.text_chirho.as_str())
             .collect::<Vec<_>>()
             .join("\n");
-        let file_name_chirho = self
-            .file_path_chirho
-            .as_deref()
-            .unwrap_or("Buffer.hs");
+        let file_name_chirho = self.file_path_chirho.as_deref().unwrap_or("Buffer.hs");
         let mut sm_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
         match haskelujah_driver_chirho::compile_source_chirho(
             &source_chirho,
@@ -124,8 +121,7 @@ impl EditorChirho {
                     .first()
                     .map(|d_chirho| d_chirho.message_chirho.as_str())
                     .unwrap_or("unknown error");
-                self.status_msg_chirho =
-                    format!("{} error(s): {}", count_chirho, first_chirho);
+                self.status_msg_chirho = format!("{} error(s): {}", count_chirho, first_chirho);
             }
         }
     }
@@ -144,10 +140,7 @@ impl EditorChirho {
         self.status_msg_chirho = "Go to line:".to_string();
     }
 
-    pub fn handle_prompt_key_chirho(
-        &mut self,
-        key_chirho: event::KeyEvent,
-    ) -> io::Result<bool> {
+    pub fn handle_prompt_key_chirho(&mut self, key_chirho: event::KeyEvent) -> io::Result<bool> {
         let Some(prompt_mode_chirho) = self.prompt_mode_chirho.as_mut() else {
             return Ok(false);
         };
@@ -317,19 +310,29 @@ pub fn run_editor_chirho(file_path_chirho: Option<&str>) -> io::Result<()> {
                 continue;
             }
             match key_chirho.code {
-                event::KeyCode::Char('q') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                event::KeyCode::Char('q')
+                    if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) =>
+                {
                     editor_chirho.running_chirho = false;
                 }
-                event::KeyCode::Char('s') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                event::KeyCode::Char('s')
+                    if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) =>
+                {
                     editor_chirho.save_file_chirho()?;
                 }
-                event::KeyCode::Char('e') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                event::KeyCode::Char('e')
+                    if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) =>
+                {
                     editor_chirho.start_eval_prompt_chirho();
                 }
-                event::KeyCode::Char('g') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                event::KeyCode::Char('g')
+                    if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) =>
+                {
                     editor_chirho.start_goto_line_prompt_chirho();
                 }
-                event::KeyCode::Char('t') if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                event::KeyCode::Char('t')
+                    if key_chirho.modifiers.contains(event::KeyModifiers::CONTROL) =>
+                {
                     editor_chirho.typecheck_chirho();
                 }
                 event::KeyCode::Char(c_chirho) => editor_chirho.insert_char_chirho(c_chirho),
@@ -342,7 +345,10 @@ pub fn run_editor_chirho(file_path_chirho: Option<&str>) -> io::Result<()> {
                 }
                 event::KeyCode::Right => {
                     if editor_chirho.cursor_row_chirho < editor_chirho.lines_chirho.len() {
-                        let len_chirho = editor_chirho.lines_chirho[editor_chirho.cursor_row_chirho].text_chirho.len();
+                        let len_chirho = editor_chirho.lines_chirho
+                            [editor_chirho.cursor_row_chirho]
+                            .text_chirho
+                            .len();
                         if editor_chirho.cursor_col_chirho < len_chirho {
                             editor_chirho.cursor_col_chirho += 1;
                         }
@@ -378,7 +384,11 @@ fn draw_screen_chirho(
     let gutter_width_chirho = line_number_gutter_width_chirho(editor_chirho.lines_chirho.len());
     let text_cols_chirho = cols_chirho.saturating_sub(gutter_width_chirho);
 
-    queue!(stdout_chirho, cursor::MoveTo(0, 0), terminal::Clear(terminal::ClearType::All))?;
+    queue!(
+        stdout_chirho,
+        cursor::MoveTo(0, 0),
+        terminal::Clear(terminal::ClearType::All)
+    )?;
 
     // Draw lines
     let visible_rows_chirho = rows_chirho.saturating_sub(2);
@@ -386,8 +396,11 @@ fn draw_screen_chirho(
         let line_idx_chirho = editor_chirho.scroll_offset_chirho + i_chirho;
         queue!(stdout_chirho, cursor::MoveTo(0, i_chirho as u16))?;
         if line_idx_chirho < editor_chirho.lines_chirho.len() {
-            let line_number_chirho =
-                format!("{:>width$} ", line_idx_chirho + 1, width = gutter_width_chirho - 1);
+            let line_number_chirho = format!(
+                "{:>width$} ",
+                line_idx_chirho + 1,
+                width = gutter_width_chirho - 1
+            );
             queue!(
                 stdout_chirho,
                 style::SetForegroundColor(Color::DarkGrey),
@@ -410,11 +423,12 @@ fn draw_screen_chirho(
     // Status bar
     let status_chirho = format!(
         " {} {} L{}/{}",
-        editor_chirho
-            .file_path_chirho
-            .as_deref()
-            .unwrap_or("[new]"),
-        if editor_chirho.modified_chirho { "[+]" } else { "" },
+        editor_chirho.file_path_chirho.as_deref().unwrap_or("[new]"),
+        if editor_chirho.modified_chirho {
+            "[+]"
+        } else {
+            ""
+        },
         editor_chirho.cursor_row_chirho + 1,
         editor_chirho.lines_chirho.len(),
     );
@@ -538,7 +552,9 @@ fn eval_haskell_expression_chirho(expression_chirho: &str) -> Result<String, Str
             "editor-eval-chirho.hs",
             Some("mainChirho"),
         ) {
-            Ok((_value_chirho, machine_chirho)) => Ok(machine_chirho.io_output_chirho.trim().to_string()),
+            Ok((_value_chirho, machine_chirho)) => {
+                Ok(machine_chirho.io_output_chirho.trim().to_string())
+            }
             Err(error_chirho) => Err(error_chirho),
         },
         Err(diagnostics_chirho) => Err(haskelujah_driver_chirho::render_diagnostics_chirho(
@@ -556,10 +572,7 @@ fn highlight_segments_chirho(text_chirho: &str) -> Vec<(String, Color)> {
 
     while idx_chirho < chars_chirho.len() {
         if chars_chirho[idx_chirho] == '-' && chars_chirho.get(idx_chirho + 1) == Some(&'-') {
-            segments_chirho.push((
-                chars_chirho[idx_chirho..].iter().collect(),
-                Color::DarkGrey,
-            ));
+            segments_chirho.push((chars_chirho[idx_chirho..].iter().collect(), Color::DarkGrey));
             break;
         }
 
@@ -586,7 +599,9 @@ fn highlight_segments_chirho(text_chirho: &str) -> Vec<(String, Color)> {
             while idx_chirho < chars_chirho.len() {
                 let current_chirho = chars_chirho[idx_chirho];
                 idx_chirho += 1;
-                if current_chirho == '"' && chars_chirho.get(idx_chirho.wrapping_sub(2)) != Some(&'\\') {
+                if current_chirho == '"'
+                    && chars_chirho.get(idx_chirho.wrapping_sub(2)) != Some(&'\\')
+                {
                     break;
                 }
             }
@@ -665,8 +680,7 @@ mod tests_chirho {
 
     #[test]
     fn highlight_keywords_types_comments_and_strings_chirho() {
-        let segments_chirho =
-            highlight_segments_chirho("module Demo where -- comment \"ignored\"");
+        let segments_chirho = highlight_segments_chirho("module Demo where -- comment \"ignored\"");
         assert!(segments_chirho.iter().any(|(text_chirho, color_chirho)| {
             text_chirho == "module"
                 && *color_chirho
@@ -730,7 +744,10 @@ mod tests_chirho {
         {
             input_chirho.push_str("12");
         }
-        assert_eq!(prompt_or_status_line_chirho(&editor_chirho, 80), "Go to line> 12");
+        assert_eq!(
+            prompt_or_status_line_chirho(&editor_chirho, 80),
+            "Go to line> 12"
+        );
     }
 
     #[test]

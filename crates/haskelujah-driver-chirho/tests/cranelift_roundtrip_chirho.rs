@@ -95,18 +95,20 @@ fn cranelift_round_trip_stdout_chirho(src_chirho: &str) -> String {
         .arg("-L")
         .arg(&rts_lib_dir_chirho)
         .arg("-lhaskelujah_rts");
-    let link_status_chirho = link_cmd_chirho
-        .status()
-        .expect("linker should run");
+    let link_status_chirho = link_cmd_chirho.status().expect("linker should run");
     assert!(
         link_status_chirho.success(),
         "linker failed with exit code {:?}",
         link_status_chirho.code()
     );
 
-    let output_chirho = apply_mem_limit_chirho(Command::new(&exe_path_chirho).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()))
-        .output()
-        .expect("compiled executable should run");
+    let output_chirho = apply_mem_limit_chirho(
+        Command::new(&exe_path_chirho)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped()),
+    )
+    .output()
+    .expect("compiled executable should run");
     assert!(
         output_chirho.status.success(),
         "compiled executable failed with exit code {:?}",
@@ -145,9 +147,7 @@ fn cranelift_round_trip_stdout_with_input_chirho(src_chirho: &str, stdin_chirho:
         .arg("-L")
         .arg(&rts_lib_dir_chirho)
         .arg("-lhaskelujah_rts");
-    let link_status_chirho = link_cmd2_chirho
-        .status()
-        .expect("linker should run");
+    let link_status_chirho = link_cmd2_chirho.status().expect("linker should run");
     assert!(
         link_status_chirho.success(),
         "linker failed with exit code {:?}",

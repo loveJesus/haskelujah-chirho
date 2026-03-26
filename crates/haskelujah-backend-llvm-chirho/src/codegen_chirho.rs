@@ -3363,9 +3363,8 @@ impl LlvmCodegenChirho {
                 .unwrap();
                 buf_tmp_chirho
             }
-            ShowBuiltinKindChirho::ListChirho(element_kind_chirho) => {
-                self.emit_show_list_value_ptr_chirho(&arg_value_chirho, element_kind_chirho.as_ref())
-            }
+            ShowBuiltinKindChirho::ListChirho(element_kind_chirho) => self
+                .emit_show_list_value_ptr_chirho(&arg_value_chirho, element_kind_chirho.as_ref()),
         }
     }
 

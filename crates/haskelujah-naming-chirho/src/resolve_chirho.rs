@@ -326,9 +326,7 @@ pub fn compute_imported_names_chirho(
                 let hidden_chirho: Vec<String> = spec_chirho
                     .items_chirho
                     .iter()
-                    .flat_map(|item_chirho| {
-                        import_item_names_chirho(item_chirho, exports_chirho)
-                    })
+                    .flat_map(|item_chirho| import_item_names_chirho(item_chirho, exports_chirho))
                     .collect();
                 all_names_chirho
                     .into_iter()
@@ -339,9 +337,7 @@ pub fn compute_imported_names_chirho(
                 let wanted_chirho: Vec<String> = spec_chirho
                     .items_chirho
                     .iter()
-                    .flat_map(|item_chirho| {
-                        import_item_names_chirho(item_chirho, exports_chirho)
-                    })
+                    .flat_map(|item_chirho| import_item_names_chirho(item_chirho, exports_chirho))
                     .collect();
                 all_names_chirho
                     .into_iter()
@@ -435,8 +431,7 @@ fn import_item_names_chirho(
                     member_names_chirho,
                 ) => {
                     for mn_chirho in member_names_chirho {
-                        names_chirho
-                            .push(canonical_value_name_chirho(mn_chirho.text_chirho()));
+                        names_chirho.push(canonical_value_name_chirho(mn_chirho.text_chirho()));
                     }
                 }
                 haskelujah_ast_chirho::module_chirho::ExportMembersChirho::NoneChirho => {}
@@ -586,11 +581,7 @@ fn bind_name_chirho(
         NamespaceChirho::ValueChirho => canonical_value_name_chirho(name_chirho.text_chirho()),
         NamespaceChirho::TypeChirho => name_chirho.text_chirho().to_string(),
     };
-    env_chirho.bind_chirho(
-        text_chirho,
-        namespace_chirho,
-        name_chirho.span_chirho(),
-    );
+    env_chirho.bind_chirho(text_chirho, namespace_chirho, name_chirho.span_chirho());
 }
 
 // ---------------------------------------------------------------------------
@@ -1182,8 +1173,10 @@ mod tests_chirho {
                     haskelujah_ast_chirho::module_chirho::ExportMembersChirho::AllChirho,
             }],
         };
-        let imported_names_chirho =
-            compute_imported_names_chirho(&control_monad_iface_chirho.exports_chirho, &Some(spec_chirho.clone()));
+        let imported_names_chirho = compute_imported_names_chirho(
+            &control_monad_iface_chirho.exports_chirho,
+            &Some(spec_chirho.clone()),
+        );
         let imported_value_names_chirho: Vec<String> = imported_names_chirho
             .iter()
             .filter(|(_, namespace_chirho, _)| *namespace_chirho == NamespaceChirho::ValueChirho)

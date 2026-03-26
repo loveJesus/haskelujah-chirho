@@ -24,9 +24,8 @@ fn ast_constraint_to_th_chirho(constraint_chirho: &ConstraintChirho) -> ThTypeCh
             args_chirho,
             ..
         } => {
-            let mut result_chirho = ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
-                class_chirho.text_chirho(),
-            ));
+            let mut result_chirho =
+                ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(class_chirho.text_chirho()));
             for arg_chirho in args_chirho {
                 result_chirho = ThTypeChirho::AppTChirho(
                     Box::new(result_chirho),
@@ -41,10 +40,7 @@ fn ast_constraint_to_th_chirho(constraint_chirho: &ConstraintChirho) -> ThTypeCh
             body_chirho,
             ..
         } => ThTypeChirho::ForallTChirho(
-            vars_chirho
-                .iter()
-                .map(ast_tyvar_to_th_chirho)
-                .collect(),
+            vars_chirho.iter().map(ast_tyvar_to_th_chirho).collect(),
             context_chirho
                 .iter()
                 .map(ast_constraint_to_th_chirho)

@@ -311,9 +311,7 @@ impl DepGraphChirho {
                 if importer_scc_idx_chirho == imported_scc_idx_chirho {
                     continue;
                 }
-                if scc_rev_edges_chirho[imported_scc_idx_chirho]
-                    .insert(importer_scc_idx_chirho)
-                {
+                if scc_rev_edges_chirho[imported_scc_idx_chirho].insert(importer_scc_idx_chirho) {
                     scc_dep_counts_chirho[importer_scc_idx_chirho] += 1;
                 }
             }
@@ -538,7 +536,10 @@ mod tests_chirho {
         graph_chirho.add_dep_chirho("B", "A");
 
         let sccs_chirho = graph_chirho.topo_sort_sccs_chirho();
-        assert_eq!(sccs_chirho, vec![vec!["A".to_string()], vec!["B".to_string()]]);
+        assert_eq!(
+            sccs_chirho,
+            vec![vec!["A".to_string()], vec!["B".to_string()]]
+        );
     }
 
     #[test]

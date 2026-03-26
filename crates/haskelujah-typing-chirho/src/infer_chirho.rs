@@ -21,7 +21,7 @@ use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredC
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
-use crate::unify_chirho::{unify_chirho, UnifyErrorChirho};
+use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
 
 /// Error code range for type inference diagnostics.
 const TYPE_MISMATCH_CODE_CHIRHO: u16 = 200;
@@ -1474,7 +1474,11 @@ impl InferCtxChirho {
                 method_subst_chirho.insert_chirho(*method_var_chirho, self.fresh_var_chirho());
             }
         }
-        method_subst_chirho.apply_ty_chirho(&method_scheme_chirho.ty_chirho)
+        let specialized_expected_ty_chirho =
+            method_subst_chirho.apply_ty_chirho(&method_scheme_chirho.ty_chirho);
+        self.reduce_type_families_in_ty_chirho(
+            &self.expand_type_synonyms_chirho(&specialized_expected_ty_chirho),
+        )
     }
 
     fn check_instance_methods_against_class_chirho(&mut self, module_chirho: &ModuleChirho) {
@@ -1530,14 +1534,14 @@ impl InferCtxChirho {
                 let mut instance_scoped_tyvars_chirho = scoped_tyvars_snapshot_chirho.clone();
                 instance_scoped_tyvars_chirho.extend(instance_var_map_chirho.clone());
                 self.scoped_tyvars_chirho = instance_scoped_tyvars_chirho;
-                let raw_expected_ty_chirho = self.instantiate_instance_method_expected_ty_chirho(
-                    &class_decl_chirho,
-                    method_scheme_chirho,
-                    &instance_head_tys_chirho,
-                );
-                let expected_ty_chirho = self.reduce_type_families_in_ty_chirho(
-                    &self.expand_type_synonyms_chirho(&raw_expected_ty_chirho),
-                );
+                let specialized_expected_ty_chirho = self
+                    .instantiate_instance_method_expected_ty_chirho(
+                        &class_decl_chirho,
+                        method_scheme_chirho,
+                        &instance_head_tys_chirho,
+                    );
+                let expected_ty_chirho =
+                    self.reduce_type_families_in_ty_chirho(&specialized_expected_ty_chirho);
                 let (method_subst_chirho, inferred_ty_chirho) = self
                     .infer_matches_against_expected_chirho(
                         matches_chirho,
@@ -14196,10 +14200,12 @@ mod tests_chirho {
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
         assert!(matches!(final_ty_chirho, TyChirho::VarChirho(_)));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 2);
-        assert!(ctx_chirho
-            .deferred_preds_chirho
-            .iter()
-            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
+        assert!(
+            ctx_chirho
+                .deferred_preds_chirho
+                .iter()
+                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
+        );
     }
 
     #[test]
@@ -14446,10 +14452,12 @@ mod tests_chirho {
                 if matches!(elem_chirho.as_ref(), TyChirho::VarChirho(_))
         ));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 3);
-        assert!(ctx_chirho
-            .deferred_preds_chirho
-            .iter()
-            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
+        assert!(
+            ctx_chirho
+                .deferred_preds_chirho
+                .iter()
+                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -15077,9 +15085,11 @@ mod tests_chirho {
             "Class with superclass should not error: {:?}",
             result_chirho.diagnostics_chirho
         );
-        assert!(result_chirho
-            .class_env_chirho
-            .has_class_chirho("MyOrdChirho"));
+        assert!(
+            result_chirho
+                .class_env_chirho
+                .has_class_chirho("MyOrdChirho")
+        );
         let supers_chirho = result_chirho
             .class_env_chirho
             .superclasses_chirho("MyOrdChirho");
@@ -17102,20 +17112,18 @@ mod tests_chirho {
             .methods_chirho
             .get("tabulate")
             .expect("method scheme should register");
-        let raw_expected_ty_chirho = ctx_chirho.instantiate_instance_method_expected_ty_chirho(
-            &class_decl_chirho,
-            method_scheme_chirho,
-            &[TyChirho::AppChirho(
-                Box::new(TyChirho::AppChirho(
-                    Box::new(TyChirho::ConChirho("Product".to_string())),
-                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
-                )),
-                Box::new(TyChirho::ConChirho("U1".to_string())),
-            )],
-        );
-        let normalized_expected_ty_chirho = ctx_chirho.reduce_type_families_in_ty_chirho(
-            &ctx_chirho.expand_type_synonyms_chirho(&raw_expected_ty_chirho),
-        );
+        let normalized_expected_ty_chirho = ctx_chirho
+            .instantiate_instance_method_expected_ty_chirho(
+                &class_decl_chirho,
+                method_scheme_chirho,
+                &[TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Product".to_string())),
+                        Box::new(TyChirho::ConChirho("Proxy".to_string())),
+                    )),
+                    Box::new(TyChirho::ConChirho("U1".to_string())),
+                )],
+            );
 
         match normalized_expected_ty_chirho {
             TyChirho::FunChirho(arg_chirho, result_chirho, _) => {
@@ -17135,6 +17143,108 @@ mod tests_chirho {
             }
             other_chirho => panic!("expected function type, got {:?}", other_chirho),
         }
+    }
+
+    #[test]
+    fn infer_proxy_index_instance_method_reduces_rep_to_unit_chirho() {
+        use haskelujah_ast_chirho::decl_chirho::{AssocTfInstanceChirho, ClassMethodChirho};
+        use haskelujah_ast_chirho::expr_chirho::LocalBindChirho;
+
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("RepresentableProxyMethod"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![
+                DeclChirho::ClassDeclChirho {
+                    context_chirho: vec![],
+                    name_chirho: dummy_name_chirho("Representable"),
+                    type_vars_chirho: vec![dummy_name_chirho("f").into()],
+                    methods_chirho: vec![ClassMethodChirho {
+                        name_chirho: dummy_name_chirho("index"),
+                        ty_chirho: TypeChirho::FunChirho {
+                            arg_chirho: Box::new(TypeChirho::AppChirho {
+                                fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            mult_chirho: None,
+                            result_chirho: Box::new(TypeChirho::FunChirho {
+                                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("a"))),
+                                mult_chirho: None,
+                                result_chirho: Box::new(TypeChirho::AppChirho {
+                                    fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
+                                        "Rep",
+                                    ))),
+                                    arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "f",
+                                    ))),
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                        default_chirho: None,
+                        default_sig_chirho: None,
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    associated_tfs_chirho: vec![
+                        haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                            name_chirho: dummy_name_chirho("Rep"),
+                            type_vars_chirho: vec![dummy_name_chirho("f")],
+                            default_rhs_chirho: None,
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                    ],
+                    fundeps_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::InstanceDeclChirho {
+                    context_chirho: vec![],
+                    class_chirho: dummy_name_chirho("Representable"),
+                    types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
+                    methods_chirho: vec![LocalBindChirho::FunBindChirho {
+                        name_chirho: dummy_name_chirho("index"),
+                        matches_chirho: vec![MatchArmChirho {
+                            pats_chirho: vec![
+                                PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO),
+                                PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO),
+                            ],
+                            rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::TupleChirho {
+                                elements_chirho: vec![],
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            where_binds_chirho: vec![],
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+                        family_name_chirho: dummy_name_chirho("Rep"),
+                        lhs_types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
+                        rhs_chirho: TypeChirho::TupleChirho {
+                            elements_chirho: vec![],
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "Proxy index instance should typecheck once Rep Proxy reduces to (): {:?}",
+            result_chirho.diagnostics_chirho
+        );
     }
 
     #[test]

@@ -504,15 +504,13 @@ impl<'src> ParserChirho<'src> {
                         nested_paren_depth_chirho += 1;
                     }
                     Some(RawTokenKindChirho::RightParenChirho) => {
-                        nested_paren_depth_chirho =
-                            nested_paren_depth_chirho.saturating_sub(1);
+                        nested_paren_depth_chirho = nested_paren_depth_chirho.saturating_sub(1);
                     }
                     Some(RawTokenKindChirho::LeftBracketChirho) => {
                         nested_bracket_depth_chirho += 1;
                     }
                     Some(RawTokenKindChirho::RightBracketChirho) => {
-                        nested_bracket_depth_chirho =
-                            nested_bracket_depth_chirho.saturating_sub(1);
+                        nested_bracket_depth_chirho = nested_bracket_depth_chirho.saturating_sub(1);
                     }
                     _ => {}
                 }
@@ -793,7 +791,8 @@ impl<'src> ParserChirho<'src> {
                 self.eat_trivia_chirho();
             }
 
-            if self.pos_chirho != before_left_chirho && self.at_chirho(RawTokenKindChirho::ConSymChirho)
+            if self.pos_chirho != before_left_chirho
+                && self.at_chirho(RawTokenKindChirho::ConSymChirho)
             {
                 self.bump_chirho(); // constructor operator
                 self.eat_trivia_chirho();
@@ -915,19 +914,20 @@ impl<'src> ParserChirho<'src> {
                     break;
                 }
 
-                let should_end_field_chirho = match self.current_chirho().map(|t_chirho| t_chirho.kind_chirho) {
-                    Some(RawTokenKindChirho::CommaChirho) => {
-                        paren_depth_chirho == 0
-                            && bracket_depth_chirho == 0
-                            && brace_depth_chirho == 0
-                    }
-                    Some(RawTokenKindChirho::RightBraceChirho) => {
-                        paren_depth_chirho == 0
-                            && bracket_depth_chirho == 0
-                            && brace_depth_chirho == 0
-                    }
-                    _ => false,
-                };
+                let should_end_field_chirho =
+                    match self.current_chirho().map(|t_chirho| t_chirho.kind_chirho) {
+                        Some(RawTokenKindChirho::CommaChirho) => {
+                            paren_depth_chirho == 0
+                                && bracket_depth_chirho == 0
+                                && brace_depth_chirho == 0
+                        }
+                        Some(RawTokenKindChirho::RightBraceChirho) => {
+                            paren_depth_chirho == 0
+                                && bracket_depth_chirho == 0
+                                && brace_depth_chirho == 0
+                        }
+                        _ => false,
+                    };
                 if should_end_field_chirho {
                     break;
                 }
@@ -1754,7 +1754,8 @@ impl<'src> ParserChirho<'src> {
             return false;
         }
         if starts_with_name_head_chirho
-            && self.tokens_chirho[lookahead_idx_chirho].kind_chirho == RawTokenKindChirho::VarSymChirho
+            && self.tokens_chirho[lookahead_idx_chirho].kind_chirho
+                == RawTokenKindChirho::VarSymChirho
         {
             let op_text_chirho = self.token_text_chirho(&self.tokens_chirho[lookahead_idx_chirho]);
             if op_text_chirho == "!" || op_text_chirho == "-" {
@@ -1766,8 +1767,7 @@ impl<'src> ParserChirho<'src> {
         }
         matches!(
             self.tokens_chirho[lookahead_idx_chirho].kind_chirho,
-            RawTokenKindChirho::BacktickChirho
-                | RawTokenKindChirho::VarSymChirho
+            RawTokenKindChirho::BacktickChirho | RawTokenKindChirho::VarSymChirho
         )
     }
 
@@ -1809,7 +1809,8 @@ impl<'src> ParserChirho<'src> {
                 Some(idx_chirho)
             }
             RawTokenKindChirho::VarSymChirho => {
-                let token_text_chirho = self.token_text_chirho(&self.tokens_chirho[start_idx_chirho]);
+                let token_text_chirho =
+                    self.token_text_chirho(&self.tokens_chirho[start_idx_chirho]);
                 if token_text_chirho == "-" || token_text_chirho == "!" {
                     let idx_chirho = self.skip_trivia_idx_chirho(start_idx_chirho + 1);
                     self.peek_after_apat_chirho(idx_chirho)
@@ -1889,7 +1890,9 @@ impl<'src> ParserChirho<'src> {
 
     fn skip_trivia_idx_chirho(&self, mut idx_chirho: usize) -> usize {
         while idx_chirho < self.tokens_chirho.len()
-            && self.tokens_chirho[idx_chirho].kind_chirho.is_trivia_chirho()
+            && self.tokens_chirho[idx_chirho]
+                .kind_chirho
+                .is_trivia_chirho()
         {
             idx_chirho += 1;
         }
@@ -2002,10 +2005,12 @@ impl<'src> ParserChirho<'src> {
                 RawTokenKindChirho::RightBracketChirho => {
                     bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
                 }
-                RawTokenKindChirho::LeftBraceChirho | RawTokenKindChirho::VirtualLeftBraceChirho => {
+                RawTokenKindChirho::LeftBraceChirho
+                | RawTokenKindChirho::VirtualLeftBraceChirho => {
                     brace_depth_chirho += 1;
                 }
-                RawTokenKindChirho::RightBraceChirho | RawTokenKindChirho::VirtualRightBraceChirho => {
+                RawTokenKindChirho::RightBraceChirho
+                | RawTokenKindChirho::VirtualRightBraceChirho => {
                     brace_depth_chirho = brace_depth_chirho.saturating_sub(1);
                 }
                 RawTokenKindChirho::PipeChirho if brace_depth_chirho == 0 => {
@@ -3050,10 +3055,12 @@ impl<'src> ParserChirho<'src> {
                 RawTokenKindChirho::RightBracketChirho => {
                     bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
                 }
-                RawTokenKindChirho::LeftBraceChirho | RawTokenKindChirho::VirtualLeftBraceChirho => {
+                RawTokenKindChirho::LeftBraceChirho
+                | RawTokenKindChirho::VirtualLeftBraceChirho => {
                     brace_depth_chirho += 1;
                 }
-                RawTokenKindChirho::RightBraceChirho | RawTokenKindChirho::VirtualRightBraceChirho => {
+                RawTokenKindChirho::RightBraceChirho
+                | RawTokenKindChirho::VirtualRightBraceChirho => {
                     brace_depth_chirho = brace_depth_chirho.saturating_sub(1);
                 }
                 RawTokenKindChirho::PipeChirho if brace_depth_chirho == 0 => {
@@ -3189,7 +3196,8 @@ impl<'src> ParserChirho<'src> {
                 RawTokenKindChirho::RightBracketChirho => {
                     bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
                 }
-                RawTokenKindChirho::LeftBraceChirho | RawTokenKindChirho::VirtualLeftBraceChirho => {
+                RawTokenKindChirho::LeftBraceChirho
+                | RawTokenKindChirho::VirtualLeftBraceChirho => {
                     brace_depth_chirho += 1;
                 }
                 RawTokenKindChirho::RightBraceChirho
@@ -3459,7 +3467,8 @@ impl<'src> ParserChirho<'src> {
         let is_op_chirho = matches!(
             self.current_kind_chirho(),
             Some(RawTokenKindChirho::VarSymChirho) | Some(RawTokenKindChirho::ConSymChirho)
-        ) || self.current_kind_chirho() == Some(RawTokenKindChirho::QualifiedIdChirho)
+        ) || self.current_kind_chirho()
+            == Some(RawTokenKindChirho::QualifiedIdChirho)
             && qualified_name_is_operator_chirho(self.current_text_chirho());
         let is_minus_chirho = is_op_chirho && self.current_text_chirho() == "-";
         let is_backticked_left_section_chirho = self.is_backticked_left_section_start_chirho();
@@ -3491,7 +3500,8 @@ impl<'src> ParserChirho<'src> {
             let is_right_op_chirho = matches!(
                 self.current_kind_chirho(),
                 Some(RawTokenKindChirho::VarSymChirho) | Some(RawTokenKindChirho::ConSymChirho)
-            ) || self.current_kind_chirho() == Some(RawTokenKindChirho::QualifiedIdChirho)
+            ) || self.current_kind_chirho()
+                == Some(RawTokenKindChirho::QualifiedIdChirho)
                 && qualified_name_is_operator_chirho(self.current_text_chirho());
             let is_backticked_right_section_chirho = self.is_backticked_right_section_chirho();
             if is_right_op_chirho || is_backticked_right_section_chirho {
@@ -4074,8 +4084,8 @@ impl<'src> ParserChirho<'src> {
         self.bump_chirho(); // (
         self.eat_trivia_chirho();
 
-        let is_unboxed_tuple_pat_chirho = self.at_chirho(RawTokenKindChirho::VarSymChirho)
-            && self.current_text_chirho() == "#";
+        let is_unboxed_tuple_pat_chirho =
+            self.at_chirho(RawTokenKindChirho::VarSymChirho) && self.current_text_chirho() == "#";
         if is_unboxed_tuple_pat_chirho {
             self.bump_chirho(); // leading #
             self.eat_trivia_chirho();
@@ -4098,7 +4108,8 @@ impl<'src> ParserChirho<'src> {
                 }
             }
 
-            if self.at_chirho(RawTokenKindChirho::VarSymChirho) && self.current_text_chirho() == "#" {
+            if self.at_chirho(RawTokenKindChirho::VarSymChirho) && self.current_text_chirho() == "#"
+            {
                 self.bump_chirho(); // trailing #
                 self.eat_trivia_chirho();
             }
@@ -4524,7 +4535,9 @@ impl<'src> ParserChirho<'src> {
 
     fn can_start_atype_idx_chirho(&self, idx_chirho: usize) -> bool {
         matches!(
-            self.tokens_chirho.get(idx_chirho).map(|token_chirho| token_chirho.kind_chirho),
+            self.tokens_chirho
+                .get(idx_chirho)
+                .map(|token_chirho| token_chirho.kind_chirho),
             Some(RawTokenKindChirho::VarIdChirho)
                 | Some(RawTokenKindChirho::ConIdChirho)
                 | Some(RawTokenKindChirho::QualifiedIdChirho)
@@ -4744,14 +4757,18 @@ impl<'src> ParserChirho<'src> {
         if self
             .tokens_chirho
             .get(start_pos_chirho)
-            .is_none_or(|token_chirho| token_chirho.kind_chirho != RawTokenKindChirho::BacktickChirho)
+            .is_none_or(|token_chirho| {
+                token_chirho.kind_chirho != RawTokenKindChirho::BacktickChirho
+            })
         {
             return None;
         }
 
         let mut look_chirho = start_pos_chirho + 1;
         while look_chirho < self.tokens_chirho.len()
-            && self.tokens_chirho[look_chirho].kind_chirho.is_trivia_chirho()
+            && self.tokens_chirho[look_chirho]
+                .kind_chirho
+                .is_trivia_chirho()
         {
             look_chirho += 1;
         }
@@ -4770,7 +4787,9 @@ impl<'src> ParserChirho<'src> {
 
         look_chirho += 1;
         while look_chirho < self.tokens_chirho.len()
-            && self.tokens_chirho[look_chirho].kind_chirho.is_trivia_chirho()
+            && self.tokens_chirho[look_chirho]
+                .kind_chirho
+                .is_trivia_chirho()
         {
             look_chirho += 1;
         }
@@ -4789,7 +4808,9 @@ impl<'src> ParserChirho<'src> {
             .is_some_and(|end_pos_chirho| {
                 let mut look_chirho = end_pos_chirho + 1;
                 while look_chirho < self.tokens_chirho.len()
-                    && self.tokens_chirho[look_chirho].kind_chirho.is_trivia_chirho()
+                    && self.tokens_chirho[look_chirho]
+                        .kind_chirho
+                        .is_trivia_chirho()
                 {
                     look_chirho += 1;
                 }
@@ -4804,7 +4825,9 @@ impl<'src> ParserChirho<'src> {
             .is_some_and(|end_pos_chirho| {
                 let mut look_chirho = end_pos_chirho + 1;
                 while look_chirho < self.tokens_chirho.len()
-                    && self.tokens_chirho[look_chirho].kind_chirho.is_trivia_chirho()
+                    && self.tokens_chirho[look_chirho]
+                        .kind_chirho
+                        .is_trivia_chirho()
                 {
                     look_chirho += 1;
                 }
