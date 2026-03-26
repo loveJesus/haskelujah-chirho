@@ -7564,7 +7564,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )
     };
 
-    // newTVar :: a -> IO (TVar a)
+    // newTVar :: a -> STM (TVar a)
     {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3290));
         env_chirho.bind_chirho(
@@ -7574,7 +7574,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     a_chirho.clone(),
-                    TyChirho::io_chirho(mk_tvar_ty_chirho(a_chirho)),
+                    mk_stm_ty_chirho(mk_tvar_ty_chirho(a_chirho)),
                 ),
             },
         );

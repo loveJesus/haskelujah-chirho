@@ -78,17 +78,8 @@ fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'s
         "Functor" => Some(&["fmap", "<$"]),
         "Applicative" => Some(&["pure", "<*>", "*>", "<*"]),
         "Foldable" => Some(&[
-            "foldr",
-            "foldl",
-            "foldMap",
-            "length",
-            "null",
-            "elem",
-            "sum",
-            "product",
-            "maximum",
-            "minimum",
-            "toList",
+            "foldr", "foldl", "foldMap", "length", "null", "elem", "sum", "product", "maximum",
+            "minimum", "toList",
         ]),
         "Traversable" => Some(&["traverse", "sequenceA", "mapM", "sequence"]),
         "Monoid" => Some(&["mempty", "mappend", "mconcat"]),
@@ -154,7 +145,11 @@ fn merge_imported_exports_chirho(
         Some(spec_chirho) if spec_chirho.hiding_chirho => {
             merge_imported_exports_chirho(result_chirho, iface_exports_chirho, &None);
             for item_chirho in &spec_chirho.items_chirho {
-                remove_import_item_from_exports_chirho(result_chirho, iface_exports_chirho, item_chirho);
+                remove_import_item_from_exports_chirho(
+                    result_chirho,
+                    iface_exports_chirho,
+                    item_chirho,
+                );
             }
         }
         Some(spec_chirho) => {
@@ -197,7 +192,9 @@ fn merge_import_item_into_exports_chirho(
                     ExportMembersChirho::SomeChirho(names_chirho) => {
                         let selected_names_chirho: Vec<String> = names_chirho
                             .iter()
-                            .map(|name_chirho| canonical_value_name_chirho(name_chirho.text_chirho()))
+                            .map(|name_chirho| {
+                                canonical_value_name_chirho(name_chirho.text_chirho())
+                            })
                             .collect();
                         let constructors_chirho = ty_chirho
                             .constructors_chirho
@@ -225,7 +222,8 @@ fn merge_import_item_into_exports_chirho(
                     }
                 }
                 for method_chirho in &methods_chirho {
-                    if let Some(value_chirho) = iface_exports_chirho.values_chirho.get(method_chirho)
+                    if let Some(value_chirho) =
+                        iface_exports_chirho.values_chirho.get(method_chirho)
                     {
                         result_chirho
                             .values_chirho
@@ -316,11 +314,17 @@ fn imported_value_in_scope_chirho(
             &iface_chirho.exports_chirho,
             &import_chirho.spec_chirho,
         );
-        if imported_names_chirho.iter().any(|(name_chirho, namespace_chirho, _span_chirho)| {
-            name_chirho == value_name_chirho
-                && *namespace_chirho == crate::env_chirho::NamespaceChirho::ValueChirho
-        }) {
-            if let Some(value_chirho) = iface_chirho.exports_chirho.values_chirho.get(value_name_chirho)
+        if imported_names_chirho
+            .iter()
+            .any(|(name_chirho, namespace_chirho, _span_chirho)| {
+                name_chirho == value_name_chirho
+                    && *namespace_chirho == crate::env_chirho::NamespaceChirho::ValueChirho
+            })
+        {
+            if let Some(value_chirho) = iface_chirho
+                .exports_chirho
+                .values_chirho
+                .get(value_name_chirho)
             {
                 return Some(value_chirho.clone());
             }
@@ -348,16 +352,21 @@ fn imported_type_in_scope_chirho(
             &iface_chirho.exports_chirho,
             &import_chirho.spec_chirho,
         );
-        let imported_type_visible_chirho = imported_names_chirho.iter().any(
-            |(name_chirho, namespace_chirho, _span_chirho)| {
-                name_chirho == type_name_chirho
-                    && *namespace_chirho == crate::env_chirho::NamespaceChirho::TypeChirho
-            },
-        );
+        let imported_type_visible_chirho =
+            imported_names_chirho
+                .iter()
+                .any(|(name_chirho, namespace_chirho, _span_chirho)| {
+                    name_chirho == type_name_chirho
+                        && *namespace_chirho == crate::env_chirho::NamespaceChirho::TypeChirho
+                });
         if !imported_type_visible_chirho {
             continue;
         }
-        let Some(ty_chirho) = iface_chirho.exports_chirho.types_chirho.get(type_name_chirho) else {
+        let Some(ty_chirho) = iface_chirho
+            .exports_chirho
+            .types_chirho
+            .get(type_name_chirho)
+        else {
             continue;
         };
         let (constructors_chirho, methods_chirho) = match members_chirho {
@@ -397,7 +406,10 @@ fn imported_type_in_scope_chirho(
             }
         }
         for method_name_chirho in &methods_chirho {
-            if let Some(value_chirho) = iface_chirho.exports_chirho.values_chirho.get(method_name_chirho)
+            if let Some(value_chirho) = iface_chirho
+                .exports_chirho
+                .values_chirho
+                .get(method_name_chirho)
             {
                 accompanying_values_chirho.push(value_chirho.clone());
             }
@@ -782,7 +794,11 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             exports_chirho: exports_chirho.clone(),
         });
         // Also expose as GHC.Conc / Control.Concurrent.STM.TVar
-        for sub_mod_chirho in &["Control.Concurrent.STM.TVar", "Control.Concurrent.STM.TMVar", "GHC.Conc"] {
+        for sub_mod_chirho in &[
+            "Control.Concurrent.STM.TVar",
+            "Control.Concurrent.STM.TMVar",
+            "GHC.Conc",
+        ] {
             modules_chirho.push(ModuleIfaceChirho {
                 name_chirho: sub_mod_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
@@ -1250,12 +1266,25 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "void#",
             "coerce",
             // Bitwise/shift primops (also in GHC.Prim)
-            "and#", "or#", "xor#", "not#",
-            "uncheckedIShiftL#", "uncheckedIShiftRA#", "uncheckedIShiftRL#",
-            "uncheckedShiftL#", "uncheckedShiftRL#",
-            "popCnt#", "clz#", "ctz#", "byteSwap#",
-            "narrow8Int#", "narrow16Int#", "narrow32Int#",
-            "narrow8Word#", "narrow16Word#", "narrow32Word#",
+            "and#",
+            "or#",
+            "xor#",
+            "not#",
+            "uncheckedIShiftL#",
+            "uncheckedIShiftRA#",
+            "uncheckedIShiftRL#",
+            "uncheckedShiftL#",
+            "uncheckedShiftRL#",
+            "popCnt#",
+            "clz#",
+            "ctz#",
+            "byteSwap#",
+            "narrow8Int#",
+            "narrow16Int#",
+            "narrow32Int#",
+            "narrow8Word#",
+            "narrow16Word#",
+            "narrow32Word#",
             "I#",
             "W#",
             "D#",
@@ -1462,26 +1491,87 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "from", "to", "from1", "to1",
-            "datatypeName", "moduleName", "packageName",
-            "selName", "conName", "conFixity", "conIsRecord",
-            ":*:", ":+:", ":.:", "Comp1", "unComp1",
-            "U1", "K1", "M1", "unK1", "unM1", "Par1", "unPar1", "Rec1", "unRec1",
+            "from",
+            "to",
+            "from1",
+            "to1",
+            "datatypeName",
+            "moduleName",
+            "packageName",
+            "selName",
+            "conName",
+            "conFixity",
+            "conIsRecord",
+            ":*:",
+            ":+:",
+            ":.:",
+            "Comp1",
+            "unComp1",
+            "U1",
+            "K1",
+            "M1",
+            "unK1",
+            "unM1",
+            "Par1",
+            "unPar1",
+            "Rec1",
+            "unRec1",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         for name_chirho in &[
-            "Generic", "Generic1", "Rep", "Rep1", "V1", "U1", "K1", "M1", "Rec0", "Par1", "Rec1",
-            "D1", "C1", "S1", "D", "C", "S", "R",
-            ":*:", ":+:", ":.:", "Selector", "Constructor", "Datatype",
-            "selName", "conName", "conFixity", "conIsRecord",
-            "Fixity", "Prefix", "Infix", "Associativity", "LeftAssociative", "RightAssociative", "NotAssociative",
-            "Meta", "MetaData", "MetaCons", "MetaSel",
-            "SourceUnpackedness", "SourceStrictness", "DecidedStrictness",
-            "NoSourceUnpackedness", "SourceNoUnpack", "SourceUnpack",
-            "NoSourceStrictness", "SourceLazy", "SourceStrict",
-            "DecidedLazy", "DecidedStrict", "DecidedUnpack",
+            "Generic",
+            "Generic1",
+            "Rep",
+            "Rep1",
+            "V1",
+            "U1",
+            "K1",
+            "M1",
+            "Rec0",
+            "Par1",
+            "Rec1",
+            "D1",
+            "C1",
+            "S1",
+            "D",
+            "C",
+            "S",
+            "R",
+            ":*:",
+            ":+:",
+            ":.:",
+            "Selector",
+            "Constructor",
+            "Datatype",
+            "selName",
+            "conName",
+            "conFixity",
+            "conIsRecord",
+            "Fixity",
+            "Prefix",
+            "Infix",
+            "Associativity",
+            "LeftAssociative",
+            "RightAssociative",
+            "NotAssociative",
+            "Meta",
+            "MetaData",
+            "MetaCons",
+            "MetaSel",
+            "SourceUnpackedness",
+            "SourceStrictness",
+            "DecidedStrictness",
+            "NoSourceUnpackedness",
+            "SourceNoUnpack",
+            "SourceUnpack",
+            "NoSourceStrictness",
+            "SourceLazy",
+            "SourceStrict",
+            "DecidedLazy",
+            "DecidedStrict",
+            "DecidedUnpack",
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -1504,10 +1594,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                         .into_iter()
                         .map(str::to_string)
                         .collect(),
-                    methods_chirho: methods_chirho
-                        .into_iter()
-                        .map(str::to_string)
-                        .collect(),
+                    methods_chirho: methods_chirho.into_iter().map(str::to_string).collect(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             );
@@ -1818,7 +1905,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["IO", "Handle", "IOMode", "BufferMode", "SeekMode", "NewlineMode", "Newline", "TextEncoding"] {
+        for name_chirho in &[
+            "IO",
+            "Handle",
+            "IOMode",
+            "BufferMode",
+            "SeekMode",
+            "NewlineMode",
+            "Newline",
+            "TextEncoding",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -2016,18 +2112,24 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "(<>)", "sconcat", "stimes",
-            "getMin", "getMax", "getFirst", "getLast",
-            "getWrappedMonoid", "unwrapMonoid",
-            "getOption", "option",
-            "diff", "cycle1",
+            "(<>)",
+            "sconcat",
+            "stimes",
+            "getMin",
+            "getMax",
+            "getFirst",
+            "getLast",
+            "getWrappedMonoid",
+            "unwrapMonoid",
+            "getOption",
+            "option",
+            "diff",
+            "cycle1",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &[
-            "Semigroup",
-        ] {
+        for name_chirho in &["Semigroup"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["(<>)", "sconcat", "stimes"]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -2036,7 +2138,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             ("Max", &["Max", "getMax"][..]),
             ("First", &["First", "getFirst"][..]),
             ("Last", &["Last", "getLast"][..]),
-            ("WrappedMonoid", &["WrapMonoid", "unwrapMonoid", "getWrappedMonoid"][..]),
+            (
+                "WrappedMonoid",
+                &["WrapMonoid", "unwrapMonoid", "getWrappedMonoid"][..],
+            ),
             ("Option", &["Option", "getOption"][..]),
             ("Arg", &["Arg"][..]),
         ] {
@@ -2530,6 +2635,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "seq",
             "maxInt",
             "minInt",
+            "mkWeak#",
+            "deRefWeak#",
+            "finalizeWeak#",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -3277,7 +3385,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Applicative (base)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["pure", "<*>", "*>", "<*", "<**>", "liftA", "liftA2", "liftA3", "empty", "<|>", "some", "many", "optional", "asum", "guard", "when", "unless"] {
+        for name_chirho in &[
+            "pure", "<*>", "*>", "<*", "<**>", "liftA", "liftA2", "liftA3", "empty", "<|>", "some",
+            "many", "optional", "asum", "guard", "when", "unless",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3296,7 +3407,37 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Monad (base)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["return", ">>=", ">>", "=<<", "join", "void", "when", "unless", "guard", "forever", "mapM", "mapM_", "forM", "forM_", "sequence", "sequence_", "foldM", "foldM_", "filterM", "replicateM", "replicateM_", "liftM", "liftM2", "liftM3", "ap", "MonadPlus", "mzero", "mplus", "msum"] {
+        for name_chirho in &[
+            "return",
+            ">>=",
+            ">>",
+            "=<<",
+            "join",
+            "void",
+            "when",
+            "unless",
+            "guard",
+            "forever",
+            "mapM",
+            "mapM_",
+            "forM",
+            "forM_",
+            "sequence",
+            "sequence_",
+            "foldM",
+            "foldM_",
+            "filterM",
+            "replicateM",
+            "replicateM_",
+            "liftM",
+            "liftM2",
+            "liftM3",
+            "ap",
+            "MonadPlus",
+            "mzero",
+            "mplus",
+            "msum",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3336,7 +3477,24 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Typeable
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["typeOf", "typeRep", "cast", "eqT", "gcast", "gcast1", "gcast2", "mkTyCon", "mkTyConApp", "typeRepTyCon", "typeRepArgs", "splitTyConApp", "funResultTy", "showsTypeRep", "rnfTyCon", "rnfTypeRep"] {
+        for name_chirho in &[
+            "typeOf",
+            "typeRep",
+            "cast",
+            "eqT",
+            "gcast",
+            "gcast1",
+            "gcast2",
+            "mkTyCon",
+            "mkTyConApp",
+            "typeRepTyCon",
+            "typeRepArgs",
+            "splitTyConApp",
+            "funResultTy",
+            "showsTypeRep",
+            "rnfTyCon",
+            "rnfTypeRep",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3356,23 +3514,167 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         // Common transformer types and operations
         let trans_modules_chirho = [
-            ("Control.Monad.Trans.Class", vec!["lift"], vec![("MonadTrans", &[][..])]),
-            ("Control.Monad.Trans.Identity", vec!["runIdentityT"], vec![("IdentityT", &["IdentityT"][..])]),
-            ("Control.Monad.Trans.Reader", vec!["runReaderT", "ask", "local", "asks", "reader", "withReaderT", "mapReaderT"], vec![("ReaderT", &["ReaderT"][..])]),
-            ("Control.Monad.Trans.State", vec!["runStateT", "evalStateT", "execStateT", "get", "put", "modify", "gets", "state"], vec![("StateT", &["StateT"][..])]),
-            ("Control.Monad.Trans.State.Strict", vec!["runStateT", "evalStateT", "execStateT", "get", "put", "modify", "gets", "state"], vec![("StateT", &["StateT"][..])]),
-            ("Control.Monad.Trans.State.Lazy", vec!["runStateT", "evalStateT", "execStateT", "get", "put", "modify", "gets", "state"], vec![("StateT", &["StateT"][..])]),
-            ("Control.Monad.Trans.Writer", vec!["runWriterT", "execWriterT", "tell", "listen", "pass", "writer"], vec![("WriterT", &["WriterT"][..])]),
-            ("Control.Monad.Trans.Writer.Strict", vec!["runWriterT", "execWriterT", "tell", "listen", "pass", "writer"], vec![("WriterT", &["WriterT"][..])]),
-            ("Control.Monad.Trans.Writer.Lazy", vec!["runWriterT", "execWriterT", "tell", "listen", "pass", "writer"], vec![("WriterT", &["WriterT"][..])]),
-            ("Control.Monad.Trans.Writer.CPS", vec!["runWriterT", "execWriterT", "tell", "listen", "pass", "writer"], vec![("WriterT", &["WriterT"][..])]),
-            ("Control.Monad.Trans.Except", vec!["runExceptT", "throwE", "catchE", "mapExceptT", "withExceptT"], vec![("ExceptT", &["ExceptT"][..])]),
-            ("Control.Monad.Trans.Maybe", vec!["runMaybeT", "mapMaybeT"], vec![("MaybeT", &["MaybeT"][..])]),
-            ("Control.Monad.Trans.Cont", vec!["runContT", "evalContT", "cont", "callCC", "resetT", "shiftT"], vec![("ContT", &["ContT"][..])]),
-            ("Control.Monad.Trans.RWS", vec!["runRWST", "evalRWST", "execRWST"], vec![("RWST", &["RWST"][..])]),
-            ("Control.Monad.Trans.RWS.Strict", vec!["runRWST", "evalRWST", "execRWST"], vec![("RWST", &["RWST"][..])]),
-            ("Control.Monad.Trans.RWS.Lazy", vec!["runRWST", "evalRWST", "execRWST"], vec![("RWST", &["RWST"][..])]),
-            ("Control.Monad.Trans.RWS.CPS", vec!["runRWST", "evalRWST", "execRWST"], vec![("RWST", &["RWST"][..])]),
+            (
+                "Control.Monad.Trans.Class",
+                vec!["lift"],
+                vec![("MonadTrans", &[][..])],
+            ),
+            (
+                "Control.Monad.Trans.Identity",
+                vec!["runIdentityT"],
+                vec![("IdentityT", &["IdentityT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.Reader",
+                vec![
+                    "runReaderT",
+                    "ask",
+                    "local",
+                    "asks",
+                    "reader",
+                    "withReaderT",
+                    "mapReaderT",
+                ],
+                vec![("ReaderT", &["ReaderT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.State",
+                vec![
+                    "runStateT",
+                    "evalStateT",
+                    "execStateT",
+                    "get",
+                    "put",
+                    "modify",
+                    "gets",
+                    "state",
+                ],
+                vec![("StateT", &["StateT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.State.Strict",
+                vec![
+                    "runStateT",
+                    "evalStateT",
+                    "execStateT",
+                    "get",
+                    "put",
+                    "modify",
+                    "gets",
+                    "state",
+                ],
+                vec![("StateT", &["StateT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.State.Lazy",
+                vec![
+                    "runStateT",
+                    "evalStateT",
+                    "execStateT",
+                    "get",
+                    "put",
+                    "modify",
+                    "gets",
+                    "state",
+                ],
+                vec![("StateT", &["StateT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.Writer",
+                vec![
+                    "runWriterT",
+                    "execWriterT",
+                    "tell",
+                    "listen",
+                    "pass",
+                    "writer",
+                ],
+                vec![("WriterT", &["WriterT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.Writer.Strict",
+                vec![
+                    "runWriterT",
+                    "execWriterT",
+                    "tell",
+                    "listen",
+                    "pass",
+                    "writer",
+                ],
+                vec![("WriterT", &["WriterT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.Writer.Lazy",
+                vec![
+                    "runWriterT",
+                    "execWriterT",
+                    "tell",
+                    "listen",
+                    "pass",
+                    "writer",
+                ],
+                vec![("WriterT", &["WriterT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.Writer.CPS",
+                vec![
+                    "runWriterT",
+                    "execWriterT",
+                    "tell",
+                    "listen",
+                    "pass",
+                    "writer",
+                ],
+                vec![("WriterT", &["WriterT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.Except",
+                vec![
+                    "runExceptT",
+                    "throwE",
+                    "catchE",
+                    "mapExceptT",
+                    "withExceptT",
+                ],
+                vec![("ExceptT", &["ExceptT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.Maybe",
+                vec!["runMaybeT", "mapMaybeT"],
+                vec![("MaybeT", &["MaybeT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.Cont",
+                vec![
+                    "runContT",
+                    "evalContT",
+                    "cont",
+                    "callCC",
+                    "resetT",
+                    "shiftT",
+                ],
+                vec![("ContT", &["ContT"][..])],
+            ),
+            (
+                "Control.Monad.Trans.RWS",
+                vec!["runRWST", "evalRWST", "execRWST"],
+                vec![("RWST", &["RWST"][..])],
+            ),
+            (
+                "Control.Monad.Trans.RWS.Strict",
+                vec!["runRWST", "evalRWST", "execRWST"],
+                vec![("RWST", &["RWST"][..])],
+            ),
+            (
+                "Control.Monad.Trans.RWS.Lazy",
+                vec!["runRWST", "evalRWST", "execRWST"],
+                vec![("RWST", &["RWST"][..])],
+            ),
+            (
+                "Control.Monad.Trans.RWS.CPS",
+                vec!["runRWST", "evalRWST", "execRWST"],
+                vec![("RWST", &["RWST"][..])],
+            ),
         ];
         for (mod_name_chirho, vals_chirho, types_chirho) in &trans_modules_chirho {
             let mut exports_chirho = IfaceExportsChirho::default();
@@ -3394,7 +3696,22 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Array / Data.Array.Unboxed
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["array", "listArray", "accumArray", "ixmap", "elems", "assocs", "indices", "bounds", "!", "//", "range", "index", "inRange", "rangeSize"] {
+        for name_chirho in &[
+            "array",
+            "listArray",
+            "accumArray",
+            "ixmap",
+            "elems",
+            "assocs",
+            "indices",
+            "bounds",
+            "!",
+            "//",
+            "range",
+            "index",
+            "inRange",
+            "rangeSize",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3440,7 +3757,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.CallStack (call-stack package, used by HUnit)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["callStack", "HasCallStack", "withFrozenCallStack", "prettyCallStack", "getCallStack", "SrcLoc"] {
+        for name_chirho in &[
+            "callStack",
+            "HasCallStack",
+            "withFrozenCallStack",
+            "prettyCallStack",
+            "getCallStack",
+            "SrcLoc",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3455,30 +3779,97 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Network.HTTP.Types (http-types package — needed by servant, warp, etc.)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["statusCode", "statusMessage", "status200", "status301", "status302", "status400", "status401", "status403", "status404", "status500", "ok200", "notFound404", "methodGet", "methodPost", "methodPut", "methodDelete", "methodPatch", "methodHead", "methodOptions", "hContentType", "hAccept", "hAuthorization", "hCacheControl", "hCookie", "hContentLength", "parseQuery", "renderQuery", "simpleQueryToQuery", "queryToQueryBS", "urlDecode", "urlEncode", "decodePath", "encodePath"] {
+        for name_chirho in &[
+            "statusCode",
+            "statusMessage",
+            "status200",
+            "status301",
+            "status302",
+            "status400",
+            "status401",
+            "status403",
+            "status404",
+            "status500",
+            "ok200",
+            "notFound404",
+            "methodGet",
+            "methodPost",
+            "methodPut",
+            "methodDelete",
+            "methodPatch",
+            "methodHead",
+            "methodOptions",
+            "hContentType",
+            "hAccept",
+            "hAuthorization",
+            "hCacheControl",
+            "hCookie",
+            "hContentLength",
+            "parseQuery",
+            "renderQuery",
+            "simpleQueryToQuery",
+            "queryToQueryBS",
+            "urlDecode",
+            "urlEncode",
+            "decodePath",
+            "encodePath",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for ty_chirho in &[("Status", &["Status"][..]), ("Method", &[]), ("Header", &[]), ("HeaderName", &[]), ("Query", &[]), ("QueryItem", &[]), ("StdMethod", &["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])] {
+        for ty_chirho in &[
+            ("Status", &["Status"][..]),
+            ("Method", &[]),
+            ("Header", &[]),
+            ("HeaderName", &[]),
+            ("Query", &[]),
+            ("QueryItem", &[]),
+            (
+                "StdMethod",
+                &["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+            ),
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(ty_chirho.0, ty_chirho.1);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
-        for mod_name_chirho in &["Network.HTTP.Types", "Network.HTTP.Types.Status", "Network.HTTP.Types.Method", "Network.HTTP.Types.Header", "Network.HTTP.Types.URI", "Network.HTTP.Types.Version"] {
-            modules_chirho.push(ModuleIfaceChirho { name_chirho: mod_name_chirho.to_string(), exports_chirho: exports_chirho.clone() });
+        for mod_name_chirho in &[
+            "Network.HTTP.Types",
+            "Network.HTTP.Types.Status",
+            "Network.HTTP.Types.Method",
+            "Network.HTTP.Types.Header",
+            "Network.HTTP.Types.URI",
+            "Network.HTTP.Types.Version",
+        ] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
         }
     }
 
     // Gauge.Main / Criterion.Main (benchmarking)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["defaultMain", "bench", "bgroup", "nf", "whnf", "env", "nfIO", "whnfIO"] {
+        for name_chirho in &[
+            "defaultMain",
+            "bench",
+            "bgroup",
+            "nf",
+            "whnf",
+            "env",
+            "nfIO",
+            "whnfIO",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         let (k_chirho, v_chirho) = mk_type_chirho("Benchmark", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for mod_name_chirho in &["Gauge.Main", "Gauge", "Criterion.Main", "Criterion"] {
-            modules_chirho.push(ModuleIfaceChirho { name_chirho: mod_name_chirho.to_string(), exports_chirho: exports_chirho.clone() });
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
         }
     }
 
@@ -3486,39 +3877,105 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "view", "over", "set", "lens", "iso", "prism", "traverse",
-            "to", "from", "review", "preview", "folded", "filtered",
-            "mapped", "each", "both", "ix", "at", "contains",
-            "_1", "_2", "_3", "_4", "_5",
-            "_head", "_tail", "_init", "_last",
-            "_Left", "_Right", "_Just", "_Nothing",
-            "makeLenses", "makePrisms", "makeClassy", "makeFields",
-            "(&)", "(%~)", "(.~)", "(^.)", "(^?)", "(^..)",
-            "(+~)", "(-~)", "(*~)", "(//~)", "(&&~)", "(||~)",
-            "use", "uses", "assign", "modifying",
-            "zoom", "magnify",
+            "view",
+            "over",
+            "set",
+            "lens",
+            "iso",
+            "prism",
+            "traverse",
+            "to",
+            "from",
+            "review",
+            "preview",
+            "folded",
+            "filtered",
+            "mapped",
+            "each",
+            "both",
+            "ix",
+            "at",
+            "contains",
+            "_1",
+            "_2",
+            "_3",
+            "_4",
+            "_5",
+            "_head",
+            "_tail",
+            "_init",
+            "_last",
+            "_Left",
+            "_Right",
+            "_Just",
+            "_Nothing",
+            "makeLenses",
+            "makePrisms",
+            "makeClassy",
+            "makeFields",
+            "(&)",
+            "(%~)",
+            "(.~)",
+            "(^.)",
+            "(^?)",
+            "(^..)",
+            "(+~)",
+            "(-~)",
+            "(*~)",
+            "(//~)",
+            "(&&~)",
+            "(||~)",
+            "use",
+            "uses",
+            "assign",
+            "modifying",
+            "zoom",
+            "magnify",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         for ty_chirho in &[
-            ("Lens", &[][..]), ("Lens'", &[]), ("Traversal", &[]), ("Traversal'", &[]),
-            ("Prism", &[]), ("Prism'", &[]), ("Iso", &[]), ("Iso'", &[]),
-            ("Getter", &[]), ("Setter", &[]), ("Setter'", &[]),
-            ("Fold", &[]), ("Review", &[]),
-            ("Getting", &[]), ("ASetter", &[]), ("ASetter'", &[]),
-            ("ALens", &[]), ("ALens'", &[]),
+            ("Lens", &[][..]),
+            ("Lens'", &[]),
+            ("Traversal", &[]),
+            ("Traversal'", &[]),
+            ("Prism", &[]),
+            ("Prism'", &[]),
+            ("Iso", &[]),
+            ("Iso'", &[]),
+            ("Getter", &[]),
+            ("Setter", &[]),
+            ("Setter'", &[]),
+            ("Fold", &[]),
+            ("Review", &[]),
+            ("Getting", &[]),
+            ("ASetter", &[]),
+            ("ASetter'", &[]),
+            ("ALens", &[]),
+            ("ALens'", &[]),
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(ty_chirho.0, ty_chirho.1);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         let lens_modules_chirho = [
-            "Control.Lens", "Control.Lens.Type", "Control.Lens.Lens",
-            "Control.Lens.Getter", "Control.Lens.Setter", "Control.Lens.Fold",
-            "Control.Lens.Traversal", "Control.Lens.Prism", "Control.Lens.Iso",
-            "Control.Lens.Review", "Control.Lens.At", "Control.Lens.Each",
-            "Control.Lens.Indexed", "Control.Lens.TH", "Control.Lens.Combinators",
-            "Control.Lens.Operators", "Control.Lens.Tuple",
+            "Control.Lens",
+            "Control.Lens.Type",
+            "Control.Lens.Lens",
+            "Control.Lens.Getter",
+            "Control.Lens.Setter",
+            "Control.Lens.Fold",
+            "Control.Lens.Traversal",
+            "Control.Lens.Prism",
+            "Control.Lens.Iso",
+            "Control.Lens.Review",
+            "Control.Lens.At",
+            "Control.Lens.Each",
+            "Control.Lens.Indexed",
+            "Control.Lens.TH",
+            "Control.Lens.Combinators",
+            "Control.Lens.Operators",
+            "Control.Lens.Tuple",
         ];
         for mod_name_chirho in &lens_modules_chirho {
             modules_chirho.push(ModuleIfaceChirho {
@@ -3531,7 +3988,19 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Parallel.Strategies
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["rpar", "rseq", "rdeepseq", "parMap", "parList", "parListChunk", "dot", "using", "withStrategy", "evalList", "evalTraversable"] {
+        for name_chirho in &[
+            "rpar",
+            "rseq",
+            "rdeepseq",
+            "parMap",
+            "parList",
+            "parListChunk",
+            "dot",
+            "using",
+            "withStrategy",
+            "evalList",
+            "evalTraversable",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3549,21 +4018,47 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "encode", "decode", "decode'", "eitherDecode", "eitherDecode'",
-            "toJSON", "fromJSON", "toEncoding", "parseJSON",
-            "encodingToLazyByteString", "pairs", "pair",
-            "object", "withObject", "withArray", "withText", "withScientific", "withBool",
-            "parseField", "parseFieldMaybe", "parseFieldMaybe'",
-            "genericToJSON", "genericToEncoding", "genericParseJSON",
-            "defaultOptions", "fieldLabelModifier", "constructorTagModifier",
-            "allNullaryToStringTag", "omitNothingFields", "sumEncoding",
-            "unwrapUnaryRecords", "tagSingleConstructors",
+            "encode",
+            "decode",
+            "decode'",
+            "eitherDecode",
+            "eitherDecode'",
+            "toJSON",
+            "fromJSON",
+            "toEncoding",
+            "parseJSON",
+            "encodingToLazyByteString",
+            "pairs",
+            "pair",
+            "object",
+            "withObject",
+            "withArray",
+            "withText",
+            "withScientific",
+            "withBool",
+            "parseField",
+            "parseFieldMaybe",
+            "parseFieldMaybe'",
+            "genericToJSON",
+            "genericToEncoding",
+            "genericParseJSON",
+            "defaultOptions",
+            "fieldLabelModifier",
+            "constructorTagModifier",
+            "allNullaryToStringTag",
+            "omitNothingFields",
+            "sumEncoding",
+            "unwrapUnaryRecords",
+            "tagSingleConstructors",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         for ty_chirho in &[
-            ("Value", &["Object", "Array", "String", "Number", "Bool", "Null"][..]),
+            (
+                "Value",
+                &["Object", "Array", "String", "Number", "Bool", "Null"][..],
+            ),
             ("ToJSON", &[]),
             ("FromJSON", &[]),
             ("ToJSON1", &[]),
@@ -3571,7 +4066,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             ("Encoding", &[]),
             ("Series", &[]),
             ("Options", &["Options"]),
-            ("SumEncoding", &["TaggedObject", "UntaggedValue", "ObjectWithSingleField", "TwoElemArray"]),
+            (
+                "SumEncoding",
+                &[
+                    "TaggedObject",
+                    "UntaggedValue",
+                    "ObjectWithSingleField",
+                    "TwoElemArray",
+                ],
+            ),
             ("Result", &["Success", "Error"]),
             ("Parser", &[]),
         ] {
@@ -3603,7 +4106,24 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Monad.Catch (exceptions package)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["throwM", "catch", "catchAll", "try", "tryJust", "handle", "handleAll", "handleJust", "onException", "bracket", "bracket_", "finally", "mask", "uninterruptibleMask", "mask_", "catches"] {
+        for name_chirho in &[
+            "throwM",
+            "catch",
+            "catchAll",
+            "try",
+            "tryJust",
+            "handle",
+            "handleAll",
+            "handleJust",
+            "onException",
+            "bracket",
+            "bracket_",
+            "finally",
+            "mask",
+            "uninterruptibleMask",
+            "mask_",
+            "catches",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3624,7 +4144,36 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Exception (base)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["throw", "throwIO", "catch", "try", "evaluate", "bracket", "bracket_", "finally", "onException", "handle", "handleJust", "tryJust", "catches", "mask", "mask_", "uninterruptibleMask", "assert", "throwTo", "ioError", "userError", "catchJust", "Handler", "mapException", "toException", "fromException", "displayException", "SomeException", "Exception"] {
+        for name_chirho in &[
+            "throw",
+            "throwIO",
+            "catch",
+            "try",
+            "evaluate",
+            "bracket",
+            "bracket_",
+            "finally",
+            "onException",
+            "handle",
+            "handleJust",
+            "tryJust",
+            "catches",
+            "mask",
+            "mask_",
+            "uninterruptibleMask",
+            "assert",
+            "throwTo",
+            "ioError",
+            "userError",
+            "catchJust",
+            "Handler",
+            "mapException",
+            "toException",
+            "fromException",
+            "displayException",
+            "SomeException",
+            "Exception",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3646,7 +4195,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("IOException", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("AsyncException", &["StackOverflow", "HeapOverflow", "ThreadKilled", "UserInterrupt"]);
+        let (k_chirho, v_chirho) = mk_type_chirho(
+            "AsyncException",
+            &[
+                "StackOverflow",
+                "HeapOverflow",
+                "ThreadKilled",
+                "UserInterrupt",
+            ],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Control.Exception".to_string(),
@@ -3686,10 +4243,24 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "toShort", "fromShort", "pack", "unpack", "empty",
-            "null", "length", "index", "head", "last",
-            "tail", "init", "cons", "snoc", "append",
-            "isPrefixOf", "isSuffixOf", "concat",
+            "toShort",
+            "fromShort",
+            "pack",
+            "unpack",
+            "empty",
+            "null",
+            "length",
+            "index",
+            "head",
+            "last",
+            "tail",
+            "init",
+            "cons",
+            "snoc",
+            "append",
+            "isPrefixOf",
+            "isSuffixOf",
+            "concat",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -3776,7 +4347,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.IORef
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["newIORef", "readIORef", "writeIORef", "modifyIORef", "modifyIORef'", "atomicModifyIORef", "atomicModifyIORef'", "atomicWriteIORef"] {
+        for name_chirho in &[
+            "newIORef",
+            "readIORef",
+            "writeIORef",
+            "modifyIORef",
+            "modifyIORef'",
+            "atomicModifyIORef",
+            "atomicModifyIORef'",
+            "atomicWriteIORef",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3791,15 +4371,47 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // System.IO
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["hFlush", "hPutStr", "hPutStrLn", "hGetLine", "hSetBuffering", "hGetBuffering", "hSetEncoding", "hClose", "openFile", "withFile", "stdin", "stdout", "stderr", "utf8", "hGetContents", "hPrint", "putStr", "putStrLn", "print", "getLine", "getContents", "readFile", "writeFile", "appendFile", "hIsTerminalDevice"] {
+        for name_chirho in &[
+            "hFlush",
+            "hPutStr",
+            "hPutStrLn",
+            "hGetLine",
+            "hSetBuffering",
+            "hGetBuffering",
+            "hSetEncoding",
+            "hClose",
+            "openFile",
+            "withFile",
+            "stdin",
+            "stdout",
+            "stderr",
+            "utf8",
+            "hGetContents",
+            "hPrint",
+            "putStr",
+            "putStrLn",
+            "print",
+            "getLine",
+            "getContents",
+            "readFile",
+            "writeFile",
+            "appendFile",
+            "hIsTerminalDevice",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         let (k_chirho, v_chirho) = mk_type_chirho("Handle", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("IOMode", &["ReadMode", "WriteMode", "AppendMode", "ReadWriteMode"]);
+        let (k_chirho, v_chirho) = mk_type_chirho(
+            "IOMode",
+            &["ReadMode", "WriteMode", "AppendMode", "ReadWriteMode"],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("BufferMode", &["NoBuffering", "LineBuffering", "BlockBuffering"]);
+        let (k_chirho, v_chirho) = mk_type_chirho(
+            "BufferMode",
+            &["NoBuffering", "LineBuffering", "BlockBuffering"],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "System.IO".to_string(),
@@ -3825,7 +4437,12 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Version
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["showVersion", "parseVersion", "makeVersion", "versionBranch"] {
+        for name_chirho in &[
+            "showVersion",
+            "parseVersion",
+            "makeVersion",
+            "versionBranch",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3840,7 +4457,18 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.Stack.Types
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["callStack", "pushCallStack", "freezeCallStack", "emptyCallStack", "fromCallSiteList", "getCallStack", "srcLocFile", "srcLocModule", "srcLocStartLine", "srcLocEndLine"] {
+        for name_chirho in &[
+            "callStack",
+            "pushCallStack",
+            "freezeCallStack",
+            "emptyCallStack",
+            "fromCallSiteList",
+            "getCallStack",
+            "srcLocFile",
+            "srcLocModule",
+            "srcLocStartLine",
+            "srcLocEndLine",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3901,11 +4529,18 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "contramap", "phantom", ">$<", ">$$<",
-            "Predicate", "getPredicate",
-            "Comparison", "getComparison",
-            "Equivalence", "getEquivalence",
-            "Op", "getOp",
+            "contramap",
+            "phantom",
+            ">$<",
+            ">$$<",
+            "Predicate",
+            "getPredicate",
+            "Comparison",
+            "getComparison",
+            "Equivalence",
+            "getEquivalence",
+            "Op",
+            "getOp",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -3996,10 +4631,22 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "atomically", "retry", "orElse", "throwSTM", "catchSTM",
-            "newTVar", "readTVar", "writeTVar", "modifyTVar",
-            "newTMVar", "readTMVar", "putTMVar", "takeTMVar",
-            "newTChan", "readTChan", "writeTChan",
+            "atomically",
+            "retry",
+            "orElse",
+            "throwSTM",
+            "catchSTM",
+            "newTVar",
+            "readTVar",
+            "writeTVar",
+            "modifyTVar",
+            "newTMVar",
+            "readTMVar",
+            "putTMVar",
+            "takeTMVar",
+            "newTChan",
+            "readTChan",
+            "writeTChan",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -4022,9 +4669,19 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "newArray", "readArray", "writeArray", "indexArray",
-            "sizeofArray", "copyArray", "cloneArray", "freezeArray",
-            "thawArray", "runArray", "createArray", "unsafeFreezeArray", "unsafeThawArray",
+            "newArray",
+            "readArray",
+            "writeArray",
+            "indexArray",
+            "sizeofArray",
+            "copyArray",
+            "cloneArray",
+            "freezeArray",
+            "thawArray",
+            "runArray",
+            "createArray",
+            "unsafeFreezeArray",
+            "unsafeThawArray",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -4047,15 +4704,56 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "pack", "unpack", "singleton", "empty", "cons", "snoc",
-            "append", "head", "tail", "last", "init", "null", "length",
-            "map", "intercalate", "intersperse", "transpose", "reverse",
-            "replace", "toLower", "toUpper", "toTitle", "strip",
-            "stripStart", "stripEnd", "isPrefixOf", "isSuffixOf",
-            "isInfixOf", "words", "unwords", "lines", "unlines",
-            "splitOn", "splitAt", "take", "drop", "takeWhile", "dropWhile",
-            "filter", "find", "partition", "index", "breakOn", "uncons",
-            "concatMap", "any", "all", "foldr", "foldl", "foldl'",
+            "pack",
+            "unpack",
+            "singleton",
+            "empty",
+            "cons",
+            "snoc",
+            "append",
+            "head",
+            "tail",
+            "last",
+            "init",
+            "null",
+            "length",
+            "map",
+            "intercalate",
+            "intersperse",
+            "transpose",
+            "reverse",
+            "replace",
+            "toLower",
+            "toUpper",
+            "toTitle",
+            "strip",
+            "stripStart",
+            "stripEnd",
+            "isPrefixOf",
+            "isSuffixOf",
+            "isInfixOf",
+            "words",
+            "unwords",
+            "lines",
+            "unlines",
+            "splitOn",
+            "splitAt",
+            "take",
+            "drop",
+            "takeWhile",
+            "dropWhile",
+            "filter",
+            "find",
+            "partition",
+            "index",
+            "breakOn",
+            "uncons",
+            "concatMap",
+            "any",
+            "all",
+            "foldr",
+            "foldl",
+            "foldl'",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -4081,21 +4779,75 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "pack", "unpack", "empty", "singleton", "cons", "snoc",
-            "append", "head", "tail", "last", "init", "null", "length",
-            "map", "reverse", "intercalate", "transpose", "foldl",
-            "foldl'", "foldr", "concat", "concatMap", "any", "all",
-            "take", "drop", "splitAt", "takeWhile", "dropWhile",
-            "break", "span", "filter", "find", "partition", "index",
-            "elem", "notElem", "isPrefixOf", "isSuffixOf",
-            "hGetSome", "hGetNonBlocking", "hGet", "hGetContents",
-            "hPut", "hPutNonBlocking", "hPutStr",
-            "readFile", "writeFile", "appendFile",
-            "getLine", "getContents", "putStr", "putStrLn",
-            "interact", "copy", "replicate", "unfoldr", "unfoldrN",
-            "sort", "group", "groupBy", "inits", "tails",
-            "stripPrefix", "stripSuffix", "isInfixOf",
-            "zip", "zipWith", "unzip",
+            "pack",
+            "unpack",
+            "empty",
+            "singleton",
+            "cons",
+            "snoc",
+            "append",
+            "head",
+            "tail",
+            "last",
+            "init",
+            "null",
+            "length",
+            "map",
+            "reverse",
+            "intercalate",
+            "transpose",
+            "foldl",
+            "foldl'",
+            "foldr",
+            "concat",
+            "concatMap",
+            "any",
+            "all",
+            "take",
+            "drop",
+            "splitAt",
+            "takeWhile",
+            "dropWhile",
+            "break",
+            "span",
+            "filter",
+            "find",
+            "partition",
+            "index",
+            "elem",
+            "notElem",
+            "isPrefixOf",
+            "isSuffixOf",
+            "hGetSome",
+            "hGetNonBlocking",
+            "hGet",
+            "hGetContents",
+            "hPut",
+            "hPutNonBlocking",
+            "hPutStr",
+            "readFile",
+            "writeFile",
+            "appendFile",
+            "getLine",
+            "getContents",
+            "putStr",
+            "putStrLn",
+            "interact",
+            "copy",
+            "replicate",
+            "unfoldr",
+            "unfoldrN",
+            "sort",
+            "group",
+            "groupBy",
+            "inits",
+            "tails",
+            "stripPrefix",
+            "stripSuffix",
+            "isInfixOf",
+            "zip",
+            "zipWith",
+            "unzip",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -4116,16 +4868,35 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "bifold", "bifoldMap", "bifoldr", "bifoldl", "bifoldl'",
-            "bifoldr'", "biList", "biany", "biall", "biconcat",
-            "biconcatMap", "bitraverse_", "bifor_", "bimapM_",
-            "bisequenceA_", "bisequence_", "binull", "bilength",
-            "bielem", "bimaximum", "biminimum", "bisum", "biproduct",
+            "bifold",
+            "bifoldMap",
+            "bifoldr",
+            "bifoldl",
+            "bifoldl'",
+            "bifoldr'",
+            "biList",
+            "biany",
+            "biall",
+            "biconcat",
+            "biconcatMap",
+            "bitraverse_",
+            "bifor_",
+            "bimapM_",
+            "bisequenceA_",
+            "bisequence_",
+            "binull",
+            "bilength",
+            "bielem",
+            "bimaximum",
+            "biminimum",
+            "bisum",
+            "biproduct",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Bifoldable", &[]); exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Bifoldable", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Bifoldable".to_string(),
             exports_chirho,
@@ -4136,13 +4907,18 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "bitraverse", "bisequenceA", "bimapM", "bifor",
-            "bimapDefault", "bifoldMapDefault",
+            "bitraverse",
+            "bisequenceA",
+            "bimapM",
+            "bifor",
+            "bimapDefault",
+            "bifoldMapDefault",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Bitraversable", &[]); exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Bitraversable", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Bitraversable".to_string(),
             exports_chirho,
@@ -4153,13 +4929,21 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "foldMap1", "fold1", "toNonEmpty", "maximum1", "minimum1",
-            "head1", "last1", "foldrMap1", "foldlMap1",
+            "foldMap1",
+            "fold1",
+            "toNonEmpty",
+            "maximum1",
+            "minimum1",
+            "head1",
+            "last1",
+            "foldrMap1",
+            "foldlMap1",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Foldable1", &[]); exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Foldable1", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Foldable1".to_string(),
             exports_chirho,
@@ -4280,10 +5064,19 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         {
-            let (k_chirho, v_chirho) = mk_type_chirho("SrcLoc", &[
-                "SrcLoc", "srcLocFile", "srcLocModule", "srcLocPackage",
-                "srcLocStartLine", "srcLocStartCol", "srcLocEndLine", "srcLocEndCol",
-            ]);
+            let (k_chirho, v_chirho) = mk_type_chirho(
+                "SrcLoc",
+                &[
+                    "SrcLoc",
+                    "srcLocFile",
+                    "srcLocModule",
+                    "srcLocPackage",
+                    "srcLocStartLine",
+                    "srcLocStartCol",
+                    "srcLocEndLine",
+                    "srcLocEndCol",
+                ],
+            );
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
@@ -4680,15 +5473,28 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                 name_chirho: "Bits".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec![
-                    ".&.".to_string(), ".|.".to_string(), "xor".to_string(),
-                    "complement".to_string(), "shift".to_string(),
-                    "shiftL".to_string(), "shiftR".to_string(),
-                    "rotate".to_string(), "rotateL".to_string(), "rotateR".to_string(),
-                    "bit".to_string(), "setBit".to_string(), "clearBit".to_string(),
-                    "complementBit".to_string(), "testBit".to_string(),
-                    "bitSizeMaybe".to_string(), "bitSize".to_string(),
-                    "isSigned".to_string(), "popCount".to_string(), "zeroBits".to_string(),
-                    "unsafeShiftL".to_string(), "unsafeShiftR".to_string(),
+                    ".&.".to_string(),
+                    ".|.".to_string(),
+                    "xor".to_string(),
+                    "complement".to_string(),
+                    "shift".to_string(),
+                    "shiftL".to_string(),
+                    "shiftR".to_string(),
+                    "rotate".to_string(),
+                    "rotateL".to_string(),
+                    "rotateR".to_string(),
+                    "bit".to_string(),
+                    "setBit".to_string(),
+                    "clearBit".to_string(),
+                    "complementBit".to_string(),
+                    "testBit".to_string(),
+                    "bitSizeMaybe".to_string(),
+                    "bitSize".to_string(),
+                    "isSigned".to_string(),
+                    "popCount".to_string(),
+                    "zeroBits".to_string(),
+                    "unsafeShiftL".to_string(),
+                    "unsafeShiftR".to_string(),
                 ],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
@@ -5338,12 +6144,18 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut lifted_exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &["liftHashWithSalt", "hashWithSalt1", "hashWithSalt2"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
-            lifted_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+            lifted_exports_chirho
+                .values_chirho
+                .insert(k_chirho, v_chirho);
         }
         let (k_chirho, v_chirho) = mk_type_chirho("Hashable1", &[]);
-        lifted_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        lifted_exports_chirho
+            .types_chirho
+            .insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("Hashable2", &[]);
-        lifted_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        lifted_exports_chirho
+            .types_chirho
+            .insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Hashable.Lifted".to_string(),
             exports_chirho: lifted_exports_chirho,
@@ -5371,26 +6183,51 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "reifyDatatype", "reifyConstructor", "reifyRecord",
-            "normalizeInfo", "normalizeDec", "normalizeCon",
-            "datatypeName", "datatypeVars", "datatypeCons",
-            "datatypeInstTypes", "datatypeVariant",
-            "constructorName", "constructorFields", "constructorStrictness",
-            "constructorVariant", "constructorVars",
-            "resolveTypeSynonyms", "quantifyType", "freeVariables",
-            "freshenFreeVariables", "unifyTypes",
-            "applySubstitution", "freeVariablesWellScoped",
-            "tvName", "tvKind", "datatypeReturnKind",
-            "starK", "isStarOrConstraint", "equalPred",
-            "classPred", "asEqualPred", "asClassPred",
+            "reifyDatatype",
+            "reifyConstructor",
+            "reifyRecord",
+            "normalizeInfo",
+            "normalizeDec",
+            "normalizeCon",
+            "datatypeName",
+            "datatypeVars",
+            "datatypeCons",
+            "datatypeInstTypes",
+            "datatypeVariant",
+            "constructorName",
+            "constructorFields",
+            "constructorStrictness",
+            "constructorVariant",
+            "constructorVars",
+            "resolveTypeSynonyms",
+            "quantifyType",
+            "freeVariables",
+            "freshenFreeVariables",
+            "unifyTypes",
+            "applySubstitution",
+            "freeVariablesWellScoped",
+            "tvName",
+            "tvKind",
+            "datatypeReturnKind",
+            "starK",
+            "isStarOrConstraint",
+            "equalPred",
+            "classPred",
+            "asEqualPred",
+            "asClassPred",
             "constructorType",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         for name_chirho in &[
-            "DatatypeInfo", "ConstructorInfo", "DatatypeVariant",
-            "ConstructorVariant", "FieldStrictness", "Unpackedness", "Strictness",
+            "DatatypeInfo",
+            "ConstructorInfo",
+            "DatatypeVariant",
+            "ConstructorVariant",
+            "FieldStrictness",
+            "Unpackedness",
+            "Strictness",
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -9406,7 +10243,32 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Foreign.C.Types
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["CInt", "CChar", "CShort", "CLong", "CLLong", "CUInt", "CUChar", "CUShort", "CULong", "CULLong", "CFloat", "CDouble", "CSize", "CSsize", "CPtrdiff", "CBool", "CWchar", "CSigAtomic", "CClock", "CTime", "CIntPtr", "CUIntPtr", "CIntMax", "CUIntMax"] {
+        for name_chirho in &[
+            "CInt",
+            "CChar",
+            "CShort",
+            "CLong",
+            "CLLong",
+            "CUInt",
+            "CUChar",
+            "CUShort",
+            "CULong",
+            "CULLong",
+            "CFloat",
+            "CDouble",
+            "CSize",
+            "CSsize",
+            "CPtrdiff",
+            "CBool",
+            "CWchar",
+            "CSigAtomic",
+            "CClock",
+            "CTime",
+            "CIntPtr",
+            "CUIntPtr",
+            "CIntMax",
+            "CUIntMax",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[name_chirho]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
@@ -9421,7 +10283,22 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Foreign.C.String
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["CString", "CStringLen", "peekCString", "peekCStringLen", "newCString", "newCStringLen", "withCString", "withCStringLen", "castCharToCChar", "castCCharToChar", "castCUCharToChar", "castCharToCUChar", "CWString", "CWStringLen"] {
+        for name_chirho in &[
+            "CString",
+            "CStringLen",
+            "peekCString",
+            "peekCStringLen",
+            "newCString",
+            "newCStringLen",
+            "withCString",
+            "withCStringLen",
+            "castCharToCChar",
+            "castCCharToChar",
+            "castCUCharToChar",
+            "castCharToCUChar",
+            "CWString",
+            "CWStringLen",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9434,7 +10311,58 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Foreign.C.Error
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Errno", "eOK", "e2BIG", "eACCES", "eAGAIN", "eBADF", "eBUSY", "eCHILD", "eDEADLK", "eEXIST", "eFAULT", "eFBIG", "eINTR", "eINVAL", "eIO", "eISDIR", "eMFILE", "eMLINK", "eNAMETOOLONG", "eNFILE", "eNODEV", "eNOENT", "eNOEXEC", "eNOLCK", "eNOMEM", "eNOSPC", "eNOSYS", "eNOTDIR", "eNOTEMPTY", "eNOTTY", "eNXIO", "ePERM", "ePIPE", "eRANGE", "eROFS", "eSPIPE", "eSRCH", "eXDEV", "isValidErrno", "getErrno", "resetErrno", "throwErrno", "throwErrnoIf", "throwErrnoIf_", "throwErrnoIfRetry", "throwErrnoIfMinus1", "throwErrnoIfNull", "throwErrnoPath", "throwErrnoPathIf", "throwErrnoPathIfNull"] {
+        for name_chirho in &[
+            "Errno",
+            "eOK",
+            "e2BIG",
+            "eACCES",
+            "eAGAIN",
+            "eBADF",
+            "eBUSY",
+            "eCHILD",
+            "eDEADLK",
+            "eEXIST",
+            "eFAULT",
+            "eFBIG",
+            "eINTR",
+            "eINVAL",
+            "eIO",
+            "eISDIR",
+            "eMFILE",
+            "eMLINK",
+            "eNAMETOOLONG",
+            "eNFILE",
+            "eNODEV",
+            "eNOENT",
+            "eNOEXEC",
+            "eNOLCK",
+            "eNOMEM",
+            "eNOSPC",
+            "eNOSYS",
+            "eNOTDIR",
+            "eNOTEMPTY",
+            "eNOTTY",
+            "eNXIO",
+            "ePERM",
+            "ePIPE",
+            "eRANGE",
+            "eROFS",
+            "eSPIPE",
+            "eSRCH",
+            "eXDEV",
+            "isValidErrno",
+            "getErrno",
+            "resetErrno",
+            "throwErrno",
+            "throwErrnoIf",
+            "throwErrnoIf_",
+            "throwErrnoIfRetry",
+            "throwErrnoIfMinus1",
+            "throwErrnoIfNull",
+            "throwErrnoPath",
+            "throwErrnoPathIf",
+            "throwErrnoPathIfNull",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9447,9 +10375,54 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // Foreign.Marshal.Alloc / Foreign.Marshal.Array / Foreign.Marshal.Utils
-    for mod_name_chirho in &["Foreign.Marshal.Alloc", "Foreign.Marshal.Array", "Foreign.Marshal.Utils", "Foreign.Marshal"] {
+    for mod_name_chirho in &[
+        "Foreign.Marshal.Alloc",
+        "Foreign.Marshal.Array",
+        "Foreign.Marshal.Utils",
+        "Foreign.Marshal",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["malloc", "mallocBytes", "alloca", "allocaBytes", "realloc", "reallocBytes", "free", "finalizerFree", "mallocArray", "mallocArray0", "allocaArray", "allocaArray0", "reallocArray", "reallocArray0", "peekArray", "peekArray0", "pokeArray", "pokeArray0", "newArray", "newArray0", "withArray", "withArray0", "withArrayLen", "withArrayLen0", "advancePtr", "copyArray", "moveArray", "lengthArray0", "new", "with", "fromBool", "toBool", "maybeNew", "maybeWith", "maybePeek", "withMany", "copyBytes", "moveBytes", "fillBytes"] {
+        for name_chirho in &[
+            "malloc",
+            "mallocBytes",
+            "alloca",
+            "allocaBytes",
+            "realloc",
+            "reallocBytes",
+            "free",
+            "finalizerFree",
+            "mallocArray",
+            "mallocArray0",
+            "allocaArray",
+            "allocaArray0",
+            "reallocArray",
+            "reallocArray0",
+            "peekArray",
+            "peekArray0",
+            "pokeArray",
+            "pokeArray0",
+            "newArray",
+            "newArray0",
+            "withArray",
+            "withArray0",
+            "withArrayLen",
+            "withArrayLen0",
+            "advancePtr",
+            "copyArray",
+            "moveArray",
+            "lengthArray0",
+            "new",
+            "with",
+            "fromBool",
+            "toBool",
+            "maybeNew",
+            "maybeWith",
+            "maybePeek",
+            "withMany",
+            "copyBytes",
+            "moveBytes",
+            "fillBytes",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9462,7 +10435,26 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Foreign.C (umbrella)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["CInt", "CChar", "CShort", "CLong", "CUInt", "CFloat", "CDouble", "CSize", "CString", "CStringLen", "CWString", "Errno", "castCharToCChar", "castCCharToChar", "peekCString", "newCString", "withCString", "ConstPtr"] {
+        for name_chirho in &[
+            "CInt",
+            "CChar",
+            "CShort",
+            "CLong",
+            "CUInt",
+            "CFloat",
+            "CDouble",
+            "CSize",
+            "CString",
+            "CStringLen",
+            "CWString",
+            "Errno",
+            "castCharToCChar",
+            "castCCharToChar",
+            "peekCString",
+            "newCString",
+            "withCString",
+            "ConstPtr",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9475,7 +10467,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Test.HUnit.Lang (for HUnit internals)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Assertion", "assertFailure", "assertEqual", "assertBool", "HUnitFailure", "FailureReason", "formatFailureReason"] {
+        for name_chirho in &[
+            "Assertion",
+            "assertFailure",
+            "assertEqual",
+            "assertBool",
+            "HUnitFailure",
+            "FailureReason",
+            "formatFailureReason",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9507,14 +10507,61 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Sequence / Data.Sequence.Internal (extend)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Seq", "empty", "singleton", "fromList", "toList", "length", "null", "index", "adjust", "update", "take", "drop", "splitAt", "viewl", "viewr", "ViewL", "ViewR", "EmptyL", "EmptyR", ":<", ":>", "|>", "<|", "><", "filter", "sort", "reverse", "zip", "zipWith", "unzip", "lookup", "insertAt", "deleteAt", "findIndexL", "findIndexR", "foldlWithIndex", "foldrWithIndex", "mapWithIndex", "traverseWithIndex", "replicate", "replicateA", "replicateM", "unfoldl", "unfoldr", "iterateN"] {
+        for name_chirho in &[
+            "Seq",
+            "empty",
+            "singleton",
+            "fromList",
+            "toList",
+            "length",
+            "null",
+            "index",
+            "adjust",
+            "update",
+            "take",
+            "drop",
+            "splitAt",
+            "viewl",
+            "viewr",
+            "ViewL",
+            "ViewR",
+            "EmptyL",
+            "EmptyR",
+            ":<",
+            ":>",
+            "|>",
+            "<|",
+            "><",
+            "filter",
+            "sort",
+            "reverse",
+            "zip",
+            "zipWith",
+            "unzip",
+            "lookup",
+            "insertAt",
+            "deleteAt",
+            "findIndexL",
+            "findIndexR",
+            "foldlWithIndex",
+            "foldrWithIndex",
+            "mapWithIndex",
+            "traverseWithIndex",
+            "replicate",
+            "replicateA",
+            "replicateM",
+            "unfoldl",
+            "unfoldr",
+            "iterateN",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         let (k_chirho, v_chirho) = mk_type_chirho("Seq", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &["ViewL", "ViewR"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["EmptyL", "EmptyR", ":<", ":>"]);
+            let (k_chirho, v_chirho) =
+                mk_type_chirho(name_chirho, &["EmptyL", "EmptyR", ":<", ":>"]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         for mod_name_chirho in &["Data.Sequence", "Data.Sequence.Internal"] {
@@ -9528,13 +10575,87 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.IntMap / Data.IntMap.Strict / Data.IntMap.Lazy / Data.IntMap.Internal
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["IntMap", "empty", "singleton", "fromList", "fromListWith", "fromAscList", "toList", "toAscList", "toDescList", "insert", "insertWith", "insertWithKey", "delete", "adjust", "adjustWithKey", "update", "updateWithKey", "alter", "lookup", "findWithDefault", "member", "notMember", "null", "size", "union", "unionWith", "unionWithKey", "unions", "unionsWith", "difference", "differenceWith", "intersection", "intersectionWith", "map", "mapWithKey", "mapAccum", "mapAccumWithKey", "mapKeys", "mapKeysWith", "fold", "foldWithKey", "foldr", "foldl", "foldr'", "foldl'", "foldrWithKey", "foldlWithKey", "foldrWithKey'", "foldlWithKey'", "elems", "keys", "assocs", "keysSet", "filter", "filterWithKey", "partition", "partitionWithKey", "mapMaybe", "mapMaybeWithKey", "mapEither", "mapEitherWithKey", "split", "splitLookup", "isSubmapOf", "isSubmapOfBy", "isProperSubmapOf", "isProperSubmapOfBy", "mergeWithKey"] {
+        for name_chirho in &[
+            "IntMap",
+            "empty",
+            "singleton",
+            "fromList",
+            "fromListWith",
+            "fromAscList",
+            "toList",
+            "toAscList",
+            "toDescList",
+            "insert",
+            "insertWith",
+            "insertWithKey",
+            "delete",
+            "adjust",
+            "adjustWithKey",
+            "update",
+            "updateWithKey",
+            "alter",
+            "lookup",
+            "findWithDefault",
+            "member",
+            "notMember",
+            "null",
+            "size",
+            "union",
+            "unionWith",
+            "unionWithKey",
+            "unions",
+            "unionsWith",
+            "difference",
+            "differenceWith",
+            "intersection",
+            "intersectionWith",
+            "map",
+            "mapWithKey",
+            "mapAccum",
+            "mapAccumWithKey",
+            "mapKeys",
+            "mapKeysWith",
+            "fold",
+            "foldWithKey",
+            "foldr",
+            "foldl",
+            "foldr'",
+            "foldl'",
+            "foldrWithKey",
+            "foldlWithKey",
+            "foldrWithKey'",
+            "foldlWithKey'",
+            "elems",
+            "keys",
+            "assocs",
+            "keysSet",
+            "filter",
+            "filterWithKey",
+            "partition",
+            "partitionWithKey",
+            "mapMaybe",
+            "mapMaybeWithKey",
+            "mapEither",
+            "mapEitherWithKey",
+            "split",
+            "splitLookup",
+            "isSubmapOf",
+            "isSubmapOfBy",
+            "isProperSubmapOf",
+            "isProperSubmapOfBy",
+            "mergeWithKey",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         let (k_chirho, v_chirho) = mk_type_chirho("IntMap", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        for mod_name_chirho in &["Data.IntMap", "Data.IntMap.Strict", "Data.IntMap.Lazy", "Data.IntMap.Internal"] {
+        for mod_name_chirho in &[
+            "Data.IntMap",
+            "Data.IntMap.Strict",
+            "Data.IntMap.Lazy",
+            "Data.IntMap.Internal",
+        ] {
             modules_chirho.push(ModuleIfaceChirho {
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
@@ -9545,7 +10666,44 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.IntSet / Data.IntSet.Internal
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["IntSet", "empty", "singleton", "fromList", "fromAscList", "toList", "toAscList", "toDescList", "insert", "delete", "member", "notMember", "null", "size", "union", "unions", "difference", "intersection", "isSubsetOf", "isProperSubsetOf", "filter", "partition", "split", "splitMember", "findMin", "findMax", "deleteMin", "deleteMax", "elems", "fold", "foldl", "foldr", "foldl'", "foldr'", "map", "disjoint"] {
+        for name_chirho in &[
+            "IntSet",
+            "empty",
+            "singleton",
+            "fromList",
+            "fromAscList",
+            "toList",
+            "toAscList",
+            "toDescList",
+            "insert",
+            "delete",
+            "member",
+            "notMember",
+            "null",
+            "size",
+            "union",
+            "unions",
+            "difference",
+            "intersection",
+            "isSubsetOf",
+            "isProperSubsetOf",
+            "filter",
+            "partition",
+            "split",
+            "splitMember",
+            "findMin",
+            "findMax",
+            "deleteMin",
+            "deleteMax",
+            "elems",
+            "fold",
+            "foldl",
+            "foldr",
+            "foldl'",
+            "foldr'",
+            "map",
+            "disjoint",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9562,7 +10720,31 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Graph
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Graph", "Table", "Bounds", "Edge", "Vertex", "Forest", "Tree", "graphFromEdges", "graphFromEdges'", "buildG", "transposeG", "vertices", "edges", "outdegree", "indegree", "dff", "dfs", "topSort", "components", "scc", "bcc", "reachable", "path"] {
+        for name_chirho in &[
+            "Graph",
+            "Table",
+            "Bounds",
+            "Edge",
+            "Vertex",
+            "Forest",
+            "Tree",
+            "graphFromEdges",
+            "graphFromEdges'",
+            "buildG",
+            "transposeG",
+            "vertices",
+            "edges",
+            "outdegree",
+            "indegree",
+            "dff",
+            "dfs",
+            "topSort",
+            "components",
+            "scc",
+            "bcc",
+            "reachable",
+            "path",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9575,7 +10757,24 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Tree
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Tree", "Node", "rootLabel", "subForest", "Forest", "drawTree", "drawForest", "flatten", "levels", "foldTree", "unfoldTree", "unfoldForest", "unfoldTreeM", "unfoldForestM", "unfoldTreeM_BF", "unfoldForestM_BF"] {
+        for name_chirho in &[
+            "Tree",
+            "Node",
+            "rootLabel",
+            "subForest",
+            "Forest",
+            "drawTree",
+            "drawForest",
+            "flatten",
+            "levels",
+            "foldTree",
+            "unfoldTree",
+            "unfoldForest",
+            "unfoldTreeM",
+            "unfoldForestM",
+            "unfoldTreeM_BF",
+            "unfoldForestM_BF",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9588,13 +10787,59 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // Data.Array / Data.Array.IArray / Data.Array.MArray / Data.Array.ST / Data.Array.IO / Data.Array.Unboxed
-    for mod_name_chirho in &["Data.Array", "Data.Array.IArray", "Data.Array.MArray", "Data.Array.ST", "Data.Array.IO", "Data.Array.Unboxed", "Data.Array.Base"] {
+    for mod_name_chirho in &[
+        "Data.Array",
+        "Data.Array.IArray",
+        "Data.Array.MArray",
+        "Data.Array.ST",
+        "Data.Array.IO",
+        "Data.Array.Unboxed",
+        "Data.Array.Base",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Array", "array", "listArray", "accumArray", "(!)", "bounds", "indices", "elems", "assocs", "ixmap", "accum", "amap", "//", "range", "index", "inRange", "rangeSize", "Ix", "MArray", "IOArray", "STArray", "IOUArray", "STUArray", "newArray", "newArray_", "newListArray", "readArray", "writeArray", "getElems", "getBounds", "freeze", "thaw", "IArray", "UArray"] {
+        for name_chirho in &[
+            "Array",
+            "array",
+            "listArray",
+            "accumArray",
+            "(!)",
+            "bounds",
+            "indices",
+            "elems",
+            "assocs",
+            "ixmap",
+            "accum",
+            "amap",
+            "//",
+            "range",
+            "index",
+            "inRange",
+            "rangeSize",
+            "Ix",
+            "MArray",
+            "IOArray",
+            "STArray",
+            "IOUArray",
+            "STUArray",
+            "newArray",
+            "newArray_",
+            "newListArray",
+            "readArray",
+            "writeArray",
+            "getElems",
+            "getBounds",
+            "freeze",
+            "thaw",
+            "IArray",
+            "UArray",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Array", "Ix", "IArray", "MArray", "IOArray", "STArray", "IOUArray", "STUArray", "UArray"] {
+        for name_chirho in &[
+            "Array", "Ix", "IArray", "MArray", "IOArray", "STArray", "IOUArray", "STUArray",
+            "UArray",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -9605,13 +10850,81 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // GHC.IO / GHC.IO.Handle / GHC.IO.Handle.Types
-    for mod_name_chirho in &["GHC.IO", "GHC.IO.Handle", "GHC.IO.Handle.Types", "GHC.IO.Handle.FD", "GHC.IO.Handle.Text"] {
+    for mod_name_chirho in &[
+        "GHC.IO",
+        "GHC.IO.Handle",
+        "GHC.IO.Handle.Types",
+        "GHC.IO.Handle.FD",
+        "GHC.IO.Handle.Text",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["IO", "Handle", "stdin", "stdout", "stderr", "HandleType", "HandlePosition", "hClose", "hFlush", "hGetContents", "hSetBuffering", "hGetBuffering", "hSetEncoding", "hSetNewlineMode", "BufferMode", "NoBuffering", "LineBuffering", "BlockBuffering", "NewlineMode", "universalNewlineMode", "nativeNewlineMode", "noNewlineTranslation", "Newline", "LF", "CRLF", "IOMode", "ReadMode", "WriteMode", "AppendMode", "ReadWriteMode", "openFile", "withFile", "hPutStr", "hPutStrLn", "hGetLine", "hGetChar", "hPutChar", "hPrint", "hIsEOF", "hIsTerminalDevice", "hSeek", "SeekMode", "AbsoluteSeek", "RelativeSeek", "SeekFromEnd", "hTell", "hFileSize", "hSetFileSize", "hIsOpen", "hIsClosed", "hIsReadable", "hIsWritable", "hIsSeekable"] {
+        for name_chirho in &[
+            "IO",
+            "Handle",
+            "stdin",
+            "stdout",
+            "stderr",
+            "HandleType",
+            "HandlePosition",
+            "hClose",
+            "hFlush",
+            "hGetContents",
+            "hSetBuffering",
+            "hGetBuffering",
+            "hSetEncoding",
+            "hSetNewlineMode",
+            "BufferMode",
+            "NoBuffering",
+            "LineBuffering",
+            "BlockBuffering",
+            "NewlineMode",
+            "universalNewlineMode",
+            "nativeNewlineMode",
+            "noNewlineTranslation",
+            "Newline",
+            "LF",
+            "CRLF",
+            "IOMode",
+            "ReadMode",
+            "WriteMode",
+            "AppendMode",
+            "ReadWriteMode",
+            "openFile",
+            "withFile",
+            "hPutStr",
+            "hPutStrLn",
+            "hGetLine",
+            "hGetChar",
+            "hPutChar",
+            "hPrint",
+            "hIsEOF",
+            "hIsTerminalDevice",
+            "hSeek",
+            "SeekMode",
+            "AbsoluteSeek",
+            "RelativeSeek",
+            "SeekFromEnd",
+            "hTell",
+            "hFileSize",
+            "hSetFileSize",
+            "hIsOpen",
+            "hIsClosed",
+            "hIsReadable",
+            "hIsWritable",
+            "hIsSeekable",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Handle", "HandleType", "BufferMode", "IOMode", "SeekMode", "Newline", "NewlineMode"] {
+        for name_chirho in &[
+            "Handle",
+            "HandleType",
+            "BufferMode",
+            "IOMode",
+            "SeekMode",
+            "Newline",
+            "NewlineMode",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -9622,9 +10935,23 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // Control.Monad.ST / Control.Monad.ST.Unsafe / Control.Monad.ST.Lazy
-    for mod_name_chirho in &["Control.Monad.ST", "Control.Monad.ST.Unsafe", "Control.Monad.ST.Lazy", "Control.Monad.ST.Strict"] {
+    for mod_name_chirho in &[
+        "Control.Monad.ST",
+        "Control.Monad.ST.Unsafe",
+        "Control.Monad.ST.Lazy",
+        "Control.Monad.ST.Strict",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["ST", "runST", "fixST", "stToIO", "unsafeSTToIO", "unsafeIOToST", "unsafeInterleaveST", "RealWorld"] {
+        for name_chirho in &[
+            "ST",
+            "runST",
+            "fixST",
+            "stToIO",
+            "unsafeSTToIO",
+            "unsafeIOToST",
+            "unsafeInterleaveST",
+            "RealWorld",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9639,7 +10966,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.STRef
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["STRef", "newSTRef", "readSTRef", "writeSTRef", "modifySTRef", "modifySTRef'"] {
+        for name_chirho in &[
+            "STRef",
+            "newSTRef",
+            "readSTRef",
+            "writeSTRef",
+            "modifySTRef",
+            "modifySTRef'",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9654,7 +10988,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Applicative.Backwards / Control.Applicative.Lift
     for mod_name_chirho in &["Control.Applicative.Backwards", "Control.Applicative.Lift"] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Backwards", "forwards", "Lift", "unLift", "runLift", "mapLift"] {
+        for name_chirho in &[
+            "Backwards",
+            "forwards",
+            "Lift",
+            "unLift",
+            "runLift",
+            "mapLift",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9671,7 +11012,21 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Monad.Trans.Accum / Control.Monad.Trans.Select
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["AccumT", "runAccumT", "execAccumT", "evalAccumT", "mapAccumT", "Accum", "runAccum", "execAccum", "evalAccum", "accum", "look", "looks", "add"] {
+        for name_chirho in &[
+            "AccumT",
+            "runAccumT",
+            "execAccumT",
+            "evalAccumT",
+            "mapAccumT",
+            "Accum",
+            "runAccum",
+            "execAccum",
+            "evalAccum",
+            "accum",
+            "look",
+            "looks",
+            "add",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9684,7 +11039,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["SelectT", "runSelectT", "mapSelectT", "Select", "runSelect", "select"] {
+        for name_chirho in &[
+            "SelectT",
+            "runSelectT",
+            "mapSelectT",
+            "Select",
+            "runSelect",
+            "select",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9706,7 +11068,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Monad.Trans.Error / Control.Monad.Trans.List (deprecated but still imported)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["ErrorT", "runErrorT", "mapErrorT", "Error", "noMsg", "strMsg"] {
+        for name_chirho in &[
+            "ErrorT",
+            "runErrorT",
+            "mapErrorT",
+            "Error",
+            "noMsg",
+            "strMsg",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9734,7 +11103,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // Data.Functor.Apply / Data.Functor.Bind / Data.Functor.Alt / Data.Functor.Plus (semigroupoids)
-    for mod_name_chirho in &["Data.Functor.Apply", "Data.Functor.Bind", "Data.Functor.Bind.Class", "Data.Functor.Alt", "Data.Functor.Plus"] {
+    for mod_name_chirho in &[
+        "Data.Functor.Apply",
+        "Data.Functor.Bind",
+        "Data.Functor.Bind.Class",
+        "Data.Functor.Alt",
+        "Data.Functor.Plus",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
             "Apply",
@@ -9840,9 +11215,45 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // Control.Monad.RWS / Control.Monad.RWS.Strict / Control.Monad.RWS.Lazy / Control.Monad.RWS.Class
-    for mod_name_chirho in &["Control.Monad.RWS", "Control.Monad.RWS.Strict", "Control.Monad.RWS.Lazy", "Control.Monad.RWS.Class"] {
+    for mod_name_chirho in &[
+        "Control.Monad.RWS",
+        "Control.Monad.RWS.Strict",
+        "Control.Monad.RWS.Lazy",
+        "Control.Monad.RWS.Class",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["RWS", "RWST", "runRWS", "runRWST", "evalRWS", "evalRWST", "execRWS", "execRWST", "mapRWS", "mapRWST", "withRWS", "withRWST", "MonadReader", "ask", "local", "reader", "asks", "MonadWriter", "tell", "listen", "pass", "writer", "censor", "MonadState", "get", "put", "state", "modify", "modify'", "gets"] {
+        for name_chirho in &[
+            "RWS",
+            "RWST",
+            "runRWS",
+            "runRWST",
+            "evalRWS",
+            "evalRWST",
+            "execRWS",
+            "execRWST",
+            "mapRWS",
+            "mapRWST",
+            "withRWS",
+            "withRWST",
+            "MonadReader",
+            "ask",
+            "local",
+            "reader",
+            "asks",
+            "MonadWriter",
+            "tell",
+            "listen",
+            "pass",
+            "writer",
+            "censor",
+            "MonadState",
+            "get",
+            "put",
+            "state",
+            "modify",
+            "modify'",
+            "gets",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9857,13 +11268,125 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // Control.Monad.Reader / Control.Monad.Writer / Control.Monad.State / Control.Monad.Except / Control.Monad.Error (mtl wrappers)
-    for mod_name_chirho in &["Control.Monad.Reader", "Control.Monad.Reader.Class", "Control.Monad.Writer", "Control.Monad.Writer.Strict", "Control.Monad.Writer.Lazy", "Control.Monad.Writer.Class", "Control.Monad.State", "Control.Monad.State.Strict", "Control.Monad.State.Lazy", "Control.Monad.State.Class", "Control.Monad.Except", "Control.Monad.Error", "Control.Monad.Error.Class", "Control.Monad.Cont", "Control.Monad.Cont.Class", "Control.Monad.Identity"] {
+    for mod_name_chirho in &[
+        "Control.Monad.Reader",
+        "Control.Monad.Reader.Class",
+        "Control.Monad.Writer",
+        "Control.Monad.Writer.Strict",
+        "Control.Monad.Writer.Lazy",
+        "Control.Monad.Writer.Class",
+        "Control.Monad.State",
+        "Control.Monad.State.Strict",
+        "Control.Monad.State.Lazy",
+        "Control.Monad.State.Class",
+        "Control.Monad.Except",
+        "Control.Monad.Error",
+        "Control.Monad.Error.Class",
+        "Control.Monad.Cont",
+        "Control.Monad.Cont.Class",
+        "Control.Monad.Identity",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["MonadReader", "ask", "local", "reader", "asks", "ReaderT", "runReaderT", "mapReaderT", "withReaderT", "Reader", "runReader", "mapReader", "withReader", "MonadWriter", "tell", "listen", "pass", "writer", "censor", "WriterT", "runWriterT", "execWriterT", "mapWriterT", "Writer", "runWriter", "execWriter", "mapWriter", "MonadState", "get", "put", "state", "modify", "modify'", "gets", "StateT", "runStateT", "evalStateT", "execStateT", "mapStateT", "withStateT", "State", "runState", "evalState", "execState", "mapState", "withState", "MonadError", "throwError", "catchError", "ExceptT", "runExceptT", "mapExceptT", "withExceptT", "Except", "runExcept", "mapExcept", "withExcept", "ErrorT", "runErrorT", "mapErrorT", "Error", "noMsg", "strMsg", "MonadCont", "callCC", "ContT", "runContT", "mapContT", "withContT", "Cont", "runCont", "mapCont", "withCont", "Identity", "runIdentity"] {
+        for name_chirho in &[
+            "MonadReader",
+            "ask",
+            "local",
+            "reader",
+            "asks",
+            "ReaderT",
+            "runReaderT",
+            "mapReaderT",
+            "withReaderT",
+            "Reader",
+            "runReader",
+            "mapReader",
+            "withReader",
+            "MonadWriter",
+            "tell",
+            "listen",
+            "pass",
+            "writer",
+            "censor",
+            "WriterT",
+            "runWriterT",
+            "execWriterT",
+            "mapWriterT",
+            "Writer",
+            "runWriter",
+            "execWriter",
+            "mapWriter",
+            "MonadState",
+            "get",
+            "put",
+            "state",
+            "modify",
+            "modify'",
+            "gets",
+            "StateT",
+            "runStateT",
+            "evalStateT",
+            "execStateT",
+            "mapStateT",
+            "withStateT",
+            "State",
+            "runState",
+            "evalState",
+            "execState",
+            "mapState",
+            "withState",
+            "MonadError",
+            "throwError",
+            "catchError",
+            "ExceptT",
+            "runExceptT",
+            "mapExceptT",
+            "withExceptT",
+            "Except",
+            "runExcept",
+            "mapExcept",
+            "withExcept",
+            "ErrorT",
+            "runErrorT",
+            "mapErrorT",
+            "Error",
+            "noMsg",
+            "strMsg",
+            "MonadCont",
+            "callCC",
+            "ContT",
+            "runContT",
+            "mapContT",
+            "withContT",
+            "Cont",
+            "runCont",
+            "mapCont",
+            "withCont",
+            "Identity",
+            "runIdentity",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["MonadReader", "ReaderT", "Reader", "MonadWriter", "WriterT", "Writer", "MonadState", "StateT", "State", "MonadError", "ExceptT", "Except", "ErrorT", "Error", "MonadCont", "ContT", "Cont", "Identity"] {
+        for name_chirho in &[
+            "MonadReader",
+            "ReaderT",
+            "Reader",
+            "MonadWriter",
+            "WriterT",
+            "Writer",
+            "MonadState",
+            "StateT",
+            "State",
+            "MonadError",
+            "ExceptT",
+            "Except",
+            "ErrorT",
+            "Error",
+            "MonadCont",
+            "ContT",
+            "Cont",
+            "Identity",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -9874,13 +11397,81 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // Control.Comonad / Control.Comonad.Trans.Traced / etc (comonad package)
-    for mod_name_chirho in &["Control.Comonad", "Control.Comonad.Env", "Control.Comonad.Env.Class", "Control.Comonad.Store", "Control.Comonad.Store.Class", "Control.Comonad.Traced", "Control.Comonad.Traced.Class", "Control.Comonad.Trans.Env", "Control.Comonad.Trans.Traced", "Control.Comonad.Trans.Store", "Control.Comonad.Trans.Class", "Control.Comonad.Hoist.Class"] {
+    for mod_name_chirho in &[
+        "Control.Comonad",
+        "Control.Comonad.Env",
+        "Control.Comonad.Env.Class",
+        "Control.Comonad.Store",
+        "Control.Comonad.Store.Class",
+        "Control.Comonad.Traced",
+        "Control.Comonad.Traced.Class",
+        "Control.Comonad.Trans.Env",
+        "Control.Comonad.Trans.Traced",
+        "Control.Comonad.Trans.Store",
+        "Control.Comonad.Trans.Class",
+        "Control.Comonad.Hoist.Class",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Comonad", "extract", "duplicate", "extend", "=>>", "liftW", "wfix", "cfix", "kfix", "ComonadApply", "<@>", "<@@>", "liftW2", "liftW3", "EnvT", "runEnvT", "env", "ask", "asks", "local", "StoreT", "runStoreT", "store", "pos", "peek", "peeks", "seek", "seeks", "experiment", "TracedT", "runTracedT", "traced", "trace", "listen", "listens", "censor", "ComonadTrans", "lower", "ComonadHoist", "cohoist", "ComonadEnv", "ComonadStore", "ComonadTraced"] {
+        for name_chirho in &[
+            "Comonad",
+            "extract",
+            "duplicate",
+            "extend",
+            "=>>",
+            "liftW",
+            "wfix",
+            "cfix",
+            "kfix",
+            "ComonadApply",
+            "<@>",
+            "<@@>",
+            "liftW2",
+            "liftW3",
+            "EnvT",
+            "runEnvT",
+            "env",
+            "ask",
+            "asks",
+            "local",
+            "StoreT",
+            "runStoreT",
+            "store",
+            "pos",
+            "peek",
+            "peeks",
+            "seek",
+            "seeks",
+            "experiment",
+            "TracedT",
+            "runTracedT",
+            "traced",
+            "trace",
+            "listen",
+            "listens",
+            "censor",
+            "ComonadTrans",
+            "lower",
+            "ComonadHoist",
+            "cohoist",
+            "ComonadEnv",
+            "ComonadStore",
+            "ComonadTraced",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Comonad", "ComonadApply", "ComonadTrans", "ComonadHoist", "ComonadEnv", "ComonadStore", "ComonadTraced", "EnvT", "StoreT", "TracedT"] {
+        for name_chirho in &[
+            "Comonad",
+            "ComonadApply",
+            "ComonadTrans",
+            "ComonadHoist",
+            "ComonadEnv",
+            "ComonadStore",
+            "ComonadTraced",
+            "EnvT",
+            "StoreT",
+            "TracedT",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -9893,7 +11484,18 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Tagged (tagged package)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Tagged", "unTagged", "retag", "untag", "tagSelf", "untagSelf", "asTaggedTypeOf", "witness", "proxy", "tagWith"] {
+        for name_chirho in &[
+            "Tagged",
+            "unTagged",
+            "retag",
+            "untag",
+            "tagSelf",
+            "untagSelf",
+            "asTaggedTypeOf",
+            "witness",
+            "proxy",
+            "tagWith",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9908,7 +11510,20 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Functor.Adjunction (adjunctions package)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Adjunction", "unit", "counit", "leftAdjunct", "rightAdjunct", "tabulateAdjunction", "indexAdjunction", "zapWithAdjunction", "splitL", "unsplitL", "extractL", "duplicateL"] {
+        for name_chirho in &[
+            "Adjunction",
+            "unit",
+            "counit",
+            "leftAdjunct",
+            "rightAdjunct",
+            "tabulateAdjunction",
+            "indexAdjunction",
+            "zapWithAdjunction",
+            "splitL",
+            "unsplitL",
+            "extractL",
+            "duplicateL",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -9921,13 +11536,37 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // Data.Functor.WithIndex / Data.Foldable.WithIndex / Data.Traversable.WithIndex (indexed-traversable)
-    for mod_name_chirho in &["Data.Functor.WithIndex", "Data.Foldable.WithIndex", "Data.Traversable.WithIndex"] {
+    for mod_name_chirho in &[
+        "Data.Functor.WithIndex",
+        "Data.Foldable.WithIndex",
+        "Data.Traversable.WithIndex",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["FunctorWithIndex", "imap", "FoldableWithIndex", "ifoldMap", "ifoldr", "ifoldl", "ifoldr'", "ifoldl'", "itraverse_", "ifor_", "TraversableWithIndex", "itraverse", "ifor", "imapDefault", "ifoldMapDefault"] {
+        for name_chirho in &[
+            "FunctorWithIndex",
+            "imap",
+            "FoldableWithIndex",
+            "ifoldMap",
+            "ifoldr",
+            "ifoldl",
+            "ifoldr'",
+            "ifoldl'",
+            "itraverse_",
+            "ifor_",
+            "TraversableWithIndex",
+            "itraverse",
+            "ifor",
+            "imapDefault",
+            "ifoldMapDefault",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["FunctorWithIndex", "FoldableWithIndex", "TraversableWithIndex"] {
+        for name_chirho in &[
+            "FunctorWithIndex",
+            "FoldableWithIndex",
+            "TraversableWithIndex",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -9965,19 +11604,53 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.Integer (compatibility)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Integer", "mkInteger", "smallInteger", "wordToInteger", "integerToWord", "integerToInt", "plusInteger", "timesInteger", "minusInteger", "negateInteger", "absInteger", "signumInteger", "divInteger", "modInteger", "quotInteger", "remInteger", "quotRemInteger", "divModInteger", "eqInteger", "neqInteger", "leInteger", "ltInteger", "geInteger", "gtInteger", "compareInteger"] {
+        for name_chirho in &[
+            "Integer",
+            "mkInteger",
+            "smallInteger",
+            "wordToInteger",
+            "integerToWord",
+            "integerToInt",
+            "plusInteger",
+            "timesInteger",
+            "minusInteger",
+            "negateInteger",
+            "absInteger",
+            "signumInteger",
+            "divInteger",
+            "modInteger",
+            "quotInteger",
+            "remInteger",
+            "quotRemInteger",
+            "divModInteger",
+            "eqInteger",
+            "neqInteger",
+            "leInteger",
+            "ltInteger",
+            "geInteger",
+            "gtInteger",
+            "compareInteger",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         // Add integer logarithm primops
         for name_chirho in &[
-            "integerLog2#", "integerLogBase#", "wordLog2#",
-            "integerLog2", "integerLogBase", "wordLog2",
+            "integerLog2#",
+            "integerLogBase#",
+            "wordLog2#",
+            "integerLog2",
+            "integerLogBase",
+            "wordLog2",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for mod_name_chirho in &["GHC.Integer", "GHC.Integer.Logarithms", "GHC.Integer.Logarithms.Compat"] {
+        for mod_name_chirho in &[
+            "GHC.Integer",
+            "GHC.Integer.Logarithms",
+            "GHC.Integer.Logarithms.Compat",
+        ] {
             modules_chirho.push(ModuleIfaceChirho {
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
@@ -9997,7 +11670,27 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.SrcLoc
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["SrcLoc", "srcLocPackage", "srcLocModule", "srcLocFile", "srcLocStartLine", "srcLocStartCol", "srcLocEndLine", "srcLocEndCol", "getCallStack", "callStack", "withFrozenCallStack", "HasCallStack", "CallStack", "emptyCallStack", "freezeCallStack", "pushCallStack", "fromCallSiteList", "prettySrcLoc", "prettyCallStack"] {
+        for name_chirho in &[
+            "SrcLoc",
+            "srcLocPackage",
+            "srcLocModule",
+            "srcLocFile",
+            "srcLocStartLine",
+            "srcLocStartCol",
+            "srcLocEndLine",
+            "srcLocEndCol",
+            "getCallStack",
+            "callStack",
+            "withFrozenCallStack",
+            "HasCallStack",
+            "CallStack",
+            "emptyCallStack",
+            "freezeCallStack",
+            "pushCallStack",
+            "fromCallSiteList",
+            "prettySrcLoc",
+            "prettyCallStack",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -10014,11 +11707,67 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Data
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Data", "DataType", "Constr", "ConstrRep", "IntConstr", "FloatConstr", "CharConstr", "mkDataType", "mkIntType", "mkFloatType", "mkCharType", "mkStringType", "mkConstr", "mkIntegralConstr", "mkRealConstr", "mkCharConstr", "mkNoRepType", "dataTypeName", "dataTypeConstrs", "dataTypeRep", "constrType", "constrRep", "constrFields", "constrFixity", "constrIndex", "showConstr", "readConstr", "isAlgType", "maxConstrIndex", "toConstr", "gunfold", "gfoldl", "gmapT", "gmapQ", "gmapQl", "gmapQr", "gmapQi", "gmapM", "gmapMp", "gmapMo", "dataTypeOf", "dataCast1", "dataCast2", "cast", "Typeable", "Fixity", "Prefix", "Infix"] {
+        for name_chirho in &[
+            "Data",
+            "DataType",
+            "Constr",
+            "ConstrRep",
+            "IntConstr",
+            "FloatConstr",
+            "CharConstr",
+            "mkDataType",
+            "mkIntType",
+            "mkFloatType",
+            "mkCharType",
+            "mkStringType",
+            "mkConstr",
+            "mkIntegralConstr",
+            "mkRealConstr",
+            "mkCharConstr",
+            "mkNoRepType",
+            "dataTypeName",
+            "dataTypeConstrs",
+            "dataTypeRep",
+            "constrType",
+            "constrRep",
+            "constrFields",
+            "constrFixity",
+            "constrIndex",
+            "showConstr",
+            "readConstr",
+            "isAlgType",
+            "maxConstrIndex",
+            "toConstr",
+            "gunfold",
+            "gfoldl",
+            "gmapT",
+            "gmapQ",
+            "gmapQl",
+            "gmapQr",
+            "gmapQi",
+            "gmapM",
+            "gmapMp",
+            "gmapMo",
+            "dataTypeOf",
+            "dataCast1",
+            "dataCast2",
+            "cast",
+            "Typeable",
+            "Fixity",
+            "Prefix",
+            "Infix",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Data", "DataType", "Constr", "ConstrRep", "Fixity", "Typeable"] {
+        for name_chirho in &[
+            "Data",
+            "DataType",
+            "Constr",
+            "ConstrRep",
+            "Fixity",
+            "Typeable",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -10029,9 +11778,54 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // Text.ParserCombinators.ReadPrec / Text.ParserCombinators.ReadP
-    for mod_name_chirho in &["Text.ParserCombinators.ReadPrec", "Text.ParserCombinators.ReadP"] {
+    for mod_name_chirho in &[
+        "Text.ParserCombinators.ReadPrec",
+        "Text.ParserCombinators.ReadP",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["ReadPrec", "ReadP", "lift", "minPrec", "step", "reset", "prec", "readPrec_to_P", "readP_to_Prec", "readPrec_to_S", "readS_to_Prec", "get", "look", "pfail", "choice", "readS_to_P", "readP_to_S", "satisfy", "char", "string", "munch", "munch1", "skipSpaces", "between", "count", "option", "optional", "many", "many1", "skipMany", "skipMany1", "sepBy", "sepBy1", "endBy", "endBy1", "chainr", "chainl", "chainr1", "chainl1", "manyTill", "readParen"] {
+        for name_chirho in &[
+            "ReadPrec",
+            "ReadP",
+            "lift",
+            "minPrec",
+            "step",
+            "reset",
+            "prec",
+            "readPrec_to_P",
+            "readP_to_Prec",
+            "readPrec_to_S",
+            "readS_to_Prec",
+            "get",
+            "look",
+            "pfail",
+            "choice",
+            "readS_to_P",
+            "readP_to_S",
+            "satisfy",
+            "char",
+            "string",
+            "munch",
+            "munch1",
+            "skipSpaces",
+            "between",
+            "count",
+            "option",
+            "optional",
+            "many",
+            "many1",
+            "skipMany",
+            "skipMany1",
+            "sepBy",
+            "sepBy1",
+            "endBy",
+            "endBy1",
+            "chainr",
+            "chainl",
+            "chainr1",
+            "chainl1",
+            "manyTill",
+            "readParen",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -10048,11 +11842,28 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.IO.Encoding.Failure
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["CodingFailureMode", "ErrorOnCodingFailure", "IgnoreCodingFailure", "TransliterateCodingFailure", "RoundtripFailure", "isSurrogate", "recoverDecode", "recoverEncode"] {
+        for name_chirho in &[
+            "CodingFailureMode",
+            "ErrorOnCodingFailure",
+            "IgnoreCodingFailure",
+            "TransliterateCodingFailure",
+            "RoundtripFailure",
+            "isSurrogate",
+            "recoverDecode",
+            "recoverEncode",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("CodingFailureMode", &["ErrorOnCodingFailure", "IgnoreCodingFailure", "TransliterateCodingFailure", "RoundtripFailure"]);
+        let (k_chirho, v_chirho) = mk_type_chirho(
+            "CodingFailureMode",
+            &[
+                "ErrorOnCodingFailure",
+                "IgnoreCodingFailure",
+                "TransliterateCodingFailure",
+                "RoundtripFailure",
+            ],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "GHC.IO.Encoding.Failure".to_string(),
@@ -10076,11 +11887,55 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // System.Posix.Types / System.Posix.Internals
     for mod_name_chirho in &["System.Posix.Types", "System.Posix.Internals"] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Fd", "FileMode", "FileOffset", "ProcessID", "ProcessGroupID", "UserID", "GroupID", "ByteCount", "ClockTick", "EpochTime", "DeviceID", "FileID", "Limit", "LinkCount", "CDev", "CIno", "CMode", "COff", "CPid", "CSsize", "CGid", "CNlink", "CUid", "CCc", "CSpeed", "CTcflag", "CRLim", "CSocklen", "CKey", "CId", "CFsBlkCnt", "CFsFilCnt", "CClockId", "CBlkSize", "CBlkCnt", "fdToHandle"] {
+        for name_chirho in &[
+            "Fd",
+            "FileMode",
+            "FileOffset",
+            "ProcessID",
+            "ProcessGroupID",
+            "UserID",
+            "GroupID",
+            "ByteCount",
+            "ClockTick",
+            "EpochTime",
+            "DeviceID",
+            "FileID",
+            "Limit",
+            "LinkCount",
+            "CDev",
+            "CIno",
+            "CMode",
+            "COff",
+            "CPid",
+            "CSsize",
+            "CGid",
+            "CNlink",
+            "CUid",
+            "CCc",
+            "CSpeed",
+            "CTcflag",
+            "CRLim",
+            "CSocklen",
+            "CKey",
+            "CId",
+            "CFsBlkCnt",
+            "CFsFilCnt",
+            "CClockId",
+            "CBlkSize",
+            "CBlkCnt",
+            "fdToHandle",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Fd", "FileMode", "FileOffset", "ProcessID", "UserID", "GroupID"] {
+        for name_chirho in &[
+            "Fd",
+            "FileMode",
+            "FileOffset",
+            "ProcessID",
+            "UserID",
+            "GroupID",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -10099,16 +11954,32 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     ] {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "openDirStream", "readDirStream", "closeDirStream",
-            "getWorkingDirectory", "changeWorkingDirectory",
-            "createDirectory", "removeDirectory",
-            "getFileStatus", "getSymbolicLinkStatus",
-            "isDirectory", "isRegularFile", "isSymbolicLink",
-            "fileSize", "modificationTime", "accessTime",
-            "createSymbolicLink", "readSymbolicLink", "rename",
-            "removeLink", "setFileMode",
-            "openFd", "closeFd", "fdRead", "fdWrite",
-            "getProcessID", "forkProcess",
+            "openDirStream",
+            "readDirStream",
+            "closeDirStream",
+            "getWorkingDirectory",
+            "changeWorkingDirectory",
+            "createDirectory",
+            "removeDirectory",
+            "getFileStatus",
+            "getSymbolicLinkStatus",
+            "isDirectory",
+            "isRegularFile",
+            "isSymbolicLink",
+            "fileSize",
+            "modificationTime",
+            "accessTime",
+            "createSymbolicLink",
+            "readSymbolicLink",
+            "rename",
+            "removeLink",
+            "setFileMode",
+            "openFd",
+            "closeFd",
+            "fdRead",
+            "fdWrite",
+            "getProcessID",
+            "forkProcess",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -10126,15 +11997,42 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Monad.Trans.Resource (resourcet)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["ResourceT", "runResourceT", "liftResourceT", "transResourceT", "MonadResource", "liftResourceT", "allocate", "register", "release", "resourceForkIO", "ReleaseKey", "MonadUnliftIO", "withRunInIO", "UnliftIO", "askUnliftIO"] {
+        for name_chirho in &[
+            "ResourceT",
+            "runResourceT",
+            "liftResourceT",
+            "transResourceT",
+            "MonadResource",
+            "liftResourceT",
+            "allocate",
+            "register",
+            "release",
+            "resourceForkIO",
+            "ReleaseKey",
+            "MonadUnliftIO",
+            "withRunInIO",
+            "UnliftIO",
+            "askUnliftIO",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["ResourceT", "MonadResource", "ReleaseKey", "MonadUnliftIO", "UnliftIO"] {
+        for name_chirho in &[
+            "ResourceT",
+            "MonadResource",
+            "ReleaseKey",
+            "MonadUnliftIO",
+            "UnliftIO",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
-        for mod_name_chirho in &["Control.Monad.Trans.Resource", "Control.Monad.Trans.Resource.Internal", "UnliftIO", "Control.Monad.IO.Unlift"] {
+        for mod_name_chirho in &[
+            "Control.Monad.Trans.Resource",
+            "Control.Monad.Trans.Resource.Internal",
+            "UnliftIO",
+            "Control.Monad.IO.Unlift",
+        ] {
             modules_chirho.push(ModuleIfaceChirho {
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
@@ -10157,9 +12055,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
 
     // GHC internal modules needed by base-orphans
     for mod_name_chirho in &[
-        "GHC.GHCi", "GHC.IO.Buffer", "GHC.IO.BufferedIO", "GHC.IO.Device",
-        "GHC.Stats", "GHC.RTS.Flags", "GHC.Event", "GHC.Conc.Signal",
-        "System.Console.GetOpt", "Text.Read.Lex",
+        "GHC.GHCi",
+        "GHC.IO.Buffer",
+        "GHC.IO.BufferedIO",
+        "GHC.IO.Device",
+        "GHC.Stats",
+        "GHC.RTS.Flags",
+        "GHC.Event",
+        "GHC.Conc.Signal",
+        "System.Console.GetOpt",
+        "Text.Read.Lex",
     ] {
         let exports_chirho = IfaceExportsChirho::default();
         modules_chirho.push(ModuleIfaceChirho {
@@ -10186,7 +12091,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.Weak
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Weak", "mkWeak", "deRefWeak", "finalize", "mkWeakPtr", "mkWeakPair", "addFinalizer", "mkWeakIORef"] {
+        for name_chirho in &[
+            "Weak",
+            "mkWeak",
+            "deRefWeak",
+            "finalize",
+            "mkWeakPtr",
+            "mkWeakPair",
+            "addFinalizer",
+            "mkWeakIORef",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -10212,9 +12126,32 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // GHC.IO.Encoding / GHC.IO.Encoding.UTF8
-    for mod_name_chirho in &["GHC.IO.Encoding", "GHC.IO.Encoding.UTF8", "GHC.IO.Encoding.Latin1", "GHC.IO.Encoding.CodePage"] {
+    for mod_name_chirho in &[
+        "GHC.IO.Encoding",
+        "GHC.IO.Encoding.UTF8",
+        "GHC.IO.Encoding.Latin1",
+        "GHC.IO.Encoding.CodePage",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["TextEncoding", "utf8", "utf8_bom", "utf16le", "utf16be", "utf32le", "utf32be", "latin1", "char8", "mkTextEncoding", "localeEncoding", "getLocaleEncoding", "setLocaleEncoding", "getFileSystemEncoding", "setFileSystemEncoding", "getForeignEncoding", "setForeignEncoding"] {
+        for name_chirho in &[
+            "TextEncoding",
+            "utf8",
+            "utf8_bom",
+            "utf16le",
+            "utf16be",
+            "utf32le",
+            "utf32be",
+            "latin1",
+            "char8",
+            "mkTextEncoding",
+            "localeEncoding",
+            "getLocaleEncoding",
+            "setLocaleEncoding",
+            "getFileSystemEncoding",
+            "setFileSystemEncoding",
+            "getForeignEncoding",
+            "setForeignEncoding",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -10227,9 +12164,62 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // System.FilePath.Posix / System.FilePath.Windows / System.FilePath
-    for mod_name_chirho in &["System.FilePath", "System.FilePath.Posix", "System.FilePath.Windows"] {
+    for mod_name_chirho in &[
+        "System.FilePath",
+        "System.FilePath.Posix",
+        "System.FilePath.Windows",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["FilePath", "pathSeparator", "pathSeparators", "isPathSeparator", "searchPathSeparator", "isSearchPathSeparator", "extSeparator", "isExtSeparator", "splitExtension", "takeExtension", "replaceExtension", "dropExtension", "addExtension", "hasExtension", "splitExtensions", "takeExtensions", "dropExtensions", "splitFileName", "takeFileName", "replaceFileName", "dropFileName", "takeBaseName", "replaceBaseName", "takeDirectory", "replaceDirectory", "combine", "splitPath", "joinPath", "splitDirectories", "splitDrive", "joinDrive", "takeDrive", "hasDrive", "dropDrive", "isDrive", "hasTrailingPathSeparator", "addTrailingPathSeparator", "dropTrailingPathSeparator", "normalise", "equalFilePath", "makeRelative", "isRelative", "isAbsolute", "isValid", "makeValid", "</>", "<.>", "-<.>"] {
+        for name_chirho in &[
+            "FilePath",
+            "pathSeparator",
+            "pathSeparators",
+            "isPathSeparator",
+            "searchPathSeparator",
+            "isSearchPathSeparator",
+            "extSeparator",
+            "isExtSeparator",
+            "splitExtension",
+            "takeExtension",
+            "replaceExtension",
+            "dropExtension",
+            "addExtension",
+            "hasExtension",
+            "splitExtensions",
+            "takeExtensions",
+            "dropExtensions",
+            "splitFileName",
+            "takeFileName",
+            "replaceFileName",
+            "dropFileName",
+            "takeBaseName",
+            "replaceBaseName",
+            "takeDirectory",
+            "replaceDirectory",
+            "combine",
+            "splitPath",
+            "joinPath",
+            "splitDirectories",
+            "splitDrive",
+            "joinDrive",
+            "takeDrive",
+            "hasDrive",
+            "dropDrive",
+            "isDrive",
+            "hasTrailingPathSeparator",
+            "addTrailingPathSeparator",
+            "dropTrailingPathSeparator",
+            "normalise",
+            "equalFilePath",
+            "makeRelative",
+            "isRelative",
+            "isAbsolute",
+            "isValid",
+            "makeValid",
+            "</>",
+            "<.>",
+            "-<.>",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -10242,7 +12232,17 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // System.Environment
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["getArgs", "getProgName", "getExecutablePath", "getEnvironment", "lookupEnv", "setEnv", "unsetEnv", "withArgs", "withProgName"] {
+        for name_chirho in &[
+            "getArgs",
+            "getProgName",
+            "getExecutablePath",
+            "getEnvironment",
+            "lookupEnv",
+            "setEnv",
+            "unsetEnv",
+            "withArgs",
+            "withProgName",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -10253,9 +12253,46 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     // Control.Concurrent / Control.Concurrent.MVar
-    for mod_name_chirho in &["Control.Concurrent", "Control.Concurrent.MVar", "Control.Concurrent.Chan", "Control.Concurrent.QSem", "Control.Concurrent.QSemN"] {
+    for mod_name_chirho in &[
+        "Control.Concurrent",
+        "Control.Concurrent.MVar",
+        "Control.Concurrent.Chan",
+        "Control.Concurrent.QSem",
+        "Control.Concurrent.QSemN",
+    ] {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["ThreadId", "myThreadId", "forkIO", "forkFinally", "forkOS", "killThread", "throwTo", "threadDelay", "threadWaitRead", "threadWaitWrite", "yield", "MVar", "newMVar", "newEmptyMVar", "readMVar", "takeMVar", "putMVar", "tryTakeMVar", "tryPutMVar", "modifyMVar", "modifyMVar_", "swapMVar", "withMVar", "Chan", "newChan", "writeChan", "readChan", "dupChan", "getChanContents", "writeList2Chan"] {
+        for name_chirho in &[
+            "ThreadId",
+            "myThreadId",
+            "forkIO",
+            "forkFinally",
+            "forkOS",
+            "killThread",
+            "throwTo",
+            "threadDelay",
+            "threadWaitRead",
+            "threadWaitWrite",
+            "yield",
+            "MVar",
+            "newMVar",
+            "newEmptyMVar",
+            "readMVar",
+            "takeMVar",
+            "putMVar",
+            "tryTakeMVar",
+            "tryPutMVar",
+            "modifyMVar",
+            "modifyMVar_",
+            "swapMVar",
+            "withMVar",
+            "Chan",
+            "newChan",
+            "writeChan",
+            "readChan",
+            "dupChan",
+            "getChanContents",
+            "writeList2Chan",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -10272,21 +12309,148 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // ── Haskelujah stdlib (batteries included) ──────────────────────
     // These match the modules in stdlib-chirho/Haskelujah/*.hs
     for (mod_name_chirho, exports_list_chirho) in &[
-        ("Haskelujah.JSON", &["Value", "Object", "Array", "String", "Number", "Bool", "Null", "encode", "object", "array", ".="][..]),
-        ("Haskelujah.Test", &["Test", "test", "runTests", "assertEqual", "assertBool", "assertFailure"]),
-        ("Haskelujah.Args", &["getArgs", "getFlag", "getOption", "getPositional"]),
-        ("Haskelujah.HTTP", &["Response", "get", "post", "statusCode", "body", "headers"]),
-        ("Haskelujah.Prelude", &["trim", "words'", "unwords'", "groupBy'", "chunksOf", "nub'"]),
-        ("Haskelujah.File", &["readFileText", "writeFileText", "appendFileText", "fileExists", "listDirectory"]),
-        ("Haskelujah.Text", &["toLower", "toUpper", "capitalize", "contains", "startsWith", "endsWith", "splitOn", "lines'", "unlines'", "padLeft", "padRight", "center"]),
-        ("Haskelujah.Map", &["Map", "empty", "singleton", "fromList", "toList", "insert", "lookup", "delete", "member", "size", "keys", "elems", "mapValues", "filterMap", "unionWith"]),
-        ("Haskelujah.Set", &["Set", "empty", "singleton", "fromList", "toList", "insert", "member", "delete", "size", "union", "intersection", "difference"]),
-        ("Haskelujah.Pretty", &["Doc", "text", "int", "nest", "line", "<+>", "$$", "hsep", "vsep", "indent", "render", "parens", "brackets", "braces"]),
-        ("Haskelujah.Random", &["Gen", "mkGen", "nextInt", "nextDouble", "randomList", "shuffle", "choice"]),
+        (
+            "Haskelujah.JSON",
+            &[
+                "Value", "Object", "Array", "String", "Number", "Bool", "Null", "encode", "object",
+                "array", ".=",
+            ][..],
+        ),
+        (
+            "Haskelujah.Test",
+            &[
+                "Test",
+                "test",
+                "runTests",
+                "assertEqual",
+                "assertBool",
+                "assertFailure",
+            ],
+        ),
+        (
+            "Haskelujah.Args",
+            &["getArgs", "getFlag", "getOption", "getPositional"],
+        ),
+        (
+            "Haskelujah.HTTP",
+            &["Response", "get", "post", "statusCode", "body", "headers"],
+        ),
+        (
+            "Haskelujah.Prelude",
+            &["trim", "words'", "unwords'", "groupBy'", "chunksOf", "nub'"],
+        ),
+        (
+            "Haskelujah.File",
+            &[
+                "readFileText",
+                "writeFileText",
+                "appendFileText",
+                "fileExists",
+                "listDirectory",
+            ],
+        ),
+        (
+            "Haskelujah.Text",
+            &[
+                "toLower",
+                "toUpper",
+                "capitalize",
+                "contains",
+                "startsWith",
+                "endsWith",
+                "splitOn",
+                "lines'",
+                "unlines'",
+                "padLeft",
+                "padRight",
+                "center",
+            ],
+        ),
+        (
+            "Haskelujah.Map",
+            &[
+                "Map",
+                "empty",
+                "singleton",
+                "fromList",
+                "toList",
+                "insert",
+                "lookup",
+                "delete",
+                "member",
+                "size",
+                "keys",
+                "elems",
+                "mapValues",
+                "filterMap",
+                "unionWith",
+            ],
+        ),
+        (
+            "Haskelujah.Set",
+            &[
+                "Set",
+                "empty",
+                "singleton",
+                "fromList",
+                "toList",
+                "insert",
+                "member",
+                "delete",
+                "size",
+                "union",
+                "intersection",
+                "difference",
+            ],
+        ),
+        (
+            "Haskelujah.Pretty",
+            &[
+                "Doc", "text", "int", "nest", "line", "<+>", "$$", "hsep", "vsep", "indent",
+                "render", "parens", "brackets", "braces",
+            ],
+        ),
+        (
+            "Haskelujah.Random",
+            &[
+                "Gen",
+                "mkGen",
+                "nextInt",
+                "nextDouble",
+                "randomList",
+                "shuffle",
+                "choice",
+            ],
+        ),
         ("Haskelujah.Process", &["shell", "exec", "ExitCode"]),
         ("Haskelujah.Time", &["now", "sleep", "measure"]),
-        ("Haskelujah.Concurrent", &["fork", "delay", "Chan", "newChan", "writeChan", "readChan", "MVar", "newMVar", "readMVar", "takeMVar", "putMVar"]),
-        ("Haskelujah.Debug", &["trace", "traceShow", "traceIO", "assert", "todo", "unreachable"]),
+        (
+            "Haskelujah.Concurrent",
+            &[
+                "fork",
+                "delay",
+                "Chan",
+                "newChan",
+                "writeChan",
+                "readChan",
+                "MVar",
+                "newMVar",
+                "readMVar",
+                "takeMVar",
+                "putMVar",
+            ],
+        ),
+        (
+            "Haskelujah.Debug",
+            &[
+                "trace",
+                "traceShow",
+                "traceIO",
+                "assert",
+                "todo",
+                "unreachable",
+            ],
+        ),
     ] {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in *exports_list_chirho {
@@ -10342,10 +12506,20 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "newSMGen", "mkSMGen", "seedSMGen", "seedSMGen'",
-            "unseedSMGen", "splitSMGen", "nextWord64", "nextWord32",
-            "nextTwoWord32", "nextInt", "nextDouble", "nextFloat",
-            "bitmaskWithRejection32", "bitmaskWithRejection64",
+            "newSMGen",
+            "mkSMGen",
+            "seedSMGen",
+            "seedSMGen'",
+            "unseedSMGen",
+            "splitSMGen",
+            "nextWord64",
+            "nextWord32",
+            "nextTwoWord32",
+            "nextInt",
+            "nextDouble",
+            "nextFloat",
+            "bitmaskWithRejection32",
+            "bitmaskWithRejection64",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -10435,7 +12609,11 @@ pub fn merge_module_ifaces_chirho(
                     .or_insert(value_chirho);
             }
             for (name_chirho, type_chirho) in module_chirho.exports_chirho.types_chirho {
-                match existing_chirho.exports_chirho.types_chirho.get_mut(&name_chirho) {
+                match existing_chirho
+                    .exports_chirho
+                    .types_chirho
+                    .get_mut(&name_chirho)
+                {
                     Some(existing_type_chirho) => {
                         for constructor_chirho in type_chirho.constructors_chirho {
                             if !existing_type_chirho
@@ -10628,8 +12806,7 @@ fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsC
                 ..
             } => {
                 for bound_name_chirho in pat_bound_names_for_iface_chirho(pat_chirho) {
-                    let canonical_name_chirho =
-                        canonical_value_name_chirho(&bound_name_chirho);
+                    let canonical_name_chirho = canonical_value_name_chirho(&bound_name_chirho);
                     exports_chirho.values_chirho.insert(
                         canonical_name_chirho.clone(),
                         IfaceValueChirho {
@@ -10714,11 +12891,13 @@ fn pat_bound_names_for_iface_chirho(
         PatChirho::VarChirho(name_chirho) => {
             names_chirho.push(name_chirho.text_chirho().to_string());
         }
-        PatChirho::LitChirho(_)
-        | PatChirho::WildcardChirho(_)
-        | PatChirho::NegChirho { .. } => {}
-        PatChirho::TupleChirho { elements_chirho, .. }
-        | PatChirho::ListChirho { elements_chirho, .. } => {
+        PatChirho::LitChirho(_) | PatChirho::WildcardChirho(_) | PatChirho::NegChirho { .. } => {}
+        PatChirho::TupleChirho {
+            elements_chirho, ..
+        }
+        | PatChirho::ListChirho {
+            elements_chirho, ..
+        } => {
             for inner_pat_chirho in elements_chirho {
                 names_chirho.extend(pat_bound_names_for_iface_chirho(inner_pat_chirho));
             }
@@ -10728,10 +12907,7 @@ fn pat_bound_names_for_iface_chirho(
                 names_chirho.extend(pat_bound_names_for_iface_chirho(inner_pat_chirho));
             }
         }
-        PatChirho::RecordChirho {
-            fields_chirho,
-            ..
-        } => {
+        PatChirho::RecordChirho { fields_chirho, .. } => {
             for field_chirho in fields_chirho {
                 names_chirho.extend(pat_bound_names_for_iface_chirho(
                     &field_chirho.pattern_chirho,
@@ -10893,10 +13069,9 @@ fn filter_exports_chirho(
                     )
                 {
                     for value_chirho in accompanying_values_chirho {
-                        result_chirho.values_chirho.insert(
-                            value_chirho.name_chirho.clone(),
-                            value_chirho,
-                        );
+                        result_chirho
+                            .values_chirho
+                            .insert(value_chirho.name_chirho.clone(), value_chirho);
                     }
                     result_chirho
                         .types_chirho
@@ -10920,7 +13095,8 @@ fn filter_exports_chirho(
                     .collect();
                 // `module M` in the export list of module M itself means
                 // "export all local definitions" — this is the self-re-export pattern.
-                let is_self_chirho = module_chirho.name_chirho.full_name_chirho() == target_mod_chirho;
+                let is_self_chirho =
+                    module_chirho.name_chirho.full_name_chirho() == target_mod_chirho;
 
                 if is_self_chirho {
                     // Export all local definitions.
@@ -10936,9 +13112,12 @@ fn filter_exports_chirho(
                     }
                 } else if !matching_imports_chirho.is_empty() {
                     for import_chirho in matching_imports_chirho {
-                        if let Some(iface_chirho) = imported_ifaces_chirho.iter().find(|iface_chirho| {
-                            iface_chirho.name_chirho == import_chirho.module_chirho.full_name_chirho()
-                        }) {
+                        if let Some(iface_chirho) =
+                            imported_ifaces_chirho.iter().find(|iface_chirho| {
+                                iface_chirho.name_chirho
+                                    == import_chirho.module_chirho.full_name_chirho()
+                            })
+                        {
                             merge_imported_exports_chirho(
                                 &mut result_chirho,
                                 &iface_chirho.exports_chirho,
@@ -11035,30 +13214,22 @@ mod tests_chirho {
 
         let iface_chirho = build_iface_chirho(&module_chirho);
         assert_eq!(iface_chirho.name_chirho, "Lib");
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Color")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Blue")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("paint")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Color"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Blue"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("paint"));
     }
 
     #[test]
@@ -11102,31 +13273,23 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Color")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("paint")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Color"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("paint"));
         // helper is NOT exported
-        assert!(
-            !iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("helper")
-        );
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("helper"));
     }
 
     #[test]
@@ -11152,19 +13315,15 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Color")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Color"));
         // Red is NOT exported — only the type name
-        assert!(
-            !iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
         let color_ty_chirho = &iface_chirho.exports_chirho.types_chirho["Color"];
         assert!(color_ty_chirho.constructors_chirho.is_empty());
     }
@@ -11199,18 +13358,14 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
-        assert!(
-            !iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Blue")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Blue"));
         let ty_chirho = &iface_chirho.exports_chirho.types_chirho["Color"];
         assert_eq!(ty_chirho.constructors_chirho, vec!["Red"]);
     }
@@ -11240,18 +13395,14 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Show")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("show")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Show"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("show"));
         assert_eq!(
             iface_chirho.exports_chirho.types_chirho["Show"].methods_chirho,
             vec!["show"]
@@ -11302,23 +13453,16 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("opLetterChirho")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("reservedNamesChirho")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("opLetterChirho"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("reservedNamesChirho"));
         assert_eq!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho["LanguageDefChirho"]
-                .methods_chirho,
+            iface_chirho.exports_chirho.types_chirho["LanguageDefChirho"].methods_chirho,
             vec!["opLetterChirho", "reservedNamesChirho"]
         );
     }
@@ -11343,18 +13487,14 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Wrapper")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Wrap")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Wrapper"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Wrap"));
     }
 
     #[test]
@@ -11477,7 +13617,9 @@ mod tests_chirho {
 
         let module_chirho = ModuleChirho {
             name_chirho: mk_name_chirho("Reexporter"),
-            exports_chirho: Some(vec![ExportSpecChirho::ModuleChirho(mk_name_chirho("Alias"))]),
+            exports_chirho: Some(vec![ExportSpecChirho::ModuleChirho(mk_name_chirho(
+                "Alias",
+            ))]),
             imports_chirho: vec![ImportDeclChirho {
                 module_chirho: mk_name_chirho("Inner"),
                 qualified_chirho: false,
@@ -11495,7 +13637,10 @@ mod tests_chirho {
         };
 
         let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho]);
-        assert!(iface_chirho.exports_chirho.values_chirho.contains_key("innerFn"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("innerFn"));
     }
 
     #[test]
@@ -11540,7 +13685,9 @@ mod tests_chirho {
 
         let module_chirho = ModuleChirho {
             name_chirho: mk_name_chirho("Reexporter"),
-            exports_chirho: Some(vec![ExportSpecChirho::ModuleChirho(mk_name_chirho("Alias"))]),
+            exports_chirho: Some(vec![ExportSpecChirho::ModuleChirho(mk_name_chirho(
+                "Alias",
+            ))]),
             imports_chirho: vec![
                 ImportDeclChirho {
                     module_chirho: mk_name_chirho("LeftMod"),
@@ -11548,7 +13695,9 @@ mod tests_chirho {
                     alias_chirho: Some(mk_name_chirho("Alias")),
                     spec_chirho: Some(ImportSpecChirho {
                         hiding_chirho: true,
-                        items_chirho: vec![ImportItemChirho::VarChirho(mk_name_chirho("hiddenLeft"))],
+                        items_chirho: vec![ImportItemChirho::VarChirho(mk_name_chirho(
+                            "hiddenLeft",
+                        ))],
                     }),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
@@ -11569,11 +13718,22 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
-        let iface_chirho =
-            build_iface_with_imports_chirho(&module_chirho, &[left_iface_chirho, right_iface_chirho]);
-        assert!(iface_chirho.exports_chirho.values_chirho.contains_key("leftFn"));
-        assert!(iface_chirho.exports_chirho.values_chirho.contains_key("rightFn"));
-        assert!(!iface_chirho.exports_chirho.values_chirho.contains_key("hiddenLeft"));
+        let iface_chirho = build_iface_with_imports_chirho(
+            &module_chirho,
+            &[left_iface_chirho, right_iface_chirho],
+        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("leftFn"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("rightFn"));
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("hiddenLeft"));
     }
 
     #[test]
@@ -11614,8 +13774,12 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
-        let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
-        assert!(iface_chirho.exports_chirho.values_chirho.contains_key("choice"));
+        let iface_chirho =
+            build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("choice"));
     }
 
     #[test]
@@ -11658,8 +13822,12 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
-        let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
-        assert!(iface_chirho.exports_chirho.types_chirho.contains_key("Parsec"));
+        let iface_chirho =
+            build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Parsec"));
     }
 
     #[test]
@@ -11767,18 +13935,14 @@ mod tests_chirho {
         assert!(monad_chirho.methods_chirho.contains(&"return".to_string()));
         assert!(monad_chirho.methods_chirho.contains(&">>=".to_string()));
         assert!(monad_chirho.methods_chirho.contains(&">>".to_string()));
-        assert!(
-            control_monad_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("return")
-        );
-        assert!(
-            control_monad_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key(">>=")
-        );
+        assert!(control_monad_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("return"));
+        assert!(control_monad_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key(">>="));
     }
 
     #[test]
@@ -11794,17 +13958,8 @@ mod tests_chirho {
             .get("Foldable")
             .expect("Data.Foldable should export Foldable");
         for method_chirho in [
-            "foldr",
-            "foldl",
-            "foldMap",
-            "length",
-            "null",
-            "elem",
-            "sum",
-            "product",
-            "maximum",
-            "minimum",
-            "toList",
+            "foldr", "foldl", "foldMap", "length", "null", "elem", "sum", "product", "maximum",
+            "minimum", "toList",
         ] {
             assert!(
                 foldable_chirho
@@ -11844,15 +13999,7 @@ mod tests_chirho {
             "Prelude should export Const"
         );
         for name_chirho in [
-            "empty",
-            "<|>",
-            "some",
-            "many",
-            "optional",
-            "liftA2",
-            "bimap",
-            "Const",
-            "getConst",
+            "empty", "<|>", "some", "many", "optional", "liftA2", "bimap", "Const", "getConst",
             "!!",
         ] {
             assert!(
@@ -11928,6 +14075,22 @@ mod tests_chirho {
     }
 
     #[test]
+    fn builtin_ghc_base_exports_mkweak_primop_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_base_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Base")
+            .expect("GHC.Base builtin iface should exist");
+        assert!(
+            ghc_base_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("mkWeak#"),
+            "GHC.Base should export mkWeak#"
+        );
+    }
+
+    #[test]
     fn builtin_with_index_instances_modules_exist_chirho() {
         let ifaces_chirho = builtin_module_ifaces_chirho();
         for module_name_chirho in &[
@@ -11994,7 +14157,10 @@ mod tests_chirho {
 
         let iface_chirho = build_iface_chirho(&module_chirho);
         assert!(
-            iface_chirho.exports_chirho.values_chirho.contains_key("sinChirho"),
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("sinChirho"),
             "foreign import names should be exported through module interfaces"
         );
     }

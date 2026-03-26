@@ -36,10 +36,8 @@ fn builds_a_check_summary_for_batch_mode_chirho() {
             .runtime_plan_chirho
             .incremental_session_chirho
     );
-    assert!(
-        render_summary_chirho(&check_summary_chirho)
-            .contains("llvm_preview: ; haskelujah llvm stub")
-    );
+    assert!(render_summary_chirho(&check_summary_chirho)
+        .contains("llvm_preview: ; haskelujah llvm stub"));
 }
 
 #[test]
@@ -95,6 +93,44 @@ fn frontend_symbolic_infix_fun_bind_with_var_operands_typechecks_chirho() {
         result_chirho.is_ok(),
         "symbolic infix function bindings should typecheck: {:?}",
         result_chirho.err()
+    );
+}
+
+#[test]
+fn check_accepts_mkweak_primop_with_unboxed_tuple_result_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "WeakPrimMiniChirho.hs",
+        "{-# LANGUAGE MagicHash #-}\n{-# LANGUAGE UnboxedTuples #-}\nmodule WeakPrimMiniChirho where\nimport GHC.Base\nfChirho keyChirho valueChirho finalizerChirho stateChirho = case mkWeak# keyChirho valueChirho finalizerChirho stateChirho of\n  (# state1Chirho, weak1Chirho #) -> (# state1Chirho, weak1Chirho #)\nmain = 42\n",
+    );
+
+    let check_summary_chirho =
+        check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho);
+
+    assert!(
+        check_summary_chirho.is_ok(),
+        "mkWeak# with unboxed tuple results should typecheck: {:?}",
+        check_summary_chirho.err()
+    );
+}
+
+#[test]
+fn check_accepts_newtvar_in_stm_context_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "StmNewTVarMiniChirho.hs",
+        "module StmNewTVarMiniChirho where\nimport Control.Concurrent.STM\nnewTSemMiniChirho :: Integer -> STM (TVar Integer)\nnewTSemMiniChirho iChirho = newTVar iChirho\nmain = 42\n",
+    );
+
+    let check_summary_chirho =
+        check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho);
+
+    assert!(
+        check_summary_chirho.is_ok(),
+        "newTVar should remain in STM, not IO: {:?}",
+        check_summary_chirho.err()
     );
 }
 
@@ -821,9 +857,8 @@ fn frontend_preprocessed_containers_intset_retains_helper_funbinds_chirho() {
         .nth(2)
         .expect("repo root should exist")
         .to_path_buf();
-    let path_chirho = repo_root_chirho.join(
-        ".haskelujah-packages-chirho/containers-0.8/src/Data/IntSet/Internal.hs",
-    );
+    let path_chirho = repo_root_chirho
+        .join(".haskelujah-packages-chirho/containers-0.8/src/Data/IntSet/Internal.hs");
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("containers source should preprocess");
     let mut source_map_chirho = SourceMapChirho::new_chirho();
@@ -832,7 +867,8 @@ fn frontend_preprocessed_containers_intset_retains_helper_funbinds_chirho() {
         path_chirho,
         &source_chirho,
     );
-    let parser_chirho = ParserChirho::new_chirho(&source_chirho, source_file_chirho.file_id_chirho());
+    let parser_chirho =
+        ParserChirho::new_chirho(&source_chirho, source_file_chirho.file_id_chirho());
     let green_chirho = parser_chirho.parse_chirho();
     let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
 
@@ -864,7 +900,9 @@ fn frontend_preprocessed_containers_intset_retains_helper_funbinds_chirho() {
                 helper_decl_kinds_chirho.push(format!("sig:{}", name_chirho.text_chirho()));
             }
             DeclChirho::PatBindChirho { pat_chirho, .. } => {
-                for name_chirho in haskelujah_typing_chirho::linearity_chirho::pat_bound_names_chirho(pat_chirho) {
+                for name_chirho in
+                    haskelujah_typing_chirho::linearity_chirho::pat_bound_names_chirho(pat_chirho)
+                {
                     if ["bin", "tip", "prefixOf", "linkKey", "symDiffTip"]
                         .contains(&name_chirho.as_str())
                     {
@@ -1106,11 +1144,8 @@ addChirho :: Num aChirho => ChanChirho pChirho aChirho -> ChanChirho pChirho aCh
 overChirho :: Num aChirho => ChanChirho pChirho aChirho -> ChanChirho pChirho aChirho -> ChanChirho pChirho aChirho
 overChirho leftChirho rightChirho = leftChirho `addChirho` rightChirho
 ";
-    let result_chirho = compile_source_chirho(
-        source_chirho,
-        &mut source_map_chirho,
-        "ColourMiniChirho.hs",
-    );
+    let result_chirho =
+        compile_source_chirho(source_chirho, &mut source_map_chirho, "ColourMiniChirho.hs");
     assert!(
         result_chirho.is_ok(),
         "constructor-pattern infix funbind should be in scope for later bindings: {:?}",
@@ -1377,7 +1412,8 @@ instance (MonadZip m) => MonadZip (ExceptTChirho e m) where
         "InstanceShapeMiniChirho.hs",
         source_chirho,
     );
-    let parser_chirho = ParserChirho::new_chirho(source_chirho, source_file_chirho.file_id_chirho());
+    let parser_chirho =
+        ParserChirho::new_chirho(source_chirho, source_file_chirho.file_id_chirho());
     let green_chirho = parser_chirho.parse_chirho();
     let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
     let frontend_chirho = crate::run_frontend_chirho(
@@ -1398,7 +1434,9 @@ instance (MonadZip m) => MonadZip (ExceptTChirho e m) where
         })
         .collect();
     assert!(
-        !leaked_funbind_names_chirho.iter().any(|name_chirho| name_chirho == "mzipWith"),
+        !leaked_funbind_names_chirho
+            .iter()
+            .any(|name_chirho| name_chirho == "mzipWith"),
         "instance method should stay nested, not leak as top-level FunBind: {:?}",
         leaked_funbind_names_chirho
     );
@@ -1434,7 +1472,8 @@ instance Contravariant m => Contravariant (ExceptTChirho e m) where
         "InstanceComplexShapeMiniChirho.hs",
         source_chirho,
     );
-    let parser_chirho = ParserChirho::new_chirho(source_chirho, source_file_chirho.file_id_chirho());
+    let parser_chirho =
+        ParserChirho::new_chirho(source_chirho, source_file_chirho.file_id_chirho());
     let green_chirho = parser_chirho.parse_chirho();
     let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
 
@@ -1514,9 +1553,12 @@ instance Contravariant m => Contravariant (ExceptTChirho e m) where
                 methods_chirho
                     .iter()
                     .filter_map(|method_chirho| match method_chirho {
-                        LocalBindChirho::FunBindChirho { matches_chirho, .. } => {
-                            Some(matches_chirho.iter().map(|arm_chirho| arm_chirho.pats_chirho.len()).sum())
-                        }
+                        LocalBindChirho::FunBindChirho { matches_chirho, .. } => Some(
+                            matches_chirho
+                                .iter()
+                                .map(|arm_chirho| arm_chirho.pats_chirho.len())
+                                .sum(),
+                        ),
                         _ => None,
                     })
                     .collect(),
@@ -2374,7 +2416,8 @@ fn cabal_project_conditional_hs_source_dirs_chirho() {
     use crate::compile_cabal_project_chirho;
     use std::io::Write;
 
-    let temp_dir_chirho = std::env::temp_dir().join("haskelujah_cabal_conditional_srcdir_test_chirho");
+    let temp_dir_chirho =
+        std::env::temp_dir().join("haskelujah_cabal_conditional_srcdir_test_chirho");
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
     std::fs::create_dir_all(temp_dir_chirho.join("unix")).unwrap();
     std::fs::create_dir_all(temp_dir_chirho.join("win")).unwrap();
@@ -2414,7 +2457,13 @@ library
         .expect("conditional hs-source-dirs cabal project should compile");
 
     assert_eq!(result_chirho.module_results_chirho.len(), 1);
-    let source_dir_chirho = &result_chirho.package_chirho.library_chirho.as_ref().unwrap().build_info_chirho.hs_source_dirs_chirho;
+    let source_dir_chirho = &result_chirho
+        .package_chirho
+        .library_chirho
+        .as_ref()
+        .unwrap()
+        .build_info_chirho
+        .hs_source_dirs_chirho;
     let expected_dir_chirho = if cfg!(target_os = "windows") {
         "win"
     } else {
@@ -2575,22 +2624,16 @@ executable hello-app
         result_chirho.executables_chirho[0].compilation_order_chirho,
         vec!["Lib".to_string(), "Main".to_string()]
     );
-    assert!(
-        !result_chirho.executables_chirho[0]
-            .core_chirho
-            .bindings_chirho
-            .is_empty()
-    );
-    assert!(
-        result_chirho.executables_chirho[0]
-            .llvm_ir_chirho
-            .contains("define i32 @main()")
-    );
-    assert!(
-        result_chirho.executables_chirho[0]
-            .llvm_ir_chirho
-            .contains("@haskelujah_main")
-    );
+    assert!(!result_chirho.executables_chirho[0]
+        .core_chirho
+        .bindings_chirho
+        .is_empty());
+    assert!(result_chirho.executables_chirho[0]
+        .llvm_ir_chirho
+        .contains("define i32 @main()"));
+    assert!(result_chirho.executables_chirho[0]
+        .llvm_ir_chirho
+        .contains("@haskelujah_main"));
 
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
 }
@@ -2599,7 +2642,7 @@ executable hello-app
 fn cabal_project_cranelift_dedups_duplicate_prelude_bindings_chirho() {
     use crate::build_cabal_project_chirho;
     use haskelujah_backend_cranelift_chirho::{
-        TargetConfigChirho, compile_core_to_object_executable_chirho,
+        compile_core_to_object_executable_chirho, TargetConfigChirho,
     };
     use std::io::Write;
 
@@ -3210,9 +3253,17 @@ fn cranelift_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)>
     let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
 
     let mut link_cmd_chirho = std::process::Command::new("cc");
-    link_cmd_chirho.arg("-o").arg(&bin_path_chirho).arg(&obj_path_chirho);
-    if cfg!(target_os = "macos") { link_cmd_chirho.arg("-Wl,-no_fixup_chains"); }
-    link_cmd_chirho.arg("-L").arg(&rts_lib_dir_chirho).arg("-lhaskelujah_rts");
+    link_cmd_chirho
+        .arg("-o")
+        .arg(&bin_path_chirho)
+        .arg(&obj_path_chirho);
+    if cfg!(target_os = "macos") {
+        link_cmd_chirho.arg("-Wl,-no_fixup_chains");
+    }
+    link_cmd_chirho
+        .arg("-L")
+        .arg(&rts_lib_dir_chirho)
+        .arg("-lhaskelujah_rts");
     let compile_status_chirho = link_cmd_chirho.status().ok()?;
     if !compile_status_chirho.success() {
         return None;
@@ -4013,7 +4064,10 @@ main = case safeLookupChirho 2 [40,41,42,43] of
   Nothing -> print 0
 "#;
     if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
-        assert_eq!(exit_code_chirho, 0, "safeLookup executable should exit successfully");
+        assert_eq!(
+            exit_code_chirho, 0,
+            "safeLookup executable should exit successfully"
+        );
         assert_eq!(stdout_chirho, "42\n");
     }
 }
@@ -4028,7 +4082,10 @@ fChirho xsChirho
 main = print (fChirho ["", "x"])
 "#;
     if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
-        assert_eq!(exit_code_chirho, 0, "pattern guard executable should exit successfully");
+        assert_eq!(
+            exit_code_chirho, 0,
+            "pattern guard executable should exit successfully"
+        );
         assert_eq!(stdout_chirho, "1\n");
     }
 }
@@ -4098,8 +4155,12 @@ fChirho xsChirho
   | otherwise = 0
 main = print (fChirho ["", "x"])
 "#;
-    if let Some((exit_code_chirho, stdout_chirho)) = cranelift_round_trip_output_chirho(src_chirho) {
-        assert_eq!(exit_code_chirho, 0, "pattern guard executable should exit successfully");
+    if let Some((exit_code_chirho, stdout_chirho)) = cranelift_round_trip_output_chirho(src_chirho)
+    {
+        assert_eq!(
+            exit_code_chirho, 0,
+            "pattern guard executable should exit successfully"
+        );
         assert_eq!(stdout_chirho, "1\n");
     }
 }
@@ -4969,11 +5030,19 @@ main = do
     };
 
     let mut link_cmd2_chirho = std::process::Command::new("cc");
-    link_cmd2_chirho.arg("-o").arg(&bin_path_chirho).arg(&obj_path_chirho);
+    link_cmd2_chirho
+        .arg("-o")
+        .arg(&bin_path_chirho)
+        .arg(&obj_path_chirho);
     if cfg!(target_os = "macos") {
-        link_cmd2_chirho.arg("-Wl,-no_fixup_chains").arg("-Wl,-stack_size,0x10000000");
+        link_cmd2_chirho
+            .arg("-Wl,-no_fixup_chains")
+            .arg("-Wl,-stack_size,0x10000000");
     }
-    link_cmd2_chirho.arg("-L").arg(&rts_lib_dir_chirho).arg("-lhaskelujah_rts");
+    link_cmd2_chirho
+        .arg("-L")
+        .arg(&rts_lib_dir_chirho)
+        .arg("-lhaskelujah_rts");
     let compile_status_chirho = link_cmd2_chirho.status().ok();
     if compile_status_chirho.map_or(true, |s| !s.success()) {
         return;
