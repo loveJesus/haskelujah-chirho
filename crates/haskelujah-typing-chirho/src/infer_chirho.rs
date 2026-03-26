@@ -6389,23 +6389,24 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // even :: Int -> Bool
-    env_chirho.bind_chirho(
-        "even".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::bool_chirho(),
-        )),
-    );
-
-    // odd :: Int -> Bool
-    env_chirho.bind_chirho(
-        "odd".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::bool_chirho(),
-        )),
-    );
+    // even :: Integral a => a -> Bool
+    {
+        let v_chirho = TyVarChirho(1280);
+        let scheme_chirho = SchemeChirho {
+            vars_chirho: vec![v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Integral".to_string(),
+                ty_chirho: TyChirho::VarChirho(v_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(v_chirho),
+                TyChirho::bool_chirho(),
+            ),
+        };
+        env_chirho.bind_chirho("even".to_string(), scheme_chirho.clone());
+        env_chirho.bind_chirho("odd".to_string(), scheme_chirho);
+    }
 
     // fst :: forall a b. (a, b) -> a
     let fst_a_chirho = TyVarChirho(1003);
@@ -9685,23 +9686,24 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // even :: Int -> Bool
-    env_chirho.bind_chirho(
-        "even".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::bool_chirho(),
-        )),
-    );
-
-    // odd :: Int -> Bool
-    env_chirho.bind_chirho(
-        "odd".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::bool_chirho(),
-        )),
-    );
+    // even :: Integral a => a -> Bool
+    {
+        let v_chirho = TyVarChirho(1280);
+        let scheme_chirho = SchemeChirho {
+            vars_chirho: vec![v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Integral".to_string(),
+                ty_chirho: TyChirho::VarChirho(v_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(v_chirho),
+                TyChirho::bool_chirho(),
+            ),
+        };
+        env_chirho.bind_chirho("even".to_string(), scheme_chirho.clone());
+        env_chirho.bind_chirho("odd".to_string(), scheme_chirho);
+    }
 
     // replicate :: forall a. Int -> a -> [a]
     let rep_a_chirho = TyVarChirho(3250);
