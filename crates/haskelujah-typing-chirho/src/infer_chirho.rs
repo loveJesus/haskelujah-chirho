@@ -21,7 +21,7 @@ use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredC
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
-use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
+use crate::unify_chirho::{unify_chirho, UnifyErrorChirho};
 
 /// Error code range for type inference diagnostics.
 const TYPE_MISMATCH_CODE_CHIRHO: u16 = 200;
@@ -302,10 +302,16 @@ impl InferCtxChirho {
         name_chirho: String,
         equations_chirho: Vec<(Vec<TyChirho>, TyChirho)>,
     ) {
-        self.type_families_chirho
-            .entry(name_chirho)
-            .or_default()
-            .extend(equations_chirho);
+        let registered_equations_chirho = self.type_families_chirho.entry(name_chirho).or_default();
+        if equations_chirho.is_empty() {
+            return;
+        }
+
+        // Newer registrations should win over older imported equations, but
+        // preserve the source order within each registration batch.
+        let prior_equations_chirho = std::mem::take(registered_equations_chirho);
+        registered_equations_chirho.extend(equations_chirho);
+        registered_equations_chirho.extend(prior_equations_chirho);
     }
 
     /// Add an equation to an open type family from a `type instance` decl.
@@ -318,7 +324,7 @@ impl InferCtxChirho {
         self.type_families_chirho
             .entry(family_name_chirho)
             .or_default()
-            .push((lhs_types_chirho, rhs_chirho));
+            .insert(0, (lhs_types_chirho, rhs_chirho));
     }
 
     /// Try to reduce a type family application `F args...` by matching
@@ -337,7 +343,7 @@ impl InferCtxChirho {
         family_name_chirho: &str,
         args_chirho: &[TyChirho],
     ) -> Option<TyChirho> {
-        let equations_chirho = self.type_families_chirho.get(family_name_chirho)?;
+        let equations_chirho = self.lookup_type_family_equations_chirho(family_name_chirho)?;
         for (lhs_chirho, rhs_chirho) in equations_chirho {
             if lhs_chirho.len() > args_chirho.len() {
                 continue;
@@ -365,6 +371,34 @@ impl InferCtxChirho {
         None
     }
 
+    fn lookup_type_family_equations_chirho(
+        &self,
+        family_name_chirho: &str,
+    ) -> Option<&[(Vec<TyChirho>, TyChirho)]> {
+        if let Some(equations_chirho) = self.type_families_chirho.get(family_name_chirho) {
+            return Some(equations_chirho.as_slice());
+        }
+
+        if let Some((_prefix_chirho, bare_name_chirho)) = family_name_chirho.rsplit_once('.') {
+            if let Some(equations_chirho) = self.type_families_chirho.get(bare_name_chirho) {
+                return Some(equations_chirho.as_slice());
+            }
+        }
+
+        let suffix_chirho = format!(".{family_name_chirho}");
+        let mut suffix_matches_chirho = self
+            .type_families_chirho
+            .iter()
+            .filter(|(name_chirho, _equations_chirho)| name_chirho.ends_with(&suffix_chirho))
+            .map(|(_name_chirho, equations_chirho)| equations_chirho.as_slice());
+        let first_match_chirho = suffix_matches_chirho.next();
+        if first_match_chirho.is_some() && suffix_matches_chirho.next().is_none() {
+            return first_match_chirho;
+        }
+
+        None
+    }
+
     /// Register a type synonym from a `TypeAliasDeclChirho`.
     pub fn register_type_synonym_chirho(
         &mut self,
@@ -383,10 +417,7 @@ impl InferCtxChirho {
         self.expand_syn_chirho(ty_chirho, 0)
     }
 
-    fn lookup_type_synonym_chirho(
-        &self,
-        name_chirho: &str,
-    ) -> Option<&(Vec<String>, TyChirho)> {
+    fn lookup_type_synonym_chirho(&self, name_chirho: &str) -> Option<&(Vec<String>, TyChirho)> {
         self.type_synonyms_chirho.get(name_chirho).or_else(|| {
             name_chirho
                 .rsplit_once('.')
@@ -402,7 +433,8 @@ impl InferCtxChirho {
         }
         match ty_chirho {
             TyChirho::ConChirho(name_chirho) => {
-                if let Some((params_chirho, rhs_chirho)) = self.lookup_type_synonym_chirho(name_chirho)
+                if let Some((params_chirho, rhs_chirho)) =
+                    self.lookup_type_synonym_chirho(name_chirho)
                 {
                     if params_chirho.is_empty() {
                         // Nullary synonym — expand and recurse
@@ -502,8 +534,8 @@ impl InferCtxChirho {
                         .iter()
                         .map(|a_chirho| self.reduce_families_chirho(a_chirho, depth_chirho + 1))
                         .collect();
-                    if let Some(result_chirho) =
-                        self.reduce_type_family_application_chirho(name_chirho, &reduced_args_chirho)
+                    if let Some(result_chirho) = self
+                        .reduce_type_family_application_chirho(name_chirho, &reduced_args_chirho)
                     {
                         return self.reduce_families_chirho(&result_chirho, depth_chirho + 1);
                     }
@@ -1076,10 +1108,8 @@ impl InferCtxChirho {
             let class_name_chirho = class_chirho.text_chirho().to_string();
             if class_name_chirho == "~" && args_chirho.len() >= 2 {
                 // Type equality constraint: a ~ b
-                let lhs_chirho =
-                    self.ast_type_to_ty_chirho(&args_chirho[0], &mut var_map_chirho);
-                let rhs_chirho =
-                    self.ast_type_to_ty_chirho(&args_chirho[1], &mut var_map_chirho);
+                let lhs_chirho = self.ast_type_to_ty_chirho(&args_chirho[0], &mut var_map_chirho);
+                let rhs_chirho = self.ast_type_to_ty_chirho(&args_chirho[1], &mut var_map_chirho);
                 equality_pairs_chirho.push((lhs_chirho, rhs_chirho));
             } else {
                 let pred_ty_chirho = if let Some(first_arg_chirho) = args_chirho.first() {
@@ -1236,10 +1266,8 @@ impl InferCtxChirho {
 
             let mut class_scoped_tyvars_chirho = HashMap::new();
             if let Some(first_var_chirho) = type_vars_chirho.first() {
-                class_scoped_tyvars_chirho.insert(
-                    first_var_chirho.text_chirho().to_string(),
-                    class_tv_chirho,
-                );
+                class_scoped_tyvars_chirho
+                    .insert(first_var_chirho.text_chirho().to_string(), class_tv_chirho);
             }
             for (ast_var_chirho, ty_var_chirho) in type_vars_chirho
                 .iter()
@@ -1429,8 +1457,7 @@ impl InferCtxChirho {
     ) -> TyChirho {
         let mut method_subst_chirho = SubstChirho::empty_chirho();
         if let Some(head_ty_chirho) = instance_head_tys_chirho.first() {
-            method_subst_chirho
-                .insert_chirho(class_decl_chirho.var_chirho, head_ty_chirho.clone());
+            method_subst_chirho.insert_chirho(class_decl_chirho.var_chirho, head_ty_chirho.clone());
         }
         for (extra_var_chirho, head_ty_chirho) in class_decl_chirho
             .extra_vars_chirho
@@ -1440,7 +1467,10 @@ impl InferCtxChirho {
             method_subst_chirho.insert_chirho(*extra_var_chirho, head_ty_chirho.clone());
         }
         for method_var_chirho in &method_scheme_chirho.vars_chirho {
-            if method_subst_chirho.lookup_chirho(method_var_chirho).is_none() {
+            if method_subst_chirho
+                .lookup_chirho(method_var_chirho)
+                .is_none()
+            {
                 method_subst_chirho.insert_chirho(*method_var_chirho, self.fresh_var_chirho());
             }
         }
@@ -1508,23 +1538,21 @@ impl InferCtxChirho {
                 let expected_ty_chirho = self.reduce_type_families_in_ty_chirho(
                     &self.expand_type_synonyms_chirho(&raw_expected_ty_chirho),
                 );
-                let (method_subst_chirho, inferred_ty_chirho) =
-                    self.infer_matches_against_expected_chirho(
+                let (method_subst_chirho, inferred_ty_chirho) = self
+                    .infer_matches_against_expected_chirho(
                         matches_chirho,
                         *span_chirho,
                         &expected_ty_chirho,
                     );
 
-                let inferred_norm_chirho = self.reduce_type_families_in_ty_chirho(
-                    &self.expand_type_synonyms_chirho(
+                let inferred_norm_chirho =
+                    self.reduce_type_families_in_ty_chirho(&self.expand_type_synonyms_chirho(
                         &method_subst_chirho.apply_ty_chirho(&inferred_ty_chirho),
-                    ),
-                );
-                let expected_norm_chirho = self.reduce_type_families_in_ty_chirho(
-                    &self.expand_type_synonyms_chirho(
+                    ));
+                let expected_norm_chirho =
+                    self.reduce_type_families_in_ty_chirho(&self.expand_type_synonyms_chirho(
                         &method_subst_chirho.apply_ty_chirho(&expected_ty_chirho),
-                    ),
-                );
+                    ));
                 if let Err(err_chirho) = crate::unify_chirho::subsume_chirho(
                     &inferred_norm_chirho,
                     &expected_norm_chirho,
@@ -1744,9 +1772,8 @@ impl InferCtxChirho {
                             ) {
                                 Ok(s4_chirho) => {
                                     let combined_chirho = s4_chirho.compose_chirho(
-                                        &s3_chirho.compose_chirho(&s2_chirho.compose_chirho(
-                                            &s1_chirho,
-                                        )),
+                                        &s3_chirho
+                                            .compose_chirho(&s2_chirho.compose_chirho(&s1_chirho)),
                                     );
                                     let final_ty_chirho =
                                         combined_chirho.apply_ty_chirho(&result_ty_chirho);
@@ -1756,9 +1783,8 @@ impl InferCtxChirho {
                                 Err(err_chirho) => {
                                     self.report_unify_error_chirho(&err_chirho);
                                     (
-                                        s3_chirho.compose_chirho(&s2_chirho.compose_chirho(
-                                            &s1_chirho,
-                                        )),
+                                        s3_chirho
+                                            .compose_chirho(&s2_chirho.compose_chirho(&s1_chirho)),
                                         self.fresh_var_chirho(),
                                     )
                                 }
@@ -1806,8 +1832,9 @@ impl InferCtxChirho {
                 body_chirho,
                 span_chirho,
             } => {
-                let param_tys_chirho: Vec<TyChirho> =
-                    (0..pats_chirho.len()).map(|_| self.fresh_var_chirho()).collect();
+                let param_tys_chirho: Vec<TyChirho> = (0..pats_chirho.len())
+                    .map(|_| self.fresh_var_chirho())
+                    .collect();
                 let result_ty_chirho = self.fresh_var_chirho();
                 self.infer_lambda_with_seed_chirho(
                     pats_chirho,
@@ -2101,8 +2128,7 @@ impl InferCtxChirho {
 
                             // Bind the pattern variable(s) to the unwrapped type
                             let bound_ty_chirho = subst_chirho.apply_ty_chirho(&elem_ty_chirho);
-                            let sp_chirho =
-                                self.bind_pat_chirho(pat_chirho, &bound_ty_chirho);
+                            let sp_chirho = self.bind_pat_chirho(pat_chirho, &bound_ty_chirho);
                             subst_chirho = sp_chirho.compose_chirho(&subst_chirho);
                             self.apply_subst_all_chirho(&sp_chirho);
                             last_ty_chirho = TyChirho::unit_chirho();
@@ -2170,7 +2196,10 @@ impl InferCtxChirho {
                     }
                     Err(err_chirho) => {
                         self.report_unify_error_chirho(&err_chirho);
-                        (s2_chirho.compose_chirho(&s1_chirho), self.fresh_var_chirho())
+                        (
+                            s2_chirho.compose_chirho(&s1_chirho),
+                            self.fresh_var_chirho(),
+                        )
                     }
                 }
             }
@@ -2212,7 +2241,10 @@ impl InferCtxChirho {
                     }
                     Err(err_chirho) => {
                         self.report_unify_error_chirho(&err_chirho);
-                        (s2_chirho.compose_chirho(&s1_chirho), self.fresh_var_chirho())
+                        (
+                            s2_chirho.compose_chirho(&s1_chirho),
+                            self.fresh_var_chirho(),
+                        )
                     }
                 }
             }
@@ -2263,12 +2295,8 @@ impl InferCtxChirho {
                 right_chirho,
                 span_chirho,
             } => {
-                let app_expr_chirho = build_infix_app_expr_chirho(
-                    left_chirho,
-                    op_chirho,
-                    right_chirho,
-                    *span_chirho,
-                );
+                let app_expr_chirho =
+                    build_infix_app_expr_chirho(left_chirho, op_chirho, right_chirho, *span_chirho);
                 self.infer_expr_chirho(&app_expr_chirho)
             }
 
@@ -2590,8 +2618,7 @@ impl InferCtxChirho {
                                 _ => {
                                     ok_chirho = false;
                                     let fresh_chirho = self.fresh_var_chirho();
-                                    let s_chirho =
-                                        self.bind_pat_chirho(arg_chirho, &fresh_chirho);
+                                    let s_chirho = self.bind_pat_chirho(arg_chirho, &fresh_chirho);
                                     subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                                     self.apply_subst_all_chirho(&s_chirho);
                                 }
@@ -2896,10 +2923,8 @@ impl InferCtxChirho {
         binds_chirho: &[haskelujah_ast_chirho::expr_chirho::LocalBindChirho],
         subst_chirho: &mut SubstChirho,
     ) {
-        let mut local_sigs_chirho: HashMap<
-            String,
-            haskelujah_ast_chirho::ty_chirho::TypeChirho,
-        > = HashMap::new();
+        let mut local_sigs_chirho: HashMap<String, haskelujah_ast_chirho::ty_chirho::TypeChirho> =
+            HashMap::new();
         for bind_chirho in binds_chirho {
             if let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho {
                 name_chirho,
@@ -2992,16 +3017,21 @@ impl InferCtxChirho {
                             )
                         })
                     } else {
-                        self.infer_matches_chirho(fun_matches_refs_chirho[fun_index_chirho], span_chirho)
+                        self.infer_matches_chirho(
+                            fun_matches_refs_chirho[fun_index_chirho],
+                            span_chirho,
+                        )
                     };
                 *subst_chirho = fun_subst_chirho.compose_chirho(subst_chirho);
                 self.apply_subst_all_chirho(&fun_subst_chirho);
 
                 let pre_ty_sub_chirho =
                     subst_chirho.apply_ty_chirho(&fun_pre_tys_chirho[fun_index_chirho]);
-                if let Ok(unify_subst_chirho) =
-                    self.unify_normalized_chirho(&pre_ty_sub_chirho, &inferred_ty_chirho, span_chirho)
-                {
+                if let Ok(unify_subst_chirho) = self.unify_normalized_chirho(
+                    &pre_ty_sub_chirho,
+                    &inferred_ty_chirho,
+                    span_chirho,
+                ) {
                     *subst_chirho = unify_subst_chirho.compose_chirho(subst_chirho);
                     self.apply_subst_all_chirho(&unify_subst_chirho);
                 }
@@ -3050,7 +3080,8 @@ impl InferCtxChirho {
                 let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
                 let generalized_chirho = binding_scheme_chirho
                     .unwrap_or_else(|| self.generalize_local_chirho(&inferred_sub_chirho));
-                self.env_chirho.bind_chirho(name_str_chirho, generalized_chirho);
+                self.env_chirho
+                    .bind_chirho(name_str_chirho, generalized_chirho);
             }
         }
 
@@ -3150,9 +3181,8 @@ impl InferCtxChirho {
                         &signature_givens_chirho,
                     )
                     .unwrap_or_else(|| {
-                        let fresh_params_chirho: Vec<TyChirho> = (0..arity_chirho)
-                            .map(|_| self.fresh_var_chirho())
-                            .collect();
+                        let fresh_params_chirho: Vec<TyChirho> =
+                            (0..arity_chirho).map(|_| self.fresh_var_chirho()).collect();
                         let fresh_result_chirho = self.fresh_var_chirho();
                         (fresh_params_chirho, fresh_result_chirho, Vec::new())
                     })
@@ -3389,16 +3419,14 @@ impl InferCtxChirho {
             self.apply_subst_all_chirho(&s_chirho);
         }
 
-        let expected_result_sub_chirho =
-            param_subst_chirho.apply_ty_chirho(&result_ty_chirho);
+        let expected_result_sub_chirho = param_subst_chirho.apply_ty_chirho(&result_ty_chirho);
         let (body_subst_chirho, body_ty_chirho) = self.infer_expr_against_expected_chirho(
             body_chirho,
             &expected_result_sub_chirho,
             span_chirho,
         );
         let combined_subst_chirho = body_subst_chirho.compose_chirho(&param_subst_chirho);
-        let expected_result_final_chirho =
-            combined_subst_chirho.apply_ty_chirho(&result_ty_chirho);
+        let expected_result_final_chirho = combined_subst_chirho.apply_ty_chirho(&result_ty_chirho);
 
         let mut final_subst_chirho = combined_subst_chirho.clone();
         match self.unify_normalized_chirho(
@@ -3502,9 +3530,8 @@ impl InferCtxChirho {
                         ) {
                             Ok(s4_chirho) => {
                                 let combined_chirho = s4_chirho.compose_chirho(
-                                    &s3_chirho.compose_chirho(&s2_chirho.compose_chirho(
-                                        &s1_chirho,
-                                    )),
+                                    &s3_chirho
+                                        .compose_chirho(&s2_chirho.compose_chirho(&s1_chirho)),
                                 );
                                 let final_ty_chirho =
                                     combined_chirho.apply_ty_chirho(expected_ty_chirho);
@@ -3514,9 +3541,7 @@ impl InferCtxChirho {
                             Err(err_chirho) => {
                                 self.report_unify_error_chirho(&err_chirho);
                                 (
-                                    s3_chirho.compose_chirho(&s2_chirho.compose_chirho(
-                                        &s1_chirho,
-                                    )),
+                                    s3_chirho.compose_chirho(&s2_chirho.compose_chirho(&s1_chirho)),
                                     self.fresh_var_chirho(),
                                 )
                             }
@@ -3550,8 +3575,7 @@ impl InferCtxChirho {
                 elements_chirho,
                 span_chirho: list_span_chirho,
             } => {
-                let expected_norm_chirho =
-                    self.expand_type_synonyms_chirho(expected_ty_chirho);
+                let expected_norm_chirho = self.expand_type_synonyms_chirho(expected_ty_chirho);
                 let TyChirho::ListChirho(expected_elem_ty_chirho) = expected_norm_chirho else {
                     let (s_chirho, actual_ty_chirho) = self.infer_expr_chirho(expr_chirho);
                     match self.unify_normalized_chirho(
@@ -3590,8 +3614,7 @@ impl InferCtxChirho {
 
                     let elem_expected_final_chirho =
                         subst_chirho.apply_ty_chirho(&elem_expected_ty_chirho);
-                    let elem_actual_final_chirho =
-                        subst_chirho.apply_ty_chirho(&elem_ty_chirho);
+                    let elem_actual_final_chirho = subst_chirho.apply_ty_chirho(&elem_ty_chirho);
                     match self.unify_normalized_chirho(
                         &elem_actual_final_chirho,
                         &elem_expected_final_chirho,
@@ -3614,8 +3637,11 @@ impl InferCtxChirho {
             }
             _ => {
                 let (s_chirho, actual_ty_chirho) = self.infer_expr_chirho(expr_chirho);
-                match self.unify_normalized_chirho(&actual_ty_chirho, expected_ty_chirho, span_chirho)
-                {
+                match self.unify_normalized_chirho(
+                    &actual_ty_chirho,
+                    expected_ty_chirho,
+                    span_chirho,
+                ) {
                     Ok(su_chirho) => {
                         let combined_chirho = su_chirho.compose_chirho(&s_chirho);
                         let final_ty_chirho = combined_chirho.apply_ty_chirho(expected_ty_chirho);
@@ -3666,8 +3692,8 @@ impl InferCtxChirho {
             if let DeclChirho::DefaultDeclChirho { types_chirho, .. } = decl_chirho {
                 let mut default_var_map_chirho = HashMap::new();
                 for default_type_chirho in types_chirho {
-                    let default_ty_chirho =
-                        self.ast_type_to_ty_chirho(default_type_chirho, &mut default_var_map_chirho);
+                    let default_ty_chirho = self
+                        .ast_type_to_ty_chirho(default_type_chirho, &mut default_var_map_chirho);
                     self.module_default_types_chirho.push(default_ty_chirho);
                 }
             }
@@ -4046,23 +4072,22 @@ impl InferCtxChirho {
             } = decl_chirho
             {
                 let binding_name_chirho = name_chirho.text_chirho().to_string();
-                let pre_ty_chirho = if let Some(sig_ast_chirho) =
-                    type_sigs_chirho.get(&binding_name_chirho)
-                {
-                    let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                    let (sig_ty_chirho, _sig_preds_chirho) =
-                        self.instantiate_scheme_parts_chirho(&sig_scheme_chirho);
-                    self.env_chirho
-                        .bind_chirho(binding_name_chirho.clone(), sig_scheme_chirho);
-                    sig_ty_chirho
-                } else {
-                    let fresh_ty_chirho = self.fresh_var_chirho();
-                    self.env_chirho.bind_chirho(
-                        binding_name_chirho.clone(),
-                        SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
-                    );
-                    fresh_ty_chirho
-                };
+                let pre_ty_chirho =
+                    if let Some(sig_ast_chirho) = type_sigs_chirho.get(&binding_name_chirho) {
+                        let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
+                        let (sig_ty_chirho, _sig_preds_chirho) =
+                            self.instantiate_scheme_parts_chirho(&sig_scheme_chirho);
+                        self.env_chirho
+                            .bind_chirho(binding_name_chirho.clone(), sig_scheme_chirho);
+                        sig_ty_chirho
+                    } else {
+                        let fresh_ty_chirho = self.fresh_var_chirho();
+                        self.env_chirho.bind_chirho(
+                            binding_name_chirho.clone(),
+                            SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
+                        );
+                        fresh_ty_chirho
+                    };
                 fun_names_chirho.push(binding_name_chirho);
                 fun_matches_refs_chirho.push(matches_chirho.as_slice());
                 fun_spans_chirho.push(*span_chirho);
@@ -4272,8 +4297,8 @@ impl InferCtxChirho {
                         // Check against type signature if one exists
                         if let Some(sig_ast_chirho) = type_sigs_chirho.get(name_chirho) {
                             let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
-                            let (sig_ty_raw_chirho, _sig_preds_chirho) = self
-                                .instantiate_scheme_parts_chirho(&sig_scheme_chirho);
+                            let (sig_ty_raw_chirho, _sig_preds_chirho) =
+                                self.instantiate_scheme_parts_chirho(&sig_scheme_chirho);
                             let sig_ty_chirho =
                                 self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
                             let inferred_sub_chirho =
@@ -4593,9 +4618,7 @@ fn ast_type_to_syn_rhs_chirho(ty_chirho: &TypeChirho, params_chirho: &[String]) 
                 TyChirho::ConChirho(text_chirho)
             }
         }
-        TypeChirho::ConChirho(name_chirho) => {
-            TyChirho::ConChirho(name_chirho.full_name_chirho())
-        }
+        TypeChirho::ConChirho(name_chirho) => TyChirho::ConChirho(name_chirho.full_name_chirho()),
         TypeChirho::ListChirho { element_chirho, .. } => TyChirho::ListChirho(Box::new(
             ast_type_to_syn_rhs_chirho(element_chirho, params_chirho),
         )),
@@ -5408,7 +5431,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         ),
         ("starK", th_kind_ty_chirho.clone()),
     ] {
-        env_chirho.bind_chirho(name_chirho.to_string(), SchemeChirho::mono_chirho(ty_chirho));
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            SchemeChirho::mono_chirho(ty_chirho),
+        );
     }
 
     // not :: Bool -> Bool
@@ -6051,11 +6077,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
     let finite_bits_v_chirho = TyVarChirho(1194);
-    for finite_bits_name_chirho in [
-        "finiteBitSize",
-        "countLeadingZeros",
-        "countTrailingZeros",
-    ] {
+    for finite_bits_name_chirho in ["finiteBitSize", "countLeadingZeros", "countTrailingZeros"] {
         env_chirho.bind_chirho(
             finite_bits_name_chirho.to_string(),
             SchemeChirho {
@@ -6399,10 +6421,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 ty_chirho: TyChirho::VarChirho(v_chirho),
                 extra_tys_chirho: vec![],
             }],
-            ty_chirho: TyChirho::fun_chirho(
-                TyChirho::VarChirho(v_chirho),
-                TyChirho::bool_chirho(),
-            ),
+            ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(v_chirho), TyChirho::bool_chirho()),
         };
         env_chirho.bind_chirho("even".to_string(), scheme_chirho.clone());
         env_chirho.bind_chirho("odd".to_string(), scheme_chirho);
@@ -7100,10 +7119,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             }],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(randomgen_g_chirho),
-                TyChirho::TupleChirho(vec![
-                    TyChirho::int_chirho(),
-                    TyChirho::int_chirho(),
-                ]),
+                TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::int_chirho()]),
             ),
         },
     );
@@ -8016,7 +8032,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::int_chirho(),
-                    TyChirho::fun_chirho(TyChirho::VarChirho(k_chirho), TyChirho::VarChirho(v_chirho)),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(k_chirho),
+                        TyChirho::VarChirho(v_chirho),
+                    ),
                 ),
             },
         );
@@ -9696,10 +9715,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 ty_chirho: TyChirho::VarChirho(v_chirho),
                 extra_tys_chirho: vec![],
             }],
-            ty_chirho: TyChirho::fun_chirho(
-                TyChirho::VarChirho(v_chirho),
-                TyChirho::bool_chirho(),
-            ),
+            ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(v_chirho), TyChirho::bool_chirho()),
         };
         env_chirho.bind_chirho("even".to_string(), scheme_chirho.clone());
         env_chirho.bind_chirho("odd".to_string(), scheme_chirho);
@@ -10317,8 +10333,8 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     // Unary: sin, cos, tan, asin, acos, atan, exp, log, sqrt, sinh, cosh,
     // tanh, asinh, acosh, atanh :: Floating a => a -> a
     for (index_chirho, name_chirho) in [
-        "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sqrt", "sinh", "cosh",
-        "tanh", "asinh", "acosh", "atanh",
+        "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sqrt", "sinh", "cosh", "tanh",
+        "asinh", "acosh", "atanh",
     ]
     .into_iter()
     .enumerate()
@@ -10563,14 +10579,8 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 MultChirho::ManyChirho,
             ),
         };
-        env_chirho.bind_chirho(
-            "traverse".to_string(),
-            traverse_scheme_chirho.clone(),
-        );
-        env_chirho.bind_chirho(
-            "mapM".to_string(),
-            traverse_scheme_chirho,
-        );
+        env_chirho.bind_chirho("traverse".to_string(), traverse_scheme_chirho.clone());
+        env_chirho.bind_chirho("mapM".to_string(), traverse_scheme_chirho);
         env_chirho.bind_chirho(
             "sequenceA".to_string(),
             SchemeChirho {
@@ -10669,10 +10679,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 MultChirho::ManyChirho,
             ),
         };
-        env_chirho.bind_chirho(
-            "traverse1".to_string(),
-            traverse1_scheme_chirho.clone(),
-        );
+        env_chirho.bind_chirho("traverse1".to_string(), traverse1_scheme_chirho.clone());
         env_chirho.bind_chirho(
             "sequence1".to_string(),
             SchemeChirho {
@@ -12496,7 +12503,9 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     ),
                     TyChirho::AppChirho(
                         Box::new(TyChirho::VarChirho(f_chirho)),
-                        Box::new(TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_chirho)))),
+                        Box::new(TyChirho::ListChirho(Box::new(TyChirho::VarChirho(
+                            a_chirho,
+                        )))),
                     ),
                 ),
             },
@@ -12519,7 +12528,9 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     ),
                     TyChirho::AppChirho(
                         Box::new(TyChirho::VarChirho(f_chirho)),
-                        Box::new(TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_chirho)))),
+                        Box::new(TyChirho::ListChirho(Box::new(TyChirho::VarChirho(
+                            a_chirho,
+                        )))),
                     ),
                 ),
             },
@@ -13904,17 +13915,15 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
     for (name_chirho, scheme_chirho) in imported_types_chirho {
         let should_override_chirho = !is_placeholder_import_scheme_chirho(scheme_chirho);
         if should_override_chirho || ctx_chirho.env_chirho.lookup_chirho(name_chirho).is_none() {
-            ctx_chirho.env_chirho.bind_chirho(
-                name_chirho.clone(),
-                scheme_chirho.clone(),
-            );
+            ctx_chirho
+                .env_chirho
+                .bind_chirho(name_chirho.clone(), scheme_chirho.clone());
         }
     }
     for (constructor_name_chirho, field_names_chirho) in imported_record_field_names_chirho {
-        ctx_chirho.con_field_names_chirho.insert(
-            constructor_name_chirho.clone(),
-            field_names_chirho.clone(),
-        );
+        ctx_chirho
+            .con_field_names_chirho
+            .insert(constructor_name_chirho.clone(), field_names_chirho.clone());
     }
     let subst_chirho = ctx_chirho.infer_module_chirho(module_chirho);
     let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
@@ -14237,7 +14246,8 @@ mod tests_chirho {
             SpanChirho::DUMMY_CHIRHO,
         ));
 
-        let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&SubstChirho::empty_chirho());
+        let default_subst_chirho =
+            ctx_chirho.check_deferred_preds_chirho(&SubstChirho::empty_chirho());
         assert!(
             matches!(
                 default_subst_chirho.lookup_chirho(&constrained_var_chirho),
@@ -14714,9 +14724,9 @@ mod tests_chirho {
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 },
                                 rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::IfChirho {
-                                    cond_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho(
-                                        "flagChirho",
-                                    ))),
+                                    cond_chirho: Box::new(ExprChirho::VarChirho(
+                                        dummy_name_chirho("flagChirho"),
+                                    )),
                                     then_chirho: Box::new(ExprChirho::LitChirho(
                                         LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO),
                                     )),
@@ -15067,11 +15077,9 @@ mod tests_chirho {
             "Class with superclass should not error: {:?}",
             result_chirho.diagnostics_chirho
         );
-        assert!(
-            result_chirho
-                .class_env_chirho
-                .has_class_chirho("MyOrdChirho")
-        );
+        assert!(result_chirho
+            .class_env_chirho
+            .has_class_chirho("MyOrdChirho"));
         let supers_chirho = result_chirho
             .class_env_chirho
             .superclasses_chirho("MyOrdChirho");
@@ -15215,12 +15223,12 @@ mod tests_chirho {
                         body_chirho: Box::new(TypeChirho::FunChirho {
                             arg_chirho: Box::new(TypeChirho::AppChirho {
                                 fun_chirho: Box::new(TypeChirho::AppChirho {
-                                    fun_chirho: Box::new(TypeChirho::VarChirho(
-                                        dummy_name_chirho("p"),
-                                    )),
-                                    arg_chirho: Box::new(TypeChirho::VarChirho(
-                                        dummy_name_chirho("a"),
-                                    )),
+                                    fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "p",
+                                    ))),
+                                    arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "a",
+                                    ))),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 }),
                                 arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
@@ -15229,12 +15237,12 @@ mod tests_chirho {
                             mult_chirho: None,
                             result_chirho: Box::new(TypeChirho::AppChirho {
                                 fun_chirho: Box::new(TypeChirho::AppChirho {
-                                    fun_chirho: Box::new(TypeChirho::VarChirho(
-                                        dummy_name_chirho("q"),
-                                    )),
-                                    arg_chirho: Box::new(TypeChirho::VarChirho(
-                                        dummy_name_chirho("a"),
-                                    )),
+                                    fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "q",
+                                    ))),
+                                    arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "a",
+                                    ))),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 }),
                                 arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
@@ -15316,12 +15324,12 @@ mod tests_chirho {
                             mult_chirho: None,
                             result_chirho: Box::new(TypeChirho::AppChirho {
                                 fun_chirho: Box::new(TypeChirho::AppChirho {
-                                    fun_chirho: Box::new(TypeChirho::VarChirho(
-                                        dummy_name_chirho("p"),
-                                    )),
-                                    arg_chirho: Box::new(TypeChirho::VarChirho(
-                                        dummy_name_chirho("a"),
-                                    )),
+                                    fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "p",
+                                    ))),
+                                    arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "a",
+                                    ))),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 }),
                                 arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
@@ -15400,12 +15408,12 @@ mod tests_chirho {
                             mult_chirho: None,
                             result_chirho: Box::new(TypeChirho::AppChirho {
                                 fun_chirho: Box::new(TypeChirho::AppChirho {
-                                    fun_chirho: Box::new(TypeChirho::VarChirho(
-                                        dummy_name_chirho("p"),
-                                    )),
-                                    arg_chirho: Box::new(TypeChirho::VarChirho(
-                                        dummy_name_chirho("a"),
-                                    )),
+                                    fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "p",
+                                    ))),
+                                    arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "a",
+                                    ))),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 }),
                                 arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("b"))),
@@ -15753,26 +15761,24 @@ mod tests_chirho {
             name_chirho: dummy_name_chirho("TuplePatternArg"),
             exports_chirho: None,
             imports_chirho: vec![],
-            decls_chirho: vec![
-                DeclChirho::FunBindChirho {
-                    name_chirho: dummy_name_chirho("writerLikeChirho"),
-                    matches_chirho: vec![MatchArmChirho {
-                        pats_chirho: vec![PatChirho::TupleChirho {
-                            elements_chirho: vec![
-                                PatChirho::VarChirho(dummy_name_chirho("aChirho")),
-                                PatChirho::VarChirho(dummy_name_chirho("wChirho")),
-                            ],
-                            span_chirho: SpanChirho::DUMMY_CHIRHO,
-                        }],
-                        rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::VarChirho(
-                            dummy_name_chirho("aChirho"),
-                        )),
-                        where_binds_chirho: vec![],
+            decls_chirho: vec![DeclChirho::FunBindChirho {
+                name_chirho: dummy_name_chirho("writerLikeChirho"),
+                matches_chirho: vec![MatchArmChirho {
+                    pats_chirho: vec![PatChirho::TupleChirho {
+                        elements_chirho: vec![
+                            PatChirho::VarChirho(dummy_name_chirho("aChirho")),
+                            PatChirho::VarChirho(dummy_name_chirho("wChirho")),
+                        ],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }],
+                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::VarChirho(
+                        dummy_name_chirho("aChirho"),
+                    )),
+                    where_binds_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-            ],
+                }],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
             extensions_chirho: vec![],
             inline_pragmas_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
@@ -15982,15 +15988,15 @@ mod tests_chirho {
                 DeclChirho::NewtypeDeclChirho {
                     name_chirho: dummy_name_chirho("WriterT"),
                     type_vars_chirho: vec![
-                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(
-                            dummy_name_chirho("wChirho"),
-                        ),
-                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(
-                            dummy_name_chirho("mChirho"),
-                        ),
-                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(
-                            dummy_name_chirho("aChirho"),
-                        ),
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(dummy_name_chirho(
+                            "wChirho",
+                        )),
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(dummy_name_chirho(
+                            "mChirho",
+                        )),
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(dummy_name_chirho(
+                            "aChirho",
+                        )),
                     ],
                     constructor_chirho: ConDeclChirho::RecordChirho {
                         name_chirho: dummy_name_chirho("WriterT"),
@@ -16082,15 +16088,15 @@ mod tests_chirho {
                 DeclChirho::NewtypeDeclChirho {
                     name_chirho: dummy_name_chirho("StateT"),
                     type_vars_chirho: vec![
-                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(
-                            dummy_name_chirho("sChirho"),
-                        ),
-                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(
-                            dummy_name_chirho("mChirho"),
-                        ),
-                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(
-                            dummy_name_chirho("aChirho"),
-                        ),
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(dummy_name_chirho(
+                            "sChirho",
+                        )),
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(dummy_name_chirho(
+                            "mChirho",
+                        )),
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(dummy_name_chirho(
+                            "aChirho",
+                        )),
                     ],
                     constructor_chirho: ConDeclChirho::RecordChirho {
                         name_chirho: dummy_name_chirho("StateT"),
@@ -16102,9 +16108,9 @@ mod tests_chirho {
                                 ))),
                                 mult_chirho: None,
                                 result_chirho: Box::new(TypeChirho::AppChirho {
-                                    fun_chirho: Box::new(TypeChirho::VarChirho(
-                                        dummy_name_chirho("mChirho"),
-                                    )),
+                                    fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
+                                        "mChirho",
+                                    ))),
                                     arg_chirho: Box::new(TypeChirho::TupleChirho {
                                         elements_chirho: vec![
                                             TypeChirho::VarChirho(dummy_name_chirho("aChirho")),
@@ -16203,12 +16209,12 @@ mod tests_chirho {
                 DeclChirho::DataDeclChirho {
                     name_chirho: dummy_name_chirho("ASeq"),
                     type_vars_chirho: vec![
-                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(
-                            dummy_name_chirho("fChirho"),
-                        ),
-                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(
-                            dummy_name_chirho("aChirho"),
-                        ),
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(dummy_name_chirho(
+                            "fChirho",
+                        )),
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::from(dummy_name_chirho(
+                            "aChirho",
+                        )),
                     ],
                     constructors_chirho: vec![
                         ConDeclChirho::GadtChirho {
@@ -16356,13 +16362,13 @@ mod tests_chirho {
                             }],
                             rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::InfixChirho {
                                 left_chirho: Box::new(ExprChirho::InfixChirho {
-                                    left_chirho: Box::new(ExprChirho::ConChirho(dummy_name_chirho(
-                                        "(,)",
-                                    ))),
+                                    left_chirho: Box::new(ExprChirho::ConChirho(
+                                        dummy_name_chirho("(,)"),
+                                    )),
                                     op_chirho: dummy_name_chirho("<$>"),
-                                    right_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho(
-                                        "xChirho",
-                                    ))),
+                                    right_chirho: Box::new(ExprChirho::VarChirho(
+                                        dummy_name_chirho("xChirho"),
+                                    )),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 }),
                                 op_chirho: dummy_name_chirho("<*>"),
@@ -16703,12 +16709,11 @@ mod tests_chirho {
     fn ast_type_conversion_preserves_qualified_tycon_spine_chirho() {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         let mut var_map_chirho = HashMap::new();
-        let qualified_state_t_chirho =
-            NameChirho::RawChirho(RawNameChirho::qualified_chirho(
-                "LazyS",
-                "StateT",
-                SpanChirho::DUMMY_CHIRHO,
-            ));
+        let qualified_state_t_chirho = NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+            "LazyS",
+            "StateT",
+            SpanChirho::DUMMY_CHIRHO,
+        ));
         let ast_ty_chirho = TypeChirho::AppChirho {
             fun_chirho: Box::new(TypeChirho::AppChirho {
                 fun_chirho: Box::new(TypeChirho::AppChirho {
@@ -17043,12 +17048,14 @@ mod tests_chirho {
                 default_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
-            associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
-                name_chirho: dummy_name_chirho("Rep"),
-                type_vars_chirho: vec![dummy_name_chirho("f")],
-                default_rhs_chirho: None,
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            }],
+            associated_tfs_chirho: vec![
+                haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                    name_chirho: dummy_name_chirho("Rep"),
+                    type_vars_chirho: vec![dummy_name_chirho("f")],
+                    default_rhs_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
             fundeps_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -17223,12 +17230,14 @@ mod tests_chirho {
                 default_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
-            associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
-                name_chirho: dummy_name_chirho("Rep"),
-                type_vars_chirho: vec![dummy_name_chirho("f")],
-                default_rhs_chirho: None,
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            }],
+            associated_tfs_chirho: vec![
+                haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                    name_chirho: dummy_name_chirho("Rep"),
+                    type_vars_chirho: vec![dummy_name_chirho("f")],
+                    default_rhs_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
             fundeps_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -17265,9 +17274,8 @@ mod tests_chirho {
         };
 
         let (subst_chirho, inferred_ty_chirho) = ctx_chirho.infer_expr_chirho(&expr_chirho);
-        let final_ty_chirho = ctx_chirho.reduce_type_families_in_ty_chirho(
-            &subst_chirho.apply_ty_chirho(&inferred_ty_chirho),
-        );
+        let final_ty_chirho = ctx_chirho
+            .reduce_type_families_in_ty_chirho(&subst_chirho.apply_ty_chirho(&inferred_ty_chirho));
 
         assert!(
             matches!(final_ty_chirho, TyChirho::AppChirho(_, _)),
@@ -17299,6 +17307,132 @@ mod tests_chirho {
                 Box::new(TyChirho::char_chirho()),
             ),
             "oversaturated family application should reduce the family head and reapply leftover args"
+        );
+    }
+
+    #[test]
+    fn type_family_latest_registration_wins_for_duplicate_product_rep_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let product_pattern_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Product".to_string())),
+                Box::new(TyChirho::ForallVarChirho("f".to_string())),
+            )),
+            Box::new(TyChirho::ForallVarChirho("g".to_string())),
+        );
+        let either_rhs_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Either".to_string())),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("f".to_string())),
+                )),
+            )),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Rep".to_string())),
+                Box::new(TyChirho::ForallVarChirho("g".to_string())),
+            )),
+        );
+        let tuple_rhs_ty_chirho = TyChirho::TupleChirho(vec![
+            TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Rep".to_string())),
+                Box::new(TyChirho::ForallVarChirho("f".to_string())),
+            ),
+            TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Rep".to_string())),
+                Box::new(TyChirho::ForallVarChirho("g".to_string())),
+            ),
+        ]);
+        ctx_chirho.register_type_family_instance_chirho(
+            "Rep".to_string(),
+            vec![product_pattern_ty_chirho.clone()],
+            either_rhs_ty_chirho,
+        );
+        ctx_chirho.register_type_family_instance_chirho(
+            "Rep".to_string(),
+            vec![product_pattern_ty_chirho],
+            tuple_rhs_ty_chirho,
+        );
+
+        let app_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Rep".to_string())),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Product".to_string())),
+                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
+                )),
+                Box::new(TyChirho::ConChirho("U1".to_string())),
+            )),
+        );
+        let reduced_chirho = ctx_chirho.reduce_type_families_in_ty_chirho(&app_ty_chirho);
+
+        assert_eq!(
+            reduced_chirho,
+            TyChirho::TupleChirho(vec![
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep".to_string())),
+                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep".to_string())),
+                    Box::new(TyChirho::ConChirho("U1".to_string())),
+                ),
+            ]),
+            "later Rep(Product f g) registration should override older colliding equations"
+        );
+    }
+
+    #[test]
+    fn qualified_type_family_head_uses_bare_family_lookup_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.register_type_family_instance_chirho(
+            "Rep".to_string(),
+            vec![TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Product".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("f".to_string())),
+                )),
+                Box::new(TyChirho::ForallVarChirho("g".to_string())),
+            )],
+            TyChirho::TupleChirho(vec![
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("f".to_string())),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("g".to_string())),
+                ),
+            ]),
+        );
+
+        let qualified_app_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho(
+                "Data.Functor.Contravariant.Rep.Rep".to_string(),
+            )),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Product".to_string())),
+                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
+                )),
+                Box::new(TyChirho::ConChirho("U1".to_string())),
+            )),
+        );
+        let reduced_chirho = ctx_chirho.reduce_type_families_in_ty_chirho(&qualified_app_ty_chirho);
+
+        assert_eq!(
+            reduced_chirho,
+            TyChirho::TupleChirho(vec![
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep".to_string())),
+                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep".to_string())),
+                    Box::new(TyChirho::ConChirho("U1".to_string())),
+                ),
+            ]),
+            "qualified family heads should still match bare registered type families"
         );
     }
 
