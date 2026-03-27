@@ -12036,6 +12036,54 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // GHC.Foreign (needed by filepath OsPath modules)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "peekCStringLen",
+            "newCStringLen",
+            "withCStringLen",
+            "withCString",
+            "peekCString",
+            "newCString",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Foreign".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.OsString.Data.ByteString.Short (os-string — needed by filepath)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "ShortByteString",
+            "toShort",
+            "fromShort",
+            "pack",
+            "unpack",
+            "empty",
+            "null",
+            "length",
+            "index",
+            "append",
+            "useAsCStringLen",
+            "packCStringLen",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("ShortByteString", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.OsString.Data.ByteString.Short".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Control.Monad.Trans.Resource (resourcet)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
