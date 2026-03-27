@@ -66,6 +66,10 @@ fn qualified_name_is_operator_chirho(text_chirho: &str) -> bool {
         .is_some_and(is_symbol_start_char_chirho)
 }
 
+fn qualified_name_is_consym_chirho(text_chirho: &str) -> bool {
+    qualified_local_text_chirho(text_chirho).starts_with(':')
+}
+
 fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho, text_chirho: &str) -> TokenKindChirho {
     match raw_chirho {
         // Keywords
@@ -3802,6 +3806,8 @@ impl<'src> ParserChirho<'src> {
         // Check for infix constructor pattern
         if self.at_chirho(RawTokenKindChirho::ConSymChirho)
             || self.at_chirho(RawTokenKindChirho::BacktickChirho)
+            || self.current_kind_chirho() == Some(RawTokenKindChirho::QualifiedIdChirho)
+                && qualified_name_is_consym_chirho(self.current_text_chirho())
         {
             self.builder_chirho
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::InfixConPatChirho);
@@ -3817,7 +3823,7 @@ impl<'src> ParserChirho<'src> {
                     self.bump_chirho(); // `
                 }
             } else {
-                self.bump_chirho(); // ConSym
+                self.bump_chirho(); // ConSym or qualified constructor symbol
             }
             self.eat_trivia_chirho();
 

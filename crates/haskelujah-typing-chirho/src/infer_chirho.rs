@@ -513,6 +513,23 @@ impl InferCtxChirho {
         self.reduce_families_chirho(ty_chirho, 0)
     }
 
+    /// Normalize a type to a fixed point by alternating synonym expansion and
+    /// type-family reduction. This catches cases where family reduction
+    /// exposes a synonym head such as `Rep f` -> `GRep f`.
+    pub fn normalize_ty_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
+        let mut current_ty_chirho = ty_chirho.clone();
+        for _iteration_chirho in 0..100 {
+            let expanded_ty_chirho = self.expand_type_synonyms_chirho(&current_ty_chirho);
+            let reduced_ty_chirho = self.reduce_type_families_in_ty_chirho(&expanded_ty_chirho);
+            let normalized_ty_chirho = self.expand_type_synonyms_chirho(&reduced_ty_chirho);
+            if normalized_ty_chirho == current_ty_chirho {
+                return normalized_ty_chirho;
+            }
+            current_ty_chirho = normalized_ty_chirho;
+        }
+        current_ty_chirho
+    }
+
     fn reduce_families_chirho(&self, ty_chirho: &TyChirho, depth_chirho: usize) -> TyChirho {
         if depth_chirho > 100 || self.type_families_chirho.is_empty() {
             return ty_chirho.clone();
@@ -878,10 +895,8 @@ impl InferCtxChirho {
         ty2_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> Result<SubstChirho, UnifyErrorChirho> {
-        let n1_chirho =
-            self.expand_type_synonyms_chirho(&self.reduce_type_families_in_ty_chirho(ty1_chirho));
-        let n2_chirho =
-            self.expand_type_synonyms_chirho(&self.reduce_type_families_in_ty_chirho(ty2_chirho));
+        let n1_chirho = self.normalize_ty_chirho(ty1_chirho);
+        let n2_chirho = self.normalize_ty_chirho(ty2_chirho);
         unify_chirho(&n1_chirho, &n2_chirho, span_chirho)
     }
 
@@ -1497,9 +1512,7 @@ impl InferCtxChirho {
         }
         let specialized_expected_ty_chirho =
             method_subst_chirho.apply_ty_chirho(&method_scheme_chirho.ty_chirho);
-        self.reduce_type_families_in_ty_chirho(
-            &self.expand_type_synonyms_chirho(&specialized_expected_ty_chirho),
-        )
+        self.normalize_ty_chirho(&specialized_expected_ty_chirho)
     }
 
     fn check_instance_methods_against_class_chirho(&mut self, module_chirho: &ModuleChirho) {
@@ -1561,8 +1574,7 @@ impl InferCtxChirho {
                         method_scheme_chirho,
                         &instance_head_tys_chirho,
                     );
-                let expected_ty_chirho =
-                    self.reduce_type_families_in_ty_chirho(&specialized_expected_ty_chirho);
+                let expected_ty_chirho = self.normalize_ty_chirho(&specialized_expected_ty_chirho);
                 let (method_subst_chirho, inferred_ty_chirho) = self
                     .infer_matches_against_expected_chirho(
                         matches_chirho,
@@ -1570,14 +1582,10 @@ impl InferCtxChirho {
                         &expected_ty_chirho,
                     );
 
-                let inferred_norm_chirho =
-                    self.reduce_type_families_in_ty_chirho(&self.expand_type_synonyms_chirho(
-                        &method_subst_chirho.apply_ty_chirho(&inferred_ty_chirho),
-                    ));
-                let expected_norm_chirho =
-                    self.reduce_type_families_in_ty_chirho(&self.expand_type_synonyms_chirho(
-                        &method_subst_chirho.apply_ty_chirho(&expected_ty_chirho),
-                    ));
+                let inferred_norm_chirho = self
+                    .normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&inferred_ty_chirho));
+                let expected_norm_chirho = self
+                    .normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&expected_ty_chirho));
                 if let Err(err_chirho) = crate::unify_chirho::subsume_chirho(
                     &inferred_norm_chirho,
                     &expected_norm_chirho,
@@ -2287,12 +2295,8 @@ impl InferCtxChirho {
                 let mut var_map_chirho = HashMap::new();
                 let ann_internal_chirho =
                     self.ast_type_to_ty_chirho(ann_ty_chirho, &mut var_map_chirho);
-                let ann_normalized_chirho = self.reduce_type_families_in_ty_chirho(
-                    &self.expand_type_synonyms_chirho(&ann_internal_chirho),
-                );
-                let inferred_normalized_chirho = self.reduce_type_families_in_ty_chirho(
-                    &self.expand_type_synonyms_chirho(&inferred_ty_chirho),
-                );
+                let ann_normalized_chirho = self.normalize_ty_chirho(&ann_internal_chirho);
+                let inferred_normalized_chirho = self.normalize_ty_chirho(&inferred_ty_chirho);
 
                 match crate::unify_chirho::subsume_chirho(
                     &inferred_normalized_chirho,
@@ -3031,9 +3035,7 @@ impl InferCtxChirho {
                         let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
                         let (sig_ty_raw_chirho, sig_preds_chirho) =
                             self.instantiate_scheme_parts_chirho(&sig_scheme_chirho);
-                        let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(
-                            &self.expand_type_synonyms_chirho(&sig_ty_raw_chirho),
-                        );
+                        let sig_ty_chirho = self.normalize_ty_chirho(&sig_ty_raw_chirho);
                         self.with_given_preds_chirho(sig_preds_chirho, |self_chirho| {
                             self_chirho.infer_matches_against_expected_chirho(
                                 fun_matches_refs_chirho[fun_index_chirho],
@@ -3077,13 +3079,9 @@ impl InferCtxChirho {
                             body_chirho: Box::new(sig_scheme_chirho.ty_chirho.clone()),
                         }
                     };
-                    let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(
-                        &self.expand_type_synonyms_chirho(&sig_full_chirho),
-                    );
+                    let sig_ty_chirho = self.normalize_ty_chirho(&sig_full_chirho);
                     let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
-                    let inferred_sub_chirho = self.reduce_type_families_in_ty_chirho(
-                        &self.expand_type_synonyms_chirho(&inferred_sub_chirho),
-                    );
+                    let inferred_sub_chirho = self.normalize_ty_chirho(&inferred_sub_chirho);
                     match crate::unify_chirho::subsume_chirho(
                         &inferred_sub_chirho,
                         &sig_ty_chirho,
@@ -3600,7 +3598,7 @@ impl InferCtxChirho {
                 elements_chirho,
                 span_chirho: list_span_chirho,
             } => {
-                let expected_norm_chirho = self.expand_type_synonyms_chirho(expected_ty_chirho);
+                let expected_norm_chirho = self.normalize_ty_chirho(expected_ty_chirho);
                 let TyChirho::ListChirho(expected_elem_ty_chirho) = expected_norm_chirho else {
                     let (s_chirho, actual_ty_chirho) = self.infer_expr_chirho(expr_chirho);
                     match self.unify_normalized_chirho(
@@ -4179,9 +4177,7 @@ impl InferCtxChirho {
                         let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
                         let (sig_ty_raw_chirho, sig_preds_chirho) =
                             self.instantiate_scheme_parts_chirho(&sig_scheme_chirho);
-                        let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(
-                            &self.expand_type_synonyms_chirho(&sig_ty_raw_chirho),
-                        );
+                        let sig_ty_chirho = self.normalize_ty_chirho(&sig_ty_raw_chirho);
                         self.with_given_preds_chirho(sig_preds_chirho, |self_chirho| {
                             self_chirho.infer_matches_against_expected_chirho(
                                 fun_matches_refs_chirho[fi_chirho],
@@ -4243,13 +4239,9 @@ impl InferCtxChirho {
                             body_chirho: Box::new(sig_scheme_chirho.ty_chirho.clone()),
                         }
                     };
-                    let sig_ty_chirho = self.reduce_type_families_in_ty_chirho(
-                        &self.expand_type_synonyms_chirho(&sig_full_chirho),
-                    );
+                    let sig_ty_chirho = self.normalize_ty_chirho(&sig_full_chirho);
                     let inferred_sub_chirho = subst_chirho.apply_ty_chirho(inferred_ty_chirho);
-                    let inferred_sub_chirho = self.reduce_type_families_in_ty_chirho(
-                        &self.expand_type_synonyms_chirho(&inferred_sub_chirho),
-                    );
+                    let inferred_sub_chirho = self.normalize_ty_chirho(&inferred_sub_chirho);
                     // Use subsumption checking to handle higher-rank types
                     match crate::unify_chirho::subsume_chirho(
                         &inferred_sub_chirho,
@@ -4324,10 +4316,8 @@ impl InferCtxChirho {
                             let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
                             let (sig_ty_raw_chirho, _sig_preds_chirho) =
                                 self.instantiate_scheme_parts_chirho(&sig_scheme_chirho);
-                            let sig_ty_chirho =
-                                self.reduce_type_families_in_ty_chirho(&sig_ty_raw_chirho);
-                            let inferred_sub_chirho =
-                                self.reduce_type_families_in_ty_chirho(&resolved_chirho);
+                            let sig_ty_chirho = self.normalize_ty_chirho(&sig_ty_raw_chirho);
+                            let inferred_sub_chirho = self.normalize_ty_chirho(&resolved_chirho);
                             match self.unify_normalized_chirho(
                                 &inferred_sub_chirho,
                                 &sig_ty_chirho,
@@ -4390,16 +4380,14 @@ impl InferCtxChirho {
             .iter()
             .map(|pred_chirho| PredChirho {
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: self.expand_type_synonyms_chirho(
+                ty_chirho: self.normalize_ty_chirho(
                     &final_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
                 ),
                 extra_tys_chirho: pred_chirho
                     .extra_tys_chirho
                     .iter()
                     .map(|t_chirho| {
-                        self.expand_type_synonyms_chirho(
-                            &final_subst_chirho.apply_ty_chirho(t_chirho),
-                        )
+                        self.normalize_ty_chirho(&final_subst_chirho.apply_ty_chirho(t_chirho))
                     })
                     .collect(),
             })
@@ -4444,11 +4432,10 @@ impl InferCtxChirho {
                 .iter()
                 .map(|t_chirho| final_subst_chirho.apply_ty_chirho(t_chirho))
                 .collect();
-            // Expand type synonyms in predicate type (e.g. String → [Char])
-            let resolved_ty_chirho = self.expand_type_synonyms_chirho(&resolved_ty_chirho);
+            let resolved_ty_chirho = self.normalize_ty_chirho(&resolved_ty_chirho);
             let resolved_extra_tys_chirho: Vec<TyChirho> = resolved_extra_tys_chirho
                 .into_iter()
-                .map(|t_chirho| self.expand_type_synonyms_chirho(&t_chirho))
+                .map(|t_chirho| self.normalize_ty_chirho(&t_chirho))
                 .collect();
             let mut resolved_pred_chirho = PredChirho {
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
@@ -17058,6 +17045,47 @@ mod tests_chirho {
             reduced_chirho,
             Some(TyChirho::TupleChirho(vec![])),
             "instance associated family equation should override the class default"
+        );
+    }
+
+    #[test]
+    fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.register_type_synonym_chirho(
+            "GRep".to_string(),
+            vec!["f".to_string()],
+            TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("GRep'".to_string())),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep1".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("f".to_string())),
+                )),
+            ),
+        );
+        ctx_chirho.register_type_family_instance_chirho(
+            "Rep".to_string(),
+            vec![TyChirho::ForallVarChirho("f".to_string())],
+            TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("GRep".to_string())),
+                Box::new(TyChirho::ForallVarChirho("f".to_string())),
+            ),
+        );
+
+        let normalized_chirho = ctx_chirho.normalize_ty_chirho(&TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Rep".to_string())),
+            Box::new(TyChirho::ConChirho("Proxy".to_string())),
+        ));
+
+        assert_eq!(
+            normalized_chirho,
+            TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("GRep'".to_string())),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Rep1".to_string())),
+                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
+                )),
+            ),
+            "normalization should keep expanding synonyms that appear after family reduction"
         );
     }
 

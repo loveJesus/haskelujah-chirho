@@ -5716,12 +5716,16 @@ impl LowerCtxChirho {
                                                     | TokenKindChirho::QualifiedConIdChirho
                                                     | TokenKindChirho::VarSymChirho
                                                     | TokenKindChirho::ConSymChirho
+                                                    | TokenKindChirho::QualifiedVarSymChirho
+                                                    | TokenKindChirho::QualifiedConSymChirho
                                             )
                                         {
                                             inner_backtick_op_text_chirho =
                                                 Some(tok_chirho.text_chirho().to_string());
                                         } else if k_chirho == TokenKindChirho::VarSymChirho
                                             || k_chirho == TokenKindChirho::ConSymChirho
+                                            || k_chirho == TokenKindChirho::QualifiedVarSymChirho
+                                            || k_chirho == TokenKindChirho::QualifiedConSymChirho
                                         {
                                             let s_chirho = self.span_chirho(
                                                 ic_chirho.start_chirho,
@@ -7488,7 +7492,11 @@ impl LowerCtxChirho {
                     match child_chirho.element_chirho {
                         GreenElementChirho::TokenChirho(tok_chirho) => {
                             if op_chirho.is_none()
-                                && tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho
+                                && matches!(
+                                    tok_chirho.kind_chirho(),
+                                    TokenKindChirho::ConSymChirho
+                                        | TokenKindChirho::QualifiedConSymChirho
+                                )
                             {
                                 let s_chirho = self.span_chirho(
                                     child_chirho.start_chirho,
