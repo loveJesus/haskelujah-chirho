@@ -360,6 +360,12 @@ pub fn resolve_deps_chirho(
             continue;
         }
 
+        let selected_snapshot_chirho = solver_chirho.selected_chirho.clone();
+        let constraints_snapshot_chirho = solver_chirho.constraints_chirho.clone();
+        let dep_edges_snapshot_chirho = solver_chirho.dep_edges_chirho.clone();
+        let in_progress_snapshot_chirho = solver_chirho.in_progress_chirho.clone();
+        let done_snapshot_chirho = solver_chirho.done_chirho.clone();
+
         match solver_chirho.resolve_package_chirho(
             &dep_chirho.package_chirho,
             "<root>",
@@ -368,6 +374,11 @@ pub fn resolve_deps_chirho(
             Ok(()) => {}
             Err(ResolveErrorChirho::PackageNotFoundChirho { .. })
             | Err(ResolveErrorChirho::NoVersionSatisfiesChirho { .. }) => {
+                solver_chirho.selected_chirho = selected_snapshot_chirho;
+                solver_chirho.constraints_chirho = constraints_snapshot_chirho;
+                solver_chirho.dep_edges_chirho = dep_edges_snapshot_chirho;
+                solver_chirho.in_progress_chirho = in_progress_snapshot_chirho;
+                solver_chirho.done_chirho = done_snapshot_chirho;
                 // Treat missing/unsatisfiable deps as warnings — the package
                 // may still be usable without them (optional deps, test deps
                 // that leaked through, or packages we can't fetch yet).
@@ -701,6 +712,26 @@ mod tests_chirho {
         assert_eq!(plan_chirho.steps_chirho.len(), 2);
         assert_eq!(plan_chirho.steps_chirho[0].package_chirho, "transformers");
         assert_eq!(plan_chirho.steps_chirho[1].package_chirho, "mtl");
+    }
+
+    #[test]
+    fn resolve_skipped_root_restores_solver_state_before_next_root_chirho() {
+        let mut index_chirho = PackageIndexChirho::new_chirho();
+        index_chirho.add_package_chirho("A", v_chirho("1.0"), vec![dep_any_chirho("Missing")]);
+        index_chirho.add_package_chirho("B", v_chirho("1.0"), vec![dep_any_chirho("A")]);
+
+        let plan_chirho = resolve_deps_chirho(
+            &[dep_any_chirho("A"), dep_any_chirho("B")],
+            &index_chirho,
+            &empty_builtins_chirho(),
+        )
+        .expect("skipping an unavailable root should not leave stale cycle state for later roots");
+
+        assert!(
+            plan_chirho.steps_chirho.is_empty(),
+            "both roots should be skipped cleanly once Missing is unavailable, got {:?}",
+            plan_chirho.steps_chirho
+        );
     }
 
     // -----------------------------------------------------------------------
