@@ -1399,6 +1399,139 @@ fn frontend_preprocessed_containers_intset_retains_helper_funbinds_chirho() {
 }
 
 #[test]
+fn frontend_preprocessed_th_abstraction_datatype_retains_remaining_funbinds_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
+
+    let repo_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("repo root should exist")
+        .to_path_buf();
+    let path_chirho = repo_root_chirho
+        .join(".haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs");
+    let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
+        .expect("Datatype.hs should preprocess");
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        path_chirho,
+        &source_chirho,
+    );
+    let parser_chirho =
+        ParserChirho::new_chirho(&source_chirho, source_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+
+    let fun_names_chirho: std::collections::HashSet<String> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::FunBindChirho { name_chirho, .. } => {
+                Some(name_chirho.text_chirho().to_string())
+            }
+            _ => None,
+        })
+        .collect();
+    let mut empty_fun_names_chirho = Vec::new();
+    let mut nearby_decl_kinds_chirho = Vec::new();
+    for decl_chirho in &module_chirho.decls_chirho {
+        match decl_chirho {
+            DeclChirho::FunBindChirho { name_chirho, .. } => {
+                if name_chirho.text_chirho().is_empty() {
+                    empty_fun_names_chirho.push("fun".to_string());
+                }
+                if ["mkExtraFunArgForalls", "freeVariablesWellScoped", "unify'"]
+                    .contains(&name_chirho.text_chirho())
+                {
+                    nearby_decl_kinds_chirho.push(format!("fun:{}", name_chirho.text_chirho()));
+                }
+            }
+            DeclChirho::TypeSigChirho { name_chirho, .. }
+                if ["mkExtraFunArgForalls", "freeVariablesWellScoped", "unify'"]
+                    .contains(&name_chirho.text_chirho()) =>
+            {
+                nearby_decl_kinds_chirho.push(format!("sig:{}", name_chirho.text_chirho()));
+            }
+            DeclChirho::PatBindChirho { pat_chirho, .. } => {
+                for pat_name_chirho in
+                    haskelujah_typing_chirho::linearity_chirho::pat_bound_names_chirho(pat_chirho)
+                {
+                    if ["mkExtraFunArgForalls", "freeVariablesWellScoped", "unify'"]
+                        .contains(&pat_name_chirho.as_str())
+                    {
+                        nearby_decl_kinds_chirho.push(format!("pat:{pat_name_chirho}"));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    assert!(
+        empty_fun_names_chirho.is_empty(),
+        "preprocessed Datatype.hs should not contain empty top-level funbind names; nearby decls: {:?}",
+        nearby_decl_kinds_chirho
+    );
+    for helper_name_chirho in ["mkExtraFunArgForalls", "freeVariablesWellScoped", "unify'"] {
+        assert!(
+            fun_names_chirho.contains(helper_name_chirho),
+            "preprocessed Datatype.hs should retain top-level helper {helper_name_chirho}; nearby decls: {:?}",
+            nearby_decl_kinds_chirho
+        );
+    }
+}
+
+#[test]
+fn frontend_preprocessed_th_abstraction_datatype_remaining_sites_have_no_placeholder_exprs_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
+
+    let repo_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("repo root should exist")
+        .to_path_buf();
+    let path_chirho = repo_root_chirho
+        .join(".haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs");
+    let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
+        .expect("Datatype.hs should preprocess");
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        path_chirho,
+        &source_chirho,
+    );
+    let parser_chirho =
+        ParserChirho::new_chirho(&source_chirho, source_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+
+    for helper_name_chirho in ["mkExtraFunArgForalls", "freeVariablesWellScoped", "unify'"] {
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == helper_name_chirho
+                )
+            })
+            .unwrap_or_else(|| panic!("should lower top-level helper {helper_name_chirho}"));
+        let decl_debug_chirho = format!("{decl_chirho:#?}");
+        assert!(
+            !decl_debug_chirho.contains("text_chirho: \"\""),
+            "preprocessed Datatype.hs helper {helper_name_chirho} should not contain placeholder empty names: {decl_debug_chirho}",
+        );
+    }
+}
+
+#[test]
 fn frontend_reexported_with_frozen_call_stack_from_ghc_stack_chirho() {
     use haskelujah_naming_chirho::{build_iface_with_imports_chirho, builtin_module_ifaces_chirho};
     use haskelujah_parser_chirho::{

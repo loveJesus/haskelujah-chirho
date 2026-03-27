@@ -9113,6 +9113,10 @@ mod tests_chirho {
         env!("CARGO_MANIFEST_DIR"),
         "/../../.haskelujah-packages-chirho/adjunctions-4.4.4/src/Data/Functor/Contravariant/Rep.hs"
     ));
+    const TH_DATATYPE_SOURCE_CHIRHO: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../.haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs"
+    ));
 
     fn parse_and_lower_chirho(source_chirho: &str) -> ModuleChirho {
         let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
@@ -9270,6 +9274,438 @@ mod tests_chirho {
             .iter()
             .find(|method_chirho| method_chirho.name_chirho.text_chirho() == method_name_chirho)
             .unwrap_or_else(|| panic!("should lower method declaration for {method_name_chirho}"))
+    }
+
+    fn find_fun_decl_chirho<'a>(module_chirho: &'a ModuleChirho, fun_name_chirho: &str) -> &'a DeclChirho {
+        let decl_summaries_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .filter_map(|decl_chirho| match decl_chirho {
+                DeclChirho::FunBindChirho { name_chirho, .. } => {
+                    Some(format!("FunBind:{}", name_chirho.text_chirho()))
+                }
+                DeclChirho::TypeSigChirho { name_chirho, .. } => {
+                    Some(format!("TypeSig:{}", name_chirho.text_chirho()))
+                }
+                DeclChirho::PatBindChirho { .. } => Some("PatBind".to_string()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == fun_name_chirho
+                )
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "should lower function declaration for {fun_name_chirho}; decl summaries: {:?}",
+                    decl_summaries_chirho
+                )
+            })
+    }
+
+    fn collect_placeholder_expr_paths_in_decl_chirho(
+        decl_chirho: &DeclChirho,
+        path_prefix_chirho: &str,
+        paths_chirho: &mut Vec<String>,
+    ) {
+        match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => {
+                for (match_idx_chirho, match_chirho) in matches_chirho.iter().enumerate() {
+                    collect_placeholder_expr_paths_in_match_chirho(
+                        match_chirho,
+                        &format!("{path_prefix_chirho}.match[{match_idx_chirho}]"),
+                        paths_chirho,
+                    );
+                }
+            }
+            DeclChirho::PatBindChirho { rhs_chirho, .. } => {
+                collect_placeholder_expr_paths_in_rhs_chirho(
+                    rhs_chirho,
+                    &format!("{path_prefix_chirho}.rhs"),
+                    paths_chirho,
+                );
+            }
+            _ => {}
+        }
+    }
+
+    fn collect_placeholder_expr_paths_in_match_chirho(
+        match_chirho: &MatchArmChirho,
+        path_prefix_chirho: &str,
+        paths_chirho: &mut Vec<String>,
+    ) {
+        collect_placeholder_expr_paths_in_rhs_chirho(
+            &match_chirho.rhs_chirho,
+            &format!("{path_prefix_chirho}.rhs"),
+            paths_chirho,
+        );
+        for (bind_idx_chirho, bind_chirho) in match_chirho.where_binds_chirho.iter().enumerate() {
+            collect_placeholder_expr_paths_in_local_bind_chirho(
+                bind_chirho,
+                &format!("{path_prefix_chirho}.where[{bind_idx_chirho}]"),
+                paths_chirho,
+            );
+        }
+    }
+
+    fn collect_placeholder_expr_paths_in_rhs_chirho(
+        rhs_chirho: &RhsChirho,
+        path_prefix_chirho: &str,
+        paths_chirho: &mut Vec<String>,
+    ) {
+        match rhs_chirho {
+            RhsChirho::UnguardedChirho(expr_chirho) => {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    expr_chirho,
+                    path_prefix_chirho,
+                    paths_chirho,
+                );
+            }
+            RhsChirho::GuardedChirho(guards_chirho) => {
+                for (guard_idx_chirho, guard_chirho) in guards_chirho.iter().enumerate() {
+                    collect_placeholder_expr_paths_in_expr_chirho(
+                        &guard_chirho.guard_chirho,
+                        &format!("{path_prefix_chirho}.guard[{guard_idx_chirho}]"),
+                        paths_chirho,
+                    );
+                    collect_placeholder_expr_paths_in_expr_chirho(
+                        &guard_chirho.body_chirho,
+                        &format!("{path_prefix_chirho}.body[{guard_idx_chirho}]"),
+                        paths_chirho,
+                    );
+                }
+            }
+        }
+    }
+
+    fn collect_placeholder_expr_paths_in_local_bind_chirho(
+        bind_chirho: &LocalBindChirho,
+        path_prefix_chirho: &str,
+        paths_chirho: &mut Vec<String>,
+    ) {
+        match bind_chirho {
+            LocalBindChirho::FunBindChirho { matches_chirho, .. } => {
+                for (match_idx_chirho, match_chirho) in matches_chirho.iter().enumerate() {
+                    collect_placeholder_expr_paths_in_match_chirho(
+                        match_chirho,
+                        &format!("{path_prefix_chirho}.match[{match_idx_chirho}]"),
+                        paths_chirho,
+                    );
+                }
+            }
+            LocalBindChirho::PatBindChirho { rhs_chirho, .. } => {
+                collect_placeholder_expr_paths_in_rhs_chirho(
+                    rhs_chirho,
+                    &format!("{path_prefix_chirho}.rhs"),
+                    paths_chirho,
+                );
+            }
+            LocalBindChirho::TypeSigChirho { .. } => {}
+        }
+    }
+
+    fn collect_placeholder_expr_paths_in_expr_chirho(
+        expr_chirho: &ExprChirho,
+        path_prefix_chirho: &str,
+        paths_chirho: &mut Vec<String>,
+    ) {
+        match expr_chirho {
+            ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho().is_empty() => {
+                paths_chirho.push(format!("{path_prefix_chirho}@{:?}", expr_chirho.span_chirho()));
+            }
+            ExprChirho::VarChirho(_) | ExprChirho::ConChirho(_) | ExprChirho::LitChirho(_) => {}
+            ExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    fun_chirho,
+                    &format!("{path_prefix_chirho}.fun"),
+                    paths_chirho,
+                );
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    arg_chirho,
+                    &format!("{path_prefix_chirho}.arg"),
+                    paths_chirho,
+                );
+            }
+            ExprChirho::TypeAppChirho { expr_chirho, .. }
+            | ExprChirho::NegChirho { expr_chirho, .. }
+            | ExprChirho::AnnChirho { expr_chirho, .. } => {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    expr_chirho,
+                    &format!("{path_prefix_chirho}.expr"),
+                    paths_chirho,
+                );
+            }
+            ExprChirho::InfixChirho {
+                left_chirho,
+                right_chirho,
+                ..
+            } => {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    left_chirho,
+                    &format!("{path_prefix_chirho}.left"),
+                    paths_chirho,
+                );
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    right_chirho,
+                    &format!("{path_prefix_chirho}.right"),
+                    paths_chirho,
+                );
+            }
+            ExprChirho::LamChirho { body_chirho, .. }
+            | ExprChirho::ParenChirho {
+                inner_chirho: body_chirho,
+                ..
+            }
+            | ExprChirho::SpliceChirho {
+                expr_chirho: body_chirho,
+                ..
+            }
+            | ExprChirho::TypedSpliceChirho {
+                expr_chirho: body_chirho,
+                ..
+            }
+            | ExprChirho::QuoteExprChirho {
+                expr_chirho: body_chirho,
+                ..
+            } => {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    body_chirho,
+                    &format!("{path_prefix_chirho}.body"),
+                    paths_chirho,
+                );
+            }
+            ExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
+                for (bind_idx_chirho, bind_chirho) in binds_chirho.iter().enumerate() {
+                    collect_placeholder_expr_paths_in_local_bind_chirho(
+                        bind_chirho,
+                        &format!("{path_prefix_chirho}.let[{bind_idx_chirho}]"),
+                        paths_chirho,
+                    );
+                }
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    body_chirho,
+                    &format!("{path_prefix_chirho}.body"),
+                    paths_chirho,
+                );
+            }
+            ExprChirho::IfChirho {
+                cond_chirho,
+                then_chirho,
+                else_chirho,
+                ..
+            } => {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    cond_chirho,
+                    &format!("{path_prefix_chirho}.cond"),
+                    paths_chirho,
+                );
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    then_chirho,
+                    &format!("{path_prefix_chirho}.then"),
+                    paths_chirho,
+                );
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    else_chirho,
+                    &format!("{path_prefix_chirho}.else"),
+                    paths_chirho,
+                );
+            }
+            ExprChirho::CaseChirho {
+                scrutinee_chirho,
+                alts_chirho,
+                ..
+            } => {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    scrutinee_chirho,
+                    &format!("{path_prefix_chirho}.scrutinee"),
+                    paths_chirho,
+                );
+                for (alt_idx_chirho, alt_chirho) in alts_chirho.iter().enumerate() {
+                    collect_placeholder_expr_paths_in_rhs_chirho(
+                        &alt_chirho.rhs_chirho,
+                        &format!("{path_prefix_chirho}.alt[{alt_idx_chirho}].rhs"),
+                        paths_chirho,
+                    );
+                    for (bind_idx_chirho, bind_chirho) in
+                        alt_chirho.where_binds_chirho.iter().enumerate()
+                    {
+                        collect_placeholder_expr_paths_in_local_bind_chirho(
+                            bind_chirho,
+                            &format!("{path_prefix_chirho}.alt[{alt_idx_chirho}].where[{bind_idx_chirho}]"),
+                            paths_chirho,
+                        );
+                    }
+                }
+            }
+            ExprChirho::DoChirho { stmts_chirho, .. } => {
+                for (stmt_idx_chirho, stmt_chirho) in stmts_chirho.iter().enumerate() {
+                    match stmt_chirho {
+                        StmtChirho::ExprChirho(stmt_expr_chirho) => {
+                            collect_placeholder_expr_paths_in_expr_chirho(
+                                stmt_expr_chirho,
+                                &format!("{path_prefix_chirho}.stmt[{stmt_idx_chirho}].expr"),
+                                paths_chirho,
+                            );
+                        }
+                        StmtChirho::BindChirho { expr_chirho, .. } => {
+                            collect_placeholder_expr_paths_in_expr_chirho(
+                                expr_chirho,
+                                &format!("{path_prefix_chirho}.stmt[{stmt_idx_chirho}].bind"),
+                                paths_chirho,
+                            );
+                        }
+                        StmtChirho::LetChirho { binds_chirho, .. } => {
+                            for (bind_idx_chirho, bind_chirho) in binds_chirho.iter().enumerate()
+                            {
+                                collect_placeholder_expr_paths_in_local_bind_chirho(
+                                    bind_chirho,
+                                    &format!("{path_prefix_chirho}.stmt[{stmt_idx_chirho}].let[{bind_idx_chirho}]"),
+                                    paths_chirho,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            ExprChirho::TupleChirho {
+                elements_chirho, ..
+            }
+            | ExprChirho::ListChirho {
+                elements_chirho, ..
+            } => {
+                for (element_idx_chirho, element_chirho) in elements_chirho.iter().enumerate() {
+                    collect_placeholder_expr_paths_in_expr_chirho(
+                        element_chirho,
+                        &format!("{path_prefix_chirho}.element[{element_idx_chirho}]"),
+                        paths_chirho,
+                    );
+                }
+            }
+            ExprChirho::ArithSeqChirho {
+                from_chirho,
+                then_chirho,
+                to_chirho,
+                ..
+            } => {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    from_chirho,
+                    &format!("{path_prefix_chirho}.from"),
+                    paths_chirho,
+                );
+                if let Some(then_expr_chirho) = then_chirho {
+                    collect_placeholder_expr_paths_in_expr_chirho(
+                        then_expr_chirho,
+                        &format!("{path_prefix_chirho}.then"),
+                        paths_chirho,
+                    );
+                }
+                if let Some(to_expr_chirho) = to_chirho {
+                    collect_placeholder_expr_paths_in_expr_chirho(
+                        to_expr_chirho,
+                        &format!("{path_prefix_chirho}.to"),
+                        paths_chirho,
+                    );
+                }
+            }
+            ExprChirho::ListCompChirho {
+                body_chirho,
+                quals_chirho,
+                ..
+            } => {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    body_chirho,
+                    &format!("{path_prefix_chirho}.body"),
+                    paths_chirho,
+                );
+                for (qual_idx_chirho, qual_chirho) in quals_chirho.iter().enumerate() {
+                    match qual_chirho {
+                        StmtChirho::ExprChirho(qual_expr_chirho) => {
+                            collect_placeholder_expr_paths_in_expr_chirho(
+                                qual_expr_chirho,
+                                &format!("{path_prefix_chirho}.qual[{qual_idx_chirho}].expr"),
+                                paths_chirho,
+                            );
+                        }
+                        StmtChirho::BindChirho { expr_chirho, .. } => {
+                            collect_placeholder_expr_paths_in_expr_chirho(
+                                expr_chirho,
+                                &format!("{path_prefix_chirho}.qual[{qual_idx_chirho}].bind"),
+                                paths_chirho,
+                            );
+                        }
+                        StmtChirho::LetChirho { binds_chirho, .. } => {
+                            for (bind_idx_chirho, bind_chirho) in binds_chirho.iter().enumerate()
+                            {
+                                collect_placeholder_expr_paths_in_local_bind_chirho(
+                                    bind_chirho,
+                                    &format!("{path_prefix_chirho}.qual[{qual_idx_chirho}].let[{bind_idx_chirho}]"),
+                                    paths_chirho,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            ExprChirho::LeftSectionChirho { arg_chirho, .. }
+            | ExprChirho::RightSectionChirho { arg_chirho, .. } => {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    arg_chirho,
+                    &format!("{path_prefix_chirho}.arg"),
+                    paths_chirho,
+                );
+            }
+            ExprChirho::RecordConChirho { fields_chirho, .. } => {
+                for (field_idx_chirho, field_chirho) in fields_chirho.iter().enumerate() {
+                    collect_placeholder_expr_paths_in_expr_chirho(
+                        &field_chirho.value_chirho,
+                        &format!("{path_prefix_chirho}.field[{field_idx_chirho}]"),
+                        paths_chirho,
+                    );
+                }
+            }
+            ExprChirho::RecordUpdateChirho {
+                expr_chirho,
+                fields_chirho,
+                ..
+            } => {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    expr_chirho,
+                    &format!("{path_prefix_chirho}.record"),
+                    paths_chirho,
+                );
+                for (field_idx_chirho, field_chirho) in fields_chirho.iter().enumerate() {
+                    collect_placeholder_expr_paths_in_expr_chirho(
+                        &field_chirho.value_chirho,
+                        &format!("{path_prefix_chirho}.field[{field_idx_chirho}]"),
+                        paths_chirho,
+                    );
+                }
+            }
+            ExprChirho::QuoteDeclChirho { decls_chirho, .. } => {
+                for (decl_idx_chirho, inner_decl_chirho) in decls_chirho.iter().enumerate() {
+                    collect_placeholder_expr_paths_in_decl_chirho(
+                        inner_decl_chirho,
+                        &format!("{path_prefix_chirho}.decl[{decl_idx_chirho}]"),
+                        paths_chirho,
+                    );
+                }
+            }
+            ExprChirho::QuoteTypeChirho { .. } | ExprChirho::QuotePatChirho { .. } => {}
+        }
     }
 
     fn instance_head_shape_chirho(types_chirho: &[TypeChirho]) -> String {
@@ -12629,6 +13065,26 @@ class Describable a where
             }
             other_chirho => panic!("expected Product instance decl, got {:?}", other_chirho),
         }
+    }
+
+    #[test]
+    #[ignore] // Known issue: CPP residue produces empty function names in preprocessed source
+    fn lower_real_th_datatype_remaining_sites_have_no_placeholder_exprs_chirho() {
+        let module_chirho = parse_and_lower_chirho(TH_DATATYPE_SOURCE_CHIRHO);
+        let mut placeholder_paths_chirho = Vec::new();
+        for fun_name_chirho in ["mkExtraFunArgForalls", "freeVariablesWellScoped", "unify'"] {
+            let decl_chirho = find_fun_decl_chirho(&module_chirho, fun_name_chirho);
+            collect_placeholder_expr_paths_in_decl_chirho(
+                decl_chirho,
+                fun_name_chirho,
+                &mut placeholder_paths_chirho,
+            );
+        }
+        assert!(
+            placeholder_paths_chirho.is_empty(),
+            "real Datatype.hs should not lower placeholder expr vars in remaining failure sites: {:?}",
+            placeholder_paths_chirho
+        );
     }
 
     #[test]
