@@ -6,7 +6,7 @@
 //! Implements Hindley-Milner type inference with let-generalization.
 //! Walks the AST and produces typed bindings via unification.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, MatchArmChirho, RhsChirho, StmtChirho};
@@ -399,60 +399,85 @@ impl InferCtxChirho {
         family_name_chirho: &str,
         args_chirho: &[TyChirho],
     ) -> Option<TyChirho> {
-        let equations_chirho = self.lookup_type_family_equations_chirho(family_name_chirho)?;
-        for (lhs_chirho, rhs_chirho) in equations_chirho {
-            if lhs_chirho.len() > args_chirho.len() {
-                continue;
-            }
-            // Try to match each LHS pattern against the corresponding arg
-            let mut bindings_chirho: HashMap<String, TyChirho> = HashMap::new();
-            let mut matched_chirho = true;
-            for (pat_chirho, arg_chirho) in lhs_chirho.iter().zip(args_chirho.iter()) {
-                if !match_type_pattern_chirho(pat_chirho, arg_chirho, &mut bindings_chirho) {
-                    matched_chirho = false;
-                    break;
+        let equation_sets_chirho =
+            self.lookup_type_family_equation_sets_chirho(family_name_chirho);
+        if equation_sets_chirho.is_empty() {
+            return None;
+        }
+        for equations_chirho in equation_sets_chirho {
+            for (lhs_chirho, rhs_chirho) in equations_chirho {
+                if lhs_chirho.len() > args_chirho.len() {
+                    continue;
                 }
-            }
-            if matched_chirho {
-                let mut reduced_chirho = substitute_type_vars_chirho(rhs_chirho, &bindings_chirho);
-                for extra_arg_chirho in &args_chirho[lhs_chirho.len()..] {
-                    reduced_chirho = TyChirho::AppChirho(
-                        Box::new(reduced_chirho),
-                        Box::new(extra_arg_chirho.clone()),
-                    );
+                // Try to match each LHS pattern against the corresponding arg
+                let mut bindings_chirho: HashMap<String, TyChirho> = HashMap::new();
+                let mut matched_chirho = true;
+                for (pat_chirho, arg_chirho) in lhs_chirho.iter().zip(args_chirho.iter()) {
+                    if !match_type_pattern_chirho(pat_chirho, arg_chirho, &mut bindings_chirho) {
+                        matched_chirho = false;
+                        break;
+                    }
                 }
-                return Some(reduced_chirho);
+                if matched_chirho {
+                    let mut reduced_chirho =
+                        substitute_type_vars_chirho(rhs_chirho, &bindings_chirho);
+                    for extra_arg_chirho in &args_chirho[lhs_chirho.len()..] {
+                        reduced_chirho = TyChirho::AppChirho(
+                            Box::new(reduced_chirho),
+                            Box::new(extra_arg_chirho.clone()),
+                        );
+                    }
+                    return Some(reduced_chirho);
+                }
             }
         }
         None
     }
 
-    fn lookup_type_family_equations_chirho(
+    fn lookup_type_family_equation_sets_chirho(
         &self,
         family_name_chirho: &str,
-    ) -> Option<&[(Vec<TyChirho>, TyChirho)]> {
-        if let Some(equations_chirho) = self.type_families_chirho.get(family_name_chirho) {
-            return Some(equations_chirho.as_slice());
-        }
+    ) -> Vec<&[(Vec<TyChirho>, TyChirho)]> {
+        let bare_name_chirho = family_name_chirho
+            .rsplit_once('.')
+            .map(|(_prefix_chirho, bare_name_chirho)| bare_name_chirho)
+            .unwrap_or(family_name_chirho);
+        let mut seen_names_chirho: HashSet<String> = HashSet::new();
+        let mut equation_sets_chirho: Vec<&[(Vec<TyChirho>, TyChirho)]> = Vec::new();
 
-        if let Some((_prefix_chirho, bare_name_chirho)) = family_name_chirho.rsplit_once('.') {
+        // Prefer the bare family name so local equations can win over empty
+        // imported qualified declarations for the same family.
+        if seen_names_chirho.insert(bare_name_chirho.to_string()) {
             if let Some(equations_chirho) = self.type_families_chirho.get(bare_name_chirho) {
-                return Some(equations_chirho.as_slice());
+                equation_sets_chirho.push(equations_chirho.as_slice());
+            }
+        }
+        if seen_names_chirho.insert(family_name_chirho.to_string()) {
+            if let Some(equations_chirho) = self.type_families_chirho.get(family_name_chirho) {
+                equation_sets_chirho.push(equations_chirho.as_slice());
             }
         }
 
-        let suffix_chirho = format!(".{family_name_chirho}");
-        let mut suffix_matches_chirho = self
+        let suffix_chirho = format!(".{bare_name_chirho}");
+        let suffix_match_names_chirho: Vec<String> = self
             .type_families_chirho
-            .iter()
-            .filter(|(name_chirho, _equations_chirho)| name_chirho.ends_with(&suffix_chirho))
-            .map(|(_name_chirho, equations_chirho)| equations_chirho.as_slice());
-        let first_match_chirho = suffix_matches_chirho.next();
-        if first_match_chirho.is_some() && suffix_matches_chirho.next().is_none() {
-            return first_match_chirho;
+            .keys()
+            .filter(|name_chirho| {
+                name_chirho.ends_with(&suffix_chirho)
+                    && !seen_names_chirho.contains(name_chirho.as_str())
+            })
+            .cloned()
+            .collect();
+        if suffix_match_names_chirho.len() == 1 {
+            let suffix_name_chirho = &suffix_match_names_chirho[0];
+            if seen_names_chirho.insert(suffix_name_chirho.clone()) {
+                if let Some(equations_chirho) = self.type_families_chirho.get(suffix_name_chirho) {
+                    equation_sets_chirho.push(equations_chirho.as_slice());
+                }
+            }
         }
 
-        None
+        equation_sets_chirho
     }
 
     /// Register a type synonym from a `TypeAliasDeclChirho`.
@@ -19123,6 +19148,64 @@ mod tests_chirho {
                 ),
             ]),
             "qualified family heads should still match bare registered type families"
+        );
+    }
+
+    #[test]
+    fn qualified_type_family_prefers_bare_local_equations_over_empty_exact_import_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.register_type_family_chirho(
+            "System.Random.Internal.MutableGen".to_string(),
+            vec![],
+        );
+        ctx_chirho.register_type_family_instance_chirho(
+            "MutableGen".to_string(),
+            vec![
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("STGen".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("g".to_string())),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("ST".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("s".to_string())),
+                ),
+            ],
+            TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("STGenM".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("g".to_string())),
+                )),
+                Box::new(TyChirho::ForallVarChirho("s".to_string())),
+            ),
+        );
+
+        let qualified_app_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho(
+                    "System.Random.Internal.MutableGen".to_string(),
+                )),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("STGen".to_string())),
+                    Box::new(TyChirho::ConChirho("StdGen".to_string())),
+                )),
+            )),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ST".to_string())),
+                Box::new(TyChirho::ConChirho("S0".to_string())),
+            )),
+        );
+        let reduced_chirho = ctx_chirho.reduce_type_families_in_ty_chirho(&qualified_app_ty_chirho);
+
+        assert_eq!(
+            reduced_chirho,
+            TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("STGenM".to_string())),
+                    Box::new(TyChirho::ConChirho("StdGen".to_string())),
+                )),
+                Box::new(TyChirho::ConChirho("S0".to_string())),
+            ),
+            "a qualified imported family head should still use bare local equations when the exact imported declaration has no equations"
         );
     }
 
