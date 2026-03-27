@@ -1364,6 +1364,27 @@ impl InferCtxChirho {
             for atf_chirho in associated_tfs_chirho {
                 let tf_name_chirho = atf_chirho.name_chirho.text_chirho().to_string();
                 self.register_type_family_chirho(tf_name_chirho, vec![]);
+                if let Some(default_rhs_chirho) = &atf_chirho.default_rhs_chirho {
+                    let param_names_chirho: Vec<String> = atf_chirho
+                        .type_vars_chirho
+                        .iter()
+                        .map(|param_chirho| param_chirho.text_chirho().to_string())
+                        .collect();
+                    let default_lhs_chirho: Vec<TyChirho> = atf_chirho
+                        .type_vars_chirho
+                        .iter()
+                        .map(|param_chirho| {
+                            TyChirho::ForallVarChirho(param_chirho.text_chirho().to_string())
+                        })
+                        .collect();
+                    let default_rhs_ty_chirho =
+                        ast_type_to_syn_rhs_chirho(default_rhs_chirho, &param_names_chirho);
+                    self.register_type_family_instance_chirho(
+                        atf_chirho.name_chirho.text_chirho().to_string(),
+                        default_lhs_chirho,
+                        default_rhs_ty_chirho,
+                    );
+                }
             }
         }
     }
@@ -16945,6 +16966,98 @@ mod tests_chirho {
             result_chirho,
             Some(TyChirho::bool_chirho()),
             "open F Int should reduce to Bool"
+        );
+    }
+
+    #[test]
+    fn class_assoc_type_family_default_registers_reduction_chirho() {
+        let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+            context_chirho: vec![],
+            name_chirho: dummy_name_chirho("Representable"),
+            type_vars_chirho: vec![dummy_name_chirho("f").into()],
+            methods_chirho: vec![],
+            associated_tfs_chirho: vec![
+                haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                    name_chirho: dummy_name_chirho("Rep"),
+                    type_vars_chirho: vec![dummy_name_chirho("f")],
+                    default_rhs_chirho: Some(TypeChirho::AppChirho {
+                        fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("GRep"))),
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            fundeps_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.process_class_decl_chirho(&class_decl_ast_chirho);
+
+        let reduced_chirho = ctx_chirho
+            .reduce_type_family_chirho("Rep", &[TyChirho::ConChirho("Proxy".to_string())]);
+
+        assert_eq!(
+            reduced_chirho,
+            Some(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("GRep".to_string())),
+                Box::new(TyChirho::ConChirho("Proxy".to_string())),
+            )),
+            "class associated type family default should register as a reducible equation"
+        );
+    }
+
+    #[test]
+    fn instance_assoc_type_family_override_beats_class_default_chirho() {
+        let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+            context_chirho: vec![],
+            name_chirho: dummy_name_chirho("Representable"),
+            type_vars_chirho: vec![dummy_name_chirho("f").into()],
+            methods_chirho: vec![],
+            associated_tfs_chirho: vec![
+                haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                    name_chirho: dummy_name_chirho("Rep"),
+                    type_vars_chirho: vec![dummy_name_chirho("f")],
+                    default_rhs_chirho: Some(TypeChirho::AppChirho {
+                        fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("GRep"))),
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            fundeps_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let instance_decl_ast_chirho = DeclChirho::InstanceDeclChirho {
+            context_chirho: vec![],
+            class_chirho: dummy_name_chirho("Representable"),
+            types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
+            methods_chirho: vec![],
+            assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+                family_name_chirho: dummy_name_chirho("Rep"),
+                lhs_types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
+                rhs_chirho: TypeChirho::TupleChirho {
+                    elements_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.process_class_decl_chirho(&class_decl_ast_chirho);
+        ctx_chirho.process_instance_decl_chirho(&instance_decl_ast_chirho);
+
+        let reduced_chirho = ctx_chirho
+            .reduce_type_family_chirho("Rep", &[TyChirho::ConChirho("Proxy".to_string())]);
+
+        assert_eq!(
+            reduced_chirho,
+            Some(TyChirho::TupleChirho(vec![])),
+            "instance associated family equation should override the class default"
         );
     }
 
