@@ -8282,6 +8282,23 @@ impl LowerCtxChirho {
         ExprChirho::VarChirho(self.dummy_name_chirho())
     }
 
+    fn fold_qual_expr_parts_to_expr_chirho(
+        &self,
+        exprs_chirho: Vec<ExprChirho>,
+        span_chirho: SpanChirho,
+    ) -> Option<ExprChirho> {
+        let mut exprs_iter_chirho = exprs_chirho.into_iter();
+        let mut result_chirho = exprs_iter_chirho.next()?;
+        for arg_chirho in exprs_iter_chirho {
+            result_chirho = ExprChirho::AppChirho {
+                fun_chirho: Box::new(result_chirho),
+                arg_chirho: Box::new(arg_chirho),
+                span_chirho,
+            };
+        }
+        Some(result_chirho)
+    }
+
     /// Convert accumulated qualifier parts into a `StmtChirho`.
     ///
     /// Parts are either expressions or a `<-` arrow marker. If an arrow
@@ -8325,16 +8342,18 @@ impl LowerCtxChirho {
                 merged_pat_chirho
             };
 
-            let src_expr_chirho = parts_chirho
+            let src_exprs_chirho: Vec<ExprChirho> = parts_chirho
                 .iter()
                 .skip(pos_chirho + 1)
                 .filter_map(|p_chirho| match p_chirho {
                     QualPartChirho::ExprChirho(e_chirho) => Some(e_chirho.clone()),
                     _ => None,
                 })
-                .next();
+                .collect();
 
-            let expr_chirho = src_expr_chirho.unwrap_or_else(|| self.placeholder_expr_chirho());
+            let expr_chirho = self
+                .fold_qual_expr_parts_to_expr_chirho(src_exprs_chirho, span_chirho)
+                .unwrap_or_else(|| self.placeholder_expr_chirho());
 
             Some(StmtChirho::BindChirho {
                 pat_chirho,
@@ -8343,13 +8362,15 @@ impl LowerCtxChirho {
             })
         } else {
             // Guard: single expression
-            let expr_chirho = parts_chirho
+            let exprs_chirho: Vec<ExprChirho> = parts_chirho
                 .iter()
                 .filter_map(|p_chirho| match p_chirho {
                     QualPartChirho::ExprChirho(e_chirho) => Some(e_chirho.clone()),
                     _ => None,
                 })
-                .next()?;
+                .collect();
+            let expr_chirho =
+                self.fold_qual_expr_parts_to_expr_chirho(exprs_chirho, span_chirho)?;
             Some(StmtChirho::ExprChirho(expr_chirho))
         }
     }
@@ -12974,6 +12995,123 @@ class Describable a where
                 "expected top-level case from pattern guard lowering, got {:?}",
                 other_chirho
             ),
+        }
+    }
+
+    #[test]
+    fn lower_pattern_guard_generator_preserves_source_application_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nfChirho fvssChirho\n  | True\n  , (asPrimeChirho, fvssPrimeChirho) <- insertChirho 1 [] fvssChirho\n  = (asPrimeChirho, fvssPrimeChirho)\n  | otherwise = ([], [])\n",
+        );
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "fChirho")
+            })
+            .expect("expected fChirho binding");
+        let rhs_expr_chirho = match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho
+            {
+                RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+                other_chirho => {
+                    panic!("expected lowered nested expression, got {:?}", other_chirho)
+                }
+            },
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+        let case_expr_chirho = match rhs_expr_chirho {
+            ExprChirho::IfChirho { then_chirho, .. } => then_chirho.as_ref(),
+            other_chirho => panic!("expected top-level if from mixed guards, got {:?}", other_chirho),
+        };
+        let scrutinee_chirho = match case_expr_chirho {
+            ExprChirho::CaseChirho {
+                scrutinee_chirho, ..
+            } => scrutinee_chirho.as_ref(),
+            other_chirho => panic!(
+                "expected case expression for pattern guard generator, got {:?}",
+                other_chirho
+            ),
+        };
+        match scrutinee_chirho {
+            ExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                assert!(
+                    matches!(arg_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "fvssChirho"),
+                    "generator scrutinee should preserve final argument, got {:?}",
+                    arg_chirho
+                );
+                match fun_chirho.as_ref() {
+                    ExprChirho::AppChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    } => {
+                        assert!(
+                            matches!(arg_chirho.as_ref(), ExprChirho::ListChirho { elements_chirho, .. } if elements_chirho.is_empty()),
+                            "generator scrutinee should preserve empty-list argument, got {:?}",
+                            arg_chirho
+                        );
+                        assert!(
+                            matches!(fun_chirho.as_ref(), ExprChirho::AppChirho { .. }),
+                            "generator scrutinee should remain a full application chain, got {:?}",
+                            fun_chirho
+                        );
+                    }
+                    other_chirho => panic!(
+                        "generator scrutinee should remain nested application, got {:?}",
+                        other_chirho
+                    ),
+                }
+            }
+            other_chirho => panic!(
+                "pattern guard generator should lower to an application scrutinee, got {:?}",
+                other_chirho
+            ),
+        }
+    }
+
+    #[test]
+    fn lower_guard_expr_preserves_rhs_application_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nfChirho nChirho tChirho\n  | nChirho `elem` freeVariablesChirho tChirho = 1\n  | otherwise = 0\nfreeVariablesChirho tChirho = tChirho\n",
+        );
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "fChirho")
+            })
+            .expect("expected fChirho binding");
+        let guard_expr_chirho = match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho
+            {
+                RhsChirho::GuardedChirho(guards_chirho) => &guards_chirho[0].guard_chirho,
+                other_chirho => panic!("expected guarded rhs, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+        match guard_expr_chirho {
+            ExprChirho::InfixChirho {
+                op_chirho,
+                right_chirho,
+                ..
+            } => {
+                assert_eq!(op_chirho.text_chirho(), "elem");
+                assert!(
+                    matches!(right_chirho.as_ref(), ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                        if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "freeVariablesChirho")
+                        && matches!(arg_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "tChirho")),
+                    "guard rhs should preserve `freeVariablesChirho tChirho`, got {:?}",
+                    right_chirho
+                );
+            }
+            other_chirho => panic!("expected infix guard expression, got {:?}", other_chirho),
         }
     }
 

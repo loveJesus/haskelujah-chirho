@@ -5482,8 +5482,20 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "appKindT".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
-            vec![th_type_ty_chirho.clone(), th_kind_ty_chirho.clone()],
-            th_type_ty_chirho.clone(),
+            vec![
+                TyChirho::AppChirho(
+                    Box::new(th_q_tycon_ty_chirho.clone()),
+                    Box::new(th_type_ty_chirho.clone()),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(th_q_tycon_ty_chirho.clone()),
+                    Box::new(th_type_ty_chirho.clone()),
+                ),
+            ],
+            TyChirho::AppChirho(
+                Box::new(th_q_tycon_ty_chirho.clone()),
+                Box::new(th_type_ty_chirho.clone()),
+            ),
         )),
     );
     for (name_chirho, ty_chirho) in [

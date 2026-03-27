@@ -1079,11 +1079,11 @@ fn template_haskell_kind_helpers_appk_arrowk_chirho() {
 {-# LANGUAGE TemplateHaskell #-}
 module THKindHelpersChirho where
 import Language.Haskell.TH
-import Language.Haskell.TH.Lib (appK, arrowK, appKindT, starK)
+import Language.Haskell.TH.Lib (appK, arrowK, appKindT, conT, starK)
 
 kindValueChirho = arrowK `appK` starK `appK` starK
 typeValueChirho = AppKindT (ConT (mkName \"Maybe\")) starK
-typeValue2Chirho = appKindT (ConT (mkName \"Maybe\")) starK
+typeValue2Chirho = appKindT (conT (mkName \"Maybe\")) (return starK)
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "THKindHelpersChirho.hs");
