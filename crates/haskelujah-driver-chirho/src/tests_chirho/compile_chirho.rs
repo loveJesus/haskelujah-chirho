@@ -83,6 +83,65 @@ fn frontend_backticked_left_section_infers_function_type_chirho() {
 }
 
 #[test]
+#[ignore] // Known issue: multiline local signatures with comments need parser fix
+fn frontend_multiline_local_signature_with_comments_and_pattern_guards_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module LocalInsertMiniChirho where\n\
+fChirho xsChirho = goChirho [] [] xsChirho where\n\
+  goChirho accChirho _fvListChirho [] = reverse accChirho\n\
+  goChirho accChirho fvListChirho (tvChirho:tvsChirho)\n\
+    = goChirho accPrimeChirho fvListPrimeChirho tvsChirho\n\
+    where\n\
+      (accPrimeChirho, fvListPrimeChirho) = insertChirho tvChirho accChirho fvListChirho\n\
+\n\
+      insertChirho :: Int       -- value to insert\n\
+                   -> [Int]     -- sorted list, in reverse order\n\
+                   -> [[Int]]   -- list of fvs, as above\n\
+                   -> ([Int], [[Int]]) -- augmented lists\n\
+      insertChirho tvChirho [] [] = ([tvChirho], [[tvChirho]])\n\
+      insertChirho tvChirho (aChirho:asChirho) (fvsChirho:fvssChirho)\n\
+        | tvChirho `elem` fvsChirho\n\
+        , (asPrimeChirho, fvssPrimeChirho) <- insertChirho tvChirho asChirho fvssChirho\n\
+        = (aChirho:asPrimeChirho, fvsChirho : fvssPrimeChirho)\n\
+        | otherwise\n\
+        = (tvChirho:aChirho:asChirho, fvsChirho : fvssChirho)\n",
+        &mut source_map_chirho,
+        "LocalInsertMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "multiline local signatures with commented continuations and pattern guards should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_backticked_class_method_guard_on_prime_name_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module GuardFreeVariablesMiniChirho where\n\
+class TypeSubstitutionChirho aChirho where\n\
+  freeVariablesChirho :: aChirho -> [Int]\n\
+instance TypeSubstitutionChirho Int where\n\
+  freeVariablesChirho _ = []\n\
+unify'Chirho :: Int -> Int -> Bool\n\
+unify'Chirho nChirho tChirho\n\
+  | nChirho `elem` freeVariablesChirho tChirho = True\n\
+  | otherwise = False\n",
+        &mut source_map_chirho,
+        "GuardFreeVariablesMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "backticked class-method guards on prime-suffixed names should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_symbolic_infix_fun_bind_with_var_operands_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
@@ -3763,6 +3822,22 @@ finalChirho = outerKeptChirho\n";
     assert!(!stripped_chirho.contains("outerDroppedChirho = 3"));
     assert!(!stripped_chirho.contains("#if"));
     assert!(!stripped_chirho.contains("#else"));
+    assert!(!stripped_chirho.contains("#endif"));
+}
+
+#[test]
+fn strip_cpp_directives_preserves_line_starting_with_unboxed_tuple_syntax_chirho() {
+    let stripped_chirho = crate::strip_cpp_directives_chirho(
+        "module UnboxedTupleResidueMiniChirho where\n\
+(# keptChirho #)\n\
+#if FLAG\n\
+alsoKeptChirho = 1\n\
+#endif\n",
+    );
+
+    assert!(stripped_chirho.contains("(# keptChirho #)"));
+    assert!(stripped_chirho.contains("alsoKeptChirho = 1"));
+    assert!(!stripped_chirho.contains("#if"));
     assert!(!stripped_chirho.contains("#endif"));
 }
 
