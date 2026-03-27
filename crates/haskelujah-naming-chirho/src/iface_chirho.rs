@@ -12007,6 +12007,35 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // System.OsString.Encoding.Internal (os-string — needed by filepath)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "ucs2le",
+            "mkUcs2le",
+            "ucs2le_decode",
+            "ucs2le_encode",
+            "utf16le_b",
+            "mkUTF16le_b",
+            "utf16le_b_decode",
+            "utf16le_b_encode",
+            "encodeWithBasePosix",
+            "decodeWithBasePosix",
+            "encodeWithBaseWindows",
+            "decodeWithBaseWindows",
+            "showEncodingException",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("EncodingException", &["EncodingError"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.OsString.Encoding.Internal".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Control.Monad.Trans.Resource (resourcet)
     {
         let mut exports_chirho = IfaceExportsChirho::default();

@@ -2032,6 +2032,77 @@ impl<'src> ParserChirho<'src> {
     // Where blocks
     // -----------------------------------------------------------------------
 
+    /// Lookahead: after the current `|` token, scan for `->` before `=`,
+    /// `,`, or another `|` at the top level.  Returns `true` when the `|`
+    /// looks like a MultiWayIf alternative (`| cond -> result`), `false`
+    /// when it looks like an outer guard (`| guard = rhs` or `| guard, ...`).
+    fn scan_multiway_if_alt_has_arrow_chirho(&self) -> bool {
+        let mut i_chirho = self.pos_chirho + 1; // skip the current `|`
+        let mut paren_depth_chirho = 0u32;
+        let mut bracket_depth_chirho = 0u32;
+        let mut brace_depth_chirho = 0u32;
+
+        while i_chirho < self.tokens_chirho.len() {
+            let kind_chirho = self.tokens_chirho[i_chirho].kind_chirho;
+            match kind_chirho {
+                RawTokenKindChirho::RightArrowChirho
+                    if paren_depth_chirho == 0
+                        && bracket_depth_chirho == 0
+                        && brace_depth_chirho == 0 =>
+                {
+                    return true;
+                }
+                RawTokenKindChirho::EqualsChirho | RawTokenKindChirho::CommaChirho
+                    if paren_depth_chirho == 0
+                        && bracket_depth_chirho == 0
+                        && brace_depth_chirho == 0 =>
+                {
+                    return false;
+                }
+                RawTokenKindChirho::PipeChirho
+                    if paren_depth_chirho == 0
+                        && bracket_depth_chirho == 0
+                        && brace_depth_chirho == 0 =>
+                {
+                    // Another top-level `|` before any `->` or `=`;
+                    // ambiguous, but assume this one is also a MultiWayIf alt.
+                    return true;
+                }
+                RawTokenKindChirho::LeftParenChirho => paren_depth_chirho += 1,
+                RawTokenKindChirho::RightParenChirho => {
+                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                }
+                RawTokenKindChirho::LeftBracketChirho => bracket_depth_chirho += 1,
+                RawTokenKindChirho::RightBracketChirho => {
+                    bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
+                }
+                RawTokenKindChirho::LeftBraceChirho
+                | RawTokenKindChirho::VirtualLeftBraceChirho => {
+                    brace_depth_chirho += 1;
+                }
+                RawTokenKindChirho::RightBraceChirho
+                | RawTokenKindChirho::VirtualRightBraceChirho => {
+                    if brace_depth_chirho == 0 {
+                        return false;
+                    }
+                    brace_depth_chirho -= 1;
+                }
+                RawTokenKindChirho::VirtualSemicolonChirho
+                    if paren_depth_chirho == 0
+                        && bracket_depth_chirho == 0
+                        && brace_depth_chirho == 0 =>
+                {
+                    // Layout semicolons at top level indicate we've left the
+                    // MultiWayIf context.
+                    return false;
+                }
+                _ => {}
+            }
+            i_chirho += 1;
+        }
+        false
+    }
+
     fn parse_where_block_chirho(&mut self) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::WhereClauseChirho);
@@ -2811,23 +2882,27 @@ impl<'src> ParserChirho<'src> {
             self.bump_chirho(); // if
             self.eat_trivia_chirho();
             // Parse guards: | cond -> expr
+            // Only consume `|` if lookahead confirms it is followed by
+            // `expr ->` (a MultiWayIf alt).  A `|` followed by `expr =`
+            // or `expr ,` belongs to an outer guard equation.
             while self.at_chirho(RawTokenKindChirho::PipeChirho)
-                || self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
+                && self.scan_multiway_if_alt_has_arrow_chirho()
             {
-                if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho) {
-                    self.bump_chirho();
-                    self.eat_trivia_chirho();
-                    continue;
-                }
                 self.bump_chirho(); // |
                 self.eat_trivia_chirho();
                 // Parse guard condition
                 self.parse_expr_chirho();
                 self.eat_trivia_chirho();
-                // Expect ->
+                // Expect -> ; if missing, this `|` is not a MultiWayIf alt
+                // (it may be an outer guard pipe that was consumed by mistake).
                 if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
                     self.bump_chirho();
                     self.eat_trivia_chirho();
+                } else {
+                    // Not a MultiWayIf alt — stop consuming.  The parser
+                    // already bumped the `|` and parsed the condition expr,
+                    // so we leave them in the tree as-is and break.
+                    break;
                 }
                 // Parse result expression
                 self.parse_expr_chirho();
