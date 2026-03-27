@@ -176,6 +176,38 @@ fn frontend_lambda_bang_pattern_params_typecheck_chirho() {
 }
 
 #[test]
+fn frontend_fun_binding_bang_as_pattern_args_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE BangPatterns, MagicHash #-}\nmodule StrictAsPatMiniChirho where\nimport GHC.Exts (Int(I#))\nfChirho !xChirho !_yChirho@(I# y#) = xChirho\n",
+        &mut source_map_chirho,
+        "StrictAsPatMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "strict as-pattern function args should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_maybe_like_unboxed_sums_lower_to_maybe_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE UnboxedSums #-}\nmodule MaybeLikeUnboxedSumMiniChirho where\nfromMaybeUnitChirho :: (# (##) | Int #) -> Maybe Int\nfromMaybeUnitChirho (# (##) | #) = Nothing\nfromMaybeUnitChirho (# | aChirho #) = Just aChirho\nuseMaybeUnitChirho :: Maybe Int\nuseMaybeUnitChirho = fromMaybeUnitChirho (# | 1 #)\n",
+        &mut source_map_chirho,
+        "MaybeLikeUnboxedSumMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "maybe-like unboxed sums should lower to Maybe-compatible syntax: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_list_append_is_polymorphic_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

@@ -3968,13 +3968,21 @@ impl<'src> ParserChirho<'src> {
                 // which handles the NegPat node construction
                 self.parse_apat_chirho();
             }
+            Some(RawTokenKindChirho::TildeChirho) => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::LazyPatChirho);
+                self.bump_chirho(); // ~
+                self.eat_trivia_chirho();
+                self.parse_fun_arg_pat_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
             Some(RawTokenKindChirho::VarSymChirho) if self.current_text_chirho() == "!" => {
                 // Bang pattern
                 self.builder_chirho
                     .start_node_chirho(SyntaxKindChirho::BangPatChirho);
                 self.bump_chirho(); // !
                 self.eat_trivia_chirho();
-                self.parse_apat_chirho();
+                self.parse_fun_arg_pat_chirho();
                 self.builder_chirho.finish_node_chirho();
             }
             _ => {
@@ -4058,7 +4066,7 @@ impl<'src> ParserChirho<'src> {
                     .start_node_chirho(SyntaxKindChirho::LazyPatChirho);
                 self.bump_chirho(); // ~
                 self.eat_trivia_chirho();
-                self.parse_apat_chirho();
+                self.parse_lpat_chirho();
                 self.builder_chirho.finish_node_chirho();
             }
             Some(RawTokenKindChirho::VarSymChirho) if self.current_text_chirho() == "!" => {
@@ -4066,7 +4074,7 @@ impl<'src> ParserChirho<'src> {
                     .start_node_chirho(SyntaxKindChirho::BangPatChirho);
                 self.bump_chirho(); // !
                 self.eat_trivia_chirho();
-                self.parse_apat_chirho();
+                self.parse_lpat_chirho();
                 self.builder_chirho.finish_node_chirho();
             }
             Some(RawTokenKindChirho::VarSymChirho) if self.current_text_chirho() == "-" => {
@@ -5293,6 +5301,29 @@ mod tests_chirho {
         assert!(
             kinds_chirho.contains(&SyntaxKindChirho::BangPatChirho),
             "should have BangPat: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_fun_binding_bang_as_pattern_arg_chirho() {
+        let source_chirho = "module M where\n{-# LANGUAGE BangPatterns, MagicHash #-}\nimport GHC.Exts (Int(I#))\nf !x !_y@(I# y#) = x\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::BangPatChirho),
+            "should have BangPat for strict args: {:?}",
+            kinds_chirho
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::AsPatChirho),
+            "strict as-pattern arg should retain AsPat: {:?}",
+            kinds_chirho
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::ConPatChirho),
+            "strict as-pattern arg should retain inner constructor pattern: {:?}",
             kinds_chirho
         );
     }

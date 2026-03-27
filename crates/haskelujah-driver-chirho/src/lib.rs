@@ -708,17 +708,140 @@ fn strip_cpp_directives_chirho(source_chirho: &str) -> String {
         .join("\n")
 }
 
+fn is_maybe_absent_unboxed_sum_alt_chirho(alt_chirho: &str) -> bool {
+    matches!(alt_chirho.trim(), "" | "(# #)" | "(##)")
+}
+
+fn maybe_like_unboxed_sum_parts_chirho(
+    line_chirho: &str,
+    start_chirho: usize,
+) -> Option<(usize, &str, &str)> {
+    if !line_chirho[start_chirho..].starts_with("(#") {
+        return None;
+    }
+
+    let bytes_chirho = line_chirho.as_bytes();
+    let mut idx_chirho = start_chirho + 2;
+    let mut depth_chirho = 1usize;
+    let mut pipe_idx_chirho = None;
+
+    while idx_chirho + 1 < bytes_chirho.len() {
+        if line_chirho[idx_chirho..].starts_with("(#") {
+            depth_chirho += 1;
+            idx_chirho += 2;
+            continue;
+        }
+        if line_chirho[idx_chirho..].starts_with("#)") {
+            depth_chirho = depth_chirho.saturating_sub(1);
+            if depth_chirho == 0 {
+                let pipe_idx_chirho = pipe_idx_chirho?;
+                let body_start_chirho = start_chirho + 2;
+                let body_end_chirho = idx_chirho;
+                let left_chirho = &line_chirho[body_start_chirho..pipe_idx_chirho];
+                let right_chirho = &line_chirho[pipe_idx_chirho + 1..body_end_chirho];
+                return Some((idx_chirho + 2, left_chirho, right_chirho));
+            }
+            idx_chirho += 2;
+            continue;
+        }
+        if depth_chirho == 1 && bytes_chirho[idx_chirho] == b'|' {
+            pipe_idx_chirho = Some(idx_chirho);
+        }
+        idx_chirho += 1;
+    }
+
+    None
+}
+
+fn rewrite_maybe_like_unboxed_sum_line_chirho(
+    line_chirho: &str,
+    type_context_chirho: bool,
+) -> String {
+    if !line_chirho.contains("(#") || !line_chirho.contains('|') {
+        return line_chirho.to_string();
+    }
+
+    let mut rewritten_chirho = String::with_capacity(line_chirho.len());
+    let mut cursor_chirho = 0usize;
+
+    while let Some(rel_start_chirho) = line_chirho[cursor_chirho..].find("(#") {
+        let start_chirho = cursor_chirho + rel_start_chirho;
+        rewritten_chirho.push_str(&line_chirho[cursor_chirho..start_chirho]);
+
+        let Some((end_chirho, left_alt_chirho, right_alt_chirho)) =
+            maybe_like_unboxed_sum_parts_chirho(line_chirho, start_chirho)
+        else {
+            rewritten_chirho.push_str("(#");
+            cursor_chirho = start_chirho + 2;
+            continue;
+        };
+
+        let left_trimmed_chirho = left_alt_chirho.trim();
+        let right_trimmed_chirho = right_alt_chirho.trim();
+
+        let replacement_chirho = if type_context_chirho {
+            if is_maybe_absent_unboxed_sum_alt_chirho(left_trimmed_chirho)
+                && !right_trimmed_chirho.is_empty()
+            {
+                Some(format!("Maybe {right_trimmed_chirho}"))
+            } else {
+                None
+            }
+        } else if is_maybe_absent_unboxed_sum_alt_chirho(left_trimmed_chirho) {
+            if right_trimmed_chirho.is_empty() {
+                Some("(Nothing)".to_string())
+            } else {
+                Some(format!("(Just {right_trimmed_chirho})"))
+            }
+        } else {
+            None
+        };
+
+        if let Some(replacement_chirho) = replacement_chirho {
+            rewritten_chirho.push_str(&replacement_chirho);
+            cursor_chirho = end_chirho;
+        } else {
+            rewritten_chirho.push_str(&line_chirho[start_chirho..end_chirho]);
+            cursor_chirho = end_chirho;
+        }
+    }
+
+    rewritten_chirho.push_str(&line_chirho[cursor_chirho..]);
+    rewritten_chirho
+}
+
+fn lower_maybe_like_unboxed_sums_chirho(source_chirho: &str) -> String {
+    if !source_chirho.contains("(#") || !source_chirho.contains('|') {
+        return source_chirho.to_string();
+    }
+
+    source_chirho
+        .lines()
+        .map(|line_chirho| {
+            let type_rewritten_chirho = if line_chirho.contains("::") {
+                rewrite_maybe_like_unboxed_sum_line_chirho(line_chirho, true)
+            } else {
+                line_chirho.to_string()
+            };
+            rewrite_maybe_like_unboxed_sum_line_chirho(&type_rewritten_chirho, false)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn read_haskell_source_file_chirho(path_chirho: impl AsRef<Path>) -> io::Result<String> {
     let path_ref_chirho = path_chirho.as_ref();
     let source_chirho = std::fs::read_to_string(path_ref_chirho)?;
     // Try CPP preprocessing; fall back to raw source (with directives
     // stripped) if cpp fails (e.g., tick characters in Haskell identifiers).
     match preprocess_cpp_source_chirho(path_ref_chirho, &source_chirho) {
-        Ok(processed_chirho) => Ok(processed_chirho),
+        Ok(processed_chirho) => Ok(lower_maybe_like_unboxed_sums_chirho(&processed_chirho)),
         Err(_) if path_is_hsc_chirho(path_ref_chirho) => Ok(sanitize_hsc_source_chirho(
+            &lower_maybe_like_unboxed_sums_chirho(&strip_cpp_directives_chirho(&source_chirho)),
+        )),
+        Err(_) => Ok(lower_maybe_like_unboxed_sums_chirho(
             &strip_cpp_directives_chirho(&source_chirho),
         )),
-        Err(_) => Ok(strip_cpp_directives_chirho(&source_chirho)),
     }
 }
 
@@ -1846,7 +1969,7 @@ pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
     });
 
     if !has_cpp_chirho {
-        return source_chirho.to_string();
+        return lower_maybe_like_unboxed_sums_chirho(source_chirho);
     }
 
     let temp_stamp_chirho = SystemTime::now()
@@ -1863,11 +1986,11 @@ pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
     {
         Ok(processed_chirho) => {
             let _ = std::fs::remove_file(&temp_path_chirho);
-            processed_chirho
+            lower_maybe_like_unboxed_sums_chirho(&processed_chirho)
         }
         _ => {
             let _ = std::fs::remove_file(&temp_path_chirho);
-            strip_cpp_directives_chirho(source_chirho)
+            lower_maybe_like_unboxed_sums_chirho(&strip_cpp_directives_chirho(source_chirho))
         }
     }
 }
