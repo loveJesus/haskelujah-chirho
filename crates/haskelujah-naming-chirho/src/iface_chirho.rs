@@ -12526,7 +12526,11 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         let (k_chirho, v_chirho) = mk_type_chirho("SMGen", &["SMGen"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        for mod_chirho in &["System.Random.SplitMix", "System.Random.SplitMix.Init"] {
+        for mod_chirho in &[
+            "System.Random.SplitMix",
+            "System.Random.SplitMix.Init",
+            "System.Random.SplitMix32",
+        ] {
             modules_chirho.push(ModuleIfaceChirho {
                 name_chirho: mod_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
@@ -14179,6 +14183,29 @@ mod tests_chirho {
                 .types_chirho
                 .contains_key("Traversable1"),
             "Data.Semigroup.Traversable should export Traversable1"
+        );
+    }
+
+    #[test]
+    fn builtin_splitmix32_iface_exists_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let splitmix32_iface_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "System.Random.SplitMix32")
+            .expect("System.Random.SplitMix32 builtin iface should exist");
+        assert!(
+            splitmix32_iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("nextWord32"),
+            "System.Random.SplitMix32 should export nextWord32"
+        );
+        assert!(
+            splitmix32_iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("SMGen"),
+            "System.Random.SplitMix32 should export SMGen"
         );
     }
 

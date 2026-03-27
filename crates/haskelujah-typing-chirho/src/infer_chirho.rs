@@ -7182,6 +7182,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     );
 
     let smgen_ty_chirho = TyChirho::ConChirho("SMGen".to_string());
+    let word32_ty_chirho = TyChirho::ConChirho("Word32".to_string());
     let word64_ty_chirho = TyChirho::ConChirho("Word64".to_string());
     env_chirho.bind_chirho(
         "newSMGen".to_string(),
@@ -7222,6 +7223,13 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
             smgen_ty_chirho.clone(),
             TyChirho::TupleChirho(vec![word64_ty_chirho.clone(), smgen_ty_chirho.clone()]),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "nextWord32".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            smgen_ty_chirho.clone(),
+            TyChirho::TupleChirho(vec![word32_ty_chirho, smgen_ty_chirho.clone()]),
         )),
     );
     env_chirho.bind_chirho(
@@ -7272,7 +7280,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "bitmaskWithRejection64'".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
-            vec![TyChirho::int_chirho(), smgen_ty_chirho.clone()],
+            vec![word64_ty_chirho.clone(), smgen_ty_chirho.clone()],
             TyChirho::TupleChirho(vec![word64_ty_chirho, smgen_ty_chirho]),
         )),
     );
@@ -17695,6 +17703,44 @@ mod tests_chirho {
         assert_eq!(
             result_chirho, None,
             "unregistered family should return None"
+        );
+    }
+
+    #[test]
+    fn builtin_splitmix_helpers_use_word_sized_signatures_chirho() {
+        let schemes_chirho = builtin_value_schemes_chirho();
+
+        let next_word32_scheme_chirho = schemes_chirho
+            .get("nextWord32")
+            .expect("nextWord32 builtin should exist");
+        assert_eq!(
+            next_word32_scheme_chirho.ty_chirho,
+            TyChirho::fun_chirho(
+                TyChirho::ConChirho("SMGen".to_string()),
+                TyChirho::TupleChirho(vec![
+                    TyChirho::ConChirho("Word32".to_string()),
+                    TyChirho::ConChirho("SMGen".to_string()),
+                ]),
+            ),
+            "nextWord32 should return a Word32 and the updated generator"
+        );
+
+        let bitmask_scheme_chirho = schemes_chirho
+            .get("bitmaskWithRejection64'")
+            .expect("bitmaskWithRejection64' builtin should exist");
+        assert_eq!(
+            bitmask_scheme_chirho.ty_chirho,
+            TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::ConChirho("Word64".to_string()),
+                    TyChirho::ConChirho("SMGen".to_string()),
+                ],
+                TyChirho::TupleChirho(vec![
+                    TyChirho::ConChirho("Word64".to_string()),
+                    TyChirho::ConChirho("SMGen".to_string()),
+                ]),
+            ),
+            "bitmaskWithRejection64' should accept a Word64 upper bound"
         );
     }
 }
