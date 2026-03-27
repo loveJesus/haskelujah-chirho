@@ -6344,6 +6344,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "tupleT",
             "sigT",
             "forallT",
+            "implicitParamT",
+            "appKindT",
             // Declaration constructors
             "funD",
             "valD",
@@ -6354,6 +6356,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "instanceD",
             "sigD",
             "pragInlD",
+            "pragLineD",
+            "derivClause",
+            "defaultFixity",
             // Clause and body
             "clause",
             "normalB",
@@ -6450,6 +6455,11 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "lookupTypeName",
             "lookupValueName",
             "reify",
+            "implicitParamT",
+            "derivClause",
+            "pragLineD",
+            "defaultFixity",
+            "appKindT",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
