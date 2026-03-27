@@ -197,11 +197,9 @@ impl VersionConstraintChirho {
     /// an And where one side is upper-bound-only). Used for allow-newer fallback.
     pub fn is_upper_bound_only_chirho(&self) -> bool {
         match self {
-            Self::LtChirho(_) | Self::LeChirho(_) => true,
+            Self::LtChirho(_) | Self::LeChirho(_) | Self::CaretChirho(_) => true,
             Self::AndChirho(a_chirho, b_chirho) => {
                 // e.g. >=1.4 && <1.5 — the <1.5 part is upper-bound-only
-                // If the failing constraint is the And, check if removing
-                // upper bounds from either side would make it pass
                 a_chirho.is_upper_bound_only_chirho() || b_chirho.is_upper_bound_only_chirho()
             }
             _ => false,
