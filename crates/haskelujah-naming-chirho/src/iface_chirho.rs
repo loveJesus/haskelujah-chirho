@@ -77,6 +77,7 @@ fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'s
         "Monad" => Some(&["return", ">>=", ">>"]),
         "Functor" => Some(&["fmap", "<$"]),
         "Applicative" => Some(&["pure", "<*>", "*>", "<*"]),
+        "Alternative" => Some(&["empty", "<|>", "some", "many", "optional"]),
         "Foldable" => Some(&[
             "foldr", "foldl", "foldMap", "length", "null", "elem", "sum", "product", "maximum",
             "minimum", "toList",
@@ -84,6 +85,12 @@ fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'s
         "Traversable" => Some(&["traverse", "sequenceA", "mapM", "sequence"]),
         "Monoid" => Some(&["mempty", "mappend", "mconcat"]),
         "Semigroup" => Some(&["<>"]),
+        "Arrow" => Some(&["arr", "first", "second", "***", "&&&"]),
+        "ArrowChoice" => Some(&["left", "right", "|||", "+++"]),
+        "ArrowApply" => Some(&["app"]),
+        "ArrowZero" => Some(&["zeroArrow"]),
+        "ArrowPlus" => Some(&["<+>"]),
+        "ArrowLoop" => Some(&["loop"]),
         _ => None,
     }
 }
@@ -7854,13 +7861,17 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("Alternative", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("Const", &["Const"]);
+        let (k_chirho, mut v_chirho) = mk_type_chirho("Const", &["Const"]);
+        v_chirho.methods_chirho.push("getConst".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("WrappedMonad", &["WrapMonad"]);
+        let (k_chirho, mut v_chirho) = mk_type_chirho("WrappedMonad", &["WrapMonad"]);
+        v_chirho.methods_chirho.push("unwrapMonad".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("WrappedArrow", &["WrapArrow"]);
+        let (k_chirho, mut v_chirho) = mk_type_chirho("WrappedArrow", &["WrapArrow"]);
+        v_chirho.methods_chirho.push("unwrapArrow".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("ZipList", &["ZipList"]);
+        let (k_chirho, mut v_chirho) = mk_type_chirho("ZipList", &["ZipList"]);
+        v_chirho.methods_chirho.push("getZipList".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
             "pure",
@@ -10288,6 +10299,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "forM_",
             "sequenceA_",
             "sequence_",
+            "foldrM",
+            "foldlM",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -10388,7 +10401,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &["Const"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["Const"]);
+            let (k_chirho, mut v_chirho) = mk_type_chirho(name_chirho, &["Const"]);
+            v_chirho.methods_chirho.push("getConst".to_string());
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         for name_chirho in &["Const", "getConst"] {
@@ -10595,6 +10609,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "mapAccum",
             "mapAccumWithKey",
             "mergeWithKey",
+            "foldMapWithKey",
+            "traverseWithKey",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -10928,6 +10944,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "findIndexR",
             "foldlWithIndex",
             "foldrWithIndex",
+            "foldMapWithIndex",
             "mapWithIndex",
             "traverseWithIndex",
             "replicate",
@@ -11004,10 +11021,12 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "foldl",
             "foldr'",
             "foldl'",
+            "foldMapWithKey",
             "foldrWithKey",
             "foldlWithKey",
             "foldrWithKey'",
             "foldlWithKey'",
+            "traverseWithKey",
             "elems",
             "keys",
             "assocs",
@@ -11384,10 +11403,11 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Backwards", "Lift"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
-            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        }
+        let (k_chirho, mut v_chirho) = mk_type_chirho("Backwards", &["Backwards"]);
+        v_chirho.methods_chirho.push("forwards".to_string());
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Lift", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
@@ -11576,7 +11596,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Reverse", &["Reverse"]);
+        let (k_chirho, mut v_chirho) = mk_type_chirho("Reverse", &["Reverse"]);
+        v_chirho.methods_chirho.push("getReverse".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Functor.Reverse".to_string(),
@@ -11591,7 +11612,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Constant", &["Constant"]);
+        let (k_chirho, mut v_chirho) = mk_type_chirho("Constant", &["Constant"]);
+        v_chirho.methods_chirho.push("getConstant".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Functor.Constant".to_string(),
@@ -14081,6 +14103,8 @@ mod tests_chirho {
     use haskelujah_ast_chirho::decl_chirho::ForeignDirectionChirho;
     use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
     use haskelujah_ast_chirho::ty_chirho::TypeChirho;
+    use crate::env_chirho::NamespaceChirho;
+    use crate::resolve_chirho::compute_imported_names_chirho;
 
     fn mk_name_chirho(s_chirho: &str) -> NameChirho {
         NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
@@ -14991,6 +15015,188 @@ mod tests_chirho {
                 "Prelude should export {name_chirho}"
             );
         }
+    }
+
+    #[test]
+    fn builtin_control_applicative_const_dotdot_imports_getconst_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let control_applicative_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Control.Applicative")
+            .expect("Control.Applicative builtin iface should exist");
+        let imported_names_chirho = compute_imported_names_chirho(
+            &control_applicative_chirho.exports_chirho,
+            &Some(ImportSpecChirho {
+                hiding_chirho: false,
+                items_chirho: vec![ImportItemChirho::TyConChirho {
+                    name_chirho: mk_name_chirho("Const"),
+                    members_chirho: ExportMembersChirho::AllChirho,
+                }],
+            }),
+        );
+        assert!(
+            imported_names_chirho
+                .iter()
+                .any(|(name_chirho, namespace_chirho, _span_chirho)| {
+                    name_chirho == "getConst"
+                        && *namespace_chirho == NamespaceChirho::ValueChirho
+                }),
+            "Const(..) should import getConst"
+        );
+    }
+
+    #[test]
+    fn builtin_transformer_accessors_import_with_dotdot_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let backwards_mod_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Control.Applicative.Backwards")
+            .expect("Control.Applicative.Backwards builtin iface should exist");
+        let backwards_imported_names_chirho = compute_imported_names_chirho(
+            &backwards_mod_chirho.exports_chirho,
+            &Some(ImportSpecChirho {
+                hiding_chirho: false,
+                items_chirho: vec![ImportItemChirho::TyConChirho {
+                    name_chirho: mk_name_chirho("Backwards"),
+                    members_chirho: ExportMembersChirho::AllChirho,
+                }],
+            }),
+        );
+        assert!(
+            backwards_imported_names_chirho
+                .iter()
+                .any(|(name_chirho, namespace_chirho, _span_chirho)| {
+                    name_chirho == "forwards"
+                        && *namespace_chirho == NamespaceChirho::ValueChirho
+                }),
+            "Backwards(..) should import forwards"
+        );
+
+        let reverse_mod_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.Functor.Reverse")
+            .expect("Data.Functor.Reverse builtin iface should exist");
+        let reverse_imported_names_chirho = compute_imported_names_chirho(
+            &reverse_mod_chirho.exports_chirho,
+            &Some(ImportSpecChirho {
+                hiding_chirho: false,
+                items_chirho: vec![ImportItemChirho::TyConChirho {
+                    name_chirho: mk_name_chirho("Reverse"),
+                    members_chirho: ExportMembersChirho::AllChirho,
+                }],
+            }),
+        );
+        assert!(
+            reverse_imported_names_chirho
+                .iter()
+                .any(|(name_chirho, namespace_chirho, _span_chirho)| {
+                    name_chirho == "getReverse"
+                        && *namespace_chirho == NamespaceChirho::ValueChirho
+                }),
+            "Reverse(..) should import getReverse"
+        );
+    }
+
+    #[test]
+    fn builtin_collection_and_arrow_helpers_exported_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+
+        let data_foldable_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.Foldable")
+            .expect("Data.Foldable builtin iface should exist");
+        for name_chirho in ["foldrM", "foldlM"] {
+            assert!(
+                data_foldable_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "Data.Foldable should export {name_chirho}"
+            );
+        }
+
+        let data_sequence_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.Sequence")
+            .expect("Data.Sequence builtin iface should exist");
+        assert!(
+            data_sequence_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("foldMapWithIndex"),
+            "Data.Sequence should export foldMapWithIndex"
+        );
+
+        let data_intmap_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.IntMap")
+            .expect("Data.IntMap builtin iface should exist");
+        for name_chirho in ["foldMapWithKey", "traverseWithKey"] {
+            assert!(
+                data_intmap_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "Data.IntMap should export {name_chirho}"
+            );
+        }
+
+        let data_map_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.Map")
+            .expect("Data.Map builtin iface should exist");
+        for name_chirho in ["foldMapWithKey", "traverseWithKey"] {
+            assert!(
+                data_map_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "Data.Map should export {name_chirho}"
+            );
+        }
+
+        let control_arrow_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Control.Arrow")
+            .expect("Control.Arrow builtin iface should exist");
+        let arrow_zero_imported_names_chirho = compute_imported_names_chirho(
+            &control_arrow_chirho.exports_chirho,
+            &Some(ImportSpecChirho {
+                hiding_chirho: false,
+                items_chirho: vec![ImportItemChirho::TyConChirho {
+                    name_chirho: mk_name_chirho("ArrowZero"),
+                    members_chirho: ExportMembersChirho::AllChirho,
+                }],
+            }),
+        );
+        assert!(
+            arrow_zero_imported_names_chirho
+                .iter()
+                .any(|(name_chirho, namespace_chirho, _span_chirho)| {
+                    name_chirho == "zeroArrow"
+                        && *namespace_chirho == NamespaceChirho::ValueChirho
+                }),
+            "ArrowZero(..) should import zeroArrow"
+        );
+        let arrow_plus_imported_names_chirho = compute_imported_names_chirho(
+            &control_arrow_chirho.exports_chirho,
+            &Some(ImportSpecChirho {
+                hiding_chirho: false,
+                items_chirho: vec![ImportItemChirho::TyConChirho {
+                    name_chirho: mk_name_chirho("ArrowPlus"),
+                    members_chirho: ExportMembersChirho::AllChirho,
+                }],
+            }),
+        );
+        assert!(
+            arrow_plus_imported_names_chirho
+                .iter()
+                .any(|(name_chirho, namespace_chirho, _span_chirho)| {
+                    name_chirho == "<+>"
+                        && *namespace_chirho == NamespaceChirho::ValueChirho
+                }),
+            "ArrowPlus(..) should import <+>"
+        );
     }
 
     #[test]

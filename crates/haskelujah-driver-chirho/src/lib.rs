@@ -3867,7 +3867,6 @@ fn find_local_dependency_package_dir_chirho(
     packages_dir_chirho: &Path,
     package_name_chirho: &str,
 ) -> Option<PathBuf> {
-    let prefix_chirho = format!("{package_name_chirho}-");
     let mut candidates_chirho: Vec<PathBuf> = std::fs::read_dir(packages_dir_chirho)
         .ok()?
         .flatten()
@@ -3875,14 +3874,32 @@ fn find_local_dependency_package_dir_chirho(
         .filter(|path_chirho| {
             path_chirho.is_dir()
                 && path_chirho.file_name().is_some_and(|file_name_chirho| {
-                    let file_name_chirho = file_name_chirho.to_string_lossy();
-                    file_name_chirho == package_name_chirho
-                        || file_name_chirho.starts_with(&prefix_chirho)
+                    package_dir_matches_dependency_chirho(
+                        &file_name_chirho.to_string_lossy(),
+                        package_name_chirho,
+                    )
                 })
         })
         .collect();
     candidates_chirho.sort();
     candidates_chirho.pop()
+}
+
+fn package_dir_matches_dependency_chirho(
+    dir_name_chirho: &str,
+    package_name_chirho: &str,
+) -> bool {
+    if dir_name_chirho == package_name_chirho {
+        return true;
+    }
+    let prefix_chirho = format!("{package_name_chirho}-");
+    let Some(version_suffix_chirho) = dir_name_chirho.strip_prefix(&prefix_chirho) else {
+        return false;
+    };
+    version_suffix_chirho
+        .chars()
+        .next()
+        .is_some_and(|char_chirho| char_chirho.is_ascii_digit())
 }
 
 fn builtin_dependency_names_chirho() -> std::collections::HashSet<String> {

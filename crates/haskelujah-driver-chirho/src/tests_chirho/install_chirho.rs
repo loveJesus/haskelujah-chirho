@@ -5,7 +5,10 @@
 
 #[cfg(test)]
 mod tests_chirho {
-    use crate::{InstallResultChirho, discover_modules_chirho, find_cabal_in_dir_chirho};
+    use crate::{
+        InstallResultChirho, discover_modules_chirho, find_cabal_in_dir_chirho,
+        find_local_dependency_package_dir_chirho,
+    };
     use haskelujah_package_chirho::{
         InstalledPkgDbChirho, hackage_chirho::create_test_tarball_chirho,
         hackage_chirho::extract_tarball_chirho, parse_cabal_chirho, parse_version_chirho,
@@ -195,5 +198,31 @@ library
         assert_eq!(db2_chirho.total_versions_chirho(), 2);
         assert!(db2_chirho.lookup_chirho("text").is_some());
         assert!(db2_chirho.lookup_chirho("bytestring").is_some());
+    }
+
+    #[test]
+    fn find_local_dependency_package_dir_prefers_version_dirs_chirho() {
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::create_dir(tmp_chirho.path().join("hashable-1.5.1.0")).unwrap();
+        fs::create_dir(tmp_chirho.path().join("hashable-time-0.3")).unwrap();
+        fs::create_dir(tmp_chirho.path().join("unordered-containers-0.2.21")).unwrap();
+
+        let hashable_dir_chirho =
+            find_local_dependency_package_dir_chirho(tmp_chirho.path(), "hashable")
+                .expect("hashable dependency should resolve to its versioned package dir");
+        assert!(
+            hashable_dir_chirho.ends_with("hashable-1.5.1.0"),
+            "expected hashable package dir, got {}",
+            hashable_dir_chirho.display()
+        );
+
+        let unordered_containers_dir_chirho =
+            find_local_dependency_package_dir_chirho(tmp_chirho.path(), "unordered-containers")
+                .expect("hyphenated dependency should resolve to its versioned package dir");
+        assert!(
+            unordered_containers_dir_chirho.ends_with("unordered-containers-0.2.21"),
+            "expected unordered-containers package dir, got {}",
+            unordered_containers_dir_chirho.display()
+        );
     }
 }
