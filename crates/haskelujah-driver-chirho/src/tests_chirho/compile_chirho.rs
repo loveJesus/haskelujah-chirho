@@ -272,6 +272,22 @@ fn frontend_instance_methods_receive_specialized_class_predicates_chirho() {
 }
 
 #[test]
+fn frontend_foldable_null_and_length_are_polymorphic_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module FoldablePreludeMiniChirho where\n\ndata BoxChirho aChirho = EmptyBoxChirho | BoxChirho aChirho\n\ninstance Foldable BoxChirho where\n  foldr _ zChirho EmptyBoxChirho = zChirho\n  foldr fChirho zChirho (BoxChirho xChirho) = fChirho xChirho zChirho\n\nlengthBoxChirho :: BoxChirho Int -> Int\nlengthBoxChirho = length\n\nnullBoxChirho :: BoxChirho Int -> Bool\nnullBoxChirho = null\n",
+        &mut source_map_chirho,
+        "FoldablePreludeMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "builtin null/length should accept Foldable instances, not just lists: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_ghc_ioref_stref_constructor_roundtrip_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

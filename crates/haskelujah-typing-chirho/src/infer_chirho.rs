@@ -9625,29 +9625,45 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // null :: forall a. [a] -> Bool
-    let null_a_chirho = TyVarChirho(3060);
+    // null :: forall t a. Foldable t => t a -> Bool
+    let null_t_chirho = TyVarChirho(3060);
+    let null_a_chirho = TyVarChirho(3061);
     env_chirho.bind_chirho(
         "null".to_string(),
         SchemeChirho {
-            vars_chirho: vec![null_a_chirho],
-            preds_chirho: vec![],
+            vars_chirho: vec![null_t_chirho, null_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Foldable".to_string(),
+                ty_chirho: TyChirho::VarChirho(null_t_chirho),
+                extra_tys_chirho: vec![],
+            }],
             ty_chirho: TyChirho::fun_chirho(
-                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(null_a_chirho))),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(null_t_chirho)),
+                    Box::new(TyChirho::VarChirho(null_a_chirho)),
+                ),
                 TyChirho::bool_chirho(),
             ),
         },
     );
 
-    // length :: forall a. [a] -> Int
-    let length_a_chirho = TyVarChirho(3070);
+    // length :: forall t a. Foldable t => t a -> Int
+    let length_t_chirho = TyVarChirho(3070);
+    let length_a_chirho = TyVarChirho(3071);
     env_chirho.bind_chirho(
         "length".to_string(),
         SchemeChirho {
-            vars_chirho: vec![length_a_chirho],
-            preds_chirho: vec![],
+            vars_chirho: vec![length_t_chirho, length_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Foldable".to_string(),
+                ty_chirho: TyChirho::VarChirho(length_t_chirho),
+                extra_tys_chirho: vec![],
+            }],
             ty_chirho: TyChirho::fun_chirho(
-                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(length_a_chirho))),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(length_t_chirho)),
+                    Box::new(TyChirho::VarChirho(length_a_chirho)),
+                ),
                 TyChirho::int_chirho(),
             ),
         },
