@@ -4489,14 +4489,16 @@ impl LowerCtxChirho {
                         TokenKindChirho::LeftParenChirho
                             if children_chirho
                                 .get(child_idx_chirho + 1)
-                                .and_then(|next_child_chirho| match next_child_chirho.element_chirho {
-                                    GreenElementChirho::TokenChirho(next_tok_chirho)
-                                        if next_tok_chirho.kind_chirho()
-                                            == TokenKindChirho::RightParenChirho =>
-                                    {
-                                        Some(next_child_chirho)
+                                .and_then(|next_child_chirho| {
+                                    match next_child_chirho.element_chirho {
+                                        GreenElementChirho::TokenChirho(next_tok_chirho)
+                                            if next_tok_chirho.kind_chirho()
+                                                == TokenKindChirho::RightParenChirho =>
+                                        {
+                                            Some(next_child_chirho)
+                                        }
+                                        _ => None,
                                     }
-                                    _ => None,
                                 })
                                 .is_some() =>
                         {

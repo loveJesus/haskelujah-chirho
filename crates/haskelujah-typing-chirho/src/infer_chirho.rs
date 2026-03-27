@@ -7198,6 +7198,52 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         with_foreign_ptr_scheme_chirho,
     );
 
+    {
+        let cast_fun_ptr_from_a_chirho = TyVarChirho(1695);
+        let cast_fun_ptr_to_a_chirho = TyVarChirho(1696);
+        let cast_fun_ptr_input_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("FunPtr".to_string())),
+            Box::new(TyChirho::VarChirho(cast_fun_ptr_from_a_chirho)),
+        );
+        let cast_fun_ptr_result_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Ptr".to_string())),
+            Box::new(TyChirho::VarChirho(cast_fun_ptr_to_a_chirho)),
+        );
+        let cast_fun_ptr_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![cast_fun_ptr_from_a_chirho, cast_fun_ptr_to_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                cast_fun_ptr_input_ty_chirho,
+                cast_fun_ptr_result_ty_chirho,
+            ),
+        };
+        env_chirho.bind_chirho(
+            "castFunPtrToPtr".to_string(),
+            cast_fun_ptr_scheme_chirho.clone(),
+        );
+        env_chirho.bind_chirho(
+            "Foreign.Ptr.castFunPtrToPtr".to_string(),
+            cast_fun_ptr_scheme_chirho,
+        );
+    }
+
+    {
+        let text_array_a_chirho = TyVarChirho(1697);
+        let text_array_a_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![text_array_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(text_array_a_chirho),
+                TyChirho::ConChirho("ByteArray#".to_string()),
+            ),
+        };
+        env_chirho.bind_chirho("aBA".to_string(), text_array_a_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Data.Text.Array.aBA".to_string(),
+            text_array_a_scheme_chirho,
+        );
+    }
+
     // unsafeIOToST :: IO a -> ST s a
     {
         let a_chirho = TyVarChirho(1693);
@@ -8278,21 +8324,25 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // mapSize :: Map k v -> Int
-    env_chirho.bind_chirho(
-        "mapSize".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::int_chirho(),
-        )),
-    );
-    env_chirho.bind_chirho(
-        "Data.Map.size".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::int_chirho(),
-        )),
-    );
+    // mapSize :: Map.Map k v -> Int
+    {
+        let map_size_k_chirho = TyVarChirho(38020);
+        let map_size_v_chirho = TyVarChirho(38021);
+        let map_size_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Map.Map".to_string())),
+                Box::new(TyChirho::VarChirho(map_size_k_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(map_size_v_chirho)),
+        );
+        let map_size_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![map_size_k_chirho, map_size_v_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(map_size_ty_chirho, TyChirho::int_chirho()),
+        };
+        env_chirho.bind_chirho("mapSize".to_string(), map_size_scheme_chirho.clone());
+        env_chirho.bind_chirho("Data.Map.size".to_string(), map_size_scheme_chirho);
+    }
 
     // mapMember :: Ord k => k -> Map k v -> Bool
     {
@@ -12430,6 +12480,31 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     TyChirho::ConChirho("TypeRep".to_string()),
                 ),
             },
+        );
+    }
+
+    // typeRepFingerprint :: TypeRep a -> Fingerprint
+    {
+        let type_rep_fingerprint_a_chirho = TyVarChirho(7141);
+        let type_rep_fingerprint_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![type_rep_fingerprint_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(type_rep_fingerprint_a_chirho),
+                TyChirho::ConChirho("Fingerprint".to_string()),
+            ),
+        };
+        env_chirho.bind_chirho(
+            "typeRepFingerprint".to_string(),
+            type_rep_fingerprint_scheme_chirho.clone(),
+        );
+        env_chirho.bind_chirho(
+            "Type.Reflection.typeRepFingerprint".to_string(),
+            type_rep_fingerprint_scheme_chirho.clone(),
+        );
+        env_chirho.bind_chirho(
+            "Type.Reflection.Unsafe.typeRepFingerprint".to_string(),
+            type_rep_fingerprint_scheme_chirho,
         );
     }
 

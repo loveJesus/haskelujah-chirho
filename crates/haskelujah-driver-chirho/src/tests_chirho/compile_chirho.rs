@@ -6002,8 +6002,8 @@ main = do
 #[test]
 fn frontend_hashable_ffi_exports_seed_qualified_io_results_chirho() {
     use crate::{
-        collect_frontend_artifacts_from_module_sources_chirho, scan_dependency_package_ifaces_chirho,
-        ImportedTypeSynonymsChirho,
+        ImportedTypeSynonymsChirho, collect_frontend_artifacts_from_module_sources_chirho,
+        scan_dependency_package_ifaces_chirho,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -6056,9 +6056,8 @@ fn frontend_hashable_ffi_exports_seed_qualified_io_results_chirho() {
 #[test]
 fn frontend_hashable_ffi_pair_typechecks_with_dependency_stubs_chirho() {
     use crate::{
-        collect_frontend_artifacts_from_module_sources_chirho,
+        ImportedTypeSynonymsChirho, collect_frontend_artifacts_from_module_sources_chirho,
         run_frontend_with_type_synonyms_chirho, scan_dependency_package_ifaces_chirho,
-        ImportedTypeSynonymsChirho,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;

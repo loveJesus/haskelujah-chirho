@@ -4518,6 +4518,28 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Text.Array
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["aBA", "maBA"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for (name_chirho, constructors_chirho) in &[
+            ("Array", vec![]),
+            ("MArray", vec![]),
+            ("ByteArray", vec!["ByteArray"]),
+            ("MutableByteArray", vec!["MutableByteArray"]),
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, constructors_chirho);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Text.Array".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Data.Bifoldable1
     {
         let mut exports_chirho = IfaceExportsChirho::default();
@@ -8221,6 +8243,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "minusPtr",
             "nullFunPtr",
             "castFunPtr",
+            "castFunPtrToPtr",
             "freeHaskellFunPtr",
             "ptrToWordPtr",
             "wordPtrToPtr",
@@ -12131,7 +12154,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["OsString", "PosixString", "WindowsString", "PosixChar", "WindowsChar"] {
+        for name_chirho in &[
+            "OsString",
+            "PosixString",
+            "WindowsString",
+            "PosixChar",
+            "WindowsChar",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
