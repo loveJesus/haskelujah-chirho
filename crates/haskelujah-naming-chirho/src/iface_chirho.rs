@@ -12801,7 +12801,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
-    // Data.CaseInsensitive / GHC.Storable / Network.Socket.BufferPool (needed by warp)
+    // Data.CaseInsensitive / GHC.Storable / Network.Socket* / System.TimeManager (needed by warp)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &["mk", "original", "foldCase", "foldedCase"] {
@@ -12826,6 +12826,43 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
     {
         let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "accept",
+            "close",
+            "fdSocket",
+            "getSocketName",
+            "setSocketOption",
+            "withSocketsDo",
+            "gracefulClose",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Socket", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) =
+            mk_type_chirho("SockAddr", &["SockAddrInet", "SockAddrInet6"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("SocketOption", &["NoDelay"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Network.Socket".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["sendAll", "sendMany"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Network.Socket.ByteString".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &["copy", "newBufferPool", "receive"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -12836,6 +12873,90 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Network.Socket.BufferPool".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "pause",
+            "resume",
+            "tickle",
+            "stopManager",
+            "withHandleKillThread",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Manager", "Handle"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.TimeManager".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Streaming.ByteString.Builder.Buffer (streaming-commons — needed by warp)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_type_chirho("Buffer", &["Buffer"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_val_chirho("Buffer");
+        exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Streaming.ByteString.Builder.Buffer".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Network.Socket (network — needed by warp)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "socket", "bind", "listen", "accept", "connect", "close",
+            "getAddrInfo", "defaultHints", "setSocketOption",
+            "withSocketsDo", "gracefulClose", "fdSocket",
+            "socketToHandle", "getPeerName", "getSocketName",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &[
+            "Socket", "SockAddr", "AddrInfo", "Family", "SocketType",
+            "SocketOption", "HostAddress", "PortNumber",
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Network.Socket".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Network.Socket.Internal".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.TimeManager (time-manager — needed by warp)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "initialize", "stopManager", "killManager",
+            "withManager", "register", "tickle", "pause", "resume",
+            "cancel", "setTimeout",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Manager", "TimeoutAction", "Handle"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.TimeManager".to_string(),
             exports_chirho,
         });
     }
