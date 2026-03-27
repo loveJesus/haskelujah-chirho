@@ -77,6 +77,8 @@ pub struct InferCtxChirho {
     con_field_names_chirho: HashMap<String, Vec<String>>,
     /// Module-local numeric default declaration candidates from `default (...)`.
     module_default_types_chirho: Vec<TyChirho>,
+    /// Whether the current module enables OverloadedStrings.
+    overloaded_strings_chirho: bool,
 }
 
 impl InferCtxChirho {
@@ -295,6 +297,7 @@ impl InferCtxChirho {
             scoped_tyvars_chirho: HashMap::new(),
             con_field_names_chirho: HashMap::new(),
             module_default_types_chirho: Vec::new(),
+            overloaded_strings_chirho: false,
         }
     }
 
@@ -1696,6 +1699,14 @@ impl InferCtxChirho {
                     let lit_ty_chirho = self.fresh_var_chirho();
                     self.deferred_preds_chirho.push((
                         PredChirho::new_chirho("Fractional", lit_ty_chirho.clone()),
+                        *span_chirho,
+                    ));
+                    (SubstChirho::empty_chirho(), lit_ty_chirho)
+                }
+                LitChirho::StringChirho(_, span_chirho) if self.overloaded_strings_chirho => {
+                    let lit_ty_chirho = self.fresh_var_chirho();
+                    self.deferred_preds_chirho.push((
+                        PredChirho::new_chirho("IsString", lit_ty_chirho.clone()),
                         *span_chirho,
                     ));
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
@@ -14596,6 +14607,10 @@ pub fn infer_module_with_imports_type_synonyms_and_families_chirho(
     imported_record_field_names_chirho: &HashMap<String, Vec<String>>,
 ) -> InferResultChirho {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
+    ctx_chirho.overloaded_strings_chirho = module_chirho
+        .extensions_chirho
+        .iter()
+        .any(|extension_chirho| extension_chirho == "OverloadedStrings");
     for (name_chirho, (params_chirho, rhs_ast_chirho)) in imported_type_synonyms_chirho {
         let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_ast_chirho, params_chirho);
         ctx_chirho.register_type_synonym_chirho(

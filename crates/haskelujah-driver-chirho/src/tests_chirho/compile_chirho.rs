@@ -6375,3 +6375,17 @@ fn frontend_magic_hash_import_item_before_close_paren_typechecks_chirho() {
         "explicit GHC.Exts xor# import should stay in scope before close paren"
     );
 }
+
+#[test]
+fn frontend_overloaded_strings_builder_literals_typecheck_chirho() {
+    let src_chirho = "{-# LANGUAGE OverloadedStrings #-}\nmodule BuilderLiteralMiniChirho where\nimport Data.Text.Lazy.Builder (Builder)\nvalueChirho :: Builder\nvalueChirho = \"0.0e0\"\n";
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut source_map_chirho, "BuilderLiteralMiniChirho.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "builder overloaded string literals should typecheck: {:?}",
+        result_chirho.err()
+    );
+}

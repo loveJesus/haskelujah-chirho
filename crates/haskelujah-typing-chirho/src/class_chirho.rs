@@ -2617,6 +2617,12 @@ impl ClassEnvChirho {
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "IsString".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("Builder".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
 
         // IsList (for OverloadedLists extension)
         // Simplified: fromList :: [a] -> l, toList :: l -> [a]

@@ -15145,6 +15145,27 @@ mod tests_chirho {
     }
 
     #[test]
+    fn builtin_ghc_integer_gmp_internals_exports_integer_constructors_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let gmp_internals_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Integer.GMP.Internals")
+            .expect("GHC.Integer.GMP.Internals builtin iface should exist");
+        assert!(
+            gmp_internals_chirho
+                .exports_chirho
+                .types_chirho
+                .get("Integer")
+                .is_some_and(|integer_ty_chirho| integer_ty_chirho
+                    .constructors_chirho
+                    .contains(&"IS".to_string())
+                    && integer_ty_chirho.constructors_chirho.contains(&"IN".to_string())
+                    && integer_ty_chirho.constructors_chirho.contains(&"IP".to_string())),
+            "GHC.Integer.GMP.Internals should export Integer(..)"
+        );
+    }
+
+    #[test]
     fn builtin_data_functor_compose_exports_getcompose_via_type_chirho() {
         let ifaces_chirho = builtin_module_ifaces_chirho();
         let compose_chirho = ifaces_chirho
