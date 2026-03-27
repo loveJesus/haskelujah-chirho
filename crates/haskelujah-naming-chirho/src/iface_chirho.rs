@@ -3624,6 +3624,11 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "liftM4",
             "liftM5",
             "ap",
+            "zipWithM",
+            "zipWithM_",
+            "foldM",
+            "foldM_",
+            "filterM",
             "MonadPlus",
             "mzero",
             "mplus",
@@ -10774,6 +10779,72 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Eq".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.Mem
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["performGC", "performMajorGC", "performMinorGC"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.Mem".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.Directory (basic)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "doesFileExist",
+            "doesDirectoryExist",
+            "createDirectory",
+            "createDirectoryIfMissing",
+            "removeFile",
+            "removeDirectory",
+            "renameFile",
+            "renameDirectory",
+            "getDirectoryContents",
+            "getCurrentDirectory",
+            "setCurrentDirectory",
+            "getHomeDirectory",
+            "getTemporaryDirectory",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.Directory".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // System.Process (basic)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "callProcess",
+            "callCommand",
+            "readProcess",
+            "readProcessWithExitCode",
+            "system",
+            "rawSystem",
+            "createProcess",
+            "waitForProcess",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["CreateProcess", "ProcessHandle", "StdStream"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.Process".to_string(),
             exports_chirho,
         });
     }
