@@ -4042,6 +4042,7 @@ fn builtin_dependency_names_chirho() -> std::collections::HashSet<String> {
         "integer-gmp",
         "ghc-boot-th",
         "ghc-boot",
+        "os-string",
         "unix",
         "Win32",
     ]
@@ -4052,7 +4053,7 @@ fn builtin_dependency_names_chirho() -> std::collections::HashSet<String> {
 
 fn merge_local_dependency_package_index_chirho(
     project_dir_chirho: &Path,
-    root_deps_chirho: &[haskelujah_package_chirho::DependencyChirho],
+    _root_deps_chirho: &[haskelujah_package_chirho::DependencyChirho],
     base_index_chirho: &haskelujah_package_chirho::PackageIndexChirho,
 ) -> Result<haskelujah_package_chirho::PackageIndexChirho, String> {
     let Some(packages_dir_chirho) = find_dependency_packages_dir_chirho(project_dir_chirho) else {
@@ -4061,57 +4062,36 @@ fn merge_local_dependency_package_index_chirho(
 
     let builtin_deps_chirho = builtin_dependency_names_chirho();
     let mut merged_index_chirho = base_index_chirho.clone();
-    let mut visited_chirho = std::collections::HashSet::new();
-    let mut active_chirho = std::collections::HashSet::new();
+    let mut package_dirs_chirho: Vec<PathBuf> = std::fs::read_dir(&packages_dir_chirho)
+        .map_err(|error_chirho| {
+            format!(
+                "cannot read local dependency directory {}: {}",
+                packages_dir_chirho.display(),
+                error_chirho
+            )
+        })?
+        .filter_map(|entry_chirho| entry_chirho.ok().map(|entry_chirho| entry_chirho.path()))
+        .filter(|path_chirho| path_chirho.is_dir())
+        .collect();
+    package_dirs_chirho.sort();
 
-    for dep_chirho in root_deps_chirho {
-        extend_local_dependency_package_index_recursive_chirho(
-            &dep_chirho.package_chirho,
-            &packages_dir_chirho,
-            &builtin_deps_chirho,
-            &mut visited_chirho,
-            &mut active_chirho,
-            &mut merged_index_chirho,
-        )?;
-    }
-
-    Ok(merged_index_chirho)
-}
-
-fn extend_local_dependency_package_index_recursive_chirho(
-    package_name_chirho: &str,
-    packages_dir_chirho: &Path,
-    builtin_deps_chirho: &std::collections::HashSet<String>,
-    visited_chirho: &mut std::collections::HashSet<String>,
-    active_chirho: &mut std::collections::HashSet<String>,
-    merged_index_chirho: &mut haskelujah_package_chirho::PackageIndexChirho,
-) -> Result<(), String> {
-    if builtin_deps_chirho.contains(package_name_chirho)
-        || visited_chirho.contains(package_name_chirho)
-    {
-        return Ok(());
-    }
-    if !active_chirho.insert(package_name_chirho.to_string()) {
-        return Ok(());
-    }
-
-    let package_dirs_chirho =
-        find_local_dependency_package_dirs_chirho(packages_dir_chirho, package_name_chirho);
     for package_dir_chirho in package_dirs_chirho {
         let Some(cabal_path_chirho) = find_cabal_in_dir_chirho(&package_dir_chirho) else {
             continue;
         };
 
-        let cabal_content_chirho =
-            std::fs::read_to_string(&cabal_path_chirho).map_err(|error_chirho| {
-                format!(
-                    "cannot read dependency cabal {}: {}",
-                    cabal_path_chirho.display(),
-                    error_chirho
-                )
-            })?;
+        let Ok(cabal_content_chirho) = std::fs::read_to_string(&cabal_path_chirho) else {
+            continue;
+        };
         let package_chirho = haskelujah_package_chirho::parse_cabal_chirho(&cabal_content_chirho);
-        let package_version_chirho = package_chirho
+        if package_chirho.name_chirho.is_empty() {
+            continue;
+        }
+        if builtin_deps_chirho.contains(&package_chirho.name_chirho) {
+            continue;
+        }
+
+        let Some(package_version_chirho) = package_chirho
             .version_chirho
             .clone()
             .or_else(|| {
@@ -4124,13 +4104,9 @@ fn extend_local_dependency_package_index_recursive_chirho(
                             .and_then(haskelujah_package_chirho::parse_version_chirho)
                     })
             })
-            .ok_or_else(|| {
-                format!(
-                    "dependency package '{}' is missing a version in {}",
-                    package_chirho.name_chirho,
-                    cabal_path_chirho.display()
-                )
-            })?;
+        else {
+            continue;
+        };
         let package_deps_chirho = collect_library_package_deps_chirho(&package_chirho);
 
         let already_present_chirho = merged_index_chirho
@@ -4145,25 +4121,12 @@ fn extend_local_dependency_package_index_recursive_chirho(
             merged_index_chirho.add_package_chirho(
                 &package_chirho.name_chirho,
                 package_version_chirho,
-                package_deps_chirho.clone(),
+                package_deps_chirho,
             );
-        }
-
-        for dep_chirho in &package_deps_chirho {
-            extend_local_dependency_package_index_recursive_chirho(
-                &dep_chirho.package_chirho,
-                packages_dir_chirho,
-                builtin_deps_chirho,
-                visited_chirho,
-                active_chirho,
-                merged_index_chirho,
-            )?;
         }
     }
 
-    active_chirho.remove(package_name_chirho);
-    visited_chirho.insert(package_name_chirho.to_string());
-    Ok(())
+    Ok(merged_index_chirho)
 }
 
 fn collect_local_dependency_frontend_artifacts_chirho(
