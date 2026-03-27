@@ -1263,6 +1263,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         for name_chirho in &[
             "seq",
             "seq#",
+            "runRW#",
             "realWorld#",
             "proxy#",
             "void#",
@@ -1344,6 +1345,30 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "indexArray#",
             "sizeofArray#",
             "sizeofMutableArray#",
+            "freezeArray#",
+            "thawArray#",
+            "copyArray#",
+            "copyMutableArray#",
+            "cloneArray#",
+            "cloneMutableArray#",
+            "sameMutableArray#",
+            "unsafeFreezeArray#",
+            "unsafeThawArray#",
+            "casArray#",
+            "newSmallArray#",
+            "readSmallArray#",
+            "writeSmallArray#",
+            "indexSmallArray#",
+            "sizeofSmallArray#",
+            "sizeofSmallMutableArray#",
+            "freezeSmallArray#",
+            "thawSmallArray#",
+            "copySmallArray#",
+            "copySmallMutableArray#",
+            "cloneSmallArray#",
+            "cloneSmallMutableArray#",
+            "unsafeFreezeSmallArray#",
+            "unsafeThawSmallArray#",
             "newByteArray#",
             "newPinnedByteArray#",
             "newAlignedPinnedByteArray#",
@@ -5267,6 +5292,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "readArray#",
             "writeArray#",
             "indexArray#",
+            "freezeArray#",
+            "thawArray#",
+            "copyArray#",
+            "copyMutableArray#",
+            "cloneArray#",
+            "cloneMutableArray#",
+            "sameMutableArray#",
             "sizeofArray#",
             "sizeofMutableArray#",
             "newByteArray#",
@@ -14538,6 +14570,48 @@ mod tests_chirho {
                 .contains_key("seq#"),
             "GHC.Exts should export seq#"
         );
+    }
+
+    #[test]
+    fn builtin_ghc_exts_exports_runrw_hash_primop_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_exts_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Exts")
+            .expect("GHC.Exts builtin iface should exist");
+        assert!(
+            ghc_exts_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("runRW#"),
+            "GHC.Exts should export runRW#"
+        );
+    }
+
+    #[test]
+    fn builtin_ghc_prim_exports_mutable_array_primops_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_prim_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Prim")
+            .expect("GHC.Prim builtin iface should exist");
+        for name_chirho in &[
+            "freezeArray#",
+            "thawArray#",
+            "copyArray#",
+            "copyMutableArray#",
+            "cloneArray#",
+            "cloneMutableArray#",
+            "sameMutableArray#",
+        ] {
+            assert!(
+                ghc_prim_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(*name_chirho),
+                "GHC.Prim should export {name_chirho}"
+            );
+        }
     }
 
     #[test]
