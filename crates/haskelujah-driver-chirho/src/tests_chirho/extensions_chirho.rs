@@ -1052,8 +1052,13 @@ main = 0
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     assert_eq!(
-        eval_source_chirho(src_chirho, &mut sm_chirho, "CPPTemplateHaskellChirho.hs", None)
-            .unwrap(),
+        eval_source_chirho(
+            src_chirho,
+            &mut sm_chirho,
+            "CPPTemplateHaskellChirho.hs",
+            None
+        )
+        .unwrap(),
         ValueChirho::IntChirho(42)
     );
 }
@@ -1065,6 +1070,27 @@ fn template_haskell_quotes_pragma_chirho() {
     assert_eq!(
         eval_source_chirho(src_chirho, &mut sm_chirho, "THQuotes.hs", None).unwrap(),
         ValueChirho::IntChirho(42)
+    );
+}
+
+#[test]
+fn template_haskell_kind_helpers_appk_arrowk_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE TemplateHaskell #-}
+module THKindHelpersChirho where
+import Language.Haskell.TH
+import Language.Haskell.TH.Lib (appK, arrowK, appKindT, starK)
+
+kindValueChirho = arrowK `appK` starK `appK` starK
+typeValueChirho = AppKindT (ConT (mkName \"Maybe\")) starK
+typeValue2Chirho = appKindT (ConT (mkName \"Maybe\")) starK
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "THKindHelpersChirho.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Template Haskell kind helpers should type-check: {:?}",
+        result_chirho.err()
     );
 }
 

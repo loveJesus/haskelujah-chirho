@@ -450,9 +450,11 @@ impl LowerCtxChirho {
                     {
                         let span_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        name_chirho = Some(
-                            self.module_name_from_text_chirho(tok_chirho.text_chirho(), span_chirho),
-                        );
+                        name_chirho =
+                            Some(self.module_name_from_text_chirho(
+                                tok_chirho.text_chirho(),
+                                span_chirho,
+                            ));
                     }
                     _ => {}
                 },
@@ -527,77 +529,76 @@ impl LowerCtxChirho {
             let elem_end_chirho = offset_chirho + elem_chirho.text_len_chirho();
             if !is_trivia_element_chirho(elem_chirho) {
                 match elem_chirho {
-                    GreenElementChirho::TokenChirho(tok_chirho) => {
-                        match tok_chirho.kind_chirho() {
-                            TokenKindChirho::ModuleKeywordChirho => {
-                                is_module_reexport_chirho = true;
-                            }
-                            TokenKindChirho::ConIdChirho
-                            | TokenKindChirho::QualifiedConIdChirho => {
-                                let span_chirho =
-                                    self.span_chirho(elem_start_chirho, elem_end_chirho);
-                                if first_name_chirho.is_none() && !in_parens_chirho {
-                                    first_name_chirho = Some((
-                                        tok_chirho.text_chirho().to_string(),
-                                        span_chirho,
-                                        !is_module_reexport_chirho,
-                                    ));
-                                } else if in_parens_chirho {
-                                    members_chirho.push(self.name_from_text_chirho(
-                                        tok_chirho.text_chirho(),
-                                        span_chirho,
-                                    ));
-                                }
-                            }
-                            TokenKindChirho::VarIdChirho
-                            | TokenKindChirho::QualifiedVarIdChirho => {
-                                let span_chirho =
-                                    self.span_chirho(elem_start_chirho, elem_end_chirho);
-                                if first_name_chirho.is_none() && !in_parens_chirho {
-                                    first_name_chirho = Some((
-                                        tok_chirho.text_chirho().to_string(),
-                                        span_chirho,
-                                        false,
-                                    ));
-                                } else if in_parens_chirho {
-                                    members_chirho.push(self.name_from_text_chirho(
-                                        tok_chirho.text_chirho(),
-                                        span_chirho,
-                                    ));
-                                }
-                            }
-                            TokenKindChirho::VarSymChirho
-                            | TokenKindChirho::ConSymChirho
-                            | TokenKindChirho::QualifiedVarSymChirho
-                            | TokenKindChirho::QualifiedConSymChirho => {
-                                let span_chirho =
-                                    self.span_chirho(elem_start_chirho, elem_end_chirho);
-                                if first_name_chirho.is_none() {
-                                    first_name_chirho = Some((
-                                        tok_chirho.text_chirho().to_string(),
-                                        span_chirho,
-                                        false,
-                                    ));
-                                } else if in_parens_chirho {
-                                    members_chirho.push(self.name_from_text_chirho(
-                                        tok_chirho.text_chirho(),
-                                        span_chirho,
-                                    ));
-                                }
-                            }
-                            TokenKindChirho::LeftParenChirho => {
-                                has_parens_chirho = true;
-                                in_parens_chirho = true;
-                            }
-                            TokenKindChirho::RightParenChirho => {
-                                in_parens_chirho = false;
-                            }
-                            TokenKindChirho::DotDotChirho => {
-                                has_dotdot_chirho = true;
-                            }
-                            _ => {}
+                    GreenElementChirho::TokenChirho(tok_chirho) => match tok_chirho.kind_chirho() {
+                        TokenKindChirho::ModuleKeywordChirho => {
+                            is_module_reexport_chirho = true;
                         }
-                    }
+                        TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
+                            let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
+                            if first_name_chirho.is_none() && !in_parens_chirho {
+                                first_name_chirho = Some((
+                                    tok_chirho.text_chirho().to_string(),
+                                    span_chirho,
+                                    !is_module_reexport_chirho,
+                                ));
+                            } else if in_parens_chirho {
+                                members_chirho.push(
+                                    self.name_from_text_chirho(
+                                        tok_chirho.text_chirho(),
+                                        span_chirho,
+                                    ),
+                                );
+                            }
+                        }
+                        TokenKindChirho::VarIdChirho | TokenKindChirho::QualifiedVarIdChirho => {
+                            let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
+                            if first_name_chirho.is_none() && !in_parens_chirho {
+                                first_name_chirho = Some((
+                                    tok_chirho.text_chirho().to_string(),
+                                    span_chirho,
+                                    false,
+                                ));
+                            } else if in_parens_chirho {
+                                members_chirho.push(
+                                    self.name_from_text_chirho(
+                                        tok_chirho.text_chirho(),
+                                        span_chirho,
+                                    ),
+                                );
+                            }
+                        }
+                        TokenKindChirho::VarSymChirho
+                        | TokenKindChirho::ConSymChirho
+                        | TokenKindChirho::QualifiedVarSymChirho
+                        | TokenKindChirho::QualifiedConSymChirho => {
+                            let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
+                            if first_name_chirho.is_none() {
+                                first_name_chirho = Some((
+                                    tok_chirho.text_chirho().to_string(),
+                                    span_chirho,
+                                    false,
+                                ));
+                            } else if in_parens_chirho {
+                                members_chirho.push(
+                                    self.name_from_text_chirho(
+                                        tok_chirho.text_chirho(),
+                                        span_chirho,
+                                    ),
+                                );
+                            }
+                        }
+                        TokenKindChirho::LeftParenChirho => {
+                            has_parens_chirho = true;
+                            in_parens_chirho = true;
+                        }
+                        TokenKindChirho::RightParenChirho => {
+                            in_parens_chirho = false;
+                        }
+                        TokenKindChirho::DotDotChirho => {
+                            has_dotdot_chirho = true;
+                        }
+                        _ => {}
+                    },
                     _ => {}
                 }
             }
@@ -10780,7 +10781,7 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
         assert_eq!(module_chirho.imports_chirho.len(), 2);
         assert_eq!(
             module_chirho.imports_chirho[0].module_chirho.text_chirho(),
-            "List"
+            "Data.List"
         );
         assert!(module_chirho.imports_chirho[1].qualified_chirho);
         assert_eq!(
@@ -13697,8 +13698,7 @@ fn lower_bind_binds_looser_than_composition_chirho() {
 
 #[test]
 fn lower_nonempty_cons_groups_like_ghc_chirho() {
-    let source_chirho =
-        "module M where\nimport Data.List.NonEmpty (NonEmpty(..))\nfChirho xChirho yChirho = xChirho :| yChirho : []\n";
+    let source_chirho = "module M where\nimport Data.List.NonEmpty (NonEmpty(..))\nfChirho xChirho yChirho = xChirho :| yChirho : []\n";
     let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
     let parser_chirho =
         crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);

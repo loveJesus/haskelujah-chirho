@@ -297,13 +297,9 @@ impl<'src> LexerChirho<'src> {
                 self.pos_chirho += 1;
                 self.make_token_chirho(RawTokenKindChirho::RightParenChirho, start_chirho)
             }
-            b'#'
-                if self.peek_at_chirho(1) == Some(b')')
-                    && self.unboxed_paren_depth_chirho > 0 =>
-            {
+            b'#' if self.peek_at_chirho(1) == Some(b')') && self.unboxed_paren_depth_chirho > 0 => {
                 self.pos_chirho += 2;
-                self.unboxed_paren_depth_chirho =
-                    self.unboxed_paren_depth_chirho.saturating_sub(1);
+                self.unboxed_paren_depth_chirho = self.unboxed_paren_depth_chirho.saturating_sub(1);
                 self.make_token_chirho(RawTokenKindChirho::RightParenChirho, start_chirho)
             }
             b'[' => {
@@ -673,7 +669,10 @@ impl<'src> LexerChirho<'src> {
         let Some(next_byte_chirho) = self.peek_at_chirho(2) else {
             return true;
         };
-        if is_symbol_char_chirho(next_byte_chirho) && next_byte_chirho != b'#' && next_byte_chirho != b'|' {
+        if is_symbol_char_chirho(next_byte_chirho)
+            && next_byte_chirho != b'#'
+            && next_byte_chirho != b'|'
+        {
             let mut lookahead_chirho = self.pos_chirho + 2;
             while lookahead_chirho < self.bytes_chirho.len()
                 && is_symbol_char_chirho(self.bytes_chirho[lookahead_chirho])

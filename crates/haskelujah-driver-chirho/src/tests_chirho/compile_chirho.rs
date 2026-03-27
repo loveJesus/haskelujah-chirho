@@ -1094,11 +1094,9 @@ mainChirho = (
     .expect("mixed-case CPP test source should be written");
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let source_file_chirho = SourceFileChirho::from_path_with_map_chirho(
-        &mut source_map_chirho,
-        &file_path_chirho,
-    )
-    .expect("source file should load");
+    let source_file_chirho =
+        SourceFileChirho::from_path_with_map_chirho(&mut source_map_chirho, &file_path_chirho)
+            .expect("source file should load");
 
     let summary_chirho =
         check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho)
@@ -1146,8 +1144,8 @@ fn read_haskell_source_file_expands_primitive_deriveprim_cpp_macros_chirho() {
         .nth(2)
         .expect("repo root should exist")
         .to_path_buf();
-    let path_chirho =
-        repo_root_chirho.join(".haskelujah-packages-chirho/primitive-0.9.1.0/Data/Primitive/Types.hs");
+    let path_chirho = repo_root_chirho
+        .join(".haskelujah-packages-chirho/primitive-0.9.1.0/Data/Primitive/Types.hs");
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("primitive types source should preprocess");
 
@@ -6498,8 +6496,8 @@ fn frontend_hashable_mix_collects_with_stdlib_seed_chirho() {
         .join("../..")
         .join(".haskelujah-packages-chirho/hashable-1.5.1.0");
     let mix_path_chirho = package_dir_chirho.join("src/Data/Hashable/Mix.hs");
-    let mix_source_chirho =
-        read_haskell_source_file_chirho(&mix_path_chirho).expect("hashable Mix source should exist");
+    let mix_source_chirho = read_haskell_source_file_chirho(&mix_path_chirho)
+        .expect("hashable Mix source should exist");
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
     let artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
@@ -6577,8 +6575,7 @@ fn frontend_warp_multimap_exports_seed_insert_and_empty_chirho() {
     let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join(".haskelujah-packages-chirho/warp-3.4.12");
-    let multimap_path_chirho =
-        package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
+    let multimap_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
     let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)
         .expect("warp MultiMap source should exist");
     let extra_ifaces_chirho = scan_dependency_package_ifaces_chirho(&package_dir_chirho);
@@ -6606,7 +6603,9 @@ fn frontend_warp_multimap_exports_seed_insert_and_empty_chirho() {
         "warp MultiMap should export a qualified insert scheme"
     );
     assert!(
-        artifacts_chirho.imported_types_chirho.contains_key("insert"),
+        artifacts_chirho
+            .imported_types_chirho
+            .contains_key("insert"),
         "warp MultiMap should export a bare insert scheme"
     );
     assert!(
@@ -6652,10 +6651,8 @@ fn frontend_warp_fdcache_typechecks_after_multimap_seed_chirho() {
     let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join(".haskelujah-packages-chirho/warp-3.4.12");
-    let multimap_path_chirho =
-        package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
-    let fdcache_path_chirho =
-        package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
+    let multimap_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
+    let fdcache_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
     let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)
         .expect("warp MultiMap source should exist");
     let fdcache_source_chirho = read_haskell_source_file_chirho(&fdcache_path_chirho)
@@ -6696,7 +6693,8 @@ fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
     use crate::{
         ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
         collect_frontend_artifacts_from_module_sources_chirho, read_haskell_source_file_chirho,
-        run_frontend_with_type_synonyms_and_type_families_chirho, scan_dependency_package_ifaces_chirho,
+        run_frontend_with_type_synonyms_and_type_families_chirho,
+        scan_dependency_package_ifaces_chirho,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -6704,10 +6702,8 @@ fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
     let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join(".haskelujah-packages-chirho/warp-3.4.12");
-    let multimap_path_chirho =
-        package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
-    let fdcache_path_chirho =
-        package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
+    let multimap_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
+    let fdcache_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
     let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)
         .expect("warp MultiMap source should exist");
     let fdcache_source_chirho = read_haskell_source_file_chirho(&fdcache_path_chirho)
@@ -6755,8 +6751,9 @@ fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
 fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
     use crate::{
         ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
-        collect_frontend_artifacts_from_module_sources_chirho, qualify_imported_scheme_for_iface_chirho,
-        read_haskell_source_file_chirho, scan_dependency_package_ifaces_chirho,
+        collect_frontend_artifacts_from_module_sources_chirho,
+        qualify_imported_scheme_for_iface_chirho, read_haskell_source_file_chirho,
+        scan_dependency_package_ifaces_chirho,
     };
     use haskelujah_naming_chirho::iface_chirho::build_iface_with_imports_chirho;
     use haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho;
@@ -6768,10 +6765,8 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
     let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join(".haskelujah-packages-chirho/warp-3.4.12");
-    let multimap_path_chirho =
-        package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
-    let fdcache_path_chirho =
-        package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
+    let multimap_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
+    let fdcache_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
     let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)
         .expect("warp MultiMap source should exist");
     let fdcache_source_chirho = read_haskell_source_file_chirho(&fdcache_path_chirho)
@@ -6803,7 +6798,8 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
         ParserChirho::new_chirho(&fdcache_source_chirho, fdcache_file_chirho.file_id_chirho());
     let green_chirho = parser_chirho.parse_chirho();
     let module_chirho = lower_module_chirho(&green_chirho, fdcache_file_chirho.file_id_chirho());
-    let _iface_chirho = build_iface_with_imports_chirho(&module_chirho, &multimap_artifacts_chirho.ifaces_chirho);
+    let _iface_chirho =
+        build_iface_with_imports_chirho(&module_chirho, &multimap_artifacts_chirho.ifaces_chirho);
 
     let mut merged_imported_types_chirho = multimap_artifacts_chirho.imported_types_chirho.clone();
     for (builtin_name_chirho, builtin_scheme_chirho) in
@@ -6852,8 +6848,10 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
                     .then_some(name_chirho)
             })
             .collect();
-        let names_chirho =
-            compute_imported_names_chirho(&import_iface_chirho.exports_chirho, &import_chirho.spec_chirho);
+        let names_chirho = compute_imported_names_chirho(
+            &import_iface_chirho.exports_chirho,
+            &import_chirho.spec_chirho,
+        );
         let qualifier_chirho = import_chirho
             .alias_chirho
             .as_ref()
@@ -6916,7 +6914,9 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
         empty_scheme_chirho
     );
     assert!(
-        qualified_lookup_scheme_chirho.to_string().contains("MultiMap"),
+        qualified_lookup_scheme_chirho
+            .to_string()
+            .contains("MultiMap"),
         "FdCache qualified MM.lookup should use the MultiMap scheme before inference, got {}",
         qualified_lookup_scheme_chirho
     );
@@ -6940,8 +6940,11 @@ fn frontend_overloaded_strings_builder_literals_typecheck_chirho() {
     let src_chirho = "{-# LANGUAGE OverloadedStrings #-}\nmodule BuilderLiteralMiniChirho where\nimport Data.Text.Lazy.Builder (Builder)\nvalueChirho :: Builder\nvalueChirho = \"0.0e0\"\n";
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let result_chirho =
-        compile_source_chirho(src_chirho, &mut source_map_chirho, "BuilderLiteralMiniChirho.hs");
+    let result_chirho = compile_source_chirho(
+        src_chirho,
+        &mut source_map_chirho,
+        "BuilderLiteralMiniChirho.hs",
+    );
     assert!(
         result_chirho.is_ok(),
         "builder overloaded string literals should typecheck: {:?}",
@@ -6954,8 +6957,11 @@ fn frontend_strict_tuple_where_pattern_binding_typechecks_chirho() {
     let src_chirho = "{-# LANGUAGE BangPatterns #-}\nmodule WarpPackIntMiniChirho where\nfChirho :: Int -> Int\nfChirho sChirho = r0Chirho where\n  (!q0Chirho, !r0Chirho) = sChirho `divMod` 10\n  (!q1Chirho, !r1Chirho) = q0Chirho `divMod` 10\n  !r2Chirho = q1Chirho `mod` 10\n";
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let result_chirho =
-        compile_source_chirho(src_chirho, &mut source_map_chirho, "WarpPackIntMiniChirho.hs");
+    let result_chirho = compile_source_chirho(
+        src_chirho,
+        &mut source_map_chirho,
+        "WarpPackIntMiniChirho.hs",
+    );
     assert!(
         result_chirho.is_ok(),
         "strict tuple where pattern bindings should typecheck: {:?}",
@@ -6968,8 +6974,11 @@ fn frontend_nonempty_cons_fixity_typechecks_against_signature_chirho() {
     let src_chirho = "module NonEmptyFixityMiniChirho where\nimport Data.List.NonEmpty (NonEmpty(..))\nfChirho :: aChirho -> aChirho -> NonEmpty aChirho\nfChirho xChirho yChirho = xChirho :| yChirho : []\n";
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let result_chirho =
-        compile_source_chirho(src_chirho, &mut source_map_chirho, "NonEmptyFixityMiniChirho.hs");
+    let result_chirho = compile_source_chirho(
+        src_chirho,
+        &mut source_map_chirho,
+        "NonEmptyFixityMiniChirho.hs",
+    );
     assert!(
         result_chirho.is_ok(),
         "NonEmpty constructor fixity should match GHC for signature-checked code: {:?}",

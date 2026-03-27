@@ -1528,9 +1528,12 @@ impl<'src> ParserChirho<'src> {
                     {
                         j_chirho += 1;
                     }
-                    !self.tokens_chirho.get(j_chirho).is_some_and(|token_chirho| {
-                        token_chirho.kind_chirho == RawTokenKindChirho::RightParenChirho
-                    })
+                    !self
+                        .tokens_chirho
+                        .get(j_chirho)
+                        .is_some_and(|token_chirho| {
+                            token_chirho.kind_chirho == RawTokenKindChirho::RightParenChirho
+                        })
                 } else {
                     true
                 }
@@ -5288,8 +5291,7 @@ mod tests_chirho {
 
     #[test]
     fn parse_lambda_expression_with_bang_pattern_arg_chirho() {
-        let source_chirho =
-            "module M where\n{-# LANGUAGE BangPatterns #-}\nf = \\x !y -> x\n";
+        let source_chirho = "module M where\n{-# LANGUAGE BangPatterns #-}\nf = \\x !y -> x\n";
         let root_chirho = parse_chirho(source_chirho);
         let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
 

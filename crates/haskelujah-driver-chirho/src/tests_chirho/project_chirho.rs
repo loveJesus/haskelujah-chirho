@@ -7,6 +7,7 @@
 mod tests_chirho {
     use crate::{
         collect_frontend_artifacts_from_module_sources_chirho,
+        collect_local_dependency_frontend_artifacts_chirho,
         compile_module_sources_with_extra_ifaces_chirho, compile_project_dir_chirho,
         discover_hs_files_chirho, extract_imports_chirho, extract_module_name_chirho,
         filter_seeded_imported_types_for_source_chirho,
@@ -143,8 +144,7 @@ mod tests_chirho {
 
     #[test]
     fn filter_seeded_imported_types_keeps_unique_bare_local_export_names_chirho() {
-        let source_chirho =
-            "module DownstreamMultiMapSeedMiniChirho where\nimport LocalMultiMapSeedMiniChirho as MM\nvalueChirho = empty\n";
+        let source_chirho = "module DownstreamMultiMapSeedMiniChirho where\nimport LocalMultiMapSeedMiniChirho as MM\nvalueChirho = empty\n";
         let imported_types_chirho = std::collections::HashMap::from([
             (
                 "LocalMultiMapSeedMiniChirho.empty".to_string(),
@@ -1218,6 +1218,47 @@ treeWordSizeChirho = wordSize\n",
                 "build-then-compile should stay past the old BitUtil frontier, got: {error_text_chirho}",
             );
         }
+    }
+
+    #[test]
+    fn collect_local_dependency_frontend_artifacts_skips_unrelated_builtin_only_packages_chirho() {
+        use haskelujah_package_chirho::{DependencyChirho, VersionConstraintChirho};
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let packages_root_chirho = tmp_chirho.path().join(".haskelujah-packages-chirho");
+        let unrelated_pkg_root_chirho = packages_root_chirho.join("unrelated-dep-0.1.0.0");
+        let unrelated_src_dir_chirho = unrelated_pkg_root_chirho.join("src/Unrelated");
+        let project_dir_chirho = tmp_chirho.path().join("project-chirho");
+
+        fs::create_dir_all(&unrelated_src_dir_chirho).unwrap();
+        fs::create_dir_all(&project_dir_chirho).unwrap();
+        fs::write(
+            unrelated_pkg_root_chirho.join("unrelated-dep.cabal"),
+            "name: unrelated-dep\nversion: 0.1.0.0\nlibrary\n  exposed-modules: Unrelated.Dep\n  hs-source-dirs: src\n",
+        )
+        .unwrap();
+        fs::write(
+            unrelated_src_dir_chirho.join("Dep.hs"),
+            "module Unrelated.Dep where\nunrelatedValueChirho :: Int\nunrelatedValueChirho = 1\n",
+        )
+        .unwrap();
+
+        let artifacts_chirho = collect_local_dependency_frontend_artifacts_chirho(
+            &project_dir_chirho,
+            &[DependencyChirho {
+                package_chirho: "base".to_string(),
+                constraint_chirho: VersionConstraintChirho::AnyChirho,
+            }],
+        )
+        .expect("builtin-only dependency collection should succeed");
+
+        assert!(
+            !artifacts_chirho
+                .ifaces_chirho
+                .iter()
+                .any(|iface_chirho| iface_chirho.name_chirho == "Unrelated.Dep"),
+            "builtin-only dependency collection should not seed unrelated package ifaces",
+        );
     }
 
     #[test]

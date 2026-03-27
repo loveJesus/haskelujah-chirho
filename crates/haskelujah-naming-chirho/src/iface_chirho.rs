@@ -6260,6 +6260,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "ConT",
             "VarT",
             "AppT",
+            "AppKindT",
             "SigT",
             "ForallT",
             "InfixT",
@@ -6269,6 +6270,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "ArrowT",
             "ListT",
             "StarT",
+            "appKindT",
+            "appK",
+            "arrowK",
+            "starK",
             "PlainTV",
             "KindedTV",
             // Expression constructors
@@ -6458,6 +6463,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                 &[
                     "ForallT",
                     "AppT",
+                    "AppKindT",
                     "SigT",
                     "VarT",
                     "ConT",
@@ -6545,8 +6551,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
             "litE", "varE", "conE", "appE", "lamE", "tupE", "listE", "litP", "varP", "conP",
-            "tupP", "wildP", "conT", "varT", "appT", "arrowT", "funD", "valD", "sigD", "clause",
-            "normalB",
+            "tupP", "wildP", "conT", "varT", "appT", "appKindT", "appK", "arrowT", "arrowK",
+            "starK", "funD", "valD", "sigD", "clause", "normalB",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -12825,8 +12831,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) =
-            mk_type_chirho("FPFormat", &["Exponent", "Fixed", "Generic"]);
+        let (k_chirho, v_chirho) = mk_type_chirho("FPFormat", &["Exponent", "Fixed", "Generic"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Text.Lazy.Builder.RealFloat".to_string(),
@@ -12901,17 +12906,35 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "socket", "bind", "listen", "accept", "connect", "close",
-            "getAddrInfo", "defaultHints", "setSocketOption",
-            "withSocketsDo", "gracefulClose", "fdSocket",
-            "socketToHandle", "getPeerName", "getSocketName",
+            "socket",
+            "bind",
+            "listen",
+            "accept",
+            "connect",
+            "close",
+            "getAddrInfo",
+            "defaultHints",
+            "setSocketOption",
+            "withSocketsDo",
+            "gracefulClose",
+            "fdSocket",
+            "socketToHandle",
+            "getPeerName",
+            "getSocketName",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         for name_chirho in &[
-            "Socket", "SockAddr", "AddrInfo", "Family", "SocketType",
-            "SocketOption", "HostAddress", "HostAddress6", "PortNumber",
+            "Socket",
+            "SockAddr",
+            "AddrInfo",
+            "Family",
+            "SocketType",
+            "SocketOption",
+            "HostAddress",
+            "HostAddress6",
+            "PortNumber",
         ] {
             let (k_chirho, v_chirho) = match *name_chirho {
                 "SockAddr" => mk_type_chirho("SockAddr", &["SockAddrInet", "SockAddrInet6"]),
@@ -12934,9 +12957,17 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "initialize", "stopManager", "killManager",
-            "withManager", "register", "tickle", "pause", "resume",
-            "cancel", "setTimeout", "withHandleKillThread",
+            "initialize",
+            "stopManager",
+            "killManager",
+            "withManager",
+            "register",
+            "tickle",
+            "pause",
+            "resume",
+            "cancel",
+            "setTimeout",
+            "withHandleKillThread",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -14111,11 +14142,11 @@ fn con_decl_name_chirho(decl_chirho: &ConDeclChirho) -> &str {
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
+    use crate::env_chirho::NamespaceChirho;
+    use crate::resolve_chirho::compute_imported_names_chirho;
     use haskelujah_ast_chirho::decl_chirho::ForeignDirectionChirho;
     use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
     use haskelujah_ast_chirho::ty_chirho::TypeChirho;
-    use crate::env_chirho::NamespaceChirho;
-    use crate::resolve_chirho::compute_imported_names_chirho;
 
     fn mk_name_chirho(s_chirho: &str) -> NameChirho {
         NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
@@ -15049,8 +15080,7 @@ mod tests_chirho {
             imported_names_chirho
                 .iter()
                 .any(|(name_chirho, namespace_chirho, _span_chirho)| {
-                    name_chirho == "getConst"
-                        && *namespace_chirho == NamespaceChirho::ValueChirho
+                    name_chirho == "getConst" && *namespace_chirho == NamespaceChirho::ValueChirho
                 }),
             "Const(..) should import getConst"
         );
@@ -15074,12 +15104,11 @@ mod tests_chirho {
             }),
         );
         assert!(
-            backwards_imported_names_chirho
-                .iter()
-                .any(|(name_chirho, namespace_chirho, _span_chirho)| {
-                    name_chirho == "forwards"
-                        && *namespace_chirho == NamespaceChirho::ValueChirho
-                }),
+            backwards_imported_names_chirho.iter().any(
+                |(name_chirho, namespace_chirho, _span_chirho)| {
+                    name_chirho == "forwards" && *namespace_chirho == NamespaceChirho::ValueChirho
+                }
+            ),
             "Backwards(..) should import forwards"
         );
 
@@ -15098,12 +15127,11 @@ mod tests_chirho {
             }),
         );
         assert!(
-            reverse_imported_names_chirho
-                .iter()
-                .any(|(name_chirho, namespace_chirho, _span_chirho)| {
-                    name_chirho == "getReverse"
-                        && *namespace_chirho == NamespaceChirho::ValueChirho
-                }),
+            reverse_imported_names_chirho.iter().any(
+                |(name_chirho, namespace_chirho, _span_chirho)| {
+                    name_chirho == "getReverse" && *namespace_chirho == NamespaceChirho::ValueChirho
+                }
+            ),
             "Reverse(..) should import getReverse"
         );
     }
@@ -15205,12 +15233,11 @@ mod tests_chirho {
             }),
         );
         assert!(
-            arrow_zero_imported_names_chirho
-                .iter()
-                .any(|(name_chirho, namespace_chirho, _span_chirho)| {
-                    name_chirho == "zeroArrow"
-                        && *namespace_chirho == NamespaceChirho::ValueChirho
-                }),
+            arrow_zero_imported_names_chirho.iter().any(
+                |(name_chirho, namespace_chirho, _span_chirho)| {
+                    name_chirho == "zeroArrow" && *namespace_chirho == NamespaceChirho::ValueChirho
+                }
+            ),
             "ArrowZero(..) should import zeroArrow"
         );
         let arrow_plus_imported_names_chirho = compute_imported_names_chirho(
@@ -15224,12 +15251,11 @@ mod tests_chirho {
             }),
         );
         assert!(
-            arrow_plus_imported_names_chirho
-                .iter()
-                .any(|(name_chirho, namespace_chirho, _span_chirho)| {
-                    name_chirho == "<+>"
-                        && *namespace_chirho == NamespaceChirho::ValueChirho
-                }),
+            arrow_plus_imported_names_chirho.iter().any(
+                |(name_chirho, namespace_chirho, _span_chirho)| {
+                    name_chirho == "<+>" && *namespace_chirho == NamespaceChirho::ValueChirho
+                }
+            ),
             "ArrowPlus(..) should import <+>"
         );
     }
@@ -15522,8 +15548,12 @@ mod tests_chirho {
                 .is_some_and(|integer_ty_chirho| integer_ty_chirho
                     .constructors_chirho
                     .contains(&"IS".to_string())
-                    && integer_ty_chirho.constructors_chirho.contains(&"IN".to_string())
-                    && integer_ty_chirho.constructors_chirho.contains(&"IP".to_string())),
+                    && integer_ty_chirho
+                        .constructors_chirho
+                        .contains(&"IN".to_string())
+                    && integer_ty_chirho
+                        .constructors_chirho
+                        .contains(&"IP".to_string())),
             "GHC.Integer.GMP.Internals should export Integer(..)"
         );
     }
@@ -15545,7 +15575,10 @@ mod tests_chirho {
                     .exports_chirho
                     .values_chirho
                     .contains_key("foldedCase")
-                && case_insensitive_chirho.exports_chirho.types_chirho.contains_key("CI"),
+                && case_insensitive_chirho
+                    .exports_chirho
+                    .types_chirho
+                    .contains_key("CI"),
             "Data.CaseInsensitive should export CI/original/foldedCase"
         );
 
@@ -15566,7 +15599,10 @@ mod tests_chirho {
             .find(|iface_chirho| iface_chirho.name_chirho == "Network.Socket.BufferPool")
             .expect("Network.Socket.BufferPool builtin iface should exist");
         assert!(
-            buffer_pool_chirho.exports_chirho.values_chirho.contains_key("copy")
+            buffer_pool_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("copy")
                 && buffer_pool_chirho
                     .exports_chirho
                     .values_chirho

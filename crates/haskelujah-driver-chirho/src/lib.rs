@@ -530,9 +530,7 @@ fn configure_cpp_command_chirho(path_chirho: &Path, traditional_chirho: bool) ->
         // template-haskell 2.16.0.0 ships with GHC 8.10, so TH version guards
         // like th-abstraction's TyVarBndr compatibility layer choose one branch
         // instead of failing CPP and leaving both branches in the lowered source.
-        .arg(
-            "-DMIN_VERSION_template_haskell(x,y,z)=((x)<2||((x)==2&&((y)<16||((y)==16&&(z)<=0))))",
-        )
+        .arg("-DMIN_VERSION_template_haskell(x,y,z)=((x)<2||((x)==2&&((y)<16||((y)==16&&(z)<=0))))")
         .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
         .arg("-DMIN_VERSION_array(x,y,z)=1")
         .arg("-DMIN_VERSION_random(x,y,z)=1")
@@ -3199,9 +3197,7 @@ fn filter_seeded_imported_types_for_source_chirho(
                 continue;
             }
             let remainder_chirho = &suffix_chirho[1..];
-            if let Some((first_segment_chirho, _rest_chirho)) =
-                remainder_chirho.split_once('.')
-            {
+            if let Some((first_segment_chirho, _rest_chirho)) = remainder_chirho.split_once('.') {
                 if first_segment_chirho
                     .chars()
                     .next()
@@ -3633,20 +3629,14 @@ pub fn compile_cabal_project_chirho(
         .unwrap_or_else(|| Path::new("."));
     let source_files_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
 
-    // Scan downloaded dependency packages for stub module interfaces.
-    // Include all stubs (even from the same package) — locally-compiled
-    // modules will override stubs via the iface dedup mechanism.
-    let dep_ifaces_chirho = scan_dependency_package_ifaces_chirho(project_dir_chirho);
     let dep_frontend_artifacts_chirho =
         collect_local_dependency_frontend_artifacts_chirho(project_dir_chirho, &all_deps_chirho)?;
-    let mut extra_ifaces_chirho = dep_ifaces_chirho;
-    extra_ifaces_chirho.extend(dep_frontend_artifacts_chirho.ifaces_chirho.clone());
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let project_compile_result_chirho = compile_module_files_with_frontend_seed_chirho(
         &source_files_chirho,
         &mut source_map_chirho,
-        extra_ifaces_chirho,
+        dep_frontend_artifacts_chirho.ifaces_chirho.clone(),
         dep_frontend_artifacts_chirho.imported_types_chirho,
         dep_frontend_artifacts_chirho.imported_type_synonyms_chirho,
         dep_frontend_artifacts_chirho.imported_type_families_chirho,
@@ -3821,6 +3811,7 @@ fn compile_module_files_with_frontend_seed_chirho(
 
 /// Scan downloaded dependency packages in .haskelujah-packages-chirho/ for stub
 /// module interfaces. This enables cross-package module resolution.
+#[cfg(test)]
 fn scan_dependency_package_ifaces_chirho(project_dir_chirho: &Path) -> Vec<ModuleIfaceChirho> {
     let mut ifaces_chirho = Vec::new();
     let current_package_dir_chirho = std::fs::canonicalize(project_dir_chirho)
@@ -3889,10 +3880,7 @@ fn find_local_dependency_package_dir_chirho(
     candidates_chirho.pop()
 }
 
-fn package_dir_matches_dependency_chirho(
-    dir_name_chirho: &str,
-    package_name_chirho: &str,
-) -> bool {
+fn package_dir_matches_dependency_chirho(dir_name_chirho: &str, package_name_chirho: &str) -> bool {
     if dir_name_chirho == package_name_chirho {
         return true;
     }
@@ -3946,10 +3934,6 @@ fn collect_local_dependency_frontend_artifacts_chirho(
 
     let builtin_deps_chirho = builtin_dependency_names_chirho();
     let mut artifacts_chirho = FrontendSeedArtifactsChirho::default();
-    artifacts_chirho.ifaces_chirho =
-        haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(
-            scan_dependency_package_ifaces_chirho(project_dir_chirho),
-        );
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let mut visited_chirho = std::collections::HashSet::new();
     let mut active_chirho = std::collections::HashSet::new();
@@ -4084,6 +4068,7 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
 }
 
 /// Recursively scan a package directory for .hs files and generate stub interfaces.
+#[cfg(test)]
 fn scan_package_hs_files_chirho(
     root_chirho: &Path,
     dir_chirho: &Path,

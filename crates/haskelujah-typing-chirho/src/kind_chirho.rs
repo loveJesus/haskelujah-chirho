@@ -283,8 +283,23 @@ impl KindEnvChirho {
 
         // Primitive types: kind *
         for name_chirho in &[
-            "Int", "Int8", "Int16", "Int32", "Int64", "Word", "Word8", "Word16", "Word32",
-            "Word64", "Bool", "Char", "Double", "Float", "Integer", "String", "Buffer",
+            "Int",
+            "Int8",
+            "Int16",
+            "Int32",
+            "Int64",
+            "Word",
+            "Word8",
+            "Word16",
+            "Word32",
+            "Word64",
+            "Bool",
+            "Char",
+            "Double",
+            "Float",
+            "Integer",
+            "String",
+            "Buffer",
             "BufferPool",
         ] {
             env_chirho.bind_chirho(name_chirho.to_string(), KindChirho::StarChirho);

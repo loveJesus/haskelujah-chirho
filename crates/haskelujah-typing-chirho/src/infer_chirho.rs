@@ -305,10 +305,7 @@ impl InferCtxChirho {
             ),
         );
         // BufSize = Int (from Network.Socket.BufferPool)
-        type_synonyms_chirho.insert(
-            "BufSize".to_string(),
-            (vec![], TyChirho::int_chirho()),
-        );
+        type_synonyms_chirho.insert("BufSize".to_string(), (vec![], TyChirho::int_chirho()));
         // Built-in http-types aliases
         type_synonyms_chirho.insert(
             "HeaderName".to_string(),
@@ -1574,8 +1571,9 @@ impl InferCtxChirho {
             .iter()
             .map(|pred_chirho| PredChirho {
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: self
-                    .normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho)),
+                ty_chirho: self.normalize_ty_chirho(
+                    &method_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                ),
                 extra_tys_chirho: pred_chirho
                     .extra_tys_chirho
                     .iter()
@@ -1661,25 +1659,21 @@ impl InferCtxChirho {
                 let mut instance_scoped_tyvars_chirho = scoped_tyvars_snapshot_chirho.clone();
                 instance_scoped_tyvars_chirho.extend(instance_var_map_chirho.clone());
                 self.scoped_tyvars_chirho = instance_scoped_tyvars_chirho;
-                let (
-                    specialized_given_preds_chirho,
-                    specialized_expected_ty_chirho,
-                ) = self.instantiate_instance_method_expected_parts_chirho(
+                let (specialized_given_preds_chirho, specialized_expected_ty_chirho) = self
+                    .instantiate_instance_method_expected_parts_chirho(
                         &class_decl_chirho,
                         method_scheme_chirho,
                         &instance_head_tys_chirho,
                     );
                 let expected_ty_chirho = self.normalize_ty_chirho(&specialized_expected_ty_chirho);
-                let (method_subst_chirho, inferred_ty_chirho) = self.with_given_preds_chirho(
-                    specialized_given_preds_chirho,
-                    |self_chirho| {
+                let (method_subst_chirho, inferred_ty_chirho) =
+                    self.with_given_preds_chirho(specialized_given_preds_chirho, |self_chirho| {
                         self_chirho.infer_matches_against_expected_chirho(
-                        matches_chirho,
-                        *span_chirho,
-                        &expected_ty_chirho,
+                            matches_chirho,
+                            *span_chirho,
+                            &expected_ty_chirho,
                         )
-                    },
-                );
+                    });
 
                 let inferred_norm_chirho = self
                     .normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&inferred_ty_chirho));
@@ -5485,6 +5479,13 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         )),
     );
+    env_chirho.bind_chirho(
+        "appKindT".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![th_type_ty_chirho.clone(), th_kind_ty_chirho.clone()],
+            th_type_ty_chirho.clone(),
+        )),
+    );
     for (name_chirho, ty_chirho) in [
         (
             "ConT",
@@ -5498,6 +5499,13 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             "AppT",
             TyChirho::fun_n_chirho(
                 vec![th_type_ty_chirho.clone(), th_type_ty_chirho.clone()],
+                th_type_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "AppKindT",
+            TyChirho::fun_n_chirho(
+                vec![th_type_ty_chirho.clone(), th_kind_ty_chirho.clone()],
                 th_type_ty_chirho.clone(),
             ),
         ),
@@ -5566,6 +5574,14 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 th_pred_ty_chirho.clone(),
             ),
         ),
+        (
+            "appK",
+            TyChirho::fun_n_chirho(
+                vec![th_kind_ty_chirho.clone(), th_kind_ty_chirho.clone()],
+                th_kind_ty_chirho.clone(),
+            ),
+        ),
+        ("arrowK", th_kind_ty_chirho.clone()),
         ("starK", th_kind_ty_chirho.clone()),
     ] {
         env_chirho.bind_chirho(
@@ -5887,7 +5903,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         let mk_scheme_chirho = SchemeChirho {
             vars_chirho: vec![ci_a_chirho],
             preds_chirho: vec![],
-            ty_chirho: TyChirho::fun_chirho(ci_input_ty_chirho.clone(), ci_result_ty_chirho.clone()),
+            ty_chirho: TyChirho::fun_chirho(
+                ci_input_ty_chirho.clone(),
+                ci_result_ty_chirho.clone(),
+            ),
         };
         env_chirho.bind_chirho("mk".to_string(), mk_scheme_chirho.clone());
         env_chirho.bind_chirho("Data.CaseInsensitive.mk".to_string(), mk_scheme_chirho);
@@ -7386,7 +7405,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
 
         let copy_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
-            vec![ptr_word8_ty_chirho.clone(), TyChirho::ConChirho("ByteString".to_string())],
+            vec![
+                ptr_word8_ty_chirho.clone(),
+                TyChirho::ConChirho("ByteString".to_string()),
+            ],
             TyChirho::io_chirho(ptr_word8_ty_chirho.clone()),
         ));
         env_chirho.bind_chirho("copy".to_string(), copy_scheme_chirho.clone());
@@ -8579,7 +8601,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(k_chirho),
-                    TyChirho::fun_chirho(map_lookup_ty_chirho.clone(), map_lookup_result_ty_chirho.clone()),
+                    TyChirho::fun_chirho(
+                        map_lookup_ty_chirho.clone(),
+                        map_lookup_result_ty_chirho.clone(),
+                    ),
                 ),
             },
         );
@@ -8594,7 +8619,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(k_chirho),
-                    TyChirho::fun_chirho(map_lookup_ty_chirho.clone(), map_lookup_result_ty_chirho.clone()),
+                    TyChirho::fun_chirho(
+                        map_lookup_ty_chirho.clone(),
+                        map_lookup_result_ty_chirho.clone(),
+                    ),
                 ),
             },
         );
