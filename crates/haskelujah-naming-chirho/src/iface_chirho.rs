@@ -9955,6 +9955,11 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "deleteMax",
             "lookupMin",
             "lookupMax",
+            "mapMonotonic",
+            "powerSet",
+            "cartesianProduct",
+            "isSubsetOf",
+            "isProperSubsetOf",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -10677,6 +10682,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "mergeWithKey",
             "foldMapWithKey",
             "traverseWithKey",
+            "keysSet",
+            "fromSet",
+            "mapWithKey",
+            "filterWithKey",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
