@@ -2971,6 +2971,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
+            "IORef",
             "newIORef",
             "readIORef",
             "writeIORef",
@@ -2980,7 +2981,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("IORef", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("IORef", &["IORef"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "GHC.IORef".to_string(),
@@ -9477,7 +9478,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.STRef
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["newSTRef", "readSTRef", "writeSTRef"] {
+        for name_chirho in &["STRef", "newSTRef", "readSTRef", "writeSTRef"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -14939,6 +14940,58 @@ mod tests_chirho {
                 .types_chirho
                 .contains_key("SMGen"),
             "System.Random.SplitMix32 should export SMGen"
+        );
+    }
+
+    #[test]
+    fn builtin_ghc_ioref_exports_constructor_value_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ioref_iface_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.IORef")
+            .expect("GHC.IORef builtin iface should exist");
+        assert!(
+            ioref_iface_chirho
+                .exports_chirho
+                .types_chirho
+                .get("IORef")
+                .is_some_and(|io_ref_ty_chirho| io_ref_ty_chirho
+                    .constructors_chirho
+                    .contains(&"IORef".to_string())),
+            "GHC.IORef should export IORef(..)"
+        );
+        assert!(
+            ioref_iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("IORef"),
+            "GHC.IORef should export IORef constructor as a value"
+        );
+    }
+
+    #[test]
+    fn builtin_ghc_stref_exports_constructor_value_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let stref_iface_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.STRef")
+            .expect("GHC.STRef builtin iface should exist");
+        assert!(
+            stref_iface_chirho
+                .exports_chirho
+                .types_chirho
+                .get("STRef")
+                .is_some_and(|st_ref_ty_chirho| st_ref_ty_chirho
+                    .constructors_chirho
+                    .contains(&"STRef".to_string())),
+            "GHC.STRef should export STRef(..)"
+        );
+        assert!(
+            stref_iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("STRef"),
+            "GHC.STRef should export STRef constructor as a value"
         );
     }
 

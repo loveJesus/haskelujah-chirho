@@ -224,6 +224,54 @@ fn frontend_builtin_runst_accepts_rank2_argument_chirho() {
 }
 
 #[test]
+fn frontend_builtin_float_range_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module FloatRangeMiniChirho where\nrangeChirho :: (Int, Int)\nrangeChirho = floatRange (0.0 :: Double)\n",
+        &mut source_map_chirho,
+        "FloatRangeMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "floatRange should typecheck through the builtin RealFloat surface: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_guarded_instance_method_where_binding_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module GuardedInstanceMiniChirho where\nclass CChirho aChirho where\n  fChirho :: aChirho -> Int -> Int\ninstance CChirho Int where\n  fChirho aChirho bChirho\n    | otherwise = aChirho + rChirho\n    where\n      rChirho = bChirho\n",
+        &mut source_map_chirho,
+        "GuardedInstanceMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "guarded instance methods with trailing where bindings should keep lhs params in scope: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_ghc_ioref_stref_constructor_roundtrip_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module IORefSTRefCtorMiniChirho where\nimport GHC.Exts (MutVar#, RealWorld)\nimport GHC.IORef (IORef(IORef))\nimport GHC.STRef (STRef(STRef))\nwrapChirho :: MutVar# RealWorld Int -> IORef Int\nwrapChirho mvChirho = IORef (STRef mvChirho)\nunwrapChirho :: IORef Int -> ()\nunwrapChirho (IORef (STRef _)) = ()\n",
+        &mut source_map_chirho,
+        "IORefSTRefCtorMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.IORef and GHC.STRef constructors should typecheck through imports and pattern matches: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_traversable_sequencea_instance_method_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
