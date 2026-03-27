@@ -284,7 +284,8 @@ impl KindEnvChirho {
         // Primitive types: kind *
         for name_chirho in &[
             "Int", "Int8", "Int16", "Int32", "Int64", "Word", "Word8", "Word16", "Word32",
-            "Word64", "Bool", "Char", "Double", "Float", "Integer", "String",
+            "Word64", "Bool", "Char", "Double", "Float", "Integer", "String", "Buffer",
+            "BufferPool",
         ] {
             env_chirho.bind_chirho(name_chirho.to_string(), KindChirho::StarChirho);
         }
@@ -383,6 +384,10 @@ impl KindEnvChirho {
                 ],
                 KindChirho::StarChirho,
             ),
+        );
+        env_chirho.bind_chirho(
+            "CI".to_string(),
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho),
         );
         let tagged_first_kind_var_chirho = KindVarChirho(10_005);
         env_chirho.bind_chirho(

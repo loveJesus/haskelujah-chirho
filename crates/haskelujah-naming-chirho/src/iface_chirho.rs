@@ -3999,9 +3999,11 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         for ty_chirho in &[
             ("Status", &["Status"][..]),
+            ("HttpVersion", &["HttpVersion"][..]),
             ("Method", &[]),
             ("Header", &[]),
             ("HeaderName", &[]),
+            ("ResponseHeaders", &[]),
             ("Query", &[]),
             ("QueryItem", &[]),
             (
@@ -12796,6 +12798,45 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.CaseInsensitive / GHC.Storable / Network.Socket.BufferPool (needed by warp)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["mk", "original", "foldCase", "foldedCase"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("CI", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.CaseInsensitive".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_val_chirho("writeWord8OffPtr");
+        exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Storable".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["copy", "newBufferPool", "receive"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Buffer", "BufferPool"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Network.Socket.BufferPool".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Control.Monad.Trans.Resource (resourcet)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
@@ -15162,6 +15203,57 @@ mod tests_chirho {
                     && integer_ty_chirho.constructors_chirho.contains(&"IN".to_string())
                     && integer_ty_chirho.constructors_chirho.contains(&"IP".to_string())),
             "GHC.Integer.GMP.Internals should export Integer(..)"
+        );
+    }
+
+    #[test]
+    fn builtin_warp_support_modules_export_expected_names_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+
+        let case_insensitive_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.CaseInsensitive")
+            .expect("Data.CaseInsensitive builtin iface should exist");
+        assert!(
+            case_insensitive_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("original")
+                && case_insensitive_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key("foldedCase")
+                && case_insensitive_chirho.exports_chirho.types_chirho.contains_key("CI"),
+            "Data.CaseInsensitive should export CI/original/foldedCase"
+        );
+
+        let ghc_storable_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Storable")
+            .expect("GHC.Storable builtin iface should exist");
+        assert!(
+            ghc_storable_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("writeWord8OffPtr"),
+            "GHC.Storable should export writeWord8OffPtr"
+        );
+
+        let buffer_pool_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Network.Socket.BufferPool")
+            .expect("Network.Socket.BufferPool builtin iface should exist");
+        assert!(
+            buffer_pool_chirho.exports_chirho.values_chirho.contains_key("copy")
+                && buffer_pool_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key("newBufferPool")
+                && buffer_pool_chirho
+                    .exports_chirho
+                    .types_chirho
+                    .contains_key("Buffer"),
+            "Network.Socket.BufferPool should export warp support names"
         );
     }
 

@@ -285,6 +285,53 @@ impl InferCtxChirho {
                 ),
             ),
         );
+        // Built-in type synonym: type Buffer = Ptr Word8
+        type_synonyms_chirho.insert(
+            "Buffer".to_string(),
+            (
+                vec![],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Ptr".to_string())),
+                    Box::new(TyChirho::ConChirho("Word8".to_string())),
+                ),
+            ),
+        );
+        // Built-in type synonym: type CI a = a
+        type_synonyms_chirho.insert(
+            "CI".to_string(),
+            (
+                vec!["a".to_string()],
+                TyChirho::ForallVarChirho("a".to_string()),
+            ),
+        );
+        // Built-in http-types aliases
+        type_synonyms_chirho.insert(
+            "HeaderName".to_string(),
+            (
+                vec![],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("CI".to_string())),
+                    Box::new(TyChirho::ConChirho("ByteString".to_string())),
+                ),
+            ),
+        );
+        type_synonyms_chirho.insert(
+            "Header".to_string(),
+            (
+                vec![],
+                TyChirho::TupleChirho(vec![
+                    TyChirho::ConChirho("HeaderName".to_string()),
+                    TyChirho::ConChirho("ByteString".to_string()),
+                ]),
+            ),
+        );
+        type_synonyms_chirho.insert(
+            "ResponseHeaders".to_string(),
+            (
+                vec![],
+                TyChirho::ListChirho(Box::new(TyChirho::ConChirho("Header".to_string()))),
+            ),
+        );
         Self {
             next_var_chirho: 0,
             env_chirho,
@@ -5667,6 +5714,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
 
     let text_ty_chirho = TyChirho::ConChirho("Text".to_string());
     let byte_string_ty_chirho = TyChirho::ConChirho("ByteString".to_string());
+    let case_insensitive_byte_string_ty_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho("CI".to_string())),
+        Box::new(byte_string_ty_chirho.clone()),
+    );
     let char_list_ty_chirho = TyChirho::ListChirho(Box::new(TyChirho::char_chirho()));
     let maybe_text_uncons_ty_chirho = TyChirho::fun_chirho(
         text_ty_chirho.clone(),
@@ -5817,6 +5868,54 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             format!("{module_name_chirho}.getContents"),
             SchemeChirho::mono_chirho(TyChirho::io_chirho(byte_string_ty_chirho.clone())),
+        );
+    }
+
+    // Data.CaseInsensitive (needed by warp/http-types)
+    {
+        let ci_a_chirho = TyVarChirho(1688);
+        let ci_input_ty_chirho = TyChirho::VarChirho(ci_a_chirho);
+        let ci_result_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("CI".to_string())),
+            Box::new(ci_input_ty_chirho.clone()),
+        );
+        let mk_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![ci_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(ci_input_ty_chirho.clone(), ci_result_ty_chirho.clone()),
+        };
+        env_chirho.bind_chirho("mk".to_string(), mk_scheme_chirho.clone());
+        env_chirho.bind_chirho("Data.CaseInsensitive.mk".to_string(), mk_scheme_chirho);
+
+        let original_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![ci_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(ci_result_ty_chirho, ci_input_ty_chirho),
+        };
+        env_chirho.bind_chirho("original".to_string(), original_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Data.CaseInsensitive.original".to_string(),
+            original_scheme_chirho,
+        );
+
+        let fold_case_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            byte_string_ty_chirho.clone(),
+            byte_string_ty_chirho.clone(),
+        ));
+        env_chirho.bind_chirho("foldCase".to_string(), fold_case_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Data.CaseInsensitive.foldCase".to_string(),
+            fold_case_scheme_chirho,
+        );
+
+        let folded_case_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            case_insensitive_byte_string_ty_chirho.clone(),
+            byte_string_ty_chirho.clone(),
+        ));
+        env_chirho.bind_chirho("foldedCase".to_string(), folded_case_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Data.CaseInsensitive.foldedCase".to_string(),
+            folded_case_scheme_chirho,
         );
     }
 
@@ -7259,6 +7358,65 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         "unsafeWithForeignPtr".to_string(),
         with_foreign_ptr_scheme_chirho,
     );
+
+    {
+        let buffer_pool_ty_chirho = TyChirho::ConChirho("BufferPool".to_string());
+        let ptr_word8_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Ptr".to_string())),
+            Box::new(TyChirho::ConChirho("Word8".to_string())),
+        );
+        let socket_ty_chirho = TyChirho::ConChirho("Socket".to_string());
+
+        let new_buffer_pool_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::io_chirho(buffer_pool_ty_chirho.clone()),
+        ));
+        env_chirho.bind_chirho(
+            "newBufferPool".to_string(),
+            new_buffer_pool_scheme_chirho.clone(),
+        );
+        env_chirho.bind_chirho(
+            "Network.Socket.BufferPool.newBufferPool".to_string(),
+            new_buffer_pool_scheme_chirho,
+        );
+
+        let copy_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![ptr_word8_ty_chirho.clone(), TyChirho::ConChirho("ByteString".to_string())],
+            TyChirho::io_chirho(ptr_word8_ty_chirho.clone()),
+        ));
+        env_chirho.bind_chirho("copy".to_string(), copy_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Network.Socket.BufferPool.copy".to_string(),
+            copy_scheme_chirho,
+        );
+
+        let receive_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![socket_ty_chirho, buffer_pool_ty_chirho],
+            TyChirho::io_chirho(TyChirho::ConChirho("ByteString".to_string())),
+        ));
+        env_chirho.bind_chirho("receive".to_string(), receive_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Network.Socket.BufferPool.receive".to_string(),
+            receive_scheme_chirho,
+        );
+
+        let write_word8_off_ptr_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![
+                ptr_word8_ty_chirho,
+                TyChirho::int_chirho(),
+                TyChirho::ConChirho("Word8".to_string()),
+            ],
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
+        ));
+        env_chirho.bind_chirho(
+            "writeWord8OffPtr".to_string(),
+            write_word8_off_ptr_scheme_chirho.clone(),
+        );
+        env_chirho.bind_chirho(
+            "GHC.Storable.writeWord8OffPtr".to_string(),
+            write_word8_off_ptr_scheme_chirho,
+        );
+    }
 
     {
         let cast_fun_ptr_from_a_chirho = TyVarChirho(1695);
