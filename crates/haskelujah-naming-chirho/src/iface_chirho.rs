@@ -1867,6 +1867,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "appendFile",
             "hSetBuffering",
             "hGetBuffering",
+            "hGetEcho",
             "hIsTerminalDevice",
             "hGetContents",
             "hPutStr",
@@ -1874,6 +1875,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "hFlush",
             "hClose",
             "hSetEncoding",
+            "hSetEcho",
             "stdin",
             "stdout",
             "stderr",
@@ -3369,8 +3371,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) =
-            mk_type_chirho("Bifunctor", &["bimap", "first", "second"]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Bifunctor", &["bimap", "first", "second"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Bifunctor".to_string(),
@@ -11840,6 +11841,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "look",
             "pfail",
             "choice",
+            "<++",
             "readS_to_P",
             "readP_to_S",
             "satisfy",
@@ -12185,11 +12187,28 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "_0", "_9", "_A", "_Z", "_a", "_z",
-            "_colon", "_semicolon", "_space", "_tab",
-            "_cr", "_lf", "_period", "_comma",
-            "isUpper", "isLower", "isDigit", "isAlpha", "isAlphaNum", "isSpace",
-            "toLower", "toUpper",
+            "_0",
+            "_9",
+            "_A",
+            "_Z",
+            "_a",
+            "_z",
+            "_colon",
+            "_semicolon",
+            "_space",
+            "_tab",
+            "_cr",
+            "_lf",
+            "_period",
+            "_comma",
+            "isUpper",
+            "isLower",
+            "isDigit",
+            "isAlpha",
+            "isAlphaNum",
+            "isSpace",
+            "toLower",
+            "toUpper",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -12269,34 +12288,92 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // System.Console.ANSI.Types (ansi-terminal-types — needed by ansi-terminal)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["setSGRCode", "csi", "sgrToCode", "colorToCode"] {
+        for name_chirho in &[
+            "setSGRCode",
+            "csi",
+            "sgrToCode",
+            "colorToCode",
+            "cursorUpCode",
+            "cursorDownCode",
+            "cursorForwardCode",
+            "cursorBackwardCode",
+            "cursorDownLineCode",
+            "cursorUpLineCode",
+            "setCursorColumnCode",
+            "setCursorPositionCode",
+            "saveCursorCode",
+            "restoreCursorCode",
+            "reportCursorPositionCode",
+            "clearFromCursorToScreenEndCode",
+            "clearFromCursorToScreenBeginningCode",
+            "clearScreenCode",
+            "clearFromCursorToLineEndCode",
+            "clearFromCursorToLineBeginningCode",
+            "clearLineCode",
+            "enableLineWrapCode",
+            "disableLineWrapCode",
+            "scrollPageUpCode",
+            "scrollPageDownCode",
+            "useAlternateScreenBufferCode",
+            "useNormalScreenBufferCode",
+            "reportLayerColorCode",
+            "hideCursorCode",
+            "showCursorCode",
+            "hyperlinkWithParamsCode",
+            "setTitleCode",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         for (type_name_chirho, ctors_chirho) in &[
-            ("SGR", vec![
-                "Reset", "SetConsoleIntensity", "SetItalicized",
-                "SetUnderlining", "SetBlinkSpeed", "SetVisible",
-                "SetSwapForegroundBackground", "SetColor", "SetRGBColor",
-                "SetPaletteColor", "SetDefaultColor",
-            ]),
-            ("Color", vec![
-                "Black", "Red", "Green", "Yellow",
-                "Blue", "Magenta", "Cyan", "White",
-            ]),
+            (
+                "SGR",
+                vec![
+                    "Reset",
+                    "SetConsoleIntensity",
+                    "SetItalicized",
+                    "SetUnderlining",
+                    "SetBlinkSpeed",
+                    "SetVisible",
+                    "SetSwapForegroundBackground",
+                    "SetColor",
+                    "SetRGBColor",
+                    "SetPaletteColor",
+                    "SetDefaultColor",
+                ],
+            ),
+            (
+                "Color",
+                vec![
+                    "Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White",
+                ],
+            ),
             ("ColorIntensity", vec!["Dull", "Vivid"]),
-            ("ConsoleLayer", vec!["Foreground", "Background"]),
-            ("ConsoleIntensity", vec!["BoldIntensity", "FaintIntensity", "NormalIntensity"]),
+            (
+                "ConsoleLayer",
+                vec!["Foreground", "Background", "Underlining"],
+            ),
+            (
+                "ConsoleIntensity",
+                vec!["BoldIntensity", "FaintIntensity", "NormalIntensity"],
+            ),
             ("BlinkSpeed", vec!["SlowBlink", "RapidBlink", "NoBlink"]),
-            ("Underlining", vec!["SingleUnderline", "DoubleUnderline", "NoUnderline"]),
+            (
+                "Underlining",
+                vec![
+                    "SingleUnderline",
+                    "DoubleUnderline",
+                    "CurlyUnderline",
+                    "DottedUnderline",
+                    "DashedUnderline",
+                    "NoUnderline",
+                ],
+            ),
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(type_name_chirho, ctors_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
-        for mod_name_chirho in &[
-            "System.Console.ANSI.Types",
-            "System.Console.ANSI.Codes",
-        ] {
+        for mod_name_chirho in &["System.Console.ANSI.Types", "System.Console.ANSI.Codes"] {
             modules_chirho.push(ModuleIfaceChirho {
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
