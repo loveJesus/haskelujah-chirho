@@ -10703,6 +10703,34 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
     }
 
+    // System.CPUTime
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["getCPUTime", "cpuTimePrecision"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.CPUTime".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Eq (base re-export)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_type_chirho("Eq", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["==", "/="] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Eq".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Foreign.C.ConstPtr (GHC 9.10+)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
