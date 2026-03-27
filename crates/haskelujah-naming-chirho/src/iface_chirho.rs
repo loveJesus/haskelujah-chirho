@@ -2994,6 +2994,28 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // GHC.Stable
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "StablePtr",
+            "newStablePtr",
+            "deRefStablePtr",
+            "freeStablePtr",
+            "castStablePtrToPtr",
+            "castPtrToStablePtr",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("StablePtr", &["StablePtr"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Stable".to_string(),
+            exports_chirho,
+        });
+    }
+
     // GHC.MVar
     {
         let mut exports_chirho = IfaceExportsChirho::default();
