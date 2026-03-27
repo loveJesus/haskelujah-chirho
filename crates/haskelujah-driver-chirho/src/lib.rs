@@ -526,7 +526,12 @@ fn configure_cpp_command_chirho(path_chirho: &Path, traditional_chirho: bool) ->
         .arg("-DMIN_VERSION_random(x,y,z)=1")
         .arg("-DMIN_VERSION_transformers(x,y,z)=1")
         .arg("-DMIN_VERSION_deepseq(x,y,z)=1")
-        .arg("-DMIN_VERSION_hashable(x,y,z)=1");
+        .arg("-DMIN_VERSION_hashable(x,y,z)=1")
+        .arg("-DMIN_VERSION_text(x,y,z)=1")
+        .arg("-DMIN_VERSION_bytestring(x,y,z)=1")
+        .arg("-DMIN_VERSION_containers(x,y,z)=1")
+        .arg("-DMIN_VERSION_primitive(x,y,z)=1")
+        .arg("-DMIN_VERSION_integer_gmp(x,y,z)=1");
 
     if let Ok(support_dir_chirho) = ensure_cpp_support_dir_chirho() {
         cpp_cmd_chirho.arg(format!("-I{}", support_dir_chirho.display()));
@@ -3764,6 +3769,10 @@ fn collect_local_dependency_frontend_artifacts_chirho(
 
     let builtin_deps_chirho = builtin_dependency_names_chirho();
     let mut artifacts_chirho = FrontendSeedArtifactsChirho::default();
+    artifacts_chirho.ifaces_chirho =
+        haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(
+            scan_dependency_package_ifaces_chirho(project_dir_chirho),
+        );
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let mut visited_chirho = std::collections::HashSet::new();
     let mut active_chirho = std::collections::HashSet::new();
