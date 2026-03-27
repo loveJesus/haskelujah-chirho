@@ -160,6 +160,22 @@ usePatChirho EmptyRChirho = SeqChirho (error \"boom\")\n",
 }
 
 #[test]
+fn frontend_lambda_bang_pattern_params_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE BangPatterns #-}\nmodule LambdaBangPatMiniChirho where\nfChirho gChirho = \\zChirho !aryChirho -> zChirho\n",
+        &mut source_map_chirho,
+        "LambdaBangPatMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "lambda bang-pattern parameters should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_list_append_is_polymorphic_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

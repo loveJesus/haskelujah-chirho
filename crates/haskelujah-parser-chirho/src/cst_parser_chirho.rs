@@ -2816,10 +2816,11 @@ impl<'src> ParserChirho<'src> {
             self.bump_chirho(); // backslash
             self.eat_trivia_chirho();
 
-            // Parse patterns until ->
-            while self.can_start_apat_chirho() {
+            // Lambda parameters admit the same function-argument patterns as
+            // equation binders, including bang patterns like `\x !y -> ...`.
+            while self.can_start_fun_arg_pat_chirho() {
                 let before_chirho = self.pos_chirho;
-                self.parse_apat_chirho();
+                self.parse_fun_arg_pat_chirho();
                 self.eat_trivia_chirho();
                 if self.pos_chirho == before_chirho {
                     break;
@@ -5263,6 +5264,25 @@ mod tests_chirho {
         assert!(
             kinds_chirho.contains(&SyntaxKindChirho::LambdaExprChirho),
             "should have LambdaExpr: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_lambda_expression_with_bang_pattern_arg_chirho() {
+        let source_chirho =
+            "module M where\n{-# LANGUAGE BangPatterns #-}\nf = \\x !y -> x\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::LambdaExprChirho),
+            "should have LambdaExpr: {:?}",
+            kinds_chirho
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::BangPatChirho),
+            "should have BangPat: {:?}",
             kinds_chirho
         );
     }
