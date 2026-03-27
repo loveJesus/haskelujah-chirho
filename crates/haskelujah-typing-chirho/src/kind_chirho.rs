@@ -1139,6 +1139,26 @@ pub struct KindResultChirho {
 /// Run kind inference on a module's type declarations and type signatures.
 pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChirho {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+    let local_kind_decl_names_chirho: std::collections::HashSet<String> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::DataDeclChirho { name_chirho, .. }
+            | DeclChirho::NewtypeDeclChirho { name_chirho, .. }
+            | DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
+            | DeclChirho::TypeFamilyDeclChirho { name_chirho, .. }
+            | DeclChirho::ClassDeclChirho { name_chirho, .. } => {
+                Some(name_chirho.text_chirho().to_string())
+            }
+            _ => None,
+        })
+        .collect();
+    for local_kind_decl_name_chirho in &local_kind_decl_names_chirho {
+        ctx_chirho
+            .env_chirho
+            .kinds_chirho
+            .remove(local_kind_decl_name_chirho);
+    }
     let poly_kinds_enabled_chirho = module_chirho
         .extensions_chirho
         .iter()
@@ -1410,7 +1430,8 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
 mod tests_chirho {
     use super::*;
     use haskelujah_ast_chirho::decl_chirho::{
-        AssocTypeFamilyChirho, ClassMethodChirho, ConDeclChirho, DeclChirho, StrictnessChirho,
+        AssocTypeFamilyChirho, AstKindChirho, ClassMethodChirho, ConDeclChirho, DeclChirho,
+        StrictnessChirho, TyVarChirho,
     };
     use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
     use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -1939,6 +1960,74 @@ mod tests_chirho {
             Some(&KindChirho::arrow_chirho(
                 KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho),
                 KindChirho::ConstraintChirho
+            ))
+        );
+    }
+
+    #[test]
+    fn local_tagged_decl_shadows_builtin_tagged_kind_chirho() {
+        let module_chirho = mk_module_chirho(vec![
+            DeclChirho::ClassDeclChirho {
+                context_chirho: vec![],
+                name_chirho: mk_name_chirho("SumSize"),
+                type_vars_chirho: vec![mk_name_chirho("f").into()],
+                methods_chirho: vec![ClassMethodChirho {
+                    name_chirho: mk_name_chirho("sumSize"),
+                    ty_chirho: mk_app_chirho(
+                        TypeChirho::ConChirho(mk_name_chirho("Tagged")),
+                        TypeChirho::VarChirho(mk_name_chirho("f")),
+                    ),
+                    default_chirho: None,
+                    default_sig_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+                associated_tfs_chirho: vec![],
+                fundeps_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::NewtypeDeclChirho {
+                name_chirho: mk_name_chirho("Tagged"),
+                type_vars_chirho: vec![TyVarChirho::annotated_chirho(
+                    mk_name_chirho("s"),
+                    AstKindChirho::ArrowChirho(
+                        Box::new(AstKindChirho::StarChirho),
+                        Box::new(AstKindChirho::StarChirho),
+                    ),
+                )],
+                constructor_chirho: ConDeclChirho::RecordChirho {
+                    name_chirho: mk_name_chirho("Tagged"),
+                    fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
+                        names_chirho: vec![mk_name_chirho("unTagged")],
+                        strictness_chirho: StrictnessChirho::LazyChirho,
+                        ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                deriving_chirho: vec![],
+                kind_sig_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ]);
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "local Tagged should shadow the builtin Tagged kind: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        assert_eq!(
+            result_chirho.env_chirho.lookup_chirho("SumSize"),
+            Some(&KindChirho::arrow_chirho(
+                KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho),
+                KindChirho::ConstraintChirho
+            ))
+        );
+        assert_eq!(
+            result_chirho.env_chirho.lookup_chirho("Tagged"),
+            Some(&KindChirho::arrow_chirho(
+                KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho),
+                KindChirho::StarChirho
             ))
         );
     }
