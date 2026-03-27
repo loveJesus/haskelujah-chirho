@@ -4222,7 +4222,8 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
         }
     }
 
-    let source_files_chirho = discover_modules_chirho(&package_chirho, &package_dir_chirho);
+    let source_files_chirho =
+        discover_library_modules_chirho(&package_chirho, &package_dir_chirho);
     let mut module_sources_chirho = Vec::new();
     for (module_name_chirho, path_chirho) in &source_files_chirho {
         let source_chirho = read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
@@ -5288,34 +5289,12 @@ pub fn discover_modules_chirho(
     package_chirho: &haskelujah_package_chirho::PackageDescChirho,
     project_dir_chirho: &Path,
 ) -> Vec<(String, PathBuf)> {
-    let mut modules_chirho: Vec<(String, PathBuf)> = Vec::new();
-    let mut seen_chirho = std::collections::HashSet::new();
-
-    if let Some(lib_chirho) = &package_chirho.library_chirho {
-        let src_dirs_chirho = if lib_chirho
-            .build_info_chirho
-            .hs_source_dirs_chirho
-            .is_empty()
-        {
-            vec![".".to_string()]
-        } else {
-            lib_chirho.build_info_chirho.hs_source_dirs_chirho.clone()
-        };
-
-        for mod_name_chirho in lib_chirho
-            .exposed_modules_chirho
-            .iter()
-            .chain(lib_chirho.other_modules_chirho.iter())
-        {
-            if seen_chirho.insert(mod_name_chirho.clone()) {
-                if let Some(path_chirho) =
-                    find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
-                {
-                    modules_chirho.push((mod_name_chirho.clone(), path_chirho));
-                }
-            }
-        }
-    }
+    let mut modules_chirho =
+        discover_library_modules_chirho(package_chirho, project_dir_chirho);
+    let mut seen_chirho = modules_chirho
+        .iter()
+        .map(|(module_name_chirho, _path_chirho)| module_name_chirho.clone())
+        .collect::<std::collections::HashSet<_>>();
 
     for exe_chirho in &package_chirho.executables_chirho {
         let src_dirs_chirho = if exe_chirho
@@ -5361,6 +5340,42 @@ pub fn discover_modules_chirho(
 
     // Skip Setup.hs / Setup.lhs — these are Cabal build system files
     // that import Distribution.Simple and are not part of the package itself.
+
+    modules_chirho
+}
+
+fn discover_library_modules_chirho(
+    package_chirho: &haskelujah_package_chirho::PackageDescChirho,
+    project_dir_chirho: &Path,
+) -> Vec<(String, PathBuf)> {
+    let mut modules_chirho: Vec<(String, PathBuf)> = Vec::new();
+    let mut seen_chirho = std::collections::HashSet::new();
+
+    if let Some(lib_chirho) = &package_chirho.library_chirho {
+        let src_dirs_chirho = if lib_chirho
+            .build_info_chirho
+            .hs_source_dirs_chirho
+            .is_empty()
+        {
+            vec![".".to_string()]
+        } else {
+            lib_chirho.build_info_chirho.hs_source_dirs_chirho.clone()
+        };
+
+        for mod_name_chirho in lib_chirho
+            .exposed_modules_chirho
+            .iter()
+            .chain(lib_chirho.other_modules_chirho.iter())
+        {
+            if seen_chirho.insert(mod_name_chirho.clone()) {
+                if let Some(path_chirho) =
+                    find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
+                {
+                    modules_chirho.push((mod_name_chirho.clone(), path_chirho));
+                }
+            }
+        }
+    }
 
     modules_chirho
 }

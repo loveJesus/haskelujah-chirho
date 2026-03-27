@@ -1262,6 +1262,88 @@ treeWordSizeChirho = wordSize\n",
     }
 
     #[test]
+    fn compile_cabal_project_ignores_local_dependency_executables_for_frontend_seed_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let packages_root_chirho = tmp_chirho.path().join(".haskelujah-packages-chirho");
+        let project_dir_chirho = tmp_chirho.path().join("frontend-root-chirho");
+        let project_src_dir_chirho = project_dir_chirho.join("src");
+        let dep_dir_chirho = packages_root_chirho.join("dep-pkg-0.1.0.0");
+        let dep_src_dir_chirho = dep_dir_chirho.join("src/Dep");
+        let dep_app_dir_chirho = dep_dir_chirho.join("app");
+
+        fs::create_dir_all(&project_src_dir_chirho).unwrap();
+        fs::create_dir_all(&dep_src_dir_chirho).unwrap();
+        fs::create_dir_all(&dep_app_dir_chirho).unwrap();
+
+        fs::write(
+            project_dir_chirho.join("frontend-root-chirho.cabal"),
+            "name: frontend-root-chirho\n\
+version: 0.1.0.0\n\
+library\n\
+  exposed-modules: LibChirho\n\
+  hs-source-dirs: src\n\
+  build-depends: base, dep-pkg >= 0.1\n",
+        )
+        .unwrap();
+        fs::write(
+            project_src_dir_chirho.join("LibChirho.hs"),
+            "module LibChirho where\n\
+import Dep.Lib\n\
+valueChirho :: DepMarkerChirho\n\
+valueChirho = DepMarkerChirho\n",
+        )
+        .unwrap();
+
+        fs::write(
+            dep_dir_chirho.join("dep-pkg.cabal"),
+            "name: dep-pkg\n\
+version: 0.1.0.0\n\
+library\n\
+  exposed-modules: Dep.Lib\n\
+  hs-source-dirs: src\n\
+  build-depends: base\n\
+executable dep-tool\n\
+  main-is: Main.hs\n\
+  hs-source-dirs: app\n\
+  build-depends: base, missing-exe-dep\n",
+        )
+        .unwrap();
+        fs::write(
+            dep_src_dir_chirho.join("Lib.hs"),
+            "module Dep.Lib where\n\
+data DepMarkerChirho = DepMarkerChirho\n",
+        )
+        .unwrap();
+        fs::write(
+            dep_app_dir_chirho.join("Main.hs"),
+            "module Main where\n\
+import Missing.Executable.Dep\n\
+mainChirho :: IO ()\n\
+mainChirho = pure ()\n",
+        )
+        .unwrap();
+
+        let result_chirho = compile_cabal_project_chirho(
+            project_dir_chirho.join("frontend-root-chirho.cabal"),
+            &PackageIndexChirho::new_chirho(),
+        )
+        .expect("dependency frontend seeding should ignore broken dependency executables");
+
+        let build_plan_packages_chirho: Vec<&str> = result_chirho
+            .build_plan_chirho
+            .steps_chirho
+            .iter()
+            .map(|step_chirho| step_chirho.package_chirho.as_str())
+            .collect();
+
+        assert_eq!(build_plan_packages_chirho, vec!["dep-pkg"]);
+        assert_eq!(result_chirho.module_results_chirho.len(), 1);
+    }
+
+    #[test]
     fn compile_cabal_project_resolves_transitive_local_dependency_index_chirho() {
         use crate::compile_cabal_project_chirho;
         use haskelujah_package_chirho::PackageIndexChirho;
