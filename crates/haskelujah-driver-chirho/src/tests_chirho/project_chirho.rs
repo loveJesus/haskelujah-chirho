@@ -1455,6 +1455,143 @@ data HashMapMarkerChirho = HashMapMarkerChirho\n",
     }
 
     #[test]
+    fn merged_local_dependency_package_index_discovers_all_local_packages_chirho() {
+        use crate::merge_local_dependency_package_index_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let packages_root_chirho = tmp_chirho.path().join(".haskelujah-packages-chirho");
+        let hashable_dir_chirho = packages_root_chirho.join("hashable-1.5.0.0");
+        let unordered_dir_chirho = packages_root_chirho.join("unordered-containers-0.2.21");
+        let malformed_dir_chirho = packages_root_chirho.join("wcwidth-0.0.2");
+
+        fs::create_dir_all(&hashable_dir_chirho).unwrap();
+        fs::create_dir_all(&unordered_dir_chirho).unwrap();
+        fs::create_dir_all(&malformed_dir_chirho).unwrap();
+
+        fs::write(
+            hashable_dir_chirho.join("hashable.cabal"),
+            "name: hashable\n\
+version: 1.5.0.0\n\
+library\n\
+  exposed-modules: Data.Hashable\n\
+  hs-source-dirs: src\n\
+  build-depends: base, os-string\n",
+        )
+        .unwrap();
+        fs::write(
+            unordered_dir_chirho.join("unordered-containers.cabal"),
+            "name: unordered-containers\n\
+version: 0.2.21\n\
+library\n\
+  exposed-modules: Data.HashMap.Strict\n\
+  hs-source-dirs: src\n\
+  build-depends: base, hashable >= 1.5\n",
+        )
+        .unwrap();
+        fs::write(
+            malformed_dir_chirho.join("wcwidth.cabal"),
+            "name                          : wcwidth\n\
+version                       : 0.0.2\n\
+library\n\
+  exposed-modules             : Data.Char.WCWidth\n\
+  hs-source-dirs              : src\n\
+  build-depends               : base\n",
+        )
+        .unwrap();
+
+        let merged_index_chirho = merge_local_dependency_package_index_chirho(
+            tmp_chirho.path(),
+            &[],
+            &PackageIndexChirho::new_chirho(),
+        )
+        .expect("all local package directories should be indexed");
+
+        assert!(
+            merged_index_chirho.packages_chirho.contains_key("hashable"),
+            "merged local index should include hashable from the packages directory"
+        );
+        assert!(
+            merged_index_chirho
+                .packages_chirho
+                .contains_key("unordered-containers"),
+            "merged local index should include sibling packages even when they are not root-transitive"
+        );
+        assert!(
+            !merged_index_chirho.packages_chirho.contains_key("wcwidth"),
+            "malformed unrelated local packages should be skipped instead of breaking the whole merge"
+        );
+    }
+
+    #[test]
+    fn compile_cabal_project_treats_os_string_as_builtin_for_local_hashable_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let packages_root_chirho = tmp_chirho.path().join(".haskelujah-packages-chirho");
+        let project_dir_chirho = tmp_chirho.path().join("hashable-smoke-chirho");
+        let project_src_dir_chirho = project_dir_chirho.join("src");
+        let hashable_dir_chirho = packages_root_chirho.join("hashable-1.5.0.0");
+        let hashable_src_dir_chirho = hashable_dir_chirho.join("src/Data");
+
+        fs::create_dir_all(&project_src_dir_chirho).unwrap();
+        fs::create_dir_all(&hashable_src_dir_chirho).unwrap();
+
+        fs::write(
+            project_dir_chirho.join("hashable-smoke-chirho.cabal"),
+            "name: hashable-smoke-chirho\n\
+version: 0.1.0.0\n\
+library\n\
+  exposed-modules: LibChirho\n\
+  hs-source-dirs: src\n\
+  build-depends: base, hashable >= 1.5\n",
+        )
+        .unwrap();
+        fs::write(
+            project_src_dir_chirho.join("LibChirho.hs"),
+            "module LibChirho where\n\
+import Data.Hashable\n\
+valueChirho :: HashableMarkerChirho\n\
+valueChirho = HashableMarkerChirho\n",
+        )
+        .unwrap();
+
+        fs::write(
+            hashable_dir_chirho.join("hashable.cabal"),
+            "name: hashable\n\
+version: 1.5.0.0\n\
+library\n\
+  exposed-modules: Data.Hashable\n\
+  hs-source-dirs: src\n\
+  build-depends: base, os-string\n",
+        )
+        .unwrap();
+        fs::write(
+            hashable_src_dir_chirho.join("Hashable.hs"),
+            "module Data.Hashable where\n\
+data HashableMarkerChirho = HashableMarkerChirho\n",
+        )
+        .unwrap();
+
+        let result_chirho = compile_cabal_project_chirho(
+            project_dir_chirho.join("hashable-smoke-chirho.cabal"),
+            &PackageIndexChirho::new_chirho(),
+        )
+        .expect("os-string should be treated as builtin for local hashable resolution");
+
+        let build_plan_packages_chirho: Vec<&str> = result_chirho
+            .build_plan_chirho
+            .steps_chirho
+            .iter()
+            .map(|step_chirho| step_chirho.package_chirho.as_str())
+            .collect();
+
+        assert_eq!(build_plan_packages_chirho, vec!["hashable"]);
+        assert_eq!(result_chirho.module_results_chirho.len(), 1);
+    }
+
+    #[test]
     fn merged_local_dependency_index_uses_library_edges_for_parsers_chain_chirho() {
         use crate::{
             collect_package_deps_chirho, merge_local_dependency_package_index_chirho,
