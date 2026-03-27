@@ -973,13 +973,61 @@ impl InferCtxChirho {
     /// The recursive cases re-normalize after intermediate substitutions so
     /// reductions like `PrimState (ST s) ~ s` become visible once `m ~ ST s`.
     fn unify_normalized_chirho(
-        &self,
+        &mut self,
         ty1_chirho: &TyChirho,
         ty2_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> Result<SubstChirho, UnifyErrorChirho> {
         let n1_chirho = self.normalize_ty_chirho(ty1_chirho);
         let n2_chirho = self.normalize_ty_chirho(ty2_chirho);
+        match (&n1_chirho, &n2_chirho) {
+            (
+                TyChirho::ForallChirho {
+                    vars_chirho: vars1_chirho,
+                    body_chirho: body1_chirho,
+                },
+                TyChirho::ForallChirho {
+                    vars_chirho: vars2_chirho,
+                    body_chirho: body2_chirho,
+                },
+            ) if vars1_chirho.len() == vars2_chirho.len() => {
+                let mut rename_chirho = SubstChirho::empty_chirho();
+                for (var1_chirho, var2_chirho) in vars1_chirho.iter().zip(vars2_chirho.iter()) {
+                    rename_chirho.insert_chirho(*var2_chirho, TyChirho::VarChirho(*var1_chirho));
+                }
+                let renamed_body2_chirho = rename_chirho.apply_ty_chirho(body2_chirho);
+                return self.unify_normalized_chirho(body1_chirho, &renamed_body2_chirho, span_chirho);
+            }
+            (
+                TyChirho::ForallChirho {
+                    vars_chirho,
+                    body_chirho,
+                },
+                other_chirho,
+            ) if !matches!(other_chirho, TyChirho::VarChirho(_)) => {
+                let mut instantiation_chirho = SubstChirho::empty_chirho();
+                for var_chirho in vars_chirho {
+                    instantiation_chirho.insert_chirho(*var_chirho, self.fresh_var_chirho());
+                }
+                let instantiated_body_chirho = instantiation_chirho.apply_ty_chirho(body_chirho);
+                return self.unify_normalized_chirho(&instantiated_body_chirho, other_chirho, span_chirho);
+            }
+            (
+                other_chirho,
+                TyChirho::ForallChirho {
+                    vars_chirho,
+                    body_chirho,
+                },
+            ) if !matches!(other_chirho, TyChirho::VarChirho(_)) => {
+                let mut instantiation_chirho = SubstChirho::empty_chirho();
+                for var_chirho in vars_chirho {
+                    instantiation_chirho.insert_chirho(*var_chirho, self.fresh_var_chirho());
+                }
+                let instantiated_body_chirho = instantiation_chirho.apply_ty_chirho(body_chirho);
+                return self.unify_normalized_chirho(other_chirho, &instantiated_body_chirho, span_chirho);
+            }
+            _ => {}
+        }
         if let (
             TyChirho::FunChirho(arg1_chirho, result1_chirho, _),
             TyChirho::FunChirho(arg2_chirho, result2_chirho, _),
@@ -19555,6 +19603,111 @@ mod tests_chirho {
             expected_normalized_chirho, actual_normalized_chirho,
             "application unification should re-normalize after substitutions expose PrimState equations"
         );
+    }
+
+    #[test]
+    fn unify_normalized_instantiates_forall_before_reducing_primstate_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.register_type_family_instance_chirho(
+            "PrimState".to_string(),
+            vec![TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ST".to_string())),
+                Box::new(TyChirho::ForallVarChirho("s".to_string())),
+            )],
+            TyChirho::ForallVarChirho("s".to_string()),
+        );
+
+        let monad_ty_chirho = ctx_chirho.fresh_var_chirho();
+        let elem_ty_chirho = TyChirho::ConChirho("Int".to_string());
+        let actual_ty_chirho = TyChirho::AppChirho(
+            Box::new(monad_ty_chirho.clone()),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("MutableArray".to_string())),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("PrimState".to_string())),
+                        Box::new(monad_ty_chirho.clone()),
+                    )),
+                )),
+                Box::new(elem_ty_chirho.clone()),
+            )),
+        );
+        let state_var_chirho = TyVarChirho(8000);
+        let expected_ty_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![state_var_chirho],
+            body_chirho: Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("ST".to_string())),
+                    Box::new(TyChirho::VarChirho(state_var_chirho)),
+                )),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("MutableArray".to_string())),
+                        Box::new(TyChirho::VarChirho(state_var_chirho)),
+                    )),
+                    Box::new(elem_ty_chirho.clone()),
+                )),
+            )),
+        };
+
+        let subst_chirho = ctx_chirho
+            .unify_normalized_chirho(
+                &actual_ty_chirho,
+                &expected_ty_chirho,
+                SpanChirho::DUMMY_CHIRHO,
+            )
+            .expect("normalized unification should instantiate forall results before PrimState occurs checks");
+
+        let actual_normalized_chirho =
+            ctx_chirho.normalize_ty_chirho(&subst_chirho.apply_ty_chirho(&actual_ty_chirho));
+        match actual_normalized_chirho {
+            TyChirho::AppChirho(fun_chirho, result_chirho) => {
+                match (*fun_chirho, *result_chirho) {
+                    (
+                        TyChirho::AppChirho(st_head_chirho, state_arg_chirho),
+                        TyChirho::AppChirho(mutable_array_head_chirho, elem_arg_chirho),
+                    ) => {
+                        assert_eq!(
+                            *st_head_chirho,
+                            TyChirho::ConChirho("ST".to_string()),
+                            "the monad should specialize to ST after instantiating the forall result"
+                        );
+                        match (*mutable_array_head_chirho, *elem_arg_chirho) {
+                            (
+                                TyChirho::AppChirho(mutable_array_con_chirho, mutable_state_chirho),
+                                TyChirho::ConChirho(elem_name_chirho),
+                            ) => {
+                                assert_eq!(
+                                    *mutable_array_con_chirho,
+                                    TyChirho::ConChirho("MutableArray".to_string()),
+                                    "the result should stay a MutableArray after reduction"
+                                );
+                                assert_eq!(
+                                    elem_name_chirho, "Int",
+                                    "the element type should remain intact through the PrimState reduction"
+                                );
+                                assert_eq!(
+                                    *mutable_state_chirho, *state_arg_chirho,
+                                    "the MutableArray state should match the instantiated ST state variable"
+                                );
+                            }
+                            other_chirho => panic!(
+                                "expected ST result to produce a MutableArray state argument, got {:?}",
+                                other_chirho
+                            ),
+                        }
+                    }
+                    other_chirho => panic!(
+                        "expected normalized actual type to specialize to ST s (MutableArray s Int), got {:?}",
+                        other_chirho
+                    ),
+                }
+            }
+            other_chirho => panic!(
+                "expected normalized actual type to remain an application, got {:?}",
+                other_chirho
+            ),
+        }
     }
 
     #[test]
