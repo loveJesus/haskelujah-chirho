@@ -871,6 +871,149 @@ main = CPP_INCLUDE_VALUE_CHIRHO
 }
 
 #[test]
+fn read_hsc_source_sanitizes_clock_hsc2hs_directives_chirho() {
+    let repo_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("repo root should exist")
+        .to_path_buf();
+    let path_chirho =
+        repo_root_chirho.join(".haskelujah-packages-chirho/clock-0.8.4/System/Clock.hsc");
+    let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
+        .expect("clock hsc source should preprocess");
+
+    assert!(
+        !source_chirho.contains("#{"),
+        "preprocessed hsc source should not retain hsc2hs directives"
+    );
+    assert!(
+        source_chirho.contains("type ClockId = CClockId"),
+        "CPP should keep the active ClockId branch: {source_chirho}"
+    );
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_modules_chirho(
+        &[("System.Clock", source_chirho.as_str())],
+        &mut source_map_chirho,
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "sanitized System.Clock should compile: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn clock_iface_exports_normalize_and_s2ns_chirho() {
+    use haskelujah_naming_chirho::iface_chirho::build_iface_with_imports_chirho;
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
+
+    let repo_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("repo root should exist")
+        .to_path_buf();
+    let path_chirho =
+        repo_root_chirho.join(".haskelujah-packages-chirho/clock-0.8.4/System/Clock.hsc");
+    let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
+        .expect("clock hsc source should preprocess");
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        &path_chirho,
+        &source_chirho,
+    );
+    let parser_chirho =
+        ParserChirho::new_chirho(&source_chirho, source_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+    let fun_names_chirho: std::collections::HashSet<String> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            haskelujah_ast_chirho::decl_chirho::DeclChirho::FunBindChirho {
+                name_chirho, ..
+            } => Some(name_chirho.text_chirho().to_string()),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        !module_chirho.decls_chirho.is_empty(),
+        "System.Clock should retain declarations after hsc preprocessing"
+    );
+    assert!(
+        fun_names_chirho.contains("normalize"),
+        "System.Clock should retain normalize: {:?}",
+        fun_names_chirho
+    );
+    assert!(
+        fun_names_chirho.contains("s2ns"),
+        "System.Clock should retain s2ns: {:?}",
+        fun_names_chirho
+    );
+    assert!(
+        module_chirho
+            .exports_chirho
+            .as_ref()
+            .is_some_and(|exports_chirho| !exports_chirho.is_empty()),
+        "System.Clock should retain explicit exports; module name={}",
+        module_chirho.name_chirho.full_name_chirho()
+    );
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[]);
+
+    assert!(
+        iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("normalize"),
+        "System.Clock iface should export normalize: {:?}",
+        iface_chirho
+            .exports_chirho
+            .values_chirho
+            .keys()
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("s2ns"),
+        "System.Clock iface should export s2ns: {:?}",
+        iface_chirho
+            .exports_chirho
+            .values_chirho
+            .keys()
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn compile_modules_propagates_module_qualified_exports_to_downstream_imports_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_modules_chirho(
+        &[
+            (
+                "UpstreamChirho",
+                "module UpstreamChirho (helperChirho, HelperWrapChirho(..)) where\nhelperChirho = 42\nnewtype HelperWrapChirho = HelperWrapChirho Int\n",
+            ),
+            (
+                "DownstreamChirho",
+                "module DownstreamChirho where\nimport UpstreamChirho (helperChirho, HelperWrapChirho(..))\nimport qualified UpstreamChirho as UpstreamChirho\nuseHelperChirho = helperChirho\nwrapHelperChirho = HelperWrapChirho helperChirho\nuseQualifiedChirho = UpstreamChirho.helperChirho\n",
+            ),
+        ],
+        &mut source_map_chirho,
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "downstream module should see upstream exports: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_preprocessed_containers_intset_retains_helper_funbinds_chirho() {
     use haskelujah_ast_chirho::decl_chirho::DeclChirho;
     use haskelujah_parser_chirho::{

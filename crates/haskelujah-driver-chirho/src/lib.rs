@@ -482,19 +482,19 @@ fn source_uses_cpp_chirho(source_chirho: &str) -> bool {
     })
 }
 
-fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::Result<String> {
-    let is_hsc_chirho = path_chirho
+fn path_is_hsc_chirho(path_chirho: &Path) -> bool {
+    path_chirho
         .extension()
         .and_then(|ext_chirho| ext_chirho.to_str())
-        .is_some_and(|ext_chirho| ext_chirho.eq_ignore_ascii_case("hsc"));
+        .is_some_and(|ext_chirho| ext_chirho.eq_ignore_ascii_case("hsc"))
+}
 
-    if !is_hsc_chirho && !source_uses_cpp_chirho(source_chirho) {
-        return Ok(source_chirho.to_string());
-    }
-
+fn configure_cpp_command_chirho(path_chirho: &Path, traditional_chirho: bool) -> Command {
     let mut cpp_cmd_chirho = Command::new("cpp");
+    if traditional_chirho {
+        cpp_cmd_chirho.arg("-traditional");
+    }
     cpp_cmd_chirho
-        .arg("-traditional")
         .arg("-P")
         .arg(format!(
             "-D__GLASGOW_HASKELL__={CPP_GLASGOW_HASKELL_VERSION_CHIRHO}"
@@ -536,7 +536,116 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
         cpp_cmd_chirho.arg(path_chirho);
     }
 
-    let output_chirho = cpp_cmd_chirho.output()?;
+    cpp_cmd_chirho
+}
+
+fn decode_cpp_stdout_chirho(path_chirho: &Path, stdout_chirho: Vec<u8>) -> io::Result<String> {
+    String::from_utf8(stdout_chirho).map_err(|error_chirho| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!(
+                "cpp output for {} was not valid UTF-8: {}",
+                path_chirho.display(),
+                error_chirho
+            ),
+        )
+    })
+}
+
+fn sanitize_hsc_source_chirho(source_chirho: &str) -> String {
+    let mut sanitized_chirho = String::with_capacity(source_chirho.len());
+    let mut cursor_chirho = 0usize;
+
+    while let Some(rel_start_chirho) = source_chirho[cursor_chirho..].find("#{") {
+        let start_chirho = cursor_chirho + rel_start_chirho;
+        sanitized_chirho.push_str(&source_chirho[cursor_chirho..start_chirho]);
+        let body_start_chirho = start_chirho + 2;
+        let Some(rel_end_chirho) = source_chirho[body_start_chirho..].find('}') else {
+            sanitized_chirho.push_str(&source_chirho[start_chirho..]);
+            return sanitized_chirho;
+        };
+        let end_chirho = body_start_chirho + rel_end_chirho;
+        let body_chirho = source_chirho[body_start_chirho..end_chirho].trim();
+        let replacement_chirho = if body_chirho.starts_with("type ") {
+            "CInt"
+        } else if body_chirho.starts_with("size ")
+            || body_chirho.starts_with("alignment ")
+            || body_chirho.starts_with("const ")
+        {
+            "0"
+        } else if body_chirho.starts_with("peek ") {
+            "peek"
+        } else if body_chirho.starts_with("poke ") {
+            "poke"
+        } else if body_chirho.starts_with("ptr ") {
+            "nullPtr"
+        } else {
+            "undefined"
+        };
+        sanitized_chirho.push_str(replacement_chirho);
+        cursor_chirho = end_chirho + 1;
+    }
+
+    sanitized_chirho.push_str(&source_chirho[cursor_chirho..]);
+    sanitized_chirho
+}
+
+fn strip_hsc_include_directives_chirho(source_chirho: &str) -> String {
+    source_chirho
+        .lines()
+        .filter(|line_chirho| {
+            let trimmed_chirho = line_chirho.trim_start();
+            let directive_chirho = trimmed_chirho
+                .strip_prefix('#')
+                .map(|rest_chirho| rest_chirho.trim_start())
+                .unwrap_or_default();
+            !directive_chirho.starts_with("include")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn preprocess_hsc_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::Result<String> {
+    let stripped_source_chirho = strip_hsc_include_directives_chirho(source_chirho);
+    let temp_stamp_chirho = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration_chirho| duration_chirho.as_nanos())
+        .unwrap_or(0);
+    let temp_path_chirho = path_chirho
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join(format!(
+            ".haskelujah-hsc-preprocess-{}-{temp_stamp_chirho}.hsc",
+            std::process::id()
+        ));
+    std::fs::write(&temp_path_chirho, stripped_source_chirho)?;
+    let output_chirho = configure_cpp_command_chirho(&temp_path_chirho, true).output();
+    let _ = std::fs::remove_file(&temp_path_chirho);
+    let output_chirho = output_chirho?;
+    if !output_chirho.status.success() {
+        let stderr_chirho = String::from_utf8_lossy(&output_chirho.stderr)
+            .trim()
+            .to_string();
+        return Err(io::Error::other(format!(
+            "hsc preprocessing failed for {}: {}",
+            path_chirho.display(),
+            stderr_chirho
+        )));
+    }
+    let preprocessed_chirho = decode_cpp_stdout_chirho(path_chirho, output_chirho.stdout)?;
+    Ok(sanitize_hsc_source_chirho(&preprocessed_chirho))
+}
+
+fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::Result<String> {
+    if path_is_hsc_chirho(path_chirho) {
+        return preprocess_hsc_source_chirho(path_chirho, source_chirho);
+    }
+
+    if !source_uses_cpp_chirho(source_chirho) {
+        return Ok(source_chirho.to_string());
+    }
+
+    let output_chirho = configure_cpp_command_chirho(path_chirho, true).output()?;
     if !output_chirho.status.success() {
         let stderr_chirho = String::from_utf8_lossy(&output_chirho.stderr)
             .trim()
@@ -548,16 +657,7 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
         )));
     }
 
-    String::from_utf8(output_chirho.stdout).map_err(|error_chirho| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!(
-                "cpp output for {} was not valid UTF-8: {}",
-                path_chirho.display(),
-                error_chirho
-            ),
-        )
-    })
+    decode_cpp_stdout_chirho(path_chirho, output_chirho.stdout)
 }
 
 fn strip_cpp_directives_chirho(source_chirho: &str) -> String {
@@ -591,6 +691,9 @@ fn read_haskell_source_file_chirho(path_chirho: impl AsRef<Path>) -> io::Result<
     // stripped) if cpp fails (e.g., tick characters in Haskell identifiers).
     match preprocess_cpp_source_chirho(path_ref_chirho, &source_chirho) {
         Ok(processed_chirho) => Ok(processed_chirho),
+        Err(_) if path_is_hsc_chirho(path_ref_chirho) => Ok(sanitize_hsc_source_chirho(
+            &strip_cpp_directives_chirho(&source_chirho),
+        )),
         Err(_) => Ok(strip_cpp_directives_chirho(&source_chirho)),
     }
 }
@@ -2176,32 +2279,13 @@ pub fn compile_modules_chirho(
         // Use import-aware variant so `module Foo` re-exports work.
         let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
 
-        // Extract type schemes for exported names and accumulate them
-        // so downstream modules can type-check cross-module references.
-        for (name_chirho, _val_chirho) in &iface_chirho.exports_chirho.values_chirho {
-            if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(name_chirho) {
-                imported_types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
-            }
-        }
-        for (_name_chirho, ty_info_chirho) in &iface_chirho.exports_chirho.types_chirho {
-            // Export the type constructors' data constructor schemes
-            for con_name_chirho in &ty_info_chirho.constructors_chirho {
-                if let Some(scheme_chirho) = infer_result_chirho
-                    .env_chirho
-                    .lookup_chirho(con_name_chirho)
-                {
-                    imported_types_chirho.insert(con_name_chirho.clone(), scheme_chirho.clone());
-                }
-            }
-            for method_name_chirho in &ty_info_chirho.methods_chirho {
-                if let Some(scheme_chirho) = infer_result_chirho
-                    .env_chirho
-                    .lookup_chirho(method_name_chirho)
-                {
-                    imported_types_chirho.insert(method_name_chirho.clone(), scheme_chirho.clone());
-                }
-            }
-        }
+        // Carry both bare and module-qualified export names forward so
+        // downstream modules can resolve selective and qualified imports.
+        insert_exported_schemes_into_imports_chirho(
+            &iface_chirho,
+            &infer_result_chirho,
+            &mut imported_types_chirho,
+        );
 
         imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
             &module_chirho,

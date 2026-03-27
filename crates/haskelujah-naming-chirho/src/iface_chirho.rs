@@ -2998,8 +2998,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         {
-            let (k_chirho, v_chirho) =
-                mk_type_chirho("MonadState", &["get", "put", "state"]);
+            let (k_chirho, v_chirho) = mk_type_chirho("MonadState", &["get", "put", "state"]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
