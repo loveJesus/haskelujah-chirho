@@ -4466,6 +4466,17 @@ impl LowerCtxChirho {
     ) -> TypeChirho {
         let mut types_chirho: Vec<TypeChirho> = Vec::new();
         let mut arrow_positions_chirho: Vec<usize> = Vec::new();
+        let fold_type_app_segment_chirho = |segment_chirho: &[TypeChirho]| -> Option<TypeChirho> {
+            let mut iter_chirho = segment_chirho.iter();
+            let first_chirho = iter_chirho.next()?.clone();
+            Some(iter_chirho.fold(first_chirho, |acc_chirho, arg_chirho| {
+                TypeChirho::AppChirho {
+                    fun_chirho: Box::new(acc_chirho),
+                    arg_chirho: Box::new(arg_chirho.clone()),
+                    span_chirho,
+                }
+            }))
+        };
 
         for child_chirho in children_chirho {
             match child_chirho.element_chirho {
@@ -4498,10 +4509,27 @@ impl LowerCtxChirho {
             return self.placeholder_type_chirho();
         }
 
-        if !arrow_positions_chirho.is_empty() && types_chirho.len() >= 2 {
-            // Build right-associative function type.
-            let mut result_chirho = types_chirho.pop().unwrap();
-            while let Some(arg_chirho) = types_chirho.pop() {
+        if !arrow_positions_chirho.is_empty() {
+            let mut segments_chirho: Vec<TypeChirho> = Vec::new();
+            let mut segment_start_chirho = 0usize;
+            for &segment_end_chirho in &arrow_positions_chirho {
+                if let Some(segment_ty_chirho) = fold_type_app_segment_chirho(
+                    &types_chirho[segment_start_chirho..segment_end_chirho],
+                ) {
+                    segments_chirho.push(segment_ty_chirho);
+                }
+                segment_start_chirho = segment_end_chirho;
+            }
+            if let Some(result_segment_chirho) =
+                fold_type_app_segment_chirho(&types_chirho[segment_start_chirho..])
+            {
+                segments_chirho.push(result_segment_chirho);
+            }
+            if segments_chirho.is_empty() {
+                return self.placeholder_type_chirho();
+            }
+            let mut result_chirho = segments_chirho.pop().unwrap();
+            while let Some(arg_chirho) = segments_chirho.pop() {
                 result_chirho = TypeChirho::FunChirho {
                     arg_chirho: Box::new(arg_chirho),
                     mult_chirho: None,
@@ -4513,16 +4541,8 @@ impl LowerCtxChirho {
         } else if types_chirho.len() == 1 {
             types_chirho.pop().unwrap()
         } else {
-            // Type application: T a b → App(App(T, a), b)
-            let mut result_chirho = types_chirho.remove(0);
-            for arg_chirho in types_chirho {
-                result_chirho = TypeChirho::AppChirho {
-                    fun_chirho: Box::new(result_chirho),
-                    arg_chirho: Box::new(arg_chirho),
-                    span_chirho,
-                };
-            }
-            result_chirho
+            fold_type_app_segment_chirho(&types_chirho)
+                .unwrap_or_else(|| self.placeholder_type_chirho())
         }
     }
 
@@ -10869,6 +10889,40 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                     ty_chirho
                 );
             }
+            other_chirho => panic!("expected ForeignDeclChirho, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_foreign_type_preserves_type_application_between_arrows_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nforeign import ccall clockGetTimeChirho :: ClockId -> Ptr TimeSpec -> IO CInt\n",
+        );
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::ForeignDeclChirho { ty_chirho, .. } => match ty_chirho {
+                TypeChirho::FunChirho { result_chirho, .. } => match result_chirho.as_ref() {
+                    TypeChirho::FunChirho { arg_chirho, .. } => {
+                        assert!(
+                            matches!(
+                                arg_chirho.as_ref(),
+                                TypeChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                                    if matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Ptr")
+                                        && matches!(arg_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "TimeSpec")
+                            ),
+                            "expected second foreign argument to stay as Ptr TimeSpec, got {:?}",
+                            arg_chirho
+                        );
+                    }
+                    other_chirho => panic!(
+                        "expected foreign type result to remain a function, got {:?}",
+                        other_chirho
+                    ),
+                },
+                other_chirho => panic!(
+                    "expected foreign type to be a function, got {:?}",
+                    other_chirho
+                ),
+            },
             other_chirho => panic!("expected ForeignDeclChirho, got {:?}", other_chirho),
         }
     }
