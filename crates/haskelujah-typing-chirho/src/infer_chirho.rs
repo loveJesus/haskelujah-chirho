@@ -7188,6 +7188,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         "newSMGen".to_string(),
         SchemeChirho::mono_chirho(TyChirho::io_chirho(smgen_ty_chirho.clone())),
     );
+    env_chirho.bind_chirho(
+        "initSMGen".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::io_chirho(smgen_ty_chirho.clone())),
+    );
     let mk_smgen_a_chirho = TyVarChirho(1691);
     env_chirho.bind_chirho(
         "mkSMGen".to_string(),
@@ -7373,6 +7377,111 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         },
     );
+
+    // >=> :: Monad m => (a -> m b) -> (b -> m c) -> a -> m c
+    {
+        let kleisli_m_chirho = TyVarChirho(1903);
+        let kleisli_a_chirho = TyVarChirho(1904);
+        let kleisli_b_chirho = TyVarChirho(1905);
+        let kleisli_c_chirho = TyVarChirho(1906);
+        env_chirho.bind_chirho(
+            ">=>".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![
+                    kleisli_m_chirho,
+                    kleisli_a_chirho,
+                    kleisli_b_chirho,
+                    kleisli_c_chirho,
+                ],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(kleisli_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        // a -> m b
+                        TyChirho::FunChirho(
+                            Box::new(TyChirho::VarChirho(kleisli_a_chirho)),
+                            Box::new(TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(kleisli_m_chirho)),
+                                Box::new(TyChirho::VarChirho(kleisli_b_chirho)),
+                            )),
+                            MultChirho::ManyChirho,
+                        ),
+                        // b -> m c
+                        TyChirho::FunChirho(
+                            Box::new(TyChirho::VarChirho(kleisli_b_chirho)),
+                            Box::new(TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(kleisli_m_chirho)),
+                                Box::new(TyChirho::VarChirho(kleisli_c_chirho)),
+                            )),
+                            MultChirho::ManyChirho,
+                        ),
+                        // a
+                        TyChirho::VarChirho(kleisli_a_chirho),
+                    ],
+                    // m c
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(kleisli_m_chirho)),
+                        Box::new(TyChirho::VarChirho(kleisli_c_chirho)),
+                    ),
+                ),
+            },
+        );
+    }
+    // <=< :: Monad m => (b -> m c) -> (a -> m b) -> a -> m c
+    {
+        let kleisli_m_chirho = TyVarChirho(1907);
+        let kleisli_a_chirho = TyVarChirho(1908);
+        let kleisli_b_chirho = TyVarChirho(1909);
+        let kleisli_c_chirho = TyVarChirho(1910);
+        env_chirho.bind_chirho(
+            "<=<".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![
+                    kleisli_m_chirho,
+                    kleisli_a_chirho,
+                    kleisli_b_chirho,
+                    kleisli_c_chirho,
+                ],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(kleisli_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        // b -> m c
+                        TyChirho::FunChirho(
+                            Box::new(TyChirho::VarChirho(kleisli_b_chirho)),
+                            Box::new(TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(kleisli_m_chirho)),
+                                Box::new(TyChirho::VarChirho(kleisli_c_chirho)),
+                            )),
+                            MultChirho::ManyChirho,
+                        ),
+                        // a -> m b
+                        TyChirho::FunChirho(
+                            Box::new(TyChirho::VarChirho(kleisli_a_chirho)),
+                            Box::new(TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(kleisli_m_chirho)),
+                                Box::new(TyChirho::VarChirho(kleisli_b_chirho)),
+                            )),
+                            MultChirho::ManyChirho,
+                        ),
+                        // a
+                        TyChirho::VarChirho(kleisli_a_chirho),
+                    ],
+                    // m c
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(kleisli_m_chirho)),
+                        Box::new(TyChirho::VarChirho(kleisli_c_chirho)),
+                    ),
+                ),
+            },
+        );
+    }
 
     // getLine :: IO String
     env_chirho.bind_chirho(
@@ -13085,6 +13194,38 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 ty_chirho: TyChirho::FunChirho(
                     Box::new(TyChirho::VarChirho(a_chirho)),
                     Box::new(TyChirho::ConChirho("Rational".to_string())),
+                    MultChirho::ManyChirho,
+                ),
+            },
+        );
+    }
+
+    // toIntegralSized :: (Integral a, Integral b, Bits a, Bits b) => a -> Maybe b
+    {
+        let a_chirho = TyVarChirho(7396);
+        let b_chirho = TyVarChirho(7397);
+        env_chirho.bind_chirho(
+            "toIntegralSized".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho, b_chirho],
+                preds_chirho: vec![
+                    SchemePredChirho {
+                        class_name_chirho: "Integral".to_string(),
+                        ty_chirho: TyChirho::VarChirho(a_chirho),
+                        extra_tys_chirho: vec![],
+                    },
+                    SchemePredChirho {
+                        class_name_chirho: "Integral".to_string(),
+                        ty_chirho: TyChirho::VarChirho(b_chirho),
+                        extra_tys_chirho: vec![],
+                    },
+                ],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                        Box::new(TyChirho::VarChirho(b_chirho)),
+                    )),
                     MultChirho::ManyChirho,
                 ),
             },
