@@ -1392,8 +1392,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "newMutVar#",
             "readMutVar#",
             "writeMutVar#",
+            "sameMutVar#",
+            "atomicModifyMutVar#",
             "newMVar#",
             "takeMVar#",
+            "readMVar#",
+            "tryReadMVar#",
+            "isEmptyMVar#",
+            "sameMVar#",
             "putMVar#",
             "tryTakeMVar#",
             "tryPutMVar#",
@@ -2664,6 +2670,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "bindIO",
             "returnIO",
             "thenIO",
+            "chr#",
+            "ord#",
+            "+#",
             "seq",
             "maxInt",
             "minInt",
@@ -4642,7 +4651,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Compose", &["Compose"]);
+        let (k_chirho, mut v_chirho) = mk_type_chirho("Compose", &["Compose"]);
+        v_chirho.methods_chirho.push("getCompose".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Functor.Compose".to_string(),
@@ -4832,6 +4842,35 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Text.Encoding".to_string(),
             exports_chirho: enc_exports_chirho,
+        });
+    }
+
+    // Data.Text.Internal
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "text",
+            "textP",
+            "safe",
+            "empty",
+            "append",
+            "firstf",
+            "mul",
+            "mul32",
+            "mul64",
+            "showText",
+            "pack",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for (name_chirho, constructors_chirho) in &[("Text", vec!["Text"]), ("StrictText", vec![])] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, constructors_chirho);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Text.Internal".to_string(),
+            exports_chirho,
         });
     }
 
@@ -5325,9 +5364,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "newMutVar#",
             "readMutVar#",
             "writeMutVar#",
+            "sameMutVar#",
+            "atomicModifyMutVar#",
             // MVar primops
             "newMVar#",
             "takeMVar#",
+            "readMVar#",
+            "tryReadMVar#",
+            "isEmptyMVar#",
+            "sameMVar#",
             "putMVar#",
             "tryTakeMVar#",
             "tryPutMVar#",
@@ -5892,7 +5937,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Functor.Compose
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Compose", &["Compose"]);
+        let (k_chirho, mut v_chirho) = mk_type_chirho("Compose", &["Compose"]);
+        v_chirho.methods_chirho.push("getCompose".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_val_chirho("Compose");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -6698,6 +6744,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "map",
             "intercalate",
             "concat",
+            "foldrChunks",
             "take",
             "drop",
             "splitAt",
@@ -7684,6 +7731,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "undefined",
             "seq",
             "oneShot",
+            "chr#",
+            "ord#",
+            "+#",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -10084,7 +10134,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &["Compose"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["Compose"]);
+            let (k_chirho, mut v_chirho) = mk_type_chirho(name_chirho, &["Compose"]);
+            v_chirho.methods_chirho.push("getCompose".to_string());
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         for name_chirho in &["Compose", "getCompose"] {
@@ -14716,6 +14767,116 @@ mod tests_chirho {
                 .contains_key("mkWeak#"),
             "GHC.Base should export mkWeak#"
         );
+    }
+
+    #[test]
+    fn builtin_ghc_exts_exports_extra_mvar_primops_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_exts_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Exts")
+            .expect("GHC.Exts builtin iface should exist");
+        for primop_name_chirho in &["readMVar#", "tryReadMVar#", "isEmptyMVar#", "sameMVar#"] {
+            assert!(
+                ghc_exts_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(*primop_name_chirho),
+                "GHC.Exts should export {primop_name_chirho}"
+            );
+        }
+    }
+
+    #[test]
+    fn builtin_ghc_exts_exports_mutvar_primops_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_exts_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Exts")
+            .expect("GHC.Exts builtin iface should exist");
+        for primop_name_chirho in &["sameMutVar#", "atomicModifyMutVar#"] {
+            assert!(
+                ghc_exts_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(*primop_name_chirho),
+                "GHC.Exts should export {primop_name_chirho}"
+            );
+        }
+    }
+
+    #[test]
+    fn builtin_data_text_internal_exports_text_constructor_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let text_internal_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.Text.Internal")
+            .expect("Data.Text.Internal builtin iface should exist");
+        assert!(
+            text_internal_chirho
+                .exports_chirho
+                .types_chirho
+                .get("Text")
+                .is_some_and(|text_ty_chirho| text_ty_chirho
+                    .constructors_chirho
+                    .contains(&"Text".to_string())),
+            "Data.Text.Internal should export Text(..)"
+        );
+    }
+
+    #[test]
+    fn builtin_data_text_lazy_exports_foldr_chunks_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let text_lazy_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.Text.Lazy")
+            .expect("Data.Text.Lazy builtin iface should exist");
+        assert!(
+            text_lazy_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("foldrChunks"),
+            "Data.Text.Lazy should export foldrChunks"
+        );
+    }
+
+    #[test]
+    fn builtin_data_functor_compose_exports_getcompose_via_type_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let compose_chirho = ifaces_chirho
+            .iter()
+            .rev()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.Functor.Compose")
+            .expect("Data.Functor.Compose builtin iface should exist");
+        assert!(
+            compose_chirho
+                .exports_chirho
+                .types_chirho
+                .get("Compose")
+                .is_some_and(|compose_ty_chirho| compose_ty_chirho
+                    .methods_chirho
+                    .contains(&"getCompose".to_string())),
+            "Data.Functor.Compose should carry getCompose on Compose(..)"
+        );
+    }
+
+    #[test]
+    fn builtin_ghc_base_exports_primitive_char_ops_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_base_chirho = ifaces_chirho
+            .iter()
+            .rev()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Base")
+            .expect("GHC.Base builtin iface should exist");
+        for primop_name_chirho in &["chr#", "ord#", "+#"] {
+            assert!(
+                ghc_base_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(*primop_name_chirho),
+                "GHC.Base should export {primop_name_chirho}"
+            );
+        }
     }
 
     #[test]
