@@ -12004,6 +12004,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "getSymbolicLinkStatus",
             "isDirectory",
             "isRegularFile",
+            "fileMode",
+            "intersectFileModes",
+            "ownerReadMode",
+            "ownerWriteMode",
+            "ownerExecuteMode",
+            "groupReadMode",
+            "otherReadMode",
             "isSymbolicLink",
             "fileSize",
             "modificationTime",
@@ -12018,6 +12025,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "fdRead",
             "fdWrite",
             "getProcessID",
+            "epochTime",
             "forkProcess",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
@@ -12166,6 +12174,91 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "System.OsString.Internal.Types".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Word8 (word8 — needed by warp)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "_0", "_9", "_A", "_Z", "_a", "_z",
+            "_colon", "_semicolon", "_space", "_tab",
+            "_cr", "_lf", "_period", "_comma",
+            "isUpper", "isLower", "isDigit", "isAlpha", "isAlphaNum", "isSpace",
+            "toLower", "toUpper",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Word8".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.AutoUpdate (auto-update — needed by warp)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "defaultUpdateSettings",
+            "mkAutoUpdate",
+            "mkAutoUpdateWithModify",
+            "updateAction",
+            "updateFreq",
+            "updateThreadName",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("UpdateSettings", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.AutoUpdate".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Reaper (auto-update — needed by warp)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "mkReaper",
+            "defaultReaperSettings",
+            "reaperAdd",
+            "reaperRead",
+            "reaperStop",
+            "reaperKill",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["ReaperSettings", "Reaper"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Reaper".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Network.HTTP.Date (http-date — needed by warp)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "parseHTTPDate",
+            "formatHTTPDate",
+            "epochTimeToHTTPDate",
+            "httpDateToUTC",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("HTTPDate", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Network.HTTP.Date".to_string(),
             exports_chirho,
         });
     }
