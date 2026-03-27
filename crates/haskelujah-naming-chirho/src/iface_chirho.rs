@@ -1835,6 +1835,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "typeOf",
             "typeRep",
             "typeRepTyCon",
+            "typeRepFingerprint",
             "someTypeRep",
             "rnfTypeRep",
             "rnfModule",
@@ -6841,6 +6842,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "FunPtr",
             "nullFunPtr",
             "castFunPtr",
+            "castFunPtrToPtr",
+            "castPtrToFunPtr",
             "WordPtr",
             "IntPtr",
             "ptrToWordPtr",
@@ -9375,7 +9378,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Type.Reflection.Unsafe
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["mkTrApp", "mkTrCon"] {
+        for name_chirho in &["mkTrApp", "mkTrCon", "typeRepFingerprint"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
