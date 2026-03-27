@@ -12376,11 +12376,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "getProcessID",
             "epochTime",
             "forkProcess",
+            "defaultFileFlags",
+            "setFdOption",
+            "openFd",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["DirStream", "FileStatus"] {
+        for name_chirho in &["DirStream", "FileStatus", "OpenFileFlags", "FdOption"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
