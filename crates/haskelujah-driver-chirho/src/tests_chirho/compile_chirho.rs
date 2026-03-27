@@ -6457,6 +6457,24 @@ fn frontend_warp_multimap_exports_seed_insert_and_empty_chirho() {
         artifacts_chirho.imported_types_chirho.contains_key("empty"),
         "warp MultiMap should export a bare empty scheme"
     );
+    let insert_scheme_chirho = artifacts_chirho
+        .imported_types_chirho
+        .get("insert")
+        .expect("warp MultiMap should seed a bare insert scheme");
+    let empty_scheme_chirho = artifacts_chirho
+        .imported_types_chirho
+        .get("empty")
+        .expect("warp MultiMap should seed a bare empty scheme");
+    assert!(
+        insert_scheme_chirho.to_string().contains("MultiMap"),
+        "warp MultiMap insert should retain its MultiMap type, got {}",
+        insert_scheme_chirho
+    );
+    assert!(
+        empty_scheme_chirho.to_string().contains("MultiMap"),
+        "warp MultiMap empty should retain its MultiMap type, got {}",
+        empty_scheme_chirho
+    );
 }
 
 #[test]
