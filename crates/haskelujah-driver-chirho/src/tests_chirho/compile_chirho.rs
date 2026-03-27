@@ -192,6 +192,22 @@ fn frontend_fun_binding_bang_as_pattern_args_typecheck_chirho() {
 }
 
 #[test]
+fn frontend_case_alt_constructor_bang_subpattern_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE BangPatterns #-}\nmodule StrictCaseAltMiniChirho where\n\ndata LookupResChirho aChirho = AbsentChirho | PresentChirho aChirho Int\n\nlookupResToMaybeChirho :: LookupResChirho aChirho -> Maybe aChirho\nlookupResToMaybeChirho AbsentChirho = Nothing\nlookupResToMaybeChirho (PresentChirho xChirho _) = Just xChirho\n\nptrEqChirho :: aChirho -> aChirho -> Bool\nptrEqChirho _ _ = False\n\nalterChirho :: (Maybe vChirho -> Maybe vChirho) -> LookupResChirho vChirho -> vChirho -> vChirho\nalterChirho fChirho lookupResChirho mChirho =\n  case fChirho (lookupResToMaybeChirho lookupResChirho) of\n    Nothing -> case lookupResChirho of\n      AbsentChirho -> mChirho\n      PresentChirho _ _collPosChirho -> mChirho\n    Just !vPrimeChirho -> case lookupResChirho of\n      AbsentChirho -> vPrimeChirho\n      PresentChirho vChirho _collPosChirho ->\n        if ptrEqChirho vChirho vPrimeChirho then mChirho else vPrimeChirho\n",
+        &mut source_map_chirho,
+        "StrictCaseAltMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "constructor bang subpatterns in case alts should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_maybe_like_unboxed_sums_lower_to_maybe_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

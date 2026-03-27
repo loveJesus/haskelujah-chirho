@@ -4031,7 +4031,7 @@ impl<'src> ParserChirho<'src> {
                     // Constructor pattern (with or without argument patterns)
                     self.builder_chirho
                         .start_node_at_chirho(cp_chirho, SyntaxKindChirho::ConPatChirho);
-                    while self.can_start_apat_chirho()
+                    while self.can_start_fun_arg_pat_chirho()
                         || self.at_chirho(RawTokenKindChirho::AtChirho)
                     {
                         let before_chirho = self.pos_chirho;
@@ -5324,6 +5324,29 @@ mod tests_chirho {
         assert!(
             kinds_chirho.contains(&SyntaxKindChirho::ConPatChirho),
             "strict as-pattern arg should retain inner constructor pattern: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_case_alt_constructor_bang_subpattern_chirho() {
+        let source_chirho = "module MChirho where\n{-# LANGUAGE BangPatterns #-}\nfChirho xChirho = case xChirho of\n  Just !yChirho -> yChirho\n  Nothing -> error \"boom\"\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::CaseAltChirho),
+            "strict constructor case alt should parse as a case alternative: {:?}",
+            kinds_chirho
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::ConPatChirho),
+            "strict constructor case alt should retain the constructor pattern: {:?}",
+            kinds_chirho
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::BangPatChirho),
+            "strict constructor case alt should retain the bang subpattern: {:?}",
             kinds_chirho
         );
     }
