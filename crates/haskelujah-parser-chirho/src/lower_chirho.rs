@@ -3125,15 +3125,143 @@ impl LowerCtxChirho {
                     rhs_chirho: ta_rhs_chirho,
                     span_chirho: ta_span_chirho,
                 } => {
+                    fn collect_free_type_var_names_from_ast_type_chirho(
+                        ty_chirho: &TypeChirho,
+                    ) -> std::collections::HashSet<String> {
+                        match ty_chirho {
+                            TypeChirho::VarChirho(name_chirho) => {
+                                std::iter::once(name_chirho.text_chirho().to_string()).collect()
+                            }
+                            TypeChirho::ConChirho(_) => std::collections::HashSet::new(),
+                            TypeChirho::AppChirho {
+                                fun_chirho,
+                                arg_chirho,
+                                ..
+                            } => {
+                                let mut free_vars_chirho =
+                                    collect_free_type_var_names_from_ast_type_chirho(fun_chirho);
+                                free_vars_chirho.extend(
+                                    collect_free_type_var_names_from_ast_type_chirho(arg_chirho),
+                                );
+                                free_vars_chirho
+                            }
+                            TypeChirho::FunChirho {
+                                arg_chirho,
+                                result_chirho,
+                                ..
+                            } => {
+                                let mut free_vars_chirho =
+                                    collect_free_type_var_names_from_ast_type_chirho(arg_chirho);
+                                free_vars_chirho.extend(
+                                    collect_free_type_var_names_from_ast_type_chirho(result_chirho),
+                                );
+                                free_vars_chirho
+                            }
+                            TypeChirho::TupleChirho {
+                                elements_chirho, ..
+                            }
+                            | TypeChirho::PromotedListChirho {
+                                elements_chirho, ..
+                            } => elements_chirho
+                                .iter()
+                                .flat_map(collect_free_type_var_names_from_ast_type_chirho)
+                                .collect(),
+                            TypeChirho::ListChirho { element_chirho, .. }
+                            | TypeChirho::ParenChirho {
+                                inner_chirho: element_chirho,
+                                ..
+                            } => collect_free_type_var_names_from_ast_type_chirho(element_chirho),
+                            TypeChirho::QualChirho {
+                                context_chirho,
+                                body_chirho,
+                                ..
+                            } => {
+                                let mut free_vars_chirho: std::collections::HashSet<String> =
+                                    context_chirho
+                                        .iter()
+                                        .flat_map(|constraint_chirho| match constraint_chirho {
+                                            haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                                                args_chirho,
+                                                ..
+                                            } => args_chirho
+                                                .iter()
+                                                .flat_map(collect_free_type_var_names_from_ast_type_chirho)
+                                                .collect::<Vec<_>>(),
+                                            haskelujah_ast_chirho::ty_chirho::ConstraintChirho::QuantifiedChirho {
+                                                context_chirho,
+                                                body_chirho,
+                                                ..
+                                            } => {
+                                                let mut nested_free_vars_chirho: Vec<String> =
+                                                    context_chirho
+                                                        .iter()
+                                                        .flat_map(|nested_constraint_chirho| match nested_constraint_chirho {
+                                                            haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                                                                args_chirho,
+                                                                ..
+                                                            } => args_chirho
+                                                                .iter()
+                                                                .flat_map(collect_free_type_var_names_from_ast_type_chirho)
+                                                                .collect::<Vec<_>>(),
+                                                            haskelujah_ast_chirho::ty_chirho::ConstraintChirho::QuantifiedChirho { .. } => Vec::new(),
+                                                        })
+                                                        .collect();
+                                                nested_free_vars_chirho.extend(
+                                                    match body_chirho.as_ref() {
+                                                        haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                                                            args_chirho,
+                                                            ..
+                                                        } => args_chirho
+                                                            .iter()
+                                                            .flat_map(collect_free_type_var_names_from_ast_type_chirho)
+                                                            .collect::<Vec<_>>(),
+                                                        haskelujah_ast_chirho::ty_chirho::ConstraintChirho::QuantifiedChirho { .. } => Vec::new(),
+                                                    },
+                                                );
+                                                nested_free_vars_chirho
+                                            }
+                                        })
+                                        .collect();
+                                free_vars_chirho.extend(
+                                    collect_free_type_var_names_from_ast_type_chirho(body_chirho),
+                                );
+                                free_vars_chirho
+                            }
+                            TypeChirho::ForallChirho {
+                                vars_chirho,
+                                body_chirho,
+                                ..
+                            } => {
+                                let mut free_vars_chirho =
+                                    collect_free_type_var_names_from_ast_type_chirho(body_chirho);
+                                for var_chirho in vars_chirho {
+                                    free_vars_chirho.remove(var_chirho.text_chirho());
+                                }
+                                free_vars_chirho
+                            }
+                            TypeChirho::PromotedConChirho { .. }
+                            | TypeChirho::WildcardChirho { .. }
+                            | TypeChirho::LitChirho { .. } => std::collections::HashSet::new(),
+                        }
+                    }
+
                     let tv_names_chirho: Vec<NameChirho> = ta_tvs_chirho
                         .iter()
                         .map(|tv_chirho| tv_chirho.name_chirho.clone())
                         .collect();
+                    let declared_tv_names_chirho: std::collections::HashSet<String> = tv_names_chirho
+                        .iter()
+                        .map(|tv_name_chirho| tv_name_chirho.text_chirho().to_string())
+                        .collect();
+                    let rhs_free_var_names_chirho =
+                        collect_free_type_var_names_from_ast_type_chirho(&ta_rhs_chirho);
+                    let default_rhs_chirho =
+                        rhs_free_var_names_chirho.is_subset(&declared_tv_names_chirho).then_some(ta_rhs_chirho);
                     assoc_tfs_chirho.push(
                         haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
                             name_chirho: ta_name_chirho,
                             type_vars_chirho: tv_names_chirho,
-                            default_rhs_chirho: Some(ta_rhs_chirho),
+                            default_rhs_chirho,
                             span_chirho: ta_span_chirho,
                         },
                     );
@@ -12950,6 +13078,32 @@ class Describable a where
                     type_shape_chirho(index_ty_chirho),
                     "((f a) -> (a -> (Rep f)))",
                     "index should lower as f a -> a -> Rep f"
+                );
+            }
+            other_chirho => panic!("expected class decl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_assoc_type_family_placeholder_rhs_does_not_become_default_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nclass FrozenGen f m where\n  type MutableGen f m = (g :: Type)\n  thawGen :: f -> m (MutableGen f m)\n",
+        );
+        let class_decl_chirho = find_class_decl_chirho(&module_chirho, "FrozenGen");
+        match class_decl_chirho {
+            DeclChirho::ClassDeclChirho {
+                associated_tfs_chirho,
+                ..
+            } => {
+                assert_eq!(associated_tfs_chirho.len(), 1);
+                assert_eq!(
+                    associated_tfs_chirho[0].name_chirho.text_chirho(),
+                    "MutableGen"
+                );
+                assert!(
+                    associated_tfs_chirho[0].default_rhs_chirho.is_none(),
+                    "placeholder associated type family rhs should not lower as a default equation: {:?}",
+                    associated_tfs_chirho[0].default_rhs_chirho
                 );
             }
             other_chirho => panic!("expected class decl, got {:?}", other_chirho),

@@ -402,6 +402,22 @@ fn frontend_builtin_runst_accepts_rank2_argument_chirho() {
 }
 
 #[test]
+fn frontend_builtin_stref_and_atomic_modify_ioref2lazy_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module RandomStatefulMiniChirho where\nimport Control.Monad.ST\nimport Data.IORef\nimport Data.STRef\nimport GHC.IORef (atomicModifyIORef2Lazy)\nnewtype STGenMChirho gChirho sChirho = STGenMChirho { unSTGenMChirho :: STRef sChirho gChirho }\nnewSTGenMChirho :: gChirho -> ST sChirho (STGenMChirho gChirho sChirho)\nnewSTGenMChirho = fmap STGenMChirho . newSTRef\napplySTGenChirho :: (gChirho -> (aChirho, gChirho)) -> STGenMChirho gChirho sChirho -> ST sChirho aChirho\napplySTGenChirho fChirho (STGenMChirho refChirho) = do\n  gChirho <- readSTRef refChirho\n  case fChirho gChirho of\n    (aChirho, gPrimeChirho) -> aChirho <$ writeSTRef refChirho gPrimeChirho\natomicModifyIORefHSChirho :: IORef aChirho -> (aChirho -> (aChirho, bChirho)) -> IO bChirho\natomicModifyIORefHSChirho refChirho fChirho = do\n  (_oldChirho, (_newChirho, resChirho)) <- atomicModifyIORef2Lazy refChirho fChirho\n  pure resChirho\n",
+        &mut source_map_chirho,
+        "RandomStatefulMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "STRef adapters and atomicModifyIORef2Lazy should typecheck for random-style code: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_builtin_float_range_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
@@ -6822,6 +6838,32 @@ fn frontend_hashable_ffi_exports_seed_qualified_io_results_chirho() {
         "initState should retain IO (), got {}",
         init_scheme_chirho
     );
+}
+
+#[test]
+fn frontend_real_random_frontier_moves_past_stref_and_atomic_modify_ioref2lazy_chirho() {
+    use crate::compile_cabal_project_chirho;
+    use haskelujah_package_chirho::PackageIndexChirho;
+    use std::path::PathBuf;
+
+    let cabal_path_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/random-1.3.1/random.cabal");
+    if !cabal_path_chirho.exists() {
+        return;
+    }
+
+    let index_chirho = PackageIndexChirho::new_chirho();
+    let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho);
+    if let Err(error_chirho) = result_chirho {
+        let error_text_chirho = format!("{error_chirho}");
+        assert!(
+            !error_text_chirho.contains("STRef")
+                && !error_text_chirho.contains("STGenM")
+                && !error_text_chirho.contains("atomicModifyIORef2Lazy"),
+            "random frontend should move past the old STRef/atomicModifyIORef2Lazy frontier, got: {error_text_chirho}",
+        );
+    }
 }
 
 #[test]
