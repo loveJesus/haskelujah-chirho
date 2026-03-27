@@ -548,7 +548,8 @@ impl LowerCtxChirho {
                                     ));
                                 }
                             }
-                            TokenKindChirho::VarIdChirho => {
+                            TokenKindChirho::VarIdChirho
+                            | TokenKindChirho::QualifiedVarIdChirho => {
                                 let span_chirho =
                                     self.span_chirho(elem_start_chirho, elem_end_chirho);
                                 if first_name_chirho.is_none() && !in_parens_chirho {
@@ -11515,6 +11516,27 @@ foo = 1
         match &exports_chirho[0] {
             ExportSpecChirho::VarChirho(name_chirho) => {
                 assert_eq!(name_chirho.text_chirho(), "foo");
+            }
+            other_chirho => panic!("expected VarChirho, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_export_list_qualified_var_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M (M.lookup) where
+lookup = 1
+",
+        );
+        let exports_chirho = module_chirho
+            .exports_chirho
+            .as_ref()
+            .expect("expected an export list");
+        assert_eq!(exports_chirho.len(), 1, "expected 1 export");
+        match &exports_chirho[0] {
+            ExportSpecChirho::VarChirho(name_chirho) => {
+                assert_eq!(name_chirho.text_chirho(), "lookup");
+                assert_eq!(name_chirho.full_name_chirho(), "M.lookup");
             }
             other_chirho => panic!("expected VarChirho, got {:?}", other_chirho),
         }

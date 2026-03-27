@@ -6740,6 +6740,9 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
     let empty_scheme_chirho = merged_imported_types_chirho
         .get("empty")
         .expect("FdCache seeded env should contain bare empty");
+    let qualified_lookup_scheme_chirho = merged_imported_types_chirho
+        .get("MM.lookup")
+        .expect("FdCache seeded env should contain qualified MM.lookup");
     assert!(
         insert_scheme_chirho.to_string().contains("MultiMap"),
         "FdCache bare insert should use the MultiMap scheme before inference, got {}",
@@ -6749,6 +6752,11 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
         empty_scheme_chirho.to_string().contains("MultiMap"),
         "FdCache bare empty should use the MultiMap scheme before inference, got {}",
         empty_scheme_chirho
+    );
+    assert!(
+        qualified_lookup_scheme_chirho.to_string().contains("MultiMap"),
+        "FdCache qualified MM.lookup should use the MultiMap scheme before inference, got {}",
+        qualified_lookup_scheme_chirho
     );
 }
 
