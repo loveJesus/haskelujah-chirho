@@ -170,6 +170,49 @@ insertChirho tvChirho (aChirho:asChirho) (fvsChirho:fvssChirho)
 }
 
 #[test]
+fn frontend_recursive_class_method_list_instance_uses_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"module RecursiveFreeVariablesMiniChirho where
+class TypeSubstitutionChirho aChirho where
+  freeVariablesChirho :: aChirho -> [Int]
+
+instance TypeSubstitutionChirho aChirho => TypeSubstitutionChirho [aChirho] where
+  freeVariablesChirho = concatMap freeVariablesChirho
+
+data TypeChirho
+  = VarTChirho Int
+  | AppTChirho TypeChirho TypeChirho
+
+instance TypeSubstitutionChirho TypeChirho where
+  freeVariablesChirho typeChirho =
+    case typeChirho of
+      VarTChirho varChirho -> [varChirho]
+      AppTChirho leftChirho rightChirho ->
+        freeVariablesChirho leftChirho ++ freeVariablesChirho rightChirho
+
+freeVariablesFromListChirho :: [TypeChirho] -> [Int]
+freeVariablesFromListChirho tysChirho = freeVariablesChirho tysChirho
+
+unify'Chirho :: TypeChirho -> TypeChirho -> Bool
+unify'Chirho (VarTChirho nameChirho) typeChirho =
+  nameChirho `elem` freeVariablesChirho typeChirho
+unify'Chirho typeChirho (VarTChirho nameChirho) =
+  nameChirho `elem` freeVariablesChirho typeChirho
+unify'Chirho _ _ = False
+"#,
+        &mut source_map_chirho,
+        "RecursiveFreeVariablesMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "recursive class methods with list instances should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_symbolic_infix_fun_bind_with_var_operands_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
