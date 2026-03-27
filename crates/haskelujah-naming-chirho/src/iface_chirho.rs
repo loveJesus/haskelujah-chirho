@@ -4214,10 +4214,12 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             ],
         );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        modules_chirho.push(ModuleIfaceChirho {
-            name_chirho: "Control.Exception".to_string(),
-            exports_chirho,
-        });
+        for mod_name_chirho in &["Control.Exception", "Control.Exception.Base"] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
     }
 
     // Data.ByteString.Internal
@@ -12262,6 +12264,44 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             name_chirho: "Network.HTTP.Date".to_string(),
             exports_chirho,
         });
+    }
+
+    // System.Console.ANSI.Types (ansi-terminal-types — needed by ansi-terminal)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["setSGRCode", "csi", "sgrToCode", "colorToCode"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for (type_name_chirho, ctors_chirho) in &[
+            ("SGR", vec![
+                "Reset", "SetConsoleIntensity", "SetItalicized",
+                "SetUnderlining", "SetBlinkSpeed", "SetVisible",
+                "SetSwapForegroundBackground", "SetColor", "SetRGBColor",
+                "SetPaletteColor", "SetDefaultColor",
+            ]),
+            ("Color", vec![
+                "Black", "Red", "Green", "Yellow",
+                "Blue", "Magenta", "Cyan", "White",
+            ]),
+            ("ColorIntensity", vec!["Dull", "Vivid"]),
+            ("ConsoleLayer", vec!["Foreground", "Background"]),
+            ("ConsoleIntensity", vec!["BoldIntensity", "FaintIntensity", "NormalIntensity"]),
+            ("BlinkSpeed", vec!["SlowBlink", "RapidBlink", "NoBlink"]),
+            ("Underlining", vec!["SingleUnderline", "DoubleUnderline", "NoUnderline"]),
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(type_name_chirho, ctors_chirho);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for mod_name_chirho in &[
+            "System.Console.ANSI.Types",
+            "System.Console.ANSI.Codes",
+        ] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
     }
 
     // Control.Monad.Trans.Resource (resourcet)
