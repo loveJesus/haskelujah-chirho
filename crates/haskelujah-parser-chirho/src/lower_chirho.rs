@@ -3244,19 +3244,151 @@ impl LowerCtxChirho {
                     rhs_chirho: ta_rhs_chirho,
                     span_chirho: ta_span_chirho,
                 } => {
+                    fn collect_type_var_names_from_ast_type_chirho(
+                        ty_chirho: &TypeChirho,
+                        out_chirho: &mut Vec<String>,
+                    ) {
+                        match ty_chirho {
+                            TypeChirho::VarChirho(name_chirho) => {
+                                let name_text_chirho = name_chirho.text_chirho().to_string();
+                                if !out_chirho.contains(&name_text_chirho) {
+                                    out_chirho.push(name_text_chirho);
+                                }
+                            }
+                            TypeChirho::AppChirho {
+                                fun_chirho,
+                                arg_chirho,
+                                ..
+                            } => {
+                                collect_type_var_names_from_ast_type_chirho(fun_chirho, out_chirho);
+                                collect_type_var_names_from_ast_type_chirho(arg_chirho, out_chirho);
+                            }
+                            TypeChirho::FunChirho {
+                                arg_chirho,
+                                result_chirho,
+                                ..
+                            } => {
+                                collect_type_var_names_from_ast_type_chirho(arg_chirho, out_chirho);
+                                collect_type_var_names_from_ast_type_chirho(
+                                    result_chirho,
+                                    out_chirho,
+                                );
+                            }
+                            TypeChirho::TupleChirho {
+                                elements_chirho, ..
+                            }
+                            | TypeChirho::PromotedListChirho {
+                                elements_chirho, ..
+                            } => {
+                                for elem_chirho in elements_chirho {
+                                    collect_type_var_names_from_ast_type_chirho(
+                                        elem_chirho,
+                                        out_chirho,
+                                    );
+                                }
+                            }
+                            TypeChirho::ListChirho { element_chirho, .. }
+                            | TypeChirho::ParenChirho {
+                                inner_chirho: element_chirho,
+                                ..
+                            } => {
+                                collect_type_var_names_from_ast_type_chirho(
+                                    element_chirho,
+                                    out_chirho,
+                                );
+                            }
+                            TypeChirho::QualChirho {
+                                context_chirho,
+                                body_chirho,
+                                ..
+                            } => {
+                                for constraint_chirho in context_chirho {
+                                    collect_type_var_names_from_constraint_chirho(
+                                        constraint_chirho,
+                                        out_chirho,
+                                    );
+                                }
+                                collect_type_var_names_from_ast_type_chirho(
+                                    body_chirho,
+                                    out_chirho,
+                                );
+                            }
+                            TypeChirho::ForallChirho { body_chirho, .. } => {
+                                collect_type_var_names_from_ast_type_chirho(
+                                    body_chirho,
+                                    out_chirho,
+                                );
+                            }
+                            TypeChirho::ConChirho(_)
+                            | TypeChirho::PromotedConChirho { .. }
+                            | TypeChirho::WildcardChirho { .. }
+                            | TypeChirho::LitChirho { .. } => {}
+                        }
+                    }
+
+                    fn collect_type_var_names_from_constraint_chirho(
+                        constraint_chirho: &ConstraintChirho,
+                        out_chirho: &mut Vec<String>,
+                    ) {
+                        match constraint_chirho {
+                            ConstraintChirho::ClassChirho { args_chirho, .. } => {
+                                for arg_chirho in args_chirho {
+                                    collect_type_var_names_from_ast_type_chirho(
+                                        arg_chirho, out_chirho,
+                                    );
+                                }
+                            }
+                            ConstraintChirho::QuantifiedChirho {
+                                context_chirho,
+                                body_chirho,
+                                ..
+                            } => {
+                                for inner_constraint_chirho in context_chirho {
+                                    collect_type_var_names_from_constraint_chirho(
+                                        inner_constraint_chirho,
+                                        out_chirho,
+                                    );
+                                }
+                                collect_type_var_names_from_constraint_chirho(
+                                    body_chirho,
+                                    out_chirho,
+                                );
+                            }
+                        }
+                    }
+
                     // In instance bodies, associated type family equations like
                     // `type Rep Proxy = ()` are temporarily lowered through the
                     // type-alias path. Concrete heads such as `Proxy` are not
-                    // alias type variables, so preserve the enclosing instance
-                    // head when no alias variables were captured.
-                    let lhs_tys_chirho: Vec<TypeChirho> = if ta_tvs_chirho.is_empty() {
-                        instance_type_chirho.clone()
+                    // alias type variables. When the alias lowering captured
+                    // only the free variables from a concrete head like
+                    // `Product f g`, keep the enclosing instance head and only
+                    // append any truly extra associated-family parameters.
+                    let mut instance_head_var_names_chirho = Vec::new();
+                    for instance_head_ty_chirho in &instance_type_chirho {
+                        collect_type_var_names_from_ast_type_chirho(
+                            instance_head_ty_chirho,
+                            &mut instance_head_var_names_chirho,
+                        );
+                    }
+                    let mut lhs_tys_chirho: Vec<TypeChirho> = if instance_type_chirho.is_empty() {
+                        Vec::new()
                     } else {
-                        ta_tvs_chirho
+                        instance_type_chirho.clone()
+                    };
+                    for tv_chirho in &ta_tvs_chirho {
+                        let tv_name_text_chirho = tv_chirho.name_chirho.text_chirho().to_string();
+                        if !instance_head_var_names_chirho.contains(&tv_name_text_chirho) {
+                            lhs_tys_chirho
+                                .push(TypeChirho::VarChirho(tv_chirho.name_chirho.clone()));
+                        }
+                    }
+                    if lhs_tys_chirho.is_empty() {
+                        lhs_tys_chirho = ta_tvs_chirho
                             .iter()
                             .map(|tv_chirho| TypeChirho::VarChirho(tv_chirho.name_chirho.clone()))
-                            .collect()
-                    };
+                            .collect();
+                    }
                     assoc_tf_insts_chirho.push(
                         haskelujah_ast_chirho::decl_chirho::AssocTfInstanceChirho {
                             family_name_chirho: ta_name_chirho,
@@ -8805,11 +8937,175 @@ mod tests_chirho {
     use super::*;
     use crate::cst_parser_chirho::ParserChirho;
 
+    const CONTRAVARIANT_REP_SOURCE_CHIRHO: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../.haskelujah-packages-chirho/adjunctions-4.4.4/src/Data/Functor/Contravariant/Rep.hs"
+    ));
+
     fn parse_and_lower_chirho(source_chirho: &str) -> ModuleChirho {
         let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
         let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
         let green_chirho = parser_chirho.parse_chirho();
         lower_module_chirho(&green_chirho, file_id_chirho)
+    }
+
+    fn type_shape_chirho(ty_chirho: &TypeChirho) -> String {
+        match ty_chirho {
+            TypeChirho::VarChirho(name_chirho) | TypeChirho::ConChirho(name_chirho) => {
+                name_chirho.text_chirho().to_string()
+            }
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => format!(
+                "({} {})",
+                type_shape_chirho(fun_chirho),
+                type_shape_chirho(arg_chirho)
+            ),
+            TypeChirho::FunChirho {
+                arg_chirho,
+                result_chirho,
+                ..
+            } => format!(
+                "({} -> {})",
+                type_shape_chirho(arg_chirho),
+                type_shape_chirho(result_chirho)
+            ),
+            TypeChirho::TupleChirho {
+                elements_chirho, ..
+            } => format!(
+                "({})",
+                elements_chirho
+                    .iter()
+                    .map(type_shape_chirho)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            TypeChirho::ListChirho { element_chirho, .. } => {
+                format!("[{}]", type_shape_chirho(element_chirho))
+            }
+            TypeChirho::ParenChirho { inner_chirho, .. } => type_shape_chirho(inner_chirho),
+            TypeChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+                ..
+            } => format!(
+                "({}) => {}",
+                context_chirho
+                    .iter()
+                    .map(constraint_shape_chirho)
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                type_shape_chirho(body_chirho)
+            ),
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => format!(
+                "forall {}. {}",
+                vars_chirho
+                    .iter()
+                    .map(|var_chirho| var_chirho.name_chirho.text_chirho().to_string())
+                    .collect::<Vec<_>>()
+                    .join(" "),
+                type_shape_chirho(body_chirho)
+            ),
+            TypeChirho::PromotedConChirho { name_chirho, .. } => {
+                format!("'{}", name_chirho.text_chirho())
+            }
+            TypeChirho::PromotedListChirho {
+                elements_chirho, ..
+            } => format!(
+                "'[{}]",
+                elements_chirho
+                    .iter()
+                    .map(type_shape_chirho)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            TypeChirho::WildcardChirho { .. } => "_".to_string(),
+            TypeChirho::LitChirho { value_chirho, .. } => value_chirho.clone(),
+        }
+    }
+
+    fn constraint_shape_chirho(constraint_chirho: &ConstraintChirho) -> String {
+        match constraint_chirho {
+            ConstraintChirho::ClassChirho {
+                class_chirho,
+                args_chirho,
+                ..
+            } => {
+                if args_chirho.is_empty() {
+                    class_chirho.text_chirho().to_string()
+                } else {
+                    format!(
+                        "{} {}",
+                        class_chirho.text_chirho(),
+                        args_chirho
+                            .iter()
+                            .map(type_shape_chirho)
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    )
+                }
+            }
+            ConstraintChirho::QuantifiedChirho {
+                vars_chirho,
+                context_chirho,
+                body_chirho,
+                ..
+            } => format!(
+                "forall {}. ({}) => {}",
+                vars_chirho
+                    .iter()
+                    .map(|var_chirho| var_chirho.name_chirho.text_chirho().to_string())
+                    .collect::<Vec<_>>()
+                    .join(" "),
+                context_chirho
+                    .iter()
+                    .map(constraint_shape_chirho)
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                constraint_shape_chirho(body_chirho)
+            ),
+        }
+    }
+
+    fn find_class_decl_chirho<'a>(
+        module_chirho: &'a ModuleChirho,
+        class_name_chirho: &str,
+    ) -> &'a DeclChirho {
+        module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::ClassDeclChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == class_name_chirho
+                )
+            })
+            .unwrap_or_else(|| panic!("should lower class declaration for {class_name_chirho}"))
+    }
+
+    fn find_class_method_chirho<'a>(
+        methods_chirho: &'a [ClassMethodChirho],
+        method_name_chirho: &str,
+    ) -> &'a ClassMethodChirho {
+        methods_chirho
+            .iter()
+            .find(|method_chirho| method_chirho.name_chirho.text_chirho() == method_name_chirho)
+            .unwrap_or_else(|| panic!("should lower method declaration for {method_name_chirho}"))
+    }
+
+    fn instance_head_shape_chirho(types_chirho: &[TypeChirho]) -> String {
+        types_chirho
+            .iter()
+            .map(type_shape_chirho)
+            .collect::<Vec<_>>()
+            .join(" | ")
     }
 
     #[test]
@@ -11710,7 +12006,7 @@ class Describable a where
     #[test]
     fn lower_class_method_type_preserves_assoc_family_application_chirho() {
         let module_chirho = parse_and_lower_chirho(
-            "module M where\nclass Representable f where\n  type Rep f\n  tabulate :: (a -> Rep f) -> f a\n",
+            "module M where\nclass Representable f where\n  type Rep f\n  tabulate :: (a -> Rep f) -> f a\n  index :: f a -> a -> Rep f\n",
         );
         let class_decl_chirho = module_chirho
             .decls_chirho
@@ -11718,17 +12014,157 @@ class Describable a where
             .find(|decl_chirho| matches!(decl_chirho, DeclChirho::ClassDeclChirho { .. }))
             .expect("should lower class decl");
         match class_decl_chirho {
-            DeclChirho::ClassDeclChirho { methods_chirho, .. } => {
-                assert_eq!(methods_chirho.len(), 1);
-                let method_ty_chirho = &methods_chirho[0].ty_chirho;
-                let method_ty_debug_chirho = format!("{:?}", method_ty_chirho);
+            DeclChirho::ClassDeclChirho {
+                methods_chirho,
+                associated_tfs_chirho,
+                ..
+            } => {
+                assert_eq!(associated_tfs_chirho.len(), 1);
+                assert_eq!(associated_tfs_chirho[0].name_chirho.text_chirho(), "Rep");
+                assert_eq!(methods_chirho.len(), 2);
+                let tabulate_ty_chirho =
+                    &find_class_method_chirho(methods_chirho, "tabulate").ty_chirho;
+                let index_ty_chirho = &find_class_method_chirho(methods_chirho, "index").ty_chirho;
+                let tabulate_ty_debug_chirho = format!("{:?}", tabulate_ty_chirho);
                 assert!(
-                    method_ty_debug_chirho.contains("Rep") && method_ty_debug_chirho.contains("f"),
+                    tabulate_ty_debug_chirho.contains("Rep")
+                        && tabulate_ty_debug_chirho.contains("f"),
                     "class method type should preserve `Rep f`, got {:?}",
-                    method_ty_chirho
+                    tabulate_ty_chirho
+                );
+                assert_eq!(
+                    type_shape_chirho(tabulate_ty_chirho),
+                    "((a -> (Rep f)) -> (f a))",
+                    "tabulate should lower with a function argument returning Rep f"
+                );
+                assert_eq!(
+                    type_shape_chirho(index_ty_chirho),
+                    "((f a) -> (a -> (Rep f)))",
+                    "index should lower as f a -> a -> Rep f"
                 );
             }
             other_chirho => panic!("expected class decl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_real_contravariant_representable_class_matches_expected_shapes_chirho() {
+        let module_chirho = parse_and_lower_chirho(CONTRAVARIANT_REP_SOURCE_CHIRHO);
+        let class_decl_chirho = find_class_decl_chirho(&module_chirho, "Representable");
+        match class_decl_chirho {
+            DeclChirho::ClassDeclChirho {
+                context_chirho,
+                methods_chirho,
+                associated_tfs_chirho,
+                ..
+            } => {
+                assert_eq!(context_chirho.len(), 1);
+                assert_eq!(associated_tfs_chirho.len(), 1);
+                assert_eq!(associated_tfs_chirho[0].name_chirho.text_chirho(), "Rep");
+                assert_eq!(associated_tfs_chirho[0].type_vars_chirho.len(), 1);
+                assert_eq!(
+                    associated_tfs_chirho[0].type_vars_chirho[0].text_chirho(),
+                    "f"
+                );
+                assert_eq!(methods_chirho.len(), 3);
+
+                let tabulate_ty_chirho =
+                    &find_class_method_chirho(methods_chirho, "tabulate").ty_chirho;
+                let index_ty_chirho = &find_class_method_chirho(methods_chirho, "index").ty_chirho;
+                let contramap_with_rep_ty_chirho =
+                    &find_class_method_chirho(methods_chirho, "contramapWithRep").ty_chirho;
+
+                assert_eq!(
+                    type_shape_chirho(tabulate_ty_chirho),
+                    "((a -> (Rep f)) -> (f a))",
+                    "real tabulate signature should lower identically to the synthetic shape"
+                );
+                assert_eq!(
+                    type_shape_chirho(index_ty_chirho),
+                    "((f a) -> (a -> (Rep f)))",
+                    "real index signature should lower identically to the synthetic shape"
+                );
+                assert_eq!(
+                    type_shape_chirho(contramap_with_rep_ty_chirho),
+                    "((b -> ((Either a) (Rep f))) -> ((f a) -> (f b)))",
+                    "real contramapWithRep signature should preserve Either a (Rep f)"
+                );
+            }
+            other_chirho => panic!("expected class decl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_real_contravariant_representable_instances_preserve_assoc_type_heads_chirho() {
+        let module_chirho = parse_and_lower_chirho(CONTRAVARIANT_REP_SOURCE_CHIRHO);
+        let instance_decls_chirho: Vec<_> = module_chirho
+            .decls_chirho
+            .iter()
+            .filter_map(|decl_chirho| match decl_chirho {
+                DeclChirho::InstanceDeclChirho { .. } => Some(decl_chirho),
+                _ => None,
+            })
+            .collect();
+
+        let proxy_instance_chirho = instance_decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::InstanceDeclChirho { types_chirho, .. }
+                        if instance_head_shape_chirho(types_chirho) == "Proxy"
+                )
+            })
+            .expect("should lower Proxy instance");
+        let product_instance_chirho = instance_decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::InstanceDeclChirho { types_chirho, .. }
+                        if instance_head_shape_chirho(types_chirho) == "((Product f) g)"
+                )
+            })
+            .expect("should lower Product instance");
+
+        match proxy_instance_chirho {
+            DeclChirho::InstanceDeclChirho {
+                assoc_tf_instances_chirho,
+                ..
+            } => {
+                assert_eq!(assoc_tf_instances_chirho.len(), 1);
+                assert_eq!(
+                    type_shape_chirho(&assoc_tf_instances_chirho[0].lhs_types_chirho[0]),
+                    "Proxy",
+                    "Proxy instance should keep the concrete associated type head"
+                );
+                assert_eq!(
+                    type_shape_chirho(&assoc_tf_instances_chirho[0].rhs_chirho),
+                    "()",
+                    "Proxy instance should lower `type Rep Proxy = ()` as unit"
+                );
+            }
+            other_chirho => panic!("expected Proxy instance decl, got {:?}", other_chirho),
+        }
+
+        match product_instance_chirho {
+            DeclChirho::InstanceDeclChirho {
+                assoc_tf_instances_chirho,
+                ..
+            } => {
+                assert_eq!(assoc_tf_instances_chirho.len(), 1);
+                assert_eq!(
+                    type_shape_chirho(&assoc_tf_instances_chirho[0].lhs_types_chirho[0]),
+                    "((Product f) g)",
+                    "Product instance should keep the concrete associated type head"
+                );
+                assert_eq!(
+                    type_shape_chirho(&assoc_tf_instances_chirho[0].rhs_chirho),
+                    "((Rep f), (Rep g))",
+                    "Product instance should lower `type Rep (Product f g) = (Rep f, Rep g)`"
+                );
+            }
+            other_chirho => panic!("expected Product instance decl, got {:?}", other_chirho),
         }
     }
 
