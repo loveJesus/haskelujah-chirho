@@ -254,12 +254,23 @@ impl<'a> SolverChirho<'a> {
             .unwrap_or_default();
 
         // Pick the newest version that satisfies ALL accumulated constraints.
+        // If no version satisfies strict constraints, fall back to allow-newer
+        // behavior (ignore upper bounds) since we typically have only one version.
         let chosen_chirho = versions_chirho
             .iter()
             .find(|meta_chirho| {
                 all_constraints_chirho
                     .iter()
                     .all(|c_chirho| c_chirho.satisfied_by_chirho(&meta_chirho.version_chirho))
+            })
+            .or_else(|| {
+                // Allow-newer fallback: ignore Lt/Le/Caret upper bounds
+                versions_chirho.iter().find(|meta_chirho| {
+                    all_constraints_chirho.iter().all(|c_chirho| {
+                        c_chirho.satisfied_by_chirho(&meta_chirho.version_chirho)
+                            || c_chirho.is_upper_bound_only_chirho()
+                    })
+                })
             })
             .ok_or_else(|| ResolveErrorChirho::NoVersionSatisfiesChirho {
                 package_chirho: name_chirho.to_string(),
