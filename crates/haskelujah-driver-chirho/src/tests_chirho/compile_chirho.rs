@@ -352,6 +352,42 @@ fn multi_module_imported_associated_type_family_reduces_chirho() {
 }
 
 #[test]
+fn frontend_seed_batch_propagates_associated_type_families_between_modules_chirho() {
+    use std::collections::HashMap;
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let module_sources_chirho = vec![
+        (
+            "PrimFamilyProviderChirho".to_string(),
+            "PrimFamilyProviderChirho.hs".to_string(),
+            "{-# LANGUAGE TypeFamilies #-}\n{-# LANGUAGE FlexibleInstances #-}\nmodule PrimFamilyProviderChirho where\nclass PrimMonadChirho mChirho where\n  type PrimStateChirho mChirho\ndata STChirho sChirho aChirho = STChirho aChirho\ndata BoxChirho sChirho aChirho = BoxChirho\nnewArrayChirho :: PrimMonadChirho mChirho => Int -> aChirho -> mChirho (BoxChirho (PrimStateChirho mChirho) aChirho)\nnewArrayChirho = undefined\ninstance PrimMonadChirho (STChirho sChirho) where\n  type PrimStateChirho (STChirho sChirho) = sChirho\n"
+                .to_string(),
+        ),
+        (
+            "PrimFamilyConsumerChirho".to_string(),
+            "PrimFamilyConsumerChirho.hs".to_string(),
+            "module PrimFamilyConsumerChirho where\nimport PrimFamilyProviderChirho\nnewArrayMiniChirho :: Int -> STChirho sChirho (BoxChirho sChirho aChirho)\nnewArrayMiniChirho nChirho = newArrayChirho nChirho undefined\n"
+                .to_string(),
+        ),
+    ];
+
+    let result_chirho = crate::compile_module_sources_with_extra_ifaces_chirho(
+        module_sources_chirho,
+        &mut source_map_chirho,
+        vec![],
+        HashMap::new(),
+        crate::ImportedTypeSynonymsChirho::new(),
+        crate::ImportedTypeFamiliesChirho::new(),
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "frontend seed batch should carry imported associated type family equations forward: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_sum_on_rational_list_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

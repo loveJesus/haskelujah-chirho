@@ -4850,22 +4850,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "text",
-            "textP",
-            "safe",
-            "empty",
-            "append",
-            "firstf",
-            "mul",
-            "mul32",
-            "mul64",
-            "showText",
-            "pack",
+            "text", "textP", "safe", "empty", "append", "firstf", "mul", "mul32", "mul64",
+            "showText", "pack",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for (name_chirho, constructors_chirho) in &[("Text", vec!["Text"]), ("StrictText", vec![])] {
+        for (name_chirho, constructors_chirho) in &[("Text", vec!["Text"]), ("StrictText", vec![])]
+        {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, constructors_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }

@@ -256,6 +256,7 @@ mod tests_chirho {
             vec![],
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
+            std::collections::HashMap::new(),
         );
 
         match compile_result_chirho {

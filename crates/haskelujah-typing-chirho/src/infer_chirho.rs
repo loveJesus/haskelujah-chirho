@@ -16152,11 +16152,12 @@ mod tests_chirho {
             TyChirho::int_chirho(),
         );
 
-        let (_subst_chirho, _inferred_ty_chirho) = ctx_chirho.infer_matches_against_expected_chirho(
-            &[match_arm_chirho],
-            SpanChirho::DUMMY_CHIRHO,
-            &expected_ty_chirho,
-        );
+        let (_subst_chirho, _inferred_ty_chirho) = ctx_chirho
+            .infer_matches_against_expected_chirho(
+                &[match_arm_chirho],
+                SpanChirho::DUMMY_CHIRHO,
+                &expected_ty_chirho,
+            );
 
         assert!(
             !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
