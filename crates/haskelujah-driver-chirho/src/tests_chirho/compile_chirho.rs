@@ -1074,6 +1074,39 @@ main = 0
 }
 
 #[test]
+fn check_source_file_cpp_preprocesses_mixed_case_language_pragma_chirho() {
+    use std::fs;
+
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should exist");
+    let file_path_chirho = temp_dir_chirho.path().join("CppMixedCaseMain.hs");
+    fs::write(
+        &file_path_chirho,
+        "\
+{-# Language CPP #-}
+module CppMixedCaseMain where
+#if __GLASGOW_HASKELL__ >= 810
+mainChirho = 42
+#else
+mainChirho = (
+#endif
+",
+    )
+    .expect("mixed-case CPP test source should be written");
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_path_with_map_chirho(
+        &mut source_map_chirho,
+        &file_path_chirho,
+    )
+    .expect("source file should load");
+
+    let summary_chirho =
+        check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho)
+            .expect("mixed-case Language CPP pragma should still preprocess");
+    assert_eq!(summary_chirho.module_name_chirho, "CppMixedCaseMain");
+}
+
+#[test]
 fn check_source_path_cpp_finds_package_include_headers_chirho() {
     use std::fs;
 

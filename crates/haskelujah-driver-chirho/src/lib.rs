@@ -491,14 +491,20 @@ fn cpp_include_dirs_chirho(path_chirho: &Path) -> Vec<PathBuf> {
 }
 
 fn source_uses_cpp_chirho(source_chirho: &str) -> bool {
-    source_chirho.lines().take(64).any(|line_chirho| {
-        (line_chirho.contains("{-#")
-            && line_chirho.contains("LANGUAGE")
-            && line_chirho.contains("CPP"))
-            || (line_chirho.contains("{-#")
-                && line_chirho.contains("OPTIONS_GHC")
-                && line_chirho.contains("-cpp"))
-    })
+    source_chirho
+        .lines()
+        .take(64)
+        .any(line_uses_cpp_pragma_chirho)
+}
+
+fn line_uses_cpp_pragma_chirho(line_chirho: &str) -> bool {
+    let folded_line_chirho = line_chirho.to_ascii_uppercase();
+    (folded_line_chirho.contains("{-#")
+        && folded_line_chirho.contains("LANGUAGE")
+        && folded_line_chirho.contains("CPP"))
+        || (folded_line_chirho.contains("{-#")
+            && folded_line_chirho.contains("OPTIONS_GHC")
+            && folded_line_chirho.contains("-CPP"))
 }
 
 fn path_is_hsc_chirho(path_chirho: &Path) -> bool {
@@ -521,6 +527,12 @@ fn configure_cpp_command_chirho(path_chirho: &Path, traditional_chirho: bool) ->
         .arg("-DWORD_SIZE_IN_BITS=64")
         // base 4.14.0 (GHC 8.10): MIN_VERSION_base(4,14,0)=1, MIN_VERSION_base(4,15,0)=0
         .arg("-DMIN_VERSION_base(x,y,z)=((x)<4||((x)==4&&((y)<14||((y)==14&&(z)<=0))))")
+        // template-haskell 2.16.0.0 ships with GHC 8.10, so TH version guards
+        // like th-abstraction's TyVarBndr compatibility layer choose one branch
+        // instead of failing CPP and leaving both branches in the lowered source.
+        .arg(
+            "-DMIN_VERSION_template_haskell(x,y,z)=((x)<2||((x)==2&&((y)<16||((y)==16&&(z)<=0))))",
+        )
         .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
         .arg("-DMIN_VERSION_array(x,y,z)=1")
         .arg("-DMIN_VERSION_random(x,y,z)=1")
@@ -1960,15 +1972,7 @@ pub fn frontend_warnings_chirho(
 /// Shells out to the system C preprocessor, defining `__GLASGOW_HASKELL__`
 /// for compatibility with packages that conditionally compile for GHC versions.
 pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
-    // Check if CPP extension is enabled
-    let has_cpp_chirho = source_chirho.lines().take(20).any(|line_chirho| {
-        let trimmed_chirho = line_chirho.trim();
-        trimmed_chirho.contains("LANGUAGE")
-            && trimmed_chirho.contains("CPP")
-            && trimmed_chirho.starts_with("{-#")
-    });
-
-    if !has_cpp_chirho {
+    if !source_uses_cpp_chirho(source_chirho) {
         return lower_maybe_like_unboxed_sums_chirho(source_chirho);
     }
 
