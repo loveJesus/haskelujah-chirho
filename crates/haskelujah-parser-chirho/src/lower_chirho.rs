@@ -9276,7 +9276,10 @@ mod tests_chirho {
             .unwrap_or_else(|| panic!("should lower method declaration for {method_name_chirho}"))
     }
 
-    fn find_fun_decl_chirho<'a>(module_chirho: &'a ModuleChirho, fun_name_chirho: &str) -> &'a DeclChirho {
+    fn find_fun_decl_chirho<'a>(
+        module_chirho: &'a ModuleChirho,
+        fun_name_chirho: &str,
+    ) -> &'a DeclChirho {
         let decl_summaries_chirho = module_chirho
             .decls_chirho
             .iter()
@@ -9417,7 +9420,10 @@ mod tests_chirho {
     ) {
         match expr_chirho {
             ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho().is_empty() => {
-                paths_chirho.push(format!("{path_prefix_chirho}@{:?}", expr_chirho.span_chirho()));
+                paths_chirho.push(format!(
+                    "{path_prefix_chirho}@{:?}",
+                    expr_chirho.span_chirho()
+                ));
             }
             ExprChirho::VarChirho(_) | ExprChirho::ConChirho(_) | ExprChirho::LitChirho(_) => {}
             ExprChirho::AppChirho {
@@ -9545,7 +9551,9 @@ mod tests_chirho {
                     {
                         collect_placeholder_expr_paths_in_local_bind_chirho(
                             bind_chirho,
-                            &format!("{path_prefix_chirho}.alt[{alt_idx_chirho}].where[{bind_idx_chirho}]"),
+                            &format!(
+                                "{path_prefix_chirho}.alt[{alt_idx_chirho}].where[{bind_idx_chirho}]"
+                            ),
                             paths_chirho,
                         );
                     }
@@ -9569,11 +9577,12 @@ mod tests_chirho {
                             );
                         }
                         StmtChirho::LetChirho { binds_chirho, .. } => {
-                            for (bind_idx_chirho, bind_chirho) in binds_chirho.iter().enumerate()
-                            {
+                            for (bind_idx_chirho, bind_chirho) in binds_chirho.iter().enumerate() {
                                 collect_placeholder_expr_paths_in_local_bind_chirho(
                                     bind_chirho,
-                                    &format!("{path_prefix_chirho}.stmt[{stmt_idx_chirho}].let[{bind_idx_chirho}]"),
+                                    &format!(
+                                        "{path_prefix_chirho}.stmt[{stmt_idx_chirho}].let[{bind_idx_chirho}]"
+                                    ),
                                     paths_chirho,
                                 );
                             }
@@ -9648,11 +9657,12 @@ mod tests_chirho {
                             );
                         }
                         StmtChirho::LetChirho { binds_chirho, .. } => {
-                            for (bind_idx_chirho, bind_chirho) in binds_chirho.iter().enumerate()
-                            {
+                            for (bind_idx_chirho, bind_chirho) in binds_chirho.iter().enumerate() {
                                 collect_placeholder_expr_paths_in_local_bind_chirho(
                                     bind_chirho,
-                                    &format!("{path_prefix_chirho}.qual[{qual_idx_chirho}].let[{bind_idx_chirho}]"),
+                                    &format!(
+                                        "{path_prefix_chirho}.qual[{qual_idx_chirho}].let[{bind_idx_chirho}]"
+                                    ),
                                     paths_chirho,
                                 );
                             }
@@ -13508,7 +13518,10 @@ class Describable a where
         };
         let case_expr_chirho = match rhs_expr_chirho {
             ExprChirho::IfChirho { then_chirho, .. } => then_chirho.as_ref(),
-            other_chirho => panic!("expected top-level if from mixed guards, got {:?}", other_chirho),
+            other_chirho => panic!(
+                "expected top-level if from mixed guards, got {:?}",
+                other_chirho
+            ),
         };
         let scrutinee_chirho = match case_expr_chirho {
             ExprChirho::CaseChirho {

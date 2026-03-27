@@ -1540,8 +1540,9 @@ fn frontend_preprocessed_th_abstraction_datatype_retains_remaining_funbinds_chir
         .nth(2)
         .expect("repo root should exist")
         .to_path_buf();
-    let path_chirho = repo_root_chirho
-        .join(".haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs");
+    let path_chirho = repo_root_chirho.join(
+        ".haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs",
+    );
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("Datatype.hs should preprocess");
     let mut source_map_chirho = SourceMapChirho::new_chirho();
@@ -1615,7 +1616,8 @@ fn frontend_preprocessed_th_abstraction_datatype_retains_remaining_funbinds_chir
 }
 
 #[test]
-fn frontend_preprocessed_th_abstraction_datatype_remaining_sites_have_no_placeholder_exprs_chirho() {
+fn frontend_preprocessed_th_abstraction_datatype_remaining_sites_have_no_placeholder_exprs_chirho()
+{
     use haskelujah_ast_chirho::decl_chirho::DeclChirho;
     use haskelujah_parser_chirho::{
         cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
@@ -1626,8 +1628,9 @@ fn frontend_preprocessed_th_abstraction_datatype_remaining_sites_have_no_placeho
         .nth(2)
         .expect("repo root should exist")
         .to_path_buf();
-    let path_chirho = repo_root_chirho
-        .join(".haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs");
+    let path_chirho = repo_root_chirho.join(
+        ".haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs",
+    );
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("Datatype.hs should preprocess");
     let mut source_map_chirho = SourceMapChirho::new_chirho();

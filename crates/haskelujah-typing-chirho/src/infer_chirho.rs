@@ -7416,10 +7416,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         };
         env_chirho.bind_chirho("sizeOf".to_string(), size_of_scheme_chirho.clone());
-        env_chirho.bind_chirho(
-            "Foreign.Storable.sizeOf".to_string(),
-            size_of_scheme_chirho,
-        );
+        env_chirho.bind_chirho("Foreign.Storable.sizeOf".to_string(), size_of_scheme_chirho);
 
         let alignment_scheme_chirho = SchemeChirho {
             vars_chirho: vec![storable_a_chirho],
@@ -7450,7 +7447,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             vars_chirho: vec![storable_a_chirho],
             preds_chirho: vec![storable_pred_chirho],
             ty_chirho: TyChirho::fun_n_chirho(
-                vec![storable_ptr_ty_chirho, TyChirho::VarChirho(storable_a_chirho)],
+                vec![
+                    storable_ptr_ty_chirho,
+                    TyChirho::VarChirho(storable_a_chirho),
+                ],
                 TyChirho::io_chirho(TyChirho::unit_chirho()),
             ),
         };
@@ -7757,10 +7757,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         ),
     };
     env_chirho.bind_chirho("liftM4".to_string(), liftm4_scheme_chirho.clone());
-    env_chirho.bind_chirho(
-        "Control.Monad.liftM4".to_string(),
-        liftm4_scheme_chirho,
-    );
+    env_chirho.bind_chirho("Control.Monad.liftM4".to_string(), liftm4_scheme_chirho);
 
     let liftm5_m_chirho = TyVarChirho(1706);
     let liftm5_a_chirho = TyVarChirho(1707);
@@ -7830,10 +7827,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         ),
     };
     env_chirho.bind_chirho("liftM5".to_string(), liftm5_scheme_chirho.clone());
-    env_chirho.bind_chirho(
-        "Control.Monad.liftM5".to_string(),
-        liftm5_scheme_chirho,
-    );
+    env_chirho.bind_chirho("Control.Monad.liftM5".to_string(), liftm5_scheme_chirho);
 
     let zipwithm_m_chirho = TyVarChirho(1713);
     let zipwithm_a_chirho = TyVarChirho(1714);
@@ -7875,10 +7869,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         ),
     };
     env_chirho.bind_chirho("zipWithM".to_string(), zipwithm_scheme_chirho.clone());
-    env_chirho.bind_chirho(
-        "Control.Monad.zipWithM".to_string(),
-        zipwithm_scheme_chirho,
-    );
+    env_chirho.bind_chirho("Control.Monad.zipWithM".to_string(), zipwithm_scheme_chirho);
 
     let zipwithm_unit_scheme_chirho = SchemeChirho {
         vars_chirho: vec![

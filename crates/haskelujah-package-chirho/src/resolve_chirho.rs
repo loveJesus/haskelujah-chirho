@@ -164,6 +164,7 @@ impl std::error::Error for ResolveErrorChirho {}
 /// Internal solver state.
 struct SolverChirho<'a> {
     index_chirho: &'a PackageIndexChirho,
+    builtin_chirho: &'a BTreeSet<String>,
     /// Currently selected versions (package → version).
     selected_chirho: HashMap<String, VersionChirho>,
     /// Accumulated constraints per package from all dependents.
@@ -177,9 +178,13 @@ struct SolverChirho<'a> {
 }
 
 impl<'a> SolverChirho<'a> {
-    fn new_chirho(index_chirho: &'a PackageIndexChirho) -> Self {
+    fn new_chirho(
+        index_chirho: &'a PackageIndexChirho,
+        builtin_chirho: &'a BTreeSet<String>,
+    ) -> Self {
         Self {
             index_chirho,
+            builtin_chirho,
             selected_chirho: HashMap::new(),
             constraints_chirho: HashMap::new(),
             dep_edges_chirho: HashMap::new(),
@@ -195,6 +200,10 @@ impl<'a> SolverChirho<'a> {
         parent_chirho: &str,
         constraint_chirho: &VersionConstraintChirho,
     ) -> Result<(), ResolveErrorChirho> {
+        if self.builtin_chirho.contains(name_chirho) {
+            return Ok(());
+        }
+
         // Record constraint.
         self.constraints_chirho
             .entry(name_chirho.to_string())
@@ -343,7 +352,7 @@ pub fn resolve_deps_chirho(
     index_chirho: &PackageIndexChirho,
     builtin_chirho: &BTreeSet<String>,
 ) -> Result<BuildPlanChirho, ResolveErrorChirho> {
-    let mut solver_chirho = SolverChirho::new_chirho(index_chirho);
+    let mut solver_chirho = SolverChirho::new_chirho(index_chirho, builtin_chirho);
 
     for dep_chirho in root_deps_chirho {
         // Skip builtins — they're provided by the runtime.
@@ -666,6 +675,32 @@ mod tests_chirho {
             resolve_deps_chirho(&deps_chirho, &index_chirho, &builtins_chirho).unwrap();
         assert_eq!(plan_chirho.steps_chirho.len(), 1);
         assert_eq!(plan_chirho.steps_chirho[0].package_chirho, "text");
+    }
+
+    #[test]
+    fn resolve_skips_transitive_builtins_chirho() {
+        let mut index_chirho = PackageIndexChirho::new_chirho();
+        index_chirho.add_package_chirho(
+            "mtl",
+            v_chirho("2.3.2"),
+            vec![dep_any_chirho("base"), dep_any_chirho("transformers")],
+        );
+        index_chirho.add_package_chirho(
+            "transformers",
+            v_chirho("0.6.3.0"),
+            vec![dep_any_chirho("base")],
+        );
+
+        let mut builtins_chirho = BTreeSet::new();
+        builtins_chirho.insert("base".to_string());
+
+        let plan_chirho =
+            resolve_deps_chirho(&[dep_any_chirho("mtl")], &index_chirho, &builtins_chirho)
+                .expect("transitive builtins should not require index entries");
+
+        assert_eq!(plan_chirho.steps_chirho.len(), 2);
+        assert_eq!(plan_chirho.steps_chirho[0].package_chirho, "transformers");
+        assert_eq!(plan_chirho.steps_chirho[1].package_chirho, "mtl");
     }
 
     // -----------------------------------------------------------------------
