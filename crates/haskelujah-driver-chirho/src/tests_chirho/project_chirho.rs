@@ -143,6 +143,35 @@ mod tests_chirho {
     }
 
     #[test]
+    fn extend_imported_type_families_preserves_existing_equations_chirho() {
+        use crate::extend_imported_type_families_chirho;
+
+        let mut target_families_chirho = std::collections::HashMap::from([(
+            "PrimState".to_string(),
+            vec![(
+                vec![TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("ST".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("s".to_string())),
+                )],
+                TyChirho::ForallVarChirho("s".to_string()),
+            )],
+        )]);
+        let source_families_chirho =
+            std::collections::HashMap::from([("PrimState".to_string(), Vec::new())]);
+
+        extend_imported_type_families_chirho(&mut target_families_chirho, source_families_chirho);
+
+        let prim_state_equations_chirho = target_families_chirho
+            .get("PrimState")
+            .expect("PrimState family should remain present after merge");
+        assert_eq!(
+            prim_state_equations_chirho.len(),
+            1,
+            "merging an empty family definition should not erase existing equations"
+        );
+    }
+
+    #[test]
     fn filter_seeded_imported_types_keeps_unique_bare_local_export_names_chirho() {
         let source_chirho = "module DownstreamMultiMapSeedMiniChirho where\nimport LocalMultiMapSeedMiniChirho as MM\nvalueChirho = empty\n";
         let imported_types_chirho = std::collections::HashMap::from([

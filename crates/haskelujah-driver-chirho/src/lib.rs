@@ -74,6 +74,18 @@ fn seed_builtin_type_families_chirho() -> ImportedTypeFamiliesChirho {
     families_chirho
 }
 
+fn extend_imported_type_families_chirho(
+    target_chirho: &mut ImportedTypeFamiliesChirho,
+    source_chirho: ImportedTypeFamiliesChirho,
+) {
+    for (family_name_chirho, equations_chirho) in source_chirho {
+        target_chirho
+            .entry(family_name_chirho)
+            .or_default()
+            .extend(equations_chirho);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackendPlanChirho {
     pub llvm_preview_chirho: String,
@@ -141,7 +153,8 @@ fn merge_stdlib_frontend_artifacts_chirho(
                     .imported_type_synonyms_chirho
                     .clone(),
             );
-            imported_type_families_chirho.extend(
+            extend_imported_type_families_chirho(
+                imported_type_families_chirho,
                 stdlib_artifacts_chirho
                     .imported_type_families_chirho
                     .clone(),
@@ -4267,9 +4280,10 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
     artifacts_chirho
         .imported_type_synonyms_chirho
         .extend(compiled_artifacts_chirho.imported_type_synonyms_chirho);
-    artifacts_chirho
-        .imported_type_families_chirho
-        .extend(compiled_artifacts_chirho.imported_type_families_chirho);
+    extend_imported_type_families_chirho(
+        &mut artifacts_chirho.imported_type_families_chirho,
+        compiled_artifacts_chirho.imported_type_families_chirho,
+    );
 
     active_chirho.remove(package_name_chirho);
     visited_chirho.insert(package_name_chirho.to_string());
