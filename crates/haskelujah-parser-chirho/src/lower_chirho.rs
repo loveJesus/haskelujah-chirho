@@ -9382,6 +9382,45 @@ data TailChirho = TailChirho
     }
 
     #[test]
+    fn lower_qualified_right_section_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module MChirho where\nbuildChirho kChirho = (kChirho SeqChirho.<|)\n",
+        );
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|decl_chirho| {
+            matches!(
+                decl_chirho,
+                DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "buildChirho"
+            )
+        });
+        assert!(
+            decl_chirho.is_some(),
+            "should lower qualified right section"
+        );
+        if let Some(DeclChirho::FunBindChirho { matches_chirho, .. }) = decl_chirho {
+            match &matches_chirho[0].rhs_chirho {
+                RhsChirho::UnguardedChirho(ExprChirho::RightSectionChirho {
+                    arg_chirho,
+                    op_chirho,
+                    ..
+                }) => {
+                    assert_eq!(op_chirho.full_name_chirho(), "SeqChirho.<|");
+                    assert!(
+                        matches!(
+                            arg_chirho.as_ref(),
+                            ExprChirho::VarChirho(name_chirho)
+                                if name_chirho.text_chirho() == "kChirho"
+                        ),
+                        "expected kChirho section argument, got {:?}",
+                        arg_chirho
+                    );
+                }
+                other_chirho => panic!("expected qualified right section, got {:?}", other_chirho),
+            }
+        }
+    }
+
+    #[test]
     fn lower_infix_data_constructor_with_strict_fields_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module Utils.Containers.Internal.StrictPair where\n\
@@ -10182,6 +10221,60 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
             "expected bPrimeChirho where binding to stay a pattern binding with infix constructor, got {:?}",
             matches_chirho[0].where_binds_chirho
         );
+    }
+
+    #[test]
+    fn lower_qualified_infix_constructor_pattern_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module MChirho where\nheadChirho xsChirho = case xsChirho of\n  aChirho SeqChirho.:< bChirho -> aChirho\n",
+        );
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|decl_chirho| {
+            matches!(
+                decl_chirho,
+                DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "headChirho"
+            )
+        });
+        let Some(DeclChirho::FunBindChirho { matches_chirho, .. }) = decl_chirho else {
+            panic!("expected headChirho function binding");
+        };
+        let RhsChirho::UnguardedChirho(ExprChirho::CaseChirho { alts_chirho, .. }) =
+            &matches_chirho[0].rhs_chirho
+        else {
+            panic!("expected case expression rhs");
+        };
+        match &alts_chirho[0].pat_chirho {
+            PatChirho::InfixConChirho {
+                left_chirho,
+                op_chirho,
+                right_chirho,
+                ..
+            } => {
+                assert_eq!(op_chirho.full_name_chirho(), "SeqChirho.:<");
+                assert!(
+                    matches!(
+                        left_chirho.as_ref(),
+                        PatChirho::VarChirho(name_chirho)
+                            if name_chirho.text_chirho() == "aChirho"
+                    ),
+                    "expected left qualified infix pattern binder, got {:?}",
+                    left_chirho
+                );
+                assert!(
+                    matches!(
+                        right_chirho.as_ref(),
+                        PatChirho::VarChirho(name_chirho)
+                            if name_chirho.text_chirho() == "bChirho"
+                    ),
+                    "expected right qualified infix pattern binder, got {:?}",
+                    right_chirho
+                );
+            }
+            other_chirho => panic!(
+                "expected qualified infix constructor pattern, got {:?}",
+                other_chirho
+            ),
+        }
     }
 
     #[test]
