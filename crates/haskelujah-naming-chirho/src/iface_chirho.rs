@@ -6276,6 +6276,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "starK",
             "PlainTV",
             "KindedTV",
+            "plainTV",
+            "kindedTV",
+            "plainTVSpecified",
+            "plainTVInferred",
+            "kindedTVSpecified",
+            "kindedTVInferred",
+            "kindedTVReq",
+            "elimTV",
+            "tvName",
+            "tvKind",
             // Expression constructors
             "litE",
             "varE",
@@ -6460,6 +6470,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "pragLineD",
             "defaultFixity",
             "appKindT",
+            "plainTV",
+            "kindedTV",
+            "plainTVSpecified",
+            "plainTVInferred",
+            "kindedTVSpecified",
+            "kindedTVInferred",
+            "kindedTVReq",
+            "elimTV",
+            "tvName",
+            "tvKind",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
