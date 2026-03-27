@@ -83,29 +83,29 @@ fn frontend_backticked_left_section_infers_function_type_chirho() {
 }
 
 #[test]
-#[ignore] // Known issue: multiline local signatures with comments need parser fix
 fn frontend_multiline_local_signature_with_comments_and_pattern_guards_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
-        "module LocalInsertMiniChirho where\n\
-fChirho xsChirho = goChirho [] [] xsChirho where\n\
-  goChirho accChirho _fvListChirho [] = reverse accChirho\n\
-  goChirho accChirho fvListChirho (tvChirho:tvsChirho)\n\
-    = goChirho accPrimeChirho fvListPrimeChirho tvsChirho\n\
-    where\n\
-      (accPrimeChirho, fvListPrimeChirho) = insertChirho tvChirho accChirho fvListChirho\n\
-\n\
-      insertChirho :: Int       -- value to insert\n\
-                   -> [Int]     -- sorted list, in reverse order\n\
-                   -> [[Int]]   -- list of fvs, as above\n\
-                   -> ([Int], [[Int]]) -- augmented lists\n\
-      insertChirho tvChirho [] [] = ([tvChirho], [[tvChirho]])\n\
-      insertChirho tvChirho (aChirho:asChirho) (fvsChirho:fvssChirho)\n\
-        | tvChirho `elem` fvsChirho\n\
-        , (asPrimeChirho, fvssPrimeChirho) <- insertChirho tvChirho asChirho fvssChirho\n\
-        = (aChirho:asPrimeChirho, fvsChirho : fvssPrimeChirho)\n\
-        | otherwise\n\
-        = (tvChirho:aChirho:asChirho, fvsChirho : fvssChirho)\n",
+        r#"module LocalInsertMiniChirho where
+fChirho xsChirho = goChirho [] [] xsChirho where
+  goChirho accChirho _fvListChirho [] = reverse accChirho
+  goChirho accChirho fvListChirho (tvChirho:tvsChirho)
+    = goChirho accPrimeChirho fvListPrimeChirho tvsChirho
+    where
+      (accPrimeChirho, fvListPrimeChirho) = insertChirho tvChirho accChirho fvListChirho
+
+      insertChirho :: Int       -- value to insert
+                   -> [Int]     -- sorted list, in reverse order
+                   -> [[Int]]   -- list of fvs, as above
+                   -> ([Int], [[Int]]) -- augmented lists
+      insertChirho tvChirho [] [] = ([tvChirho], [[tvChirho]])
+      insertChirho tvChirho (aChirho:asChirho) (fvsChirho:fvssChirho)
+        | tvChirho `elem` fvsChirho
+        , (asPrimeChirho, fvssPrimeChirho) <- insertChirho tvChirho asChirho fvssChirho
+        = (aChirho:asPrimeChirho, fvsChirho : fvssPrimeChirho)
+        | otherwise
+        = (tvChirho:aChirho:asChirho, fvsChirho : fvssChirho)
+"#,
         &mut source_map_chirho,
         "LocalInsertMiniChirho.hs",
     );
@@ -121,15 +121,16 @@ fChirho xsChirho = goChirho [] [] xsChirho where\n\
 fn frontend_backticked_class_method_guard_on_prime_name_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
-        "module GuardFreeVariablesMiniChirho where\n\
-class TypeSubstitutionChirho aChirho where\n\
-  freeVariablesChirho :: aChirho -> [Int]\n\
-instance TypeSubstitutionChirho Int where\n\
-  freeVariablesChirho _ = []\n\
-unify'Chirho :: Int -> Int -> Bool\n\
-unify'Chirho nChirho tChirho\n\
-  | nChirho `elem` freeVariablesChirho tChirho = True\n\
-  | otherwise = False\n",
+        r#"module GuardFreeVariablesMiniChirho where
+class TypeSubstitutionChirho aChirho where
+  freeVariablesChirho :: aChirho -> [Int]
+instance TypeSubstitutionChirho Int where
+  freeVariablesChirho _ = []
+unify'Chirho :: Int -> Int -> Bool
+unify'Chirho nChirho tChirho
+  | nChirho `elem` freeVariablesChirho tChirho = True
+  | otherwise = False
+"#,
         &mut source_map_chirho,
         "GuardFreeVariablesMiniChirho.hs",
     );
@@ -137,6 +138,33 @@ unify'Chirho nChirho tChirho\n\
     assert!(
         result_chirho.is_ok(),
         "backticked class-method guards on prime-suffixed names should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_qualified_backticked_operator_pattern_guard_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"module QualifiedBacktickPatternGuardMiniChirho where
+import qualified Data.List as L
+
+insertChirho :: Int -> [Int] -> [[Int]] -> ([Int], [[Int]])
+insertChirho tvChirho [] [] = ([tvChirho], [[tvChirho]])
+insertChirho tvChirho (aChirho:asChirho) (fvsChirho:fvssChirho)
+  | tvChirho `L.elem` fvsChirho
+  , (asPrimeChirho, fvssPrimeChirho) <- insertChirho tvChirho asChirho fvssChirho
+  = (aChirho:asPrimeChirho, fvsChirho : fvssPrimeChirho)
+  | otherwise
+  = (tvChirho:aChirho:asChirho, fvsChirho : fvssChirho)
+"#,
+        &mut source_map_chirho,
+        "QualifiedBacktickPatternGuardMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified backticked operators in pattern guards should typecheck: {:?}",
         result_chirho.err()
     );
 }

@@ -440,6 +440,13 @@ impl<'src> LayoutRuleChirho<'src> {
                                     | RawTokenKindChirho::ElseChirho
                                     | RawTokenKindChirho::OfChirho
                                     | RawTokenKindChirho::WhereChirho
+                                    | RawTokenKindChirho::EqualsChirho
+                                    | RawTokenKindChirho::ColonColonChirho
+                                    | RawTokenKindChirho::RightArrowChirho
+                                    | RawTokenKindChirho::LinearArrowChirho
+                                    | RawTokenKindChirho::FatArrowChirho
+                                    | RawTokenKindChirho::PipeChirho
+                                    | RawTokenKindChirho::CommaChirho
                             );
                             let previous_token_continues_expr_chirho = matches!(
                                 last_nt_kind_chirho,
@@ -699,6 +706,82 @@ mod tests_chirho {
         assert!(kinds_chirho.contains(&RawTokenKindChirho::WhereChirho));
         assert!(kinds_chirho.contains(&RawTokenKindChirho::VirtualLeftBraceChirho));
         assert!(kinds_chirho.contains(&RawTokenKindChirho::VirtualRightBraceChirho));
+    }
+
+    #[test]
+    fn multiline_local_type_signature_comment_continuations_stay_in_one_decl_chirho() {
+        let source_chirho = r#"module LocalInsertMiniChirho where
+fChirho xsChirho = goChirho [] [] xsChirho where
+  goChirho accChirho _fvListChirho [] = reverse accChirho
+  goChirho accChirho fvListChirho (tvChirho:tvsChirho)
+    = goChirho accPrimeChirho fvListPrimeChirho tvsChirho
+    where
+      (accPrimeChirho, fvListPrimeChirho) = insertChirho tvChirho accChirho fvListChirho
+
+      insertChirho :: Int       -- value to insert
+                   -> [Int]     -- sorted list, in reverse order
+                   -> [[Int]]   -- list of fvs, as above
+                   -> ([Int], [[Int]]) -- augmented lists
+      insertChirho tvChirho [] [] = ([tvChirho], [[tvChirho]])
+"#;
+        let tokens_chirho = layout_tokens_chirho(source_chirho);
+        let colon_idx_chirho = tokens_chirho
+            .iter()
+            .position(|(kind_chirho, text_chirho)| {
+                *kind_chirho == RawTokenKindChirho::ColonColonChirho && text_chirho == "::"
+            })
+            .expect("expected type signature");
+        let first_virtual_semicolon_idx_chirho = tokens_chirho[colon_idx_chirho + 1..]
+            .iter()
+            .position(|(kind_chirho, _)| *kind_chirho == RawTokenKindChirho::VirtualSemicolonChirho)
+            .map(|idx_chirho| idx_chirho + colon_idx_chirho + 1)
+            .expect("expected next declaration separator");
+        let right_arrow_count_chirho = tokens_chirho
+            [colon_idx_chirho + 1..first_virtual_semicolon_idx_chirho]
+            .iter()
+            .filter(|(kind_chirho, _)| *kind_chirho == RawTokenKindChirho::RightArrowChirho)
+            .count();
+
+        assert_eq!(
+            right_arrow_count_chirho, 3,
+            "multiline local type signature should retain all three arrows before the next declaration separator; tokens: {:?}",
+            tokens_chirho
+        );
+    }
+
+    #[test]
+    fn same_line_where_with_indented_body_does_not_open_empty_layout_chirho() {
+        let source_chirho = r#"module LocalInsertMiniChirho where
+fChirho xsChirho = goChirho [] [] xsChirho where
+  goChirho accChirho _fvListChirho [] = reverse accChirho
+  goChirho accChirho fvListChirho (tvChirho:tvsChirho)
+    = goChirho accPrimeChirho fvListPrimeChirho tvsChirho
+    where
+      (accPrimeChirho, fvListPrimeChirho) = insertChirho tvChirho accChirho fvListChirho
+"#;
+        let tokens_chirho = layout_tokens_chirho(source_chirho);
+        let where_indices_chirho: Vec<usize> = tokens_chirho
+            .iter()
+            .enumerate()
+            .filter_map(|(idx_chirho, (kind_chirho, _))| {
+                (*kind_chirho == RawTokenKindChirho::WhereChirho).then_some(idx_chirho)
+            })
+            .collect();
+
+        for where_idx_chirho in where_indices_chirho.into_iter().skip(1) {
+            assert_eq!(
+                tokens_chirho[where_idx_chirho + 1].0,
+                RawTokenKindChirho::VirtualLeftBraceChirho,
+                "same-line where should open an implicit layout block: {:?}",
+                tokens_chirho
+            );
+            assert_ne!(
+                tokens_chirho[where_idx_chirho + 2].0,
+                RawTokenKindChirho::VirtualRightBraceChirho,
+                "same-line where with an indented body should not immediately close its layout block: {:?}",
+                tokens_chirho
+            );
+        }
     }
 
     #[test]
