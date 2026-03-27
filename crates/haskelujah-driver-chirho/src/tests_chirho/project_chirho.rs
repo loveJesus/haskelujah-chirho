@@ -1455,6 +1455,84 @@ data HashMapMarkerChirho = HashMapMarkerChirho\n",
     }
 
     #[test]
+    fn merged_local_dependency_index_uses_library_edges_for_parsers_chain_chirho() {
+        use crate::{
+            collect_package_deps_chirho, merge_local_dependency_package_index_chirho,
+        };
+        use haskelujah_package_chirho::{PackageIndexChirho, parse_cabal_chirho};
+
+        let cabal_path_chirho = workspace_root_chirho()
+            .join(".haskelujah-packages-chirho/parsers-0.12.12/parsers.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let cabal_content_chirho = std::fs::read_to_string(&cabal_path_chirho).unwrap();
+        let package_chirho = parse_cabal_chirho(&cabal_content_chirho);
+        let project_dir_chirho = cabal_path_chirho.parent().unwrap();
+        let root_deps_chirho = collect_package_deps_chirho(&package_chirho);
+        let merged_index_chirho = merge_local_dependency_package_index_chirho(
+            project_dir_chirho,
+            &root_deps_chirho,
+            &PackageIndexChirho::new_chirho(),
+        )
+        .expect("real parsers local dependency index should merge");
+
+        let hashable_deps_chirho = merged_index_chirho
+            .packages_chirho
+            .get("hashable")
+            .and_then(|versions_chirho| versions_chirho.first())
+            .map(|meta_chirho| {
+                meta_chirho
+                    .dependencies_chirho
+                    .iter()
+                    .map(|dep_chirho| dep_chirho.package_chirho.clone())
+                    .collect::<Vec<_>>()
+            })
+            .expect("hashable metadata should be present");
+        let unordered_deps_chirho = merged_index_chirho
+            .packages_chirho
+            .get("unordered-containers")
+            .and_then(|versions_chirho| versions_chirho.first())
+            .map(|meta_chirho| {
+                meta_chirho
+                    .dependencies_chirho
+                    .iter()
+                    .map(|dep_chirho| dep_chirho.package_chirho.clone())
+                    .collect::<Vec<_>>()
+            })
+            .expect("unordered-containers metadata should be present");
+        let scientific_deps_chirho = merged_index_chirho
+            .packages_chirho
+            .get("scientific")
+            .and_then(|versions_chirho| versions_chirho.first())
+            .map(|meta_chirho| {
+                meta_chirho
+                    .dependencies_chirho
+                    .iter()
+                    .map(|dep_chirho| dep_chirho.package_chirho.clone())
+                    .collect::<Vec<_>>()
+            })
+            .expect("scientific metadata should be present");
+
+        assert!(
+            !hashable_deps_chirho.contains(&"unordered-containers".to_string()),
+            "hashable library metadata should not depend on unordered-containers, got {:?}",
+            hashable_deps_chirho
+        );
+        assert!(
+            !unordered_deps_chirho.contains(&"scientific".to_string()),
+            "unordered-containers library metadata should not depend on scientific, got {:?}",
+            unordered_deps_chirho
+        );
+        assert!(
+            !scientific_deps_chirho.contains(&"charset".to_string()),
+            "scientific library metadata should not depend on charset, got {:?}",
+            scientific_deps_chirho
+        );
+    }
+
+    #[test]
     fn compile_project_skips_hidden_dirs_chirho() {
         let tmp_chirho = tempfile::tempdir().unwrap();
         fs::write(
