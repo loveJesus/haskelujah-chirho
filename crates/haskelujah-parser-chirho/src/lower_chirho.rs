@@ -994,17 +994,16 @@ impl LowerCtxChirho {
             .collect()
     }
 
-    /// Lower a `PatBindChirho` CST node into a `LocalBindChirho::PatBindChirho`.
-    /// Structure: pattern = rhs
-    fn lower_pat_bind_local_chirho(
+    fn lower_pat_bind_parts_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
         base_chirho: usize,
         span_chirho: SpanChirho,
-    ) -> LocalBindChirho {
+    ) -> LoweredPatBindPartsChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-        let mut pat_chirho = None;
+        let mut lhs_pats_chirho = Vec::new();
         let mut rhs_expr_chirho = None;
+        let mut guarded_rhs_chirho = None;
         let mut where_binds_chirho = Vec::new();
         let mut past_eq_chirho = false;
 
@@ -1015,16 +1014,17 @@ impl LowerCtxChirho {
                 {
                     past_eq_chirho = true;
                 }
-                GreenElementChirho::NodeChirho(n_chirho) if !past_eq_chirho => {
-                    // Before '=': the pattern
-                    if pat_chirho.is_none() {
-                        pat_chirho =
-                            Some(self.lower_pat_chirho(n_chirho, child_chirho.start_chirho));
-                    }
-                }
-                GreenElementChirho::NodeChirho(n_chirho) if past_eq_chirho => {
-                    // After '=': the RHS expression
-                    if n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho {
+                GreenElementChirho::NodeChirho(n_chirho) => {
+                    if n_chirho.kind_chirho() == SyntaxKindChirho::GuardedRhsChirho {
+                        guarded_rhs_chirho = Some(
+                            self.lower_guarded_rhs_chirho(n_chirho, child_chirho.start_chirho),
+                        );
+                    } else if !past_eq_chirho && guarded_rhs_chirho.is_none() {
+                        if is_pat_kind_chirho(n_chirho.kind_chirho()) {
+                            lhs_pats_chirho
+                                .push(self.lower_pat_chirho(n_chirho, child_chirho.start_chirho));
+                        }
+                    } else if n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho {
                         where_binds_chirho =
                             self.lower_where_clause_chirho(n_chirho, child_chirho.start_chirho);
                     } else if rhs_expr_chirho.is_none()
@@ -1038,24 +1038,79 @@ impl LowerCtxChirho {
             }
         }
 
-        let pat_final_chirho = pat_chirho.unwrap_or(PatChirho::WildcardChirho(span_chirho));
-        let rhs_final_chirho = match rhs_expr_chirho {
-            Some(expr_chirho) => {
-                let expr_chirho = if where_binds_chirho.is_empty() {
+        let had_guarded_rhs_chirho = guarded_rhs_chirho.is_some();
+        LoweredPatBindPartsChirho {
+            lhs_pats_chirho,
+            rhs_chirho: guarded_rhs_chirho.unwrap_or_else(|| {
+                RhsChirho::UnguardedChirho(
+                    rhs_expr_chirho
+                        .unwrap_or(ExprChirho::LitChirho(LitChirho::IntChirho(0, span_chirho))),
+                )
+            }),
+            where_binds_chirho,
+            had_guarded_rhs_chirho,
+        }
+    }
+
+    fn pat_bind_head_name_chirho(pat_chirho: &PatChirho) -> Option<NameChirho> {
+        match pat_chirho {
+            PatChirho::VarChirho(name_chirho) => Some(name_chirho.clone()),
+            PatChirho::ParenChirho { inner_chirho, .. }
+            | PatChirho::LazyChirho { inner_chirho, .. }
+            | PatChirho::BangChirho { inner_chirho, .. } => {
+                Self::pat_bind_head_name_chirho(inner_chirho)
+            }
+            PatChirho::TypeAnnotChirho { pat_chirho, .. } => {
+                Self::pat_bind_head_name_chirho(pat_chirho)
+            }
+            _ => None,
+        }
+    }
+
+    fn lower_pat_bind_parts_to_local_bind_chirho(
+        &self,
+        parts_chirho: LoweredPatBindPartsChirho,
+        span_chirho: SpanChirho,
+    ) -> LocalBindChirho {
+        if let Some(name_chirho) = parts_chirho
+            .lhs_pats_chirho
+            .first()
+            .and_then(Self::pat_bind_head_name_chirho)
+            .filter(|_| {
+                parts_chirho.had_guarded_rhs_chirho || parts_chirho.lhs_pats_chirho.len() > 1
+            })
+        {
+            return LocalBindChirho::FunBindChirho {
+                name_chirho,
+                matches_chirho: vec![MatchArmChirho {
+                    pats_chirho: parts_chirho.lhs_pats_chirho.into_iter().skip(1).collect(),
+                    rhs_chirho: parts_chirho.rhs_chirho,
+                    where_binds_chirho: parts_chirho.where_binds_chirho,
+                    span_chirho,
+                }],
+                span_chirho,
+            };
+        }
+
+        let pat_final_chirho = parts_chirho
+            .lhs_pats_chirho
+            .into_iter()
+            .next()
+            .unwrap_or(PatChirho::WildcardChirho(span_chirho));
+        let rhs_final_chirho = match parts_chirho.rhs_chirho {
+            RhsChirho::UnguardedChirho(expr_chirho) => {
+                let expr_chirho = if parts_chirho.where_binds_chirho.is_empty() {
                     expr_chirho
                 } else {
                     ExprChirho::LetChirho {
-                        binds_chirho: merge_local_fun_binds_chirho(where_binds_chirho),
+                        binds_chirho: merge_local_fun_binds_chirho(parts_chirho.where_binds_chirho),
                         body_chirho: Box::new(expr_chirho),
                         span_chirho,
                     }
                 };
                 RhsChirho::UnguardedChirho(expr_chirho)
             }
-            None => RhsChirho::UnguardedChirho(ExprChirho::LitChirho(LitChirho::IntChirho(
-                0,
-                span_chirho,
-            ))),
+            rhs_chirho => rhs_chirho,
         };
 
         LocalBindChirho::PatBindChirho {
@@ -1063,6 +1118,71 @@ impl LowerCtxChirho {
             rhs_chirho: rhs_final_chirho,
             span_chirho,
         }
+    }
+
+    fn lower_pat_bind_parts_to_decl_chirho(
+        &self,
+        parts_chirho: LoweredPatBindPartsChirho,
+        span_chirho: SpanChirho,
+    ) -> DeclChirho {
+        if let Some(name_chirho) = parts_chirho
+            .lhs_pats_chirho
+            .first()
+            .and_then(Self::pat_bind_head_name_chirho)
+            .filter(|_| {
+                parts_chirho.had_guarded_rhs_chirho || parts_chirho.lhs_pats_chirho.len() > 1
+            })
+        {
+            return DeclChirho::FunBindChirho {
+                name_chirho,
+                matches_chirho: vec![MatchArmChirho {
+                    pats_chirho: parts_chirho.lhs_pats_chirho.into_iter().skip(1).collect(),
+                    rhs_chirho: parts_chirho.rhs_chirho,
+                    where_binds_chirho: parts_chirho.where_binds_chirho,
+                    span_chirho,
+                }],
+                span_chirho,
+            };
+        }
+
+        let pat_final_chirho = parts_chirho
+            .lhs_pats_chirho
+            .into_iter()
+            .next()
+            .unwrap_or(PatChirho::WildcardChirho(span_chirho));
+        let rhs_final_chirho = match parts_chirho.rhs_chirho {
+            RhsChirho::UnguardedChirho(expr_chirho) => {
+                let expr_chirho = if parts_chirho.where_binds_chirho.is_empty() {
+                    expr_chirho
+                } else {
+                    ExprChirho::LetChirho {
+                        binds_chirho: merge_local_fun_binds_chirho(parts_chirho.where_binds_chirho),
+                        body_chirho: Box::new(expr_chirho),
+                        span_chirho,
+                    }
+                };
+                RhsChirho::UnguardedChirho(expr_chirho)
+            }
+            rhs_chirho => rhs_chirho,
+        };
+
+        DeclChirho::PatBindChirho {
+            pat_chirho: pat_final_chirho,
+            rhs_chirho: rhs_final_chirho,
+            span_chirho,
+        }
+    }
+
+    /// Lower a `PatBindChirho` CST node into a `LocalBindChirho::PatBindChirho`.
+    /// Structure: pattern = rhs
+    fn lower_pat_bind_local_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        span_chirho: SpanChirho,
+    ) -> LocalBindChirho {
+        let parts_chirho = self.lower_pat_bind_parts_chirho(node_chirho, base_chirho, span_chirho);
+        self.lower_pat_bind_parts_to_local_bind_chirho(parts_chirho, span_chirho)
     }
 
     /// Lower a top-level `PatBindChirho` CST node into a `DeclChirho::PatBindChirho`.
@@ -1073,65 +1193,8 @@ impl LowerCtxChirho {
         base_chirho: usize,
         span_chirho: SpanChirho,
     ) -> DeclChirho {
-        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-        let mut pat_chirho = None;
-        let mut rhs_expr_chirho = None;
-        let mut where_binds_chirho = Vec::new();
-        let mut past_eq_chirho = false;
-
-        for child_chirho in &children_chirho {
-            match child_chirho.element_chirho {
-                GreenElementChirho::TokenChirho(tok_chirho)
-                    if tok_chirho.kind_chirho() == TokenKindChirho::EqualsChirho =>
-                {
-                    past_eq_chirho = true;
-                }
-                GreenElementChirho::NodeChirho(n_chirho) if !past_eq_chirho => {
-                    if pat_chirho.is_none() {
-                        pat_chirho =
-                            Some(self.lower_pat_chirho(n_chirho, child_chirho.start_chirho));
-                    }
-                }
-                GreenElementChirho::NodeChirho(n_chirho) if past_eq_chirho => {
-                    if n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho {
-                        where_binds_chirho =
-                            self.lower_where_clause_chirho(n_chirho, child_chirho.start_chirho);
-                    } else if rhs_expr_chirho.is_none()
-                        && is_expr_kind_chirho(n_chirho.kind_chirho())
-                    {
-                        rhs_expr_chirho =
-                            Some(self.lower_expr_chirho(n_chirho, child_chirho.start_chirho));
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        let pat_final_chirho = pat_chirho.unwrap_or(PatChirho::WildcardChirho(span_chirho));
-        let rhs_final_chirho = match rhs_expr_chirho {
-            Some(expr_chirho) => {
-                let expr_chirho = if where_binds_chirho.is_empty() {
-                    expr_chirho
-                } else {
-                    ExprChirho::LetChirho {
-                        binds_chirho: merge_local_fun_binds_chirho(where_binds_chirho),
-                        body_chirho: Box::new(expr_chirho),
-                        span_chirho,
-                    }
-                };
-                RhsChirho::UnguardedChirho(expr_chirho)
-            }
-            None => RhsChirho::UnguardedChirho(ExprChirho::LitChirho(LitChirho::IntChirho(
-                0,
-                span_chirho,
-            ))),
-        };
-
-        DeclChirho::PatBindChirho {
-            pat_chirho: pat_final_chirho,
-            rhs_chirho: rhs_final_chirho,
-            span_chirho,
-        }
+        let parts_chirho = self.lower_pat_bind_parts_chirho(node_chirho, base_chirho, span_chirho);
+        self.lower_pat_bind_parts_to_decl_chirho(parts_chirho, span_chirho)
     }
 
     fn lower_fun_bind_chirho(
@@ -1307,14 +1370,12 @@ impl LowerCtxChirho {
                         guarded_rhs_chirho = Some(
                             self.lower_guarded_rhs_chirho(n_chirho, child_chirho.start_chirho),
                         );
+                    } else if n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho {
+                        where_binds_chirho =
+                            self.lower_where_clause_chirho(n_chirho, child_chirho.start_chirho);
                     } else if !saw_equals_chirho && is_pat_kind_chirho(n_chirho.kind_chirho()) {
                         pats_chirho
                             .push(self.lower_pat_chirho(n_chirho, child_chirho.start_chirho));
-                    } else if saw_equals_chirho
-                        && n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho
-                    {
-                        where_binds_chirho =
-                            self.lower_where_clause_chirho(n_chirho, child_chirho.start_chirho);
                     } else if saw_equals_chirho && rhs_expr_chirho.is_none() {
                         rhs_expr_chirho =
                             Some(self.lower_expr_chirho(n_chirho, child_chirho.start_chirho));
@@ -8352,6 +8413,13 @@ struct LoweredGuardArmChirho {
     span_chirho: SpanChirho,
 }
 
+struct LoweredPatBindPartsChirho {
+    lhs_pats_chirho: Vec<PatChirho>,
+    rhs_chirho: RhsChirho,
+    where_binds_chirho: Vec<LocalBindChirho>,
+    had_guarded_rhs_chirho: bool,
+}
+
 struct ChildChirho<'a> {
     element_chirho: &'a GreenElementChirho,
     start_chirho: usize,
@@ -10055,6 +10123,33 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
             &inner_args_chirho[1],
             PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "lo"
         ));
+    }
+
+    #[test]
+    fn lower_guarded_fun_bind_keeps_where_clause_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nsplitFileName_Chirho fpChirho\n  | isWindowsChirho = dirSlashChirho\n  | otherwise = fileChirho\n  where\n    dirSlashChirho = fpChirho\n    fileChirho = fpChirho\n",
+        );
+        let split_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "splitFileName_Chirho"
+                )
+            })
+            .expect("expected splitFileName_Chirho binding");
+        let DeclChirho::FunBindChirho { matches_chirho, .. } = split_decl_chirho else {
+            panic!("expected function binding");
+        };
+        assert_eq!(matches_chirho.len(), 1);
+        assert_eq!(
+            matches_chirho[0].where_binds_chirho.len(),
+            2,
+            "guarded equations should retain trailing where bindings"
+        );
     }
 
     #[test]
@@ -12641,6 +12736,125 @@ class Describable a where
                 other_chirho
             ),
         }
+    }
+
+    #[test]
+    fn lower_where_guarded_fun_bind_preserves_lhs_params_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nsplitFileName_Chirho fpChirho = dirSlashChirho where\n  dropExcessTrailingPathSeparatorsChirho xChirho\n    | hasTrailingPathSeparator xChirho\n    , let xPrimeChirho = dropWhileEnd isPathSeparator xChirho\n    , otherwise = if | null xPrimeChirho -> singleton (last xChirho)\n                     | otherwise -> addTrailingPathSeparator xPrimeChirho\n    | otherwise = xChirho\n  dirSlashChirho = dropExcessTrailingPathSeparatorsChirho fpChirho\n",
+        );
+        let split_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "splitFileName_Chirho"
+                )
+            })
+            .expect("expected splitFileName_Chirho binding");
+        let DeclChirho::FunBindChirho { matches_chirho, .. } = split_decl_chirho else {
+            panic!("expected function binding");
+        };
+        let guarded_local_chirho = matches_chirho[0]
+            .where_binds_chirho
+            .iter()
+            .find(|bind_chirho| {
+                matches!(
+                    bind_chirho,
+                    LocalBindChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho()
+                            == "dropExcessTrailingPathSeparatorsChirho"
+                )
+            })
+            .expect("guarded local binding should lower as FunBindChirho");
+        let LocalBindChirho::FunBindChirho {
+            matches_chirho: local_matches_chirho,
+            ..
+        } = guarded_local_chirho
+        else {
+            panic!("expected guarded local function binding");
+        };
+        assert_eq!(local_matches_chirho.len(), 1);
+        assert_eq!(local_matches_chirho[0].pats_chirho.len(), 1);
+        assert!(
+            matches!(
+                &local_matches_chirho[0].pats_chirho[0],
+                PatChirho::VarChirho(name_chirho)
+                    if name_chirho.text_chirho() == "xChirho"
+            ),
+            "guarded local function should retain lhs parameter, got {:?}",
+            local_matches_chirho[0].pats_chirho
+        );
+        assert!(
+            !matches_chirho[0]
+                .where_binds_chirho
+                .iter()
+                .any(|bind_chirho| {
+                    matches!(
+                        bind_chirho,
+                        LocalBindChirho::PatBindChirho { pat_chirho, .. }
+                            if matches!(
+                                pat_chirho,
+                                PatChirho::VarChirho(name_chirho)
+                                    if name_chirho.text_chirho()
+                                        == "dropExcessTrailingPathSeparatorsChirho"
+                            )
+                    )
+                }),
+            "guarded local function should not degrade to a pattern binding"
+        );
+    }
+
+    #[test]
+    fn lower_guarded_outer_where_local_fun_bind_preserves_lhs_params_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nfChirho pChirho\n  | condChirho = helperChirho pChirho\n  | otherwise = helperChirho pChirho\n  where\n    condChirho = True\n    helperChirho xChirho\n      | True\n      , let xPrimeChirho = xChirho\n      , otherwise = if | True -> xChirho\n                       | otherwise -> xPrimeChirho\n      | otherwise = xChirho\n",
+        );
+        let fun_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "fChirho"
+                )
+            })
+            .expect("expected fChirho binding");
+        let DeclChirho::FunBindChirho { matches_chirho, .. } = fun_decl_chirho else {
+            panic!("expected function binding");
+        };
+        assert_eq!(matches_chirho.len(), 1);
+        let helper_bind_chirho = matches_chirho[0]
+            .where_binds_chirho
+            .iter()
+            .find(|bind_chirho| {
+                matches!(
+                    bind_chirho,
+                    LocalBindChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "helperChirho"
+                )
+            })
+            .expect("expected helperChirho local function binding");
+        let LocalBindChirho::FunBindChirho {
+            matches_chirho: helper_matches_chirho,
+            ..
+        } = helper_bind_chirho
+        else {
+            panic!("expected helperChirho fun bind");
+        };
+        assert_eq!(helper_matches_chirho.len(), 1);
+        assert!(
+            matches!(
+                &helper_matches_chirho[0].pats_chirho[0],
+                PatChirho::VarChirho(name_chirho)
+                    if name_chirho.text_chirho() == "xChirho"
+            ),
+            "helperChirho should retain xChirho as a match parameter, got {:?}",
+            helper_matches_chirho[0].pats_chirho
+        );
     }
 }
 
