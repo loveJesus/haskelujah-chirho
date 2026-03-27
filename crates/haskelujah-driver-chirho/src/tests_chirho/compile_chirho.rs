@@ -6590,6 +6590,169 @@ fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
 }
 
 #[test]
+fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
+    use crate::{
+        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+        collect_frontend_artifacts_from_module_sources_chirho, qualify_imported_scheme_for_iface_chirho,
+        read_haskell_source_file_chirho, scan_dependency_package_ifaces_chirho,
+    };
+    use haskelujah_naming_chirho::iface_chirho::build_iface_with_imports_chirho;
+    use haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho;
+    use haskelujah_parser_chirho::cst_parser_chirho::ParserChirho;
+    use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
+    use std::collections::{HashMap, HashSet};
+    use std::path::PathBuf;
+
+    let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/warp-3.4.12");
+    let multimap_path_chirho =
+        package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
+    let fdcache_path_chirho =
+        package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
+    let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)
+        .expect("warp MultiMap source should exist");
+    let fdcache_source_chirho = read_haskell_source_file_chirho(&fdcache_path_chirho)
+        .expect("warp FdCache source should exist");
+    let extra_ifaces_chirho = scan_dependency_package_ifaces_chirho(&package_dir_chirho);
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+
+    let multimap_artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+        vec![(
+            "Network.Wai.Handler.Warp.MultiMap".to_string(),
+            multimap_path_chirho.display().to_string(),
+            multimap_source_chirho,
+        )],
+        &mut source_map_chirho,
+        extra_ifaces_chirho,
+        HashMap::new(),
+        ImportedTypeSynonymsChirho::new(),
+        ImportedTypeFamiliesChirho::new(),
+        true,
+    )
+    .expect("warp MultiMap frontend artifacts should collect");
+
+    let fdcache_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        &fdcache_path_chirho,
+        &fdcache_source_chirho,
+    );
+    let parser_chirho =
+        ParserChirho::new_chirho(&fdcache_source_chirho, fdcache_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, fdcache_file_chirho.file_id_chirho());
+    let _iface_chirho = build_iface_with_imports_chirho(&module_chirho, &multimap_artifacts_chirho.ifaces_chirho);
+
+    let mut merged_imported_types_chirho = multimap_artifacts_chirho.imported_types_chirho.clone();
+    for (builtin_name_chirho, builtin_scheme_chirho) in
+        haskelujah_typing_chirho::infer_chirho::builtin_value_schemes_chirho()
+    {
+        merged_imported_types_chirho
+            .entry(builtin_name_chirho)
+            .or_insert(builtin_scheme_chirho);
+    }
+
+    for import_chirho in &module_chirho.imports_chirho {
+        let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
+        if module_name_chirho != "Network.Wai.Handler.Warp.MultiMap" {
+            continue;
+        }
+        let Some(import_iface_chirho) = multimap_artifacts_chirho
+            .ifaces_chirho
+            .iter()
+            .rev()
+            .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
+        else {
+            continue;
+        };
+        let qualifiable_type_names_chirho: HashSet<String> = import_iface_chirho
+            .exports_chirho
+            .types_chirho
+            .keys()
+            .cloned()
+            .collect();
+        let unqualified_type_names_chirho: HashSet<String> = module_chirho
+            .imports_chirho
+            .iter()
+            .filter(|candidate_import_chirho| {
+                candidate_import_chirho.module_chirho.full_name_chirho() == module_name_chirho
+                    && !candidate_import_chirho.qualified_chirho
+            })
+            .flat_map(|candidate_import_chirho| {
+                compute_imported_names_chirho(
+                    &import_iface_chirho.exports_chirho,
+                    &candidate_import_chirho.spec_chirho,
+                )
+            })
+            .filter_map(|(name_chirho, namespace_chirho, _span_chirho)| {
+                (namespace_chirho
+                    == haskelujah_naming_chirho::env_chirho::NamespaceChirho::TypeChirho)
+                    .then_some(name_chirho)
+            })
+            .collect();
+        let names_chirho =
+            compute_imported_names_chirho(&import_iface_chirho.exports_chirho, &import_chirho.spec_chirho);
+        let qualifier_chirho = import_chirho
+            .alias_chirho
+            .as_ref()
+            .map(|alias_chirho| alias_chirho.text_chirho().to_string())
+            .unwrap_or_else(|| module_name_chirho.clone());
+        for (name_chirho, namespace_chirho, _span_chirho) in names_chirho {
+            if namespace_chirho
+                != haskelujah_naming_chirho::env_chirho::NamespaceChirho::ValueChirho
+            {
+                continue;
+            }
+            let module_qualified_name_chirho = format!("{module_name_chirho}.{name_chirho}");
+            let base_scheme_chirho = merged_imported_types_chirho
+                .get(&module_qualified_name_chirho)
+                .cloned()
+                .or_else(|| {
+                    if import_chirho.qualified_chirho {
+                        None
+                    } else {
+                        merged_imported_types_chirho.get(&name_chirho).cloned()
+                    }
+                });
+            let Some(base_scheme_chirho) = base_scheme_chirho else {
+                continue;
+            };
+            let in_scope_seed_scheme_chirho = qualify_imported_scheme_for_iface_chirho(
+                &base_scheme_chirho,
+                &qualifiable_type_names_chirho,
+                &qualifier_chirho,
+                &unqualified_type_names_chirho,
+            );
+            if !import_chirho.qualified_chirho {
+                merged_imported_types_chirho
+                    .insert(name_chirho.clone(), in_scope_seed_scheme_chirho.clone());
+            }
+            merged_imported_types_chirho.insert(
+                format!("{qualifier_chirho}.{name_chirho}"),
+                in_scope_seed_scheme_chirho,
+            );
+        }
+    }
+
+    let insert_scheme_chirho = merged_imported_types_chirho
+        .get("insert")
+        .expect("FdCache seeded env should contain bare insert");
+    let empty_scheme_chirho = merged_imported_types_chirho
+        .get("empty")
+        .expect("FdCache seeded env should contain bare empty");
+    assert!(
+        insert_scheme_chirho.to_string().contains("MultiMap"),
+        "FdCache bare insert should use the MultiMap scheme before inference, got {}",
+        insert_scheme_chirho
+    );
+    assert!(
+        empty_scheme_chirho.to_string().contains("MultiMap"),
+        "FdCache bare empty should use the MultiMap scheme before inference, got {}",
+        empty_scheme_chirho
+    );
+}
+
+#[test]
 fn frontend_magic_hash_import_item_before_close_paren_typechecks_chirho() {
     let src_chirho = "module XorHashReproChirho where\nimport GHC.Exts (Word(..), xor#)\nfooChirho :: Word -> Word -> Word\nfooChirho (W# xChirho) (W# yChirho) = W# (xor# xChirho yChirho)\n";
 
