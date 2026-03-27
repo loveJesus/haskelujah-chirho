@@ -1262,6 +1262,96 @@ treeWordSizeChirho = wordSize\n",
     }
 
     #[test]
+    fn compile_cabal_project_resolves_transitive_local_dependency_index_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let packages_root_chirho = tmp_chirho.path().join(".haskelujah-packages-chirho");
+        let project_dir_chirho = tmp_chirho.path().join("local-root-chirho");
+        let project_src_dir_chirho = project_dir_chirho.join("src");
+        let transformers_dir_chirho = packages_root_chirho.join("transformers-0.6.3.0");
+        let transformers_src_dir_chirho = transformers_dir_chirho.join("src/Control/Monad/Trans");
+        let mtl_dir_chirho = packages_root_chirho.join("mtl-2.3.2");
+        let mtl_src_dir_chirho = mtl_dir_chirho.join("src/Control/Monad/State");
+
+        fs::create_dir_all(&project_src_dir_chirho).unwrap();
+        fs::create_dir_all(&transformers_src_dir_chirho).unwrap();
+        fs::create_dir_all(&mtl_src_dir_chirho).unwrap();
+
+        fs::write(
+            project_dir_chirho.join("local-root-chirho.cabal"),
+            "name: local-root-chirho\n\
+version: 0.1.0.0\n\
+library\n\
+  exposed-modules: LibChirho\n\
+  hs-source-dirs: src\n\
+  build-depends: base, mtl >= 2.3\n",
+        )
+        .unwrap();
+        fs::write(
+            project_src_dir_chirho.join("LibChirho.hs"),
+            "module LibChirho where\n\
+import Control.Monad.State.Class\n\
+valueChirho :: StateMarkerChirho Int -> Int\n\
+valueChirho _ = 1\n",
+        )
+        .unwrap();
+
+        fs::write(
+            transformers_dir_chirho.join("transformers.cabal"),
+            "name: transformers\n\
+version: 0.6.3.0\n\
+library\n\
+  exposed-modules: Control.Monad.Trans.Class\n\
+  hs-source-dirs: src\n\
+  build-depends: base\n",
+        )
+        .unwrap();
+        fs::write(
+            transformers_src_dir_chirho.join("Class.hs"),
+            "module Control.Monad.Trans.Class where\n\
+newtype TransIdentityChirho aChirho = TransIdentityChirho aChirho\n",
+        )
+        .unwrap();
+
+        fs::write(
+            mtl_dir_chirho.join("mtl.cabal"),
+            "name: mtl\n\
+version: 2.3.2\n\
+library\n\
+  exposed-modules: Control.Monad.State.Class\n\
+  hs-source-dirs: src\n\
+  build-depends: base, transformers >= 0.6\n",
+        )
+        .unwrap();
+        fs::write(
+            mtl_src_dir_chirho.join("Class.hs"),
+            "module Control.Monad.State.Class where\n\
+import Control.Monad.Trans.Class\n\
+newtype StateMarkerChirho aChirho = StateMarkerChirho (TransIdentityChirho aChirho)\n",
+        )
+        .unwrap();
+
+        let index_chirho = PackageIndexChirho::new_chirho();
+        let result_chirho = compile_cabal_project_chirho(
+            project_dir_chirho.join("local-root-chirho.cabal"),
+            &index_chirho,
+        )
+        .expect("cabal project should resolve transitive local package versions");
+
+        let build_plan_packages_chirho: Vec<&str> = result_chirho
+            .build_plan_chirho
+            .steps_chirho
+            .iter()
+            .map(|step_chirho| step_chirho.package_chirho.as_str())
+            .collect();
+
+        assert_eq!(build_plan_packages_chirho, vec!["transformers", "mtl"]);
+        assert_eq!(result_chirho.module_results_chirho.len(), 1);
+    }
+
+    #[test]
     fn compile_project_skips_hidden_dirs_chirho() {
         let tmp_chirho = tempfile::tempdir().unwrap();
         fs::write(
