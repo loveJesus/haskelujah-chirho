@@ -1352,6 +1352,109 @@ newtype StateMarkerChirho aChirho = StateMarkerChirho (TransIdentityChirho aChir
     }
 
     #[test]
+    fn compile_cabal_project_ignores_test_only_transitive_cycle_in_local_index_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let packages_root_chirho = tmp_chirho.path().join(".haskelujah-packages-chirho");
+        let project_dir_chirho = tmp_chirho.path().join("vault-smoke-chirho");
+        let project_src_dir_chirho = project_dir_chirho.join("src");
+        let hashable_dir_chirho = packages_root_chirho.join("hashable-1.5.0.0");
+        let hashable_src_dir_chirho = hashable_dir_chirho.join("src/Data");
+        let hashable_test_dir_chirho = hashable_dir_chirho.join("test");
+        let unordered_dir_chirho = packages_root_chirho.join("unordered-containers-0.2.21");
+        let unordered_src_dir_chirho = unordered_dir_chirho.join("src/Data/HashMap");
+
+        fs::create_dir_all(&project_src_dir_chirho).unwrap();
+        fs::create_dir_all(&hashable_src_dir_chirho).unwrap();
+        fs::create_dir_all(&hashable_test_dir_chirho).unwrap();
+        fs::create_dir_all(&unordered_src_dir_chirho).unwrap();
+
+        fs::write(
+            project_dir_chirho.join("vault-smoke-chirho.cabal"),
+            "name: vault-smoke-chirho\n\
+version: 0.1.0.0\n\
+library\n\
+  exposed-modules: LibChirho\n\
+  hs-source-dirs: src\n\
+  build-depends: base, hashable >= 1.5\n",
+        )
+        .unwrap();
+        fs::write(
+            project_src_dir_chirho.join("LibChirho.hs"),
+            "module LibChirho where\n\
+import Data.Hashable\n\
+valueChirho :: HashableMarkerChirho\n\
+valueChirho = HashableMarkerChirho\n",
+        )
+        .unwrap();
+
+        fs::write(
+            hashable_dir_chirho.join("hashable.cabal"),
+            "name: hashable\n\
+version: 1.5.0.0\n\
+library\n\
+  exposed-modules: Data.Hashable\n\
+  hs-source-dirs: src\n\
+  build-depends: base\n\
+test-suite hashable-test\n\
+  type: exitcode-stdio-1.0\n\
+  main-is: Spec.hs\n\
+  hs-source-dirs: test\n\
+  build-depends: base, unordered-containers >= 0.2\n",
+        )
+        .unwrap();
+        fs::write(
+            hashable_src_dir_chirho.join("Hashable.hs"),
+            "module Data.Hashable where\n\
+data HashableMarkerChirho = HashableMarkerChirho\n",
+        )
+        .unwrap();
+        fs::write(
+            hashable_test_dir_chirho.join("Spec.hs"),
+            "module Main where\n\
+mainChirho :: IO ()\n\
+mainChirho = pure ()\n",
+        )
+        .unwrap();
+
+        fs::write(
+            unordered_dir_chirho.join("unordered-containers.cabal"),
+            "name: unordered-containers\n\
+version: 0.2.21\n\
+library\n\
+  exposed-modules: Data.HashMap.Strict\n\
+  hs-source-dirs: src\n\
+  build-depends: base, hashable >= 1.5\n",
+        )
+        .unwrap();
+        fs::write(
+            unordered_src_dir_chirho.join("Strict.hs"),
+            "module Data.HashMap.Strict where\n\
+data HashMapMarkerChirho = HashMapMarkerChirho\n",
+        )
+        .unwrap();
+
+        let index_chirho = PackageIndexChirho::new_chirho();
+        let result_chirho = compile_cabal_project_chirho(
+            project_dir_chirho.join("vault-smoke-chirho.cabal"),
+            &index_chirho,
+        )
+        .expect("test-only dependency cycles should not pollute the recursive local index");
+
+        let build_plan_packages_chirho: Vec<&str> = result_chirho
+            .build_plan_chirho
+            .steps_chirho
+            .iter()
+            .map(|step_chirho| step_chirho.package_chirho.as_str())
+            .collect();
+
+        assert_eq!(build_plan_packages_chirho, vec!["hashable"]);
+        assert_eq!(result_chirho.module_results_chirho.len(), 1);
+    }
+
+    #[test]
     fn compile_project_skips_hidden_dirs_chirho() {
         let tmp_chirho = tempfile::tempdir().unwrap();
         fs::write(

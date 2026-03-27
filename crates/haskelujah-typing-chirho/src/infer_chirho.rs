@@ -978,6 +978,44 @@ impl InferCtxChirho {
     ) -> Result<SubstChirho, UnifyErrorChirho> {
         let n1_chirho = self.normalize_ty_chirho(ty1_chirho);
         let n2_chirho = self.normalize_ty_chirho(ty2_chirho);
+        if let (
+            TyChirho::FunChirho(arg1_chirho, result1_chirho, _),
+            TyChirho::FunChirho(arg2_chirho, result2_chirho, _),
+        ) = (&n1_chirho, &n2_chirho)
+        {
+            let arg_first_result_chirho: Result<SubstChirho, UnifyErrorChirho> = (|| {
+                let s1_chirho =
+                    self.unify_normalized_chirho(arg1_chirho, arg2_chirho, span_chirho)?;
+                let result1_sub_chirho =
+                    self.normalize_ty_chirho(&s1_chirho.apply_ty_chirho(result1_chirho));
+                let result2_sub_chirho =
+                    self.normalize_ty_chirho(&s1_chirho.apply_ty_chirho(result2_chirho));
+                let s2_chirho = self.unify_normalized_chirho(
+                    &result1_sub_chirho,
+                    &result2_sub_chirho,
+                    span_chirho,
+                )?;
+                Ok(s2_chirho.compose_chirho(&s1_chirho))
+            })();
+            if let Ok(subst_chirho) = arg_first_result_chirho {
+                return Ok(subst_chirho);
+            }
+
+            let result_first_result_chirho: Result<SubstChirho, UnifyErrorChirho> = (|| {
+                let s1_chirho =
+                    self.unify_normalized_chirho(result1_chirho, result2_chirho, span_chirho)?;
+                let arg1_sub_chirho =
+                    self.normalize_ty_chirho(&s1_chirho.apply_ty_chirho(arg1_chirho));
+                let arg2_sub_chirho =
+                    self.normalize_ty_chirho(&s1_chirho.apply_ty_chirho(arg2_chirho));
+                let s2_chirho =
+                    self.unify_normalized_chirho(&arg1_sub_chirho, &arg2_sub_chirho, span_chirho)?;
+                Ok(s2_chirho.compose_chirho(&s1_chirho))
+            })();
+            if let Ok(subst_chirho) = result_first_result_chirho {
+                return Ok(subst_chirho);
+            }
+        }
         unify_chirho(&n1_chirho, &n2_chirho, span_chirho)
     }
 
@@ -19206,6 +19244,84 @@ mod tests_chirho {
                 Box::new(TyChirho::ConChirho("S0".to_string())),
             ),
             "a qualified imported family head should still use bare local equations when the exact imported declaration has no equations"
+        );
+    }
+
+    #[test]
+    fn function_unification_retries_after_result_fixes_type_family_args_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.register_type_family_instance_chirho(
+            "MutableGen".to_string(),
+            vec![
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("STGen".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("g".to_string())),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("ST".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("s".to_string())),
+                ),
+            ],
+            TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("STGenM".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("g".to_string())),
+                )),
+                Box::new(TyChirho::ForallVarChirho("s".to_string())),
+            ),
+        );
+
+        let monad_ty_chirho = ctx_chirho.fresh_var_chirho();
+        let expected_ty_chirho = TyChirho::FunChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("MutableGen".to_string())),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("STGen".to_string())),
+                        Box::new(TyChirho::ConChirho("StdGen".to_string())),
+                    )),
+                )),
+                Box::new(monad_ty_chirho.clone()),
+            )),
+            Box::new(TyChirho::AppChirho(
+                Box::new(monad_ty_chirho),
+                Box::new(TyChirho::ConChirho("Int".to_string())),
+            )),
+            MultChirho::ManyChirho,
+        );
+        let actual_ty_chirho = TyChirho::FunChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("STGenM".to_string())),
+                    Box::new(TyChirho::ConChirho("StdGen".to_string())),
+                )),
+                Box::new(TyChirho::ConChirho("S0".to_string())),
+            )),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("ST".to_string())),
+                    Box::new(TyChirho::ConChirho("S0".to_string())),
+                )),
+                Box::new(TyChirho::ConChirho("Int".to_string())),
+            )),
+            MultChirho::ManyChirho,
+        );
+
+        let subst_chirho = ctx_chirho
+            .unify_normalized_chirho(
+                &expected_ty_chirho,
+                &actual_ty_chirho,
+                SpanChirho::DUMMY_CHIRHO,
+            )
+            .expect("result-side monad refinement should unlock MutableGen reduction");
+        let expected_normalized_chirho =
+            ctx_chirho.normalize_ty_chirho(&subst_chirho.apply_ty_chirho(&expected_ty_chirho));
+        let actual_normalized_chirho =
+            ctx_chirho.normalize_ty_chirho(&subst_chirho.apply_ty_chirho(&actual_ty_chirho));
+
+        assert_eq!(
+            expected_normalized_chirho, actual_normalized_chirho,
+            "function unification should retry after result-type substitutions make associated family arguments reducible"
         );
     }
 

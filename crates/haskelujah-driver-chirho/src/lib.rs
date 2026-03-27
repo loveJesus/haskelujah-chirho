@@ -3795,8 +3795,7 @@ pub fn build_cabal_project_chirho(
     })
 }
 
-/// Collect all build-depends across all stanzas.
-fn collect_package_deps_chirho(
+fn collect_library_package_deps_chirho(
     package_chirho: &haskelujah_package_chirho::PackageDescChirho,
 ) -> Vec<haskelujah_package_chirho::DependencyChirho> {
     let mut deps_chirho = Vec::new();
@@ -3813,6 +3812,21 @@ fn collect_package_deps_chirho(
             }
         }
     }
+
+    deps_chirho
+}
+
+/// Collect build-depends for the package targets we compile directly.
+fn collect_package_deps_chirho(
+    package_chirho: &haskelujah_package_chirho::PackageDescChirho,
+) -> Vec<haskelujah_package_chirho::DependencyChirho> {
+    let mut deps_chirho = collect_library_package_deps_chirho(package_chirho);
+    let mut seen_chirho = deps_chirho
+        .iter()
+        .map(|dep_chirho| dep_chirho.package_chirho.clone())
+        .collect::<std::collections::HashSet<_>>();
+    let package_name_chirho = &package_chirho.name_chirho;
+
     for exe_chirho in &package_chirho.executables_chirho {
         for dep_chirho in &exe_chirho.build_info_chirho.build_depends_chirho {
             if dep_chirho.package_chirho == *package_name_chirho {
@@ -3823,9 +3837,9 @@ fn collect_package_deps_chirho(
             }
         }
     }
-    // Skip test-suite dependencies — they're not needed for library use.
-    // Test deps like QuickCheck, HUnit, etc. would require recursive
-    // Hackage fetching which we don't support yet.
+    // Skip test-suite and benchmark dependencies here. They should not affect
+    // package resolution for direct library/executable compilation, and they
+    // especially must not leak into recursive local dependency indexing.
 
     deps_chirho
 }
@@ -4085,7 +4099,7 @@ fn extend_local_dependency_package_index_recursive_chirho(
                     cabal_path_chirho.display()
                 )
             })?;
-        let package_deps_chirho = collect_package_deps_chirho(&package_chirho);
+        let package_deps_chirho = collect_library_package_deps_chirho(&package_chirho);
 
         let already_present_chirho = merged_index_chirho
             .packages_chirho
@@ -4193,7 +4207,7 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
     })?;
     let package_chirho = haskelujah_package_chirho::parse_cabal_chirho(&cabal_content_chirho);
 
-    for dep_chirho in collect_package_deps_chirho(&package_chirho) {
+    for dep_chirho in collect_library_package_deps_chirho(&package_chirho) {
         if let Err(error_chirho) = compile_local_dependency_package_frontend_recursive_chirho(
             &dep_chirho.package_chirho,
             packages_dir_chirho,
