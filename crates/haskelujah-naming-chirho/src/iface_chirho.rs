@@ -12492,6 +12492,19 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             exports_chirho,
         });
     }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["IS", "IN", "IP"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Integer", &["IS", "IN", "IP"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Integer.GMP.Internals".to_string(),
+            exports_chirho,
+        });
+    }
 
     // System.OsString.Internal.Types (os-string — needed by hashable/filepath)
     {
