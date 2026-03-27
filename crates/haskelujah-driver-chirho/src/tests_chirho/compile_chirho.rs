@@ -1043,6 +1043,29 @@ main = CPP_INCLUDE_VALUE_CHIRHO
 }
 
 #[test]
+fn read_haskell_source_file_expands_primitive_deriveprim_cpp_macros_chirho() {
+    let repo_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("repo root should exist")
+        .to_path_buf();
+    let path_chirho =
+        repo_root_chirho.join(".haskelujah-packages-chirho/primitive-0.9.1.0/Data/Primitive/Types.hs");
+    let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
+        .expect("primitive types source should preprocess");
+
+    assert!(
+        !source_chirho.contains("derivePrim("),
+        "primitive CPP preprocessing should expand derivePrim macro calls: {source_chirho}"
+    );
+    assert!(
+        source_chirho.contains("instance Prim (Word) where")
+            || source_chirho.contains("instance Prim Word where"),
+        "primitive CPP preprocessing should retain expanded Prim instances: {source_chirho}"
+    );
+}
+
+#[test]
 fn read_hsc_source_sanitizes_clock_hsc2hs_directives_chirho() {
     let repo_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .ancestors()

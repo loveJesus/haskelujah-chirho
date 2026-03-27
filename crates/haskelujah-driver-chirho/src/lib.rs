@@ -444,6 +444,7 @@ fn ensure_cpp_support_dir_chirho() -> io::Result<PathBuf> {
     let support_dir_chirho = std::env::temp_dir().join("haskelujah-cpp-support-chirho");
     std::fs::create_dir_all(&support_dir_chirho)?;
     let machdeps_path_chirho = support_dir_chirho.join("MachDeps.h");
+    let hsbaseconfig_path_chirho = support_dir_chirho.join("HsBaseConfig.h");
     // Keep this header directive-only so cpp -traditional -P does not leak C
     // comments into the Haskell token stream before the module header.
     std::fs::write(
@@ -452,6 +453,14 @@ fn ensure_cpp_support_dir_chirho() -> io::Result<PathBuf> {
             "#ifndef HASKELUJAH_SYNTHETIC_MACHDEPS_H_CHIRHO\n",
             "#define HASKELUJAH_SYNTHETIC_MACHDEPS_H_CHIRHO\n",
             "#define WORD_SIZE_IN_BITS 64\n",
+            "#endif\n",
+        ),
+    )?;
+    std::fs::write(
+        &hsbaseconfig_path_chirho,
+        concat!(
+            "#ifndef HASKELUJAH_SYNTHETIC_HSBASECONFIG_H_CHIRHO\n",
+            "#define HASKELUJAH_SYNTHETIC_HSBASECONFIG_H_CHIRHO\n",
             "#endif\n",
         ),
     )?;
