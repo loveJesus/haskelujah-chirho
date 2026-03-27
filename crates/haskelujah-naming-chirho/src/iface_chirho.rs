@@ -614,6 +614,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "drop",
             "takeWhile",
             "dropWhile",
+            "dropWhileEnd",
             "span",
             "break",
             "elem",
@@ -9289,6 +9290,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         for name_chirho in &[
             "getArgs",
             "getProgName",
+            "getEnv",
             "getEnvironment",
             "lookupEnv",
             "setEnv",
@@ -11953,8 +11955,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
-    // System.Posix.Directory / System.Posix.Files
+    // System.Posix / System.Posix.Directory / System.Posix.Files
     for mod_name_chirho in &[
+        "System.Posix",
         "System.Posix.Directory",
         "System.Posix.Files",
         "System.Posix.IO",

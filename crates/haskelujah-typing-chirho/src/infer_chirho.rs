@@ -11004,68 +11004,65 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     // StateT monad operations
     // -----------------------------------------------------------------------
 
-    // get :: StateT s s
+    // get :: StateT s m s
     {
-        let gs_chirho = TyVarChirho(3510);
-        let state_t_s_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("StateT".to_string())),
-                Box::new(TyChirho::VarChirho(gs_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(gs_chirho)),
+        let gs_s_chirho = TyVarChirho(3510);
+        let gs_m_chirho = TyVarChirho(3511);
+        let state_t_s_chirho = mk_state_t_ty_chirho(
+            TyChirho::VarChirho(gs_s_chirho),
+            TyChirho::VarChirho(gs_m_chirho),
+            TyChirho::VarChirho(gs_s_chirho),
         );
         env_chirho.bind_chirho(
             "get".to_string(),
             SchemeChirho {
-                vars_chirho: vec![gs_chirho],
+                vars_chirho: vec![gs_s_chirho, gs_m_chirho],
                 preds_chirho: vec![],
                 ty_chirho: state_t_s_chirho,
             },
         );
     }
 
-    // put :: s -> StateT s ()
+    // put :: s -> StateT s m ()
     {
-        let ps_chirho = TyVarChirho(3511);
-        let state_t_unit_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("StateT".to_string())),
-                Box::new(TyChirho::VarChirho(ps_chirho)),
-            )),
-            Box::new(TyChirho::TupleChirho(vec![])),
+        let ps_s_chirho = TyVarChirho(3512);
+        let ps_m_chirho = TyVarChirho(3513);
+        let state_t_unit_chirho = mk_state_t_ty_chirho(
+            TyChirho::VarChirho(ps_s_chirho),
+            TyChirho::VarChirho(ps_m_chirho),
+            TyChirho::TupleChirho(vec![]),
         );
         env_chirho.bind_chirho(
             "put".to_string(),
             SchemeChirho {
-                vars_chirho: vec![ps_chirho],
+                vars_chirho: vec![ps_s_chirho, ps_m_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    TyChirho::VarChirho(ps_chirho),
+                    TyChirho::VarChirho(ps_s_chirho),
                     state_t_unit_chirho,
                 ),
             },
         );
     }
 
-    // modify :: (s -> s) -> StateT s ()
+    // modify :: (s -> s) -> StateT s m ()
     {
-        let ms_chirho = TyVarChirho(3512);
-        let state_t_unit_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("StateT".to_string())),
-                Box::new(TyChirho::VarChirho(ms_chirho)),
-            )),
-            Box::new(TyChirho::TupleChirho(vec![])),
+        let ms_s_chirho = TyVarChirho(3514);
+        let ms_m_chirho = TyVarChirho(3515);
+        let state_t_unit_chirho = mk_state_t_ty_chirho(
+            TyChirho::VarChirho(ms_s_chirho),
+            TyChirho::VarChirho(ms_m_chirho),
+            TyChirho::TupleChirho(vec![]),
         );
         env_chirho.bind_chirho(
             "modify".to_string(),
             SchemeChirho {
-                vars_chirho: vec![ms_chirho],
+                vars_chirho: vec![ms_s_chirho, ms_m_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::fun_chirho(
-                        TyChirho::VarChirho(ms_chirho),
-                        TyChirho::VarChirho(ms_chirho),
+                        TyChirho::VarChirho(ms_s_chirho),
+                        TyChirho::VarChirho(ms_s_chirho),
                     ),
                     state_t_unit_chirho,
                 ),
@@ -11073,83 +11070,113 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // evalState :: StateT s a -> s -> a
+    // state :: (s -> (a, s)) -> StateT s m a
     {
-        let es_s_chirho = TyVarChirho(3513);
-        let es_a_chirho = TyVarChirho(3514);
-        let state_t_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("StateT".to_string())),
-                Box::new(TyChirho::VarChirho(es_s_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(es_a_chirho)),
+        let ss_s_chirho = TyVarChirho(3516);
+        let ss_m_chirho = TyVarChirho(3517);
+        let ss_a_chirho = TyVarChirho(3518);
+        let state_t_chirho = mk_state_t_ty_chirho(
+            TyChirho::VarChirho(ss_s_chirho),
+            TyChirho::VarChirho(ss_m_chirho),
+            TyChirho::VarChirho(ss_a_chirho),
+        );
+        env_chirho.bind_chirho(
+            "state".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![ss_s_chirho, ss_m_chirho, ss_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(ss_s_chirho),
+                        TyChirho::TupleChirho(vec![
+                            TyChirho::VarChirho(ss_a_chirho),
+                            TyChirho::VarChirho(ss_s_chirho),
+                        ]),
+                    ),
+                    state_t_chirho,
+                ),
+            },
+        );
+    }
+
+    // evalState :: StateT s m a -> s -> m a
+    {
+        let es_s_chirho = TyVarChirho(3519);
+        let es_m_chirho = TyVarChirho(3520);
+        let es_a_chirho = TyVarChirho(3521);
+        let state_t_chirho = mk_state_t_ty_chirho(
+            TyChirho::VarChirho(es_s_chirho),
+            TyChirho::VarChirho(es_m_chirho),
+            TyChirho::VarChirho(es_a_chirho),
         );
         env_chirho.bind_chirho(
             "evalState".to_string(),
             SchemeChirho {
-                vars_chirho: vec![es_s_chirho, es_a_chirho],
+                vars_chirho: vec![es_s_chirho, es_m_chirho, es_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     state_t_chirho,
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(es_s_chirho),
-                        TyChirho::VarChirho(es_a_chirho),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(es_m_chirho)),
+                            Box::new(TyChirho::VarChirho(es_a_chirho)),
+                        ),
                     ),
                 ),
             },
         );
     }
 
-    // execState :: StateT s a -> s -> s
+    // execState :: StateT s m a -> s -> m s
     {
-        let xs_s_chirho = TyVarChirho(3515);
-        let xs_a_chirho = TyVarChirho(3516);
-        let state_t_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("StateT".to_string())),
-                Box::new(TyChirho::VarChirho(xs_s_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(xs_a_chirho)),
+        let xs_s_chirho = TyVarChirho(3522);
+        let xs_m_chirho = TyVarChirho(3523);
+        let xs_a_chirho = TyVarChirho(3524);
+        let state_t_chirho = mk_state_t_ty_chirho(
+            TyChirho::VarChirho(xs_s_chirho),
+            TyChirho::VarChirho(xs_m_chirho),
+            TyChirho::VarChirho(xs_a_chirho),
         );
         env_chirho.bind_chirho(
             "execState".to_string(),
             SchemeChirho {
-                vars_chirho: vec![xs_s_chirho, xs_a_chirho],
+                vars_chirho: vec![xs_s_chirho, xs_m_chirho, xs_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     state_t_chirho,
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(xs_s_chirho),
-                        TyChirho::VarChirho(xs_s_chirho),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(xs_m_chirho)),
+                            Box::new(TyChirho::VarChirho(xs_s_chirho)),
+                        ),
                     ),
                 ),
             },
         );
     }
 
-    // bindStateT :: StateT s a -> (a -> StateT s b) -> StateT s b
+    // bindStateT :: StateT s m a -> (a -> StateT s m b) -> StateT s m b
     {
-        let bs_s_chirho = TyVarChirho(3517);
-        let bs_a_chirho = TyVarChirho(3518);
-        let bs_b_chirho = TyVarChirho(3519);
-        let state_t_a_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("StateT".to_string())),
-                Box::new(TyChirho::VarChirho(bs_s_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(bs_a_chirho)),
+        let bs_s_chirho = TyVarChirho(3525);
+        let bs_m_chirho = TyVarChirho(3526);
+        let bs_a_chirho = TyVarChirho(3527);
+        let bs_b_chirho = TyVarChirho(3528);
+        let state_t_a_chirho = mk_state_t_ty_chirho(
+            TyChirho::VarChirho(bs_s_chirho),
+            TyChirho::VarChirho(bs_m_chirho),
+            TyChirho::VarChirho(bs_a_chirho),
         );
-        let state_t_b_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("StateT".to_string())),
-                Box::new(TyChirho::VarChirho(bs_s_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(bs_b_chirho)),
+        let state_t_b_chirho = mk_state_t_ty_chirho(
+            TyChirho::VarChirho(bs_s_chirho),
+            TyChirho::VarChirho(bs_m_chirho),
+            TyChirho::VarChirho(bs_b_chirho),
         );
         env_chirho.bind_chirho(
             "bindStateT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![bs_s_chirho, bs_a_chirho, bs_b_chirho],
+                vars_chirho: vec![bs_s_chirho, bs_m_chirho, bs_a_chirho, bs_b_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     state_t_a_chirho,
@@ -11165,51 +11192,52 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // returnStateT :: a -> StateT s a
+    // returnStateT :: a -> StateT s m a
     {
-        let rs_s_chirho = TyVarChirho(3520);
-        let rs_a_chirho = TyVarChirho(3521);
-        let state_t_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("StateT".to_string())),
-                Box::new(TyChirho::VarChirho(rs_s_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(rs_a_chirho)),
+        let rs_s_chirho = TyVarChirho(3529);
+        let rs_m_chirho = TyVarChirho(3530);
+        let rs_a_chirho = TyVarChirho(3531);
+        let state_t_chirho = mk_state_t_ty_chirho(
+            TyChirho::VarChirho(rs_s_chirho),
+            TyChirho::VarChirho(rs_m_chirho),
+            TyChirho::VarChirho(rs_a_chirho),
         );
         env_chirho.bind_chirho(
             "returnStateT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![rs_s_chirho, rs_a_chirho],
+                vars_chirho: vec![rs_s_chirho, rs_m_chirho, rs_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(rs_a_chirho), state_t_chirho),
             },
         );
     }
 
-    // runState :: StateT s a -> s -> (a, s)  (alias for runStateT)
+    // runState :: StateT s m a -> s -> m (a, s)  (alias for runStateT)
     {
-        let rns_s_chirho = TyVarChirho(3522);
-        let rns_a_chirho = TyVarChirho(3523);
-        let state_t_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("StateT".to_string())),
-                Box::new(TyChirho::VarChirho(rns_s_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(rns_a_chirho)),
+        let rns_s_chirho = TyVarChirho(3532);
+        let rns_m_chirho = TyVarChirho(3533);
+        let rns_a_chirho = TyVarChirho(3534);
+        let state_t_chirho = mk_state_t_ty_chirho(
+            TyChirho::VarChirho(rns_s_chirho),
+            TyChirho::VarChirho(rns_m_chirho),
+            TyChirho::VarChirho(rns_a_chirho),
         );
         env_chirho.bind_chirho(
             "runState".to_string(),
             SchemeChirho {
-                vars_chirho: vec![rns_s_chirho, rns_a_chirho],
+                vars_chirho: vec![rns_s_chirho, rns_m_chirho, rns_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     state_t_chirho,
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(rns_s_chirho),
-                        TyChirho::TupleChirho(vec![
-                            TyChirho::VarChirho(rns_a_chirho),
-                            TyChirho::VarChirho(rns_s_chirho),
-                        ]),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(rns_m_chirho)),
+                            Box::new(TyChirho::TupleChirho(vec![
+                                TyChirho::VarChirho(rns_a_chirho),
+                                TyChirho::VarChirho(rns_s_chirho),
+                            ])),
+                        ),
                     ),
                 ),
             },
