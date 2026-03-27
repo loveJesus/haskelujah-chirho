@@ -6280,10 +6280,12 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
-        modules_chirho.push(ModuleIfaceChirho {
-            name_chirho: "GHC.Conc".to_string(),
-            exports_chirho,
-        });
+        for mod_name_chirho in &["GHC.Conc", "GHC.Conc.Sync"] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
     }
 
     // Data.IORef (already exists but add Data.IORef.Strict variant)
