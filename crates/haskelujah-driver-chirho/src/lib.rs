@@ -1892,22 +1892,22 @@ pub fn compile_source_chirho(
         && imported_type_synonyms_chirho.is_empty()
         && imported_type_families_chirho.is_empty()
     {
-            run_frontend_chirho(
-                effective_source_chirho,
-                file_id_chirho,
-                &builtin_ifaces_chirho,
-                &imported_types_chirho,
-            )?
-        } else {
-            run_frontend_with_type_synonyms_and_type_families_chirho(
-                effective_source_chirho,
-                file_id_chirho,
-                &builtin_ifaces_chirho,
-                &imported_types_chirho,
-                &imported_type_synonyms_chirho,
-                &imported_type_families_chirho,
-            )?
-        };
+        run_frontend_chirho(
+            effective_source_chirho,
+            file_id_chirho,
+            &builtin_ifaces_chirho,
+            &imported_types_chirho,
+        )?
+    } else {
+        run_frontend_with_type_synonyms_and_type_families_chirho(
+            effective_source_chirho,
+            file_id_chirho,
+            &builtin_ifaces_chirho,
+            &imported_types_chirho,
+            &imported_type_synonyms_chirho,
+            &imported_type_families_chirho,
+        )?
+    };
 
     let FrontendResultChirho {
         module_chirho,
@@ -3473,6 +3473,7 @@ pub fn compile_cabal_project_chirho(
         extra_ifaces_chirho,
         dep_frontend_artifacts_chirho.imported_types_chirho,
         dep_frontend_artifacts_chirho.imported_type_synonyms_chirho,
+        dep_frontend_artifacts_chirho.imported_type_families_chirho,
     )?;
 
     Ok(CabalCompileResultChirho {
@@ -3533,6 +3534,9 @@ pub fn build_cabal_project_chirho(
             dep_frontend_artifacts_chirho.imported_types_chirho.clone(),
             dep_frontend_artifacts_chirho
                 .imported_type_synonyms_chirho
+                .clone(),
+            dep_frontend_artifacts_chirho
+                .imported_type_families_chirho
                 .clone(),
         )?;
         let merged_core_chirho = merge_compile_results_core_chirho(
@@ -3611,6 +3615,7 @@ fn compile_module_files_with_frontend_seed_chirho(
         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
     >,
     initial_imported_type_synonyms_chirho: ImportedTypeSynonymsChirho,
+    initial_imported_type_families_chirho: ImportedTypeFamiliesChirho,
 ) -> Result<ProjectCompileResultChirho, String> {
     let mut module_sources_chirho: Vec<(String, String, String)> = Vec::new();
     for (module_name_chirho, path_chirho) in module_files_chirho {
@@ -3634,6 +3639,7 @@ fn compile_module_files_with_frontend_seed_chirho(
         extra_ifaces_chirho,
         initial_imported_types_chirho,
         initial_imported_type_synonyms_chirho,
+        initial_imported_type_families_chirho,
     )
 }
 
@@ -4158,6 +4164,7 @@ fn compile_module_sources_with_extra_ifaces_chirho(
         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
     >,
     initial_imported_type_synonyms_chirho: ImportedTypeSynonymsChirho,
+    initial_imported_type_families_chirho: ImportedTypeFamiliesChirho,
 ) -> Result<ProjectCompileResultChirho, String> {
     if module_sources_chirho.is_empty() {
         return Ok(ProjectCompileResultChirho {
@@ -4194,7 +4201,7 @@ fn compile_module_sources_with_extra_ifaces_chirho(
     let mut all_warnings_chirho: Vec<String> = Vec::new();
     let mut imported_types_chirho = initial_imported_types_chirho;
     let mut imported_type_synonyms_chirho = initial_imported_type_synonyms_chirho;
-    let mut imported_type_families_chirho = ImportedTypeFamiliesChirho::new();
+    let mut imported_type_families_chirho = initial_imported_type_families_chirho;
     if module_sources_chirho
         .iter()
         .any(|(_, _, source_chirho)| source_imports_stdlib_chirho(source_chirho))
@@ -4261,6 +4268,7 @@ fn compile_module_sources_with_extra_ifaces_chirho(
                 &iface_chirho,
                 &resolved_imported_type_synonyms_chirho,
             ));
+            imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
             ifaces_chirho.push(iface_chirho);
 
             let compile_result_chirho = compile_backend_chirho(module_chirho, infer_result_chirho)
