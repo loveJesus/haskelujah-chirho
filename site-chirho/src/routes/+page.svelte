@@ -86,7 +86,7 @@
 		{
 			titleChirho: 'Package Manager',
 			descriptionChirho:
-				'Install Hackage packages with one command. Reads .cabal files, resolves dependencies, compiles multi-module projects. 32 packages compile today, cross-package resolution built in.',
+				'Install Hackage packages with one command. Reads .cabal files, resolves dependencies, compiles multi-module projects. 33 packages compile today, cross-package resolution built in.',
 			iconChirho: '📦',
 			plannedChirho: false
 		},
@@ -211,7 +211,7 @@
 				</div>
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Hackage packages</span>
-					<strong>32 packages compile</strong>
+					<strong>33 packages compile</strong>
 					<p>transformers, mtl, deepseq, vector, exceptions, comonad, distributive, void, semigroupoids, semigroups, data-default, safe, and more. Cross-package resolution enabled.</p>
 				</div>
 			</div>
@@ -490,7 +490,7 @@ main = putStrLn "Runs directly, no build step."</span>
 					<div class="feature-icon-chirho">H</div>
 					<div class="feature-text-chirho">
 						<h3>Hackage + Batteries Included</h3>
-						<p><code>haskelujah install aeson</code> fetches from Hackage. <strong>32 packages compile</strong> including transformers, mtl, deepseq, vector, exceptions. Plus 15 built-in stdlib modules (JSON, Test, Args, HTTP, Text, Process, Time, File, Prelude, Map, Set, Pretty, Random, Concurrent, Debug) — no install needed.</p>
+						<p><code>haskelujah install aeson</code> fetches from Hackage. <strong>33 packages compile</strong> including transformers, mtl, deepseq, vector, exceptions. Plus 15 built-in stdlib modules (JSON, Test, Args, HTTP, Text, Process, Time, File, Prelude, Map, Set, Pretty, Random, Concurrent, Debug) — no install needed.</p>
 					</div>
 				</div>
 				<div class="feature-card-chirho">
@@ -545,7 +545,7 @@ main = putStrLn "Runs directly, no build step."</span>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>100+ Hackage Packages</h3>
-					<p>32 packages compile today (transformers + mtl + deepseq + vector + exceptions). Next: aeson, lens, containers, megaparsec, QuickCheck.</p>
+					<p>33 packages compile today (transformers + mtl + deepseq + vector + exceptions). Next: aeson, lens, containers, megaparsec, QuickCheck.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Test Runner</h3>
