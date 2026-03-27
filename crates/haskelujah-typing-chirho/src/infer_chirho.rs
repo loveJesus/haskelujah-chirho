@@ -7396,6 +7396,69 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     );
 
     {
+        let storable_a_chirho = TyVarChirho(1694);
+        let storable_ptr_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Ptr".to_string())),
+            Box::new(TyChirho::VarChirho(storable_a_chirho)),
+        );
+        let storable_pred_chirho = SchemePredChirho {
+            class_name_chirho: "Storable".to_string(),
+            ty_chirho: TyChirho::VarChirho(storable_a_chirho),
+            extra_tys_chirho: vec![],
+        };
+
+        let size_of_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![storable_a_chirho],
+            preds_chirho: vec![storable_pred_chirho.clone()],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(storable_a_chirho),
+                TyChirho::int_chirho(),
+            ),
+        };
+        env_chirho.bind_chirho("sizeOf".to_string(), size_of_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Foreign.Storable.sizeOf".to_string(),
+            size_of_scheme_chirho,
+        );
+
+        let alignment_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![storable_a_chirho],
+            preds_chirho: vec![storable_pred_chirho.clone()],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(storable_a_chirho),
+                TyChirho::int_chirho(),
+            ),
+        };
+        env_chirho.bind_chirho("alignment".to_string(), alignment_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Foreign.Storable.alignment".to_string(),
+            alignment_scheme_chirho,
+        );
+
+        let peek_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![storable_a_chirho],
+            preds_chirho: vec![storable_pred_chirho.clone()],
+            ty_chirho: TyChirho::fun_chirho(
+                storable_ptr_ty_chirho.clone(),
+                TyChirho::io_chirho(TyChirho::VarChirho(storable_a_chirho)),
+            ),
+        };
+        env_chirho.bind_chirho("peek".to_string(), peek_scheme_chirho.clone());
+        env_chirho.bind_chirho("Foreign.Storable.peek".to_string(), peek_scheme_chirho);
+
+        let poke_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![storable_a_chirho],
+            preds_chirho: vec![storable_pred_chirho],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![storable_ptr_ty_chirho, TyChirho::VarChirho(storable_a_chirho)],
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
+            ),
+        };
+        env_chirho.bind_chirho("poke".to_string(), poke_scheme_chirho.clone());
+        env_chirho.bind_chirho("Foreign.Storable.poke".to_string(), poke_scheme_chirho);
+    }
+
+    {
         let buffer_pool_ty_chirho = TyChirho::ConChirho("BufferPool".to_string());
         let ptr_word8_ty_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::ConChirho("Ptr".to_string())),
@@ -7633,6 +7696,227 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             vec![word64_ty_chirho.clone(), smgen_ty_chirho.clone()],
             TyChirho::TupleChirho(vec![word64_ty_chirho, smgen_ty_chirho]),
         )),
+    );
+
+    let liftm4_m_chirho = TyVarChirho(1698);
+    let liftm4_a_chirho = TyVarChirho(1699);
+    let liftm4_b_chirho = TyVarChirho(1702);
+    let liftm4_c_chirho = TyVarChirho(1703);
+    let liftm4_d_chirho = TyVarChirho(1704);
+    let liftm4_r_chirho = TyVarChirho(1705);
+    let liftm4_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![
+            liftm4_m_chirho,
+            liftm4_a_chirho,
+            liftm4_b_chirho,
+            liftm4_c_chirho,
+            liftm4_d_chirho,
+            liftm4_r_chirho,
+        ],
+        preds_chirho: vec![SchemePredChirho {
+            class_name_chirho: "Monad".to_string(),
+            ty_chirho: TyChirho::VarChirho(liftm4_m_chirho),
+            extra_tys_chirho: vec![],
+        }],
+        ty_chirho: TyChirho::fun_n_chirho(
+            vec![
+                TyChirho::fun_chirho(
+                    TyChirho::VarChirho(liftm4_a_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(liftm4_b_chirho),
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(liftm4_c_chirho),
+                            TyChirho::fun_chirho(
+                                TyChirho::VarChirho(liftm4_d_chirho),
+                                TyChirho::VarChirho(liftm4_r_chirho),
+                            ),
+                        ),
+                    ),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(liftm4_m_chirho)),
+                    Box::new(TyChirho::VarChirho(liftm4_a_chirho)),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(liftm4_m_chirho)),
+                    Box::new(TyChirho::VarChirho(liftm4_b_chirho)),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(liftm4_m_chirho)),
+                    Box::new(TyChirho::VarChirho(liftm4_c_chirho)),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(liftm4_m_chirho)),
+                    Box::new(TyChirho::VarChirho(liftm4_d_chirho)),
+                ),
+            ],
+            TyChirho::AppChirho(
+                Box::new(TyChirho::VarChirho(liftm4_m_chirho)),
+                Box::new(TyChirho::VarChirho(liftm4_r_chirho)),
+            ),
+        ),
+    };
+    env_chirho.bind_chirho("liftM4".to_string(), liftm4_scheme_chirho.clone());
+    env_chirho.bind_chirho(
+        "Control.Monad.liftM4".to_string(),
+        liftm4_scheme_chirho,
+    );
+
+    let liftm5_m_chirho = TyVarChirho(1706);
+    let liftm5_a_chirho = TyVarChirho(1707);
+    let liftm5_b_chirho = TyVarChirho(1708);
+    let liftm5_c_chirho = TyVarChirho(1709);
+    let liftm5_d_chirho = TyVarChirho(1710);
+    let liftm5_e_chirho = TyVarChirho(1711);
+    let liftm5_r_chirho = TyVarChirho(1712);
+    let liftm5_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![
+            liftm5_m_chirho,
+            liftm5_a_chirho,
+            liftm5_b_chirho,
+            liftm5_c_chirho,
+            liftm5_d_chirho,
+            liftm5_e_chirho,
+            liftm5_r_chirho,
+        ],
+        preds_chirho: vec![SchemePredChirho {
+            class_name_chirho: "Monad".to_string(),
+            ty_chirho: TyChirho::VarChirho(liftm5_m_chirho),
+            extra_tys_chirho: vec![],
+        }],
+        ty_chirho: TyChirho::fun_n_chirho(
+            vec![
+                TyChirho::fun_chirho(
+                    TyChirho::VarChirho(liftm5_a_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(liftm5_b_chirho),
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(liftm5_c_chirho),
+                            TyChirho::fun_chirho(
+                                TyChirho::VarChirho(liftm5_d_chirho),
+                                TyChirho::fun_chirho(
+                                    TyChirho::VarChirho(liftm5_e_chirho),
+                                    TyChirho::VarChirho(liftm5_r_chirho),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(liftm5_m_chirho)),
+                    Box::new(TyChirho::VarChirho(liftm5_a_chirho)),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(liftm5_m_chirho)),
+                    Box::new(TyChirho::VarChirho(liftm5_b_chirho)),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(liftm5_m_chirho)),
+                    Box::new(TyChirho::VarChirho(liftm5_c_chirho)),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(liftm5_m_chirho)),
+                    Box::new(TyChirho::VarChirho(liftm5_d_chirho)),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(liftm5_m_chirho)),
+                    Box::new(TyChirho::VarChirho(liftm5_e_chirho)),
+                ),
+            ],
+            TyChirho::AppChirho(
+                Box::new(TyChirho::VarChirho(liftm5_m_chirho)),
+                Box::new(TyChirho::VarChirho(liftm5_r_chirho)),
+            ),
+        ),
+    };
+    env_chirho.bind_chirho("liftM5".to_string(), liftm5_scheme_chirho.clone());
+    env_chirho.bind_chirho(
+        "Control.Monad.liftM5".to_string(),
+        liftm5_scheme_chirho,
+    );
+
+    let zipwithm_m_chirho = TyVarChirho(1713);
+    let zipwithm_a_chirho = TyVarChirho(1714);
+    let zipwithm_b_chirho = TyVarChirho(1715);
+    let zipwithm_c_chirho = TyVarChirho(1716);
+    let zipwithm_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![
+            zipwithm_m_chirho,
+            zipwithm_a_chirho,
+            zipwithm_b_chirho,
+            zipwithm_c_chirho,
+        ],
+        preds_chirho: vec![SchemePredChirho {
+            class_name_chirho: "Monad".to_string(),
+            ty_chirho: TyChirho::VarChirho(zipwithm_m_chirho),
+            extra_tys_chirho: vec![],
+        }],
+        ty_chirho: TyChirho::fun_n_chirho(
+            vec![
+                TyChirho::fun_chirho(
+                    TyChirho::VarChirho(zipwithm_a_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(zipwithm_b_chirho),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(zipwithm_m_chirho)),
+                            Box::new(TyChirho::VarChirho(zipwithm_c_chirho)),
+                        ),
+                    ),
+                ),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(zipwithm_a_chirho))),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(zipwithm_b_chirho))),
+            ],
+            TyChirho::AppChirho(
+                Box::new(TyChirho::VarChirho(zipwithm_m_chirho)),
+                Box::new(TyChirho::ListChirho(Box::new(TyChirho::VarChirho(
+                    zipwithm_c_chirho,
+                )))),
+            ),
+        ),
+    };
+    env_chirho.bind_chirho("zipWithM".to_string(), zipwithm_scheme_chirho.clone());
+    env_chirho.bind_chirho(
+        "Control.Monad.zipWithM".to_string(),
+        zipwithm_scheme_chirho,
+    );
+
+    let zipwithm_unit_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![
+            zipwithm_m_chirho,
+            zipwithm_a_chirho,
+            zipwithm_b_chirho,
+            zipwithm_c_chirho,
+        ],
+        preds_chirho: vec![SchemePredChirho {
+            class_name_chirho: "Monad".to_string(),
+            ty_chirho: TyChirho::VarChirho(zipwithm_m_chirho),
+            extra_tys_chirho: vec![],
+        }],
+        ty_chirho: TyChirho::fun_n_chirho(
+            vec![
+                TyChirho::fun_chirho(
+                    TyChirho::VarChirho(zipwithm_a_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(zipwithm_b_chirho),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(zipwithm_m_chirho)),
+                            Box::new(TyChirho::VarChirho(zipwithm_c_chirho)),
+                        ),
+                    ),
+                ),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(zipwithm_a_chirho))),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(zipwithm_b_chirho))),
+            ],
+            TyChirho::AppChirho(
+                Box::new(TyChirho::VarChirho(zipwithm_m_chirho)),
+                Box::new(TyChirho::unit_chirho()),
+            ),
+        ),
+    };
+    env_chirho.bind_chirho("zipWithM_".to_string(), zipwithm_unit_scheme_chirho.clone());
+    env_chirho.bind_chirho(
+        "Control.Monad.zipWithM_".to_string(),
+        zipwithm_unit_scheme_chirho,
     );
 
     // return :: forall m a. Monad m => a -> m a

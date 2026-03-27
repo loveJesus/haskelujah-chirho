@@ -2516,6 +2516,36 @@ fn frontend_qualified_data_list_union_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_qualified_control_monad_zipwithm_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module QualifiedZipWithMMiniChirho where\nimport qualified Control.Monad as M\nvalueChirho = M.zipWithM (\\xChirho yChirho -> Just (xChirho + yChirho)) [1, 2] [3, 4]\n",
+        &mut source_map_chirho,
+        "QualifiedZipWithMMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Control.Monad.zipWithM should resolve and type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_foreign_storable_methods_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ForeignStorableMiniChirho where\nimport Foreign.Ptr (Ptr)\nimport Foreign.Storable (sizeOf, alignment, peek, poke)\nsizeOfIntChirho = sizeOf (0 :: Int)\nalignmentIntChirho = alignment (0 :: Int)\npeekIntChirho :: Ptr Int -> IO Int\npeekIntChirho = peek\npokeIntChirho :: Ptr Int -> Int -> IO ()\npokeIntChirho = poke\n",
+        &mut source_map_chirho,
+        "ForeignStorableMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "Foreign.Storable methods should resolve and type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_prelude_list_index_operator_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

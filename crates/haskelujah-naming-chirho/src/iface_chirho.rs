@@ -1780,6 +1780,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "foldM",
             "foldM_",
             "filterM",
+            "zipWithM",
+            "zipWithM_",
             "mplus",
             "mzero",
             "msum",
