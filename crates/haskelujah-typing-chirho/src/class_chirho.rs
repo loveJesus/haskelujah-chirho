@@ -2334,6 +2334,79 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
+        let state_token_var_chirho = TyVarChirho(4000);
+        let state_monad_var_chirho = TyVarChirho(4001);
+        let state_t_head_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("StateT".to_string())),
+                Box::new(TyChirho::VarChirho(state_token_var_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(state_monad_var_chirho)),
+        );
+
+        // instance Functor m => Functor (StateT s m)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Functor".to_string(),
+            head_ty_chirho: state_t_head_ty_chirho.clone(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Functor",
+                TyChirho::VarChirho(state_monad_var_chirho),
+            )],
+        });
+
+        // instance Applicative m => Applicative (StateT s m)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Applicative".to_string(),
+            head_ty_chirho: state_t_head_ty_chirho.clone(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Applicative",
+                TyChirho::VarChirho(state_monad_var_chirho),
+            )],
+        });
+
+        // instance Monad m => Monad (StateT s m)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Monad".to_string(),
+            head_ty_chirho: state_t_head_ty_chirho,
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Monad",
+                TyChirho::VarChirho(state_monad_var_chirho),
+            )],
+        });
+
+        let st_token_var_chirho = TyVarChirho(4002);
+        let st_head_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("ST".to_string())),
+            Box::new(TyChirho::VarChirho(st_token_var_chirho)),
+        );
+
+        // instance Functor (ST s)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Functor".to_string(),
+            head_ty_chirho: st_head_ty_chirho.clone(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // instance Applicative (ST s)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Applicative".to_string(),
+            head_ty_chirho: st_head_ty_chirho.clone(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        // instance Monad (ST s)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Monad".to_string(),
+            head_ty_chirho: st_head_ty_chirho,
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
         // instance Bits Int
         self.add_instance_chirho(InstDeclChirho {
             class_name_chirho: "Bits".to_string(),
