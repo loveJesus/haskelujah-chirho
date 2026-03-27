@@ -1262,6 +1262,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
             "seq",
+            "seq#",
             "realWorld#",
             "proxy#",
             "void#",
@@ -10989,6 +10990,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "runST",
             "fixST",
             "stToIO",
+            "strictToLazyST",
+            "lazyToStrictST",
             "unsafeSTToIO",
             "unsafeIOToST",
             "unsafeInterleaveST",
@@ -14518,6 +14521,45 @@ mod tests_chirho {
                 .values_chirho
                 .contains_key("newAlignedPinnedByteArray#"),
             "GHC.Exts should export newAlignedPinnedByteArray#"
+        );
+    }
+
+    #[test]
+    fn builtin_ghc_exts_exports_seq_hash_primop_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_exts_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Exts")
+            .expect("GHC.Exts builtin iface should exist");
+        assert!(
+            ghc_exts_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("seq#"),
+            "GHC.Exts should export seq#"
+        );
+    }
+
+    #[test]
+    fn builtin_control_monad_st_lazy_exports_conversion_helpers_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let control_monad_st_lazy_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Control.Monad.ST.Lazy")
+            .expect("Control.Monad.ST.Lazy builtin iface should exist");
+        assert!(
+            control_monad_st_lazy_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("strictToLazyST"),
+            "Control.Monad.ST.Lazy should export strictToLazyST"
+        );
+        assert!(
+            control_monad_st_lazy_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("lazyToStrictST"),
+            "Control.Monad.ST.Lazy should export lazyToStrictST"
         );
     }
 
