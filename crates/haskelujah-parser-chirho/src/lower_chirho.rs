@@ -10318,6 +10318,35 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
     }
 
     #[test]
+    fn lower_guarded_instance_method_preserves_params_and_where_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module Main where\nclass AddRChirho aChirho where\n  addRChirho :: aChirho -> aChirho -> aChirho\ninstance AddRChirho Int where\n  addRChirho aChirho bChirho\n    | otherwise = aChirho + rChirho\n    where\n      rChirho = bChirho\n",
+        );
+        let instance_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
+            .expect("expected instance declaration");
+        let DeclChirho::InstanceDeclChirho { methods_chirho, .. } = instance_decl_chirho else {
+            panic!("expected instance declaration");
+        };
+        let LocalBindChirho::FunBindChirho { matches_chirho, .. } = &methods_chirho[0] else {
+            panic!("expected instance method fun bind");
+        };
+        assert_eq!(matches_chirho.len(), 1);
+        assert_eq!(
+            matches_chirho[0].pats_chirho.len(),
+            2,
+            "guarded instance method should keep both LHS parameters"
+        );
+        assert_eq!(
+            matches_chirho[0].where_binds_chirho.len(),
+            1,
+            "guarded instance method should retain trailing where bindings"
+        );
+    }
+
+    #[test]
     fn lower_where_pattern_bind_with_infix_constructor_and_primed_names_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module Main where\ndata ComplexChirho aChirho = aChirho :+ aChirho\nclass BindChirho mChirho where\n  bindChirho :: mChirho aChirho -> (aChirho -> mChirho bChirho) -> mChirho bChirho\ninstance BindChirho ComplexChirho where\n  bindChirho (aChirho :+ bChirho) fChirho = aPrimeChirho :+ bPrimeChirho where\n    aPrimeChirho :+ _ = fChirho aChirho\n    _ :+ bPrimeChirho = fChirho bChirho\n",
