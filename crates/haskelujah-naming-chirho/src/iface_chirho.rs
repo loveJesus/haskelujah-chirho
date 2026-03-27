@@ -5730,6 +5730,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "reads",
             "readParen",
             "lex",
+            "parens",
+            "prec",
             "readPrec",
             "readListPrec",
         ] {
@@ -5739,6 +5741,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         for name_chirho in &["Read", "ReadS", "ReadPrec"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        if let Some(read_class_chirho) = exports_chirho.types_chirho.get_mut("Read") {
+            read_class_chirho.methods_chirho = vec![
+                "readsPrec".to_string(),
+                "readList".to_string(),
+                "readPrec".to_string(),
+                "readListPrec".to_string(),
+            ];
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Text.Read".to_string(),
@@ -7385,7 +7395,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "read",
             "reads",
             "readParen",
+            "parens",
+            "prec",
             "readPrec",
+            "readListPrec",
             "readMaybe",
             "readEither",
             "lex",
@@ -7398,6 +7411,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         for name_chirho in ["Read", "ReadPrec", "ReadS"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        if let Some(read_class_chirho) = exports_chirho.types_chirho.get_mut("Read") {
+            read_class_chirho.methods_chirho = vec![
+                "readsPrec".to_string(),
+                "readList".to_string(),
+                "readPrec".to_string(),
+                "readListPrec".to_string(),
+            ];
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Text.Read".to_string(),
@@ -11877,6 +11898,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "pfail",
             "choice",
             "<++",
+            "+++",
             "readS_to_P",
             "readP_to_S",
             "satisfy",
@@ -14634,6 +14656,49 @@ mod tests_chirho {
                 .values_chirho
                 .contains_key("lazyToStrictST"),
             "Control.Monad.ST.Lazy should export lazyToStrictST"
+        );
+    }
+
+    #[test]
+    fn builtin_text_read_exports_parens_and_readprec_method_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let text_read_chirho = ifaces_chirho
+            .iter()
+            .rev()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Text.Read")
+            .expect("Text.Read builtin iface should exist");
+        assert!(
+            text_read_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("parens"),
+            "Text.Read should export parens"
+        );
+        assert!(
+            text_read_chirho
+                .exports_chirho
+                .types_chirho
+                .get("Read")
+                .is_some_and(|read_class_chirho| read_class_chirho
+                    .methods_chirho
+                    .contains(&"readPrec".to_string())),
+            "Text.Read.Read should expose readPrec as a class method"
+        );
+    }
+
+    #[test]
+    fn builtin_readp_exports_triple_plus_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let readp_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Text.ParserCombinators.ReadP")
+            .expect("Text.ParserCombinators.ReadP builtin iface should exist");
+        assert!(
+            readp_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("+++"),
+            "Text.ParserCombinators.ReadP should export +++"
         );
     }
 
