@@ -10479,52 +10479,90 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // enumFrom :: Int -> [Int]
+    // enumFrom :: forall a. Enum a => a -> [a]
+    let enum_from_a_chirho = TyVarChirho(3266);
     env_chirho.bind_chirho(
         "enumFrom".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
-        )),
+        SchemeChirho {
+            vars_chirho: vec![enum_from_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Enum".to_string(),
+                ty_chirho: TyChirho::VarChirho(enum_from_a_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(enum_from_a_chirho),
+                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(enum_from_a_chirho))),
+            ),
+        },
     );
 
-    // enumFromThen :: Int -> Int -> [Int]
+    // enumFromThen :: forall a. Enum a => a -> a -> [a]
+    let enum_from_then_a_chirho = TyVarChirho(3267);
     env_chirho.bind_chirho(
         "enumFromThen".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::fun_chirho(
-                TyChirho::int_chirho(),
-                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
-            ),
-        )),
-    );
-
-    // enumFromTo :: Int -> Int -> [Int]
-    env_chirho.bind_chirho(
-        "enumFromTo".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::fun_chirho(
-                TyChirho::int_chirho(),
-                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
-            ),
-        )),
-    );
-
-    // enumFromThenTo :: Int -> Int -> Int -> [Int]
-    env_chirho.bind_chirho(
-        "enumFromThenTo".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::int_chirho(),
-            TyChirho::fun_chirho(
-                TyChirho::int_chirho(),
+        SchemeChirho {
+            vars_chirho: vec![enum_from_then_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Enum".to_string(),
+                ty_chirho: TyChirho::VarChirho(enum_from_then_a_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(enum_from_then_a_chirho),
                 TyChirho::fun_chirho(
-                    TyChirho::int_chirho(),
-                    TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                    TyChirho::VarChirho(enum_from_then_a_chirho),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(enum_from_then_a_chirho))),
                 ),
             ),
-        )),
+        },
+    );
+
+    // enumFromTo :: forall a. Enum a => a -> a -> [a]
+    let enum_from_to_a_chirho = TyVarChirho(3268);
+    env_chirho.bind_chirho(
+        "enumFromTo".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![enum_from_to_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Enum".to_string(),
+                ty_chirho: TyChirho::VarChirho(enum_from_to_a_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(enum_from_to_a_chirho),
+                TyChirho::fun_chirho(
+                    TyChirho::VarChirho(enum_from_to_a_chirho),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(enum_from_to_a_chirho))),
+                ),
+            ),
+        },
+    );
+
+    // enumFromThenTo :: forall a. Enum a => a -> a -> a -> [a]
+    let enum_from_then_to_a_chirho = TyVarChirho(3269);
+    env_chirho.bind_chirho(
+        "enumFromThenTo".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![enum_from_then_to_a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Enum".to_string(),
+                ty_chirho: TyChirho::VarChirho(enum_from_then_to_a_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(enum_from_then_to_a_chirho),
+                TyChirho::fun_chirho(
+                    TyChirho::VarChirho(enum_from_then_to_a_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(enum_from_then_to_a_chirho),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(
+                            enum_from_then_to_a_chirho,
+                        ))),
+                    ),
+                ),
+            ),
+        },
     );
 
     // minBound :: forall a. Bounded a => a
@@ -18123,6 +18161,35 @@ mod tests_chirho {
                 ]),
             ),
             "bitmaskWithRejection64' should accept a Word64 upper bound"
+        );
+    }
+
+    #[test]
+    fn builtin_enum_from_to_is_enum_polymorphic_chirho() {
+        let schemes_chirho = builtin_value_schemes_chirho();
+        let enum_from_to_scheme_chirho = schemes_chirho
+            .get("enumFromTo")
+            .expect("enumFromTo builtin should exist");
+        let ef_a_chirho = TyVarChirho(3268);
+
+        assert_eq!(
+            enum_from_to_scheme_chirho,
+            &SchemeChirho {
+                vars_chirho: vec![ef_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Enum".to_string(),
+                    ty_chirho: TyChirho::VarChirho(ef_a_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(ef_a_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(ef_a_chirho),
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(ef_a_chirho))),
+                    ),
+                ),
+            },
+            "enumFromTo should work over any Enum, not just Int"
         );
     }
 
