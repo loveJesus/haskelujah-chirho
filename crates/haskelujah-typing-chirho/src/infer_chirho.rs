@@ -304,6 +304,11 @@ impl InferCtxChirho {
                 TyChirho::ForallVarChirho("a".to_string()),
             ),
         );
+        // BufSize = Int (from Network.Socket.BufferPool)
+        type_synonyms_chirho.insert(
+            "BufSize".to_string(),
+            (vec![], TyChirho::int_chirho()),
+        );
         // Built-in http-types aliases
         type_synonyms_chirho.insert(
             "HeaderName".to_string(),
