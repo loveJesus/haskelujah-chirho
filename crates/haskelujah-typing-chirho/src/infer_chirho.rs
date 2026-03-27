@@ -970,6 +970,8 @@ impl InferCtxChirho {
     /// Unify two types after normalizing: expand type synonyms and reduce
     /// type families. This ensures that `String` unifies with `[Char]` and
     /// `F T1` unifies with `Char` when `type instance F T1 = Char`.
+    /// The recursive cases re-normalize after intermediate substitutions so
+    /// reductions like `PrimState (ST s) ~ s` become visible once `m ~ ST s`.
     fn unify_normalized_chirho(
         &self,
         ty1_chirho: &TyChirho,
@@ -1015,6 +1017,62 @@ impl InferCtxChirho {
             if let Ok(subst_chirho) = result_first_result_chirho {
                 return Ok(subst_chirho);
             }
+        }
+        if let (TyChirho::AppChirho(fun1_chirho, arg1_chirho), TyChirho::AppChirho(fun2_chirho, arg2_chirho)) =
+            (&n1_chirho, &n2_chirho)
+        {
+            let fun_first_result_chirho: Result<SubstChirho, UnifyErrorChirho> = (|| {
+                let s1_chirho =
+                    self.unify_normalized_chirho(fun1_chirho, fun2_chirho, span_chirho)?;
+                let arg1_sub_chirho =
+                    self.normalize_ty_chirho(&s1_chirho.apply_ty_chirho(arg1_chirho));
+                let arg2_sub_chirho =
+                    self.normalize_ty_chirho(&s1_chirho.apply_ty_chirho(arg2_chirho));
+                let s2_chirho =
+                    self.unify_normalized_chirho(&arg1_sub_chirho, &arg2_sub_chirho, span_chirho)?;
+                Ok(s2_chirho.compose_chirho(&s1_chirho))
+            })();
+            if let Ok(subst_chirho) = fun_first_result_chirho {
+                return Ok(subst_chirho);
+            }
+
+            let arg_first_result_chirho: Result<SubstChirho, UnifyErrorChirho> = (|| {
+                let s1_chirho =
+                    self.unify_normalized_chirho(arg1_chirho, arg2_chirho, span_chirho)?;
+                let fun1_sub_chirho =
+                    self.normalize_ty_chirho(&s1_chirho.apply_ty_chirho(fun1_chirho));
+                let fun2_sub_chirho =
+                    self.normalize_ty_chirho(&s1_chirho.apply_ty_chirho(fun2_chirho));
+                let s2_chirho =
+                    self.unify_normalized_chirho(&fun1_sub_chirho, &fun2_sub_chirho, span_chirho)?;
+                Ok(s2_chirho.compose_chirho(&s1_chirho))
+            })();
+            if let Ok(subst_chirho) = arg_first_result_chirho {
+                return Ok(subst_chirho);
+            }
+        }
+        if let (TyChirho::ListChirho(inner1_chirho), TyChirho::ListChirho(inner2_chirho)) =
+            (&n1_chirho, &n2_chirho)
+        {
+            return self.unify_normalized_chirho(inner1_chirho, inner2_chirho, span_chirho);
+        }
+        if let (TyChirho::TupleChirho(elems1_chirho), TyChirho::TupleChirho(elems2_chirho)) =
+            (&n1_chirho, &n2_chirho)
+        {
+            if elems1_chirho.len() != elems2_chirho.len() {
+                return unify_chirho(&n1_chirho, &n2_chirho, span_chirho);
+            }
+            let mut subst_chirho = SubstChirho::empty_chirho();
+            for (elem1_chirho, elem2_chirho) in elems1_chirho.iter().zip(elems2_chirho.iter()) {
+                let elem1_sub_chirho =
+                    self.normalize_ty_chirho(&subst_chirho.apply_ty_chirho(elem1_chirho));
+                let elem2_sub_chirho =
+                    self.normalize_ty_chirho(&subst_chirho.apply_ty_chirho(elem2_chirho));
+                let s_chirho =
+                    self.unify_normalized_chirho(&elem1_sub_chirho, &elem2_sub_chirho, span_chirho)?;
+                subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+            }
+            return Ok(subst_chirho);
         }
         unify_chirho(&n1_chirho, &n2_chirho, span_chirho)
     }
@@ -19372,6 +19430,66 @@ mod tests_chirho {
             ctx_chirho.normalize_ty_chirho(&state_var_ty_chirho),
             ctx_chirho.normalize_ty_chirho(&prim_state_ty_chirho),
             "PrimState (ST t) should normalize to t before raw unification"
+        );
+    }
+
+    #[test]
+    fn app_unification_renormalizes_after_head_substitution_for_primstate_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.register_type_family_instance_chirho(
+            "PrimState".to_string(),
+            vec![TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ST".to_string())),
+                Box::new(TyChirho::ForallVarChirho("s".to_string())),
+            )],
+            TyChirho::ForallVarChirho("s".to_string()),
+        );
+
+        let monad_ty_chirho = ctx_chirho.fresh_var_chirho();
+        let elem_ty_chirho = ctx_chirho.fresh_var_chirho();
+        let expected_ty_chirho = TyChirho::AppChirho(
+            Box::new(monad_ty_chirho.clone()),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("MutableArray".to_string())),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("PrimState".to_string())),
+                        Box::new(monad_ty_chirho.clone()),
+                    )),
+                )),
+                Box::new(elem_ty_chirho.clone()),
+            )),
+        );
+        let actual_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ST".to_string())),
+                Box::new(TyChirho::ConChirho("S0".to_string())),
+            )),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("MutableArray".to_string())),
+                    Box::new(TyChirho::ConChirho("S0".to_string())),
+                )),
+                Box::new(TyChirho::ConChirho("Int".to_string())),
+            )),
+        );
+
+        let subst_chirho = ctx_chirho
+            .unify_normalized_chirho(
+                &expected_ty_chirho,
+                &actual_ty_chirho,
+                SpanChirho::DUMMY_CHIRHO,
+            )
+            .expect("head substitutions should unlock PrimState reductions inside application arguments");
+
+        let expected_normalized_chirho =
+            ctx_chirho.normalize_ty_chirho(&subst_chirho.apply_ty_chirho(&expected_ty_chirho));
+        let actual_normalized_chirho =
+            ctx_chirho.normalize_ty_chirho(&subst_chirho.apply_ty_chirho(&actual_ty_chirho));
+
+        assert_eq!(
+            expected_normalized_chirho, actual_normalized_chirho,
+            "application unification should re-normalize after substitutions expose PrimState equations"
         );
     }
 
