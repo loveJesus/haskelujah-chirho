@@ -218,9 +218,13 @@ impl<'a> SolverChirho<'a> {
         }
 
         // If already fully resolved, check compatibility.
+        // Allow-newer: if the constraint fails but is an upper bound,
+        // accept the existing version anyway (like cabal --allow-newer).
         if let Some(existing_chirho) = self.selected_chirho.get(name_chirho) {
             if self.done_chirho.contains(name_chirho) {
-                if constraint_chirho.satisfied_by_chirho(existing_chirho) {
+                if constraint_chirho.satisfied_by_chirho(existing_chirho)
+                    || constraint_chirho.is_upper_bound_only_chirho()
+                {
                     return Ok(());
                 } else {
                     return Err(ResolveErrorChirho::ConflictChirho {
@@ -658,12 +662,13 @@ mod tests_chirho {
         let deps_chirho = vec![dep_any_chirho("A"), dep_any_chirho("B")];
         let result_chirho =
             resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho());
-        assert!(result_chirho.is_err());
-        let err_chirho = result_chirho.unwrap_err();
-        assert!(matches!(
-            err_chirho,
-            ResolveErrorChirho::ConflictChirho { .. }
-        ));
+        // With allow-newer fallback, the upper bound <1.5 is relaxed and D 2.0
+        // is accepted for both A and B.
+        assert!(
+            result_chirho.is_ok(),
+            "allow-newer should resolve the conflict: {:?}",
+            result_chirho.err()
+        );
     }
 
     // -----------------------------------------------------------------------
