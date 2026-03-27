@@ -695,27 +695,59 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
 }
 
 fn strip_cpp_directives_chirho(source_chirho: &str) -> String {
-    source_chirho
-        .lines()
-        .filter(|line_chirho| {
-            let trimmed_chirho = line_chirho.trim_start();
-            let directive_chirho = trimmed_chirho
-                .strip_prefix('#')
-                .map(|rest_chirho| rest_chirho.trim_start())
+    #[derive(Clone, Copy)]
+    struct CppStripFrameChirho {
+        parent_active_chirho: bool,
+    }
+
+    let mut output_lines_chirho = Vec::new();
+    let mut conditional_stack_chirho: Vec<CppStripFrameChirho> = Vec::new();
+    let mut active_branch_chirho = true;
+
+    for line_chirho in source_chirho.lines() {
+        let trimmed_chirho = line_chirho.trim_start();
+        let directive_text_chirho = trimmed_chirho
+            .strip_prefix('#')
+            .map(|rest_chirho| rest_chirho.trim_start());
+
+        if let Some(directive_text_chirho) = directive_text_chirho {
+            let directive_head_chirho = directive_text_chirho
+                .split_whitespace()
+                .next()
                 .unwrap_or_default();
-            !(directive_chirho.starts_with("if")
-                || directive_chirho.starts_with("else")
-                || directive_chirho.starts_with("endif")
-                || directive_chirho.starts_with("define")
-                || directive_chirho.starts_with("undef")
-                || directive_chirho.starts_with("include")
-                || directive_chirho.starts_with("ifdef")
-                || directive_chirho.starts_with("ifndef")
-                || directive_chirho.starts_with("elif")
-                || directive_chirho.starts_with("let "))
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+            match directive_head_chirho {
+                "if" | "ifdef" | "ifndef" => {
+                    conditional_stack_chirho.push(CppStripFrameChirho {
+                        parent_active_chirho: active_branch_chirho,
+                    });
+                }
+                "else" | "elif" => {
+                    if let Some(frame_chirho) = conditional_stack_chirho.last() {
+                        active_branch_chirho = false && frame_chirho.parent_active_chirho;
+                    } else {
+                        active_branch_chirho = false;
+                    }
+                }
+                "endif" => {
+                    active_branch_chirho = conditional_stack_chirho
+                        .pop()
+                        .map(|frame_chirho| frame_chirho.parent_active_chirho)
+                        .unwrap_or(true);
+                }
+                _ => {}
+            }
+            output_lines_chirho.push(String::new());
+            continue;
+        }
+
+        if active_branch_chirho {
+            output_lines_chirho.push(line_chirho.to_string());
+        } else {
+            output_lines_chirho.push(String::new());
+        }
+    }
+
+    output_lines_chirho.join("\n")
 }
 
 fn is_maybe_absent_unboxed_sum_alt_chirho(alt_chirho: &str) -> bool {

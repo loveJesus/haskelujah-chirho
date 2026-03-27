@@ -3718,6 +3718,55 @@ clockFlagChirho = 1\n\
 }
 
 #[test]
+fn strip_cpp_directives_drops_else_branch_residue_chirho() {
+    let stripped_chirho = crate::strip_cpp_directives_chirho(
+        "module ResidueMiniChirho where\n\
+#if MIN_VERSION_template_haskell(2,16,0)\n\
+keptChirho = 1\n\
+#else\n\
+droppedChirho = 2\n\
+#endif\n\
+afterChirho = keptChirho\n",
+    );
+
+    assert!(stripped_chirho.contains("module ResidueMiniChirho where"));
+    assert!(stripped_chirho.contains("keptChirho = 1"));
+    assert!(stripped_chirho.contains("afterChirho = keptChirho"));
+    assert!(!stripped_chirho.contains("droppedChirho = 2"));
+    assert!(!stripped_chirho.contains("#else"));
+    assert!(!stripped_chirho.contains("#endif"));
+}
+
+#[test]
+fn strip_cpp_directives_preserves_parent_line_shape_while_blanking_nested_branches_chirho() {
+    let source_chirho = "module NestedResidueMiniChirho where\n\
+#if OUTER\n\
+outerKeptChirho = 1\n\
+#if INNER\n\
+innerKeptChirho = outerKeptChirho\n\
+#else\n\
+innerDroppedChirho = 2\n\
+#endif\n\
+#else\n\
+outerDroppedChirho = 3\n\
+#endif\n\
+finalChirho = outerKeptChirho\n";
+    let stripped_chirho = crate::strip_cpp_directives_chirho(source_chirho);
+    let stripped_lines_chirho: Vec<_> = stripped_chirho.lines().collect();
+    let source_lines_chirho: Vec<_> = source_chirho.lines().collect();
+
+    assert_eq!(stripped_lines_chirho.len(), source_lines_chirho.len());
+    assert!(stripped_chirho.contains("outerKeptChirho = 1"));
+    assert!(stripped_chirho.contains("innerKeptChirho = outerKeptChirho"));
+    assert!(stripped_chirho.contains("finalChirho = outerKeptChirho"));
+    assert!(!stripped_chirho.contains("innerDroppedChirho = 2"));
+    assert!(!stripped_chirho.contains("outerDroppedChirho = 3"));
+    assert!(!stripped_chirho.contains("#if"));
+    assert!(!stripped_chirho.contains("#else"));
+    assert!(!stripped_chirho.contains("#endif"));
+}
+
+#[test]
 fn frontend_top_level_patbind_exports_through_iface_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let sources_chirho = [
