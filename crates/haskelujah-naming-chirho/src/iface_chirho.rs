@@ -12826,32 +12826,6 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &[
-            "accept",
-            "close",
-            "fdSocket",
-            "getSocketName",
-            "setSocketOption",
-            "withSocketsDo",
-            "gracefulClose",
-        ] {
-            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
-            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
-        }
-        let (k_chirho, v_chirho) = mk_type_chirho("Socket", &[]);
-        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) =
-            mk_type_chirho("SockAddr", &["SockAddrInet", "SockAddrInet6"]);
-        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("SocketOption", &["NoDelay"]);
-        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        modules_chirho.push(ModuleIfaceChirho {
-            name_chirho: "Network.Socket".to_string(),
-            exports_chirho,
-        });
-    }
-    {
-        let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &["sendAll", "sendMany"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -12873,27 +12847,6 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Network.Socket.BufferPool".to_string(),
-            exports_chirho,
-        });
-    }
-    {
-        let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &[
-            "pause",
-            "resume",
-            "tickle",
-            "stopManager",
-            "withHandleKillThread",
-        ] {
-            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
-            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
-        }
-        for name_chirho in &["Manager", "Handle"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
-            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        }
-        modules_chirho.push(ModuleIfaceChirho {
-            name_chirho: "System.TimeManager".to_string(),
             exports_chirho,
         });
     }
@@ -12925,9 +12878,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         for name_chirho in &[
             "Socket", "SockAddr", "AddrInfo", "Family", "SocketType",
-            "SocketOption", "HostAddress", "PortNumber",
+            "SocketOption", "HostAddress", "HostAddress6", "PortNumber",
         ] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            let (k_chirho, v_chirho) = match *name_chirho {
+                "SockAddr" => mk_type_chirho("SockAddr", &["SockAddrInet", "SockAddrInet6"]),
+                "SocketOption" => mk_type_chirho("SocketOption", &["NoDelay"]),
+                _ => mk_type_chirho(name_chirho, &[]),
+            };
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
@@ -12946,7 +12903,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         for name_chirho in &[
             "initialize", "stopManager", "killManager",
             "withManager", "register", "tickle", "pause", "resume",
-            "cancel", "setTimeout",
+            "cancel", "setTimeout", "withHandleKillThread",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
