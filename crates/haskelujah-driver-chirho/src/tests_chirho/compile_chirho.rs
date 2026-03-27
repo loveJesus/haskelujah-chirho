@@ -1483,6 +1483,53 @@ pairChirho = runST stepChirho\n",
 }
 
 #[test]
+fn frontend_builtin_readert_partial_application_surface_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "BuiltinReaderTMiniChirho.hs",
+        "module BuiltinReaderTMiniChirho where\n\
+import Data.Word\n\
+import Control.Monad.Trans.Reader (ReaderT, runReaderT)\n\
+stepChirho :: ReaderT Int Maybe Word64\n\
+stepChirho = undefined\n\
+runChirho :: Int -> Maybe Word64\n\
+runChirho = runReaderT stepChirho\n",
+    );
+
+    let result_chirho =
+        check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho);
+    assert!(
+        result_chirho.is_ok(),
+        "builtin ReaderT/runReaderT surface should accept partial application: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_builtin_maybet_partial_application_surface_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "BuiltinMaybeTMiniChirho.hs",
+        "module BuiltinMaybeTMiniChirho where\n\
+import Control.Monad.Trans.Maybe (MaybeT, runMaybeT)\n\
+stepChirho :: MaybeT Maybe Int\n\
+stepChirho = undefined\n\
+runChirho :: Maybe (Maybe Int)\n\
+runChirho = runMaybeT stepChirho\n",
+    );
+
+    let result_chirho =
+        check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho);
+    assert!(
+        result_chirho.is_ok(),
+        "builtin MaybeT/runMaybeT surface should accept partial application: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_writer_t_lift_callcc_and_catch_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
@@ -2616,6 +2663,40 @@ fn frontend_same_module_operator_binding_resolves_chirho() {
     assert!(
         result_chirho.is_ok(),
         "same-module operator function bindings should resolve under bare operator syntax: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_parenthesized_hash_operator_binding_resolves_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module HashOpMiniChirho where\n(#.) :: aChirho -> bChirho -> bChirho\n(#.) _ xChirho = xChirho\nvalueChirho = 1 #. 2\n",
+        &mut source_map_chirho,
+        "HashOpMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "parenthesized hash-operator bindings should resolve under bare operator syntax: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn check_source_path_parenthesized_hash_operator_binding_resolves_chirho() {
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should exist");
+    let file_path_chirho = temp_dir_chirho.path().join("HashOpFileMiniChirho.hs");
+    std::fs::write(
+        &file_path_chirho,
+        "module HashOpFileMiniChirho where\n(#.) :: aChirho -> bChirho -> bChirho\n(#.) _ xChirho = xChirho\nvalueChirho = 1 #. 2\n",
+    )
+    .expect("temp source should write");
+
+    let result_chirho =
+        check_source_path_chirho(&file_path_chirho, ExecutionModeChirho::BatchChirho);
+    assert!(
+        result_chirho.is_ok(),
+        "file-path frontend should keep parenthesized hash-operator bindings intact: {:?}",
         result_chirho.err()
     );
 }

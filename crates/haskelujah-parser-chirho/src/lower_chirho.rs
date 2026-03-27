@@ -10698,6 +10698,33 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
     }
 
     #[test]
+    fn lower_parenthesized_operator_function_binding_name_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\n\
+             (#.) _ xChirho = xChirho\n",
+        );
+
+        let fun_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::FunBindChirho { .. }))
+            .unwrap_or_else(|| panic!("expected operator funbind"));
+
+        let DeclChirho::FunBindChirho {
+            name_chirho,
+            matches_chirho,
+            ..
+        } = fun_decl_chirho
+        else {
+            panic!("expected operator funbind");
+        };
+
+        assert_eq!(name_chirho.text_chirho(), "#.");
+        assert_eq!(matches_chirho.len(), 1);
+        assert_eq!(matches_chirho[0].pats_chirho.len(), 2);
+    }
+
+    #[test]
     fn lower_import_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M where\nimport Data.List\nimport qualified Data.Map as Map\n",

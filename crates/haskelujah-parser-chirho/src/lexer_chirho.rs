@@ -285,7 +285,7 @@ impl<'src> LexerChirho<'src> {
 
             // Punctuation
             b'(' => {
-                if self.peek_at_chirho(1) == Some(b'#') {
+                if self.starts_unboxed_paren_open_chirho() {
                     self.pos_chirho += 2;
                     self.unboxed_paren_depth_chirho += 1;
                 } else {
@@ -660,6 +660,32 @@ impl<'src> LexerChirho<'src> {
     fn has_more_symbol_at_chirho(&self, offset_chirho: usize) -> bool {
         self.peek_at_chirho(offset_chirho)
             .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
+    }
+
+    fn starts_unboxed_paren_open_chirho(&self) -> bool {
+        if self.peek_at_chirho(1) != Some(b'#') {
+            return false;
+        }
+
+        // Preserve parenthesized hash-operator names like `(#.)` and `(#.$)`.
+        // When `(#` is followed only by operator characters up to the next `)`,
+        // this is an operator-in-parens, not an unboxed tuple/sum opener.
+        let Some(next_byte_chirho) = self.peek_at_chirho(2) else {
+            return true;
+        };
+        if is_symbol_char_chirho(next_byte_chirho) && next_byte_chirho != b'#' && next_byte_chirho != b'|' {
+            let mut lookahead_chirho = self.pos_chirho + 2;
+            while lookahead_chirho < self.bytes_chirho.len()
+                && is_symbol_char_chirho(self.bytes_chirho[lookahead_chirho])
+            {
+                lookahead_chirho += 1;
+            }
+            if self.bytes_chirho.get(lookahead_chirho) == Some(&b')') {
+                return false;
+            }
+        }
+
+        true
     }
 
     /// MagicHash: consume one or more trailing `#` characters.

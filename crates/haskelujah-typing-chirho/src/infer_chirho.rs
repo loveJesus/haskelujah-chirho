@@ -7957,6 +7957,28 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 Box::new(inner_ty_chirho),
             )
         };
+    let mk_reader_t_ty_chirho =
+        |reader_env_ty_chirho: TyChirho, monad_ty_chirho: TyChirho, inner_ty_chirho: TyChirho| {
+            TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                        Box::new(reader_env_ty_chirho),
+                    )),
+                    Box::new(monad_ty_chirho),
+                )),
+                Box::new(inner_ty_chirho),
+            )
+        };
+    let mk_maybe_t_ty_chirho = |monad_ty_chirho: TyChirho, inner_ty_chirho: TyChirho| {
+        TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("MaybeT".to_string())),
+                Box::new(monad_ty_chirho),
+            )),
+            Box::new(inner_ty_chirho),
+        )
+    };
 
     // ── Control.Monad.ST operations ──
     // newSTRef :: a -> ST s (STRef s a)  (simplified: STRef s a ≈ Int at runtime)
@@ -11350,37 +11372,44 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     // MaybeT is a newtype: newtype MaybeT m a = MaybeT { runMaybeT :: m (Maybe a) }
     // StateT is a newtype: newtype StateT s m a = StateT { runStateT :: s -> m (a, s) }
     //
-    // We seed simplified type signatures for the constructor and accessor
-    // functions so the type checker can resolve references in user programs.
-    // These simplified versions treat the inner monad as the identity and are
-    // sufficient for basic end-to-end evaluation tests.
+    // We seed constructor and accessor types with their real transformer shape
+    // so partially-applied transformer heads stay well-kinded and unify
+    // correctly in package code.
 
-    // MaybeT :: Maybe a -> MaybeT a  (simplified; no inner-monad parameter)
-    // runMaybeT :: MaybeT a -> Maybe a  (simplified)
+    // MaybeT :: m (Maybe a) -> MaybeT m a
+    // runMaybeT :: MaybeT m a -> m (Maybe a)
     {
-        let mt_a_chirho = TyVarChirho(3500);
+        let mt_m_chirho = TyVarChirho(3500);
+        let mt_a_chirho = TyVarChirho(3501);
         let maybe_a_ty_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::ConChirho("Maybe".to_string())),
             Box::new(TyChirho::VarChirho(mt_a_chirho)),
         );
-        let mayet_ty_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::ConChirho("MaybeT".to_string())),
-            Box::new(TyChirho::VarChirho(mt_a_chirho)),
+        let monadic_maybe_a_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(mt_m_chirho)),
+            Box::new(maybe_a_ty_chirho.clone()),
+        );
+        let maybet_ty_chirho = mk_maybe_t_ty_chirho(
+            TyChirho::VarChirho(mt_m_chirho),
+            TyChirho::VarChirho(mt_a_chirho),
         );
         env_chirho.bind_chirho(
             "MaybeT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![mt_a_chirho],
+                vars_chirho: vec![mt_m_chirho, mt_a_chirho],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(maybe_a_ty_chirho.clone(), mayet_ty_chirho.clone()),
+                ty_chirho: TyChirho::fun_chirho(
+                    monadic_maybe_a_ty_chirho.clone(),
+                    maybet_ty_chirho.clone(),
+                ),
             },
         );
         env_chirho.bind_chirho(
             "runMaybeT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![mt_a_chirho],
+                vars_chirho: vec![mt_m_chirho, mt_a_chirho],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(mayet_ty_chirho, maybe_a_ty_chirho),
+                ty_chirho: TyChirho::fun_chirho(maybet_ty_chirho, monadic_maybe_a_ty_chirho),
             },
         );
     }
@@ -11699,26 +11728,28 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     // ReaderT monad transformer
     // -----------------------------------------------------------------------
 
-    // ReaderT :: (r -> a) -> ReaderT r a
-    // runReaderT :: ReaderT r a -> r -> a
+    // ReaderT :: (r -> m a) -> ReaderT r m a
+    // runReaderT :: ReaderT r m a -> r -> m a
     {
         let rt_r_chirho = TyVarChirho(3530);
-        let rt_a_chirho = TyVarChirho(3531);
+        let rt_m_chirho = TyVarChirho(3531);
+        let rt_a_chirho = TyVarChirho(3532);
         let rt_fn_ty_chirho = TyChirho::fun_chirho(
             TyChirho::VarChirho(rt_r_chirho),
-            TyChirho::VarChirho(rt_a_chirho),
+            TyChirho::AppChirho(
+                Box::new(TyChirho::VarChirho(rt_m_chirho)),
+                Box::new(TyChirho::VarChirho(rt_a_chirho)),
+            ),
         );
-        let readert_ty_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
-                Box::new(TyChirho::VarChirho(rt_r_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(rt_a_chirho)),
+        let readert_ty_chirho = mk_reader_t_ty_chirho(
+            TyChirho::VarChirho(rt_r_chirho),
+            TyChirho::VarChirho(rt_m_chirho),
+            TyChirho::VarChirho(rt_a_chirho),
         );
         env_chirho.bind_chirho(
             "ReaderT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![rt_r_chirho, rt_a_chirho],
+                vars_chirho: vec![rt_r_chirho, rt_m_chirho, rt_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(rt_fn_ty_chirho.clone(), readert_ty_chirho.clone()),
             },
@@ -11726,53 +11757,55 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "runReaderT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![rt_r_chirho, rt_a_chirho],
+                vars_chirho: vec![rt_r_chirho, rt_m_chirho, rt_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(readert_ty_chirho.clone(), rt_fn_ty_chirho.clone()),
             },
         );
     }
 
-    // ask :: ReaderT r r
+    // ask :: Monad m => ReaderT r m r
     {
-        let ar_chirho = TyVarChirho(3532);
-        let ask_ty_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
-                Box::new(TyChirho::VarChirho(ar_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(ar_chirho)),
+        let ar_r_chirho = TyVarChirho(3533);
+        let ar_m_chirho = TyVarChirho(3534);
+        let ask_ty_chirho = mk_reader_t_ty_chirho(
+            TyChirho::VarChirho(ar_r_chirho),
+            TyChirho::VarChirho(ar_m_chirho),
+            TyChirho::VarChirho(ar_r_chirho),
         );
         env_chirho.bind_chirho(
             "ask".to_string(),
             SchemeChirho {
-                vars_chirho: vec![ar_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![ar_r_chirho, ar_m_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(ar_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: ask_ty_chirho,
             },
         );
     }
 
-    // local :: (r -> r) -> ReaderT r a -> ReaderT r a
+    // local :: (r -> r) -> ReaderT r m a -> ReaderT r m a
     {
-        let lr_chirho = TyVarChirho(3533);
-        let la_chirho = TyVarChirho(3534);
-        let readert_ra_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
-                Box::new(TyChirho::VarChirho(lr_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(la_chirho)),
+        let lr_r_chirho = TyVarChirho(3535);
+        let lr_m_chirho = TyVarChirho(3536);
+        let la_chirho = TyVarChirho(3537);
+        let readert_ra_chirho = mk_reader_t_ty_chirho(
+            TyChirho::VarChirho(lr_r_chirho),
+            TyChirho::VarChirho(lr_m_chirho),
+            TyChirho::VarChirho(la_chirho),
         );
         env_chirho.bind_chirho(
             "local".to_string(),
             SchemeChirho {
-                vars_chirho: vec![lr_chirho, la_chirho],
+                vars_chirho: vec![lr_r_chirho, lr_m_chirho, la_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::fun_chirho(
-                        TyChirho::VarChirho(lr_chirho),
-                        TyChirho::VarChirho(lr_chirho),
+                        TyChirho::VarChirho(lr_r_chirho),
+                        TyChirho::VarChirho(lr_r_chirho),
                     ),
                     TyChirho::fun_chirho(readert_ra_chirho.clone(), readert_ra_chirho),
                 ),
@@ -11780,30 +11813,31 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // bindReaderT :: ReaderT r a -> (a -> ReaderT r b) -> ReaderT r b
+    // bindReaderT :: Monad m => ReaderT r m a -> (a -> ReaderT r m b) -> ReaderT r m b
     {
-        let br_chirho = TyVarChirho(3535);
-        let ba_chirho = TyVarChirho(3536);
-        let bb_chirho = TyVarChirho(3537);
-        let readert_ra_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
-                Box::new(TyChirho::VarChirho(br_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(ba_chirho)),
+        let br_r_chirho = TyVarChirho(3538);
+        let br_m_chirho = TyVarChirho(3539);
+        let ba_chirho = TyVarChirho(3540);
+        let bb_chirho = TyVarChirho(3541);
+        let readert_ra_chirho = mk_reader_t_ty_chirho(
+            TyChirho::VarChirho(br_r_chirho),
+            TyChirho::VarChirho(br_m_chirho),
+            TyChirho::VarChirho(ba_chirho),
         );
-        let readert_rb_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
-                Box::new(TyChirho::VarChirho(br_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(bb_chirho)),
+        let readert_rb_chirho = mk_reader_t_ty_chirho(
+            TyChirho::VarChirho(br_r_chirho),
+            TyChirho::VarChirho(br_m_chirho),
+            TyChirho::VarChirho(bb_chirho),
         );
         env_chirho.bind_chirho(
             "bindReaderT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![br_chirho, ba_chirho, bb_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![br_r_chirho, br_m_chirho, ba_chirho, bb_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(br_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(
                     readert_ra_chirho,
                     TyChirho::fun_chirho(
@@ -11818,48 +11852,53 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // returnReaderT :: a -> ReaderT r a
+    // returnReaderT :: Applicative m => a -> ReaderT r m a
     {
-        let rr_chirho = TyVarChirho(3538);
-        let ra_chirho = TyVarChirho(3539);
-        let readert_ty_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
-                Box::new(TyChirho::VarChirho(rr_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(ra_chirho)),
+        let rr_r_chirho = TyVarChirho(3542);
+        let rr_m_chirho = TyVarChirho(3543);
+        let ra_chirho = TyVarChirho(3544);
+        let readert_ty_chirho = mk_reader_t_ty_chirho(
+            TyChirho::VarChirho(rr_r_chirho),
+            TyChirho::VarChirho(rr_m_chirho),
+            TyChirho::VarChirho(ra_chirho),
         );
         env_chirho.bind_chirho(
             "returnReaderT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![rr_chirho, ra_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![rr_r_chirho, rr_m_chirho, ra_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Applicative".to_string(),
+                    ty_chirho: TyChirho::VarChirho(rr_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(ra_chirho), readert_ty_chirho),
             },
         );
     }
 
-    // runReader :: ReaderT r a -> r -> a  (alias)
+    // runReader :: ReaderT r Identity a -> r -> Identity a  (alias surface)
     {
-        let rnr_r_chirho = TyVarChirho(3540);
-        let rnr_a_chirho = TyVarChirho(3541);
-        let readert_ty_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
-                Box::new(TyChirho::VarChirho(rnr_r_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(rnr_a_chirho)),
+        let rnr_r_chirho = TyVarChirho(3545);
+        let rnr_m_chirho = TyVarChirho(3546);
+        let rnr_a_chirho = TyVarChirho(3547);
+        let readert_ty_chirho = mk_reader_t_ty_chirho(
+            TyChirho::VarChirho(rnr_r_chirho),
+            TyChirho::VarChirho(rnr_m_chirho),
+            TyChirho::VarChirho(rnr_a_chirho),
         );
         env_chirho.bind_chirho(
             "runReader".to_string(),
             SchemeChirho {
-                vars_chirho: vec![rnr_r_chirho, rnr_a_chirho],
+                vars_chirho: vec![rnr_r_chirho, rnr_m_chirho, rnr_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     readert_ty_chirho,
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(rnr_r_chirho),
-                        TyChirho::VarChirho(rnr_a_chirho),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(rnr_m_chirho)),
+                            Box::new(TyChirho::VarChirho(rnr_a_chirho)),
+                        ),
                     ),
                 ),
             },
@@ -12070,40 +12109,50 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     // MaybeT operations (returnMaybeT, bindMaybeT)
     // -----------------------------------------------------------------------
 
-    // returnMaybeT :: forall a. a -> MaybeT a
+    // returnMaybeT :: forall m a. Monad m => a -> MaybeT m a
     {
-        let rmt_a_chirho = TyVarChirho(3570);
-        let maybet_a_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::ConChirho("MaybeT".to_string())),
-            Box::new(TyChirho::VarChirho(rmt_a_chirho)),
+        let rmt_m_chirho = TyVarChirho(3570);
+        let rmt_a_chirho = TyVarChirho(3571);
+        let maybet_a_chirho = mk_maybe_t_ty_chirho(
+            TyChirho::VarChirho(rmt_m_chirho),
+            TyChirho::VarChirho(rmt_a_chirho),
         );
         env_chirho.bind_chirho(
             "returnMaybeT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![rmt_a_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![rmt_m_chirho, rmt_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(rmt_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(rmt_a_chirho), maybet_a_chirho),
             },
         );
     }
 
-    // bindMaybeT :: forall a b. MaybeT a -> (a -> MaybeT b) -> MaybeT b
+    // bindMaybeT :: forall m a b. Monad m => MaybeT m a -> (a -> MaybeT m b) -> MaybeT m b
     {
-        let bmt_a_chirho = TyVarChirho(3571);
-        let bmt_b_chirho = TyVarChirho(3572);
-        let maybet_a_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::ConChirho("MaybeT".to_string())),
-            Box::new(TyChirho::VarChirho(bmt_a_chirho)),
+        let bmt_m_chirho = TyVarChirho(3572);
+        let bmt_a_chirho = TyVarChirho(3573);
+        let bmt_b_chirho = TyVarChirho(3574);
+        let maybet_a_chirho = mk_maybe_t_ty_chirho(
+            TyChirho::VarChirho(bmt_m_chirho),
+            TyChirho::VarChirho(bmt_a_chirho),
         );
-        let maybet_b_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::ConChirho("MaybeT".to_string())),
-            Box::new(TyChirho::VarChirho(bmt_b_chirho)),
+        let maybet_b_chirho = mk_maybe_t_ty_chirho(
+            TyChirho::VarChirho(bmt_m_chirho),
+            TyChirho::VarChirho(bmt_b_chirho),
         );
         env_chirho.bind_chirho(
             "bindMaybeT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![bmt_a_chirho, bmt_b_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![bmt_m_chirho, bmt_a_chirho, bmt_b_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(bmt_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(
                     maybet_a_chirho,
                     TyChirho::fun_chirho(

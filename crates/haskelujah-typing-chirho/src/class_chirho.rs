@@ -2377,6 +2377,107 @@ impl ClassEnvChirho {
             )],
         });
 
+        let reader_env_var_chirho = TyVarChirho(4003);
+        let reader_monad_var_chirho = TyVarChirho(4004);
+        let reader_t_head_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                Box::new(TyChirho::VarChirho(reader_env_var_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(reader_monad_var_chirho)),
+        );
+
+        // instance Functor m => Functor (ReaderT r m)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Functor".to_string(),
+            head_ty_chirho: reader_t_head_ty_chirho.clone(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Functor",
+                TyChirho::VarChirho(reader_monad_var_chirho),
+            )],
+        });
+
+        // instance Applicative m => Applicative (ReaderT r m)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Applicative".to_string(),
+            head_ty_chirho: reader_t_head_ty_chirho.clone(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Applicative",
+                TyChirho::VarChirho(reader_monad_var_chirho),
+            )],
+        });
+
+        // instance Monad m => Monad (ReaderT r m)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Monad".to_string(),
+            head_ty_chirho: reader_t_head_ty_chirho.clone(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Monad",
+                TyChirho::VarChirho(reader_monad_var_chirho),
+            )],
+        });
+
+        // instance MonadTrans (ReaderT r)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "MonadTrans".to_string(),
+            head_ty_chirho: TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ReaderT".to_string())),
+                Box::new(TyChirho::VarChirho(reader_env_var_chirho)),
+            ),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        let maybe_t_monad_var_chirho = TyVarChirho(4005);
+        let maybe_t_head_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("MaybeT".to_string())),
+            Box::new(TyChirho::VarChirho(maybe_t_monad_var_chirho)),
+        );
+
+        // instance Functor m => Functor (MaybeT m)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Functor".to_string(),
+            head_ty_chirho: maybe_t_head_ty_chirho.clone(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Functor",
+                TyChirho::VarChirho(maybe_t_monad_var_chirho),
+            )],
+        });
+
+        // instance Applicative m => Applicative (MaybeT m)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Applicative".to_string(),
+            head_ty_chirho: maybe_t_head_ty_chirho.clone(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Applicative",
+                TyChirho::VarChirho(maybe_t_monad_var_chirho),
+            )],
+        });
+
+        // instance Monad m => Monad (MaybeT m)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Monad".to_string(),
+            head_ty_chirho: maybe_t_head_ty_chirho.clone(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "Monad",
+                TyChirho::VarChirho(maybe_t_monad_var_chirho),
+            )],
+        });
+
+        // instance MonadTrans MaybeT
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "MonadTrans".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("MaybeT".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
         let st_token_var_chirho = TyVarChirho(4002);
         let st_head_ty_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::ConChirho("ST".to_string())),
