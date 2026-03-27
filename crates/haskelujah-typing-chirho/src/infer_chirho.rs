@@ -7198,6 +7198,30 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         with_foreign_ptr_scheme_chirho,
     );
 
+    // unsafeIOToST :: IO a -> ST s a
+    {
+        let a_chirho = TyVarChirho(1693);
+        let s_chirho = TyVarChirho(1694);
+        env_chirho.bind_chirho(
+            "unsafeIOToST".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho, s_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::FunChirho(
+                    Box::new(TyChirho::io_chirho(TyChirho::VarChirho(a_chirho))),
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::ConChirho("ST".to_string())),
+                            Box::new(TyChirho::VarChirho(s_chirho)),
+                        )),
+                        Box::new(TyChirho::VarChirho(a_chirho)),
+                    )),
+                    MultChirho::ManyChirho,
+                ),
+            },
+        );
+    }
+
     let smgen_ty_chirho = TyChirho::ConChirho("SMGen".to_string());
     let word32_ty_chirho = TyChirho::ConChirho("Word32".to_string());
     let word64_ty_chirho = TyChirho::ConChirho("Word64".to_string());
