@@ -694,6 +694,42 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
     decode_cpp_stdout_chirho(path_chirho, output_chirho.stdout)
 }
 
+fn cpp_directive_head_for_line_chirho(line_chirho: &str) -> Option<&str> {
+    let trimmed_chirho = line_chirho.trim_start();
+    let directive_text_chirho = trimmed_chirho.strip_prefix('#')?.trim_start();
+    let directive_head_chirho = directive_text_chirho
+        .split_whitespace()
+        .next()
+        .unwrap_or_default();
+    if directive_head_chirho.is_empty()
+        || directive_head_chirho.chars().all(|char_chirho| char_chirho.is_ascii_digit())
+        || matches!(
+            directive_head_chirho,
+            "if"
+                | "ifdef"
+                | "ifndef"
+                | "else"
+                | "elif"
+                | "endif"
+                | "define"
+                | "undef"
+                | "include"
+                | "line"
+                | "pragma"
+        )
+    {
+        Some(directive_head_chirho)
+    } else {
+        None
+    }
+}
+
+fn has_cpp_directive_residue_chirho(source_chirho: &str) -> bool {
+    source_chirho
+        .lines()
+        .any(|line_chirho| cpp_directive_head_for_line_chirho(line_chirho).is_some())
+}
+
 fn strip_cpp_directives_chirho(source_chirho: &str) -> String {
     #[derive(Clone, Copy)]
     struct CppStripFrameChirho {
@@ -705,16 +741,7 @@ fn strip_cpp_directives_chirho(source_chirho: &str) -> String {
     let mut active_branch_chirho = true;
 
     for line_chirho in source_chirho.lines() {
-        let trimmed_chirho = line_chirho.trim_start();
-        let directive_text_chirho = trimmed_chirho
-            .strip_prefix('#')
-            .map(|rest_chirho| rest_chirho.trim_start());
-
-        if let Some(directive_text_chirho) = directive_text_chirho {
-            let directive_head_chirho = directive_text_chirho
-                .split_whitespace()
-                .next()
-                .unwrap_or_default();
+        if let Some(directive_head_chirho) = cpp_directive_head_for_line_chirho(line_chirho) {
             match directive_head_chirho {
                 "if" | "ifdef" | "ifndef" => {
                     conditional_stack_chirho.push(CppStripFrameChirho {
@@ -722,11 +749,7 @@ fn strip_cpp_directives_chirho(source_chirho: &str) -> String {
                     });
                 }
                 "else" | "elif" => {
-                    if let Some(frame_chirho) = conditional_stack_chirho.last() {
-                        active_branch_chirho = false && frame_chirho.parent_active_chirho;
-                    } else {
-                        active_branch_chirho = false;
-                    }
+                    active_branch_chirho = false;
                 }
                 "endif" => {
                     active_branch_chirho = conditional_stack_chirho
@@ -877,7 +900,14 @@ fn read_haskell_source_file_chirho(path_chirho: impl AsRef<Path>) -> io::Result<
     // Try CPP preprocessing; fall back to raw source (with directives
     // stripped) if cpp fails (e.g., tick characters in Haskell identifiers).
     match preprocess_cpp_source_chirho(path_ref_chirho, &source_chirho) {
-        Ok(processed_chirho) => Ok(lower_maybe_like_unboxed_sums_chirho(&processed_chirho)),
+        Ok(processed_chirho) => {
+            let cleaned_chirho = if has_cpp_directive_residue_chirho(&processed_chirho) {
+                strip_cpp_directives_chirho(&processed_chirho)
+            } else {
+                processed_chirho
+            };
+            Ok(lower_maybe_like_unboxed_sums_chirho(&cleaned_chirho))
+        }
         Err(_) if path_is_hsc_chirho(path_ref_chirho) => Ok(sanitize_hsc_source_chirho(
             &lower_maybe_like_unboxed_sums_chirho(&strip_cpp_directives_chirho(&source_chirho)),
         )),
@@ -2020,7 +2050,12 @@ pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
     {
         Ok(processed_chirho) => {
             let _ = std::fs::remove_file(&temp_path_chirho);
-            lower_maybe_like_unboxed_sums_chirho(&processed_chirho)
+            let cleaned_chirho = if has_cpp_directive_residue_chirho(&processed_chirho) {
+                strip_cpp_directives_chirho(&processed_chirho)
+            } else {
+                processed_chirho
+            };
+            lower_maybe_like_unboxed_sums_chirho(&cleaned_chirho)
         }
         _ => {
             let _ = std::fs::remove_file(&temp_path_chirho);
