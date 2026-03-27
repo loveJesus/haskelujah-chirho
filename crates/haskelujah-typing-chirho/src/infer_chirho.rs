@@ -6834,26 +6834,32 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // swap :: forall a b. (a, b) -> (b, a)
+    // swap :: forall p a b. p a b -> p b a
+    // This covers both tuple swap and Data.Bifunctor.Swap.swap.
+    let sw_p_chirho = TyVarChirho(1035);
     let sw_a_chirho = TyVarChirho(1036);
     let sw_b_chirho = TyVarChirho(1037);
-    env_chirho.bind_chirho(
-        "swap".to_string(),
-        SchemeChirho {
-            vars_chirho: vec![sw_a_chirho, sw_b_chirho],
-            preds_chirho: vec![],
-            ty_chirho: TyChirho::fun_chirho(
-                TyChirho::TupleChirho(vec![
-                    TyChirho::VarChirho(sw_a_chirho),
-                    TyChirho::VarChirho(sw_b_chirho),
-                ]),
-                TyChirho::TupleChirho(vec![
-                    TyChirho::VarChirho(sw_b_chirho),
-                    TyChirho::VarChirho(sw_a_chirho),
-                ]),
-            ),
-        },
+    let swap_arg_ty_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(sw_p_chirho)),
+            Box::new(TyChirho::VarChirho(sw_a_chirho)),
+        )),
+        Box::new(TyChirho::VarChirho(sw_b_chirho)),
     );
+    let swap_result_ty_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(sw_p_chirho)),
+            Box::new(TyChirho::VarChirho(sw_b_chirho)),
+        )),
+        Box::new(TyChirho::VarChirho(sw_a_chirho)),
+    );
+    let swap_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![sw_p_chirho, sw_a_chirho, sw_b_chirho],
+        preds_chirho: vec![],
+        ty_chirho: TyChirho::fun_chirho(swap_arg_ty_chirho, swap_result_ty_chirho),
+    };
+    env_chirho.bind_chirho("swap".to_string(), swap_scheme_chirho.clone());
+    env_chirho.bind_chirho("Data.Bifunctor.Swap.swap".to_string(), swap_scheme_chirho);
 
     // Left :: forall a b. a -> Either a b
     let left_a_chirho = TyVarChirho(1038);
@@ -18117,6 +18123,42 @@ mod tests_chirho {
                 ]),
             ),
             "bitmaskWithRejection64' should accept a Word64 upper bound"
+        );
+    }
+
+    #[test]
+    fn builtin_swap_supports_binary_constructor_polymorphism_chirho() {
+        let schemes_chirho = builtin_value_schemes_chirho();
+        let swap_scheme_chirho = schemes_chirho
+            .get("swap")
+            .expect("swap builtin should exist");
+        let sw_p_chirho = TyVarChirho(1035);
+        let sw_a_chirho = TyVarChirho(1036);
+        let sw_b_chirho = TyVarChirho(1037);
+
+        assert_eq!(
+            swap_scheme_chirho,
+            &SchemeChirho {
+                vars_chirho: vec![sw_p_chirho, sw_a_chirho, sw_b_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(sw_p_chirho)),
+                            Box::new(TyChirho::VarChirho(sw_a_chirho)),
+                        )),
+                        Box::new(TyChirho::VarChirho(sw_b_chirho)),
+                    ),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(sw_p_chirho)),
+                            Box::new(TyChirho::VarChirho(sw_b_chirho)),
+                        )),
+                        Box::new(TyChirho::VarChirho(sw_a_chirho)),
+                    ),
+                ),
+            },
+            "swap should work over any binary constructor, not only tuples"
         );
     }
 }
