@@ -12997,6 +12997,84 @@ class Describable a where
             helper_matches_chirho[0].pats_chirho
         );
     }
+
+    #[test]
+    fn lower_where_strict_tuple_pattern_binding_stays_tuple_pattern_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module MChirho where\nfChirho sChirho = r0Chirho where\n  (!q0Chirho, !r0Chirho) = sChirho `divMod` 10\n  (!q1Chirho, !r1Chirho) = q0Chirho `divMod` 10\n  !r2Chirho = q1Chirho `mod` 10\n",
+        );
+        let fun_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "fChirho"
+                )
+            })
+            .expect("expected fChirho binding");
+        let DeclChirho::FunBindChirho { matches_chirho, .. } = fun_decl_chirho else {
+            panic!("expected function binding");
+        };
+        let strict_tuple_bind_chirho = matches_chirho[0]
+            .where_binds_chirho
+            .iter()
+            .find(|bind_chirho| {
+                matches!(
+                    bind_chirho,
+                    LocalBindChirho::PatBindChirho {
+                        pat_chirho:
+                            PatChirho::TupleChirho {
+                                elements_chirho,
+                                ..
+                            },
+                        ..
+                    } if elements_chirho.len() == 2
+                )
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected strict tuple pattern binding in where clause, got {:?}",
+                    matches_chirho[0].where_binds_chirho
+                )
+            });
+        let LocalBindChirho::PatBindChirho { pat_chirho, .. } = strict_tuple_bind_chirho else {
+            panic!("expected pattern binding");
+        };
+        let PatChirho::TupleChirho {
+            elements_chirho, ..
+        } = pat_chirho
+        else {
+            panic!("expected tuple pattern, got {:?}", pat_chirho);
+        };
+        assert!(
+            matches!(
+                &elements_chirho[0],
+                PatChirho::BangChirho { inner_chirho, .. }
+                    if matches!(
+                        inner_chirho.as_ref(),
+                        PatChirho::VarChirho(name_chirho)
+                            if name_chirho.text_chirho() == "q0Chirho"
+                    )
+            ),
+            "first tuple element should be strict q0Chirho, got {:?}",
+            elements_chirho
+        );
+        assert!(
+            matches!(
+                &elements_chirho[1],
+                PatChirho::BangChirho { inner_chirho, .. }
+                    if matches!(
+                        inner_chirho.as_ref(),
+                        PatChirho::VarChirho(name_chirho)
+                            if name_chirho.text_chirho() == "r0Chirho"
+                    )
+            ),
+            "second tuple element should be strict r0Chirho, got {:?}",
+            elements_chirho
+        );
+    }
 }
 
 #[test]

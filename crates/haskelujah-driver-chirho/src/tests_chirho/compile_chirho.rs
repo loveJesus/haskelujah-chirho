@@ -6389,3 +6389,17 @@ fn frontend_overloaded_strings_builder_literals_typecheck_chirho() {
         result_chirho.err()
     );
 }
+
+#[test]
+fn frontend_strict_tuple_where_pattern_binding_typechecks_chirho() {
+    let src_chirho = "{-# LANGUAGE BangPatterns #-}\nmodule WarpPackIntMiniChirho where\nfChirho :: Int -> Int\nfChirho sChirho = r0Chirho where\n  (!q0Chirho, !r0Chirho) = sChirho `divMod` 10\n  (!q1Chirho, !r1Chirho) = q0Chirho `divMod` 10\n  !r2Chirho = q1Chirho `mod` 10\n";
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut source_map_chirho, "WarpPackIntMiniChirho.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "strict tuple where pattern bindings should typecheck: {:?}",
+        result_chirho.err()
+    );
+}

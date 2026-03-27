@@ -1503,8 +1503,9 @@ impl<'src> ParserChirho<'src> {
             }
             // Tuple / parenthesised pattern — but not an operator section
             // like `(+) x = ...`. Heuristic: if the token right after `(`
-            // is NOT a VarSym/ConSym (i.e. not an operator), treat as
-            // pattern binding.
+            // is an operator symbol and is immediately closed by `)`, treat
+            // it as an operator-in-parens binding head. Otherwise it is still
+            // a parenthesized pattern such as `(!x, y) = ...`.
             Some(RawTokenKindChirho::LeftParenChirho) => {
                 let mut i_chirho = self.pos_chirho + 1;
                 // Skip trivia
@@ -1517,13 +1518,22 @@ impl<'src> ParserChirho<'src> {
                     return false;
                 }
                 let next_kind_chirho = self.tokens_chirho[i_chirho].kind_chirho;
-                // If immediately after `(` we see an operator symbol, this
-                // is an operator section definition like `(+) = ...`, NOT
-                // a pattern binding.
-                !matches!(
+                if matches!(
                     next_kind_chirho,
                     RawTokenKindChirho::VarSymChirho | RawTokenKindChirho::ConSymChirho
-                )
+                ) {
+                    let mut j_chirho = i_chirho + 1;
+                    while j_chirho < self.tokens_chirho.len()
+                        && self.tokens_chirho[j_chirho].kind_chirho.is_trivia_chirho()
+                    {
+                        j_chirho += 1;
+                    }
+                    !self.tokens_chirho.get(j_chirho).is_some_and(|token_chirho| {
+                        token_chirho.kind_chirho == RawTokenKindChirho::RightParenChirho
+                    })
+                } else {
+                    true
+                }
             }
             // Constructor at the start of a binding: `Just x = ...`,
             // `A x = ...` — this is a constructor pattern binding, not a
@@ -5283,6 +5293,29 @@ mod tests_chirho {
         assert!(
             kinds_chirho.contains(&SyntaxKindChirho::BangPatChirho),
             "should have BangPat: {:?}",
+            kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_where_strict_tuple_pattern_binding_as_pat_bind_chirho() {
+        let source_chirho = "module MChirho where\nfChirho sChirho = r0Chirho where\n  (!q0Chirho, !r0Chirho) = sChirho `divMod` 10\n";
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::PatBindChirho),
+            "strict tuple where binding should parse as PatBindChirho: {:?}",
+            kinds_chirho
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::ParenPatChirho),
+            "strict tuple where binding should keep parenthesized pattern: {:?}",
+            kinds_chirho
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::BangPatChirho),
+            "strict tuple where binding should keep bang patterns: {:?}",
             kinds_chirho
         );
     }
