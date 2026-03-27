@@ -6364,6 +6364,154 @@ fn frontend_hashable_mix_collects_with_stdlib_seed_chirho() {
 }
 
 #[test]
+fn frontend_package_local_empty_and_insert_override_builtins_chirho() {
+    use crate::{
+        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+        collect_frontend_artifacts_from_module_sources_chirho,
+    };
+    use std::collections::HashMap;
+
+    let upstream_source_chirho = "module LocalMultiMapSeedMiniChirho where\n\ndata MultiMapMiniChirho a = MkMultiMapMiniChirho\n\nempty :: MultiMapMiniChirho a\nempty = MkMultiMapMiniChirho\n\ninsert :: Int -> a -> MultiMapMiniChirho a -> MultiMapMiniChirho a\ninsert _ _ cacheChirho = cacheChirho\n";
+    let downstream_source_chirho = "module DownstreamMultiMapSeedMiniChirho where\nimport LocalMultiMapSeedMiniChirho as MM\n\ntype CacheMiniChirho = MultiMapMiniChirho Int\n\ncacheMiniChirho :: CacheMiniChirho\ncacheMiniChirho = empty\n\nstepMiniChirho :: CacheMiniChirho\nstepMiniChirho = uncurry insert (1, 2) empty\n";
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let artifacts_result_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+        vec![
+            (
+                "LocalMultiMapSeedMiniChirho".to_string(),
+                "LocalMultiMapSeedMiniChirho.hs".to_string(),
+                upstream_source_chirho.to_string(),
+            ),
+            (
+                "DownstreamMultiMapSeedMiniChirho".to_string(),
+                "DownstreamMultiMapSeedMiniChirho.hs".to_string(),
+                downstream_source_chirho.to_string(),
+            ),
+        ],
+        &mut source_map_chirho,
+        vec![],
+        HashMap::new(),
+        ImportedTypeSynonymsChirho::new(),
+        ImportedTypeFamiliesChirho::new(),
+        true,
+    );
+
+    assert!(
+        artifacts_result_chirho.is_ok(),
+        "package-local empty/insert exports should override builtin homonyms in downstream modules"
+    );
+}
+
+#[test]
+fn frontend_warp_multimap_exports_seed_insert_and_empty_chirho() {
+    use crate::{
+        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+        collect_frontend_artifacts_from_module_sources_chirho, read_haskell_source_file_chirho,
+        scan_dependency_package_ifaces_chirho,
+    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/warp-3.4.12");
+    let multimap_path_chirho =
+        package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
+    let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)
+        .expect("warp MultiMap source should exist");
+    let extra_ifaces_chirho = scan_dependency_package_ifaces_chirho(&package_dir_chirho);
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+
+    let artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+        vec![(
+            "Network.Wai.Handler.Warp.MultiMap".to_string(),
+            multimap_path_chirho.display().to_string(),
+            multimap_source_chirho,
+        )],
+        &mut source_map_chirho,
+        extra_ifaces_chirho,
+        HashMap::new(),
+        ImportedTypeSynonymsChirho::new(),
+        ImportedTypeFamiliesChirho::new(),
+        true,
+    )
+    .expect("warp MultiMap frontend artifacts should collect");
+
+    assert!(
+        artifacts_chirho
+            .imported_types_chirho
+            .contains_key("Network.Wai.Handler.Warp.MultiMap.insert"),
+        "warp MultiMap should export a qualified insert scheme"
+    );
+    assert!(
+        artifacts_chirho.imported_types_chirho.contains_key("insert"),
+        "warp MultiMap should export a bare insert scheme"
+    );
+    assert!(
+        artifacts_chirho
+            .imported_types_chirho
+            .contains_key("Network.Wai.Handler.Warp.MultiMap.empty"),
+        "warp MultiMap should export a qualified empty scheme"
+    );
+    assert!(
+        artifacts_chirho.imported_types_chirho.contains_key("empty"),
+        "warp MultiMap should export a bare empty scheme"
+    );
+}
+
+#[test]
+fn frontend_warp_fdcache_typechecks_after_multimap_seed_chirho() {
+    use crate::{
+        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+        collect_frontend_artifacts_from_module_sources_chirho, read_haskell_source_file_chirho,
+        scan_dependency_package_ifaces_chirho,
+    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/warp-3.4.12");
+    let multimap_path_chirho =
+        package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
+    let fdcache_path_chirho =
+        package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
+    let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)
+        .expect("warp MultiMap source should exist");
+    let fdcache_source_chirho = read_haskell_source_file_chirho(&fdcache_path_chirho)
+        .expect("warp FdCache source should exist");
+    let extra_ifaces_chirho = scan_dependency_package_ifaces_chirho(&package_dir_chirho);
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+
+    let artifacts_result_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+        vec![
+            (
+                "Network.Wai.Handler.Warp.MultiMap".to_string(),
+                multimap_path_chirho.display().to_string(),
+                multimap_source_chirho,
+            ),
+            (
+                "Network.Wai.Handler.Warp.FdCache".to_string(),
+                fdcache_path_chirho.display().to_string(),
+                fdcache_source_chirho,
+            ),
+        ],
+        &mut source_map_chirho,
+        extra_ifaces_chirho,
+        HashMap::new(),
+        ImportedTypeSynonymsChirho::new(),
+        ImportedTypeFamiliesChirho::new(),
+        true,
+    );
+
+    assert!(
+        artifacts_result_chirho.is_ok(),
+        "warp FdCache should typecheck after MultiMap seeding: {:?}",
+        artifacts_result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_magic_hash_import_item_before_close_paren_typechecks_chirho() {
     let src_chirho = "module XorHashReproChirho where\nimport GHC.Exts (Word(..), xor#)\nfooChirho :: Word -> Word -> Word\nfooChirho (W# xChirho) (W# yChirho) = W# (xor# xChirho yChirho)\n";
 

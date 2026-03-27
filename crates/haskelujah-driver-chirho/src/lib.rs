@@ -3061,9 +3061,42 @@ fn filter_seeded_imported_types_for_source_chirho(
         return std::collections::HashMap::new();
     }
 
+    let mut unique_bare_names_chirho: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
+    for qualified_name_chirho in imported_types_chirho.keys() {
+        for module_name_chirho in &imported_modules_chirho {
+            let Some(suffix_chirho) = qualified_name_chirho.strip_prefix(module_name_chirho) else {
+                continue;
+            };
+            if !suffix_chirho.starts_with('.') {
+                continue;
+            }
+            let remainder_chirho = &suffix_chirho[1..];
+            if let Some((first_segment_chirho, _rest_chirho)) =
+                remainder_chirho.split_once('.')
+            {
+                if first_segment_chirho
+                    .chars()
+                    .next()
+                    .is_some_and(|chirho| chirho.is_uppercase())
+                {
+                    continue;
+                }
+            }
+            if !remainder_chirho.is_empty() && !remainder_chirho.contains('.') {
+                *unique_bare_names_chirho
+                    .entry(remainder_chirho.to_string())
+                    .or_insert(0) += 1;
+            }
+        }
+    }
+
     imported_types_chirho
         .iter()
         .filter(|(name_chirho, _scheme_chirho)| {
+            if !name_chirho.contains('.') {
+                return unique_bare_names_chirho.get(*name_chirho) == Some(&1);
+            }
             imported_modules_chirho.iter().any(|module_name_chirho| {
                 name_chirho
                     .strip_prefix(module_name_chirho)

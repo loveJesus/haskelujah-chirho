@@ -142,6 +142,39 @@ mod tests_chirho {
     }
 
     #[test]
+    fn filter_seeded_imported_types_keeps_unique_bare_local_export_names_chirho() {
+        let source_chirho =
+            "module DownstreamMultiMapSeedMiniChirho where\nimport LocalMultiMapSeedMiniChirho as MM\nvalueChirho = empty\n";
+        let imported_types_chirho = std::collections::HashMap::from([
+            (
+                "LocalMultiMapSeedMiniChirho.empty".to_string(),
+                SchemeChirho::mono_chirho(TyChirho::ConChirho(
+                    "LocalEmptySchemeChirho".to_string(),
+                )),
+            ),
+            (
+                "empty".to_string(),
+                SchemeChirho::mono_chirho(TyChirho::ConChirho(
+                    "LocalEmptySchemeChirho".to_string(),
+                )),
+            ),
+            (
+                "Text.Parsec.empty".to_string(),
+                SchemeChirho::mono_chirho(TyChirho::ConChirho(
+                    "OtherEmptySchemeChirho".to_string(),
+                )),
+            ),
+        ]);
+
+        let filtered_types_chirho =
+            filter_seeded_imported_types_for_source_chirho(source_chirho, &imported_types_chirho);
+
+        assert!(filtered_types_chirho.contains_key("LocalMultiMapSeedMiniChirho.empty"));
+        assert!(filtered_types_chirho.contains_key("empty"));
+        assert!(!filtered_types_chirho.contains_key("Text.Parsec.empty"));
+    }
+
+    #[test]
     fn discover_hs_files_in_temp_dir_chirho() {
         let tmp_chirho = tempfile::tempdir().unwrap();
         fs::write(
