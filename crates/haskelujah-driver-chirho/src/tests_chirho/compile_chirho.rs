@@ -991,6 +991,21 @@ fn clock_iface_exports_normalize_and_s2ns_chirho() {
 }
 
 #[test]
+fn foreign_import_is_in_scope_for_later_top_level_bindings_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ForeignImportScopeChirho where\nforeign import ccall unsafe \"foo\" fooChirho :: Int -> IO Int\nbarChirho = fooChirho 1\n",
+        &mut source_map_chirho,
+        "ForeignImportScopeChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "later bindings should see foreign imports: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn compile_modules_propagates_module_qualified_exports_to_downstream_imports_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_modules_chirho(

@@ -3798,6 +3798,23 @@ impl InferCtxChirho {
             }
         }
 
+        // Phase 0b: Seed foreign imports so later top-level bindings can use
+        // them just like ordinary top-level definitions.
+        for decl_chirho in &module_chirho.decls_chirho {
+            if let DeclChirho::ForeignDeclChirho {
+                direction_chirho:
+                    haskelujah_ast_chirho::decl_chirho::ForeignDirectionChirho::ImportChirho,
+                name_chirho,
+                ty_chirho,
+                ..
+            } = decl_chirho
+            {
+                let foreign_scheme_chirho = self.ast_type_to_scheme_chirho(ty_chirho);
+                self.env_chirho
+                    .bind_chirho(name_chirho.text_chirho().to_string(), foreign_scheme_chirho);
+            }
+        }
+
         // Phase 1a: Process class declarations (before data/instance so methods
         // are available in the environment)
         for decl_chirho in &module_chirho.decls_chirho {
@@ -7536,6 +7553,25 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
+
+    // throwErrnoIfMinus1_ :: String -> IO a -> IO ()
+    {
+        let errno_a_chirho = TyVarChirho(1694);
+        env_chirho.bind_chirho(
+            "throwErrnoIfMinus1_".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![errno_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::string_chirho(),
+                        TyChirho::io_chirho(TyChirho::VarChirho(errno_a_chirho)),
+                    ],
+                    TyChirho::io_chirho(TyChirho::unit_chirho()),
+                ),
+            },
+        );
+    }
 
     // newIORef :: a -> IO (IORef a)  (IORef a ≈ Int at runtime)
     {
