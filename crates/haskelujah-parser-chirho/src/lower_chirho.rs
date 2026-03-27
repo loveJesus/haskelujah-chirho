@@ -4478,12 +4478,39 @@ impl LowerCtxChirho {
             }))
         };
 
-        for child_chirho in children_chirho {
+        let mut child_idx_chirho = 0usize;
+        while child_idx_chirho < children_chirho.len() {
+            let child_chirho = &children_chirho[child_idx_chirho];
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
                     let s_chirho =
                         self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                     match tok_chirho.kind_chirho() {
+                        TokenKindChirho::LeftParenChirho
+                            if children_chirho
+                                .get(child_idx_chirho + 1)
+                                .and_then(|next_child_chirho| match next_child_chirho.element_chirho {
+                                    GreenElementChirho::TokenChirho(next_tok_chirho)
+                                        if next_tok_chirho.kind_chirho()
+                                            == TokenKindChirho::RightParenChirho =>
+                                    {
+                                        Some(next_child_chirho)
+                                    }
+                                    _ => None,
+                                })
+                                .is_some() =>
+                        {
+                            let closing_child_chirho = &children_chirho[child_idx_chirho + 1];
+                            types_chirho.push(TypeChirho::TupleChirho {
+                                elements_chirho: Vec::new(),
+                                span_chirho: self.span_chirho(
+                                    child_chirho.start_chirho,
+                                    closing_child_chirho.end_chirho,
+                                ),
+                            });
+                            child_idx_chirho += 2;
+                            continue;
+                        }
                         TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
                             let name_chirho = self.name_from_token_chirho(tok_chirho, s_chirho);
                             types_chirho.push(TypeChirho::ConChirho(name_chirho));
@@ -4503,6 +4530,7 @@ impl LowerCtxChirho {
                         .push(self.lower_type_chirho(sub_node_chirho, child_chirho.start_chirho));
                 }
             }
+            child_idx_chirho += 1;
         }
 
         if types_chirho.is_empty() {
@@ -10918,6 +10946,34 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                         other_chirho
                     ),
                 },
+                other_chirho => panic!(
+                    "expected foreign type to be a function, got {:?}",
+                    other_chirho
+                ),
+            },
+            other_chirho => panic!("expected ForeignDeclChirho, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_foreign_type_preserves_unit_return_application_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nforeign import ccall putStrChirho :: String -> IO ()\n",
+        );
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::ForeignDeclChirho { ty_chirho, .. } => match ty_chirho {
+                TypeChirho::FunChirho { result_chirho, .. } => {
+                    assert!(
+                        matches!(
+                            result_chirho.as_ref(),
+                            TypeChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                                if matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "IO")
+                                    && matches!(arg_chirho.as_ref(), TypeChirho::TupleChirho { elements_chirho, .. } if elements_chirho.is_empty())
+                        ),
+                        "expected foreign return type to stay as IO (), got {:?}",
+                        result_chirho
+                    );
+                }
                 other_chirho => panic!(
                     "expected foreign type to be a function, got {:?}",
                     other_chirho

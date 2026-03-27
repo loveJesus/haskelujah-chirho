@@ -5998,3 +5998,111 @@ main = do
         assert_eq!(stdout_chirho.trim(), "3\n2");
     }
 }
+
+#[test]
+fn frontend_hashable_ffi_exports_seed_qualified_io_results_chirho() {
+    use crate::{
+        collect_frontend_artifacts_from_module_sources_chirho, scan_dependency_package_ifaces_chirho,
+        ImportedTypeSynonymsChirho,
+    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/hashable-1.5.1.0");
+    let ffi_path_chirho = package_dir_chirho.join("src/Data/Hashable/FFI.hs");
+    let ffi_source_chirho =
+        std::fs::read_to_string(&ffi_path_chirho).expect("hashable FFI source should exist");
+    let extra_ifaces_chirho = scan_dependency_package_ifaces_chirho(&package_dir_chirho);
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+
+    let artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+        vec![(
+            "Data.Hashable.FFI".to_string(),
+            ffi_path_chirho.display().to_string(),
+            ffi_source_chirho,
+        )],
+        &mut source_map_chirho,
+        extra_ifaces_chirho,
+        HashMap::new(),
+        ImportedTypeSynonymsChirho::new(),
+    )
+    .expect("hashable FFI frontend artifacts should collect");
+
+    let digest_scheme_chirho = artifacts_chirho
+        .imported_types_chirho
+        .get("Data.Hashable.FFI.unsafe_xxh3_64bit_digest")
+        .cloned()
+        .expect("qualified digest scheme should be exported");
+    let init_scheme_chirho = artifacts_chirho
+        .imported_types_chirho
+        .get("Data.Hashable.FFI.unsafe_xxh3_initState")
+        .cloned()
+        .expect("qualified initState scheme should be exported");
+
+    assert!(
+        digest_scheme_chirho.to_string().contains("(IO Word64)"),
+        "digest should retain IO Word64, got {}",
+        digest_scheme_chirho
+    );
+    assert!(
+        init_scheme_chirho.to_string().contains("(IO ())"),
+        "initState should retain IO (), got {}",
+        init_scheme_chirho
+    );
+}
+
+#[test]
+fn frontend_hashable_ffi_pair_typechecks_with_dependency_stubs_chirho() {
+    use crate::{
+        collect_frontend_artifacts_from_module_sources_chirho,
+        run_frontend_with_type_synonyms_chirho, scan_dependency_package_ifaces_chirho,
+        ImportedTypeSynonymsChirho,
+    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/hashable-1.5.1.0");
+    let ffi_path_chirho = package_dir_chirho.join("src/Data/Hashable/FFI.hs");
+    let xxh3_path_chirho = package_dir_chirho.join("src/Data/Hashable/XXH3.hs");
+    let ffi_source_chirho =
+        std::fs::read_to_string(&ffi_path_chirho).expect("hashable FFI source should exist");
+    let xxh3_source_chirho =
+        std::fs::read_to_string(&xxh3_path_chirho).expect("hashable XXH3 source should exist");
+    let extra_ifaces_chirho = scan_dependency_package_ifaces_chirho(&package_dir_chirho);
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+
+    let artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+        vec![(
+            "Data.Hashable.FFI".to_string(),
+            ffi_path_chirho.display().to_string(),
+            ffi_source_chirho,
+        )],
+        &mut source_map_chirho,
+        extra_ifaces_chirho,
+        HashMap::new(),
+        ImportedTypeSynonymsChirho::new(),
+    )
+    .expect("hashable FFI frontend artifacts should collect");
+
+    let xxh3_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        &xxh3_path_chirho,
+        &xxh3_source_chirho,
+    );
+    let xxh3_result_chirho = run_frontend_with_type_synonyms_chirho(
+        &xxh3_source_chirho,
+        xxh3_file_chirho.file_id_chirho(),
+        &artifacts_chirho.ifaces_chirho,
+        &artifacts_chirho.imported_types_chirho,
+        &artifacts_chirho.imported_type_synonyms_chirho,
+    );
+
+    assert!(
+        xxh3_result_chirho.is_ok(),
+        "hashable XXH3 should typecheck after FFI seeding"
+    );
+}
