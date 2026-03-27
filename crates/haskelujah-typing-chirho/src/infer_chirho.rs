@@ -1019,6 +1019,22 @@ impl InferCtxChirho {
         unify_chirho(&n1_chirho, &n2_chirho, span_chirho)
     }
 
+    fn subsume_normalized_chirho(
+        &mut self,
+        actual_chirho: &TyChirho,
+        expected_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<SubstChirho, UnifyErrorChirho> {
+        let actual_normalized_chirho = self.normalize_ty_chirho(actual_chirho);
+        let expected_normalized_chirho = self.normalize_ty_chirho(expected_chirho);
+        crate::unify_chirho::subsume_chirho(
+            &actual_normalized_chirho,
+            &expected_normalized_chirho,
+            &mut self.next_var_chirho,
+            span_chirho,
+        )
+    }
+
     /// Record a unification error as a diagnostic.
     fn report_unify_error_chirho(&mut self, err_chirho: &UnifyErrorChirho) {
         match err_chirho {
@@ -1267,7 +1283,8 @@ impl InferCtxChirho {
         // Apply equality constraints: for `(a ~ b) => T`, unify `a` and `b`
         // so the scheme body reflects the equality.
         for (lhs_chirho, rhs_chirho) in &equality_pairs_chirho {
-            if let Ok(subst_chirho) = unify_chirho(lhs_chirho, rhs_chirho, SpanChirho::DUMMY_CHIRHO)
+            if let Ok(subst_chirho) =
+                self.unify_normalized_chirho(lhs_chirho, rhs_chirho, SpanChirho::DUMMY_CHIRHO)
             {
                 self.apply_subst_all_chirho(&subst_chirho);
             }
@@ -1742,10 +1759,9 @@ impl InferCtxChirho {
                     .normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&inferred_ty_chirho));
                 let expected_norm_chirho = self
                     .normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&expected_ty_chirho));
-                if let Err(err_chirho) = crate::unify_chirho::subsume_chirho(
+                if let Err(err_chirho) = self.subsume_normalized_chirho(
                     &inferred_norm_chirho,
                     &expected_norm_chirho,
-                    &mut self.next_var_chirho,
                     *span_chirho,
                 ) {
                     self.report_unify_error_chirho(&err_chirho);
@@ -2462,10 +2478,9 @@ impl InferCtxChirho {
                 let ann_normalized_chirho = self.normalize_ty_chirho(&ann_internal_chirho);
                 let inferred_normalized_chirho = self.normalize_ty_chirho(&inferred_ty_chirho);
 
-                match crate::unify_chirho::subsume_chirho(
+                match self.subsume_normalized_chirho(
                     &inferred_normalized_chirho,
                     &ann_normalized_chirho,
-                    &mut self.next_var_chirho,
                     *span_chirho,
                 ) {
                     Ok(su_chirho) => {
@@ -2677,11 +2692,8 @@ impl InferCtxChirho {
                 let (s1_chirho, inferred_chirho) = self.infer_expr_chirho(expr_chirho);
                 let mut var_map_chirho = HashMap::new();
                 let target_chirho = self.ast_type_to_ty_chirho(ty_chirho, &mut var_map_chirho);
-                match crate::unify_chirho::unify_chirho(
-                    &inferred_chirho,
-                    &target_chirho,
-                    *span_chirho,
-                ) {
+                match self.unify_normalized_chirho(&inferred_chirho, &target_chirho, *span_chirho)
+                {
                     Ok(s2_chirho) => {
                         let composed_chirho = s2_chirho.compose_chirho(&s1_chirho);
                         let result_chirho = composed_chirho.apply_ty_chirho(&inferred_chirho);
@@ -3246,10 +3258,9 @@ impl InferCtxChirho {
                     let sig_ty_chirho = self.normalize_ty_chirho(&sig_full_chirho);
                     let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
                     let inferred_sub_chirho = self.normalize_ty_chirho(&inferred_sub_chirho);
-                    match crate::unify_chirho::subsume_chirho(
+                    match self.subsume_normalized_chirho(
                         &inferred_sub_chirho,
                         &sig_ty_chirho,
-                        &mut self.next_var_chirho,
                         span_chirho,
                     ) {
                         Ok(sig_subst_chirho) => {
@@ -4424,10 +4435,9 @@ impl InferCtxChirho {
                     let inferred_sub_chirho = subst_chirho.apply_ty_chirho(inferred_ty_chirho);
                     let inferred_sub_chirho = self.normalize_ty_chirho(&inferred_sub_chirho);
                     // Use subsumption checking to handle higher-rank types
-                    match crate::unify_chirho::subsume_chirho(
+                    match self.subsume_normalized_chirho(
                         &inferred_sub_chirho,
                         &sig_ty_chirho,
-                        &mut self.next_var_chirho,
                         *span_chirho,
                     ) {
                         Ok(sig_s_chirho) => {
@@ -19322,6 +19332,46 @@ mod tests_chirho {
         assert_eq!(
             expected_normalized_chirho, actual_normalized_chirho,
             "function unification should retry after result-type substitutions make associated family arguments reducible"
+        );
+    }
+
+    #[test]
+    fn unify_normalized_reduces_primstate_before_occurs_check_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.register_type_family_instance_chirho(
+            "PrimState".to_string(),
+            vec![TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ST".to_string())),
+                Box::new(TyChirho::ForallVarChirho("s".to_string())),
+            )],
+            TyChirho::ForallVarChirho("s".to_string()),
+        );
+
+        let state_var_ty_chirho = ctx_chirho.fresh_var_chirho();
+        let prim_state_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("PrimState".to_string())),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ST".to_string())),
+                Box::new(state_var_ty_chirho.clone()),
+            )),
+        );
+
+        let subst_chirho = ctx_chirho
+            .unify_normalized_chirho(
+                &state_var_ty_chirho,
+                &prim_state_ty_chirho,
+                SpanChirho::DUMMY_CHIRHO,
+            )
+            .expect("PrimState (ST t) should reduce before the occurs check fires");
+
+        assert!(
+            subst_chirho.is_empty_chirho(),
+            "reducing PrimState (ST t) should make the unification trivial"
+        );
+        assert_eq!(
+            ctx_chirho.normalize_ty_chirho(&state_var_ty_chirho),
+            ctx_chirho.normalize_ty_chirho(&prim_state_ty_chirho),
+            "PrimState (ST t) should normalize to t before raw unification"
         );
     }
 
