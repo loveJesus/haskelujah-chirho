@@ -12490,6 +12490,63 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
     }
 
+    // Math.NumberTheory.Logarithms (integer-logarithms — needed by scientific)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "integerLog2'",
+            "integerLog10'",
+            "integerLogBase'",
+            "integerLog2",
+            "integerLog10",
+            "integerLogBase",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Math.NumberTheory.Logarithms".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Text.Lazy.Builder / Data.Text.Lazy.Builder.RealFloat (needed by scientific)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "fromText",
+            "fromString",
+            "fromLazyText",
+            "singleton",
+            "toLazyText",
+            "toLazyTextWith",
+            "flush",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Builder", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Text.Lazy.Builder".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["formatRealFloat", "realFloat"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) =
+            mk_type_chirho("FPFormat", &["Exponent", "Fixed", "Generic"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Text.Lazy.Builder.RealFloat".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Control.Monad.Trans.Resource (resourcet)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
