@@ -206,6 +206,8 @@ mod tests_chirho {
             vec![],
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
+            std::collections::HashMap::new(),
+            true,
         )
         .expect("real parsec frontend artifacts should build for the core module slice");
 

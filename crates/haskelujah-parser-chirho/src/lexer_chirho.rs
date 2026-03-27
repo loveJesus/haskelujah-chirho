@@ -214,6 +214,7 @@ pub struct LexerChirho<'src> {
     bytes_chirho: &'src [u8],
     pos_chirho: usize,
     file_id_chirho: FileIdChirho,
+    unboxed_paren_depth_chirho: usize,
 }
 
 impl<'src> LexerChirho<'src> {
@@ -224,6 +225,7 @@ impl<'src> LexerChirho<'src> {
             bytes_chirho: source_chirho.as_bytes(),
             pos_chirho: 0,
             file_id_chirho,
+            unboxed_paren_depth_chirho: 0,
         }
     }
 
@@ -285,6 +287,7 @@ impl<'src> LexerChirho<'src> {
             b'(' => {
                 if self.peek_at_chirho(1) == Some(b'#') {
                     self.pos_chirho += 2;
+                    self.unboxed_paren_depth_chirho += 1;
                 } else {
                     self.pos_chirho += 1;
                 }
@@ -294,8 +297,13 @@ impl<'src> LexerChirho<'src> {
                 self.pos_chirho += 1;
                 self.make_token_chirho(RawTokenKindChirho::RightParenChirho, start_chirho)
             }
-            b'#' if self.peek_at_chirho(1) == Some(b')') => {
+            b'#'
+                if self.peek_at_chirho(1) == Some(b')')
+                    && self.unboxed_paren_depth_chirho > 0 =>
+            {
                 self.pos_chirho += 2;
+                self.unboxed_paren_depth_chirho =
+                    self.unboxed_paren_depth_chirho.saturating_sub(1);
                 self.make_token_chirho(RawTokenKindChirho::RightParenChirho, start_chirho)
             }
             b'[' => {
@@ -663,7 +671,7 @@ impl<'src> LexerChirho<'src> {
         while self.pos_chirho < self.bytes_chirho.len()
             && self.bytes_chirho[self.pos_chirho] == b'#'
         {
-            if self.peek_at_chirho(1) == Some(b')') {
+            if self.unboxed_paren_depth_chirho > 0 && self.peek_at_chirho(1) == Some(b')') {
                 break;
             }
             self.pos_chirho += 1;

@@ -152,6 +152,8 @@ fn collect_stdlib_frontend_artifacts_uncached_chirho() -> Result<FrontendSeedArt
         Vec::new(),
         std::collections::HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
+        ImportedTypeFamiliesChirho::new(),
+        false,
     )?;
     artifacts_chirho
         .ifaces_chirho
@@ -3866,6 +3868,8 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
         artifacts_chirho.ifaces_chirho.clone(),
         artifacts_chirho.imported_types_chirho.clone(),
         artifacts_chirho.imported_type_synonyms_chirho.clone(),
+        artifacts_chirho.imported_type_families_chirho.clone(),
+        true,
     )
     .map_err(|error_chirho| {
         format!(
@@ -3884,6 +3888,9 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
     artifacts_chirho
         .imported_type_synonyms_chirho
         .extend(compiled_artifacts_chirho.imported_type_synonyms_chirho);
+    artifacts_chirho
+        .imported_type_families_chirho
+        .extend(compiled_artifacts_chirho.imported_type_families_chirho);
 
     active_chirho.remove(package_name_chirho);
     visited_chirho.insert(package_name_chirho.to_string());
@@ -4060,6 +4067,8 @@ fn collect_frontend_artifacts_from_module_sources_chirho(
         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
     >,
     initial_imported_type_synonyms_chirho: ImportedTypeSynonymsChirho,
+    initial_imported_type_families_chirho: ImportedTypeFamiliesChirho,
+    seed_stdlib_frontend_artifacts_chirho: bool,
 ) -> Result<FrontendSeedArtifactsChirho, String> {
     if module_sources_chirho.is_empty() {
         return Ok(FrontendSeedArtifactsChirho {
@@ -4068,7 +4077,7 @@ fn collect_frontend_artifacts_from_module_sources_chirho(
             ),
             imported_types_chirho: initial_imported_types_chirho,
             imported_type_synonyms_chirho: initial_imported_type_synonyms_chirho,
-            imported_type_families_chirho: ImportedTypeFamiliesChirho::new(),
+            imported_type_families_chirho: initial_imported_type_families_chirho,
         });
     }
 
@@ -4098,7 +4107,19 @@ fn collect_frontend_artifacts_from_module_sources_chirho(
         haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(ifaces_chirho);
     let mut imported_types_chirho = initial_imported_types_chirho;
     let mut imported_type_synonyms_chirho = initial_imported_type_synonyms_chirho;
-    let mut imported_type_families_chirho = ImportedTypeFamiliesChirho::new();
+    let mut imported_type_families_chirho = initial_imported_type_families_chirho;
+    if seed_stdlib_frontend_artifacts_chirho
+        && module_sources_chirho
+            .iter()
+            .any(|(_, _, source_chirho)| source_imports_stdlib_chirho(source_chirho))
+    {
+        merge_stdlib_frontend_artifacts_chirho(
+            &mut ifaces_chirho,
+            &mut imported_types_chirho,
+            &mut imported_type_synonyms_chirho,
+            &mut imported_type_families_chirho,
+        );
+    }
 
     for scc_chirho in &sccs_chirho {
         for module_name_chirho in scc_chirho {

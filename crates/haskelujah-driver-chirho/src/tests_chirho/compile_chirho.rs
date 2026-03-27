@@ -6213,7 +6213,8 @@ main = do
 #[test]
 fn frontend_hashable_ffi_exports_seed_qualified_io_results_chirho() {
     use crate::{
-        ImportedTypeSynonymsChirho, collect_frontend_artifacts_from_module_sources_chirho,
+        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+        collect_frontend_artifacts_from_module_sources_chirho,
         scan_dependency_package_ifaces_chirho,
     };
     use std::collections::HashMap;
@@ -6238,6 +6239,8 @@ fn frontend_hashable_ffi_exports_seed_qualified_io_results_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
+        ImportedTypeFamiliesChirho::new(),
+        true,
     )
     .expect("hashable FFI frontend artifacts should collect");
 
@@ -6267,7 +6270,8 @@ fn frontend_hashable_ffi_exports_seed_qualified_io_results_chirho() {
 #[test]
 fn frontend_hashable_ffi_pair_typechecks_with_dependency_stubs_chirho() {
     use crate::{
-        ImportedTypeSynonymsChirho, collect_frontend_artifacts_from_module_sources_chirho,
+        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+        collect_frontend_artifacts_from_module_sources_chirho,
         run_frontend_with_type_synonyms_chirho, scan_dependency_package_ifaces_chirho,
     };
     use std::collections::HashMap;
@@ -6295,6 +6299,8 @@ fn frontend_hashable_ffi_pair_typechecks_with_dependency_stubs_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
+        ImportedTypeFamiliesChirho::new(),
+        true,
     )
     .expect("hashable FFI frontend artifacts should collect");
 
@@ -6314,5 +6320,58 @@ fn frontend_hashable_ffi_pair_typechecks_with_dependency_stubs_chirho() {
     assert!(
         xxh3_result_chirho.is_ok(),
         "hashable XXH3 should typecheck after FFI seeding"
+    );
+}
+
+#[test]
+fn frontend_hashable_mix_collects_with_stdlib_seed_chirho() {
+    use crate::{
+        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+        collect_frontend_artifacts_from_module_sources_chirho, read_haskell_source_file_chirho,
+    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/hashable-1.5.1.0");
+    let mix_path_chirho = package_dir_chirho.join("src/Data/Hashable/Mix.hs");
+    let mix_source_chirho =
+        read_haskell_source_file_chirho(&mix_path_chirho).expect("hashable Mix source should exist");
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+
+    let artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+        vec![(
+            "Data.Hashable.Mix".to_string(),
+            mix_path_chirho.display().to_string(),
+            mix_source_chirho,
+        )],
+        &mut source_map_chirho,
+        vec![],
+        HashMap::new(),
+        ImportedTypeSynonymsChirho::new(),
+        ImportedTypeFamiliesChirho::new(),
+        true,
+    )
+    .expect("hashable Mix frontend artifacts should collect with stdlib seed");
+
+    assert!(
+        artifacts_chirho
+            .imported_types_chirho
+            .contains_key("Data.Hashable.Mix.mixHash"),
+        "hashable Mix should export mixHash after seeded frontend collection"
+    );
+}
+
+#[test]
+fn frontend_magic_hash_import_item_before_close_paren_typechecks_chirho() {
+    let src_chirho = "module XorHashReproChirho where\nimport GHC.Exts (Word(..), xor#)\nfooChirho :: Word -> Word -> Word\nfooChirho (W# xChirho) (W# yChirho) = W# (xor# xChirho yChirho)\n";
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut source_map_chirho, "XorHashReproChirho.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "explicit GHC.Exts xor# import should stay in scope before close paren"
     );
 }
