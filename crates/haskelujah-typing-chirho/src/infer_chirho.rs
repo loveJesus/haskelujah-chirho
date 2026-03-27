@@ -12091,61 +12091,83 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // first :: forall a b c. (a -> b) -> (a, c) -> (b, c)
+    // first :: Bifunctor p => (a -> b) -> p a c -> p b c
     {
-        let fi_a_chirho = TyVarChirho(4120);
-        let fi_b_chirho = TyVarChirho(4121);
-        let fi_c_chirho = TyVarChirho(4122);
+        let fi_p_chirho = TyVarChirho(4120);
+        let fi_a_chirho = TyVarChirho(4121);
+        let fi_b_chirho = TyVarChirho(4122);
+        let fi_c_chirho = TyVarChirho(4126);
         env_chirho.bind_chirho(
             "first".to_string(),
             SchemeChirho {
-                vars_chirho: vec![fi_a_chirho, fi_b_chirho, fi_c_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![fi_p_chirho, fi_a_chirho, fi_b_chirho, fi_c_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Bifunctor".to_string(),
+                    ty_chirho: TyChirho::VarChirho(fi_p_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         TyChirho::fun_chirho(
                             TyChirho::VarChirho(fi_a_chirho),
                             TyChirho::VarChirho(fi_b_chirho),
                         ),
-                        TyChirho::TupleChirho(vec![
-                            TyChirho::VarChirho(fi_a_chirho),
-                            TyChirho::VarChirho(fi_c_chirho),
-                        ]),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(fi_p_chirho)),
+                                Box::new(TyChirho::VarChirho(fi_a_chirho)),
+                            )),
+                            Box::new(TyChirho::VarChirho(fi_c_chirho)),
+                        ),
                     ],
-                    TyChirho::TupleChirho(vec![
-                        TyChirho::VarChirho(fi_b_chirho),
-                        TyChirho::VarChirho(fi_c_chirho),
-                    ]),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(fi_p_chirho)),
+                            Box::new(TyChirho::VarChirho(fi_b_chirho)),
+                        )),
+                        Box::new(TyChirho::VarChirho(fi_c_chirho)),
+                    ),
                 ),
             },
         );
     }
 
-    // second :: forall a b c. (b -> c) -> (a, b) -> (a, c)
+    // second :: Bifunctor p => (b -> c) -> p a b -> p a c
     {
-        let se_a_chirho = TyVarChirho(4123);
-        let se_b_chirho = TyVarChirho(4124);
-        let se_c_chirho = TyVarChirho(4125);
+        let se_p_chirho = TyVarChirho(4123);
+        let se_a_chirho = TyVarChirho(4124);
+        let se_b_chirho = TyVarChirho(4125);
+        let se_c_chirho = TyVarChirho(4127);
         env_chirho.bind_chirho(
             "second".to_string(),
             SchemeChirho {
-                vars_chirho: vec![se_a_chirho, se_b_chirho, se_c_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![se_p_chirho, se_a_chirho, se_b_chirho, se_c_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Bifunctor".to_string(),
+                    ty_chirho: TyChirho::VarChirho(se_p_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         TyChirho::fun_chirho(
                             TyChirho::VarChirho(se_b_chirho),
                             TyChirho::VarChirho(se_c_chirho),
                         ),
-                        TyChirho::TupleChirho(vec![
-                            TyChirho::VarChirho(se_a_chirho),
-                            TyChirho::VarChirho(se_b_chirho),
-                        ]),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(se_p_chirho)),
+                                Box::new(TyChirho::VarChirho(se_a_chirho)),
+                            )),
+                            Box::new(TyChirho::VarChirho(se_b_chirho)),
+                        ),
                     ],
-                    TyChirho::TupleChirho(vec![
-                        TyChirho::VarChirho(se_a_chirho),
-                        TyChirho::VarChirho(se_c_chirho),
-                    ]),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(se_p_chirho)),
+                            Box::new(TyChirho::VarChirho(se_a_chirho)),
+                        )),
+                        Box::new(TyChirho::VarChirho(se_c_chirho)),
+                    ),
                 ),
             },
         );
