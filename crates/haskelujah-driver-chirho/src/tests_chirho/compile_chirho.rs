@@ -1017,6 +1017,55 @@ fn frontend_state_t_signature_composition_preserves_tuple_payload_chirho() {
 }
 
 #[test]
+fn frontend_builtin_statet_partial_application_surface_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "BuiltinStateTMiniChirho.hs",
+        "module BuiltinStateTMiniChirho where\n\
+import Data.Word\n\
+import Control.Monad.State.Strict (StateT, runStateT, execStateT)\n\
+stepChirho :: StateT Int Maybe Word64\n\
+stepChirho = undefined\n\
+runChirho :: Maybe (Word64, Int)\n\
+runChirho = runStateT stepChirho 7\n\
+execChirho :: Maybe Int\n\
+execChirho = execStateT stepChirho 7\n",
+    );
+
+    let result_chirho =
+        check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho);
+    assert!(
+        result_chirho.is_ok(),
+        "builtin StateT/runStateT/execStateT surface should accept partial application: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_builtin_st_surface_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "BuiltinSTMiniChirho.hs",
+        "module BuiltinSTMiniChirho where\n\
+import Control.Monad.ST (ST, runST)\n\
+stepChirho :: ST Int (Int, Bool)\n\
+stepChirho = undefined\n\
+pairChirho :: (Int, Bool)\n\
+pairChirho = runST stepChirho\n",
+    );
+
+    let result_chirho =
+        check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho);
+    assert!(
+        result_chirho.is_ok(),
+        "builtin ST/runST surface should preserve the ST type constructor: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_writer_t_lift_callcc_and_catch_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

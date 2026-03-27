@@ -304,6 +304,18 @@ impl KindEnvChirho {
         for name_chirho in &["Either", "(,)", "Map"] {
             env_chirho.bind_chirho(name_chirho.to_string(), star2_chirho.clone());
         }
+        env_chirho.bind_chirho("ST".to_string(), star2_chirho.clone());
+        env_chirho.bind_chirho(
+            "StateT".to_string(),
+            KindChirho::arrow_n_chirho(
+                vec![
+                    KindChirho::StarChirho,
+                    star_to_star_chirho.clone(),
+                    KindChirho::StarChirho,
+                ],
+                KindChirho::StarChirho,
+            ),
+        );
 
         // Tuple constructors: (,,) :: * -> * -> * -> *, etc.
         for arity_chirho in 3u8..=7 {
