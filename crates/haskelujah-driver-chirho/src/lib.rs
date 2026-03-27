@@ -42,6 +42,38 @@ use haskelujah_typing_chirho::infer_chirho::{
 type ImportedTypeSynonymsChirho = std::collections::HashMap<String, (Vec<String>, TypeChirho)>;
 type ImportedTypeFamiliesChirho = TypeFamilyEnvChirho;
 
+/// Seed builtin type family equations that packages commonly depend on.
+/// PrimState is defined in the `primitive` package but many packages
+/// use it transitively (aeson, resourcet, vector-builder, etc.).
+fn seed_builtin_type_families_chirho() -> ImportedTypeFamiliesChirho {
+    use haskelujah_typing_chirho::TyChirho;
+    let mut families_chirho = ImportedTypeFamiliesChirho::new();
+
+    // type instance PrimState (ST s) = s
+    let s_var_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::TyVarChirho(9900));
+    families_chirho.insert(
+        "PrimState".to_string(),
+        vec![(
+            vec![TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ST".to_string())),
+                Box::new(s_var_chirho.clone()),
+            )],
+            s_var_chirho.clone(),
+        )],
+    );
+
+    // type instance PrimState IO = RealWorld
+    families_chirho
+        .get_mut("PrimState")
+        .unwrap()
+        .push((
+            vec![TyChirho::ConChirho("IO".to_string())],
+            TyChirho::ConChirho("RealWorld".to_string()),
+        ));
+
+    families_chirho
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackendPlanChirho {
     pub llvm_preview_chirho: String,
@@ -152,7 +184,7 @@ fn collect_stdlib_frontend_artifacts_uncached_chirho() -> Result<FrontendSeedArt
         Vec::new(),
         std::collections::HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        seed_builtin_type_families_chirho(),
         false,
     )?;
     artifacts_chirho
@@ -1258,7 +1290,7 @@ pub fn run_frontend_chirho(
         haskelujah_typing_chirho::SchemeChirho,
     >,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
-    let imported_type_families_chirho = ImportedTypeFamiliesChirho::new();
+    let imported_type_families_chirho = seed_builtin_type_families_chirho();
     run_frontend_with_type_synonyms_and_type_families_chirho(
         source_chirho,
         file_id_chirho,
@@ -1279,7 +1311,7 @@ pub fn run_frontend_with_type_synonyms_chirho(
     >,
     imported_type_synonyms_chirho: &ImportedTypeSynonymsChirho,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
-    let imported_type_families_chirho = ImportedTypeFamiliesChirho::new();
+    let imported_type_families_chirho = seed_builtin_type_families_chirho();
     run_frontend_with_type_synonyms_and_type_families_chirho(
         source_chirho,
         file_id_chirho,
@@ -2087,7 +2119,7 @@ pub fn compile_source_chirho(
     let mut builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let mut imported_types_chirho = std::collections::HashMap::new();
     let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
-    let mut imported_type_families_chirho = ImportedTypeFamiliesChirho::new();
+    let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
     if source_imports_stdlib_chirho(effective_source_chirho) {
         merge_stdlib_frontend_artifacts_chirho(
             &mut builtin_ifaces_chirho,
@@ -2146,7 +2178,7 @@ pub fn compile_source_with_search_path_chirho(
     let mut all_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let mut imported_types_chirho = std::collections::HashMap::new();
     let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
-    let mut imported_type_families_chirho = ImportedTypeFamiliesChirho::new();
+    let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
     if source_imports_stdlib_chirho(source_chirho) {
         merge_stdlib_frontend_artifacts_chirho(
             &mut all_ifaces_chirho,
@@ -2502,7 +2534,7 @@ pub fn compile_modules_chirho(
         haskelujah_typing_chirho::SchemeChirho,
     > = std::collections::HashMap::new();
     let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
-    let mut imported_type_families_chirho = ImportedTypeFamiliesChirho::new();
+    let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
 
     for (file_name_chirho, source_chirho) in sources_chirho {
         let source_file_chirho = SourceFileChirho::from_source_map_chirho(
@@ -3456,7 +3488,7 @@ pub fn compile_project_dir_chirho(
         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
     > = std::collections::HashMap::new();
     let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
-    let mut imported_type_families_chirho = ImportedTypeFamiliesChirho::new();
+    let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
     if module_sources_chirho
         .iter()
         .any(|(_, _, source_chirho)| source_imports_stdlib_chirho(source_chirho))
