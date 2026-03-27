@@ -450,8 +450,9 @@ impl LowerCtxChirho {
                     {
                         let span_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        name_chirho =
-                            Some(self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho));
+                        name_chirho = Some(
+                            self.module_name_from_text_chirho(tok_chirho.text_chirho(), span_chirho),
+                        );
                     }
                     _ => {}
                 },
@@ -604,7 +605,11 @@ impl LowerCtxChirho {
         }
 
         let (text_chirho, span_chirho, is_con_chirho) = first_name_chirho?;
-        let name_chirho = self.name_from_text_chirho(&text_chirho, span_chirho);
+        let name_chirho = if is_module_reexport_chirho {
+            self.module_name_from_text_chirho(&text_chirho, span_chirho)
+        } else {
+            self.name_from_text_chirho(&text_chirho, span_chirho)
+        };
 
         if is_module_reexport_chirho {
             Some(ExportSpecChirho::ModuleChirho(name_chirho))
@@ -656,8 +661,11 @@ impl LowerCtxChirho {
                     TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
                         let span_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        let name_chirho =
-                            self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho);
+                        let name_chirho = if saw_as_chirho {
+                            self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho)
+                        } else {
+                            self.module_name_from_text_chirho(tok_chirho.text_chirho(), span_chirho)
+                        };
                         if saw_as_chirho {
                             alias_chirho = Some(name_chirho);
                             saw_as_chirho = false;
@@ -7951,6 +7959,14 @@ impl LowerCtxChirho {
         NameChirho::RawChirho(RawNameChirho::unqualified_chirho(text_chirho, span_chirho))
     }
 
+    fn module_name_from_text_chirho(
+        &self,
+        text_chirho: &str,
+        span_chirho: SpanChirho,
+    ) -> NameChirho {
+        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(text_chirho, span_chirho))
+    }
+
     fn name_from_token_chirho(
         &self,
         tok_chirho: &GreenTokenChirho,
@@ -9242,9 +9258,41 @@ mod tests_chirho {
     }
 
     #[test]
+    fn lower_hierarchical_module_name_chirho() {
+        let module_chirho = parse_and_lower_chirho("module Data.Reflection where\n");
+        assert_eq!(module_chirho.name_chirho.text_chirho(), "Data.Reflection");
+        assert_eq!(
+            module_chirho.name_chirho.full_name_chirho(),
+            "Data.Reflection"
+        );
+    }
+
+    #[test]
     fn lower_script_defaults_to_main_chirho() {
         let module_chirho = parse_and_lower_chirho("x = 1\n");
         assert_eq!(module_chirho.name_chirho.text_chirho(), "Main");
+    }
+
+    #[test]
+    fn lower_import_decl_preserves_hierarchical_module_name_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nimport qualified Data.Reflection as ReflectionChirho\nxChirho = ()\n",
+        );
+        assert_eq!(module_chirho.imports_chirho.len(), 1);
+        let import_chirho = &module_chirho.imports_chirho[0];
+        assert_eq!(import_chirho.module_chirho.text_chirho(), "Data.Reflection");
+        assert_eq!(
+            import_chirho.module_chirho.full_name_chirho(),
+            "Data.Reflection"
+        );
+        assert_eq!(
+            import_chirho
+                .alias_chirho
+                .as_ref()
+                .expect("qualified import alias should lower")
+                .text_chirho(),
+            "ReflectionChirho"
+        );
     }
 
     #[test]
