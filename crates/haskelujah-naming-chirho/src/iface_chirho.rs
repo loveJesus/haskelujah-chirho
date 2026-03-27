@@ -1657,7 +1657,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         let (k_chirho, v_chirho) = mk_val_chirho("mfix");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("MonadFix", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("MonadFix", &["mfix"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Control.Monad.Fix".to_string(),
