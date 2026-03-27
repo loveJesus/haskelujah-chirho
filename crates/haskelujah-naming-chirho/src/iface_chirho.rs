@@ -3621,6 +3621,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "liftM",
             "liftM2",
             "liftM3",
+            "liftM4",
+            "liftM5",
             "ap",
             "MonadPlus",
             "mzero",
@@ -10712,6 +10714,51 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "System.CPUTime".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Time.Clock.POSIX
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "getPOSIXTime",
+            "getCurrentTime",
+            "posixSecondsToUTCTime",
+            "utcTimeToPOSIXSeconds",
+            "posixDayLength",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("POSIXTime", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.Clock.POSIX".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Time.Clock
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "getCurrentTime",
+            "diffUTCTime",
+            "addUTCTime",
+            "secondsToNominalDiffTime",
+            "nominalDiffTimeToSeconds",
+            "nominalDay",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["UTCTime", "NominalDiffTime", "DiffTime"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.Clock".to_string(),
             exports_chirho,
         });
     }
