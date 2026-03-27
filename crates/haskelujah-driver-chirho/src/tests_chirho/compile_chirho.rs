@@ -208,6 +208,22 @@ fn frontend_ghc_foreign_ptr_unsafe_with_foreign_ptr_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_builtin_runst_accepts_rank2_argument_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE RankNTypes #-}\nmodule RunSTRank2MiniChirho where\nimport Control.Monad.ST\nnewtype ActionChirho aChirho = ActionChirho (forall sChirho. ST sChirho aChirho)\nrunActionChirho :: ActionChirho aChirho -> aChirho\nrunActionChirho (ActionChirho mChirho) = runST mChirho\n",
+        &mut source_map_chirho,
+        "RunSTRank2MiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "builtin runST should accept a rank-2 ST argument: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_traversable_sequencea_instance_method_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
@@ -259,6 +275,30 @@ fn multi_module_default_rational_propagates_to_imported_helpers_chirho() {
     assert!(
         results_chirho.is_ok(),
         "module default (Rational) should propagate through imported helpers: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
+fn multi_module_imported_associated_type_family_reduces_chirho() {
+    use crate::compile_modules_chirho;
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho: Vec<(&str, &str)> = vec![
+        (
+            "PrimFamilyProviderChirho.hs",
+            "{-# LANGUAGE TypeFamilies #-}\n{-# LANGUAGE FlexibleInstances #-}\nmodule PrimFamilyProviderChirho where\nclass PrimMonadChirho mChirho where\n  type PrimStateChirho mChirho\ndata STChirho sChirho aChirho = STChirho aChirho\ndata BoxChirho sChirho aChirho = BoxChirho\nnewArrayChirho :: PrimMonadChirho mChirho => Int -> aChirho -> mChirho (BoxChirho (PrimStateChirho mChirho) aChirho)\nnewArrayChirho = undefined\ninstance PrimMonadChirho (STChirho sChirho) where\n  type PrimStateChirho (STChirho sChirho) = sChirho\n",
+        ),
+        (
+            "PrimFamilyConsumerChirho.hs",
+            "module PrimFamilyConsumerChirho where\nimport PrimFamilyProviderChirho\nnewArrayMiniChirho :: Int -> STChirho sChirho (BoxChirho sChirho aChirho)\nnewArrayMiniChirho nChirho = newArrayChirho nChirho undefined\n",
+        ),
+    ];
+
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "imported associated type family equations should reduce across modules: {:?}",
         results_chirho.err()
     );
 }

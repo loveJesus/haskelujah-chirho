@@ -31,6 +31,8 @@ const TUPLE_ARITY_CODE_CHIRHO: u16 = 203;
 const UNSATISFIED_CONSTRAINT_CODE_CHIRHO: u16 = 204;
 const SIGNATURE_MISMATCH_CODE_CHIRHO: u16 = 205;
 
+pub type TypeFamilyEnvChirho = HashMap<String, Vec<(Vec<TyChirho>, TyChirho)>>;
+
 /// Result of type inference on a module.
 #[derive(Debug)]
 pub struct InferResultChirho {
@@ -40,6 +42,8 @@ pub struct InferResultChirho {
     pub env_chirho: TyEnvChirho,
     /// The class environment after inference.
     pub class_env_chirho: ClassEnvChirho,
+    /// Type family equations available after inferring this module.
+    pub type_families_chirho: TypeFamilyEnvChirho,
     /// Diagnostics collected during inference.
     pub diagnostics_chirho: DiagnosticBundleChirho,
 }
@@ -63,7 +67,7 @@ pub struct InferCtxChirho {
     type_synonyms_chirho: HashMap<String, (Vec<String>, TyChirho)>,
     /// Type family environment: family name → list of equations (lhs patterns, rhs type).
     /// Each equation is (param type patterns as TyChirho, result TyChirho).
-    type_families_chirho: HashMap<String, Vec<(Vec<TyChirho>, TyChirho)>>,
+    type_families_chirho: TypeFamilyEnvChirho,
     /// ScopedTypeVariables: when inside a function body whose type signature has
     /// `forall a b.`, maps those names to their TyVarChirho so that where-clause
     /// type annotations and local signatures use the same type variables.
@@ -4624,6 +4628,7 @@ impl InferCtxChirho {
             subst_chirho: SubstChirho::empty_chirho(),
             env_chirho: self.env_chirho,
             class_env_chirho: self.class_env_chirho,
+            type_families_chirho: self.type_families_chirho,
             diagnostics_chirho: self.diagnostics_chirho,
         }
     }
@@ -7811,17 +7816,22 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // runST :: ST s a -> a  (rank-2 simplified to a quantified state token)
+    // runST :: forall a. (forall s. ST s a) -> a
     {
-        let s_chirho = TyChirho::VarChirho(TyVarChirho(3288));
-        let a_chirho = TyChirho::VarChirho(TyVarChirho(3283));
+        let s_var_chirho = TyVarChirho(3288);
+        let a_var_chirho = TyVarChirho(3283);
+        let s_chirho = TyChirho::VarChirho(s_var_chirho);
+        let a_chirho = TyChirho::VarChirho(a_var_chirho);
         env_chirho.bind_chirho(
             "runST".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3288), TyVarChirho(3283)],
+                vars_chirho: vec![a_var_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    mk_st_ty_chirho(s_chirho, a_chirho.clone()),
+                    TyChirho::ForallChirho {
+                        vars_chirho: vec![s_var_chirho],
+                        body_chirho: Box::new(mk_st_ty_chirho(s_chirho, a_chirho.clone())),
+                    },
                     a_chirho,
                 ),
             },
@@ -14338,6 +14348,23 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
     imported_type_synonyms_chirho: &HashMap<String, (Vec<String>, TypeChirho)>,
     imported_record_field_names_chirho: &HashMap<String, Vec<String>>,
 ) -> InferResultChirho {
+    let imported_type_families_chirho = TypeFamilyEnvChirho::new();
+    infer_module_with_imports_type_synonyms_and_families_chirho(
+        module_chirho,
+        imported_types_chirho,
+        imported_type_synonyms_chirho,
+        &imported_type_families_chirho,
+        imported_record_field_names_chirho,
+    )
+}
+
+pub fn infer_module_with_imports_type_synonyms_and_families_chirho(
+    module_chirho: &ModuleChirho,
+    imported_types_chirho: &HashMap<String, SchemeChirho>,
+    imported_type_synonyms_chirho: &HashMap<String, (Vec<String>, TypeChirho)>,
+    imported_type_families_chirho: &TypeFamilyEnvChirho,
+    imported_record_field_names_chirho: &HashMap<String, Vec<String>>,
+) -> InferResultChirho {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     for (name_chirho, (params_chirho, rhs_ast_chirho)) in imported_type_synonyms_chirho {
         let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_ast_chirho, params_chirho);
@@ -14346,6 +14373,13 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
             params_chirho.clone(),
             rhs_ty_chirho,
         );
+    }
+    for (family_name_chirho, equations_chirho) in imported_type_families_chirho {
+        ctx_chirho
+            .type_families_chirho
+            .entry(family_name_chirho.clone())
+            .or_default()
+            .extend(equations_chirho.clone());
     }
     // Seed the type environment with imported type schemes, but only if
     // placeholder imports do not override precise built-ins, while real
