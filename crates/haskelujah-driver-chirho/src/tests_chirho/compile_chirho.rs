@@ -6512,6 +6512,66 @@ fn frontend_warp_fdcache_typechecks_after_multimap_seed_chirho() {
 }
 
 #[test]
+fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
+    use crate::{
+        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+        collect_frontend_artifacts_from_module_sources_chirho, read_haskell_source_file_chirho,
+        run_frontend_with_type_synonyms_and_type_families_chirho, scan_dependency_package_ifaces_chirho,
+    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/warp-3.4.12");
+    let multimap_path_chirho =
+        package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
+    let fdcache_path_chirho =
+        package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
+    let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)
+        .expect("warp MultiMap source should exist");
+    let fdcache_source_chirho = read_haskell_source_file_chirho(&fdcache_path_chirho)
+        .expect("warp FdCache source should exist");
+    let extra_ifaces_chirho = scan_dependency_package_ifaces_chirho(&package_dir_chirho);
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+
+    let multimap_artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+        vec![(
+            "Network.Wai.Handler.Warp.MultiMap".to_string(),
+            multimap_path_chirho.display().to_string(),
+            multimap_source_chirho,
+        )],
+        &mut source_map_chirho,
+        extra_ifaces_chirho,
+        HashMap::new(),
+        ImportedTypeSynonymsChirho::new(),
+        ImportedTypeFamiliesChirho::new(),
+        true,
+    )
+    .expect("warp MultiMap frontend artifacts should collect");
+
+    let fdcache_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        &fdcache_path_chirho,
+        &fdcache_source_chirho,
+    );
+    let fdcache_result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
+        &fdcache_source_chirho,
+        fdcache_file_chirho.file_id_chirho(),
+        &multimap_artifacts_chirho.ifaces_chirho,
+        &multimap_artifacts_chirho.imported_types_chirho,
+        &multimap_artifacts_chirho.imported_type_synonyms_chirho,
+        &multimap_artifacts_chirho.imported_type_families_chirho,
+    );
+
+    assert!(
+        fdcache_result_chirho.is_ok(),
+        "warp FdCache should typecheck with direct MultiMap artifacts: {:?}",
+        fdcache_result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_magic_hash_import_item_before_close_paren_typechecks_chirho() {
     let src_chirho = "module XorHashReproChirho where\nimport GHC.Exts (Word(..), xor#)\nfooChirho :: Word -> Word -> Word\nfooChirho (W# xChirho) (W# yChirho) = W# (xor# xChirho yChirho)\n";
 
