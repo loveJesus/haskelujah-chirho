@@ -6438,6 +6438,13 @@ impl LowerCtxChirho {
                             name_text_chirho = Some(tok_chirho.text_chirho().to_string());
                         }
                     }
+                    TokenKindChirho::TildeChirho => {
+                        if inside_parens_chirho {
+                            paren_text_chirho.push_str(tok_chirho.text_chirho());
+                        } else if name_text_chirho.is_none() {
+                            name_text_chirho = Some(tok_chirho.text_chirho().to_string());
+                        }
+                    }
                     TokenKindChirho::CommaChirho => {
                         if inside_parens_chirho {
                             paren_text_chirho.push(',');
@@ -12839,6 +12846,28 @@ class Describable a where
                 );
             } else {
                 panic!("quoted TH operator name should lower to mkName application");
+            }
+        } else {
+            panic!("expected funbind for x");
+        }
+    }
+
+    #[test]
+    fn lower_th_name_quote_tilde_operator_chirho() {
+        let module_chirho = parse_and_lower_chirho("module M where\nx = ''(~)\n");
+        let decl_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "x")
+        });
+        if let Some(DeclChirho::FunBindChirho { matches_chirho, .. }) = decl_chirho {
+            if let RhsChirho::UnguardedChirho(ExprChirho::AppChirho { arg_chirho, .. }) =
+                &matches_chirho[0].rhs_chirho
+            {
+                assert!(
+                    matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _)) if text_chirho == "~")
+                );
+            } else {
+                panic!("quoted TH tilde operator should lower to mkName application");
             }
         } else {
             panic!("expected funbind for x");

@@ -1844,4 +1844,20 @@ mod tests_chirho {
             ]
         );
     }
+
+    #[test]
+    fn lex_th_name_quote_tilde_operator_chirho() {
+        let kinds_chirho = non_trivia_kinds_chirho("''(~)");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::TickChirho,
+                RawTokenKindChirho::TickChirho,
+                RawTokenKindChirho::LeftParenChirho,
+                RawTokenKindChirho::TildeChirho,
+                RawTokenKindChirho::RightParenChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
 }

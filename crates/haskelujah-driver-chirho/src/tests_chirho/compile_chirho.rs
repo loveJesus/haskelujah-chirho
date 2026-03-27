@@ -4713,6 +4713,42 @@ main = print (gChirho (MkFooChirho 42))
         .expect("guarded case alt pattern binder should compile");
 }
 
+#[test]
+fn frontend_backticked_pattern_guard_keeps_generator_application_chirho() {
+    let src_chirho = r#"module GuardedSetMemberMiniChirho where
+import qualified Data.Set as Set
+
+fChirho :: Int -> Set.Set Int -> [Set.Set Int] -> ([Int], [Set.Set Int])
+fChirho tvChirho fvsChirho fvssChirho
+  | tvChirho `Set.member` fvsChirho
+  , (asPrimeChirho, fvssPrimeChirho) <- insertChirho tvChirho [] fvssChirho
+  = (asPrimeChirho, fvssPrimeChirho)
+  | otherwise = ([], [])
+
+insertChirho :: Int -> [Int] -> [Set.Set Int] -> ([Int], [Set.Set Int])
+insertChirho tvChirho [] [] = ([tvChirho], [])
+insertChirho _ (aChirho:asChirho) (fvsPrimeChirho:fvssPrimeChirho) =
+  (aChirho:asChirho, fvsPrimeChirho:fvssPrimeChirho)
+insertChirho _ _ _ = ([], [])
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    compile_source_chirho(src_chirho, &mut sm_chirho, "GuardedSetMemberMiniChirho.hs")
+        .expect("mixed boolean and pattern guards should preserve generator applications");
+}
+
+#[test]
+fn frontend_data_map_unions_builtin_iface_typechecks_chirho() {
+    let src_chirho = r#"module DataMapUnionsMiniChirho where
+import qualified Data.Map as Map
+
+valueChirho :: Map.Map Int Int
+valueChirho = Map.unions [Map.singleton 1 2, Map.singleton 3 4]
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    compile_source_chirho(src_chirho, &mut sm_chirho, "DataMapUnionsMiniChirho.hs")
+        .expect("Data.Map builtins should expose unions/unionsWith");
+}
+
 // ── Cranelift backend driver integration tests ────────────────────────
 
 #[test]
