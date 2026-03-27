@@ -13521,6 +13521,107 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // floatRange :: RealFloat a => a -> (Int, Int)
+    // floatDigits :: RealFloat a => a -> Int
+    // floatRadix :: RealFloat a => a -> Integer
+    // decodeFloat :: RealFloat a => a -> (Integer, Int)
+    // isNaN :: RealFloat a => a -> Bool
+    // isInfinite :: RealFloat a => a -> Bool
+    {
+        let rf_a_chirho = TyVarChirho(7398);
+        let rf_pred_chirho = SchemePredChirho {
+            class_name_chirho: "RealFloat".to_string(),
+            ty_chirho: TyChirho::VarChirho(rf_a_chirho),
+            extra_tys_chirho: vec![],
+        };
+        // floatRange :: RealFloat a => a -> (Int, Int)
+        env_chirho.bind_chirho(
+            "floatRange".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![rf_a_chirho],
+                preds_chirho: vec![rf_pred_chirho.clone()],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(rf_a_chirho),
+                    TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::int_chirho()]),
+                ),
+            },
+        );
+        // floatDigits :: RealFloat a => a -> Int
+        env_chirho.bind_chirho(
+            "floatDigits".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![rf_a_chirho],
+                preds_chirho: vec![rf_pred_chirho.clone()],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(rf_a_chirho),
+                    TyChirho::int_chirho(),
+                ),
+            },
+        );
+        // floatRadix :: RealFloat a => a -> Integer
+        env_chirho.bind_chirho(
+            "floatRadix".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![rf_a_chirho],
+                preds_chirho: vec![rf_pred_chirho.clone()],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(rf_a_chirho),
+                    TyChirho::ConChirho("Integer".to_string()),
+                ),
+            },
+        );
+        // decodeFloat :: RealFloat a => a -> (Integer, Int)
+        env_chirho.bind_chirho(
+            "decodeFloat".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![rf_a_chirho],
+                preds_chirho: vec![rf_pred_chirho.clone()],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(rf_a_chirho),
+                    TyChirho::TupleChirho(vec![
+                        TyChirho::ConChirho("Integer".to_string()),
+                        TyChirho::int_chirho(),
+                    ]),
+                ),
+            },
+        );
+        // encodeFloat :: RealFloat a => Integer -> Int -> a
+        env_chirho.bind_chirho(
+            "encodeFloat".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![rf_a_chirho],
+                preds_chirho: vec![rf_pred_chirho.clone()],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::ConChirho("Integer".to_string()),
+                        TyChirho::int_chirho(),
+                    ],
+                    TyChirho::VarChirho(rf_a_chirho),
+                ),
+            },
+        );
+        // isNaN / isInfinite / isDenormalized / isNegativeZero / isIEEE :: RealFloat a => a -> Bool
+        for name_chirho in &[
+            "isNaN",
+            "isInfinite",
+            "isDenormalized",
+            "isNegativeZero",
+            "isIEEE",
+        ] {
+            env_chirho.bind_chirho(
+                name_chirho.to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![rf_a_chirho],
+                    preds_chirho: vec![rf_pred_chirho.clone()],
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::VarChirho(rf_a_chirho),
+                        TyChirho::bool_chirho(),
+                    ),
+                },
+            );
+        }
+    }
+
     // sequence/sequence_/mapM/mapM_ — already defined with list-specific types earlier in seed_builtins
 
     // error :: forall a. [Char] -> a (already exists, but ensure errorWithoutStackTrace too)
