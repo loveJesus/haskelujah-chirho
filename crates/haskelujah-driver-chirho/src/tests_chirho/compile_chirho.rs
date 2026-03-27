@@ -367,6 +367,30 @@ fooChirho loChirho hiChirho = chooseUpToChirho (fromIntegral hiChirho - fromInte
 }
 
 #[test]
+fn frontend_quickcheck_choose_int64_seed_path_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module QuickCheckSeedMiniChirho where\n\
+import Data.Int\n\
+import Data.Word\n\
+import System.Random.SplitMix (SMGen, bitmaskWithRejection64')\n\
+chooseUpToChirho :: Word64 -> SMGen -> Word64\n\
+chooseUpToChirho nChirho genChirho = fst (bitmaskWithRejection64' nChirho genChirho)\n\
+chooseInt64MiniChirho :: Int64 -> Int64 -> SMGen -> Int64\n\
+chooseInt64MiniChirho loChirho hiChirho genChirho =\n\
+  fromIntegral (chooseUpToChirho (fromIntegral hiChirho - fromIntegral loChirho) genChirho + fromIntegral loChirho)\n",
+        &mut source_map_chirho,
+        "QuickCheckSeedMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "QuickCheck chooseInt64-style SplitMix seed path should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_proxy_hash_preserves_higher_kinded_class_param_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
