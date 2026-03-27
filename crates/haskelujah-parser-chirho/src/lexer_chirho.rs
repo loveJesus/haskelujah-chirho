@@ -663,6 +663,9 @@ impl<'src> LexerChirho<'src> {
         while self.pos_chirho < self.bytes_chirho.len()
             && self.bytes_chirho[self.pos_chirho] == b'#'
         {
+            if self.peek_at_chirho(1) == Some(b')') {
+                break;
+            }
             self.pos_chirho += 1;
         }
     }

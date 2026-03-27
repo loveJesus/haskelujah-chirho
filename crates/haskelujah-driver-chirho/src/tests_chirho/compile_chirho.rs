@@ -288,6 +288,22 @@ fn frontend_foldable_null_and_length_are_polymorphic_chirho() {
 }
 
 #[test]
+fn frontend_data_map_local_helper_uses_real_map_types_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE BangPatterns #-}\nmodule DataMapLocalHelperMiniChirho where\nimport qualified Data.Map as M\n\nfooChirho :: Maybe Int\nfooChirho = longDivChirho 0 0 M.empty 7\n  where\n    longDivChirho :: Integer -> Int -> M.Map Integer Int -> Integer -> Maybe Int\n    longDivChirho !cChirho !eChirho nsChirho !nChirho\n      | Just ePrimeChirho <- M.lookup nChirho nsChirho = Just ePrimeChirho\n      | nChirho < 10 = let !nsPrimeChirho = M.insert nChirho eChirho nsChirho\n                       in longDivChirho (cChirho * 10) (eChirho - 1) nsPrimeChirho (nChirho * 10)\n      | otherwise = Nothing\n",
+        &mut source_map_chirho,
+        "DataMapLocalHelperMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Map builtins should treat maps as Map.Map k v, not Int placeholders: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_ghc_ioref_stref_constructor_roundtrip_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
