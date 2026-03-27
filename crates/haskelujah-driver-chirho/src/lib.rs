@@ -4139,6 +4139,9 @@ fn collect_local_dependency_frontend_artifacts_chirho(
 
     let builtin_deps_chirho = builtin_dependency_names_chirho();
     let mut artifacts_chirho = FrontendSeedArtifactsChirho::default();
+    // Seed PrimState type family equations so dependency packages like
+    // primitive can resolve PrimState (ST s) = s during compilation.
+    artifacts_chirho.imported_type_families_chirho = seed_builtin_type_families_chirho();
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let mut visited_chirho = std::collections::HashSet::new();
     let mut active_chirho = std::collections::HashSet::new();
