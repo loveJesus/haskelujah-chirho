@@ -6929,3 +6929,17 @@ fn frontend_strict_tuple_where_pattern_binding_typechecks_chirho() {
         result_chirho.err()
     );
 }
+
+#[test]
+fn frontend_nonempty_cons_fixity_typechecks_against_signature_chirho() {
+    let src_chirho = "module NonEmptyFixityMiniChirho where\nimport Data.List.NonEmpty (NonEmpty(..))\nfChirho :: aChirho -> aChirho -> NonEmpty aChirho\nfChirho xChirho yChirho = xChirho :| yChirho : []\n";
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut source_map_chirho, "NonEmptyFixityMiniChirho.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "NonEmpty constructor fixity should match GHC for signature-checked code: {:?}",
+        result_chirho.err()
+    );
+}

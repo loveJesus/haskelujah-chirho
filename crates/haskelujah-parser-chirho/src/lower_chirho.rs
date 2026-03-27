@@ -8707,7 +8707,7 @@ fn builtin_operator_fixity_chirho(op_chirho: &str) -> (u8, AssocChirho) {
         "==" | "/=" | "<" | "<=" | ">" | ">=" => (4, AssocChirho::NoneChirho),
         "<$>" | "<$" | "<*>" | "<*" | "*>" | "<@>" | "<@" | "@>" | "<@@>" | "<.>" | "<." | ".>"
         | "<.*>" | "<*.>" | "<<.>>" | "<<." | ".>>" => (4, AssocChirho::LeftChirho),
-        ":" | "++" | ".|." => (5, AssocChirho::RightChirho),
+        ":" | ":|" | "++" | ".|." => (5, AssocChirho::RightChirho),
         "+" | "-" | "xor" => (6, AssocChirho::LeftChirho),
         "*" | "/" | "`div`" | "`mod`" | ".&." => (7, AssocChirho::LeftChirho),
         "^" | "**" => (8, AssocChirho::RightChirho),
@@ -13640,6 +13640,63 @@ fn lower_bind_binds_looser_than_composition_chirho() {
                         if op_chirho.text_chirho() == "."
                 ),
                 "expected composition on the rhs of >>=, got {:?}",
+                right_chirho
+            );
+        }
+        other_chirho => panic!("expected infix expression tree, got {:?}", other_chirho),
+    }
+}
+
+#[test]
+fn lower_nonempty_cons_groups_like_ghc_chirho() {
+    let source_chirho =
+        "module M where\nimport Data.List.NonEmpty (NonEmpty(..))\nfChirho xChirho yChirho = xChirho :| yChirho : []\n";
+    let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let parser_chirho =
+        crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+    let decl_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find(|decl_chirho| {
+            matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "fChirho")
+        })
+        .expect("expected fChirho binding");
+
+    let rhs_expr_chirho = match decl_chirho {
+        DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho {
+            RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+            other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+        },
+        other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+    };
+
+    match rhs_expr_chirho {
+        ExprChirho::InfixChirho {
+            left_chirho,
+            op_chirho,
+            right_chirho,
+            ..
+        } => {
+            assert_eq!(op_chirho.text_chirho(), ":|");
+            assert!(
+                matches!(
+                    &**left_chirho,
+                    ExprChirho::VarChirho(name_chirho)
+                        if name_chirho.text_chirho() == "xChirho"
+                ),
+                "expected xChirho as the head element, got {:?}",
+                left_chirho
+            );
+            assert!(
+                matches!(
+                    &**right_chirho,
+                    ExprChirho::InfixChirho { op_chirho, .. }
+                        if op_chirho.text_chirho() == ":"
+                ),
+                "expected the tail list to stay grouped on the right of :|, got {:?}",
                 right_chirho
             );
         }

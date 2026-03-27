@@ -3708,7 +3708,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             ),
             (
                 "Control.Monad.Trans.Identity",
-                vec!["runIdentityT"],
+                vec!["runIdentityT", "liftCatch"],
                 vec![("IdentityT", &["IdentityT"][..])],
             ),
             (
@@ -3721,6 +3721,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "reader",
                     "withReaderT",
                     "mapReaderT",
+                    "liftCatch",
                 ],
                 vec![("ReaderT", &["ReaderT"][..])],
             ),
@@ -3735,6 +3736,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "modify",
                     "gets",
                     "state",
+                    "liftCatch",
                 ],
                 vec![("StateT", &["StateT"][..])],
             ),
@@ -3749,6 +3751,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "modify",
                     "gets",
                     "state",
+                    "liftCatch",
                 ],
                 vec![("StateT", &["StateT"][..])],
             ),
@@ -3763,6 +3766,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "modify",
                     "gets",
                     "state",
+                    "liftCatch",
                 ],
                 vec![("StateT", &["StateT"][..])],
             ),
@@ -3775,6 +3779,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "listen",
                     "pass",
                     "writer",
+                    "liftCatch",
                 ],
                 vec![("WriterT", &["WriterT"][..])],
             ),
@@ -3787,6 +3792,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "listen",
                     "pass",
                     "writer",
+                    "liftCatch",
                 ],
                 vec![("WriterT", &["WriterT"][..])],
             ),
@@ -3799,6 +3805,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "listen",
                     "pass",
                     "writer",
+                    "liftCatch",
                 ],
                 vec![("WriterT", &["WriterT"][..])],
             ),
@@ -3811,6 +3818,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "listen",
                     "pass",
                     "writer",
+                    "liftCatch",
                 ],
                 vec![("WriterT", &["WriterT"][..])],
             ),
@@ -3827,7 +3835,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             ),
             (
                 "Control.Monad.Trans.Maybe",
-                vec!["runMaybeT", "mapMaybeT"],
+                vec!["runMaybeT", "mapMaybeT", "liftCatch"],
                 vec![("MaybeT", &["MaybeT"][..])],
             ),
             (
@@ -3844,22 +3852,22 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             ),
             (
                 "Control.Monad.Trans.RWS",
-                vec!["runRWST", "evalRWST", "execRWST"],
+                vec!["runRWST", "evalRWST", "execRWST", "liftCatch"],
                 vec![("RWST", &["RWST"][..])],
             ),
             (
                 "Control.Monad.Trans.RWS.Strict",
-                vec!["runRWST", "evalRWST", "execRWST"],
+                vec!["runRWST", "evalRWST", "execRWST", "liftCatch"],
                 vec![("RWST", &["RWST"][..])],
             ),
             (
                 "Control.Monad.Trans.RWS.Lazy",
-                vec!["runRWST", "evalRWST", "execRWST"],
+                vec!["runRWST", "evalRWST", "execRWST", "liftCatch"],
                 vec![("RWST", &["RWST"][..])],
             ),
             (
                 "Control.Monad.Trans.RWS.CPS",
-                vec!["runRWST", "evalRWST", "execRWST"],
+                vec!["runRWST", "evalRWST", "execRWST", "liftCatch"],
                 vec![("RWST", &["RWST"][..])],
             ),
         ];
@@ -6414,6 +6422,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "liftTyped",
             "mkName",
             "nameBase",
+            "mkNameG_v",
+            "mkNameG_tc",
+            "mkNameG_d",
             "ConT",
             "VarT",
             "AppT",
@@ -15154,6 +15165,30 @@ mod tests_chirho {
                 "Data.Map should export {name_chirho}"
             );
         }
+
+        let th_syntax_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Language.Haskell.TH.Syntax")
+            .expect("Language.Haskell.TH.Syntax builtin iface should exist");
+        assert!(
+            th_syntax_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("mkNameG_tc"),
+            "Language.Haskell.TH.Syntax should export mkNameG_tc"
+        );
+
+        let reader_trans_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Control.Monad.Trans.Reader")
+            .expect("Control.Monad.Trans.Reader builtin iface should exist");
+        assert!(
+            reader_trans_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("liftCatch"),
+            "Control.Monad.Trans.Reader should export liftCatch"
+        );
 
         let control_arrow_chirho = ifaces_chirho
             .iter()
