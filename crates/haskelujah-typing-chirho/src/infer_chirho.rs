@@ -14579,7 +14579,7 @@ fn substitute_type_vars_chirho(
 mod tests_chirho {
     use super::*;
     use haskelujah_ast_chirho::decl_chirho::{AssocTfInstanceChirho, ConDeclChirho, DeclChirho};
-    use haskelujah_ast_chirho::expr_chirho::AltChirho;
+    use haskelujah_ast_chirho::expr_chirho::{AltChirho, GuardedExprChirho, LocalBindChirho};
     use haskelujah_ast_chirho::module_chirho::ModuleChirho;
     use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
     use haskelujah_ast_chirho::pat_chirho::PatFieldChirho;
@@ -16000,6 +16000,51 @@ mod tests_chirho {
         assert!(
             matches!(inferred_ty_chirho, TyChirho::FunChirho(_, _, _)),
             "expected function result, got: {inferred_ty_chirho}"
+        );
+    }
+
+    #[test]
+    fn infer_guarded_match_with_where_keeps_lhs_params_in_scope_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let match_arm_chirho = MatchArmChirho {
+            pats_chirho: vec![
+                PatChirho::VarChirho(dummy_name_chirho("aChirho")),
+                PatChirho::VarChirho(dummy_name_chirho("bChirho")),
+            ],
+            rhs_chirho: RhsChirho::GuardedChirho(vec![GuardedExprChirho {
+                guard_chirho: ExprChirho::VarChirho(dummy_name_chirho("otherwise")),
+                body_chirho: ExprChirho::InfixChirho {
+                    left_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("aChirho"))),
+                    op_chirho: dummy_name_chirho("+"),
+                    right_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("rChirho"))),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }]),
+            where_binds_chirho: vec![LocalBindChirho::PatBindChirho {
+                pat_chirho: PatChirho::VarChirho(dummy_name_chirho("rChirho")),
+                rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::VarChirho(dummy_name_chirho(
+                    "bChirho",
+                ))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let expected_ty_chirho = TyChirho::fun_n_chirho(
+            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
+            TyChirho::int_chirho(),
+        );
+
+        let (_subst_chirho, _inferred_ty_chirho) = ctx_chirho.infer_matches_against_expected_chirho(
+            &[match_arm_chirho],
+            SpanChirho::DUMMY_CHIRHO,
+            &expected_ty_chirho,
+        );
+
+        assert!(
+            !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+            "guarded matches with trailing where bindings should keep lhs params in scope: {:?}",
+            ctx_chirho.diagnostics_chirho
         );
     }
 
