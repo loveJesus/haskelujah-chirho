@@ -1489,12 +1489,12 @@ impl InferCtxChirho {
         }
     }
 
-    fn instantiate_instance_method_expected_ty_chirho(
+    fn instantiate_instance_method_expected_parts_chirho(
         &mut self,
         class_decl_chirho: &ClassDeclChirho,
         method_scheme_chirho: &SchemeChirho,
         instance_head_tys_chirho: &[TyChirho],
-    ) -> TyChirho {
+    ) -> (Vec<PredChirho>, TyChirho) {
         let mut method_subst_chirho = SubstChirho::empty_chirho();
         if let Some(head_ty_chirho) = instance_head_tys_chirho.first() {
             method_subst_chirho.insert_chirho(class_decl_chirho.var_chirho, head_ty_chirho.clone());
@@ -1514,9 +1514,43 @@ impl InferCtxChirho {
                 method_subst_chirho.insert_chirho(*method_var_chirho, self.fresh_var_chirho());
             }
         }
+        let specialized_preds_chirho: Vec<PredChirho> = method_scheme_chirho
+            .preds_chirho
+            .iter()
+            .map(|pred_chirho| PredChirho {
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: self
+                    .normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho)),
+                extra_tys_chirho: pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|ty_chirho| {
+                        self.normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(ty_chirho))
+                    })
+                    .collect(),
+            })
+            .collect();
         let specialized_expected_ty_chirho =
             method_subst_chirho.apply_ty_chirho(&method_scheme_chirho.ty_chirho);
-        self.normalize_ty_chirho(&specialized_expected_ty_chirho)
+        (
+            specialized_preds_chirho,
+            self.normalize_ty_chirho(&specialized_expected_ty_chirho),
+        )
+    }
+
+    fn instantiate_instance_method_expected_ty_chirho(
+        &mut self,
+        class_decl_chirho: &ClassDeclChirho,
+        method_scheme_chirho: &SchemeChirho,
+        instance_head_tys_chirho: &[TyChirho],
+    ) -> TyChirho {
+        let (_specialized_preds_chirho, specialized_ty_chirho) = self
+            .instantiate_instance_method_expected_parts_chirho(
+                class_decl_chirho,
+                method_scheme_chirho,
+                instance_head_tys_chirho,
+            );
+        specialized_ty_chirho
     }
 
     fn check_instance_methods_against_class_chirho(&mut self, module_chirho: &ModuleChirho) {
@@ -1572,19 +1606,25 @@ impl InferCtxChirho {
                 let mut instance_scoped_tyvars_chirho = scoped_tyvars_snapshot_chirho.clone();
                 instance_scoped_tyvars_chirho.extend(instance_var_map_chirho.clone());
                 self.scoped_tyvars_chirho = instance_scoped_tyvars_chirho;
-                let specialized_expected_ty_chirho = self
-                    .instantiate_instance_method_expected_ty_chirho(
+                let (
+                    specialized_given_preds_chirho,
+                    specialized_expected_ty_chirho,
+                ) = self.instantiate_instance_method_expected_parts_chirho(
                         &class_decl_chirho,
                         method_scheme_chirho,
                         &instance_head_tys_chirho,
                     );
                 let expected_ty_chirho = self.normalize_ty_chirho(&specialized_expected_ty_chirho);
-                let (method_subst_chirho, inferred_ty_chirho) = self
-                    .infer_matches_against_expected_chirho(
+                let (method_subst_chirho, inferred_ty_chirho) = self.with_given_preds_chirho(
+                    specialized_given_preds_chirho,
+                    |self_chirho| {
+                        self_chirho.infer_matches_against_expected_chirho(
                         matches_chirho,
                         *span_chirho,
                         &expected_ty_chirho,
-                    );
+                        )
+                    },
+                );
 
                 let inferred_norm_chirho = self
                     .normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&inferred_ty_chirho));

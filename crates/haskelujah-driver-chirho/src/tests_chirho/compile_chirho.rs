@@ -256,6 +256,22 @@ fn frontend_guarded_instance_method_where_binding_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_instance_methods_receive_specialized_class_predicates_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module InstancePredicatesMiniChirho where\nimport Control.Applicative\n\ndata BoxChirho aChirho = BoxChirho aChirho\n\ninstance Functor BoxChirho where\n  fmap fChirho (BoxChirho xChirho) = BoxChirho (fChirho xChirho)\n\ninstance Applicative BoxChirho where\n  pure = BoxChirho\n  BoxChirho fChirho <*> BoxChirho xChirho = BoxChirho (fChirho xChirho)\n\ninstance Alternative BoxChirho where\n  empty = BoxChirho []\n  many _ = pure []\n  some _ = pure []\n",
+        &mut source_map_chirho,
+        "InstancePredicatesMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "instance method checking should carry specialized class predicates into method inference: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_ghc_ioref_stref_constructor_roundtrip_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
