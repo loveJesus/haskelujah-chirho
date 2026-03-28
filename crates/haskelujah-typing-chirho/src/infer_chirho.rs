@@ -7623,6 +7623,76 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             "StdGen".to_string(),
         ))),
     );
+    let random_a_chirho = TyVarChirho(1691);
+    let random_range_ty_chirho = TyChirho::TupleChirho(vec![
+        TyChirho::VarChirho(random_a_chirho),
+        TyChirho::VarChirho(random_a_chirho),
+    ]);
+    let random_result_ty_chirho = TyChirho::TupleChirho(vec![
+        TyChirho::VarChirho(random_a_chirho),
+        TyChirho::VarChirho(randomgen_g_chirho),
+    ]);
+    let random_preds_chirho = vec![
+        SchemePredChirho {
+            class_name_chirho: "Random".to_string(),
+            ty_chirho: TyChirho::VarChirho(random_a_chirho),
+            extra_tys_chirho: vec![],
+        },
+        SchemePredChirho {
+            class_name_chirho: "RandomGen".to_string(),
+            ty_chirho: TyChirho::VarChirho(randomgen_g_chirho),
+            extra_tys_chirho: vec![],
+        },
+    ];
+    env_chirho.bind_chirho(
+        "random".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![random_a_chirho, randomgen_g_chirho],
+            preds_chirho: random_preds_chirho.clone(),
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(randomgen_g_chirho),
+                random_result_ty_chirho.clone(),
+            ),
+        },
+    );
+    env_chirho.bind_chirho(
+        "randomR".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![random_a_chirho, randomgen_g_chirho],
+            preds_chirho: random_preds_chirho,
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    random_range_ty_chirho.clone(),
+                    TyChirho::VarChirho(randomgen_g_chirho),
+                ],
+                random_result_ty_chirho,
+            ),
+        },
+    );
+    let random_io_pred_chirho = SchemePredChirho {
+        class_name_chirho: "Random".to_string(),
+        ty_chirho: TyChirho::VarChirho(random_a_chirho),
+        extra_tys_chirho: vec![],
+    };
+    env_chirho.bind_chirho(
+        "randomIO".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![random_a_chirho],
+            preds_chirho: vec![random_io_pred_chirho.clone()],
+            ty_chirho: TyChirho::io_chirho(TyChirho::VarChirho(random_a_chirho)),
+        },
+    );
+    env_chirho.bind_chirho(
+        "randomRIO".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![random_a_chirho],
+            preds_chirho: vec![random_io_pred_chirho],
+            ty_chirho: TyChirho::fun_chirho(
+                random_range_ty_chirho,
+                TyChirho::io_chirho(TyChirho::VarChirho(random_a_chirho)),
+            ),
+        },
+    );
 
     let foreign_ptr_a_chirho = TyVarChirho(1692);
     let foreign_ptr_b_chirho = TyVarChirho(1693);

@@ -3407,7 +3407,7 @@ fn frontend_pattern_bind_where_binds_are_in_scope_chirho() {
 fn frontend_system_random_split_and_splitmix_surface_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
-        "module RandomMiniChirho where\nimport System.Random\nimport System.Random.SplitMix\nsplitStdMiniChirho :: RandomGen g => g -> (g, g)\nsplitStdMiniChirho = split\nsplitSmMiniChirho :: SMGen -> (SMGen, SMGen)\nsplitSmMiniChirho = splitSMGen\nnextSmMiniChirho :: SMGen -> (Int, SMGen)\nnextSmMiniChirho = nextInt\n",
+        "module RandomMiniChirho where\nimport System.Random\nimport System.Random.SplitMix\nsplitStdMiniChirho :: RandomGen g => g -> (g, g)\nsplitStdMiniChirho = split\nrandomStepMiniChirho :: (Random a, RandomGen g) => g -> (a, g)\nrandomStepMiniChirho = random\nrandomRangeStepMiniChirho :: (Random a, RandomGen g) => (a, a) -> g -> (a, g)\nrandomRangeStepMiniChirho = randomR\nrandomIOMiniChirho :: Random a => IO a\nrandomIOMiniChirho = randomIO\nrandomRIOMiniChirho :: Random a => (a, a) -> IO a\nrandomRIOMiniChirho = randomRIO\nsplitSmMiniChirho :: SMGen -> (SMGen, SMGen)\nsplitSmMiniChirho = splitSMGen\nnextSmMiniChirho :: SMGen -> (Int, SMGen)\nnextSmMiniChirho = nextInt\n",
         &mut source_map_chirho,
         "RandomMiniChirho.hs",
     );
