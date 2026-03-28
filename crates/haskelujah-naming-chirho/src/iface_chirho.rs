@@ -13981,6 +13981,12 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("StdGen", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Random", &["random", "randomR", "randomRs", "randoms"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Uniform", &["uniformM"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("UniformRange", &["uniformRM"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
             "split",
             "splitGen",
@@ -13988,6 +13994,21 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "genRange",
             "mkStdGen",
             "newStdGen",
+            "random",
+            "randomR",
+            "randomIO",
+            "randomRIO",
+            "randoms",
+            "randomRs",
+            "getStdRandom",
+            "getStdGen",
+            "setStdGen",
+            "uniformM",
+            "uniformRM",
+            "genWord8",
+            "genWord16",
+            "genWord32",
+            "genWord64",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
