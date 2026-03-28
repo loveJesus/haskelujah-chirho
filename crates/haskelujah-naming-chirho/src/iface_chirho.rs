@@ -5791,7 +5791,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.Char
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["chr", "ord", "eqChar", "neChar"] {
+        for name_chirho in &["chr", "ord", "eqChar", "neChar", "unsafeChr"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -8010,6 +8010,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "shows",
             "showChar",
             "showList",
+            "showListWith",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             show_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
