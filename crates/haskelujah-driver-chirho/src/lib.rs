@@ -567,6 +567,10 @@ fn configure_cpp_command_chirho(
     }
     cpp_cmd_chirho
         .arg("-P")
+        // Haskell package CPP expects a relatively clean macro environment;
+        // the host C preprocessor's built-in C macros trip headers like
+        // bytestring-cpp-macros.h.
+        .arg("-undef")
         .arg(format!(
             "-D__GLASGOW_HASKELL__={CPP_GLASGOW_HASKELL_VERSION_CHIRHO}"
         ))
