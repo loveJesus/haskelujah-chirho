@@ -287,61 +287,81 @@ fn preprocess_cabal_conditionals_chirho(input_chirho: &str) -> String {
         // Detect `if <condition>` at any indentation
         if let Some(cond_text_chirho) = trimmed_chirho.strip_prefix("if ") {
             let if_indent_chirho = line_chirho.len() - line_chirho.trim_start().len();
-            let cond_chirho = parse_condition_chirho(cond_text_chirho.trim());
-            let is_true_chirho = eval_condition_simple_chirho(&cond_chirho);
+            let mut branches_chirho: Vec<(Option<ConditionChirho>, Vec<&str>)> = vec![(
+                Some(parse_condition_chirho(cond_text_chirho.trim())),
+                Vec::new(),
+            )];
 
             i_chirho += 1;
 
-            // Collect the then-block (indented deeper than the if line)
-            let mut then_block_chirho: Vec<&str> = Vec::new();
-            while i_chirho < lines_chirho.len() {
-                let l_chirho = lines_chirho[i_chirho];
-                let l_trim_chirho = l_chirho.trim();
-                if l_trim_chirho.is_empty() {
-                    then_block_chirho.push(l_chirho);
+            loop {
+                while i_chirho < lines_chirho.len() {
+                    let branch_line_chirho = lines_chirho[i_chirho];
+                    let branch_trimmed_chirho = branch_line_chirho.trim();
+                    let branch_indent_chirho =
+                        branch_line_chirho.len() - branch_line_chirho.trim_start().len();
+                    let is_same_level_else_chirho = branch_indent_chirho == if_indent_chirho
+                        && branch_trimmed_chirho.eq_ignore_ascii_case("else");
+                    let is_same_level_elif_chirho = branch_indent_chirho == if_indent_chirho
+                        && branch_trimmed_chirho.starts_with("elif ");
+                    if is_same_level_else_chirho || is_same_level_elif_chirho {
+                        break;
+                    }
+                    if !branch_trimmed_chirho.is_empty() && branch_indent_chirho <= if_indent_chirho
+                    {
+                        break;
+                    }
+                    branches_chirho
+                        .last_mut()
+                        .unwrap()
+                        .1
+                        .push(branch_line_chirho);
                     i_chirho += 1;
-                    continue;
                 }
-                let l_indent_chirho = l_chirho.len() - l_chirho.trim_start().len();
-                if l_indent_chirho <= if_indent_chirho
-                    && !l_trim_chirho.eq_ignore_ascii_case("else")
+
+                if i_chirho >= lines_chirho.len() {
+                    break;
+                }
+
+                let branch_header_chirho = lines_chirho[i_chirho];
+                let branch_header_trimmed_chirho = branch_header_chirho.trim();
+                let branch_header_indent_chirho =
+                    branch_header_chirho.len() - branch_header_chirho.trim_start().len();
+                if branch_header_indent_chirho != if_indent_chirho {
+                    break;
+                }
+
+                if let Some(elif_cond_text_chirho) =
+                    branch_header_trimmed_chirho.strip_prefix("elif ")
                 {
-                    break;
-                }
-                if l_trim_chirho.eq_ignore_ascii_case("else") {
-                    i_chirho += 1;
-                    break;
-                }
-                then_block_chirho.push(l_chirho);
-                i_chirho += 1;
-            }
-
-            // Collect the else-block (if present)
-            let mut else_block_chirho: Vec<&str> = Vec::new();
-            while i_chirho < lines_chirho.len() {
-                let l_chirho = lines_chirho[i_chirho];
-                let l_trim_chirho = l_chirho.trim();
-                if l_trim_chirho.is_empty() {
-                    else_block_chirho.push(l_chirho);
+                    branches_chirho.push((
+                        Some(parse_condition_chirho(elif_cond_text_chirho.trim())),
+                        Vec::new(),
+                    ));
                     i_chirho += 1;
                     continue;
                 }
-                let l_indent_chirho = l_chirho.len() - l_chirho.trim_start().len();
-                if l_indent_chirho <= if_indent_chirho {
-                    break;
+                if branch_header_trimmed_chirho.eq_ignore_ascii_case("else") {
+                    branches_chirho.push((None, Vec::new()));
+                    i_chirho += 1;
+                    continue;
                 }
-                else_block_chirho.push(l_chirho);
-                i_chirho += 1;
+                break;
             }
 
-            // Include the appropriate block, recursively preprocessing nested
-            // conditionals and dedenting it back to the surrounding stanza
-            // level so fields are not swallowed as continuations.
-            let chosen_chirho = if is_true_chirho {
-                &then_block_chirho
-            } else {
-                &else_block_chirho
-            };
+            // Include the first matching branch, recursively preprocessing
+            // nested conditionals and dedenting it back to the surrounding
+            // stanza level so fields are not swallowed as continuations.
+            let chosen_chirho = branches_chirho
+                .iter()
+                .find_map(|(cond_chirho, branch_lines_chirho)| match cond_chirho {
+                    Some(cond_chirho) if eval_condition_simple_chirho(cond_chirho) => {
+                        Some(branch_lines_chirho)
+                    }
+                    None => Some(branch_lines_chirho),
+                    _ => None,
+                })
+                .unwrap_or(&branches_chirho[0].1);
             let min_block_indent_chirho = chosen_chirho
                 .iter()
                 .filter_map(|line_chirho| {
@@ -1983,6 +2003,59 @@ library
     }
 
     #[test]
+    fn preprocess_cabal_elif_branch_does_not_leak_into_following_fields_chirho() {
+        let input_chirho = r#"
+library
+  if impl(ghcjs)
+    cpp-options: -DGHCJS_CHIRHO=1
+  else
+    if impl(ghc)
+      cpp-options: -DGHC_CHIRHO=1
+
+      if os(windows)
+        c-sources: cbits-win/init.c
+
+      elif (os(osx) || os(ios))
+        c-sources: cbits-apple/init.c
+        frameworks: Security
+
+      else
+        c-sources: cbits-unix/init.c
+
+    else
+      cpp-options: -DCOMPAT_CHIRHO=1
+      build-depends: time >=1.2 && <1.16
+  build-depends: base
+"#;
+        let preprocessed_chirho = preprocess_cabal_conditionals_chirho(input_chirho);
+        assert!(
+            !preprocessed_chirho.contains("elif"),
+            "elif directives should be fully consumed by preprocessing: {}",
+            preprocessed_chirho
+        );
+        assert!(
+            preprocessed_chirho.contains("cpp-options: -DGHC_CHIRHO=1"),
+            "expected impl(ghc) branch to survive: {}",
+            preprocessed_chirho
+        );
+        assert!(
+            preprocessed_chirho.contains("c-sources: cbits-unix/init.c"),
+            "expected unix fallback branch to survive: {}",
+            preprocessed_chirho
+        );
+        assert!(
+            preprocessed_chirho.contains("build-depends: base"),
+            "following sibling fields should survive preprocessing: {}",
+            preprocessed_chirho
+        );
+        assert!(
+            !preprocessed_chirho.contains("build-depends: time"),
+            "unselected else branch must not leak into build info: {}",
+            preprocessed_chirho
+        );
+    }
+
+    #[test]
     fn parse_library_conditional_module_lists_extend_per_stanza_chirho() {
         let input_chirho = r#"
 name: quickcheck-mini
@@ -2059,6 +2132,62 @@ library
         assert_eq!(
             lib_chirho.build_info_chirho.cpp_options_chirho,
             vec!["-DKEEP_PRIMARY_CHIRHO=1", "-DSECONDARY_VALUE_CHIRHO=7"]
+        );
+    }
+
+    #[test]
+    fn parse_splitmix_style_cpp_options_do_not_absorb_elif_residue_chirho() {
+        let input_chirho = r#"
+name: splitmix
+version: 0.1.3.2
+
+library
+  exposed-modules: System.Random.SplitMix
+  build-depends:
+    base,
+    deepseq
+
+  if flag(optimised-mixer)
+    cpp-options: -DOPTIMISED_MIX32=1
+
+  if impl(ghcjs)
+    cpp-options: -DSPLITMIX_INIT_GHCJS=1
+
+  else
+    if impl(ghc)
+      cpp-options: -DSPLITMIX_INIT_C=1
+
+      if os(windows)
+        c-sources: cbits-win/init.c
+
+      elif (os(osx) || os(ios))
+        c-sources: cbits-apple/init.c
+        frameworks: Security
+
+      else
+        c-sources: cbits-unix/init.c
+
+    else
+      cpp-options: -DSPLITMIX_INIT_COMPAT=1
+      build-depends: time >=1.2.0.3 && <1.16
+"#;
+        let pkg_chirho = parse_cabal_chirho(input_chirho);
+        let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
+        assert_eq!(
+            lib_chirho.build_info_chirho.cpp_options_chirho,
+            vec![
+                "-DOPTIMISED_MIX32=1".to_string(),
+                "-DSPLITMIX_INIT_C=1".to_string(),
+            ]
+        );
+        assert_eq!(
+            lib_chirho
+                .build_info_chirho
+                .build_depends_chirho
+                .iter()
+                .map(|dep_chirho| dep_chirho.package_chirho.clone())
+                .collect::<Vec<_>>(),
+            vec!["base".to_string(), "deepseq".to_string()]
         );
     }
 
