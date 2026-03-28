@@ -13989,6 +13989,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("UniformRange", &["uniformRM"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("StatefulGen", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
             "split",
             "splitGen",
@@ -14007,6 +14009,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "setStdGen",
             "uniformM",
             "uniformRM",
+            "uniformByteArray",
             "genWord8",
             "genWord16",
             "genWord32",
@@ -14024,7 +14027,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // System.Random.Stateful (random package — needed by QuickCheck)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["StatefulGen", "FrozenGen", "RandomGenM"] {
+        for name_chirho in &["StatefulGen", "FrozenGen", "RandomGenM", "MutableGen"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
