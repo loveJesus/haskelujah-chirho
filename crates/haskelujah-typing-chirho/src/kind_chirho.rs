@@ -525,6 +525,7 @@ struct KindInferCtxChirho {
     diagnostics_chirho: DiagnosticBundleChirho,
     /// Cache for PolyKinds: maps source-level kind variable names to allocated KindVarChirho.
     kind_var_cache_chirho: std::collections::HashMap<String, KindVarChirho>,
+    local_kind_decl_names_chirho: std::collections::HashSet<String>,
 }
 
 /// Error codes for kind diagnostics.
@@ -539,6 +540,7 @@ impl KindInferCtxChirho {
             next_var_chirho: 0,
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             kind_var_cache_chirho: std::collections::HashMap::new(),
+            local_kind_decl_names_chirho: std::collections::HashSet::new(),
         }
     }
 
@@ -792,13 +794,17 @@ impl KindInferCtxChirho {
                 let text_chirho = name_chirho.full_name_chirho();
                 if let Some(k_chirho) = self.env_chirho.lookup_chirho(&text_chirho) {
                     let k_chirho = k_chirho.clone();
-                    // Instantiate fresh kind variables for each use of a
-                    // poly-kinded type constructor (e.g. `Proxy :: k -> Type`
-                    // gets fresh `k` each time it appears).
-                    if k_chirho.free_vars_chirho().is_empty() {
-                        k_chirho
-                    } else {
+                    // Imported poly-kinded constructors should instantiate at
+                    // each use site, but local declarations in the current
+                    // module still have unsolved kind variables that need to
+                    // stay shared across all occurrences while inference
+                    // constrains them.
+                    if !k_chirho.free_vars_chirho().is_empty()
+                        && !self.local_kind_decl_names_chirho.contains(&text_chirho)
+                    {
                         self.instantiate_kind_chirho(&k_chirho)
+                    } else {
+                        k_chirho
                     }
                 } else {
                     // Unknown type constructor — assign a fresh kind variable.
@@ -1179,6 +1185,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
             .kinds_chirho
             .remove(local_kind_decl_name_chirho);
     }
+    ctx_chirho.local_kind_decl_names_chirho = local_kind_decl_names_chirho.clone();
     let poly_kinds_enabled_chirho = module_chirho
         .extensions_chirho
         .iter()

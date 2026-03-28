@@ -310,12 +310,11 @@ impl<'src> LexerChirho<'src> {
                 }
                 self.make_token_chirho(RawTokenKindChirho::RightParenChirho, start_chirho)
             }
-            b'#'
-                if self.peek_at_chirho(1) == Some(b')')
-                    && matches!(
-                        self.paren_stack_chirho.last(),
-                        Some(ParenKindChirho::UnboxedChirho)
-                    ) =>
+            b'#' if self.peek_at_chirho(1) == Some(b')')
+                && matches!(
+                    self.paren_stack_chirho.last(),
+                    Some(ParenKindChirho::UnboxedChirho)
+                ) =>
             {
                 self.pos_chirho += 2;
                 self.paren_stack_chirho.pop();
@@ -1884,8 +1883,9 @@ mod tests_chirho {
 
     #[test]
     fn lex_preprocessed_primitive_bytearray_unsafe_thaw_arr_hash_stays_single_token_chirho() {
-        let source_path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../.haskelujah-packages-chirho/primitive-0.9.1.0/Data/Primitive/ByteArray.hs");
+        let source_path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
+            "../../.haskelujah-packages-chirho/primitive-0.9.1.0/Data/Primitive/ByteArray.hs",
+        );
         let source_path_chirho = std::fs::canonicalize(source_path_chirho)
             .expect("expected canonical primitive ByteArray path");
         let output_chirho = std::process::Command::new("cpp")

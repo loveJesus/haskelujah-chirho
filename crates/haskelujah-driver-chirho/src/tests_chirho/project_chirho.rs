@@ -1704,9 +1704,7 @@ data HashableMarkerChirho = HashableMarkerChirho\n",
 
     #[test]
     fn merged_local_dependency_index_uses_library_edges_for_parsers_chain_chirho() {
-        use crate::{
-            collect_package_deps_chirho, merge_local_dependency_package_index_chirho,
-        };
+        use crate::{collect_package_deps_chirho, merge_local_dependency_package_index_chirho};
         use haskelujah_package_chirho::{PackageIndexChirho, parse_cabal_chirho};
 
         let cabal_path_chirho = workspace_root_chirho()

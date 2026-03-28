@@ -63,13 +63,10 @@ fn seed_builtin_type_families_chirho() -> ImportedTypeFamiliesChirho {
     );
 
     // type instance PrimState IO = RealWorld
-    families_chirho
-        .get_mut("PrimState")
-        .unwrap()
-        .push((
-            vec![TyChirho::ConChirho("IO".to_string())],
-            TyChirho::ConChirho("RealWorld".to_string()),
-        ));
+    families_chirho.get_mut("PrimState").unwrap().push((
+        vec![TyChirho::ConChirho("IO".to_string())],
+        TyChirho::ConChirho("RealWorld".to_string()),
+    ));
 
     families_chirho
 }
@@ -4104,20 +4101,16 @@ fn merge_local_dependency_package_index_chirho(
             continue;
         }
 
-        let Some(package_version_chirho) = package_chirho
-            .version_chirho
-            .clone()
-            .or_else(|| {
-                package_dir_chirho
-                    .file_name()
-                    .and_then(|file_name_chirho| file_name_chirho.to_str())
-                    .and_then(|dir_name_chirho| {
-                        dir_name_chirho
-                            .strip_prefix(&format!("{}-", package_chirho.name_chirho))
-                            .and_then(haskelujah_package_chirho::parse_version_chirho)
-                    })
-            })
-        else {
+        let Some(package_version_chirho) = package_chirho.version_chirho.clone().or_else(|| {
+            package_dir_chirho
+                .file_name()
+                .and_then(|file_name_chirho| file_name_chirho.to_str())
+                .and_then(|dir_name_chirho| {
+                    dir_name_chirho
+                        .strip_prefix(&format!("{}-", package_chirho.name_chirho))
+                        .and_then(haskelujah_package_chirho::parse_version_chirho)
+                })
+        }) else {
             continue;
         };
         let package_deps_chirho = collect_library_package_deps_chirho(&package_chirho);
@@ -4235,8 +4228,7 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
         }
     }
 
-    let source_files_chirho =
-        discover_library_modules_chirho(&package_chirho, &package_dir_chirho);
+    let source_files_chirho = discover_library_modules_chirho(&package_chirho, &package_dir_chirho);
     let mut module_sources_chirho = Vec::new();
     for (module_name_chirho, path_chirho) in &source_files_chirho {
         let source_chirho = read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
@@ -5303,8 +5295,7 @@ pub fn discover_modules_chirho(
     package_chirho: &haskelujah_package_chirho::PackageDescChirho,
     project_dir_chirho: &Path,
 ) -> Vec<(String, PathBuf)> {
-    let mut modules_chirho =
-        discover_library_modules_chirho(package_chirho, project_dir_chirho);
+    let mut modules_chirho = discover_library_modules_chirho(package_chirho, project_dir_chirho);
     let mut seen_chirho = modules_chirho
         .iter()
         .map(|(module_name_chirho, _path_chirho)| module_name_chirho.clone())

@@ -112,6 +112,109 @@ pickFormatAdjustmentChirho False = ZeroPad
 }
 
 #[test]
+fn frontend_base_builtin_import_surface_for_quickcheck_arbitrary_compiles_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"module QuickCheckBuiltinSurfaceMiniChirho where
+import Data.Char (generalCategory, GeneralCategory(..))
+import Data.Ord
+import System.IO
+
+unicodeOkayChirho :: Char -> Bool
+unicodeOkayChirho cChirho =
+  case generalCategory cChirho of
+    Surrogate -> False
+    NotAssigned -> False
+    _ -> True
+
+downValueChirho :: Down Int -> Int
+downValueChirho = getDown
+
+encodingsChirho :: [TextEncoding]
+encodingsChirho =
+  [ utf8
+  , utf8_bom
+  , utf16
+  , utf16le
+  , utf16be
+  , utf32
+  , utf32le
+  , utf32be
+  , latin1
+  , char8
+  , localeEncoding
+  ]
+"#,
+        &mut source_map_chirho,
+        "QuickCheckBuiltinSurfaceMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "QuickCheck-facing base builtin imports should stay in scope: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_parenthesized_prefix_type_operator_in_instance_head_compiles_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"{-# LANGUAGE GADTs, TypeOperators #-}
+module PrefixTypeOperatorMiniChirho where
+
+data aChirho :-> cChirho where
+  UnitChirho :: cChirho -> (() :-> cChirho)
+
+instance Functor ((:->) aChirho) where
+  fmap fChirho (UnitChirho cChirho) = UnitChirho (fChirho cChirho)
+
+unwrapUnitChirho :: (() :-> Int) -> Int
+unwrapUnitChirho (UnitChirho nChirho) = nChirho
+"#,
+        &mut source_map_chirho,
+        "PrefixTypeOperatorMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "parenthesized prefix type operators like ((:->) a) should lower as type constructors: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_polykinded_local_type_operator_reuses_shared_kind_vars_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"{-# LANGUAGE GADTs, PolyKinds, Rank2Types, TypeOperators #-}
+module PolyKindedLocalTypeOperatorMiniChirho where
+
+data aChirho :-> cChirho where
+  PairChirho :: (aChirho :-> (bChirho :-> cChirho)) -> ((aChirho, bChirho) :-> cChirho)
+  UnitChirho :: cChirho -> (() :-> cChirho)
+  NilChirho :: aChirho :-> cChirho
+
+showFunctionChirho :: (Show aChirho, Show bChirho) => (aChirho :-> bChirho) -> Maybe bChirho -> String
+showFunctionChirho = undefined
+
+functionMapWithChirho :: ((bChirho -> cChirho) -> (bChirho :-> cChirho)) -> (aChirho -> bChirho) -> (bChirho -> aChirho) -> (aChirho -> cChirho) -> (aChirho :-> cChirho)
+functionMapWithChirho = undefined
+
+data FunChirho aChirho bChirho = FunChirho (aChirho :-> bChirho, bChirho) (aChirho -> bChirho)
+"#,
+        &mut source_map_chirho,
+        "PolyKindedLocalTypeOperatorMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "local poly-kinded type operators should keep shared inferred kinds within the module: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_backticked_left_section_infers_function_type_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
@@ -1425,15 +1528,23 @@ fn read_haskell_source_file_keeps_primitive_bytearray_unsafe_thaw_arr_hash_chirh
             ExprChirho::LamChirho { body_chirho, .. } => body_chirho.as_ref(),
             other_chirho => panic!("expected primitive lambda, got {:?}", other_chirho),
         },
-        other_chirho => panic!("expected parenthesized primitive lambda, got {:?}", other_chirho),
+        other_chirho => panic!(
+            "expected parenthesized primitive lambda, got {:?}",
+            other_chirho
+        ),
     };
     let tuple_elements_chirho = match lambda_body_chirho {
-        ExprChirho::TupleChirho { elements_chirho, .. } => elements_chirho,
+        ExprChirho::TupleChirho {
+            elements_chirho, ..
+        } => elements_chirho,
         other_chirho => panic!("expected tuple body, got {:?}", other_chirho),
     };
     let mutable_arg_chirho = match &tuple_elements_chirho[1] {
         ExprChirho::AppChirho { arg_chirho, .. } => arg_chirho.as_ref(),
-        other_chirho => panic!("expected MutableByteArray application, got {:?}", other_chirho),
+        other_chirho => panic!(
+            "expected MutableByteArray application, got {:?}",
+            other_chirho
+        ),
     };
     let unsafe_coerce_arg_chirho = match mutable_arg_chirho {
         ExprChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
