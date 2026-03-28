@@ -7704,12 +7704,46 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho("peek".to_string(), peek_scheme_chirho.clone());
         env_chirho.bind_chirho("Foreign.Storable.peek".to_string(), peek_scheme_chirho);
 
+        let storable_b_chirho = TyVarChirho(1695);
+        let raw_ptr_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Ptr".to_string())),
+            Box::new(TyChirho::VarChirho(storable_b_chirho)),
+        );
+
+        let peek_byte_off_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![storable_a_chirho, storable_b_chirho],
+            preds_chirho: vec![storable_pred_chirho.clone()],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![raw_ptr_ty_chirho.clone(), TyChirho::int_chirho()],
+                TyChirho::io_chirho(TyChirho::VarChirho(storable_a_chirho)),
+            ),
+        };
+        env_chirho.bind_chirho("peekByteOff".to_string(), peek_byte_off_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Foreign.Storable.peekByteOff".to_string(),
+            peek_byte_off_scheme_chirho,
+        );
+
+        let peek_elem_off_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![storable_a_chirho],
+            preds_chirho: vec![storable_pred_chirho.clone()],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![storable_ptr_ty_chirho.clone(), TyChirho::int_chirho()],
+                TyChirho::io_chirho(TyChirho::VarChirho(storable_a_chirho)),
+            ),
+        };
+        env_chirho.bind_chirho("peekElemOff".to_string(), peek_elem_off_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Foreign.Storable.peekElemOff".to_string(),
+            peek_elem_off_scheme_chirho,
+        );
+
         let poke_scheme_chirho = SchemeChirho {
             vars_chirho: vec![storable_a_chirho],
             preds_chirho: vec![storable_pred_chirho],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
-                    storable_ptr_ty_chirho,
+                    storable_ptr_ty_chirho.clone(),
                     TyChirho::VarChirho(storable_a_chirho),
                 ],
                 TyChirho::io_chirho(TyChirho::unit_chirho()),
@@ -7717,6 +7751,47 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         };
         env_chirho.bind_chirho("poke".to_string(), poke_scheme_chirho.clone());
         env_chirho.bind_chirho("Foreign.Storable.poke".to_string(), poke_scheme_chirho);
+
+        let storable_pred_chirho = SchemePredChirho {
+            class_name_chirho: "Storable".to_string(),
+            ty_chirho: TyChirho::VarChirho(storable_a_chirho),
+            extra_tys_chirho: vec![],
+        };
+        let poke_byte_off_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![storable_a_chirho, storable_b_chirho],
+            preds_chirho: vec![storable_pred_chirho.clone()],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    raw_ptr_ty_chirho,
+                    TyChirho::int_chirho(),
+                    TyChirho::VarChirho(storable_a_chirho),
+                ],
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
+            ),
+        };
+        env_chirho.bind_chirho("pokeByteOff".to_string(), poke_byte_off_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Foreign.Storable.pokeByteOff".to_string(),
+            poke_byte_off_scheme_chirho,
+        );
+
+        let poke_elem_off_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![storable_a_chirho],
+            preds_chirho: vec![storable_pred_chirho],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    storable_ptr_ty_chirho,
+                    TyChirho::int_chirho(),
+                    TyChirho::VarChirho(storable_a_chirho),
+                ],
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
+            ),
+        };
+        env_chirho.bind_chirho("pokeElemOff".to_string(), poke_elem_off_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Foreign.Storable.pokeElemOff".to_string(),
+            poke_elem_off_scheme_chirho,
+        );
     }
 
     {
@@ -13480,6 +13555,36 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         };
         env_chirho.bind_chirho("unsafeCoerce".to_string(), scheme_chirho.clone());
         env_chirho.bind_chirho("unsafeCoerce#".to_string(), scheme_chirho);
+    }
+
+    // setByteArray# :: forall s. MutableByteArray# s -> Int# -> Int# -> Int# -> State# s -> State# s
+    {
+        let s_chirho = TyVarChirho(7112);
+        let mutable_byte_array_s_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("MutableByteArray#".to_string())),
+            Box::new(TyChirho::VarChirho(s_chirho)),
+        );
+        let state_s_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("State#".to_string())),
+            Box::new(TyChirho::VarChirho(s_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "setByteArray#".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![s_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        mutable_byte_array_s_chirho,
+                        TyChirho::ConChirho("Int#".to_string()),
+                        TyChirho::ConChirho("Int#".to_string()),
+                        TyChirho::ConChirho("Int#".to_string()),
+                        state_s_chirho.clone(),
+                    ],
+                    state_s_chirho,
+                ),
+            },
+        );
     }
 
     // GHC.Integer.Logarithms / Compat

@@ -1453,6 +1453,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "newByteArray#",
             "newPinnedByteArray#",
             "newAlignedPinnedByteArray#",
+            "setByteArray#",
             "readIntArray#",
             "readWordArray#",
             "readWord8Array#",
@@ -4619,7 +4620,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             exports_chirho,
         });
         let mut stor_exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["sizeOf", "alignment", "peek", "poke"] {
+        for name_chirho in &[
+            "sizeOf",
+            "alignment",
+            "peek",
+            "poke",
+            "peekByteOff",
+            "pokeByteOff",
+            "peekElemOff",
+            "pokeElemOff",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             stor_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -5589,6 +5599,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "newByteArray#",
             "newPinnedByteArray#",
             "newAlignedPinnedByteArray#",
+            "setByteArray#",
             "readIntArray#",
             "readWordArray#",
             "readWord8Array#",
@@ -6005,6 +6016,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "intPtrToPtr",
             "peek",
             "poke",
+            "peekByteOff",
+            "pokeByteOff",
+            "peekElemOff",
+            "pokeElemOff",
             "sizeOf",
             "alignment",
             "malloc",
@@ -15454,6 +15469,27 @@ mod tests_chirho {
             s_chirho.exports_chirho.values_chirho.contains_key("peek"),
             "Foreign.Storable should export 'peek'"
         );
+        assert!(
+            s_chirho.exports_chirho.values_chirho.contains_key("peekElemOff"),
+            "Foreign.Storable should export 'peekElemOff'"
+        );
+    }
+
+    #[test]
+    fn builtin_foreign_reexports_peek_elem_off_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let foreign_chirho = ifaces_chirho
+            .iter()
+            .rev()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Foreign")
+            .expect("Foreign builtin iface should exist");
+        assert!(
+            foreign_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("peekElemOff"),
+            "Foreign should export 'peekElemOff'"
+        );
     }
 
     #[test]
@@ -15806,13 +15842,15 @@ mod tests_chirho {
             .iter()
             .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Exts")
             .expect("GHC.Exts builtin iface should exist");
-        assert!(
-            ghc_exts_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("newAlignedPinnedByteArray#"),
-            "GHC.Exts should export newAlignedPinnedByteArray#"
-        );
+        for primop_name_chirho in &["newAlignedPinnedByteArray#", "setByteArray#"] {
+            assert!(
+                ghc_exts_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(*primop_name_chirho),
+                "GHC.Exts should export {primop_name_chirho}"
+            );
+        }
     }
 
     #[test]
@@ -15862,6 +15900,7 @@ mod tests_chirho {
             "cloneArray#",
             "cloneMutableArray#",
             "sameMutableArray#",
+            "setByteArray#",
         ] {
             assert!(
                 ghc_prim_chirho
