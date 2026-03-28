@@ -15790,6 +15790,72 @@ mod tests_chirho {
     }
 
     #[test]
+    #[ignore] // Known: MagicHash binders in unboxed tuple case patterns need scoping fix
+    fn infer_case_unboxed_tuple_hash_primed_binders_stay_in_scope_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.env_chirho.bind_chirho(
+            "foo#".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::TupleChirho(vec![
+                TyChirho::ConChirho("State#".to_string()),
+                TyChirho::ConChirho("ByteArray#".to_string()),
+            ])),
+        );
+        ctx_chirho.env_chirho.bind_chirho(
+            "ByteArray".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                TyChirho::ConChirho("ByteArray#".to_string()),
+                TyChirho::ConChirho("ByteArray".to_string()),
+            )),
+        );
+
+        let expr_chirho = ExprChirho::CaseChirho {
+            scrutinee_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("foo#"))),
+            alts_chirho: vec![AltChirho {
+                pat_chirho: PatChirho::TupleChirho {
+                    elements_chirho: vec![
+                        PatChirho::VarChirho(dummy_name_chirho("s'#")),
+                        PatChirho::VarChirho(dummy_name_chirho("arr'#")),
+                    ],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::TupleChirho {
+                    elements_chirho: vec![
+                        ExprChirho::VarChirho(dummy_name_chirho("s'#")),
+                        ExprChirho::AppChirho {
+                            fun_chirho: Box::new(ExprChirho::ConChirho(dummy_name_chirho(
+                                "ByteArray",
+                            ))),
+                            arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho(
+                                "arr'#",
+                            ))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                    ],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }),
+                where_binds_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let (_subst_chirho, inferred_ty_chirho) = ctx_chirho.infer_expr_chirho(&expr_chirho);
+        assert!(
+            !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+            "hash-primed unboxed-tuple binders should stay in scope inside the case rhs: {:?}",
+            ctx_chirho.diagnostics_chirho
+        );
+        assert_eq!(
+            inferred_ty_chirho,
+            TyChirho::TupleChirho(vec![
+                TyChirho::ConChirho("State#".to_string()),
+                TyChirho::ConChirho("ByteArray".to_string()),
+            ]),
+            "the rhs should see both s'# and arr'# as locally bound names"
+        );
+    }
+
+    #[test]
     fn infer_identity_function_chirho() {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         // \x -> x

@@ -14112,6 +14112,147 @@ fn lower_unboxed_tuple_case_result_expr_binds_names_chirho() {
 }
 
 #[test]
+fn lower_unboxed_tuple_case_hash_primed_binders_survive_in_pattern_and_expr_chirho() {
+    let source_chirho = "module M where\nfChirho xChirho = case foo# xChirho of\n  (# s'#, arr'# #) -> (# s'#, ByteArray arr'# #)\n";
+    let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let parser_chirho =
+        crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+    let decl_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find(|decl_chirho| {
+            matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "fChirho")
+        })
+        .expect("expected fChirho binding");
+
+    let rhs_expr_chirho = match decl_chirho {
+        DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho {
+            RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+            other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+        },
+        other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+    };
+
+    match rhs_expr_chirho {
+        ExprChirho::CaseChirho { alts_chirho, .. } => {
+            match &alts_chirho[0].pat_chirho {
+                PatChirho::TupleChirho {
+                    elements_chirho, ..
+                } => {
+                    assert_eq!(elements_chirho.len(), 2);
+                    assert!(
+                        matches!(&elements_chirho[0], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "s'#")
+                    );
+                    assert!(
+                        matches!(&elements_chirho[1], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "arr'#")
+                    );
+                }
+                other_chirho => panic!(
+                    "expected tuple pattern from unboxed tuple syntax, got {:?}",
+                    other_chirho
+                ),
+            }
+
+            match &alts_chirho[0].rhs_chirho {
+                RhsChirho::UnguardedChirho(ExprChirho::TupleChirho {
+                    elements_chirho, ..
+                }) => {
+                    assert_eq!(elements_chirho.len(), 2);
+                    assert!(
+                        matches!(&elements_chirho[0], ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "s'#")
+                    );
+                    assert!(matches!(
+                        &elements_chirho[1],
+                        ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                            if matches!(fun_chirho.as_ref(), ExprChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "ByteArray")
+                                && matches!(arg_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "arr'#")
+                    ));
+                }
+                other_chirho => panic!(
+                    "expected tuple expression from unboxed tuple syntax, got {:?}",
+                    other_chirho
+                ),
+            }
+        }
+        other_chirho => panic!("expected case expression, got {:?}", other_chirho),
+    }
+}
+
+#[test]
+#[ignore] // Known: MagicHash constructor patterns in unboxed tuple case need fix
+fn lower_magic_hash_constructor_pattern_and_nested_unboxed_tuple_case_chirho() {
+    let source_chirho = "module M where\nfChirho (MutableByteArray arr#) = primitive (\\s# -> case unsafeFreezeByteArray# arr# s# of\n  (# s'#, arr'# #) -> (# s'#, ByteArray arr'# #))\n";
+    let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let parser_chirho =
+        crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+    let decl_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find(|decl_chirho| {
+            matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "fChirho")
+        })
+        .expect("expected fChirho binding");
+
+    let match_chirho = match decl_chirho {
+        DeclChirho::FunBindChirho { matches_chirho, .. } => &matches_chirho[0],
+        other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+    };
+
+    let outer_pat_chirho = match &match_chirho.pats_chirho[0] {
+        PatChirho::ParenChirho { inner_chirho, .. } => inner_chirho.as_ref(),
+        other_chirho => other_chirho,
+    };
+    match outer_pat_chirho {
+        PatChirho::ConChirho {
+            con_chirho,
+            args_chirho,
+            ..
+        } if con_chirho.text_chirho() == "MutableByteArray"
+            && args_chirho.len() == 1
+            && matches!(&args_chirho[0], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "arr#") => {}
+        other_chirho => panic!(
+            "expected MutableByteArray constructor pattern with arr# binder, got {:?}",
+            other_chirho
+        ),
+    }
+
+    let rhs_expr_chirho = match &match_chirho.rhs_chirho {
+        RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+        other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+    };
+
+    match rhs_expr_chirho {
+        ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+            if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "primitive")
+                && matches!(arg_chirho.as_ref(), ExprChirho::LamChirho { pats_chirho, body_chirho, .. }
+                    if pats_chirho.len() == 1
+                        && matches!(&pats_chirho[0], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "s#")
+                        && matches!(body_chirho.as_ref(), ExprChirho::CaseChirho { alts_chirho, .. }
+                            if matches!(&alts_chirho[0].pat_chirho, PatChirho::TupleChirho { elements_chirho, .. }
+                                if elements_chirho.len() == 2
+                                    && matches!(&elements_chirho[0], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "s'#")
+                                    && matches!(&elements_chirho[1], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "arr'#"))
+                                && matches!(&alts_chirho[0].rhs_chirho, RhsChirho::UnguardedChirho(ExprChirho::TupleChirho { elements_chirho, .. })
+                                    if elements_chirho.len() == 2
+                                        && matches!(&elements_chirho[0], ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "s'#")
+                                        && matches!(&elements_chirho[1], ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                                            if matches!(fun_chirho.as_ref(), ExprChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "ByteArray")
+                                                && matches!(arg_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "arr'#"))))
+                ) => {}
+        other_chirho => panic!(
+            "expected primitive lambda with nested hash binder case, got {:?}",
+            other_chirho
+        ),
+    }
+}
+
+#[test]
 fn lower_unboxed_tuple_case_pattern_tight_spacing_binds_names_chirho() {
     let source_chirho = "module M where\nfChirho xChirho yChirho = case timesWord2# xChirho yChirho of\n  (#hiChirho, loChirho#) -> xor# hiChirho loChirho\n";
     let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
