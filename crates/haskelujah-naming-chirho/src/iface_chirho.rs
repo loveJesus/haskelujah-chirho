@@ -722,10 +722,77 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "showLitChar",
             "readLitChar",
             "lexLitChar",
+            "generalCategory",
+            "UppercaseLetter",
+            "LowercaseLetter",
+            "TitlecaseLetter",
+            "ModifierLetter",
+            "OtherLetter",
+            "NonSpacingMark",
+            "SpacingCombiningMark",
+            "EnclosingMark",
+            "DecimalNumber",
+            "LetterNumber",
+            "OtherNumber",
+            "ConnectorPunctuation",
+            "DashPunctuation",
+            "OpenPunctuation",
+            "ClosePunctuation",
+            "InitialQuote",
+            "FinalQuote",
+            "OtherPunctuation",
+            "MathSymbol",
+            "CurrencySymbol",
+            "ModifierSymbol",
+            "OtherSymbol",
+            "Space",
+            "LineSeparator",
+            "ParagraphSeparator",
+            "Control",
+            "Format",
+            "Surrogate",
+            "PrivateUse",
+            "NotAssigned",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
+        let (k_chirho, v_chirho) = mk_type_chirho(
+            "GeneralCategory",
+            &[
+                "UppercaseLetter",
+                "LowercaseLetter",
+                "TitlecaseLetter",
+                "ModifierLetter",
+                "OtherLetter",
+                "NonSpacingMark",
+                "SpacingCombiningMark",
+                "EnclosingMark",
+                "DecimalNumber",
+                "LetterNumber",
+                "OtherNumber",
+                "ConnectorPunctuation",
+                "DashPunctuation",
+                "OpenPunctuation",
+                "ClosePunctuation",
+                "InitialQuote",
+                "FinalQuote",
+                "OtherPunctuation",
+                "MathSymbol",
+                "CurrencySymbol",
+                "ModifierSymbol",
+                "OtherSymbol",
+                "Space",
+                "LineSeparator",
+                "ParagraphSeparator",
+                "Control",
+                "Format",
+                "Surrogate",
+                "PrivateUse",
+                "NotAssigned",
+            ],
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Char".to_string(),
             exports_chirho,
@@ -2057,9 +2124,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "hGetEncoding",
             "mkTextEncoding",
             "utf8",
+            "utf8_bom",
             "utf16",
+            "utf16le",
+            "utf16be",
+            "utf32",
+            "utf32le",
+            "utf32be",
             "latin1",
             "char8",
+            "localeEncoding",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -2431,14 +2505,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Ord
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["compare", "comparing", "clamp", "Down"] {
+        for name_chirho in &["compare", "comparing", "clamp", "Down", "getDown"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Ord", "Ordering", "Down"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["LT", "EQ", "GT"]);
-            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Ord", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Ordering", &["LT", "EQ", "GT"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("Down", &["Down"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Ord".to_string(),
             exports_chirho,
@@ -4597,6 +4673,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "stdout",
             "stderr",
             "utf8",
+            "utf8_bom",
+            "utf16",
+            "utf16le",
+            "utf16be",
+            "utf32",
+            "utf32le",
+            "utf32be",
+            "latin1",
+            "char8",
+            "localeEncoding",
             "hGetContents",
             "hPrint",
             "putStr",
@@ -4623,6 +4709,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "BufferMode",
             &["NoBuffering", "LineBuffering", "BlockBuffering"],
         );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("TextEncoding", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "System.IO".to_string(),
@@ -7139,6 +7227,69 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.ByteString.Char8".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.ByteString.Unsafe
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "unsafeUseAsCString",
+            "unsafeUseAsCStringLen",
+            "unsafePackCString",
+            "unsafePackCStringLen",
+            "unsafePackCStringFinalizer",
+            "unsafePackMallocCString",
+            "unsafeTake",
+            "unsafeDrop",
+            "unsafeIndex",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.ByteString.Unsafe".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.ByteString.Builder.Extra
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "toLazyByteStringWith",
+            "AllocationStrategy",
+            "safeStrategy",
+            "untrimmedStrategy",
+            "smallChunkSize",
+            "defaultChunkSize",
+            "byteStringCopy",
+            "byteStringInsert",
+            "byteStringThreshold",
+            "lazyByteStringCopy",
+            "lazyByteStringInsert",
+            "lazyByteStringThreshold",
+            "flush",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.ByteString.Builder.Extra".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // GHC.Clock
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["getMonotonicTime", "getMonotonicTimeNSec"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Clock".to_string(),
             exports_chirho,
         });
     }
@@ -10628,10 +10779,23 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "WriteMode",
             "AppendMode",
             "ReadWriteMode",
+            "utf8",
+            "utf8_bom",
+            "utf16",
+            "utf16le",
+            "utf16be",
+            "utf32",
+            "utf32le",
+            "utf32be",
+            "latin1",
+            "char8",
+            "localeEncoding",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
+        let (k_chirho, v_chirho) = mk_type_chirho("TextEncoding", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "System.IO".to_string(),
             exports_chirho,
@@ -13380,8 +13544,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "TextEncoding",
             "utf8",
             "utf8_bom",
+            "utf16",
             "utf16le",
             "utf16be",
+            "utf32",
             "utf32le",
             "utf32be",
             "latin1",
