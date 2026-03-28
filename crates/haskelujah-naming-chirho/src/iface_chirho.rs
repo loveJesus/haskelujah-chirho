@@ -10981,6 +10981,50 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Time.Calendar
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "Day",
+            "addDays",
+            "diffDays",
+            "toGregorian",
+            "fromGregorian",
+            "showGregorian",
+            "isLeapYear",
+            "addGregorianMonthsClip",
+            "addGregorianYearsClip",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Day", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.Calendar".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.Calendar.OrdinalDate".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Control.Monad.ST.Safe (re-export of Control.Monad.ST)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["ST", "runST", "fixST", "stToIO"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("ST", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.ST.Safe".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Data.Eq (base re-export)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
