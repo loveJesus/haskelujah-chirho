@@ -214,7 +214,13 @@ pub struct LexerChirho<'src> {
     bytes_chirho: &'src [u8],
     pos_chirho: usize,
     file_id_chirho: FileIdChirho,
-    unboxed_paren_depth_chirho: usize,
+    paren_stack_chirho: Vec<ParenKindChirho>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ParenKindChirho {
+    NormalChirho,
+    UnboxedChirho,
 }
 
 impl<'src> LexerChirho<'src> {
@@ -225,7 +231,7 @@ impl<'src> LexerChirho<'src> {
             bytes_chirho: source_chirho.as_bytes(),
             pos_chirho: 0,
             file_id_chirho,
-            unboxed_paren_depth_chirho: 0,
+            paren_stack_chirho: Vec::new(),
         }
     }
 
@@ -287,19 +293,32 @@ impl<'src> LexerChirho<'src> {
             b'(' => {
                 if self.starts_unboxed_paren_open_chirho() {
                     self.pos_chirho += 2;
-                    self.unboxed_paren_depth_chirho += 1;
+                    self.paren_stack_chirho.push(ParenKindChirho::UnboxedChirho);
                 } else {
                     self.pos_chirho += 1;
+                    self.paren_stack_chirho.push(ParenKindChirho::NormalChirho);
                 }
                 self.make_token_chirho(RawTokenKindChirho::LeftParenChirho, start_chirho)
             }
             b')' => {
                 self.pos_chirho += 1;
+                if matches!(
+                    self.paren_stack_chirho.last(),
+                    Some(ParenKindChirho::NormalChirho)
+                ) {
+                    self.paren_stack_chirho.pop();
+                }
                 self.make_token_chirho(RawTokenKindChirho::RightParenChirho, start_chirho)
             }
-            b'#' if self.peek_at_chirho(1) == Some(b')') && self.unboxed_paren_depth_chirho > 0 => {
+            b'#'
+                if self.peek_at_chirho(1) == Some(b')')
+                    && matches!(
+                        self.paren_stack_chirho.last(),
+                        Some(ParenKindChirho::UnboxedChirho)
+                    ) =>
+            {
                 self.pos_chirho += 2;
-                self.unboxed_paren_depth_chirho = self.unboxed_paren_depth_chirho.saturating_sub(1);
+                self.paren_stack_chirho.pop();
                 self.make_token_chirho(RawTokenKindChirho::RightParenChirho, start_chirho)
             }
             b'[' => {
@@ -696,7 +715,11 @@ impl<'src> LexerChirho<'src> {
         while self.pos_chirho < self.bytes_chirho.len()
             && self.bytes_chirho[self.pos_chirho] == b'#'
         {
-            if self.unboxed_paren_depth_chirho > 0 && self.peek_at_chirho(1) == Some(b')') {
+            if matches!(
+                self.paren_stack_chirho.last(),
+                Some(ParenKindChirho::UnboxedChirho)
+            ) && self.peek_at_chirho(1) == Some(b')')
+            {
                 break;
             }
             self.pos_chirho += 1;
@@ -1816,6 +1839,47 @@ mod tests_chirho {
         assert!(texts_chirho.contains(&"Int#"));
         assert!(texts_chirho.contains(&"newPinnedByteArray#"));
         assert!(!texts_chirho.contains(&"#"));
+    }
+
+    #[test]
+    fn lex_magic_hash_identifier_before_plain_rparen_inside_unboxed_tuple_stays_single_token_chirho()
+     {
+        let source_chirho =
+            "module T where\nfChirho = (# MutableByteArray (unsafeCoerce# arr#) #)\n";
+        let tokens_chirho = lex_chirho(source_chirho);
+        let texts_chirho: Vec<_> = tokens_chirho
+            .iter()
+            .filter(|token_chirho| !token_chirho.kind_chirho.is_trivia_chirho())
+            .map(|token_chirho| {
+                &source_chirho[token_chirho.span_chirho.start_chirho().as_usize_chirho()
+                    ..token_chirho.span_chirho.end_chirho().as_usize_chirho()]
+            })
+            .collect();
+        assert!(
+            texts_chirho.contains(&"unsafeCoerce#"),
+            "expected unsafeCoerce# to stay intact, got {:?}",
+            texts_chirho
+        );
+        assert!(
+            texts_chirho.contains(&"arr#"),
+            "expected arr# to stay intact before the inner ), got {:?}",
+            texts_chirho
+        );
+        assert!(
+            texts_chirho.contains(&")"),
+            "expected a plain ) token for the inner parenthesized application, got {:?}",
+            texts_chirho
+        );
+        assert!(
+            texts_chirho.contains(&"#)"),
+            "expected the outer unboxed tuple to still close with #), got {:?}",
+            texts_chirho
+        );
+        assert!(
+            !texts_chirho.contains(&"arr"),
+            "arr# should not be split into arr plus #), got {:?}",
+            texts_chirho
+        );
     }
 
     #[test]
