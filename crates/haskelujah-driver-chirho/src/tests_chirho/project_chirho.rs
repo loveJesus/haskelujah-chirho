@@ -1449,6 +1449,131 @@ treeWordSizeChirho = wordSize\n",
     }
 
     #[test]
+    fn compile_real_random_cabal_project_moves_past_state_alias_mismatch_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let cabal_path_chirho =
+            workspace_root_chirho().join(".haskelujah-packages-chirho/random-1.3.1/random.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let result_chirho =
+            compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho());
+        match result_chirho {
+            Ok(result_chirho) => {
+                assert!(
+                    !result_chirho.module_results_chirho.is_empty(),
+                    "real random compile_cabal_project should compile modules",
+                );
+            }
+            Err(error_chirho) => {
+                let error_text_chirho = format!("{error_chirho}");
+                assert!(
+                    !(error_text_chirho.contains("Error compiling System.Random.Internal")
+                        && error_text_chirho.contains("expected `(StateT")
+                        && error_text_chirho.contains("found `State`")),
+                    "random should move past the old State/StateT alias mismatch, got: {error_text_chirho}",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn compile_real_quickcheck_cabal_project_moves_past_random_state_alias_mismatch_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let cabal_path_chirho = workspace_root_chirho()
+            .join(".haskelujah-packages-chirho/QuickCheck-2.18.0.0/QuickCheck.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let result_chirho =
+            compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho());
+        match result_chirho {
+            Ok(result_chirho) => {
+                assert!(
+                    !result_chirho.module_results_chirho.is_empty(),
+                    "real QuickCheck compile_cabal_project should compile modules",
+                );
+            }
+            Err(error_chirho) => {
+                let error_text_chirho = format!("{error_chirho}");
+                assert!(
+                    !(error_text_chirho
+                        .contains("dependency package 'random': Error compiling System.Random.Internal")
+                        && error_text_chirho.contains("expected `(StateT")
+                        && error_text_chirho.contains("found `State`")),
+                    "QuickCheck should move past the old random State/StateT dependency mismatch, got: {error_text_chirho}",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn compile_real_th_abstraction_cabal_project_stays_past_missing_module_stubs_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let cabal_path_chirho = workspace_root_chirho()
+            .join(".haskelujah-packages-chirho/th-abstraction-0.7.2.0/th-abstraction.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let result_chirho =
+            compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho());
+        match result_chirho {
+            Ok(result_chirho) => {
+                assert!(
+                    !result_chirho.module_results_chirho.is_empty(),
+                    "real th-abstraction compile_cabal_project should compile modules",
+                );
+            }
+            Err(error_chirho) => {
+                let error_text_chirho = format!("{error_chirho}");
+                assert!(
+                    !error_text_chirho.contains("could not find module"),
+                    "th-abstraction should stay past missing module-stub failures, got: {error_text_chirho}",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn compile_real_bifunctors_cabal_project_stays_past_missing_module_stubs_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let cabal_path_chirho = workspace_root_chirho()
+            .join(".haskelujah-packages-chirho/bifunctors-5.6.3/bifunctors.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let result_chirho =
+            compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho());
+        match result_chirho {
+            Ok(result_chirho) => {
+                assert!(
+                    !result_chirho.module_results_chirho.is_empty(),
+                    "real bifunctors compile_cabal_project should compile modules",
+                );
+            }
+            Err(error_chirho) => {
+                let error_text_chirho = format!("{error_chirho}");
+                assert!(
+                    !error_text_chirho.contains("could not find module"),
+                    "bifunctors should stay past missing module-stub failures, got: {error_text_chirho}",
+                );
+            }
+        }
+    }
+
+    #[test]
     fn collect_local_dependency_frontend_artifacts_skips_unrelated_builtin_only_packages_chirho() {
         use haskelujah_package_chirho::{DependencyChirho, VersionConstraintChirho};
 
