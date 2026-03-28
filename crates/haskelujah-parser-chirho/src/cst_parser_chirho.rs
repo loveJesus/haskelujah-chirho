@@ -599,10 +599,17 @@ impl<'src> ParserChirho<'src> {
                 self.eat_trivia_chirho();
                 self.parse_con_decl_chirho();
             }
-        } else if self.at_chirho(RawTokenKindChirho::WhereChirho) {
+        } else if self.at_chirho(RawTokenKindChirho::WhereChirho)
+            || matches!(
+                self.previous_non_trivia_kind_chirho(),
+                Some(RawTokenKindChirho::WhereChirho)
+            )
+        {
             // GADT syntax: data T a where { C1 :: Type; C2 :: Type }
-            self.bump_chirho(); // where
-            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::WhereChirho) {
+                self.bump_chirho(); // where
+                self.eat_trivia_chirho();
+            }
 
             // Parse layout block of GADT constructor declarations
             let has_brace_chirho = self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
@@ -4966,6 +4973,18 @@ impl<'src> ParserChirho<'src> {
         } else {
             ""
         }
+    }
+
+    fn previous_non_trivia_kind_chirho(&self) -> Option<RawTokenKindChirho> {
+        let mut idx_chirho = self.pos_chirho;
+        while idx_chirho > 0 {
+            idx_chirho -= 1;
+            let kind_chirho = self.tokens_chirho[idx_chirho].kind_chirho;
+            if !kind_chirho.is_trivia_chirho() {
+                return Some(kind_chirho);
+            }
+        }
+        None
     }
 
     /// Advance one token, adding it to the current green node.

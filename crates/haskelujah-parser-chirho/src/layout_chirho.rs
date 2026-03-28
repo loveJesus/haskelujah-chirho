@@ -1137,6 +1137,45 @@ f xs = g xs
     }
 
     #[test]
+    fn gadt_data_where_opens_layout_block_for_infix_type_operator_header_chirho() {
+        let tokens_chirho = layout_tokens_chirho(
+            "\
+{-# LANGUAGE GADTs, TypeOperators #-}
+module M where
+data aChirho :-> cChirho where
+  PairChirho :: (aChirho :-> (bChirho :-> cChirho)) -> ((aChirho, bChirho) :-> cChirho)
+  UnitChirho :: cChirho -> (() :-> cChirho)
+",
+        );
+        let where_positions_chirho: Vec<usize> = tokens_chirho
+            .iter()
+            .enumerate()
+            .filter_map(|(idx_chirho, (kind_chirho, _))| {
+                (*kind_chirho == RawTokenKindChirho::WhereChirho).then_some(idx_chirho)
+            })
+            .collect();
+        let data_where_idx_chirho = *where_positions_chirho
+            .last()
+            .expect("expected module where and data where");
+        assert_eq!(
+            tokens_chirho[data_where_idx_chirho + 1].0,
+            RawTokenKindChirho::VirtualLeftBraceChirho,
+            "GADT data where should open an implicit layout block: {:?}",
+            tokens_chirho
+        );
+        assert_eq!(
+            tokens_chirho[data_where_idx_chirho + 2].0,
+            RawTokenKindChirho::ConIdChirho,
+            "first token inside GADT data layout should be the constructor name: {:?}",
+            tokens_chirho
+        );
+        assert_eq!(
+            tokens_chirho[data_where_idx_chirho + 2].1,
+            "PairChirho".to_string()
+        );
+    }
+
+    #[test]
     fn where_after_function_rhs_opens_layout_without_semicolon_chirho() {
         let source_chirho = "\
 module M where
