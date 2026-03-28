@@ -2045,6 +2045,27 @@ library
     }
 
     #[test]
+    fn parse_build_info_cpp_options_chirho() {
+        let input_chirho = r#"
+name: cpp-mini
+version: 0.1
+
+library
+  exposed-modules: Demo.CppChirho
+  cpp-options: -DKEEP_PRIMARY_CHIRHO=1 -DSECONDARY_VALUE_CHIRHO=7
+"#;
+        let pkg_chirho = parse_cabal_chirho(input_chirho);
+        let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
+        assert_eq!(
+            lib_chirho.build_info_chirho.cpp_options_chirho,
+            vec![
+                "-DKEEP_PRIMARY_CHIRHO=1",
+                "-DSECONDARY_VALUE_CHIRHO=7"
+            ]
+        );
+    }
+
+    #[test]
     fn parse_custom_setup_chirho() {
         let input_chirho = r#"
 name: my-pkg

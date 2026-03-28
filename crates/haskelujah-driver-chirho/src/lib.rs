@@ -556,7 +556,11 @@ fn path_is_hsc_chirho(path_chirho: &Path) -> bool {
         .is_some_and(|ext_chirho| ext_chirho.eq_ignore_ascii_case("hsc"))
 }
 
-fn configure_cpp_command_chirho(path_chirho: &Path, traditional_chirho: bool) -> Command {
+fn configure_cpp_command_chirho(
+    path_chirho: &Path,
+    traditional_chirho: bool,
+    extra_cpp_options_chirho: &[String],
+) -> Command {
     let mut cpp_cmd_chirho = Command::new("cpp");
     if traditional_chirho {
         cpp_cmd_chirho.arg("-traditional");
@@ -584,6 +588,9 @@ fn configure_cpp_command_chirho(path_chirho: &Path, traditional_chirho: bool) ->
         .arg("-DMIN_VERSION_containers(x,y,z)=1")
         .arg("-DMIN_VERSION_primitive(x,y,z)=1")
         .arg("-DMIN_VERSION_integer_gmp(x,y,z)=1");
+    for cpp_option_chirho in extra_cpp_options_chirho {
+        cpp_cmd_chirho.arg(cpp_option_chirho);
+    }
 
     if let Ok(support_dir_chirho) = ensure_cpp_support_dir_chirho() {
         cpp_cmd_chirho.arg(format!("-I{}", support_dir_chirho.display()));
@@ -681,7 +688,11 @@ fn strip_hsc_include_directives_chirho(source_chirho: &str) -> String {
         .join("\n")
 }
 
-fn preprocess_hsc_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::Result<String> {
+fn preprocess_hsc_source_with_options_chirho(
+    path_chirho: &Path,
+    source_chirho: &str,
+    extra_cpp_options_chirho: &[String],
+) -> io::Result<String> {
     let stripped_source_chirho = strip_hsc_include_directives_chirho(source_chirho);
     let temp_stamp_chirho = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -695,7 +706,8 @@ fn preprocess_hsc_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
             std::process::id()
         ));
     std::fs::write(&temp_path_chirho, stripped_source_chirho)?;
-    let output_chirho = configure_cpp_command_chirho(&temp_path_chirho, true).output();
+    let output_chirho =
+        configure_cpp_command_chirho(&temp_path_chirho, true, extra_cpp_options_chirho).output();
     let _ = std::fs::remove_file(&temp_path_chirho);
     let output_chirho = output_chirho?;
     if !output_chirho.status.success() {
@@ -712,16 +724,25 @@ fn preprocess_hsc_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
     Ok(sanitize_hsc_source_chirho(&preprocessed_chirho))
 }
 
-fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::Result<String> {
+fn preprocess_cpp_source_with_options_chirho(
+    path_chirho: &Path,
+    source_chirho: &str,
+    extra_cpp_options_chirho: &[String],
+) -> io::Result<String> {
     if path_is_hsc_chirho(path_chirho) {
-        return preprocess_hsc_source_chirho(path_chirho, source_chirho);
+        return preprocess_hsc_source_with_options_chirho(
+            path_chirho,
+            source_chirho,
+            extra_cpp_options_chirho,
+        );
     }
 
     if !source_uses_cpp_chirho(source_chirho) {
         return Ok(source_chirho.to_string());
     }
 
-    let output_chirho = configure_cpp_command_chirho(path_chirho, true).output()?;
+    let output_chirho =
+        configure_cpp_command_chirho(path_chirho, true, extra_cpp_options_chirho).output()?;
     if !output_chirho.status.success() {
         let stderr_chirho = String::from_utf8_lossy(&output_chirho.stderr)
             .trim()
@@ -734,6 +755,10 @@ fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::
     }
 
     decode_cpp_stdout_chirho(path_chirho, output_chirho.stdout)
+}
+
+fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::Result<String> {
+    preprocess_cpp_source_with_options_chirho(path_chirho, source_chirho, &[])
 }
 
 fn cpp_directive_head_for_line_chirho(line_chirho: &str) -> Option<&str> {
@@ -3739,6 +3764,8 @@ pub fn compile_cabal_project_chirho(
 
     // Discover Haskell source files.
     let source_files_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
+    let module_cpp_options_chirho =
+        package_module_cpp_options_map_chirho(&package_chirho, project_dir_chirho);
 
     let dep_frontend_artifacts_chirho =
         collect_local_dependency_frontend_artifacts_chirho(project_dir_chirho, &all_deps_chirho)?;
@@ -3746,6 +3773,7 @@ pub fn compile_cabal_project_chirho(
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let project_compile_result_chirho = compile_module_files_with_frontend_seed_chirho(
         &source_files_chirho,
+        &module_cpp_options_chirho,
         &mut source_map_chirho,
         dep_frontend_artifacts_chirho.ifaces_chirho.clone(),
         dep_frontend_artifacts_chirho.imported_types_chirho,
@@ -3804,9 +3832,14 @@ pub fn build_cabal_project_chirho(
             executable_chirho,
             project_dir_chirho,
         );
+        let target_module_cpp_options_chirho = module_cpp_options_map_for_module_files_chirho(
+            &target_modules_chirho,
+            &executable_chirho.build_info_chirho.cpp_options_chirho,
+        );
         let mut source_map_chirho = SourceMapChirho::new_chirho();
         let project_compile_result_chirho = compile_module_files_with_frontend_seed_chirho(
             &target_modules_chirho,
+            &target_module_cpp_options_chirho,
             &mut source_map_chirho,
             dep_frontend_artifacts_chirho.ifaces_chirho.clone(),
             dep_frontend_artifacts_chirho.imported_types_chirho.clone(),
@@ -3898,8 +3931,50 @@ fn discover_executable_modules_chirho(
     discover_modules_chirho(&target_package_chirho, project_dir_chirho)
 }
 
+fn module_cpp_options_map_for_module_files_chirho(
+    module_files_chirho: &[(String, PathBuf)],
+    cpp_options_chirho: &[String],
+) -> std::collections::HashMap<PathBuf, Vec<String>> {
+    let mut module_cpp_options_chirho = std::collections::HashMap::new();
+    for (_, path_chirho) in module_files_chirho {
+        module_cpp_options_chirho.insert(path_chirho.clone(), cpp_options_chirho.to_vec());
+    }
+    module_cpp_options_chirho
+}
+
+fn package_module_cpp_options_map_chirho(
+    package_chirho: &haskelujah_package_chirho::PackageDescChirho,
+    project_dir_chirho: &Path,
+) -> std::collections::HashMap<PathBuf, Vec<String>> {
+    let mut module_cpp_options_chirho = std::collections::HashMap::new();
+
+    if let Some(library_chirho) = &package_chirho.library_chirho {
+        let library_modules_chirho = discover_library_modules_chirho(package_chirho, project_dir_chirho);
+        for (_, path_chirho) in library_modules_chirho {
+            module_cpp_options_chirho.insert(
+                path_chirho,
+                library_chirho.build_info_chirho.cpp_options_chirho.clone(),
+            );
+        }
+    }
+
+    for executable_chirho in &package_chirho.executables_chirho {
+        let executable_modules_chirho =
+            discover_executable_modules_chirho(package_chirho, executable_chirho, project_dir_chirho);
+        for (_, path_chirho) in executable_modules_chirho {
+            module_cpp_options_chirho.insert(
+                path_chirho,
+                executable_chirho.build_info_chirho.cpp_options_chirho.clone(),
+            );
+        }
+    }
+
+    module_cpp_options_chirho
+}
+
 fn compile_module_files_with_frontend_seed_chirho(
     module_files_chirho: &[(String, PathBuf)],
+    module_cpp_options_chirho: &std::collections::HashMap<PathBuf, Vec<String>>,
     source_map_chirho: &mut SourceMapChirho,
     extra_ifaces_chirho: Vec<ModuleIfaceChirho>,
     initial_imported_types_chirho: std::collections::HashMap<
@@ -3911,9 +3986,26 @@ fn compile_module_files_with_frontend_seed_chirho(
 ) -> Result<ProjectCompileResultChirho, String> {
     let mut module_sources_chirho: Vec<(String, String, String)> = Vec::new();
     for (module_name_chirho, path_chirho) in module_files_chirho {
-        let source_chirho = read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
+        let raw_source_chirho = read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
             format!(
                 "cannot read module {} at {}: {}",
+                module_name_chirho,
+                path_chirho.display(),
+                e_chirho
+            )
+        })?;
+        let cpp_options_for_module_chirho = module_cpp_options_chirho
+            .get(path_chirho)
+            .cloned()
+            .unwrap_or_default();
+        let source_chirho = preprocess_cpp_source_with_options_chirho(
+            path_chirho,
+            &raw_source_chirho,
+            &cpp_options_for_module_chirho,
+        )
+        .map_err(|e_chirho| {
+            format!(
+                "cannot preprocess module {} at {}: {}",
                 module_name_chirho,
                 path_chirho.display(),
                 e_chirho
@@ -4229,11 +4321,37 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
     }
 
     let source_files_chirho = discover_library_modules_chirho(&package_chirho, &package_dir_chirho);
+    let source_file_cpp_options_chirho = if let Some(library_chirho) = &package_chirho.library_chirho
+    {
+        module_cpp_options_map_for_module_files_chirho(
+            &source_files_chirho,
+            &library_chirho.build_info_chirho.cpp_options_chirho,
+        )
+    } else {
+        std::collections::HashMap::new()
+    };
     let mut module_sources_chirho = Vec::new();
     for (module_name_chirho, path_chirho) in &source_files_chirho {
-        let source_chirho = read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
+        let raw_source_chirho = read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
             format!(
                 "cannot read dependency module {} at {}: {}",
+                module_name_chirho,
+                path_chirho.display(),
+                e_chirho
+            )
+        })?;
+        let cpp_options_for_module_chirho = source_file_cpp_options_chirho
+            .get(path_chirho)
+            .cloned()
+            .unwrap_or_default();
+        let source_chirho = preprocess_cpp_source_with_options_chirho(
+            path_chirho,
+            &raw_source_chirho,
+            &cpp_options_for_module_chirho,
+        )
+        .map_err(|e_chirho| {
+            format!(
+                "cannot preprocess dependency module {} at {}: {}",
                 module_name_chirho,
                 path_chirho.display(),
                 e_chirho

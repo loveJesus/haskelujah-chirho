@@ -727,6 +727,55 @@ userValueChirho = helperValueChirho\n",
     }
 
     #[test]
+    fn compile_cabal_project_applies_cpp_options_to_package_modules_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let src_dir_chirho = tmp_chirho.path().join("src");
+        fs::create_dir_all(src_dir_chirho.join("Demo")).unwrap();
+
+        fs::write(
+            tmp_chirho.path().join("cpp-options-package.cabal"),
+            "\
+name: cpp-options-package
+version: 0.1.0.0
+library
+  exposed-modules: Demo.CppBranchChirho
+  hs-source-dirs: src
+  cpp-options: -DKEEP_PRIMARY_CHIRHO=1
+",
+        )
+        .unwrap();
+
+        fs::write(
+            src_dir_chirho.join("Demo/CppBranchChirho.hs"),
+            "{-# LANGUAGE CPP #-}\n\
+module Demo.CppBranchChirho (valueChirho) where\n\
+\n\
+#if KEEP_PRIMARY_CHIRHO\n\
+valueChirho :: Int\n\
+valueChirho = 1\n\
+#else\n\
+import Demo.MissingChirho (missingValueChirho)\n\
+\n\
+valueChirho :: Int\n\
+valueChirho = missingValueChirho\n\
+#endif\n",
+        )
+        .unwrap();
+
+        let index_chirho = PackageIndexChirho::new_chirho();
+        let cabal_path_chirho = tmp_chirho.path().join("cpp-options-package.cabal");
+        let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "cabal build should apply cpp-options before frontend compilation: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
     fn compile_cabal_project_nested_under_packages_dir_orders_cpp_hierarchical_modules_chirho() {
         use crate::compile_cabal_project_chirho;
         use haskelujah_package_chirho::PackageIndexChirho;
