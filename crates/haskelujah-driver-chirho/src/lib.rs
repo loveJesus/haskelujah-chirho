@@ -483,6 +483,203 @@ fn exported_type_synonyms_from_module_chirho(
 }
 
 const CPP_GLASGOW_HASKELL_VERSION_CHIRHO: &str = "810";
+const CPP_GHC_VERSION_MAJOR_CHIRHO: u32 = 8;
+const CPP_GHC_VERSION_MINOR_CHIRHO: u32 = 10;
+const CPP_GHC_VERSION_PATCH_CHIRHO: u32 = 0;
+
+fn cpp_macro_package_name_chirho(package_name_chirho: &str) -> String {
+    package_name_chirho
+        .chars()
+        .map(|char_chirho| {
+            if char_chirho.is_ascii_alphanumeric() {
+                char_chirho
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
+
+fn cpp_version_triplet_chirho(
+    version_chirho: &haskelujah_package_chirho::VersionChirho,
+) -> (u32, u32, u32) {
+    (
+        version_chirho
+            .components_chirho
+            .first()
+            .copied()
+            .unwrap_or(0),
+        version_chirho
+            .components_chirho
+            .get(1)
+            .copied()
+            .unwrap_or(0),
+        version_chirho
+            .components_chirho
+            .get(2)
+            .copied()
+            .unwrap_or(0),
+    )
+}
+
+fn cpp_min_version_macro_option_chirho(
+    package_name_chirho: &str,
+    version_chirho: &haskelujah_package_chirho::VersionChirho,
+) -> String {
+    let macro_name_chirho = cpp_macro_package_name_chirho(package_name_chirho);
+    let (major_chirho, minor_chirho, patch_chirho) = cpp_version_triplet_chirho(version_chirho);
+    format!(
+        "-DMIN_VERSION_{macro_name_chirho}(x,y,z)=((x)<{major_chirho}||((x)=={major_chirho}&&((y)<{minor_chirho}||((y)=={minor_chirho}&&(z)<={patch_chirho}))))"
+    )
+}
+
+fn parse_package_name_and_version_from_dir_chirho(
+    dir_name_chirho: &str,
+) -> Option<(String, haskelujah_package_chirho::VersionChirho)> {
+    let split_index_chirho =
+        dir_name_chirho
+            .char_indices()
+            .rev()
+            .find_map(|(index_chirho, char_chirho)| {
+                if char_chirho != '-' {
+                    return None;
+                }
+                let suffix_chirho = dir_name_chirho.get(index_chirho + 1..)?;
+                suffix_chirho
+                    .chars()
+                    .next()
+                    .is_some_and(|suffix_char_chirho| suffix_char_chirho.is_ascii_digit())
+                    .then_some(index_chirho)
+            })?;
+    let package_name_chirho = dir_name_chirho[..split_index_chirho].to_string();
+    let version_text_chirho = &dir_name_chirho[split_index_chirho + 1..];
+    let version_chirho = haskelujah_package_chirho::parse_version_chirho(version_text_chirho)?;
+    Some((package_name_chirho, version_chirho))
+}
+
+fn find_enclosing_cabal_dir_chirho(path_chirho: &Path) -> Option<PathBuf> {
+    let start_dir_chirho = if path_chirho.is_dir() {
+        path_chirho
+    } else {
+        path_chirho.parent()?
+    };
+    for ancestor_chirho in start_dir_chirho.ancestors() {
+        if find_cabal_in_dir_chirho(ancestor_chirho).is_some() {
+            return Some(ancestor_chirho.to_path_buf());
+        }
+    }
+    None
+}
+
+fn insert_cpp_package_version_chirho(
+    package_versions_chirho: &mut std::collections::BTreeMap<
+        String,
+        haskelujah_package_chirho::VersionChirho,
+    >,
+    package_name_chirho: &str,
+    version_chirho: haskelujah_package_chirho::VersionChirho,
+) {
+    match package_versions_chirho.get(package_name_chirho) {
+        Some(existing_version_chirho) if existing_version_chirho >= &version_chirho => {}
+        _ => {
+            package_versions_chirho.insert(package_name_chirho.to_string(), version_chirho);
+        }
+    }
+}
+
+fn seed_cpp_package_versions_chirho()
+-> std::collections::BTreeMap<String, haskelujah_package_chirho::VersionChirho> {
+    let mut package_versions_chirho = std::collections::BTreeMap::new();
+    for (package_name_chirho, version_text_chirho) in [
+        ("base", "4.14.0"),
+        ("template-haskell", "2.16.0"),
+        ("ghc", "8.10.0"),
+        ("process", "1.6.0"),
+    ] {
+        if let Some(version_chirho) =
+            haskelujah_package_chirho::parse_version_chirho(version_text_chirho)
+        {
+            insert_cpp_package_version_chirho(
+                &mut package_versions_chirho,
+                package_name_chirho,
+                version_chirho,
+            );
+        }
+    }
+    package_versions_chirho
+}
+
+fn discover_cpp_package_versions_chirho(
+    path_chirho: &Path,
+) -> std::collections::BTreeMap<String, haskelujah_package_chirho::VersionChirho> {
+    let mut package_versions_chirho = seed_cpp_package_versions_chirho();
+
+    if let Some(project_dir_chirho) = path_chirho.parent() {
+        if let Some(packages_dir_chirho) = find_dependency_packages_dir_chirho(project_dir_chirho) {
+            if let Ok(entries_chirho) = std::fs::read_dir(packages_dir_chirho) {
+                for entry_chirho in entries_chirho.flatten() {
+                    let package_dir_chirho = entry_chirho.path();
+                    if !package_dir_chirho.is_dir() {
+                        continue;
+                    }
+                    let Some(dir_name_chirho) = package_dir_chirho
+                        .file_name()
+                        .and_then(|file_name_chirho| file_name_chirho.to_str())
+                    else {
+                        continue;
+                    };
+                    let Some((package_name_chirho, version_chirho)) =
+                        parse_package_name_and_version_from_dir_chirho(dir_name_chirho)
+                    else {
+                        continue;
+                    };
+                    insert_cpp_package_version_chirho(
+                        &mut package_versions_chirho,
+                        &package_name_chirho,
+                        version_chirho,
+                    );
+                }
+            }
+        }
+    }
+
+    if let Some(package_dir_chirho) = find_enclosing_cabal_dir_chirho(path_chirho) {
+        if let Some(cabal_path_chirho) = find_cabal_in_dir_chirho(&package_dir_chirho) {
+            if let Ok(cabal_text_chirho) = std::fs::read_to_string(cabal_path_chirho) {
+                let package_chirho =
+                    haskelujah_package_chirho::parse_cabal_chirho(&cabal_text_chirho);
+                if !package_chirho.name_chirho.is_empty() {
+                    let package_version_chirho =
+                        package_chirho.version_chirho.clone().or_else(|| {
+                            package_dir_chirho
+                                .file_name()
+                                .and_then(|file_name_chirho| file_name_chirho.to_str())
+                                .and_then(parse_package_name_and_version_from_dir_chirho)
+                                .map(|(_, version_chirho)| version_chirho)
+                        });
+                    if let Some(version_chirho) = package_version_chirho {
+                        insert_cpp_package_version_chirho(
+                            &mut package_versions_chirho,
+                            &package_chirho.name_chirho,
+                            version_chirho,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    package_versions_chirho
+}
+
+fn discover_cpp_min_version_macro_options_chirho(path_chirho: &Path) -> Vec<String> {
+    discover_cpp_package_versions_chirho(path_chirho)
+        .into_iter()
+        .map(|(package_name_chirho, version_chirho)| {
+            cpp_min_version_macro_option_chirho(&package_name_chirho, &version_chirho)
+        })
+        .collect()
+}
 
 fn ensure_cpp_support_dir_chirho() -> io::Result<PathBuf> {
     let support_dir_chirho = std::env::temp_dir().join("haskelujah-cpp-support-chirho");
@@ -565,6 +762,8 @@ fn configure_cpp_command_chirho(
     if traditional_chirho {
         cpp_cmd_chirho.arg("-traditional");
     }
+    let discovered_min_version_options_chirho =
+        discover_cpp_min_version_macro_options_chirho(path_chirho);
     cpp_cmd_chirho
         .arg("-P")
         // Haskell package CPP expects a relatively clean macro environment;
@@ -575,23 +774,15 @@ fn configure_cpp_command_chirho(
             "-D__GLASGOW_HASKELL__={CPP_GLASGOW_HASKELL_VERSION_CHIRHO}"
         ))
         .arg("-DWORD_SIZE_IN_BITS=64")
-        // base 4.14.0 (GHC 8.10): MIN_VERSION_base(4,14,0)=1, MIN_VERSION_base(4,15,0)=0
-        .arg("-DMIN_VERSION_base(x,y,z)=((x)<4||((x)==4&&((y)<14||((y)==14&&(z)<=0))))")
-        // template-haskell 2.16.0.0 ships with GHC 8.10, so TH version guards
-        // like th-abstraction's TyVarBndr compatibility layer choose one branch
-        // instead of failing CPP and leaving both branches in the lowered source.
-        .arg("-DMIN_VERSION_template_haskell(x,y,z)=((x)<2||((x)==2&&((y)<16||((y)==16&&(z)<=0))))")
-        .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
-        .arg("-DMIN_VERSION_array(x,y,z)=1")
-        .arg("-DMIN_VERSION_random(x,y,z)=1")
-        .arg("-DMIN_VERSION_transformers(x,y,z)=1")
-        .arg("-DMIN_VERSION_deepseq(x,y,z)=1")
-        .arg("-DMIN_VERSION_hashable(x,y,z)=1")
-        .arg("-DMIN_VERSION_text(x,y,z)=1")
-        .arg("-DMIN_VERSION_bytestring(x,y,z)=1")
-        .arg("-DMIN_VERSION_containers(x,y,z)=1")
-        .arg("-DMIN_VERSION_primitive(x,y,z)=1")
-        .arg("-DMIN_VERSION_integer_gmp(x,y,z)=1");
+        .arg(format!(
+            "-DMIN_VERSION_ghc(x,y,z)=((x)<{CPP_GHC_VERSION_MAJOR_CHIRHO}||((x)=={CPP_GHC_VERSION_MAJOR_CHIRHO}&&((y)<{CPP_GHC_VERSION_MINOR_CHIRHO}||((y)=={CPP_GHC_VERSION_MINOR_CHIRHO}&&(z)<={CPP_GHC_VERSION_PATCH_CHIRHO}))))"
+        ))
+        .arg(format!(
+            "-DMIN_VERSION_GLASGOW_HASKELL(x,y,z,w)=((x)<{CPP_GHC_VERSION_MAJOR_CHIRHO}||((x)=={CPP_GHC_VERSION_MAJOR_CHIRHO}&&((y)<{CPP_GHC_VERSION_MINOR_CHIRHO}||((y)=={CPP_GHC_VERSION_MINOR_CHIRHO}&&((z)<{CPP_GHC_VERSION_PATCH_CHIRHO}||((z)=={CPP_GHC_VERSION_PATCH_CHIRHO}&&(w)<=0))))))"
+        ));
+    for min_version_option_chirho in discovered_min_version_options_chirho {
+        cpp_cmd_chirho.arg(min_version_option_chirho);
+    }
     for cpp_option_chirho in extra_cpp_options_chirho {
         cpp_cmd_chirho.arg(cpp_option_chirho);
     }
@@ -3953,7 +4144,8 @@ fn package_module_cpp_options_map_chirho(
     let mut module_cpp_options_chirho = std::collections::HashMap::new();
 
     if let Some(library_chirho) = &package_chirho.library_chirho {
-        let library_modules_chirho = discover_library_modules_chirho(package_chirho, project_dir_chirho);
+        let library_modules_chirho =
+            discover_library_modules_chirho(package_chirho, project_dir_chirho);
         for (_, path_chirho) in library_modules_chirho {
             module_cpp_options_chirho.insert(
                 path_chirho,
@@ -3963,12 +4155,18 @@ fn package_module_cpp_options_map_chirho(
     }
 
     for executable_chirho in &package_chirho.executables_chirho {
-        let executable_modules_chirho =
-            discover_executable_modules_chirho(package_chirho, executable_chirho, project_dir_chirho);
+        let executable_modules_chirho = discover_executable_modules_chirho(
+            package_chirho,
+            executable_chirho,
+            project_dir_chirho,
+        );
         for (_, path_chirho) in executable_modules_chirho {
             module_cpp_options_chirho.insert(
                 path_chirho,
-                executable_chirho.build_info_chirho.cpp_options_chirho.clone(),
+                executable_chirho
+                    .build_info_chirho
+                    .cpp_options_chirho
+                    .clone(),
             );
         }
     }
@@ -3990,14 +4188,15 @@ fn compile_module_files_with_frontend_seed_chirho(
 ) -> Result<ProjectCompileResultChirho, String> {
     let mut module_sources_chirho: Vec<(String, String, String)> = Vec::new();
     for (module_name_chirho, path_chirho) in module_files_chirho {
-        let raw_source_chirho = read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
-            format!(
-                "cannot read module {} at {}: {}",
-                module_name_chirho,
-                path_chirho.display(),
-                e_chirho
-            )
-        })?;
+        let raw_source_chirho =
+            read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
+                format!(
+                    "cannot read module {} at {}: {}",
+                    module_name_chirho,
+                    path_chirho.display(),
+                    e_chirho
+                )
+            })?;
         let cpp_options_for_module_chirho = module_cpp_options_chirho
             .get(path_chirho)
             .cloned()
@@ -4325,25 +4524,26 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
     }
 
     let source_files_chirho = discover_library_modules_chirho(&package_chirho, &package_dir_chirho);
-    let source_file_cpp_options_chirho = if let Some(library_chirho) = &package_chirho.library_chirho
-    {
-        module_cpp_options_map_for_module_files_chirho(
-            &source_files_chirho,
-            &library_chirho.build_info_chirho.cpp_options_chirho,
-        )
-    } else {
-        std::collections::HashMap::new()
-    };
+    let source_file_cpp_options_chirho =
+        if let Some(library_chirho) = &package_chirho.library_chirho {
+            module_cpp_options_map_for_module_files_chirho(
+                &source_files_chirho,
+                &library_chirho.build_info_chirho.cpp_options_chirho,
+            )
+        } else {
+            std::collections::HashMap::new()
+        };
     let mut module_sources_chirho = Vec::new();
     for (module_name_chirho, path_chirho) in &source_files_chirho {
-        let raw_source_chirho = read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
-            format!(
-                "cannot read dependency module {} at {}: {}",
-                module_name_chirho,
-                path_chirho.display(),
-                e_chirho
-            )
-        })?;
+        let raw_source_chirho =
+            read_haskell_source_file_chirho(path_chirho).map_err(|e_chirho| {
+                format!(
+                    "cannot read dependency module {} at {}: {}",
+                    module_name_chirho,
+                    path_chirho.display(),
+                    e_chirho
+                )
+            })?;
         let cpp_options_for_module_chirho = source_file_cpp_options_chirho
             .get(path_chirho)
             .cloned()
