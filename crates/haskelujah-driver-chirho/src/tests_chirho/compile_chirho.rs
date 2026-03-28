@@ -2057,6 +2057,34 @@ execChirho = execStateT stepChirho 7\n",
 }
 
 #[test]
+fn frontend_builtin_state_alias_surface_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "BuiltinStateAliasMiniChirho.hs",
+        "module BuiltinStateAliasMiniChirho where\n\
+import Data.Word\n\
+import Control.Monad.State.Strict (State, runState, evalState, execState)\n\
+stepChirho :: State Int Word64\n\
+stepChirho = undefined\n\
+runChirho :: (Word64, Int)\n\
+runChirho = runState stepChirho 7\n\
+evalChirho :: Word64\n\
+evalChirho = evalState stepChirho 7\n\
+execChirho :: Int\n\
+execChirho = execState stepChirho 7\n",
+    );
+
+    let result_chirho =
+        check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho);
+    assert!(
+        result_chirho.is_ok(),
+        "builtin State/runState/evalState/execState surface should preserve the pure State alias: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_builtin_st_surface_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(

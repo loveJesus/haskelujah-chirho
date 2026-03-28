@@ -125,6 +125,23 @@ impl InferCtxChirho {
         );
         // type FilePath = String
         type_synonyms_chirho.insert("FilePath".to_string(), (vec![], TyChirho::string_chirho()));
+        // Monad transformer aliases from transformers / mtl.
+        type_synonyms_chirho.insert(
+            "State".to_string(),
+            (
+                vec!["s".to_string(), "a".to_string()],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::AppChirho(
+                            Box::new(TyChirho::ConChirho("StateT".to_string())),
+                            Box::new(TyChirho::ForallVarChirho("s".to_string())),
+                        )),
+                        Box::new(TyChirho::ConChirho("Identity".to_string())),
+                    )),
+                    Box::new(TyChirho::ForallVarChirho("a".to_string())),
+                ),
+            ),
+        );
         // Template Haskell aliases
         type_synonyms_chirho.insert(
             "Kind".to_string(),
@@ -8684,6 +8701,15 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 Box::new(inner_ty_chirho),
             )
         };
+    let mk_state_ty_chirho = |state_ty_chirho: TyChirho, inner_ty_chirho: TyChirho| {
+        TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("State".to_string())),
+                Box::new(state_ty_chirho),
+            )),
+            Box::new(inner_ty_chirho),
+        )
+    };
     let mk_reader_t_ty_chirho =
         |reader_env_ty_chirho: TyChirho, monad_ty_chirho: TyChirho, inner_ty_chirho: TyChirho| {
             TyChirho::AppChirho(
@@ -9015,7 +9041,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     }
 
     // evalStateT :: StateT s m a -> s -> m a
-    for name_chirho in &["evalStateT", "evalState"] {
+    for name_chirho in &["evalStateT"] {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3402));
         let s_chirho = TyChirho::VarChirho(TyVarChirho(3403));
         let m_chirho = TyChirho::VarChirho(TyVarChirho(3415));
@@ -9035,7 +9061,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     }
 
     // execStateT :: StateT s m a -> s -> m s
-    for name_chirho in &["execStateT", "execState"] {
+    for name_chirho in &["execStateT"] {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3404));
         let s_chirho = TyChirho::VarChirho(TyVarChirho(3405));
         let m_chirho = TyChirho::VarChirho(TyVarChirho(3416));
@@ -12405,58 +12431,48 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // evalState :: StateT s m a -> s -> m a
+    // evalState :: State s a -> s -> a
     {
         let es_s_chirho = TyVarChirho(3519);
-        let es_m_chirho = TyVarChirho(3520);
         let es_a_chirho = TyVarChirho(3521);
-        let state_t_chirho = mk_state_t_ty_chirho(
+        let state_ty_chirho = mk_state_ty_chirho(
             TyChirho::VarChirho(es_s_chirho),
-            TyChirho::VarChirho(es_m_chirho),
             TyChirho::VarChirho(es_a_chirho),
         );
         env_chirho.bind_chirho(
             "evalState".to_string(),
             SchemeChirho {
-                vars_chirho: vec![es_s_chirho, es_m_chirho, es_a_chirho],
+                vars_chirho: vec![es_s_chirho, es_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    state_t_chirho,
+                    state_ty_chirho,
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(es_s_chirho),
-                        TyChirho::AppChirho(
-                            Box::new(TyChirho::VarChirho(es_m_chirho)),
-                            Box::new(TyChirho::VarChirho(es_a_chirho)),
-                        ),
+                        TyChirho::VarChirho(es_a_chirho),
                     ),
                 ),
             },
         );
     }
 
-    // execState :: StateT s m a -> s -> m s
+    // execState :: State s a -> s -> s
     {
         let xs_s_chirho = TyVarChirho(3522);
-        let xs_m_chirho = TyVarChirho(3523);
         let xs_a_chirho = TyVarChirho(3524);
-        let state_t_chirho = mk_state_t_ty_chirho(
+        let state_ty_chirho = mk_state_ty_chirho(
             TyChirho::VarChirho(xs_s_chirho),
-            TyChirho::VarChirho(xs_m_chirho),
             TyChirho::VarChirho(xs_a_chirho),
         );
         env_chirho.bind_chirho(
             "execState".to_string(),
             SchemeChirho {
-                vars_chirho: vec![xs_s_chirho, xs_m_chirho, xs_a_chirho],
+                vars_chirho: vec![xs_s_chirho, xs_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    state_t_chirho,
+                    state_ty_chirho,
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(xs_s_chirho),
-                        TyChirho::AppChirho(
-                            Box::new(TyChirho::VarChirho(xs_m_chirho)),
-                            Box::new(TyChirho::VarChirho(xs_s_chirho)),
-                        ),
+                        TyChirho::VarChirho(xs_s_chirho),
                     ),
                 ),
             },
@@ -12518,32 +12534,27 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // runState :: StateT s m a -> s -> m (a, s)  (alias for runStateT)
+    // runState :: State s a -> s -> (a, s)
     {
         let rns_s_chirho = TyVarChirho(3532);
-        let rns_m_chirho = TyVarChirho(3533);
         let rns_a_chirho = TyVarChirho(3534);
-        let state_t_chirho = mk_state_t_ty_chirho(
+        let state_ty_chirho = mk_state_ty_chirho(
             TyChirho::VarChirho(rns_s_chirho),
-            TyChirho::VarChirho(rns_m_chirho),
             TyChirho::VarChirho(rns_a_chirho),
         );
         env_chirho.bind_chirho(
             "runState".to_string(),
             SchemeChirho {
-                vars_chirho: vec![rns_s_chirho, rns_m_chirho, rns_a_chirho],
+                vars_chirho: vec![rns_s_chirho, rns_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    state_t_chirho,
+                    state_ty_chirho,
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(rns_s_chirho),
-                        TyChirho::AppChirho(
-                            Box::new(TyChirho::VarChirho(rns_m_chirho)),
-                            Box::new(TyChirho::TupleChirho(vec![
-                                TyChirho::VarChirho(rns_a_chirho),
-                                TyChirho::VarChirho(rns_s_chirho),
-                            ])),
-                        ),
+                        TyChirho::TupleChirho(vec![
+                            TyChirho::VarChirho(rns_a_chirho),
+                            TyChirho::VarChirho(rns_s_chirho),
+                        ]),
                     ),
                 ),
             },
