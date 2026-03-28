@@ -14343,6 +14343,104 @@ fn lower_magic_hash_constructor_pattern_and_unsafe_coerce_rhs_keeps_hash_var_chi
 }
 
 #[test]
+fn lower_preprocessed_primitive_bytearray_unsafe_thaw_keeps_hash_var_chirho() {
+    let source_path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.haskelujah-packages-chirho/primitive-0.9.1.0/Data/Primitive/ByteArray.hs");
+    let source_path_chirho = std::fs::canonicalize(source_path_chirho)
+        .expect("expected canonical primitive ByteArray path");
+    let output_chirho = std::process::Command::new("cpp")
+        .arg("-traditional")
+        .arg("-P")
+        .arg("-D__GLASGOW_HASKELL__=810")
+        .arg("-DWORD_SIZE_IN_BITS=64")
+        .arg("-DMIN_VERSION_base(x,y,z)=((x)<4||((x)==4&&((y)<14||((y)==14&&(z)<=0))))")
+        .arg("-DMIN_VERSION_template_haskell(x,y,z)=((x)<2||((x)==2&&((y)<16||((y)==16&&(z)<=0))))")
+        .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
+        .arg("-DMIN_VERSION_array(x,y,z)=1")
+        .arg("-DMIN_VERSION_random(x,y,z)=1")
+        .arg("-DMIN_VERSION_transformers(x,y,z)=1")
+        .arg("-DMIN_VERSION_deepseq(x,y,z)=1")
+        .arg("-DMIN_VERSION_hashable(x,y,z)=1")
+        .arg("-DMIN_VERSION_text(x,y,z)=1")
+        .arg("-DMIN_VERSION_bytestring(x,y,z)=1")
+        .arg("-DMIN_VERSION_containers(x,y,z)=1")
+        .arg("-DMIN_VERSION_primitive(x,y,z)=1")
+        .arg("-DMIN_VERSION_integer_gmp(x,y,z)=1")
+        .current_dir(
+            source_path_chirho
+                .parent()
+                .expect("expected primitive ByteArray parent dir"),
+        )
+        .arg(
+            source_path_chirho
+                .file_name()
+                .expect("expected primitive ByteArray file name"),
+        )
+        .output()
+        .expect("expected cpp to run");
+    assert!(
+        output_chirho.status.success(),
+        "expected cpp to succeed: {}",
+        String::from_utf8_lossy(&output_chirho.stderr)
+    );
+    let source_chirho = String::from_utf8(output_chirho.stdout).expect("expected utf-8 cpp");
+    let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let parser_chirho =
+        crate::cst_parser_chirho::ParserChirho::new_chirho(&source_chirho, file_id_chirho);
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+    let decl_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find(|decl_chirho| {
+            matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "unsafeThawByteArray")
+        })
+        .expect("expected unsafeThawByteArray binding");
+
+    let match_chirho = match decl_chirho {
+        DeclChirho::FunBindChirho { matches_chirho, .. } => &matches_chirho[0],
+        other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+    };
+    let outer_pat_chirho = match &match_chirho.pats_chirho[0] {
+        PatChirho::ParenChirho { inner_chirho, .. } => inner_chirho.as_ref(),
+        other_chirho => other_chirho,
+    };
+    assert!(
+        matches!(outer_pat_chirho, PatChirho::ConChirho { con_chirho, args_chirho, .. }
+            if con_chirho.text_chirho() == "ByteArray"
+                && args_chirho.len() == 1
+                && matches!(&args_chirho[0], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "arr#")),
+        "expected unsafeThawByteArray binder to keep arr#, got {:?}",
+        outer_pat_chirho
+    );
+
+    let rhs_expr_chirho = match &match_chirho.rhs_chirho {
+        RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+        other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+    };
+    assert!(
+        matches!(rhs_expr_chirho, ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+            if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "primitive")
+                && matches!(arg_chirho.as_ref(), ExprChirho::ParenChirho { inner_chirho, .. }
+                    if matches!(inner_chirho.as_ref(), ExprChirho::LamChirho { pats_chirho, body_chirho, .. }
+                        if pats_chirho.len() == 1
+                            && matches!(&pats_chirho[0], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "s#")
+                            && matches!(body_chirho.as_ref(), ExprChirho::TupleChirho { elements_chirho, .. }
+                                if elements_chirho.len() == 2
+                                    && matches!(&elements_chirho[0], ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "s#")
+                                    && matches!(&elements_chirho[1], ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                                        if matches!(fun_chirho.as_ref(), ExprChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "MutableByteArray")
+                                            && matches!(arg_chirho.as_ref(), ExprChirho::ParenChirho { inner_chirho, .. }
+                                                if matches!(inner_chirho.as_ref(), ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                                                    if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "unsafeCoerce#")
+                                                        && matches!(arg_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "arr#")))))))),
+        "expected lowered unsafeThawByteArray rhs to keep arr# inside unsafeCoerce#, got {:?}",
+        rhs_expr_chirho
+    );
+}
+
+#[test]
 fn lower_unboxed_tuple_case_pattern_tight_spacing_binds_names_chirho() {
     let source_chirho = "module M where\nfChirho xChirho yChirho = case timesWord2# xChirho yChirho of\n  (#hiChirho, loChirho#) -> xor# hiChirho loChirho\n";
     let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;

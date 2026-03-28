@@ -67,6 +67,51 @@ fn full_pipeline_parses_and_resolves_chirho() {
 }
 
 #[test]
+fn frontend_text_printf_formatparse_and_fieldformat_surface_compiles_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"module TextPrintfMiniChirho where
+import Text.Printf
+
+usePrintfTypesChirho :: FormatParse -> FieldFormat -> FormatAdjustment -> FormatSign -> ()
+usePrintfTypesChirho _fpChirho _ffChirho _adjChirho _signChirho = ()
+
+projectFormatParseChirho fpChirho =
+  (fpModifiers fpChirho, fpChar fpChirho, fpRest fpChirho)
+
+buildFormatParseChirho aChirho bChirho cChirho = FormatParse aChirho bChirho cChirho
+
+projectFieldFormatChirho ffChirho =
+  ( fmtWidth ffChirho
+  , fmtPrecision ffChirho
+  , fmtAdjust ffChirho
+  , fmtSign ffChirho
+  , fmtAlternate ffChirho
+  , fmtModifiers ffChirho
+  , fmtChar ffChirho
+  )
+
+buildFieldFormatChirho aChirho bChirho cChirho dChirho eChirho fChirho gChirho =
+  FieldFormat aChirho bChirho cChirho dChirho eChirho fChirho gChirho
+
+pickFormatSignChirho True = SignPlus
+pickFormatSignChirho False = SignSpace
+
+pickFormatAdjustmentChirho True = LeftAdjust
+pickFormatAdjustmentChirho False = ZeroPad
+"#,
+        &mut source_map_chirho,
+        "TextPrintfMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Text.Printf record selectors and constructors should be in scope: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_backticked_left_section_infers_function_type_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
@@ -1303,6 +1348,107 @@ fn read_haskell_source_file_expands_primitive_deriveprim_cpp_macros_chirho() {
         source_chirho.contains("instance Prim (Word) where")
             || source_chirho.contains("instance Prim Word where"),
         "primitive CPP preprocessing should retain expanded Prim instances: {source_chirho}"
+    );
+}
+
+#[test]
+fn read_haskell_source_file_keeps_primitive_bytearray_unsafe_thaw_arr_hash_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+    use haskelujah_ast_chirho::expr_chirho::{ExprChirho, RhsChirho};
+    use haskelujah_ast_chirho::pat_chirho::PatChirho;
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
+
+    let repo_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("repo root should exist")
+        .to_path_buf();
+    let path_chirho = repo_root_chirho
+        .join(".haskelujah-packages-chirho/primitive-0.9.1.0/Data/Primitive/ByteArray.hs");
+    let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
+        .expect("primitive ByteArray source should preprocess");
+
+    assert_eq!(
+        &source_chirho[11306..11310],
+        "arr#",
+        "driver preprocessing should keep arr# at the known unsafeThawByteArray offset"
+    );
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        &path_chirho,
+        &source_chirho,
+    );
+    let parser_chirho =
+        ParserChirho::new_chirho(&source_chirho, source_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+
+    let decl_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find(|decl_chirho| {
+            matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "unsafeThawByteArray")
+        })
+        .expect("expected unsafeThawByteArray binding");
+    let match_chirho = match decl_chirho {
+        DeclChirho::FunBindChirho { matches_chirho, .. } => &matches_chirho[0],
+        other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+    };
+    assert!(
+        matches!(&match_chirho.pats_chirho[0], PatChirho::ParenChirho { inner_chirho, .. }
+            if matches!(inner_chirho.as_ref(), PatChirho::ConChirho { con_chirho, args_chirho, .. }
+                if con_chirho.text_chirho() == "ByteArray"
+                    && args_chirho.len() == 1
+                    && matches!(&args_chirho[0], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "arr#")))
+            || matches!(&match_chirho.pats_chirho[0], PatChirho::ConChirho { con_chirho, args_chirho, .. }
+                if con_chirho.text_chirho() == "ByteArray"
+                    && args_chirho.len() == 1
+                    && matches!(&args_chirho[0], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "arr#")),
+        "unsafeThawByteArray pattern should keep arr#: {:?}",
+        match_chirho.pats_chirho[0]
+    );
+    let rhs_expr_chirho = match &match_chirho.rhs_chirho {
+        RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+        other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+    };
+    let primitive_arg_chirho = match rhs_expr_chirho {
+        ExprChirho::AppChirho { arg_chirho, .. } => arg_chirho.as_ref(),
+        other_chirho => panic!("expected primitive application, got {:?}", other_chirho),
+    };
+    let lambda_body_chirho = match primitive_arg_chirho {
+        ExprChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
+            ExprChirho::LamChirho { body_chirho, .. } => body_chirho.as_ref(),
+            other_chirho => panic!("expected primitive lambda, got {:?}", other_chirho),
+        },
+        other_chirho => panic!("expected parenthesized primitive lambda, got {:?}", other_chirho),
+    };
+    let tuple_elements_chirho = match lambda_body_chirho {
+        ExprChirho::TupleChirho { elements_chirho, .. } => elements_chirho,
+        other_chirho => panic!("expected tuple body, got {:?}", other_chirho),
+    };
+    let mutable_arg_chirho = match &tuple_elements_chirho[1] {
+        ExprChirho::AppChirho { arg_chirho, .. } => arg_chirho.as_ref(),
+        other_chirho => panic!("expected MutableByteArray application, got {:?}", other_chirho),
+    };
+    let unsafe_coerce_arg_chirho = match mutable_arg_chirho {
+        ExprChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
+            ExprChirho::AppChirho { arg_chirho, .. } => arg_chirho.as_ref(),
+            other_chirho => panic!("expected unsafeCoerce# application, got {:?}", other_chirho),
+        },
+        other_chirho => panic!(
+            "expected parenthesized unsafeCoerce# application, got {:?}",
+            other_chirho
+        ),
+    };
+    assert!(
+        matches!(unsafe_coerce_arg_chirho, ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "arr#"),
+        "unsafeThawByteArray rhs should keep arr# inside unsafeCoerce#: {:?}",
+        match_chirho.rhs_chirho
     );
 }
 

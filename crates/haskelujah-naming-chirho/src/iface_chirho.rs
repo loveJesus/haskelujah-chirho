@@ -7735,12 +7735,55 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "formatInt",
             "formatFloat",
             "formatChar",
+            "FormatParse",
+            "FieldFormat",
+            "FormatAdjustment",
+            "FormatSign",
+            "fpModifiers",
+            "fpChar",
+            "fpRest",
+            "fmtWidth",
+            "fmtPrecision",
+            "fmtAdjust",
+            "fmtSign",
+            "fmtAlternate",
+            "fmtModifiers",
+            "fmtChar",
+            "LeftAdjust",
+            "ZeroPad",
+            "SignPlus",
+            "SignSpace",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         for name_chirho in ["PrintfArg", "PrintfType", "HPrintfType"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, mut v_chirho) = mk_type_chirho("FormatParse", &["FormatParse"]);
+        v_chirho.methods_chirho = vec![
+            "fpModifiers".to_string(),
+            "fpChar".to_string(),
+            "fpRest".to_string(),
+        ];
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, mut v_chirho) = mk_type_chirho("FieldFormat", &["FieldFormat"]);
+        v_chirho.methods_chirho = vec![
+            "fmtWidth".to_string(),
+            "fmtPrecision".to_string(),
+            "fmtAdjust".to_string(),
+            "fmtSign".to_string(),
+            "fmtAlternate".to_string(),
+            "fmtModifiers".to_string(),
+            "fmtChar".to_string(),
+        ];
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for (type_name_chirho, constructors_chirho) in [
+            ("FormatAdjustment", &["LeftAdjust", "ZeroPad"][..]),
+            ("FormatSign", &["SignPlus", "SignSpace"][..]),
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(type_name_chirho, constructors_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {

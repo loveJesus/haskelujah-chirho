@@ -2366,9 +2366,10 @@ impl InferCtxChirho {
                     self.apply_subst_all_chirho(&sp0_chirho);
 
                     // Unify pattern type with scrutinee
+                    let pat_sub_chirho = subst_chirho.apply_ty_chirho(&pat_ty_chirho);
                     let scrut_sub_chirho = subst_chirho.apply_ty_chirho(&scrut_ty_chirho);
                     match self.unify_normalized_chirho(
-                        &pat_ty_chirho,
+                        &pat_sub_chirho,
                         &scrut_sub_chirho,
                         *span_chirho,
                     ) {
@@ -15230,6 +15231,153 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
+    // Text.Printf record/enum surface used by QuickCheck
+    {
+        let fp_modifiers_chirho = TyVarChirho(7529);
+        let fp_char_chirho = TyVarChirho(7530);
+        let fp_rest_chirho = TyVarChirho(7531);
+        env_chirho.bind_chirho(
+            "FormatParse".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![
+                    fp_modifiers_chirho,
+                    fp_char_chirho,
+                    fp_rest_chirho,
+                ],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::VarChirho(fp_modifiers_chirho),
+                        TyChirho::VarChirho(fp_char_chirho),
+                        TyChirho::VarChirho(fp_rest_chirho),
+                    ],
+                    TyChirho::ConChirho("FormatParse".to_string()),
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "fpModifiers".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![
+                    fp_modifiers_chirho,
+                    fp_char_chirho,
+                    fp_rest_chirho,
+                ],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ConChirho("FormatParse".to_string()),
+                    TyChirho::VarChirho(fp_modifiers_chirho),
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "fpChar".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![
+                    fp_modifiers_chirho,
+                    fp_char_chirho,
+                    fp_rest_chirho,
+                ],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ConChirho("FormatParse".to_string()),
+                    TyChirho::VarChirho(fp_char_chirho),
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "fpRest".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![
+                    fp_modifiers_chirho,
+                    fp_char_chirho,
+                    fp_rest_chirho,
+                ],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::ConChirho("FormatParse".to_string()),
+                    TyChirho::VarChirho(fp_rest_chirho),
+                ),
+            },
+        );
+    }
+    {
+        let fmt_width_chirho = TyVarChirho(7532);
+        let fmt_precision_chirho = TyVarChirho(7533);
+        let fmt_adjust_chirho = TyVarChirho(7534);
+        let fmt_sign_chirho = TyVarChirho(7535);
+        let fmt_alternate_chirho = TyVarChirho(7536);
+        let fmt_modifiers_chirho = TyVarChirho(7537);
+        let fmt_char_chirho = TyVarChirho(7538);
+        env_chirho.bind_chirho(
+            "FieldFormat".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![
+                    fmt_width_chirho,
+                    fmt_precision_chirho,
+                    fmt_adjust_chirho,
+                    fmt_sign_chirho,
+                    fmt_alternate_chirho,
+                    fmt_modifiers_chirho,
+                    fmt_char_chirho,
+                ],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::VarChirho(fmt_width_chirho),
+                        TyChirho::VarChirho(fmt_precision_chirho),
+                        TyChirho::VarChirho(fmt_adjust_chirho),
+                        TyChirho::VarChirho(fmt_sign_chirho),
+                        TyChirho::VarChirho(fmt_alternate_chirho),
+                        TyChirho::VarChirho(fmt_modifiers_chirho),
+                        TyChirho::VarChirho(fmt_char_chirho),
+                    ],
+                    TyChirho::ConChirho("FieldFormat".to_string()),
+                ),
+            },
+        );
+        for (selector_name_chirho, result_var_chirho) in [
+            ("fmtWidth", fmt_width_chirho),
+            ("fmtPrecision", fmt_precision_chirho),
+            ("fmtAdjust", fmt_adjust_chirho),
+            ("fmtSign", fmt_sign_chirho),
+            ("fmtAlternate", fmt_alternate_chirho),
+            ("fmtModifiers", fmt_modifiers_chirho),
+            ("fmtChar", fmt_char_chirho),
+        ] {
+            env_chirho.bind_chirho(
+                selector_name_chirho.to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![
+                        fmt_width_chirho,
+                        fmt_precision_chirho,
+                        fmt_adjust_chirho,
+                        fmt_sign_chirho,
+                        fmt_alternate_chirho,
+                        fmt_modifiers_chirho,
+                        fmt_char_chirho,
+                    ],
+                    preds_chirho: vec![],
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::ConChirho("FieldFormat".to_string()),
+                        TyChirho::VarChirho(result_var_chirho),
+                    ),
+                },
+            );
+        }
+    }
+    for (constructor_name_chirho, type_name_chirho) in [
+        ("LeftAdjust", "FormatAdjustment"),
+        ("ZeroPad", "FormatAdjustment"),
+        ("SignPlus", "FormatSign"),
+        ("SignSpace", "FormatSign"),
+    ] {
+        env_chirho.bind_chirho(
+            constructor_name_chirho.to_string(),
+            SchemeChirho::mono_chirho(TyChirho::ConChirho(type_name_chirho.to_string())),
+        );
+    }
+
     // Data.IORef functions with type schemes
     // readIORef :: forall a. IORef a -> IO a
     {
@@ -15852,6 +16000,131 @@ mod tests_chirho {
                 TyChirho::ConChirho("ByteArray".to_string()),
             ]),
             "the rhs should see both s'# and arr'# as locally bound names"
+        );
+    }
+
+    #[test]
+    fn infer_top_level_magic_hash_pattern_binder_survives_unsafe_coerce_rhs_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.env_chirho.bind_chirho(
+            "primitive".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                TyChirho::VarChirho(TyVarChirho(9100)),
+                TyChirho::VarChirho(TyVarChirho(9101)),
+            )),
+        );
+
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("PrimitiveMiniChirho"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![
+                DeclChirho::DataDeclChirho {
+                    name_chirho: dummy_name_chirho("ByteArray"),
+                    type_vars_chirho: vec![],
+                    constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                        name_chirho: dummy_name_chirho("ByteArray"),
+                        fields_chirho: vec![(
+                            haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                            TypeChirho::ConChirho(dummy_name_chirho("ByteArray#")),
+                        )],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    deriving_chirho: vec![],
+                    kind_sig_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::DataDeclChirho {
+                    name_chirho: dummy_name_chirho("MutableByteArray"),
+                    type_vars_chirho: vec![dummy_name_chirho("s").into()],
+                    constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                        name_chirho: dummy_name_chirho("MutableByteArray"),
+                        fields_chirho: vec![(
+                            haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                            TypeChirho::ConChirho(dummy_name_chirho("ByteArray#")),
+                        )],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    deriving_chirho: vec![],
+                    kind_sig_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::FunBindChirho {
+                    name_chirho: dummy_name_chirho("unsafeThawByteArray"),
+                    matches_chirho: vec![MatchArmChirho {
+                        pats_chirho: vec![PatChirho::ConChirho {
+                            con_chirho: dummy_name_chirho("ByteArray"),
+                            args_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("arr#"))],
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }],
+                        rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::AppChirho {
+                            fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho(
+                                "primitive",
+                            ))),
+                            arg_chirho: Box::new(ExprChirho::ParenChirho {
+                                inner_chirho: Box::new(ExprChirho::LamChirho {
+                                    pats_chirho: vec![PatChirho::VarChirho(dummy_name_chirho(
+                                        "s#",
+                                    ))],
+                                    body_chirho: Box::new(ExprChirho::TupleChirho {
+                                        elements_chirho: vec![
+                                            ExprChirho::VarChirho(dummy_name_chirho("s#")),
+                                            ExprChirho::AppChirho {
+                                                fun_chirho: Box::new(ExprChirho::ConChirho(
+                                                    dummy_name_chirho("MutableByteArray"),
+                                                )),
+                                                arg_chirho: Box::new(ExprChirho::ParenChirho {
+                                                    inner_chirho: Box::new(ExprChirho::AppChirho {
+                                                        fun_chirho: Box::new(
+                                                            ExprChirho::VarChirho(
+                                                                dummy_name_chirho(
+                                                                    "unsafeCoerce#",
+                                                                ),
+                                                            ),
+                                                        ),
+                                                        arg_chirho: Box::new(
+                                                            ExprChirho::VarChirho(
+                                                                dummy_name_chirho("arr#"),
+                                                            ),
+                                                        ),
+                                                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                                    }),
+                                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                                }),
+                                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                            },
+                                        ],
+                                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                    }),
+                                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                                }),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        where_binds_chirho: vec![],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            extensions_chirho: vec![],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let _subst_chirho = ctx_chirho.infer_module_chirho(&module_chirho);
+        assert!(
+            !ctx_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .iter()
+                .any(|diag_chirho| diag_chirho.message_chirho.contains("unbound variable: `arr`")),
+            "top-level hash binder should not degrade to bare arr in the rhs: {:?}",
+            ctx_chirho.diagnostics_chirho
         );
     }
 
