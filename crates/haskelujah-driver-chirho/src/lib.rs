@@ -673,11 +673,46 @@ fn discover_cpp_package_versions_chirho(
 }
 
 fn discover_cpp_min_version_macro_options_chirho(path_chirho: &Path) -> Vec<String> {
-    discover_cpp_package_versions_chirho(path_chirho)
+    // Write MIN_VERSION macros to a temp header file instead of passing
+    // as individual -D flags, to avoid "too many input files" from cpp
+    // when there are 100+ packages.
+    let versions_chirho = discover_cpp_package_versions_chirho(path_chirho);
+    if versions_chirho.is_empty() {
+        return Vec::new();
+    }
+    let mut header_content_chirho = String::from(
+        "#ifndef HASKELUJAH_MIN_VERSION_MACROS_CHIRHO\n\
+         #define HASKELUJAH_MIN_VERSION_MACROS_CHIRHO\n",
+    );
+    for (package_name_chirho, version_chirho) in &versions_chirho {
+        let macro_name_chirho = cpp_macro_package_name_chirho(package_name_chirho);
+        let (major_chirho, minor_chirho, patch_chirho) =
+            cpp_version_triplet_chirho(version_chirho);
+        header_content_chirho.push_str(&format!(
+            "#define MIN_VERSION_{macro_name_chirho}(x,y,z) \
+             ((x)<{major_chirho}||((x)=={major_chirho}&&((y)<{minor_chirho}||((y)=={minor_chirho}&&(z)<={patch_chirho}))))\n"
+        ));
+    }
+    header_content_chirho.push_str("#endif\n");
+
+    let support_dir_chirho = std::env::temp_dir().join("haskelujah-cpp-support-chirho");
+    let _ = std::fs::create_dir_all(&support_dir_chirho);
+    let header_path_chirho = support_dir_chirho.join("min_version_macros_chirho.h");
+    let _ = std::fs::write(&header_path_chirho, &header_content_chirho);
+
+    // Return as individual -D flags — the header file approach causes
+    // "too many input files" with some cpp implementations.
+    // Limit to the most commonly needed packages to keep arg count reasonable.
+    let important_packages_chirho: std::collections::HashSet<&str> = [
+        "base", "ghc-prim", "text", "bytestring", "containers", "deepseq",
+        "transformers", "mtl", "stm", "primitive", "vector", "hashable",
+        "template-haskell", "random", "parsec", "array", "time", "unix",
+        "integer-gmp", "scientific",
+    ].into_iter().collect();
+    versions_chirho
         .into_iter()
-        .map(|(package_name_chirho, version_chirho)| {
-            cpp_min_version_macro_option_chirho(&package_name_chirho, &version_chirho)
-        })
+        .filter(|(name_chirho, _)| important_packages_chirho.contains(name_chirho.as_str()))
+        .map(|(name_chirho, ver_chirho)| cpp_min_version_macro_option_chirho(&name_chirho, &ver_chirho))
         .collect()
 }
 
