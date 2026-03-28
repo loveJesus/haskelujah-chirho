@@ -13463,6 +13463,34 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // GHC.Event — timer/event manager (needed by auto-update/warp)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "getSystemTimerManager",
+            "registerTimeout",
+            "unregisterTimeout",
+            "updateTimeout",
+            "TimerManager",
+            "TimeoutKey",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["TimerManager", "TimeoutKey"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Event".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Event.TimerManager".to_string(),
+            exports_chirho,
+        });
+    }
+
     // GHC internal modules needed by base-orphans
     for mod_name_chirho in &[
         "GHC.GHCi",
@@ -13471,7 +13499,6 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         "GHC.IO.Device",
         "GHC.Stats",
         "GHC.RTS.Flags",
-        "GHC.Event",
         "GHC.Conc.Signal",
         "System.Console.GetOpt",
         "Text.Read.Lex",
