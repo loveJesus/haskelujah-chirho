@@ -13981,7 +13981,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("StdGen", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("Random", &["random", "randomR", "randomRs", "randoms"]);
+        let (k_chirho, v_chirho) =
+            mk_type_chirho("Random", &["random", "randomR", "randomRs", "randoms"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("Uniform", &["uniformM"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
