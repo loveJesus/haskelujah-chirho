@@ -2058,10 +2058,7 @@ library
         let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
         assert_eq!(
             lib_chirho.build_info_chirho.cpp_options_chirho,
-            vec![
-                "-DKEEP_PRIMARY_CHIRHO=1",
-                "-DSECONDARY_VALUE_CHIRHO=7"
-            ]
+            vec!["-DKEEP_PRIMARY_CHIRHO=1", "-DSECONDARY_VALUE_CHIRHO=7"]
         );
     }
 

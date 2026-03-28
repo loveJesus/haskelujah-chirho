@@ -7718,7 +7718,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 TyChirho::io_chirho(TyChirho::VarChirho(storable_a_chirho)),
             ),
         };
-        env_chirho.bind_chirho("peekByteOff".to_string(), peek_byte_off_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "peekByteOff".to_string(),
+            peek_byte_off_scheme_chirho.clone(),
+        );
         env_chirho.bind_chirho(
             "Foreign.Storable.peekByteOff".to_string(),
             peek_byte_off_scheme_chirho,
@@ -7732,7 +7735,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 TyChirho::io_chirho(TyChirho::VarChirho(storable_a_chirho)),
             ),
         };
-        env_chirho.bind_chirho("peekElemOff".to_string(), peek_elem_off_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "peekElemOff".to_string(),
+            peek_elem_off_scheme_chirho.clone(),
+        );
         env_chirho.bind_chirho(
             "Foreign.Storable.peekElemOff".to_string(),
             peek_elem_off_scheme_chirho,
@@ -7769,7 +7775,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 TyChirho::io_chirho(TyChirho::unit_chirho()),
             ),
         };
-        env_chirho.bind_chirho("pokeByteOff".to_string(), poke_byte_off_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "pokeByteOff".to_string(),
+            poke_byte_off_scheme_chirho.clone(),
+        );
         env_chirho.bind_chirho(
             "Foreign.Storable.pokeByteOff".to_string(),
             poke_byte_off_scheme_chirho,
@@ -7787,7 +7796,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 TyChirho::io_chirho(TyChirho::unit_chirho()),
             ),
         };
-        env_chirho.bind_chirho("pokeElemOff".to_string(), poke_elem_off_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "pokeElemOff".to_string(),
+            poke_elem_off_scheme_chirho.clone(),
+        );
         env_chirho.bind_chirho(
             "Foreign.Storable.pokeElemOff".to_string(),
             poke_elem_off_scheme_chirho,

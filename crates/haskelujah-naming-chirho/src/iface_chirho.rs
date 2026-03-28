@@ -15470,7 +15470,10 @@ mod tests_chirho {
             "Foreign.Storable should export 'peek'"
         );
         assert!(
-            s_chirho.exports_chirho.values_chirho.contains_key("peekElemOff"),
+            s_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("peekElemOff"),
             "Foreign.Storable should export 'peekElemOff'"
         );
     }
