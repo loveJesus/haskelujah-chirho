@@ -664,6 +664,69 @@ queueSizeChirho = wordSize\n",
     }
 
     #[test]
+    fn compile_cabal_project_preserves_exposed_modules_after_blank_lines_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        let src_dir_chirho = tmp_chirho.path().join("src");
+        fs::create_dir_all(src_dir_chirho.join("Demo")).unwrap();
+
+        fs::write(
+            tmp_chirho.path().join("blank-line-modules.cabal"),
+            "\
+name: blank-line-modules
+version: 0.1.0.0
+library
+  exposed-modules:
+    Demo.PublicChirho
+
+    -- keep parsing this field
+    Demo.InternalChirho
+  other-modules:
+    Demo.UserChirho
+  hs-source-dirs: src
+",
+        )
+        .unwrap();
+
+        fs::write(
+            src_dir_chirho.join("Demo/InternalChirho.hs"),
+            "module Demo.InternalChirho (helperValueChirho) where\n\
+helperValueChirho :: Int\n\
+helperValueChirho = 7\n",
+        )
+        .unwrap();
+        fs::write(
+            src_dir_chirho.join("Demo/PublicChirho.hs"),
+            "module Demo.PublicChirho (publicValueChirho) where\n\
+import Demo.InternalChirho (helperValueChirho)\n\
+\n\
+publicValueChirho :: Int\n\
+publicValueChirho = helperValueChirho\n",
+        )
+        .unwrap();
+        fs::write(
+            src_dir_chirho.join("Demo/UserChirho.hs"),
+            "module Demo.UserChirho (userValueChirho) where\n\
+import Demo.InternalChirho (helperValueChirho)\n\
+\n\
+userValueChirho :: Int\n\
+userValueChirho = helperValueChirho\n",
+        )
+        .unwrap();
+
+        let index_chirho = PackageIndexChirho::new_chirho();
+        let cabal_path_chirho = tmp_chirho.path().join("blank-line-modules.cabal");
+        let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "cabal build should keep exposed-modules entries after blank lines/comments: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
     fn compile_cabal_project_nested_under_packages_dir_orders_cpp_hierarchical_modules_chirho() {
         use crate::compile_cabal_project_chirho;
         use haskelujah_package_chirho::PackageIndexChirho;

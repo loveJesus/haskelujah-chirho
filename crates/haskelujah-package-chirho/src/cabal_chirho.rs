@@ -60,6 +60,7 @@ pub struct BuildInfoChirho {
     pub hs_source_dirs_chirho: Vec<String>,
     pub default_language_chirho: Option<String>,
     pub ghc_options_chirho: Vec<String>,
+    pub cpp_options_chirho: Vec<String>,
     pub default_extensions_chirho: Vec<String>,
     pub other_extensions_chirho: Vec<String>,
     /// Common stanza names imported via `import:` field.
@@ -425,15 +426,11 @@ fn lex_fields_chirho(input_chirho: &str) -> Vec<FieldChirho> {
         // Strip comments
         let line_chirho = strip_comment_chirho(raw_line_chirho);
 
-        // Completely blank line → flush current field
+        // Completely blank lines often appear inside multiline fields like
+        // exposed-modules / other-modules. Keep the field open and let the
+        // next stanza header or field key terminate it instead of truncating
+        // the remainder of the list.
         if line_chirho.trim().is_empty() {
-            if let Some(key_chirho) = current_key_chirho.take() {
-                fields_chirho.push(FieldChirho {
-                    key_chirho,
-                    value_chirho: current_value_chirho.trim().to_string(),
-                });
-                current_value_chirho.clear();
-            }
             continue;
         }
 
@@ -717,6 +714,14 @@ fn parse_build_info_chirho(fields_chirho: &[&FieldChirho]) -> BuildInfoChirho {
             }
             "ghc-options" => {
                 info_chirho.ghc_options_chirho.extend(
+                    field_chirho
+                        .value_chirho
+                        .split_whitespace()
+                        .map(|s_chirho| s_chirho.to_string()),
+                );
+            }
+            "cpp-options" => {
+                info_chirho.cpp_options_chirho.extend(
                     field_chirho
                         .value_chirho
                         .split_whitespace()
@@ -1219,6 +1224,9 @@ fn merge_build_info_chirho(into_chirho: &mut BuildInfoChirho, from_chirho: &Buil
     into_chirho
         .ghc_options_chirho
         .extend(from_chirho.ghc_options_chirho.clone());
+    into_chirho
+        .cpp_options_chirho
+        .extend(from_chirho.cpp_options_chirho.clone());
     into_chirho
         .default_extensions_chirho
         .extend(from_chirho.default_extensions_chirho.clone());
@@ -2009,6 +2017,31 @@ test-suite qc-test
             pkg_chirho.test_suites_chirho[0].other_modules_chirho,
             vec!["Test.Driver", "Test.Driver.Ghc"]
         );
+    }
+
+    #[test]
+    fn parse_module_lists_preserve_entries_after_blank_lines_and_comments_chirho() {
+        let input_chirho = r#"
+name: bytestring-mini
+version: 0.1
+
+library
+  exposed-modules:
+    Demo.PublicChirho
+
+    -- keep parsing
+    Demo.InternalChirho
+
+  other-modules:
+    Demo.UserChirho
+"#;
+        let pkg_chirho = parse_cabal_chirho(input_chirho);
+        let lib_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
+        assert_eq!(
+            lib_chirho.exposed_modules_chirho,
+            vec!["Demo.PublicChirho", "Demo.InternalChirho"]
+        );
+        assert_eq!(lib_chirho.other_modules_chirho, vec!["Demo.UserChirho"]);
     }
 
     #[test]

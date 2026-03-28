@@ -2849,6 +2849,36 @@ fn frontend_foreign_storable_methods_typecheck_chirho() {
 }
 
 #[test]
+fn frontend_foreign_reexport_peek_elem_off_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ForeignPeekElemOffMiniChirho where\nimport Foreign\npeekElemOffIntChirho :: Ptr Int -> Int -> IO Int\npeekElemOffIntChirho = peekElemOff\n",
+        &mut source_map_chirho,
+        "ForeignPeekElemOffMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "Foreign should re-export peekElemOff with a usable type: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_ghc_exts_set_byte_array_hash_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE MagicHash #-}\n{-# LANGUAGE UnboxedTuples #-}\nmodule SetByteArrayHashMiniChirho where\nimport GHC.Exts\nfillChirho :: Int# -> Int# -> State# sChirho -> State# sChirho\nfillChirho lenChirho# cChirho# s1Chirho# = case newByteArray# lenChirho# s1Chirho# of\n  (# s2Chirho#, marrChirho# #) -> setByteArray# marrChirho# 0# lenChirho# cChirho# s2Chirho#\n",
+        &mut source_map_chirho,
+        "SetByteArrayHashMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.Exts setByteArray# should resolve and type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_prelude_list_index_operator_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
