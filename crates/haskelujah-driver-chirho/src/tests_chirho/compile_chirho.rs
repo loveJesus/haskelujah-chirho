@@ -215,6 +215,33 @@ data FunChirho aChirho bChirho = FunChirho (aChirho :-> bChirho, bChirho) (aChir
 }
 
 #[test]
+fn frontend_gadt_type_operator_with_operator_constructor_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"{-# LANGUAGE GADTs, PolyKinds, Rank2Types, TypeOperators #-}
+module GadtTypeOperatorConSymMiniChirho where
+
+data aChirho :-> cChirho where
+  PairChirho :: (aChirho :-> (bChirho :-> cChirho)) -> ((aChirho, bChirho) :-> cChirho)
+  (:+:) :: (aChirho :-> cChirho) -> (bChirho :-> cChirho) -> (Either aChirho bChirho :-> cChirho)
+  UnitChirho :: cChirho -> (() :-> cChirho)
+  NilChirho :: aChirho :-> cChirho
+
+showFunctionChirho :: (Show aChirho, Show bChirho) => (aChirho :-> bChirho) -> Maybe bChirho -> String
+showFunctionChirho = undefined
+"#,
+        &mut source_map_chirho,
+        "GadtTypeOperatorConSymMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "GADT type operators should keep operator-named constructors inside the declaration: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_backticked_left_section_infers_function_type_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

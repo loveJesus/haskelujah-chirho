@@ -347,6 +347,29 @@ mod tests_chirho {
     }
 
     #[test]
+    fn builtin_ghc_event_timeout_helpers_typecheck_chirho() {
+        let module_sources_chirho = vec![(
+            "Main".to_string(),
+            "/virtual/Main.hs".to_string(),
+            "module Main where\nimport GHC.Event\nmain = do\n  mgr <- getSystemTimerManager\n  key <- registerTimeout mgr 1000 (pure ())\n  unregisterTimeout mgr key\n".to_string(),
+        )];
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let compile_result_chirho = compile_module_sources_with_extra_ifaces_chirho(
+            module_sources_chirho,
+            &mut source_map_chirho,
+            vec![],
+            std::collections::HashMap::new(),
+            std::collections::HashMap::new(),
+            std::collections::HashMap::new(),
+        );
+
+        assert!(
+            compile_result_chirho.is_ok(),
+            "GHC.Event timer helper builtins should typecheck, got: {compile_result_chirho:?}"
+        );
+    }
+
+    #[test]
     fn compile_project_two_modules_chirho() {
         let tmp_chirho = tempfile::tempdir().unwrap();
         fs::write(

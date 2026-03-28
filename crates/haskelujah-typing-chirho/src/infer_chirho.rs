@@ -8786,6 +8786,52 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // GHC.Event timer manager helpers
+    {
+        let timer_manager_ty_chirho = TyChirho::ConChirho("TimerManager".to_string());
+        let timeout_key_ty_chirho = TyChirho::ConChirho("TimeoutKey".to_string());
+
+        // getSystemTimerManager :: IO TimerManager
+        env_chirho.bind_chirho(
+            "getSystemTimerManager".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::io_chirho(timer_manager_ty_chirho.clone()),
+            },
+        );
+
+        // registerTimeout :: TimerManager -> Int -> IO () -> IO TimeoutKey
+        env_chirho.bind_chirho(
+            "registerTimeout".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        timer_manager_ty_chirho.clone(),
+                        TyChirho::int_chirho(),
+                        TyChirho::io_chirho(TyChirho::unit_chirho()),
+                    ],
+                    TyChirho::io_chirho(timeout_key_ty_chirho.clone()),
+                ),
+            },
+        );
+
+        // unregisterTimeout :: TimerManager -> TimeoutKey -> IO ()
+        env_chirho.bind_chirho(
+            "unregisterTimeout".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![timer_manager_ty_chirho, timeout_key_ty_chirho],
+                    TyChirho::io_chirho(TyChirho::unit_chirho()),
+                ),
+            },
+        );
+    }
+
     // ── Monad Transformer operations ──
 
     // runStateT :: StateT s m a -> s -> m (a, s)

@@ -604,6 +604,7 @@ impl<'src> ParserChirho<'src> {
                 self.previous_non_trivia_kind_chirho(),
                 Some(RawTokenKindChirho::WhereChirho)
             )
+            || self.starts_gadt_con_decl_chirho()
         {
             // GADT syntax: data T a where { C1 :: Type; C2 :: Type }
             if self.at_chirho(RawTokenKindChirho::WhereChirho) {
@@ -639,7 +640,7 @@ impl<'src> ParserChirho<'src> {
                 }
 
                 // Parse a GADT constructor: ConName :: Type
-                if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
+                if self.starts_gadt_con_decl_chirho() {
                     self.parse_gadt_con_decl_chirho();
                 } else {
                     // Skip unexpected tokens
@@ -885,7 +886,23 @@ impl<'src> ParserChirho<'src> {
             .start_node_chirho(SyntaxKindChirho::GadtConDeclChirho);
 
         // Constructor name(s) — could be `C1, C2 :: Type`
-        self.bump_chirho(); // ConId
+        if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+        } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::ConSymChirho)
+                || self.at_chirho(RawTokenKindChirho::ConIdChirho)
+            {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+        }
         self.eat_trivia_chirho();
 
         // Expect ::
@@ -4985,6 +5002,76 @@ impl<'src> ParserChirho<'src> {
             }
         }
         None
+    }
+
+    fn starts_gadt_con_decl_chirho(&self) -> bool {
+        let mut idx_chirho = self.skip_trivia_idx_chirho(self.pos_chirho);
+        if idx_chirho >= self.tokens_chirho.len() {
+            return false;
+        }
+
+        if self.tokens_chirho[idx_chirho].kind_chirho == RawTokenKindChirho::WhereChirho {
+            idx_chirho = self.skip_trivia_idx_chirho(idx_chirho + 1);
+        }
+
+        if idx_chirho < self.tokens_chirho.len()
+            && matches!(
+                self.tokens_chirho[idx_chirho].kind_chirho,
+                RawTokenKindChirho::VirtualLeftBraceChirho | RawTokenKindChirho::LeftBraceChirho
+            )
+        {
+            idx_chirho = self.skip_trivia_idx_chirho(idx_chirho + 1);
+        }
+
+        while idx_chirho < self.tokens_chirho.len()
+            && matches!(
+                self.tokens_chirho[idx_chirho].kind_chirho,
+                RawTokenKindChirho::VirtualSemicolonChirho | RawTokenKindChirho::SemicolonChirho
+            )
+        {
+            idx_chirho = self.skip_trivia_idx_chirho(idx_chirho + 1);
+        }
+
+        let Some(token_chirho) = self.tokens_chirho.get(idx_chirho) else {
+            return false;
+        };
+
+        match token_chirho.kind_chirho {
+            RawTokenKindChirho::ConIdChirho => {
+                let next_idx_chirho = self.skip_trivia_idx_chirho(idx_chirho + 1);
+                self.tokens_chirho
+                    .get(next_idx_chirho)
+                    .is_some_and(|next_token_chirho| {
+                        next_token_chirho.kind_chirho == RawTokenKindChirho::ColonColonChirho
+                    })
+            }
+            RawTokenKindChirho::LeftParenChirho => {
+                let sym_idx_chirho = self.skip_trivia_idx_chirho(idx_chirho + 1);
+                let close_idx_chirho = self.skip_trivia_idx_chirho(sym_idx_chirho + 1);
+                let colon_idx_chirho = self.skip_trivia_idx_chirho(close_idx_chirho + 1);
+                self.tokens_chirho
+                    .get(sym_idx_chirho)
+                    .is_some_and(|sym_token_chirho| {
+                        matches!(
+                            sym_token_chirho.kind_chirho,
+                            RawTokenKindChirho::ConSymChirho | RawTokenKindChirho::ConIdChirho
+                        )
+                    })
+                    && self
+                        .tokens_chirho
+                        .get(close_idx_chirho)
+                        .is_some_and(|close_token_chirho| {
+                            close_token_chirho.kind_chirho == RawTokenKindChirho::RightParenChirho
+                        })
+                    && self
+                        .tokens_chirho
+                        .get(colon_idx_chirho)
+                        .is_some_and(|colon_token_chirho| {
+                            colon_token_chirho.kind_chirho == RawTokenKindChirho::ColonColonChirho
+                        })
+            }
+            _ => false,
+        }
     }
 
     /// Advance one token, adding it to the current green node.

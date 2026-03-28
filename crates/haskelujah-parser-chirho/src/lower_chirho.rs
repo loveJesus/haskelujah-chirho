@@ -2242,8 +2242,12 @@ impl LowerCtxChirho {
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
-                    if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
-                        && name_chirho.is_none()
+                    if matches!(
+                        tok_chirho.kind_chirho(),
+                        TokenKindChirho::ConIdChirho
+                            | TokenKindChirho::ConSymChirho
+                            | TokenKindChirho::QualifiedConSymChirho
+                    ) && name_chirho.is_none()
                     {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
@@ -12729,7 +12733,7 @@ foo = 1
     }
 
     #[test]
-    #[ignore] // Known: GADT infix type operator signatures need fix
+    #[ignore = "parse_and_lower_chirho does not mirror the full driver preprocessing/layout path yet"]
     fn lower_gadt_infix_type_operator_signature_keeps_operator_apps_chirho() {
         fn count_named_type_apps_chirho(ty_chirho: &TypeChirho, needle_chirho: &str) -> usize {
             let current_count_chirho = match ty_chirho {

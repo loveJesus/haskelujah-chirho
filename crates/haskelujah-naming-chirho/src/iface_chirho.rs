@@ -13471,8 +13471,6 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "registerTimeout",
             "unregisterTimeout",
             "updateTimeout",
-            "TimerManager",
-            "TimeoutKey",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
