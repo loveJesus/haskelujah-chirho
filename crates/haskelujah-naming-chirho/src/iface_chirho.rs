@@ -6777,11 +6777,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "readTVarIO",
             "throwSTM",
             "catchSTM",
+            "labelThread",
+            "forkFinally",
+            "mkWeakThreadId",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["STM", "TVar", "ThreadId"] {
+        for name_chirho in &["STM", "TVar", "ThreadId", "ThreadStatus", "BlockReason"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
