@@ -14021,6 +14021,57 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // System.Random.Stateful (random package — needed by QuickCheck)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["StatefulGen", "FrozenGen", "RandomGenM"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["STGenM", "IOGenM", "AtomicGenM", "StateGenM"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &[
+            "uniformM",
+            "uniformRM",
+            "uniformByteArray",
+            "uniformByteStringM",
+            "uniformShortByteString",
+            "uniformWord8",
+            "uniformWord16",
+            "uniformWord32",
+            "uniformWord64",
+            "applySTGen",
+            "applyIOGen",
+            "applyAtomicGen",
+            "newIOGenM",
+            "newAtomicGenM",
+            "newSTGenM",
+            "withMutableGen",
+            "withMutableGen_",
+            "randomM",
+            "randomRM",
+            "splitGenM",
+            "runStateGen",
+            "runStateGen_",
+            "runStateGenT",
+            "runStateGenT_",
+            "runStateGenST",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.Random.Stateful".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.Random.Internal".to_string(),
+            exports_chirho,
+        });
+    }
+
     // System.Random.SplitMix (splitmix package — needed by random/QuickCheck)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
