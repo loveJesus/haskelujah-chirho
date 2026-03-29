@@ -614,7 +614,9 @@ fn discover_cpp_package_versions_chirho(
 ) -> std::collections::BTreeMap<String, haskelujah_package_chirho::VersionChirho> {
     let mut package_versions_chirho = seed_cpp_package_versions_chirho();
 
-    if let Some(project_dir_chirho) = path_chirho.parent() {
+    // Canonicalise so that paths with ../../ etc. resolve before walking up
+    let canonical_path_chirho = path_chirho.canonicalize().unwrap_or_else(|_| path_chirho.to_path_buf());
+    if let Some(project_dir_chirho) = canonical_path_chirho.parent() {
         if let Some(packages_dir_chirho) = find_dependency_packages_dir_chirho(project_dir_chirho) {
             if let Ok(entries_chirho) = std::fs::read_dir(packages_dir_chirho) {
                 for entry_chirho in entries_chirho.flatten() {
