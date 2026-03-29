@@ -4203,6 +4203,36 @@ fn frontend_ghc_exts_keepalive_hash_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_test_tasty_options_is_option_instance_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module TestTastyOptionsMiniChirho where\nimport Test.Tasty.Options\nnewtype VectorSizeChirho = VectorSizeChirho Int\ninstance IsOption VectorSizeChirho where\n  defaultValue = VectorSizeChirho 2000000\n  parseValue = fmap VectorSizeChirho . safeRead\n  optionName = pure \"size\"\n  optionHelp = pure \"Size of vectors used in benchmarks\"\n",
+        &mut source_map_chirho,
+        "TestTastyOptionsMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "Test.Tasty.Options IsOption instances should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_test_tasty_test_tree_helpers_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module TestTastyMiniChirho where\nimport Test.Tasty\ntreeChirho :: TestTree\ntreeChirho = testGroup \"demo\" []\nmainChirho :: IO ()\nmainChirho = defaultMain treeChirho\n",
+        &mut source_map_chirho,
+        "TestTastyMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "Test.Tasty TestTree helpers should type-check: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_prelude_list_index_operator_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

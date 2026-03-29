@@ -3711,24 +3711,58 @@ fn extract_imports_chirho(source_chirho: &str) -> Vec<String> {
     for line_chirho in source_chirho.lines() {
         let trimmed_chirho = line_chirho.trim();
         if let Some(rest_chirho) = trimmed_chirho.strip_prefix("import ") {
-            let rest_chirho = rest_chirho.trim();
-            // Skip "qualified" keyword if present
-            let rest_chirho = rest_chirho
-                .strip_prefix("qualified ")
-                .unwrap_or(rest_chirho)
-                .trim();
-            // Module name is the first word (dotted identifier)
-            let module_name_chirho = rest_chirho
-                .split(|c_chirho: char| c_chirho.is_whitespace() || c_chirho == '(')
-                .next()
-                .unwrap_or("")
-                .to_string();
-            if !module_name_chirho.is_empty() {
+            if let Some(module_name_chirho) = parse_import_module_name_chirho(rest_chirho) {
                 imports_chirho.push(module_name_chirho);
             }
         }
     }
     imports_chirho
+}
+
+fn parse_import_module_name_chirho(rest_chirho: &str) -> Option<String> {
+    let mut remaining_chirho = rest_chirho.trim();
+
+    'scan_modifiers_chirho: loop {
+        if let Some(pragma_rest_chirho) = remaining_chirho.strip_prefix("{-#") {
+            if let Some(pragma_end_chirho) = pragma_rest_chirho.find("#-}") {
+                remaining_chirho = pragma_rest_chirho[pragma_end_chirho + 3..].trim_start();
+                continue;
+            }
+        }
+
+        for keyword_chirho in ["qualified", "safe", "unsafe", "interruptible"] {
+            if let Some(after_keyword_chirho) = remaining_chirho.strip_prefix(keyword_chirho) {
+                if after_keyword_chirho
+                    .chars()
+                    .next()
+                    .is_some_and(|char_chirho| char_chirho.is_whitespace())
+                {
+                    remaining_chirho = after_keyword_chirho.trim_start();
+                    continue 'scan_modifiers_chirho;
+                }
+            }
+        }
+
+        if let Some(package_rest_chirho) = remaining_chirho.strip_prefix('"') {
+            if let Some(package_end_chirho) = package_rest_chirho.find('"') {
+                remaining_chirho = package_rest_chirho[package_end_chirho + 1..].trim_start();
+                continue;
+            }
+        }
+
+        break;
+    }
+
+    let module_name_chirho = remaining_chirho
+        .split(|char_chirho: char| char_chirho.is_whitespace() || char_chirho == '(')
+        .next()
+        .unwrap_or("")
+        .trim();
+    if module_name_chirho.is_empty() {
+        None
+    } else {
+        Some(module_name_chirho.to_string())
+    }
 }
 
 fn filter_seeded_type_synonyms_for_source_chirho(

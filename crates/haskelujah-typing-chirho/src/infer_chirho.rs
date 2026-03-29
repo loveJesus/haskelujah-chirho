@@ -7117,6 +7117,21 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         },
     );
+    let safe_read_a_chirho = TyVarChirho(71350);
+    env_chirho.bind_chirho(
+        "safeRead".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![safe_read_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::string_chirho(),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(TyChirho::VarChirho(safe_read_a_chirho)),
+                ),
+            ),
+        },
+    );
     let read_paren_a_chirho = TyVarChirho(1196);
     env_chirho.bind_chirho(
         "readParen".to_string(),
@@ -10848,6 +10863,110 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             TyChirho::io_chirho(TyChirho::unit_chirho()),
         )),
     );
+
+    // Test.Tasty / Test.Tasty.Options
+    {
+        let test_tree_ty_chirho = TyChirho::ConChirho("TestTree".to_string());
+        let ingredient_ty_chirho = TyChirho::ConChirho("Ingredient".to_string());
+        let option_description_ty_chirho = TyChirho::ConChirho("OptionDescription".to_string());
+        let option_set_ty_chirho = TyChirho::ConChirho("OptionSet".to_string());
+
+        env_chirho.bind_chirho(
+            "defaultMain".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                test_tree_ty_chirho.clone(),
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
+            )),
+        );
+        env_chirho.bind_chirho(
+            "defaultMainWithIngredients".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::ListChirho(Box::new(ingredient_ty_chirho.clone())),
+                    test_tree_ty_chirho.clone(),
+                ],
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
+            )),
+        );
+        env_chirho.bind_chirho(
+            "testGroup".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::string_chirho(),
+                    TyChirho::ListChirho(Box::new(test_tree_ty_chirho.clone())),
+                ],
+                test_tree_ty_chirho.clone(),
+            )),
+        );
+        env_chirho.bind_chirho(
+            "includingOptions".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                TyChirho::ListChirho(Box::new(option_description_ty_chirho.clone())),
+                ingredient_ty_chirho,
+            )),
+        );
+
+        let option_a_chirho = TyVarChirho(71351);
+        env_chirho.bind_chirho(
+            "Option".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![option_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Proxy".to_string())),
+                        Box::new(TyChirho::VarChirho(option_a_chirho)),
+                    ),
+                    option_description_ty_chirho,
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "lookupOption".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![option_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    option_set_ty_chirho,
+                    TyChirho::VarChirho(option_a_chirho),
+                ),
+            },
+        );
+        env_chirho.bind_chirho(
+            "defaultValue".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![option_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::VarChirho(option_a_chirho),
+            },
+        );
+        env_chirho.bind_chirho(
+            "parseValue".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![option_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::string_chirho(),
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                        Box::new(TyChirho::VarChirho(option_a_chirho)),
+                    ),
+                ),
+            },
+        );
+        let maybe_string_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Maybe".to_string())),
+            Box::new(TyChirho::string_chirho()),
+        );
+        env_chirho.bind_chirho(
+            "optionName".to_string(),
+            SchemeChirho::mono_chirho(maybe_string_ty_chirho.clone()),
+        );
+        env_chirho.bind_chirho(
+            "optionHelp".to_string(),
+            SchemeChirho::mono_chirho(maybe_string_ty_chirho),
+        );
+    }
 
     // lines :: String -> [String]
     env_chirho.bind_chirho(

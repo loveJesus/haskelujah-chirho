@@ -91,6 +91,7 @@ fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'s
         "ArrowZero" => Some(&["zeroArrow"]),
         "ArrowPlus" => Some(&["<+>"]),
         "ArrowLoop" => Some(&["loop"]),
+        "IsOption" => Some(&["defaultValue", "parseValue", "optionName", "optionHelp"]),
         _ => None,
     }
 }
@@ -13322,6 +13323,59 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Test.Tasty / Test.Tasty.Options (tasty package)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "safeRead",
+            "lookupOption",
+            "Option",
+            "defaultValue",
+            "parseValue",
+            "optionName",
+            "optionHelp",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, mut v_chirho) = mk_type_chirho("IsOption", &[]);
+        v_chirho.methods_chirho = vec![
+            "defaultValue".to_string(),
+            "parseValue".to_string(),
+            "optionName".to_string(),
+            "optionHelp".to_string(),
+        ];
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("OptionSet", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_type_chirho("OptionDescription", &["Option"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Test.Tasty.Options".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "defaultMain",
+            "defaultMainWithIngredients",
+            "testGroup",
+            "includingOptions",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["TestTree", "Ingredient"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Test.Tasty".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Data.Functor.Adjunction (adjunctions package)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
@@ -17121,6 +17175,72 @@ mod tests_chirho {
                 .values_chirho
                 .contains_key("unsafeChr"),
             "GHC.Base should export unsafeChr"
+        );
+    }
+
+    #[test]
+    fn builtin_test_tasty_exports_test_tree_helpers_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let test_tasty_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Test.Tasty")
+            .expect("Test.Tasty builtin iface should exist");
+        for name_chirho in [
+            "defaultMain",
+            "defaultMainWithIngredients",
+            "testGroup",
+            "includingOptions",
+        ] {
+            assert!(
+                test_tasty_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "Test.Tasty should export {name_chirho}"
+            );
+        }
+        assert!(
+            test_tasty_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("TestTree"),
+            "Test.Tasty should export TestTree"
+        );
+    }
+
+    #[test]
+    fn builtin_test_tasty_options_exports_is_option_class_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let test_tasty_options_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Test.Tasty.Options")
+            .expect("Test.Tasty.Options builtin iface should exist");
+        for name_chirho in [
+            "safeRead",
+            "lookupOption",
+            "Option",
+            "defaultValue",
+            "parseValue",
+            "optionName",
+            "optionHelp",
+        ] {
+            assert!(
+                test_tasty_options_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "Test.Tasty.Options should export {name_chirho}"
+            );
+        }
+        assert!(
+            test_tasty_options_chirho
+                .exports_chirho
+                .types_chirho
+                .get("IsOption")
+                .is_some_and(|is_option_chirho| is_option_chirho
+                    .methods_chirho
+                    .contains(&"parseValue".to_string())),
+            "Test.Tasty.Options should export IsOption with class methods"
         );
     }
 

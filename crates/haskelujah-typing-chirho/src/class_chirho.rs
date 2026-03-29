@@ -1176,6 +1176,55 @@ impl ClassEnvChirho {
             defaults_chirho: HashMap::new(),
         });
 
+        // Test.Tasty.Options.IsOption
+        let is_option_var_chirho = TyVarChirho(9190);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "IsOption".to_string(),
+            supers_chirho: vec![],
+            var_chirho: is_option_var_chirho,
+            methods_chirho: HashMap::from([
+                (
+                    "defaultValue".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![is_option_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::VarChirho(is_option_var_chirho),
+                    },
+                ),
+                (
+                    "parseValue".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![is_option_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_chirho(
+                            TyChirho::string_chirho(),
+                            TyChirho::AppChirho(
+                                Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                                Box::new(TyChirho::VarChirho(is_option_var_chirho)),
+                            ),
+                        ),
+                    },
+                ),
+                (
+                    "optionName".to_string(),
+                    SchemeChirho::mono_chirho(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                        Box::new(TyChirho::string_chirho()),
+                    )),
+                ),
+                (
+                    "optionHelp".to_string(),
+                    SchemeChirho::mono_chirho(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                        Box::new(TyChirho::string_chirho()),
+                    )),
+                ),
+            ]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
         // Enum
         let enum_var_chirho = TyVarChirho(9006);
         self.add_class_chirho(ClassDeclChirho {

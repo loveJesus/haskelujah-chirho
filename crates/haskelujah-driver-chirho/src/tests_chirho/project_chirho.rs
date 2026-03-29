@@ -82,6 +82,13 @@ mod tests_chirho {
     }
 
     #[test]
+    fn extract_imports_source_pragma_chirho() {
+        let src_chirho = "module Foo where\nimport {-# SOURCE #-} qualified Text.Megaparsec.Error as ErrorChirho\n";
+        let imports_chirho = extract_imports_chirho(src_chirho);
+        assert_eq!(imports_chirho, vec!["Text.Megaparsec.Error"]);
+    }
+
+    #[test]
     fn filter_seeded_type_synonyms_only_keeps_explicit_modules_chirho() {
         let type_var_name_chirho = NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
             "a".to_string(),
