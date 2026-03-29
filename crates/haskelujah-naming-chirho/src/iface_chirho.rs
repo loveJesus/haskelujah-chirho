@@ -3859,6 +3859,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "withReaderT",
                     "mapReaderT",
                     "liftCatch",
+                    "liftCallCC",
+                    "liftCallCC'",
                 ],
                 vec![("ReaderT", &["ReaderT"][..])],
             ),
