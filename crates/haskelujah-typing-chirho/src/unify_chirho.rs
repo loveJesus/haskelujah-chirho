@@ -9,9 +9,20 @@
 use haskelujah_span_chirho::SpanChirho;
 
 /// Strip qualified import alias prefix from a type constructor name.
-/// e.g. "N.Operator" → "Operator", "Data.Map.Map" → "Map"
+/// e.g. "N.Operator" -> "Operator", "Data.Map.Map" -> "Map"
 fn strip_qualifier_chirho(name_chirho: &str) -> &str {
     name_chirho.rsplit('.').next().unwrap_or(name_chirho)
+}
+
+fn has_qualifier_chirho(name_chirho: &str) -> bool {
+    name_chirho.contains('.')
+}
+
+fn same_tycon_name_chirho(left_name_chirho: &str, right_name_chirho: &str) -> bool {
+    left_name_chirho == right_name_chirho
+        || (has_qualifier_chirho(left_name_chirho)
+            && has_qualifier_chirho(right_name_chirho)
+            && strip_qualifier_chirho(left_name_chirho) == strip_qualifier_chirho(right_name_chirho))
 }
 
 use crate::subst_chirho::SubstChirho;
@@ -57,11 +68,11 @@ pub fn unify_chirho(
     span_chirho: SpanChirho,
 ) -> Result<SubstChirho, UnifyErrorChirho> {
     match (ty1_chirho, ty2_chirho) {
-        // Two identical type constructors (also match if base names equal
-        // after stripping qualified import aliases like N.Operator vs Operator)
+        // Two identical type constructors. Accept different qualified spellings
+        // of the same imported type constructor, but do not conflate a local
+        // bare name like `Result` with an imported qualified name like `P.Result`.
         (TyChirho::ConChirho(a_chirho), TyChirho::ConChirho(b_chirho))
-            if a_chirho == b_chirho
-                || strip_qualifier_chirho(a_chirho) == strip_qualifier_chirho(b_chirho) =>
+            if same_tycon_name_chirho(a_chirho, b_chirho) =>
         {
             Ok(SubstChirho::empty_chirho())
         }
@@ -503,6 +514,30 @@ mod tests_chirho {
             result_chirho,
             Err(UnifyErrorChirho::MismatchChirho { .. })
         ));
+    }
+
+    #[test]
+    fn unify_same_qualified_suffix_tycons_chirho() {
+        let left_ty_chirho = TyChirho::ConChirho("P.Result".to_string());
+        let right_ty_chirho =
+            TyChirho::ConChirho("Test.QuickCheck.Property.Result".to_string());
+        let subst_chirho =
+            unify_chirho(&left_ty_chirho, &right_ty_chirho, SpanChirho::DUMMY_CHIRHO)
+                .expect("qualified aliases of the same imported type should unify");
+        assert!(subst_chirho.is_empty_chirho());
+    }
+
+    #[test]
+    fn unify_bare_and_qualified_tycons_do_not_alias_chirho() {
+        let left_ty_chirho = TyChirho::ConChirho("Result".to_string());
+        let right_ty_chirho =
+            TyChirho::ConChirho("Test.QuickCheck.Property.Result".to_string());
+        let result_chirho =
+            unify_chirho(&left_ty_chirho, &right_ty_chirho, SpanChirho::DUMMY_CHIRHO);
+        assert!(
+            matches!(result_chirho, Err(UnifyErrorChirho::MismatchChirho { .. })),
+            "local bare tycons must stay distinct from imported qualified tycons"
+        );
     }
 
     #[test]
