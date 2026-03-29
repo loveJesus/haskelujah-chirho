@@ -49,7 +49,7 @@
 		{ labelChirho: 'GHC Compatibility', valueChirho: '88.8%', detailChirho: '833 / 938 tests' },
 		{ labelChirho: 'Module Interfaces', valueChirho: '380+', detailChirho: 'Synthetic Haskell module interfaces' },
 		{ labelChirho: 'Passing Tests', valueChirho: '2,500+', detailChirho: '537/537 curated, 192 parser, 190 typing' },
-		{ labelChirho: 'Hackage Packages', valueChirho: '87', detailChirho: 'comonad + some + indexed-traversable + dlist + splitmix + exceptions + distributive + 80 more' }
+		{ labelChirho: 'Hackage Packages', valueChirho: '116', detailChirho: 'unordered-containers + stm + random + HUnit + these + resourcet + comonad + 109 more' }
 	];
 
 	const heroPillsChirho = [
@@ -86,7 +86,7 @@
 		{
 			titleChirho: 'Package Manager',
 			descriptionChirho:
-				'Install Hackage packages with one command. Reads .cabal files, resolves dependencies, compiles multi-module projects. 87 packages verified, cross-package resolution built in.',
+				'Install Hackage packages with one command. Reads .cabal files, resolves dependencies, compiles multi-module projects. 116 packages verified, cross-package resolution built in.',
 			iconChirho: '📦',
 			plannedChirho: false
 		},
@@ -211,8 +211,8 @@
 				</div>
 				<div class="hero-proof-card-chirho">
 					<span class="hero-proof-label-chirho">Hackage packages</span>
-					<strong>87 packages verified</strong>
-					<p>comonad (15 modules), some (10 modules), indexed-traversable, dlist, splitmix, exceptions, distributive, contravariant, integer-logarithms, and 78 more. Cross-package resolution enabled.</p>
+					<strong>116 packages verified</strong>
+					<p>unordered-containers, stm, random, HUnit, these, resourcet, comonad (15 modules), some (10 modules), ansi-terminal, and 107 more. Cross-package resolution enabled.</p>
 				</div>
 			</div>
 		</div>
@@ -490,7 +490,7 @@ main = putStrLn "Runs directly, no build step."</span>
 					<div class="feature-icon-chirho">H</div>
 					<div class="feature-text-chirho">
 						<h3>Hackage + Batteries Included</h3>
-						<p><code>haskelujah install aeson</code> fetches from Hackage. <strong>87 packages verified</strong> including comonad, some, indexed-traversable, dlist, splitmix, exceptions, distributive. Plus 15 built-in stdlib modules (JSON, Test, Args, HTTP, Text, Process, Time, File, Prelude, Map, Set, Pretty, Random, Concurrent, Debug) — no install needed.</p>
+						<p><code>haskelujah install aeson</code> fetches from Hackage. <strong>116 packages verified</strong> including unordered-containers, stm, random, HUnit, these, resourcet, comonad, ansi-terminal. Plus 15 built-in stdlib modules (JSON, Test, Args, HTTP, Text, Process, Time, File, Prelude, Map, Set, Pretty, Random, Concurrent, Debug) — no install needed.</p>
 					</div>
 				</div>
 				<div class="feature-card-chirho">
@@ -544,8 +544,8 @@ main = putStrLn "Runs directly, no build step."</span>
 					<p>Compile the Haskelujah compiler to WebAssembly so the browser playground runs the real type checker — no server needed.</p>
 				</div>
 				<div class="roadmap-item-chirho">
-					<h3>150+ Hackage Packages</h3>
-					<p>87 packages verified today (comonad, some, indexed-traversable, splitmix, exceptions). Next: QuickCheck, text, aeson, lens, containers.</p>
+					<h3>200+ Hackage Packages</h3>
+					<p>116 packages verified today (unordered-containers, stm, random, HUnit, these, resourcet). Next: QuickCheck, text, aeson, lens.</p>
 				</div>
 				<div class="roadmap-item-chirho">
 					<h3>Test Runner</h3>
