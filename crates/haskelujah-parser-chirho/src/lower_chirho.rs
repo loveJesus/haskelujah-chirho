@@ -7853,6 +7853,8 @@ impl LowerCtxChirho {
                 let mut con_name_chirho = None;
                 let mut fields_chirho = Vec::new();
                 let mut current_field_name_chirho: Option<NameChirho> = None;
+                let mut pending_field_con_name_chirho: Option<NameChirho> = None;
+                let mut pending_field_con_args_chirho: Vec<PatChirho> = Vec::new();
                 let mut saw_equals_chirho = false;
 
                 for child_chirho in &children_chirho {
@@ -7871,30 +7873,59 @@ impl LowerCtxChirho {
                                     Some(self.name_from_token_chirho(tok_chirho, s_chirho));
                             } else if kind_chirho == TokenKindChirho::EqualsChirho {
                                 saw_equals_chirho = true;
+                            } else if saw_equals_chirho
+                                && current_field_name_chirho.is_some()
+                                && (kind_chirho == TokenKindChirho::ConIdChirho
+                                    || kind_chirho == TokenKindChirho::QualifiedConIdChirho)
+                                && pending_field_con_name_chirho.is_none()
+                            {
+                                let s_chirho = self.span_chirho(
+                                    child_chirho.start_chirho,
+                                    child_chirho.end_chirho,
+                                );
+                                pending_field_con_name_chirho =
+                                    Some(self.name_from_token_chirho(tok_chirho, s_chirho));
                             } else if kind_chirho == TokenKindChirho::VarIdChirho {
                                 if saw_equals_chirho && current_field_name_chirho.is_some() {
-                                    // VarId after '=' — this is the pattern variable
                                     let s_chirho = self.span_chirho(
                                         child_chirho.start_chirho,
                                         child_chirho.end_chirho,
                                     );
                                     let var_name_chirho =
                                         self.name_from_token_chirho(tok_chirho, s_chirho);
-                                    let fname_chirho = current_field_name_chirho.take().unwrap();
-                                    fields_chirho.push(PatFieldChirho {
-                                        name_chirho: fname_chirho,
-                                        pattern_chirho: PatChirho::VarChirho(var_name_chirho),
-                                        span_chirho: s_chirho,
-                                    });
-                                    saw_equals_chirho = false;
+                                    if pending_field_con_name_chirho.is_some() {
+                                        pending_field_con_args_chirho
+                                            .push(PatChirho::VarChirho(var_name_chirho));
+                                    } else {
+                                        let fname_chirho =
+                                            current_field_name_chirho.take().unwrap();
+                                        fields_chirho.push(PatFieldChirho {
+                                            name_chirho: fname_chirho,
+                                            pattern_chirho: PatChirho::VarChirho(var_name_chirho),
+                                            span_chirho: s_chirho,
+                                        });
+                                        saw_equals_chirho = false;
+                                    }
                                 } else {
                                     // VarId before '=' — this is the field name
                                     // (flush any pending punned field first)
                                     if let Some(fname_chirho) = current_field_name_chirho.take() {
+                                        let pattern_chirho =
+                                            if let Some(con_name_chirho) =
+                                                pending_field_con_name_chirho.take()
+                                            {
+                                                PatChirho::ConChirho {
+                                                    con_chirho: con_name_chirho,
+                                                    args_chirho: std::mem::take(
+                                                        &mut pending_field_con_args_chirho,
+                                                    ),
+                                                    span_chirho,
+                                                }
+                                            } else {
+                                                PatChirho::VarChirho(fname_chirho.clone())
+                                            };
                                         fields_chirho.push(PatFieldChirho {
-                                            pattern_chirho: PatChirho::VarChirho(
-                                                fname_chirho.clone(),
-                                            ),
+                                            pattern_chirho,
                                             name_chirho: fname_chirho,
                                             span_chirho,
                                         });
@@ -7908,10 +7939,23 @@ impl LowerCtxChirho {
                                     saw_equals_chirho = false;
                                 }
                             } else if kind_chirho == TokenKindChirho::CommaChirho {
-                                // Flush pending punned field
                                 if let Some(fname_chirho) = current_field_name_chirho.take() {
+                                    let pattern_chirho =
+                                        if let Some(con_name_chirho) =
+                                            pending_field_con_name_chirho.take()
+                                        {
+                                            PatChirho::ConChirho {
+                                                con_chirho: con_name_chirho,
+                                                args_chirho: std::mem::take(
+                                                    &mut pending_field_con_args_chirho,
+                                                ),
+                                                span_chirho,
+                                            }
+                                        } else {
+                                            PatChirho::VarChirho(fname_chirho.clone())
+                                        };
                                     fields_chirho.push(PatFieldChirho {
-                                        pattern_chirho: PatChirho::VarChirho(fname_chirho.clone()),
+                                        pattern_chirho,
                                         name_chirho: fname_chirho,
                                         span_chirho,
                                     });
@@ -7930,6 +7974,8 @@ impl LowerCtxChirho {
                                     child_chirho.start_chirho,
                                     child_chirho.start_chirho + n_chirho.text_len_chirho(),
                                 );
+                                pending_field_con_name_chirho = None;
+                                pending_field_con_args_chirho.clear();
                                 fields_chirho.push(PatFieldChirho {
                                     name_chirho: fname_chirho,
                                     pattern_chirho: pat_chirho,
@@ -7943,8 +7989,19 @@ impl LowerCtxChirho {
                 }
                 // Handle trailing punned field
                 if let Some(fname_chirho) = current_field_name_chirho.take() {
+                    let pattern_chirho = if let Some(con_name_chirho) =
+                        pending_field_con_name_chirho.take()
+                    {
+                        PatChirho::ConChirho {
+                            con_chirho: con_name_chirho,
+                            args_chirho: std::mem::take(&mut pending_field_con_args_chirho),
+                            span_chirho,
+                        }
+                    } else {
+                        PatChirho::VarChirho(fname_chirho.clone())
+                    };
                     fields_chirho.push(PatFieldChirho {
-                        pattern_chirho: PatChirho::VarChirho(fname_chirho.clone()),
+                        pattern_chirho,
                         name_chirho: fname_chirho,
                         span_chirho,
                     });

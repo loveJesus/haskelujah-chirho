@@ -12,6 +12,7 @@ use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, MatchArmChirho, RhsChirho, StmtChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho as AstConstraintChirho, TypeChirho};
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
@@ -32,6 +33,17 @@ const UNSATISFIED_CONSTRAINT_CODE_CHIRHO: u16 = 204;
 const SIGNATURE_MISMATCH_CODE_CHIRHO: u16 = 205;
 
 pub type TypeFamilyEnvChirho = HashMap<String, Vec<(Vec<TyChirho>, TyChirho)>>;
+
+fn strip_name_qualifier_chirho(name_text_chirho: &str) -> &str {
+    name_text_chirho
+        .rsplit('.')
+        .next()
+        .unwrap_or(name_text_chirho)
+}
+
+fn record_field_key_chirho(name_chirho: &NameChirho) -> String {
+    strip_name_qualifier_chirho(&name_chirho.full_name_chirho()).to_string()
+}
 
 /// Result of type inference on a module.
 #[derive(Debug)]
@@ -2009,6 +2021,45 @@ impl InferCtxChirho {
         self.env_chirho.lookup_chirho(bare_name_chirho).cloned()
     }
 
+    fn lookup_record_constructor_field_bundle_chirho(
+        &mut self,
+        con_chirho: &NameChirho,
+    ) -> Option<(Vec<String>, Vec<TyChirho>, TyChirho)> {
+        let con_text_chirho = con_chirho.text_chirho();
+        let con_full_name_chirho = con_chirho.full_name_chirho();
+        let scheme_chirho = self.lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+            &con_full_name_chirho,
+            con_text_chirho,
+        )?;
+        if is_placeholder_import_scheme_chirho(&scheme_chirho) {
+            return None;
+        }
+
+        let mut field_names_chirho = self
+            .con_field_names_chirho
+            .get(con_text_chirho)
+            .cloned()
+            .or_else(|| {
+                self.con_field_names_chirho
+                    .get(&con_full_name_chirho)
+                    .cloned()
+            })?;
+        let mut remaining_ty_chirho =
+            self.instantiate_chirho(&scheme_chirho, con_chirho.span_chirho());
+        let mut field_tys_chirho = Vec::new();
+        while field_tys_chirho.len() < field_names_chirho.len() {
+            match remaining_ty_chirho {
+                TyChirho::FunChirho(arg_ty_chirho, result_ty_chirho, _) => {
+                    field_tys_chirho.push(*arg_ty_chirho);
+                    remaining_ty_chirho = *result_ty_chirho;
+                }
+                _ => break,
+            }
+        }
+        field_names_chirho.truncate(field_tys_chirho.len());
+        Some((field_names_chirho, field_tys_chirho, remaining_ty_chirho))
+    }
+
     // -----------------------------------------------------------------------
     // Expression inference
     // -----------------------------------------------------------------------
@@ -2562,6 +2613,76 @@ impl InferCtxChirho {
                 (subst_chirho, last_ty_chirho)
             }
 
+            ExprChirho::ListCompChirho {
+                body_chirho,
+                quals_chirho,
+                span_chirho,
+            } => {
+                let mut subst_chirho = SubstChirho::empty_chirho();
+                self.env_chirho.push_scope_chirho();
+
+                for qual_chirho in quals_chirho {
+                    match qual_chirho {
+                        StmtChirho::ExprChirho(expr_chirho) => {
+                            let (s_chirho, guard_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                            subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+                            self.apply_subst_all_chirho(&s_chirho);
+                            let guard_ty_sub_chirho =
+                                subst_chirho.apply_ty_chirho(&guard_ty_chirho);
+                            if let Ok(su_chirho) = self.unify_normalized_chirho(
+                                &guard_ty_sub_chirho,
+                                &TyChirho::bool_chirho(),
+                                *span_chirho,
+                            ) {
+                                subst_chirho = su_chirho.compose_chirho(&subst_chirho);
+                                self.apply_subst_all_chirho(&su_chirho);
+                            }
+                        }
+                        StmtChirho::BindChirho {
+                            pat_chirho,
+                            expr_chirho,
+                            ..
+                        } => {
+                            let (s_chirho, src_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                            subst_chirho = s_chirho.compose_chirho(&subst_chirho);
+                            self.apply_subst_all_chirho(&s_chirho);
+
+                            let elem_ty_chirho = self.fresh_var_chirho();
+                            let list_ty_chirho =
+                                TyChirho::ListChirho(Box::new(elem_ty_chirho.clone()));
+                            let src_ty_sub_chirho = subst_chirho.apply_ty_chirho(&src_ty_chirho);
+                            if let Ok(su_chirho) = self.unify_normalized_chirho(
+                                &src_ty_sub_chirho,
+                                &list_ty_chirho,
+                                *span_chirho,
+                            ) {
+                                subst_chirho = su_chirho.compose_chirho(&subst_chirho);
+                                self.apply_subst_all_chirho(&su_chirho);
+                            }
+
+                            let bound_ty_chirho = subst_chirho.apply_ty_chirho(&elem_ty_chirho);
+                            let sp_chirho = self.bind_pat_chirho(pat_chirho, &bound_ty_chirho);
+                            subst_chirho = sp_chirho.compose_chirho(&subst_chirho);
+                            self.apply_subst_all_chirho(&sp_chirho);
+                        }
+                        StmtChirho::LetChirho { binds_chirho, .. } => {
+                            self.infer_local_binds_chirho(binds_chirho, &mut subst_chirho);
+                        }
+                    }
+                }
+
+                let (body_subst_chirho, body_ty_chirho) = self.infer_expr_chirho(body_chirho);
+                subst_chirho = body_subst_chirho.compose_chirho(&subst_chirho);
+                self.apply_subst_all_chirho(&body_subst_chirho);
+                self.env_chirho.pop_scope_chirho();
+
+                let final_elem_ty_chirho = subst_chirho.apply_ty_chirho(&body_ty_chirho);
+                (
+                    subst_chirho,
+                    TyChirho::ListChirho(Box::new(final_elem_ty_chirho)),
+                )
+            }
+
             ExprChirho::NegChirho {
                 expr_chirho,
                 span_chirho,
@@ -2736,102 +2857,74 @@ impl InferCtxChirho {
                         let mut con_ty_chirho =
                             self.instantiate_chirho(&scheme_chirho, con_span_chirho);
                         let mut combined_chirho = SubstChirho::empty_chirho();
-                        // For wildcards, infer each field in constructor order
-                        if *has_wildcard_chirho {
-                            if let Some(all_fields_chirho) =
-                                self.con_field_names_chirho.get(con_text_chirho).cloned()
-                            {
-                                for fname_chirho in &all_fields_chirho {
-                                    let (s_chirho, field_ty_chirho) = if let Some(f_chirho) =
-                                        fields_chirho.iter().find(|f_chirho| {
-                                            f_chirho.name_chirho.text_chirho() == fname_chirho
-                                        }) {
-                                        self.infer_expr_chirho(&f_chirho.value_chirho)
+                        if let Some((ordered_field_names_chirho, _, _)) =
+                            self.lookup_record_constructor_field_bundle_chirho(con_chirho)
+                        {
+                            for field_name_chirho in &ordered_field_names_chirho {
+                                let matched_field_chirho =
+                                    fields_chirho.iter().find(|field_chirho| {
+                                        strip_name_qualifier_chirho(
+                                            &field_chirho.name_chirho.full_name_chirho(),
+                                        ) == field_name_chirho
+                                    });
+                                let (s_chirho, field_ty_chirho) = if let Some(field_chirho) =
+                                    matched_field_chirho {
+                                    self.infer_expr_chirho(&field_chirho.value_chirho)
+                                } else if *has_wildcard_chirho {
+                                    let var_scheme_chirho =
+                                        self.env_chirho.lookup_chirho(field_name_chirho).cloned();
+                                    if let Some(scheme_chirho) = var_scheme_chirho {
+                                        (
+                                            SubstChirho::empty_chirho(),
+                                            self.instantiate_chirho(&scheme_chirho, *span_chirho),
+                                        )
                                     } else {
-                                        // Wildcard-expanded: look up variable from scope
-                                        let var_scheme_chirho =
-                                            self.env_chirho.lookup_chirho(fname_chirho).cloned();
-                                        if let Some(scheme_chirho) = var_scheme_chirho {
-                                            (
-                                                SubstChirho::empty_chirho(),
-                                                self.instantiate_chirho(
-                                                    &scheme_chirho,
-                                                    *span_chirho,
+                                        self.diagnostics_chirho.push_chirho(
+                                            DiagnosticChirho::error_with_code_chirho(
+                                                ErrorCodeChirho::error_chirho(200),
+                                                format!(
+                                                    "RecordWildCards: variable `{}` not in scope",
+                                                    field_name_chirho
                                                 ),
-                                            )
-                                        } else {
-                                            self.diagnostics_chirho.push_chirho(
-                                                DiagnosticChirho::error_with_code_chirho(
-                                                    ErrorCodeChirho::error_chirho(200),
-                                                    format!("RecordWildCards: variable `{}` not in scope", fname_chirho),
-                                                    *span_chirho,
-                                                ),
-                                            );
-                                            (SubstChirho::empty_chirho(), self.fresh_var_chirho())
-                                        }
-                                    };
-                                    combined_chirho = s_chirho.compose_chirho(&combined_chirho);
-                                    con_ty_chirho = combined_chirho.apply_ty_chirho(&con_ty_chirho);
-                                    let result_ty_chirho = self.fresh_var_chirho();
-                                    let expected_chirho = TyChirho::FunChirho(
-                                        Box::new(field_ty_chirho),
-                                        Box::new(result_ty_chirho.clone()),
-                                        MultChirho::ManyChirho,
-                                    );
-                                    match self.unify_normalized_chirho(
-                                        &con_ty_chirho,
-                                        &expected_chirho,
-                                        *span_chirho,
-                                    ) {
-                                        Ok(s2_chirho) => {
-                                            self.apply_subst_all_chirho(&s2_chirho);
-                                            combined_chirho =
-                                                s2_chirho.compose_chirho(&combined_chirho);
-                                            con_ty_chirho =
-                                                combined_chirho.apply_ty_chirho(&result_ty_chirho);
-                                        }
-                                        Err(err_chirho) => {
-                                            self.report_unify_error_chirho(&err_chirho);
-                                            return (combined_chirho, self.fresh_var_chirho());
-                                        }
+                                                *span_chirho,
+                                            ),
+                                        );
+                                        (SubstChirho::empty_chirho(), self.fresh_var_chirho())
+                                    }
+                                } else {
+                                    // Haskell record construction is keyed by field label, not by
+                                    // source order. Consume omitted fields with fresh types so
+                                    // later named fields still align to the constructor layout.
+                                    (SubstChirho::empty_chirho(), self.fresh_var_chirho())
+                                };
+                                combined_chirho = s_chirho.compose_chirho(&combined_chirho);
+                                con_ty_chirho = combined_chirho.apply_ty_chirho(&con_ty_chirho);
+                                let result_ty_chirho = self.fresh_var_chirho();
+                                let expected_chirho = TyChirho::FunChirho(
+                                    Box::new(field_ty_chirho),
+                                    Box::new(result_ty_chirho.clone()),
+                                    MultChirho::ManyChirho,
+                                );
+                                match self.unify_normalized_chirho(
+                                    &con_ty_chirho,
+                                    &expected_chirho,
+                                    *span_chirho,
+                                ) {
+                                    Ok(s2_chirho) => {
+                                        self.apply_subst_all_chirho(&s2_chirho);
+                                        combined_chirho =
+                                            s2_chirho.compose_chirho(&combined_chirho);
+                                        con_ty_chirho =
+                                            combined_chirho.apply_ty_chirho(&result_ty_chirho);
+                                    }
+                                    Err(err_chirho) => {
+                                        self.report_unify_error_chirho(&err_chirho);
+                                        return (combined_chirho, self.fresh_var_chirho());
                                     }
                                 }
-                                (combined_chirho, con_ty_chirho)
-                            } else {
-                                // No field info — fall through to default handling
-                                for field_chirho in fields_chirho {
-                                    let (s_chirho, field_ty_chirho) =
-                                        self.infer_expr_chirho(&field_chirho.value_chirho);
-                                    combined_chirho = s_chirho.compose_chirho(&combined_chirho);
-                                    con_ty_chirho = combined_chirho.apply_ty_chirho(&con_ty_chirho);
-                                    let result_ty_chirho = self.fresh_var_chirho();
-                                    let expected_chirho = TyChirho::FunChirho(
-                                        Box::new(field_ty_chirho),
-                                        Box::new(result_ty_chirho.clone()),
-                                        MultChirho::ManyChirho,
-                                    );
-                                    match self.unify_normalized_chirho(
-                                        &con_ty_chirho,
-                                        &expected_chirho,
-                                        *span_chirho,
-                                    ) {
-                                        Ok(s2_chirho) => {
-                                            self.apply_subst_all_chirho(&s2_chirho);
-                                            combined_chirho =
-                                                s2_chirho.compose_chirho(&combined_chirho);
-                                            con_ty_chirho =
-                                                combined_chirho.apply_ty_chirho(&result_ty_chirho);
-                                        }
-                                        Err(err_chirho) => {
-                                            self.report_unify_error_chirho(&err_chirho);
-                                            return (combined_chirho, self.fresh_var_chirho());
-                                        }
-                                    }
-                                }
-                                (combined_chirho, con_ty_chirho)
                             }
+                            (combined_chirho, con_ty_chirho)
                         } else {
-                            // Non-wildcard: apply each explicit field
                             for field_chirho in fields_chirho {
                                 let (s_chirho, field_ty_chirho) =
                                     self.infer_expr_chirho(&field_chirho.value_chirho);
@@ -3010,9 +3103,7 @@ impl InferCtxChirho {
                 let mut used_con_types_chirho = false;
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 if let Some(scheme_chirho) = scheme_opt_chirho {
-                    // Only use constructor types if the scheme is polymorphic
-                    // (has forall-bound vars), indicating GADT or polymorphic fields
-                    if !scheme_chirho.vars_chirho.is_empty() {
+                    if !is_placeholder_import_scheme_chirho(&scheme_chirho) {
                         let con_ty_chirho =
                             self.instantiate_chirho(&scheme_chirho, SpanChirho::DUMMY_CHIRHO);
                         let mut remaining_chirho = con_ty_chirho;
@@ -3064,20 +3155,44 @@ impl InferCtxChirho {
                 has_wildcard_chirho,
                 ..
             } => {
-                // Each record field pattern introduces a binding
                 let mut subst_chirho = SubstChirho::empty_chirho();
+                let mut field_type_map_chirho = HashMap::new();
+                if let Some((field_names_chirho, field_tys_chirho, result_ty_chirho)) =
+                    self.lookup_record_constructor_field_bundle_chirho(con_chirho)
+                {
+                    if let Ok(result_subst_chirho) = self.unify_normalized_chirho(
+                        &result_ty_chirho,
+                        ty_chirho,
+                        SpanChirho::DUMMY_CHIRHO,
+                    ) {
+                        self.apply_subst_all_chirho(&result_subst_chirho);
+                        subst_chirho = result_subst_chirho.compose_chirho(&subst_chirho);
+                    }
+                    for (field_name_chirho, field_ty_chirho) in field_names_chirho
+                        .into_iter()
+                        .zip(field_tys_chirho.into_iter())
+                    {
+                        field_type_map_chirho.insert(
+                            field_name_chirho,
+                            subst_chirho.apply_ty_chirho(&field_ty_chirho),
+                        );
+                    }
+                }
                 for field_chirho in fields_chirho {
-                    let fresh_chirho = self.fresh_var_chirho();
+                    let field_name_key_chirho = record_field_key_chirho(&field_chirho.name_chirho);
+                    let field_ty_chirho = field_type_map_chirho
+                        .get(&field_name_key_chirho)
+                        .cloned()
+                        .unwrap_or_else(|| self.fresh_var_chirho());
                     let s_chirho =
-                        self.bind_pat_chirho(&field_chirho.pattern_chirho, &fresh_chirho);
+                        self.bind_pat_chirho(&field_chirho.pattern_chirho, &field_ty_chirho);
                     subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                     self.apply_subst_all_chirho(&s_chirho);
                 }
-                // RecordWildCards: bind remaining fields as variables
                 if *has_wildcard_chirho {
                     let explicit_names_chirho: std::collections::HashSet<String> = fields_chirho
                         .iter()
-                        .map(|f_chirho| f_chirho.name_chirho.text_chirho().to_string())
+                        .map(|f_chirho| record_field_key_chirho(&f_chirho.name_chirho))
                         .collect();
                     if let Some(all_fields_chirho) = self
                         .con_field_names_chirho
@@ -3086,7 +3201,10 @@ impl InferCtxChirho {
                     {
                         for field_name_chirho in &all_fields_chirho {
                             if !explicit_names_chirho.contains(field_name_chirho) {
-                                let fresh_chirho = self.fresh_var_chirho();
+                                let fresh_chirho = field_type_map_chirho
+                                    .get(field_name_chirho)
+                                    .cloned()
+                                    .unwrap_or_else(|| self.fresh_var_chirho());
                                 self.env_chirho.bind_chirho(
                                     field_name_chirho.clone(),
                                     SchemeChirho::mono_chirho(fresh_chirho),

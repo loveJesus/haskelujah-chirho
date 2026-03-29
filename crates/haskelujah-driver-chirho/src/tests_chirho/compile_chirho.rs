@@ -235,6 +235,34 @@ useCoverageMiniChirho OtherMiniChirho{valueMiniChirho} = valueMiniChirho\n",
 }
 
 #[test]
+fn frontend_record_pattern_nested_constructor_after_equals_binds_inner_name_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module RecordPatternNestedConMiniChirho where\n\
+data ConfidenceMiniChirho = ConfidenceMiniChirho\n\
+  { certaintyMiniChirho :: Integer\n\
+  }\n\
+\n\
+data StateMiniChirho = MkStateMiniChirho\n\
+  { coverageConfidenceMiniChirho :: Maybe ConfidenceMiniChirho\n\
+  }\n\
+\n\
+confidenceLevelMiniChirho :: StateMiniChirho -> Integer\n\
+confidenceLevelMiniChirho MkStateMiniChirho{coverageConfidenceMiniChirho = Just confidenceMiniChirho} =\n\
+  certaintyMiniChirho confidenceMiniChirho\n\
+confidenceLevelMiniChirho _ = 0\n",
+        &mut source_map_chirho,
+        "RecordPatternNestedConMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "record field patterns with nested constructors should bind the inner name, not the whole field type: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_lambda_tuple_pattern_binds_names_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
