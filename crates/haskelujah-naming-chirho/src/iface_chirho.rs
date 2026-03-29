@@ -7202,6 +7202,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "toLower",
             "toUpper",
             "toTitle",
+            "toCaseFold",
             "foldl",
             "foldl'",
             "foldr",
@@ -7256,6 +7257,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "null",
             "length",
             "map",
+            "toCaseFold",
             "intercalate",
             "concat",
             "foldrChunks",
@@ -11401,6 +11403,67 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Prettyprinter.Internal".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        // Prettyprinter.Render.Terminal (ANSI terminal rendering)
+        {
+            let mut render_exports_chirho = exports_chirho.clone();
+            for name_chirho in &[
+                "renderStrict", "renderLazy", "renderIO", "putDoc", "hPutDoc",
+                "AnsiStyle", "Color", "color", "colorDull", "bgColor", "bgColorDull",
+                "bold", "italicized", "underlined",
+            ] {
+                let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+                render_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+            }
+            for name_chirho in &["AnsiStyle", "Color"] {
+                let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+                render_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+            }
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: "Prettyprinter.Render.Terminal".to_string(),
+                exports_chirho: render_exports_chirho.clone(),
+            });
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: "Prettyprinter.Render.Text".to_string(),
+                exports_chirho: render_exports_chirho,
+            });
+        }
+    }
+
+    // Data.ByteString.Builder.Prim
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "BoundedPrim", "FixedPrim", "primFixed", "primBounded",
+            "primMapListFixed", "primMapListBounded",
+            "primUnfoldrFixed", "primUnfoldrBounded",
+            "primMapByteStringFixed", "primMapLazyByteStringFixed",
+            "word8", "int8", "word16BE", "word16LE", "word32BE", "word32LE",
+            "word64BE", "word64LE", "int16BE", "int16LE", "int32BE",
+            "int32LE", "int64BE", "int64LE", "floatBE", "floatLE",
+            "doubleBE", "doubleLE", "intDec", "int8Dec", "int16Dec",
+            "int32Dec", "int64Dec", "integerDec", "wordDec", "word8Dec",
+            "word16Dec", "word32Dec", "word64Dec", "wordHex", "word8Hex",
+            "word16Hex", "word32Hex", "word64Hex",
+            "int8HexFixed", "int16HexFixed", "int32HexFixed", "int64HexFixed",
+            "word8HexFixed", "word16HexFixed", "word32HexFixed", "word64HexFixed",
+            "floatHexFixed", "doubleHexFixed", "char7", "char8", "charUtf8",
+            "condB", "emptyB", "liftFixedToBounded",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["BoundedPrim", "FixedPrim"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.ByteString.Builder.Prim".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.ByteString.Builder.Prim.Internal".to_string(),
             exports_chirho,
         });
     }
