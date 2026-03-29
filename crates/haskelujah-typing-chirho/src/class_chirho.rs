@@ -1511,6 +1511,40 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
+        // MonadFail class
+        let monad_fail_m_chirho = TyVarChirho(9063);
+        let monad_fail_a_chirho = TyVarChirho(9064);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "MonadFail".to_string(),
+            supers_chirho: vec!["Monad".to_string()],
+            var_chirho: monad_fail_m_chirho,
+            methods_chirho: HashMap::from([(
+                "fail".to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![monad_fail_m_chirho, monad_fail_a_chirho],
+                    preds_chirho: vec![],
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::string_chirho(),
+                        TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(monad_fail_m_chirho)),
+                            Box::new(TyChirho::VarChirho(monad_fail_a_chirho)),
+                        ),
+                    ),
+                },
+            )]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // instance MonadFail IO
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "MonadFail".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("IO".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
         // Typeable — GHC built-in class. Every type is automatically Typeable.
         // We add a universal instance so that any Typeable constraint is satisfied.
         let typeable_var_chirho = TyVarChirho(9070);
@@ -2966,6 +3000,7 @@ mod tests_chirho {
         assert!(env_chirho.has_class_chirho("Functor"));
         assert!(env_chirho.has_class_chirho("Applicative"));
         assert!(env_chirho.has_class_chirho("Monad"));
+        assert!(env_chirho.has_class_chirho("MonadFail"));
         assert!(env_chirho.has_class_chirho("Semigroup"));
         assert!(env_chirho.has_class_chirho("Monoid"));
 
@@ -2981,6 +3016,22 @@ mod tests_chirho {
             env_chirho.superclasses_chirho("Monoid"),
             vec!["Semigroup".to_string()]
         );
+        assert_eq!(
+            env_chirho.superclasses_chirho("MonadFail"),
+            vec!["Monad".to_string()]
+        );
+    }
+
+    #[test]
+    fn resolve_monadfail_io_chirho() {
+        let mut env_chirho = ClassEnvChirho::new_chirho();
+        env_chirho.seed_standard_chirho();
+
+        let pred_chirho =
+            PredChirho::new_chirho("MonadFail", TyChirho::ConChirho("IO".to_string()));
+        let result_chirho = env_chirho.resolve_chirho(&pred_chirho);
+        assert!(result_chirho.is_some());
+        assert!(result_chirho.unwrap().is_empty());
     }
 
     #[test]

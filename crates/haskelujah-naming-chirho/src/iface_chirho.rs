@@ -75,6 +75,7 @@ fn canonical_value_name_chirho(name_chirho: &str) -> String {
 fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'static str]> {
     match class_name_chirho {
         "Monad" => Some(&["return", ">>=", ">>"]),
+        "MonadFail" => Some(&["fail"]),
         "Functor" => Some(&["fmap", "<$"]),
         "Applicative" => Some(&["pure", "<*>", "*>", "<*"]),
         "Alternative" => Some(&["empty", "<|>", "some", "many", "optional"]),
@@ -7490,6 +7491,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "word32LE",
             "word64BE",
             "word64LE",
+            "wordHost",
+            "word16Host",
+            "word32Host",
+            "word64Host",
+            "intHost",
+            "int16Host",
+            "int32Host",
+            "int64Host",
             "floatBE",
             "floatLE",
             "doubleBE",
