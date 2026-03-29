@@ -2279,6 +2279,103 @@ fn frontend_qualified_bytestring_char8_read_file_uses_bytestring_scheme_chirho()
 }
 
 #[test]
+fn frontend_unqualified_readfile_accepts_qualified_bytestring_signature_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ByteStringSignatureBridgeMiniChirho where\nimport Data.ByteString (readFile)\nimport qualified Data.ByteString as B\nreadQualifiedChirho :: FilePath -> IO B.ByteString\nreadQualifiedChirho = readFile\n",
+        &mut source_map_chirho,
+        "ByteStringSignatureBridgeMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "unqualified ByteString schemes should agree with qualified ByteString signatures: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_cross_module_qualified_bytestring_aliases_stay_compatible_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "ByteStringBridgeDepMiniChirho",
+            "module ByteStringBridgeDepMiniChirho where\n\
+             import qualified Data.ByteString as B\n\
+             byteLengthChirho :: B.ByteString -> Int\n\
+             byteLengthChirho = B.length\n",
+        ),
+        (
+            "ByteStringBridgeUseMiniChirho",
+            "module ByteStringBridgeUseMiniChirho where\n\
+             import ByteStringBridgeDepMiniChirho (byteLengthChirho)\n\
+             import qualified Data.ByteString as B\n\
+             valueChirho :: B.ByteString -> Int\n\
+             valueChirho bsChirho = byteLengthChirho bsChirho\n",
+        ),
+    ];
+
+    let result_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Data.ByteString aliases should remain compatible across module exports: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_instance_head_qualified_bytestring_alias_matches_imported_scheme_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho = [
+        (
+            "ByteStringInstanceDepMiniChirho",
+            "module ByteStringInstanceDepMiniChirho where\n\
+             import qualified Data.ByteString as B\n\
+             byteLengthChirho :: B.ByteString -> Int\n\
+             byteLengthChirho = B.length\n",
+        ),
+        (
+            "ByteStringInstanceUseMiniChirho",
+            "module ByteStringInstanceUseMiniChirho where\n\
+             import ByteStringInstanceDepMiniChirho (byteLengthChirho)\n\
+             import qualified Data.ByteString as B\n\
+             class HashMiniChirho aChirho where\n\
+               hashMiniChirho :: aChirho -> Int\n\
+             instance HashMiniChirho B.ByteString where\n\
+               hashMiniChirho bsChirho = byteLengthChirho bsChirho\n",
+        ),
+    ];
+
+    let result_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Data.ByteString instance heads should agree with imported bare ByteString schemes: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_bytestring_builder_char8_is_not_shadowed_by_text_encoding_char8_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ByteStringBuilderChar8MiniChirho where\n\
+         import Data.ByteString.Builder (Builder, char8)\n\
+         oneCharBuilderChirho :: Builder\n\
+         oneCharBuilderChirho = char8 'a'\n",
+        &mut source_map_chirho,
+        "ByteStringBuilderChar8MiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Data.ByteString.Builder.char8 should not resolve to System.IO.TextEncoding char8: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_qualified_lazy_bytestring_char8_read_file_uses_bytestring_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
@@ -2295,6 +2392,22 @@ fn frontend_qualified_lazy_bytestring_char8_read_file_uses_bytestring_scheme_chi
 }
 
 #[test]
+fn frontend_qualified_prelude_char_signature_unifies_with_unqualified_char_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module PreludeCharBridgeMiniChirho where\nimport qualified Prelude as P\ncharIdChirho :: P.Char -> Char\ncharIdChirho xChirho = xChirho\n",
+        &mut source_map_chirho,
+        "PreludeCharBridgeMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Prelude type constructors should agree with their unqualified imported names: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_qualified_nonempty_reverse_uses_nonempty_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
@@ -2306,6 +2419,38 @@ fn frontend_qualified_nonempty_reverse_uses_nonempty_scheme_chirho() {
     assert!(
         result_chirho.is_ok(),
         "qualified Data.List.NonEmpty.reverse should use the NonEmpty-specific scheme: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_qualified_prelude_bool_signature_unifies_with_unqualified_bool_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module PreludeBoolBridgeMiniChirho where\nimport qualified Prelude as P\nboolIdChirho :: P.Bool -> Bool\nboolIdChirho xChirho = xChirho\n",
+        &mut source_map_chirho,
+        "PreludeBoolBridgeMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Prelude.Bool should agree with unqualified Bool when both are in scope: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_qualified_text_tocasefold_stays_in_scope_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module TextCaseFoldMiniChirho where\nimport qualified Data.Text as T\nnormalizeChirho :: T.Text -> T.Text\nnormalizeChirho = T.toCaseFold\n",
+        &mut source_map_chirho,
+        "TextCaseFoldMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified Data.Text.toCaseFold should stay in scope: {:?}",
         result_chirho.err()
     );
 }

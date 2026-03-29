@@ -1439,30 +1439,23 @@ fn qualify_imported_ast_type_chirho(
     match ty_chirho {
         TypeChirho::ConChirho(name_chirho) => {
             let bare_name_chirho = name_chirho.text_chirho();
-            let preferred_qualifier_chirho =
-                if unqualified_type_names_chirho.contains(bare_name_chirho) {
-                    None
-                } else if qualifiable_type_names_chirho.contains(bare_name_chirho) {
-                    Some(qualifier_chirho.to_string())
-                } else {
-                    preferred_qualified_type_names_chirho
-                        .get(bare_name_chirho)
-                        .cloned()
-                };
-            if let Some(preferred_qualifier_chirho) = preferred_qualifier_chirho {
-                let span_chirho = name_chirho.span_chirho();
-                TypeChirho::ConChirho(haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
-                    haskelujah_ast_chirho::name_chirho::RawNameChirho::qualified_chirho(
-                        preferred_qualifier_chirho,
-                        bare_name_chirho.to_string(),
-                        span_chirho,
-                    ),
-                ))
-            } else if unqualified_type_names_chirho.contains(bare_name_chirho) {
+            let should_canonicalize_unqualified_chirho =
+                unqualified_type_names_chirho.contains(bare_name_chirho)
+                    || preferred_qualified_type_names_chirho.contains_key(bare_name_chirho);
+            if should_canonicalize_unqualified_chirho {
                 TypeChirho::ConChirho(haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
                     haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
                         bare_name_chirho.to_string(),
                         name_chirho.span_chirho(),
+                    ),
+                ))
+            } else if qualifiable_type_names_chirho.contains(bare_name_chirho) {
+                let span_chirho = name_chirho.span_chirho();
+                TypeChirho::ConChirho(haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
+                    haskelujah_ast_chirho::name_chirho::RawNameChirho::qualified_chirho(
+                        qualifier_chirho.to_string(),
+                        bare_name_chirho.to_string(),
+                        span_chirho,
                     ),
                 ))
             } else {
@@ -1604,17 +1597,13 @@ fn qualify_imported_ty_chirho(
                 .rsplit('.')
                 .next()
                 .unwrap_or(name_chirho.as_str());
-            if unqualified_type_names_chirho.contains(bare_name_chirho) {
+            if unqualified_type_names_chirho.contains(bare_name_chirho)
+                || preferred_qualified_type_names_chirho.contains_key(bare_name_chirho)
+            {
                 haskelujah_typing_chirho::TyChirho::ConChirho(bare_name_chirho.to_string())
             } else if qualifiable_type_names_chirho.contains(bare_name_chirho) {
                 haskelujah_typing_chirho::TyChirho::ConChirho(format!(
                     "{qualifier_chirho}.{bare_name_chirho}"
-                ))
-            } else if let Some(preferred_qualifier_chirho) =
-                preferred_qualified_type_names_chirho.get(bare_name_chirho)
-            {
-                haskelujah_typing_chirho::TyChirho::ConChirho(format!(
-                    "{preferred_qualifier_chirho}.{bare_name_chirho}"
                 ))
             } else {
                 haskelujah_typing_chirho::TyChirho::ConChirho(name_chirho.clone())
@@ -2044,6 +2033,8 @@ pub fn run_frontend_with_type_synonyms_and_type_families_chirho(
             &merged_imported_type_synonyms_chirho,
             &merged_imported_type_families_chirho,
             &merged_imported_record_field_names_chirho,
+            &safe_unqualified_imported_type_names_chirho,
+            &preferred_qualified_type_names_chirho,
         )
     };
     if !defer_errors_chirho && infer_result_chirho.diagnostics_chirho.has_errors_chirho() {

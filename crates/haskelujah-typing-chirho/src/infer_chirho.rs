@@ -91,6 +91,10 @@ pub struct InferCtxChirho {
     module_default_types_chirho: Vec<TyChirho>,
     /// Whether the current module enables OverloadedStrings.
     overloaded_strings_chirho: bool,
+    /// Imported type constructors that can safely stay unqualified.
+    safe_unqualified_imported_type_names_chirho: HashSet<String>,
+    /// Canonical module qualifiers for imported type constructors.
+    preferred_qualified_type_names_chirho: HashMap<String, String>,
 }
 
 impl InferCtxChirho {
@@ -376,6 +380,34 @@ impl InferCtxChirho {
             con_field_names_chirho: HashMap::new(),
             module_default_types_chirho: Vec::new(),
             overloaded_strings_chirho: false,
+            safe_unqualified_imported_type_names_chirho: HashSet::new(),
+            preferred_qualified_type_names_chirho: HashMap::new(),
+        }
+    }
+
+    fn set_imported_type_name_preferences_chirho(
+        &mut self,
+        safe_unqualified_imported_type_names_chirho: &HashSet<String>,
+        preferred_qualified_type_names_chirho: &HashMap<String, String>,
+    ) {
+        self.safe_unqualified_imported_type_names_chirho =
+            safe_unqualified_imported_type_names_chirho.clone();
+        self.preferred_qualified_type_names_chirho =
+            preferred_qualified_type_names_chirho.clone();
+    }
+
+    fn normalize_imported_type_name_chirho(&self, name_text_chirho: &str) -> String {
+        let bare_name_chirho = strip_name_qualifier_chirho(name_text_chirho);
+        if self
+            .safe_unqualified_imported_type_names_chirho
+            .contains(bare_name_chirho)
+            || self
+                .preferred_qualified_type_names_chirho
+                .contains_key(bare_name_chirho)
+        {
+            bare_name_chirho.to_string()
+        } else {
+            name_text_chirho.to_string()
         }
     }
 
@@ -1327,7 +1359,8 @@ impl InferCtxChirho {
                 TyChirho::VarChirho(*tv_chirho)
             }
             TypeChirho::ConChirho(name_chirho) => {
-                let text_chirho = name_chirho.full_name_chirho();
+                let text_chirho =
+                    self.normalize_imported_type_name_chirho(&name_chirho.full_name_chirho());
                 let raw_chirho = TyChirho::ConChirho(text_chirho);
                 // Eagerly expand nullary type synonyms (e.g. String → [Char])
                 self.expand_type_synonyms_chirho(&raw_chirho)
@@ -15849,63 +15882,75 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
-    // System.IO TextEncoding surface
-    for text_encoding_name_chirho in &[
-        "utf8",
-        "utf8_bom",
-        "utf16",
-        "utf16le",
-        "utf16be",
-        "utf32",
-        "utf32le",
-        "utf32be",
-        "latin1",
-        "char8",
-        "localeEncoding",
+    // System.IO TextEncoding surface.
+    //
+    // Keep these seeded under module-qualified names only. Bare bindings like
+    // `char8` or `latin1` collide with bytestring-builder exports and can pin
+    // unrelated imports to the System.IO `TextEncoding` surface.
+    for encoding_module_name_chirho in &[
+        "System.IO",
+        "GHC.IO.Encoding",
+        "GHC.IO.Encoding.UTF8",
+        "GHC.IO.Encoding.Latin1",
+        "GHC.IO.Encoding.CodePage",
     ] {
+        for text_encoding_name_chirho in &[
+            "utf8",
+            "utf8_bom",
+            "utf16",
+            "utf16le",
+            "utf16be",
+            "utf32",
+            "utf32le",
+            "utf32be",
+            "latin1",
+            "char8",
+            "localeEncoding",
+        ] {
+            env_chirho.bind_chirho(
+                format!("{encoding_module_name_chirho}.{text_encoding_name_chirho}"),
+                SchemeChirho::mono_chirho(TyChirho::ConChirho("TextEncoding".to_string())),
+            );
+        }
         env_chirho.bind_chirho(
-            text_encoding_name_chirho.to_string(),
-            SchemeChirho::mono_chirho(TyChirho::ConChirho("TextEncoding".to_string())),
-        );
-    }
-    env_chirho.bind_chirho(
-        "mkTextEncoding".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::string_chirho(),
-            TyChirho::io_chirho(TyChirho::ConChirho("TextEncoding".to_string())),
-        )),
-    );
-    for (encoding_getter_name_chirho, encoding_result_ty_chirho) in [
-        (
-            "getLocaleEncoding",
-            TyChirho::io_chirho(TyChirho::ConChirho("TextEncoding".to_string())),
-        ),
-        (
-            "getFileSystemEncoding",
-            TyChirho::io_chirho(TyChirho::ConChirho("TextEncoding".to_string())),
-        ),
-        (
-            "getForeignEncoding",
-            TyChirho::io_chirho(TyChirho::ConChirho("TextEncoding".to_string())),
-        ),
-    ] {
-        env_chirho.bind_chirho(
-            encoding_getter_name_chirho.to_string(),
-            SchemeChirho::mono_chirho(encoding_result_ty_chirho),
-        );
-    }
-    for encoding_setter_name_chirho in &[
-        "setLocaleEncoding",
-        "setFileSystemEncoding",
-        "setForeignEncoding",
-    ] {
-        env_chirho.bind_chirho(
-            encoding_setter_name_chirho.to_string(),
+            format!("{encoding_module_name_chirho}.mkTextEncoding"),
             SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-                TyChirho::ConChirho("TextEncoding".to_string()),
-                TyChirho::io_chirho(TyChirho::unit_chirho()),
+                TyChirho::string_chirho(),
+                TyChirho::io_chirho(TyChirho::ConChirho("TextEncoding".to_string())),
             )),
         );
+        for (encoding_getter_name_chirho, encoding_result_ty_chirho) in [
+            (
+                "getLocaleEncoding",
+                TyChirho::io_chirho(TyChirho::ConChirho("TextEncoding".to_string())),
+            ),
+            (
+                "getFileSystemEncoding",
+                TyChirho::io_chirho(TyChirho::ConChirho("TextEncoding".to_string())),
+            ),
+            (
+                "getForeignEncoding",
+                TyChirho::io_chirho(TyChirho::ConChirho("TextEncoding".to_string())),
+            ),
+        ] {
+            env_chirho.bind_chirho(
+                format!("{encoding_module_name_chirho}.{encoding_getter_name_chirho}"),
+                SchemeChirho::mono_chirho(encoding_result_ty_chirho),
+            );
+        }
+        for encoding_setter_name_chirho in &[
+            "setLocaleEncoding",
+            "setFileSystemEncoding",
+            "setForeignEncoding",
+        ] {
+            env_chirho.bind_chirho(
+                format!("{encoding_module_name_chirho}.{encoding_setter_name_chirho}"),
+                SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                    TyChirho::ConChirho("TextEncoding".to_string()),
+                    TyChirho::io_chirho(TyChirho::unit_chirho()),
+                )),
+            );
+        }
     }
 
     // Data.Ord Down surface
@@ -16312,11 +16357,15 @@ fn infer_lit_chirho(lit_chirho: &LitChirho) -> TyChirho {
 
 /// Run type inference on a module. This is the main entry point.
 pub fn infer_module_chirho(module_chirho: &ModuleChirho) -> InferResultChirho {
+    let safe_unqualified_imported_type_names_chirho = HashSet::new();
+    let preferred_qualified_type_names_chirho = HashMap::new();
     infer_module_with_imports_and_type_synonyms_chirho(
         module_chirho,
         &HashMap::new(),
         &HashMap::new(),
         &HashMap::new(),
+        &safe_unqualified_imported_type_names_chirho,
+        &preferred_qualified_type_names_chirho,
     )
 }
 
@@ -16327,11 +16376,15 @@ pub fn infer_module_with_imports_chirho(
     module_chirho: &ModuleChirho,
     imported_types_chirho: &HashMap<String, SchemeChirho>,
 ) -> InferResultChirho {
+    let safe_unqualified_imported_type_names_chirho = HashSet::new();
+    let preferred_qualified_type_names_chirho = HashMap::new();
     infer_module_with_imports_and_type_synonyms_chirho(
         module_chirho,
         imported_types_chirho,
         &HashMap::new(),
         &HashMap::new(),
+        &safe_unqualified_imported_type_names_chirho,
+        &preferred_qualified_type_names_chirho,
     )
 }
 
@@ -16354,6 +16407,8 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
     imported_types_chirho: &HashMap<String, SchemeChirho>,
     imported_type_synonyms_chirho: &HashMap<String, (Vec<String>, TypeChirho)>,
     imported_record_field_names_chirho: &HashMap<String, Vec<String>>,
+    safe_unqualified_imported_type_names_chirho: &HashSet<String>,
+    preferred_qualified_type_names_chirho: &HashMap<String, String>,
 ) -> InferResultChirho {
     let imported_type_families_chirho = TypeFamilyEnvChirho::new();
     infer_module_with_imports_type_synonyms_and_families_chirho(
@@ -16362,6 +16417,8 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
         imported_type_synonyms_chirho,
         &imported_type_families_chirho,
         imported_record_field_names_chirho,
+        safe_unqualified_imported_type_names_chirho,
+        preferred_qualified_type_names_chirho,
     )
 }
 
@@ -16371,8 +16428,14 @@ pub fn infer_module_with_imports_type_synonyms_and_families_chirho(
     imported_type_synonyms_chirho: &HashMap<String, (Vec<String>, TypeChirho)>,
     imported_type_families_chirho: &TypeFamilyEnvChirho,
     imported_record_field_names_chirho: &HashMap<String, Vec<String>>,
+    safe_unqualified_imported_type_names_chirho: &HashSet<String>,
+    preferred_qualified_type_names_chirho: &HashMap<String, String>,
 ) -> InferResultChirho {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
+    ctx_chirho.set_imported_type_name_preferences_chirho(
+        safe_unqualified_imported_type_names_chirho,
+        preferred_qualified_type_names_chirho,
+    );
     ctx_chirho.overloaded_strings_chirho = module_chirho
         .extensions_chirho
         .iter()

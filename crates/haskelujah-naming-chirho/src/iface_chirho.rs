@@ -13853,6 +13853,133 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             exports_chirho,
         });
     }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["decimal", "hexadecimal"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Text.Lazy.Builder.Int".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "inlineInterleaveST",
+            "inlinePerformIO",
+            "unsafeDupablePerformIO",
+            "iter",
+            "iterArray",
+            "iter_",
+            "reverseIter",
+            "reverseIterArray",
+            "reverseIter_",
+            "unsafeHead",
+            "unsafeTail",
+            "lengthWord8",
+            "lengthWord16",
+            "takeWord8",
+            "dropWord8",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Iter", &["Iter"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Text.Unsafe".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Attoparsec buffer modules
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "buffer",
+            "unbuffer",
+            "pappend",
+            "length",
+            "unsafeIndex",
+            "substring",
+            "unsafeDrop",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Buffer", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Attoparsec.ByteString.Buffer".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "buffer",
+            "unbuffer",
+            "unbufferAt",
+            "length",
+            "pappend",
+            "iter",
+            "iter_",
+            "substring",
+            "lengthCodeUnits",
+            "dropCodeUnits",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Buffer", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Attoparsec.Text.Buffer".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "fromList",
+            "set",
+            "memberChar",
+            "memberWord8",
+            "fromSet",
+            "charClass",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("FastSet", &["Sorted", "Table"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Attoparsec.ByteString.FastSet".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["withPS", "mkPS"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Attoparsec.Internal.Compat".to_string(),
+            exports_chirho,
+        });
+    }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_val_chirho("inlinePerformIO");
+        exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Attoparsec.Internal.Fhthagn".to_string(),
+            exports_chirho,
+        });
+    }
 
     // Data.CaseInsensitive / GHC.Storable / Network.Socket* / System.TimeManager (needed by warp)
     {
