@@ -49,7 +49,7 @@
 		{ labelChirho: 'GHC Compatibility', valueChirho: '88.8%', detailChirho: '833 / 938 tests' },
 		{ labelChirho: 'Module Interfaces', valueChirho: '380+', detailChirho: 'Synthetic Haskell module interfaces' },
 		{ labelChirho: 'Passing Tests', valueChirho: '2,500+', detailChirho: '537/537 curated, 192 parser, 190 typing' },
-		{ labelChirho: 'Hackage Packages', valueChirho: '116', detailChirho: 'unordered-containers + stm + random + HUnit + these + resourcet + comonad + 109 more' }
+		{ labelChirho: 'Hackage Packages', valueChirho: '116', detailChirho: 'QuickCheck (18 modules) + mtl (24 modules) + comonad + some + stm + random + HUnit + 109 more' }
 	];
 
 	const heroPillsChirho = [
