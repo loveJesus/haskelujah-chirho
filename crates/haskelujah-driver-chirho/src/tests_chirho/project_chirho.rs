@@ -1583,6 +1583,37 @@ treeWordSizeChirho = wordSize\n",
     }
 
     #[test]
+    fn compile_real_quickcheck_cabal_project_moves_past_template_haskell_runio_scope_gap_chirho() {
+        use crate::compile_cabal_project_chirho;
+        use haskelujah_package_chirho::PackageIndexChirho;
+
+        let cabal_path_chirho = workspace_root_chirho()
+            .join(".haskelujah-packages-chirho/QuickCheck-2.18.0.0/QuickCheck.cabal");
+        if !cabal_path_chirho.exists() {
+            return;
+        }
+
+        let result_chirho =
+            compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho());
+        match result_chirho {
+            Ok(result_chirho) => {
+                assert!(
+                    !result_chirho.module_results_chirho.is_empty(),
+                    "real QuickCheck compile_cabal_project should compile modules",
+                );
+            }
+            Err(error_chirho) => {
+                let error_text_chirho = format!("{error_chirho}");
+                assert!(
+                    !(error_text_chirho.contains("Error compiling Test.QuickCheck.All")
+                        && error_text_chirho.contains("unbound variable: `runIO`")),
+                    "QuickCheck should move past the old Test.QuickCheck.All runIO scope gap, got: {error_text_chirho}",
+                );
+            }
+        }
+    }
+
+    #[test]
     fn compile_real_th_abstraction_cabal_project_stays_past_missing_module_stubs_chirho() {
         use crate::compile_cabal_project_chirho;
         use haskelujah_package_chirho::PackageIndexChirho;
