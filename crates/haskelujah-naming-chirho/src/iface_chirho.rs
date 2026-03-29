@@ -4618,6 +4618,22 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "mallocByteString",
             "nullForeignPtr",
             "accursedUnutterablePerformIO",
+            "toForeignPtr",
+            "fromForeignPtr",
+            "unsafeHead",
+            "unsafeTail",
+            "unsafeLast",
+            "unsafeInit",
+            "unsafeIndex",
+            "unsafeTake",
+            "unsafeDrop",
+            "packBytes",
+            "unpackBytes",
+            "unpackChars",
+            "packChars",
+            "isSpaceWord8",
+            "checkedAdd",
+            "mallocPlainForeignPtrBytes",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
