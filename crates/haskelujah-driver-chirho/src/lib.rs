@@ -1329,6 +1329,54 @@ fn should_override_imported_scheme_chirho(
     }
 }
 
+fn collect_local_type_names_chirho(module_chirho: &ModuleChirho) -> std::collections::HashSet<String> {
+    module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::DataDeclChirho { name_chirho, .. }
+            | DeclChirho::NewtypeDeclChirho { name_chirho, .. }
+            | DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
+            | DeclChirho::TypeFamilyDeclChirho { name_chirho, .. }
+            | DeclChirho::ClassDeclChirho { name_chirho, .. } => {
+                Some(name_chirho.text_chirho().to_string())
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+fn collect_safe_unqualified_imported_type_names_chirho(
+    module_chirho: &ModuleChirho,
+    ifaces_chirho: &[ModuleIfaceChirho],
+) -> std::collections::HashSet<String> {
+    let local_type_names_chirho = collect_local_type_names_chirho(module_chirho);
+    module_chirho
+        .imports_chirho
+        .iter()
+        .filter(|import_chirho| !import_chirho.qualified_chirho)
+        .flat_map(|import_chirho| {
+            let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
+            ifaces_chirho
+                .iter()
+                .rev()
+                .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
+                .into_iter()
+                .flat_map(|iface_chirho| {
+                    haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho(
+                        &iface_chirho.exports_chirho,
+                        &import_chirho.spec_chirho,
+                    )
+                })
+        })
+        .filter_map(|(name_chirho, namespace_chirho, _span_chirho)| {
+            (namespace_chirho == haskelujah_naming_chirho::env_chirho::NamespaceChirho::TypeChirho
+                && !local_type_names_chirho.contains(&name_chirho))
+                .then_some(name_chirho)
+        })
+        .collect()
+}
+
 fn qualify_imported_ast_type_chirho(
     ty_chirho: &TypeChirho,
     qualifiable_type_names_chirho: &std::collections::HashSet<String>,
@@ -1749,6 +1797,8 @@ pub fn run_frontend_with_type_synonyms_and_type_families_chirho(
             .entry(builtin_name_chirho)
             .or_insert(builtin_scheme_chirho);
     }
+    let safe_unqualified_imported_type_names_chirho =
+        collect_safe_unqualified_imported_type_names_chirho(&module_chirho, ifaces_chirho);
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
         if let Some(iface_chirho) = ifaces_chirho
@@ -1770,25 +1820,6 @@ pub fn run_frontend_with_type_synonyms_and_type_families_chirho(
                                 .map(|suffix_chirho| suffix_chirho.to_string())
                         }),
                 )
-                .collect();
-            let unqualified_type_names_chirho: std::collections::HashSet<String> = module_chirho
-                .imports_chirho
-                .iter()
-                .filter(|candidate_import_chirho| {
-                    candidate_import_chirho.module_chirho.full_name_chirho() == module_name_chirho
-                        && !candidate_import_chirho.qualified_chirho
-                })
-                .flat_map(|candidate_import_chirho| {
-                    haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho(
-                        &iface_chirho.exports_chirho,
-                        &candidate_import_chirho.spec_chirho,
-                    )
-                })
-                .filter_map(|(name_chirho, namespace_chirho, _span_chirho)| {
-                    (namespace_chirho
-                        == haskelujah_naming_chirho::env_chirho::NamespaceChirho::TypeChirho)
-                        .then_some(name_chirho)
-                })
                 .collect();
             // Collect which names this import brings in.
             let names_chirho =
@@ -1839,7 +1870,7 @@ pub fn run_frontend_with_type_synonyms_and_type_families_chirho(
                             &rhs_chirho,
                             &qualifiable_type_names_chirho,
                             &qualifier_chirho,
-                            &unqualified_type_names_chirho,
+                            &safe_unqualified_imported_type_names_chirho,
                         );
                         if !import_chirho.qualified_chirho {
                             merged_imported_type_synonyms_chirho.insert(
@@ -1888,7 +1919,7 @@ pub fn run_frontend_with_type_synonyms_and_type_families_chirho(
                         &base_scheme_chirho,
                         &qualifiable_type_names_chirho,
                         &qualifier_chirho,
-                        &unqualified_type_names_chirho,
+                        &safe_unqualified_imported_type_names_chirho,
                     );
                     if !import_chirho.qualified_chirho {
                         // Current-module imports should win over broadly seeded
