@@ -7168,7 +7168,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     );
     let safe_read_a_chirho = TyVarChirho(71350);
     env_chirho.bind_chirho(
-        "safeRead".to_string(),
+        "Test.Tasty.Options.safeRead".to_string(),
         SchemeChirho {
             vars_chirho: vec![safe_read_a_chirho],
             preds_chirho: vec![],
@@ -11076,14 +11076,14 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         let option_set_ty_chirho = TyChirho::ConChirho("OptionSet".to_string());
 
         env_chirho.bind_chirho(
-            "defaultMain".to_string(),
+            "Test.Tasty.defaultMain".to_string(),
             SchemeChirho::mono_chirho(TyChirho::fun_chirho(
                 test_tree_ty_chirho.clone(),
                 TyChirho::io_chirho(TyChirho::unit_chirho()),
             )),
         );
         env_chirho.bind_chirho(
-            "defaultMainWithIngredients".to_string(),
+            "Test.Tasty.defaultMainWithIngredients".to_string(),
             SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
                 vec![
                     TyChirho::ListChirho(Box::new(ingredient_ty_chirho.clone())),
@@ -11093,7 +11093,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             )),
         );
         env_chirho.bind_chirho(
-            "testGroup".to_string(),
+            "Test.Tasty.testGroup".to_string(),
             SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
                 vec![
                     TyChirho::string_chirho(),
@@ -11103,7 +11103,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             )),
         );
         env_chirho.bind_chirho(
-            "includingOptions".to_string(),
+            "Test.Tasty.includingOptions".to_string(),
             SchemeChirho::mono_chirho(TyChirho::fun_chirho(
                 TyChirho::ListChirho(Box::new(option_description_ty_chirho.clone())),
                 ingredient_ty_chirho,
@@ -11112,7 +11112,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
 
         let option_a_chirho = TyVarChirho(71351);
         env_chirho.bind_chirho(
-            "Option".to_string(),
+            "Test.Tasty.Options.Option".to_string(),
             SchemeChirho {
                 vars_chirho: vec![option_a_chirho],
                 preds_chirho: vec![],
@@ -11126,7 +11126,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             },
         );
         env_chirho.bind_chirho(
-            "lookupOption".to_string(),
+            "Test.Tasty.Options.lookupOption".to_string(),
             SchemeChirho {
                 vars_chirho: vec![option_a_chirho],
                 preds_chirho: vec![],
@@ -11137,7 +11137,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             },
         );
         env_chirho.bind_chirho(
-            "defaultValue".to_string(),
+            "Test.Tasty.Options.defaultValue".to_string(),
             SchemeChirho {
                 vars_chirho: vec![option_a_chirho],
                 preds_chirho: vec![],
@@ -11145,7 +11145,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             },
         );
         env_chirho.bind_chirho(
-            "parseValue".to_string(),
+            "Test.Tasty.Options.parseValue".to_string(),
             SchemeChirho {
                 vars_chirho: vec![option_a_chirho],
                 preds_chirho: vec![],
@@ -11163,11 +11163,11 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             Box::new(TyChirho::string_chirho()),
         );
         env_chirho.bind_chirho(
-            "optionName".to_string(),
+            "Test.Tasty.Options.optionName".to_string(),
             SchemeChirho::mono_chirho(maybe_string_ty_chirho.clone()),
         );
         env_chirho.bind_chirho(
-            "optionHelp".to_string(),
+            "Test.Tasty.Options.optionHelp".to_string(),
             SchemeChirho::mono_chirho(maybe_string_ty_chirho),
         );
     }
@@ -21680,6 +21680,49 @@ mod tests_chirho {
             },
             "swap should work over any binary constructor, not only tuples"
         );
+    }
+
+    #[test]
+    fn builtin_test_tasty_helpers_are_module_qualified_only_chirho() {
+        let schemes_chirho = builtin_value_schemes_chirho();
+
+        for bare_name_chirho in [
+            "safeRead",
+            "Option",
+            "lookupOption",
+            "defaultValue",
+            "parseValue",
+            "optionName",
+            "optionHelp",
+            "defaultMain",
+            "defaultMainWithIngredients",
+            "testGroup",
+            "includingOptions",
+        ] {
+            assert!(
+                !schemes_chirho.contains_key(bare_name_chirho),
+                "builtin scheme seeding should not leak {bare_name_chirho} into unrelated modules"
+            );
+        }
+
+        for qualified_name_chirho in [
+            "Test.Tasty.Options.safeRead",
+            "Test.Tasty.Options.Option",
+            "Test.Tasty.Options.lookupOption",
+            "Test.Tasty.Options.defaultValue",
+            "Test.Tasty.Options.parseValue",
+            "Test.Tasty.Options.optionName",
+            "Test.Tasty.Options.optionHelp",
+            "Test.Tasty.defaultMain",
+            "Test.Tasty.defaultMainWithIngredients",
+            "Test.Tasty.testGroup",
+            "Test.Tasty.includingOptions",
+        ] {
+            assert!(
+                schemes_chirho.contains_key(qualified_name_chirho),
+                "builtin scheme seeding should keep {qualified_name_chirho} available for imported tasty modules"
+            );
+        }
     }
 
     #[test]

@@ -2448,6 +2448,30 @@ fn frontend_qualified_prelude_char_signature_unifies_with_unqualified_char_chirh
 }
 
 #[test]
+fn compile_modules_qualified_exception_alias_unifies_with_someexception_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_modules_chirho(
+        &[
+            (
+                "UpstreamExceptionAliasChirho",
+                "module UpstreamExceptionAliasChirho (upstreamExceptionIdChirho) where\nimport qualified Control.Exception as E\nupstreamExceptionIdChirho :: E.SomeException -> E.SomeException\nupstreamExceptionIdChirho errChirho = errChirho\n",
+            ),
+            (
+                "DownstreamExceptionAliasChirho",
+                "module DownstreamExceptionAliasChirho where\nimport Control.Exception (SomeException)\nimport UpstreamExceptionAliasChirho\nbridgeExceptionAliasChirho :: SomeException -> SomeException\nbridgeExceptionAliasChirho = upstreamExceptionIdChirho\n",
+            ),
+        ],
+        &mut source_map_chirho,
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified exception aliases from upstream modules should agree with downstream SomeException imports: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_qualified_nonempty_reverse_uses_nonempty_scheme_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

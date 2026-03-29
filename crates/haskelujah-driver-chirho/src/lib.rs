@@ -1361,8 +1361,9 @@ fn collect_local_type_names_chirho(
 fn default_safe_unqualified_imported_type_names_chirho() -> std::collections::HashSet<String> {
     // These names are already modeled as shared runtime-facing types across
     // multiple re-export modules, so keeping them bare avoids spurious
-    // mismatches like B.ByteString vs ByteString and I.IORef vs IORef.
-    ["ByteString", "Ordering", "IORef"]
+    // mismatches like B.ByteString vs ByteString, I.IORef vs IORef, and
+    // E.SomeException vs SomeException.
+    ["ByteString", "Ordering", "IORef", "SomeException"]
         .into_iter()
         .map(str::to_string)
         .collect()
