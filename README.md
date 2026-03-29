@@ -46,7 +46,7 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | GHC Compat | **833/938 (88.8%)** typecheck/should_compile |
 | Curated Tests | **537/537 (100%)** compile-and-run correctness tests |
 | Total Tests | **2,500+ passing**, 0 failures |
-| Hackage Packages | **143+ compile** including **transformers** + **mtl** + **parsec** + **stm** + **comonad** + **contravariant** + **distributive** + **vector** + **hashable** + **dlist** |
+| Hackage Packages | **87 verified** (strict 30s timeout) including **comonad** (15 modules) + **some** (10 modules) + **indexed-traversable** (7 modules) + **dlist** + **splitmix** + **exceptions** + **distributive** + **contravariant** |
 | Workspace | 25 crates (compiler + MCP + LSP + GUI + editor + runtime) |
 | Codebase | ~176,000 lines of Rust |
 | Module interfaces | 380+ synthetic Haskell modules |
@@ -253,7 +253,7 @@ haskelujah clean .          # Remove build artifacts
 | Quicksort 1K | 0.22s | 0.20s CL, **0.15s LLVM** |
 | Prime sieve 10K | 0.28s | 0.59s CL, **0.18s LLVM** |
 | Tail call optimization | Full | Both backends (100M+ iterations) |
-| Hackage packages | cabal-install | `haskelujah install` — **87 packages compile** (transformers, mtl, parsec, stm, comonad, contravariant, distributive, vector) |
+| Hackage packages | cabal-install | `haskelujah install` — **87 packages verified** (comonad, some, indexed-traversable, dlist, splitmix, exceptions, distributive, contravariant) |
 | Native code | Via NCG or LLVM | Cranelift (default) or LLVM + clang |
 | WebAssembly | Via Asterius/GHCJS | Built-in (beta) |
 | Package manager | cabal-install / Stack | Built-in `build` command |
