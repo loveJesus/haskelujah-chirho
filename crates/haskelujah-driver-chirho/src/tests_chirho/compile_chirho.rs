@@ -263,6 +263,413 @@ confidenceLevelMiniChirho _ = 0\n",
 }
 
 #[test]
+fn frontend_qualified_import_with_apostrophe_suffix_value_stays_in_scope_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module QualifiedApostropheImportMiniChirho where\n\
+import qualified Control.Monad.Trans.State.Lazy as LazyState\n\
+valueChirho = LazyState.liftCallCC'\n",
+        &mut source_map_chirho,
+        "QualifiedApostropheImportMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "qualified imports should keep apostrophe-suffixed values in scope: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_instance_method_can_call_later_top_level_helper_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module InstanceHelperScopeMiniChirho where\n\
+class Read1MiniChirho fChirho where\n\
+  liftReadsPrecMiniChirho :: Int\n\
+\n\
+instance Read1MiniChirho Maybe where\n\
+  liftReadsPrecMiniChirho = readsDataMiniChirho\n\
+\n\
+readsDataMiniChirho :: Int\n\
+readsDataMiniChirho = 1\n",
+        &mut source_map_chirho,
+        "InstanceHelperScopeMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "instance methods should see later top-level helpers: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_show_composition_with_char_literal_partial_apps_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"module ShowComposeMiniChirho where
+showsUnaryWithMiniChirho :: (Int -> aChirho -> ShowS) -> String -> Int -> aChirho -> ShowS
+showsUnaryWithMiniChirho spChirho nameChirho dChirho xChirho = showParen (dChirho > 10) $
+  showString nameChirho . showChar ' ' . spChirho 11 xChirho
+"#,
+        &mut source_map_chirho,
+        "ShowComposeMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "partial applications composed around a char literal should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_parsed_show_composition_signature_infers_without_import_rewrite_chirho() {
+    use haskelujah_parser_chirho::{cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho};
+    use haskelujah_typing_chirho::infer_chirho::infer_module_chirho;
+
+    let source_chirho = r#"module ShowComposeMiniChirho where
+showsUnaryWithMiniChirho :: (Int -> aChirho -> ShowS) -> String -> Int -> aChirho -> ShowS
+showsUnaryWithMiniChirho spChirho nameChirho dChirho xChirho = showParen (dChirho > 10) $
+  showString nameChirho . showChar ' ' . spChirho 11 xChirho
+"#;
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "ShowComposeParsedMiniChirho.hs",
+        source_chirho,
+    );
+    let parser_chirho = ParserChirho::new_chirho(source_chirho, source_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+    let result_chirho = infer_module_chirho(&module_chirho);
+
+    assert!(
+        !result_chirho.diagnostics_chirho.has_errors_chirho(),
+        "direct inference on the parsed/lowered ShowS signature should succeed before import rewriting: {:?}",
+        result_chirho.diagnostics_chirho
+    );
+}
+
+#[test]
+fn frontend_show_composition_without_signature_partial_apps_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"module ShowComposeNoSigMiniChirho where
+showsUnaryWithMiniChirho spChirho nameChirho dChirho xChirho = showParen (dChirho > 10) $
+  showString nameChirho . showChar ' ' . spChirho 11 xChirho
+"#,
+        &mut source_map_chirho,
+        "ShowComposeNoSigMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "partial applications composed around a char literal should typecheck even without a signature: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_tuple_showchar_composition_chain_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"module TupleShowChainMiniChirho where
+tupleShowsMiniChirho :: (Int -> aChirho -> ShowS) -> (Int -> bChirho -> ShowS) -> aChirho -> bChirho -> ShowS
+tupleShowsMiniChirho sp1Chirho sp2Chirho xChirho yChirho =
+  showChar '(' . sp1Chirho 0 xChirho . showChar ',' . sp2Chirho 0 yChirho . showChar ')'
+"#,
+        &mut source_map_chirho,
+        "TupleShowChainMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "tuple-style showChar composition chains from transformers should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_scanned_transformers_iface_keeps_liftcallcc_prime_in_scope_chirho() {
+    use crate::{
+        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+        collect_frontend_artifacts_from_module_sources_chirho, scan_dependency_package_ifaces_chirho,
+    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/transformers-0.6.3.0");
+    let extra_ifaces_chirho = scan_dependency_package_ifaces_chirho(&package_dir_chirho);
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+
+    let result_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+        vec![(
+            "LiftCallCCPrimeIfaceMiniChirho".to_string(),
+            "LiftCallCCPrimeIfaceMiniChirho.hs".to_string(),
+            "module LiftCallCCPrimeIfaceMiniChirho where\n\
+import qualified Control.Monad.Trans.State.Lazy as LazyState\n\
+valueChirho = LazyState.liftCallCC'\n"
+                .to_string(),
+        )],
+        &mut source_map_chirho,
+        extra_ifaces_chirho,
+        HashMap::new(),
+        ImportedTypeSynonymsChirho::new(),
+        ImportedTypeFamiliesChirho::new(),
+        true,
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "scanned transformers ifaces should keep liftCallCC' in scope: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_template_haskell_runio_stays_in_scope_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module TemplateRunIOMiniChirho where\n\
+import Language.Haskell.TH\n\
+valueChirho = runIO\n",
+        &mut source_map_chirho,
+        "TemplateRunIOMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Language.Haskell.TH should keep runIO in scope for QuickCheck.All-style code: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_preprocessed_transformers_functor_classes_keeps_building_block_helpers_top_level_chirho(
+) {
+    let path_chirho = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/transformers-0.6.3.0/legacy/pre711/Data/Functor/Classes.hs");
+    let source_chirho =
+        crate::read_haskell_source_file_chirho(&path_chirho).expect("read transformers source");
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = haskelujah_syntax_chirho::SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        path_chirho
+            .to_str()
+            .expect("transformers path should be valid utf-8"),
+        &source_chirho,
+    );
+    let parser_chirho = haskelujah_parser_chirho::cst_parser_chirho::ParserChirho::new_chirho(
+        &source_chirho,
+        source_file_chirho.file_id_chirho(),
+    );
+    let green_chirho = parser_chirho.parse_chirho();
+    let mut direct_child_summaries_chirho: Vec<(String, String)> = Vec::new();
+    let mut direct_child_offset_chirho = 0usize;
+    for child_chirho in green_chirho.children_chirho() {
+        let child_start_chirho = direct_child_offset_chirho;
+        let child_len_chirho = child_chirho.text_len_chirho();
+        direct_child_offset_chirho += child_len_chirho;
+        match child_chirho {
+            haskelujah_syntax_chirho::green_chirho::GreenElementChirho::NodeChirho(
+                node_chirho,
+            ) => {
+                let snippet_chirho = source_chirho
+                    .get(child_start_chirho..child_start_chirho + child_len_chirho)
+                    .unwrap_or("")
+                    .lines()
+                    .take(12)
+                    .collect::<Vec<_>>()
+                    .join("\\n");
+                direct_child_summaries_chirho.push((
+                    format!("{:?}", node_chirho.kind_chirho()),
+                    snippet_chirho,
+                ));
+            }
+            _ => {}
+        }
+    }
+    let module_chirho = haskelujah_parser_chirho::lower_chirho::lower_module_chirho(
+        &green_chirho,
+        source_file_chirho.file_id_chirho(),
+    );
+
+    let top_level_names_chirho: std::collections::HashSet<String> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            haskelujah_ast_chirho::decl_chirho::DeclChirho::TypeSigChirho {
+                name_chirho, ..
+            }
+            | haskelujah_ast_chirho::decl_chirho::DeclChirho::FunBindChirho {
+                name_chirho, ..
+            } => Some(name_chirho.text_chirho().to_string()),
+            _ => None,
+        })
+        .collect();
+    let instance_method_names_chirho: std::collections::HashSet<String> = module_chirho
+        .decls_chirho
+        .iter()
+        .flat_map(|decl_chirho| match decl_chirho {
+            haskelujah_ast_chirho::decl_chirho::DeclChirho::InstanceDeclChirho {
+                methods_chirho, ..
+            } => methods_chirho
+                .iter()
+                .filter_map(|bind_chirho| match bind_chirho {
+                    haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                        name_chirho, ..
+                    }
+                    | haskelujah_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho {
+                        name_chirho, ..
+                    } => Some(name_chirho.text_chirho().to_string()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+            _ => Vec::new(),
+        })
+        .collect();
+    let instance_summaries_chirho: Vec<(String, Vec<String>)> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            haskelujah_ast_chirho::decl_chirho::DeclChirho::InstanceDeclChirho {
+                class_chirho,
+                methods_chirho,
+                ..
+            } => Some((
+                class_chirho.text_chirho().to_string(),
+                methods_chirho
+                    .iter()
+                    .filter_map(|bind_chirho| match bind_chirho {
+                        haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                            name_chirho, ..
+                        }
+                        | haskelujah_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho {
+                            name_chirho, ..
+                        } => Some(name_chirho.text_chirho().to_string()),
+                        _ => None,
+                    })
+                    .collect(),
+            )),
+            _ => None,
+        })
+        .collect();
+    let source_excerpt_chirho: Vec<String> = source_chirho
+        .lines()
+        .filter(|line_chirho| {
+            line_chirho.contains("instance (Show a) => Show1 (Const a) where")
+                || line_chirho.contains("liftShowsPrec = liftShowsPrec2 showsPrec showList")
+                || line_chirho.contains("readsData ::")
+                || line_chirho.contains("readsData reader d =")
+                || line_chirho.contains("readsUnaryWith ::")
+                || line_chirho.contains("showsUnaryWith ::")
+        })
+        .map(|line_chirho| format!("{line_chirho:?}"))
+        .collect();
+    let mut lexer_chirho = haskelujah_parser_chirho::lexer_chirho::LexerChirho::new_chirho(
+        &source_chirho,
+        source_file_chirho.file_id_chirho(),
+    );
+    let raw_tokens_chirho = lexer_chirho.lex_all_chirho();
+    let layout_tokens_chirho = haskelujah_parser_chirho::layout_chirho::apply_layout_chirho(
+        &source_chirho,
+        raw_tokens_chirho,
+        source_file_chirho.file_id_chirho(),
+    );
+    let non_trivia_layout_tokens_chirho: Vec<(haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho, String)> =
+        layout_tokens_chirho
+            .iter()
+            .filter(|token_chirho| !token_chirho.kind_chirho.is_trivia_chirho())
+            .map(|token_chirho| {
+                (
+                    token_chirho.kind_chirho,
+                    source_chirho
+                        .get(
+                            token_chirho.span_chirho.start_chirho().as_usize_chirho()
+                                ..token_chirho.span_chirho.end_chirho().as_usize_chirho(),
+                        )
+                        .unwrap_or("")
+                        .to_string(),
+                )
+            })
+            .collect();
+    let reads_data_token_window_chirho = non_trivia_layout_tokens_chirho
+        .iter()
+        .enumerate()
+        .find(|(token_idx_chirho, (kind_chirho, text_chirho))| {
+            *kind_chirho
+                == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::VarIdChirho
+                && text_chirho == "readsData"
+                && non_trivia_layout_tokens_chirho
+                    .get(*token_idx_chirho + 1)
+                    .is_some_and(|(next_kind_chirho, _)| {
+                        *next_kind_chirho
+                            == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::ColonColonChirho
+                    })
+        })
+        .map(|(reads_data_idx_chirho, _)| {
+            let start_idx_chirho = reads_data_idx_chirho.saturating_sub(6);
+            let end_idx_chirho =
+                (reads_data_idx_chirho + 7).min(non_trivia_layout_tokens_chirho.len());
+            non_trivia_layout_tokens_chirho[start_idx_chirho..end_idx_chirho].to_vec()
+        })
+        .unwrap_or_default();
+    let tuple_eq1_token_window_chirho = non_trivia_layout_tokens_chirho
+        .iter()
+        .enumerate()
+        .find(|(token_idx_chirho, (kind_chirho, _text_chirho))| {
+            *kind_chirho
+                == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::InstanceChirho
+                && non_trivia_layout_tokens_chirho
+                    .get(*token_idx_chirho + 1)
+                    .is_some_and(|(next_kind_chirho, _)| {
+                        *next_kind_chirho
+                            == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::LeftParenChirho
+                    })
+                && non_trivia_layout_tokens_chirho
+                    .get(*token_idx_chirho + 6)
+                    .is_some_and(|(next_kind_chirho, next_text_chirho)| {
+                        *next_kind_chirho
+                            == haskelujah_parser_chirho::lexer_chirho::RawTokenKindChirho::ConIdChirho
+                            && next_text_chirho == "Eq1"
+                    })
+        })
+        .map(|(tuple_eq1_idx_chirho, _)| {
+            let start_idx_chirho = tuple_eq1_idx_chirho.saturating_sub(6);
+            let end_idx_chirho = (tuple_eq1_idx_chirho + 20).min(non_trivia_layout_tokens_chirho.len());
+            non_trivia_layout_tokens_chirho[start_idx_chirho..end_idx_chirho].to_vec()
+        })
+        .unwrap_or_default();
+
+    assert!(
+        top_level_names_chirho.contains("readsData"),
+        "preprocessed transformers Data.Functor.Classes should keep readsData top-level: top-level={:?}, instance-methods={:?}, instances={:?}, excerpt={:?}, token-window={:?}, tuple-eq1-window={:?}, direct-children={:?}",
+        top_level_names_chirho,
+        instance_method_names_chirho,
+        instance_summaries_chirho,
+        source_excerpt_chirho,
+        reads_data_token_window_chirho,
+        tuple_eq1_token_window_chirho,
+        direct_child_summaries_chirho
+    );
+    assert!(
+        top_level_names_chirho.contains("readsUnaryWith"),
+        "preprocessed transformers Data.Functor.Classes should keep readsUnaryWith top-level: {:?}",
+        top_level_names_chirho
+    );
+    assert!(
+        top_level_names_chirho.contains("showsUnaryWith"),
+        "preprocessed transformers Data.Functor.Classes should keep showsUnaryWith top-level: {:?}",
+        top_level_names_chirho
+    );
+}
+
+#[test]
 fn frontend_lambda_tuple_pattern_binds_names_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

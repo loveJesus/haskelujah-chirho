@@ -3001,8 +3001,7 @@ impl LowerCtxChirho {
         let mut where_decls_chirho: Vec<DeclChirho> = Vec::new();
         for child_chirho in &children_chirho {
             if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
-                if saw_where_chirho || n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho
-                {
+                if n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho {
                     self.collect_instance_methods_chirho(
                         n_chirho,
                         child_chirho.start_chirho,
@@ -3359,9 +3358,7 @@ impl LowerCtxChirho {
                     }
                 }
                 GreenElementChirho::NodeChirho(n_chirho) => {
-                    if saw_where_chirho
-                        || n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho
-                    {
+                    if n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho {
                         // Recurse into the WhereClause to find FunBind children.
                         self.collect_instance_methods_chirho(
                             n_chirho,
@@ -4119,17 +4116,39 @@ impl LowerCtxChirho {
         out_chirho: &mut Vec<DeclChirho>,
     ) {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let mut saw_method_like_decl_chirho = false;
         for child_chirho in &children_chirho {
             if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
                 if n_chirho.kind_chirho() == SyntaxKindChirho::TypeSigDeclChirho {
-                    out_chirho.extend(self.lower_type_sigs_chirho(
+                    let type_sigs_chirho = self.lower_type_sigs_chirho(
                         n_chirho,
                         child_chirho.start_chirho,
                         self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
-                    ));
+                    );
+                    if type_sigs_chirho.is_empty() {
+                        if saw_method_like_decl_chirho {
+                            break;
+                        }
+                        continue;
+                    }
+                    saw_method_like_decl_chirho = true;
+                    out_chirho.extend(type_sigs_chirho);
                 } else if let Some(decl_chirho) =
                     self.lower_decl_chirho(n_chirho, child_chirho.start_chirho)
                 {
+                    let is_method_like_decl_chirho = matches!(
+                        decl_chirho,
+                        DeclChirho::FunBindChirho { .. }
+                            | DeclChirho::TypeAliasDeclChirho { .. }
+                            | DeclChirho::TypeFamilyInstanceDeclChirho { .. }
+                    );
+                    if !is_method_like_decl_chirho {
+                        if saw_method_like_decl_chirho {
+                            break;
+                        }
+                        continue;
+                    }
+                    saw_method_like_decl_chirho = true;
                     out_chirho.push(decl_chirho);
                 }
             }
@@ -12316,6 +12335,26 @@ foo = 1
     }
 
     #[test]
+    fn lower_export_list_var_with_apostrophe_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M (liftCallCC') where
+liftCallCC' = id
+",
+        );
+        let exports_chirho = module_chirho
+            .exports_chirho
+            .as_ref()
+            .expect("expected an export list");
+        assert_eq!(exports_chirho.len(), 1, "expected 1 export");
+        match &exports_chirho[0] {
+            ExportSpecChirho::VarChirho(name_chirho) => {
+                assert_eq!(name_chirho.text_chirho(), "liftCallCC'");
+            }
+            other_chirho => panic!("expected VarChirho, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
     fn lower_export_list_qualified_var_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M (M.lookup) where
@@ -12334,6 +12373,55 @@ lookup = 1
             }
             other_chirho => panic!("expected VarChirho, got {:?}", other_chirho),
         }
+    }
+
+    #[test]
+    fn instance_where_followed_by_top_level_helper_stays_top_level_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where
+class C f where
+  m :: Int
+instance C Maybe where
+  m = readsData
+
+-- helper after the instance
+readsData :: Int
+readsData = 1
+",
+        );
+
+        let helper_sig_count_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .filter(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "readsData")
+            })
+            .count();
+        let helper_fun_count_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .filter(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. } if name_chirho.text_chirho() == "readsData")
+            })
+            .count();
+        let helper_inside_instance_chirho = module_chirho.decls_chirho.iter().any(|decl_chirho| {
+            matches!(
+                decl_chirho,
+                DeclChirho::InstanceDeclChirho { methods_chirho, .. }
+                    if methods_chirho.iter().any(|bind_chirho| matches!(
+                        bind_chirho,
+                        LocalBindChirho::FunBindChirho { name_chirho, .. }
+                            if name_chirho.text_chirho() == "readsData"
+                    ))
+            )
+        });
+
+        assert_eq!(helper_sig_count_chirho, 1, "helper signature should stay top-level");
+        assert_eq!(helper_fun_count_chirho, 1, "helper binding should stay top-level");
+        assert!(
+            !helper_inside_instance_chirho,
+            "helper binding should not be absorbed into the instance where-block"
+        );
     }
 
     #[test]
@@ -15006,11 +15094,11 @@ fn lower_strict_dollar_binds_looser_than_addition_chirho() {
 }
 
 #[test]
-fn lower_bind_binds_looser_than_composition_chirho() {
-    let source_chirho = "module M where\nfChirho xsChirho alternativesChirho apPrimeChirho ysChirho = xsChirho >>= alternativesChirho . (`apPrimeChirho` ysChirho)\n";
-    let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
-    let parser_chirho =
-        crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+    fn lower_bind_binds_looser_than_composition_chirho() {
+        let source_chirho = "module M where\nfChirho xsChirho alternativesChirho apPrimeChirho ysChirho = xsChirho >>= alternativesChirho . (`apPrimeChirho` ysChirho)\n";
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let parser_chirho =
+            crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
     let green_chirho = parser_chirho.parse_chirho();
     let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
     let decl_chirho = module_chirho
@@ -15054,14 +15142,318 @@ fn lower_bind_binds_looser_than_composition_chirho() {
             );
         }
         other_chirho => panic!("expected infix expression tree, got {:?}", other_chirho),
+        }
     }
-}
 
-#[test]
-fn lower_nonempty_cons_groups_like_ghc_chirho() {
-    let source_chirho = "module M where\nimport Data.List.NonEmpty (NonEmpty(..))\nfChirho xChirho yChirho = xChirho :| yChirho : []\n";
-    let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
-    let parser_chirho =
+    #[test]
+    fn lower_show_composition_keeps_application_groups_around_char_literal_chirho() {
+        let source_chirho = "module M where\nfChirho spChirho nameChirho dChirho xChirho = showString nameChirho . showChar ' ' . spChirho 11 xChirho\n";
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let parser_chirho =
+            crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+        let green_chirho = parser_chirho.parse_chirho();
+        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "fChirho")
+            })
+            .expect("expected fChirho binding");
+
+        let rhs_expr_chirho = match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho
+            {
+                RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+                other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+
+        match rhs_expr_chirho {
+            ExprChirho::InfixChirho {
+                left_chirho,
+                op_chirho,
+                right_chirho,
+                ..
+            } => {
+                assert_eq!(op_chirho.text_chirho(), ".");
+                assert!(
+                    matches!(
+                        left_chirho.as_ref(),
+                        ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                            if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "showString")
+                                && matches!(arg_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "nameChirho")
+                    ),
+                    "expected the leftmost composition operand to stay `showString nameChirho`, got {:?}",
+                    left_chirho
+                );
+                assert!(
+                    matches!(
+                        right_chirho.as_ref(),
+                        ExprChirho::InfixChirho { left_chirho, op_chirho, right_chirho, .. }
+                            if op_chirho.text_chirho() == "."
+                                && matches!(left_chirho.as_ref(), ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                                    if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "showChar")
+                                        && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::CharChirho(' ', _))))
+                                && matches!(right_chirho.as_ref(), ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                                    if matches!(fun_chirho.as_ref(), ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                                        if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "spChirho")
+                                            && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::IntChirho(11, _))))
+                                        && matches!(arg_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "xChirho"))
+                    ),
+                    "expected the right-associated composition tail to preserve `showChar ' ' . spChirho 11 xChirho`, got {:?}",
+                    right_chirho
+                );
+            }
+            other_chirho => panic!("expected infix composition tree, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_show_paren_dollar_keeps_composition_rhs_with_char_literal_chirho() {
+        let source_chirho = "module M where\nfChirho spChirho nameChirho dChirho xChirho = showParen (dChirho > 10) $\n  showString nameChirho . showChar ' ' . spChirho 11 xChirho\n";
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let parser_chirho =
+            crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+        let green_chirho = parser_chirho.parse_chirho();
+        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "fChirho")
+            })
+            .expect("expected fChirho binding");
+
+        let rhs_expr_chirho = match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho
+            {
+                RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+                other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+
+        match rhs_expr_chirho {
+            ExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                assert!(
+                    matches!(
+                        fun_chirho.as_ref(),
+                        ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                            if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "showParen")
+                                && matches!(arg_chirho.as_ref(), ExprChirho::ParenChirho { .. })
+                    ),
+                    "expected the dollar lhs to stay `showParen (dChirho > 10)`, got {:?}",
+                    fun_chirho
+                );
+                let ExprChirho::InfixChirho {
+                    left_chirho: outer_left_chirho,
+                    op_chirho: outer_op_chirho,
+                    right_chirho: outer_right_chirho,
+                    ..
+                } = arg_chirho.as_ref()
+                else {
+                    panic!(
+                        "expected the dollar rhs to stay an infix composition tree, got {:?}",
+                        arg_chirho
+                    );
+                };
+                assert_eq!(outer_op_chirho.text_chirho(), ".");
+                assert!(
+                    matches!(
+                        outer_left_chirho.as_ref(),
+                        ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                            if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "showString")
+                                && matches!(arg_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "nameChirho")
+                    ),
+                    "expected the lhs of the dollar rhs to stay `showString nameChirho`, got {:?}",
+                    outer_left_chirho
+                );
+                let ExprChirho::InfixChirho {
+                    left_chirho: inner_left_chirho,
+                    op_chirho: inner_op_chirho,
+                    right_chirho: inner_right_chirho,
+                    ..
+                } = outer_right_chirho.as_ref()
+                else {
+                    panic!(
+                        "expected the rhs tail to stay a nested composition, got {:?}",
+                        outer_right_chirho
+                    );
+                };
+                assert_eq!(inner_op_chirho.text_chirho(), ".");
+                assert!(
+                    matches!(
+                        inner_left_chirho.as_ref(),
+                        ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                            if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "showChar")
+                                && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::CharChirho(' ', _)))
+                    ),
+                    "expected the middle composition operand to stay `showChar ' '`, got {:?}",
+                    inner_left_chirho
+                );
+                assert!(
+                    matches!(
+                        inner_right_chirho.as_ref(),
+                        ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                            if matches!(fun_chirho.as_ref(), ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                                if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "spChirho")
+                                    && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::IntChirho(11, _))))
+                                && matches!(arg_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "xChirho")
+                    ),
+                    "expected the tail operand to stay `spChirho 11 xChirho`, got {:?}",
+                    inner_right_chirho
+                );
+            }
+            other_chirho => panic!(
+                "expected `$` lowering to become application of the composition tree, got {:?}",
+                other_chirho
+            ),
+        }
+    }
+
+    #[test]
+    fn lower_tuple_showchar_composition_chain_keeps_punctuation_char_literals_chirho() {
+        let source_chirho = "module M where\ntupleShowsMiniChirho sp1Chirho sp2Chirho xChirho yChirho = showChar '(' . sp1Chirho 0 xChirho . showChar ',' . sp2Chirho 0 yChirho . showChar ')'\n";
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let parser_chirho =
+            crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+        let green_chirho = parser_chirho.parse_chirho();
+        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+        let decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(decl_chirho, DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "tupleShowsMiniChirho")
+            })
+            .expect("expected tupleShowsMiniChirho binding");
+
+        let rhs_expr_chirho = match decl_chirho {
+            DeclChirho::FunBindChirho { matches_chirho, .. } => match &matches_chirho[0].rhs_chirho
+            {
+                RhsChirho::UnguardedChirho(expr_chirho) => expr_chirho,
+                other_chirho => panic!("expected unguarded rhs, got {:?}", other_chirho),
+            },
+            other_chirho => panic!("expected function binding, got {:?}", other_chirho),
+        };
+        let mut found_punctuation_chars_chirho = Vec::new();
+        collect_char_literals_from_expr_chirho(rhs_expr_chirho, &mut found_punctuation_chars_chirho);
+        assert_eq!(
+            found_punctuation_chars_chirho,
+            vec!['(', ',', ')'],
+            "tuple-style showChar composition should lower punctuation chars as Char literals, got {:?}",
+            rhs_expr_chirho
+        );
+    }
+
+    #[cfg(test)]
+    fn collect_char_literals_from_expr_chirho(
+        expr_chirho: &ExprChirho,
+        found_punctuation_chars_chirho: &mut Vec<char>,
+    ) {
+        match expr_chirho {
+            ExprChirho::LitChirho(LitChirho::CharChirho(char_chirho, _)) => {
+                found_punctuation_chars_chirho.push(*char_chirho);
+            }
+            ExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                collect_char_literals_from_expr_chirho(fun_chirho, found_punctuation_chars_chirho);
+                collect_char_literals_from_expr_chirho(arg_chirho, found_punctuation_chars_chirho);
+            }
+            ExprChirho::InfixChirho {
+                left_chirho,
+                right_chirho,
+                ..
+            } => {
+                collect_char_literals_from_expr_chirho(left_chirho, found_punctuation_chars_chirho);
+                collect_char_literals_from_expr_chirho(right_chirho, found_punctuation_chars_chirho);
+            }
+            ExprChirho::ParenChirho { inner_chirho, .. } => {
+                collect_char_literals_from_expr_chirho(inner_chirho, found_punctuation_chars_chirho);
+            }
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn lower_helpers_after_instance_and_haddock_comments_stay_top_level_chirho() {
+        let source_chirho = "module M where\n\
+class Read1Chirho fChirho where\n\
+  liftReadsPrecChirho :: Int\n\
+\n\
+instance Read1Chirho Maybe where\n\
+  liftReadsPrecChirho = readsDataChirho\n\
+\n\
+-- Building blocks\n\
+\n\
+-- | readsData docs\n\
+readsDataChirho :: Int\n\
+readsDataChirho = 1\n\
+\n\
+-- | readsUnaryWith docs\n\
+readsUnaryWithChirho :: Int\n\
+readsUnaryWithChirho = 2\n\
+\n\
+-- | showsUnaryWith docs\n\
+showsUnaryWithChirho :: Int\n\
+showsUnaryWithChirho = 3\n";
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let parser_chirho =
+            crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
+        let green_chirho = parser_chirho.parse_chirho();
+        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+
+        let top_level_names_chirho: Vec<String> = module_chirho
+            .decls_chirho
+            .iter()
+            .filter_map(|decl_chirho| match decl_chirho {
+                DeclChirho::TypeSigChirho { name_chirho, .. }
+                | DeclChirho::FunBindChirho { name_chirho, .. } => {
+                    Some(name_chirho.text_chirho().to_string())
+                }
+                _ => None,
+            })
+            .collect();
+
+        assert!(
+            top_level_names_chirho
+                .iter()
+                .any(|name_chirho| name_chirho == "readsDataChirho"),
+            "readsData helper should stay top-level: {:?}",
+            top_level_names_chirho
+        );
+        assert!(
+            top_level_names_chirho
+                .iter()
+                .any(|name_chirho| name_chirho == "readsUnaryWithChirho"),
+            "readsUnaryWith helper should stay top-level: {:?}",
+            top_level_names_chirho
+        );
+        assert!(
+            top_level_names_chirho
+                .iter()
+                .any(|name_chirho| name_chirho == "showsUnaryWithChirho"),
+            "showsUnaryWith helper should stay top-level: {:?}",
+            top_level_names_chirho
+        );
+    }
+
+    #[test]
+    fn lower_nonempty_cons_groups_like_ghc_chirho() {
+        let source_chirho = "module M where\nimport Data.List.NonEmpty (NonEmpty(..))\nfChirho xChirho yChirho = xChirho :| yChirho : []\n";
+        let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let parser_chirho =
         crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho);
     let green_chirho = parser_chirho.parse_chirho();
     let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
