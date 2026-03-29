@@ -4051,6 +4051,66 @@ fn frontend_bytestring_pack_word8_list_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_bytestring_alias_type_synonym_with_strict_and_lazy_imports_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ByteStringAliasBridgeMiniChirho where\nimport qualified Data.ByteString as B\nimport qualified Data.ByteString.Lazy as BL\ntype StrictBytesChirho = B.ByteString\nstrictReadChirho :: FilePath -> IO StrictBytesChirho\nstrictReadChirho = B.readFile\nlazyReadChirho :: FilePath -> IO BL.ByteString\nlazyReadChirho = BL.readFile\n",
+        &mut source_map_chirho,
+        "ByteStringAliasBridgeMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "qualified ByteString type aliases should stay compatible with imported readFile schemes even when strict and lazy ByteString are both in scope: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_imported_compare_ordering_bridge_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ImportedCompareOrderingMiniChirho where\nimport Data.Ord (compare)\ncompareIntsChirho :: Int -> Int -> Ordering\ncompareIntsChirho = compare\n",
+        &mut source_map_chirho,
+        "ImportedCompareOrderingMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "imported compare should keep Ordering compatible with the builtin Ordering type: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_qualified_ioref_type_alias_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module QualifiedIORefAliasMiniChirho where\nimport qualified Data.IORef as I\ntype InternalStateChirho = I.IORef Int\ncreateInternalStateChirho :: IO InternalStateChirho\ncreateInternalStateChirho = I.newIORef 0\n",
+        &mut source_map_chirho,
+        "QualifiedIORefAliasMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "qualified IORef type aliases should stay compatible with imported IORef schemes: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_memcpy_and_malloc_plain_foreign_ptr_bytes_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module MemcpyMallocPlainForeignPtrMiniChirho where\nimport Data.ByteString.Internal (memcpy)\nimport Data.Word (Word8)\nimport Foreign.Ptr (Ptr)\nimport GHC.ForeignPtr (mallocPlainForeignPtrBytes)\nimport Foreign.ForeignPtr (ForeignPtr)\ncopyBytesChirho :: Ptr Word8 -> Ptr Word8 -> IO ()\ncopyBytesChirho dstChirho srcChirho = memcpy dstChirho srcChirho 8\nallocBytesChirho :: IO (ForeignPtr Word8)\nallocBytesChirho = mallocPlainForeignPtrBytes 32\n",
+        &mut source_map_chirho,
+        "MemcpyMallocPlainForeignPtrMiniChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "memcpy and mallocPlainForeignPtrBytes should resolve with usable ByteString/ForeignPtr types: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_plus_foreign_ptr_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

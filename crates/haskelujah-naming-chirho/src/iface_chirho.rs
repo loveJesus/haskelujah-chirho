@@ -4611,6 +4611,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "c2w",
             "w2c",
             "memset",
+            "memcpy",
             "plusForeignPtr",
             "unsafeCreate",
             "create",
@@ -7628,6 +7629,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "unsafeWithForeignPtr",
             "memset",
             "plusForeignPtr",
+            "mallocPlainForeignPtrBytes",
             "castForeignPtr",
             "mallocForeignPtr",
             "FinalizerPtr",
@@ -7977,6 +7979,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "finalizeForeignPtr",
             "castForeignPtr",
             "plusForeignPtr",
+            "mallocPlainForeignPtrBytes",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -16874,8 +16877,12 @@ mod tests_chirho {
                 && bytestring_internal_chirho
                     .exports_chirho
                     .values_chirho
+                    .contains_key("memcpy")
+                && bytestring_internal_chirho
+                    .exports_chirho
+                    .values_chirho
                     .contains_key("plusForeignPtr"),
-            "Data.ByteString.Internal should export accursedUnutterablePerformIO, memset, and plusForeignPtr"
+            "Data.ByteString.Internal should export accursedUnutterablePerformIO, memset, memcpy, and plusForeignPtr"
         );
 
         let system_io_unsafe_chirho = ifaces_chirho
@@ -16912,8 +16919,12 @@ mod tests_chirho {
                 && ghc_foreign_ptr_chirho
                     .exports_chirho
                     .values_chirho
+                    .contains_key("mallocPlainForeignPtrBytes")
+                && ghc_foreign_ptr_chirho
+                    .exports_chirho
+                    .values_chirho
                     .contains_key("plusForeignPtr"),
-            "GHC.ForeignPtr should export unsafeWithForeignPtr, memset, and plusForeignPtr"
+            "GHC.ForeignPtr should export unsafeWithForeignPtr, memset, mallocPlainForeignPtrBytes, and plusForeignPtr"
         );
     }
 

@@ -410,6 +410,40 @@ impl InferCtxChirho {
         }
     }
 
+    fn normalize_imported_ty_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
+        match ty_chirho {
+            TyChirho::ConChirho(name_chirho) => {
+                TyChirho::ConChirho(self.normalize_imported_type_name_chirho(name_chirho))
+            }
+            TyChirho::AppChirho(fun_chirho, arg_chirho) => TyChirho::AppChirho(
+                Box::new(self.normalize_imported_ty_chirho(fun_chirho)),
+                Box::new(self.normalize_imported_ty_chirho(arg_chirho)),
+            ),
+            TyChirho::FunChirho(arg_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
+                Box::new(self.normalize_imported_ty_chirho(arg_chirho)),
+                Box::new(self.normalize_imported_ty_chirho(result_chirho)),
+                *mult_chirho,
+            ),
+            TyChirho::TupleChirho(elements_chirho) => TyChirho::TupleChirho(
+                elements_chirho
+                    .iter()
+                    .map(|element_chirho| self.normalize_imported_ty_chirho(element_chirho))
+                    .collect(),
+            ),
+            TyChirho::ListChirho(inner_chirho) => {
+                TyChirho::ListChirho(Box::new(self.normalize_imported_ty_chirho(inner_chirho)))
+            }
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => TyChirho::ForallChirho {
+                vars_chirho: vars_chirho.clone(),
+                body_chirho: Box::new(self.normalize_imported_ty_chirho(body_chirho)),
+            },
+            _ => ty_chirho.clone(),
+        }
+    }
+
     /// Register a type family (open or closed). For open families this
     /// creates an empty equation list; for closed families it stores all
     /// equations immediately.
@@ -418,15 +452,27 @@ impl InferCtxChirho {
         name_chirho: String,
         equations_chirho: Vec<(Vec<TyChirho>, TyChirho)>,
     ) {
+        let normalized_equations_chirho: Vec<(Vec<TyChirho>, TyChirho)> = equations_chirho
+            .into_iter()
+            .map(|(lhs_types_chirho, rhs_chirho)| {
+                (
+                    lhs_types_chirho
+                        .into_iter()
+                        .map(|lhs_ty_chirho| self.normalize_imported_ty_chirho(&lhs_ty_chirho))
+                        .collect(),
+                    self.normalize_imported_ty_chirho(&rhs_chirho),
+                )
+            })
+            .collect();
         let registered_equations_chirho = self.type_families_chirho.entry(name_chirho).or_default();
-        if equations_chirho.is_empty() {
+        if normalized_equations_chirho.is_empty() {
             return;
         }
 
         // Newer registrations should win over older imported equations, but
         // preserve the source order within each registration batch.
         let prior_equations_chirho = std::mem::take(registered_equations_chirho);
-        registered_equations_chirho.extend(equations_chirho);
+        registered_equations_chirho.extend(normalized_equations_chirho);
         registered_equations_chirho.extend(prior_equations_chirho);
     }
 
@@ -437,10 +483,15 @@ impl InferCtxChirho {
         lhs_types_chirho: Vec<TyChirho>,
         rhs_chirho: TyChirho,
     ) {
+        let normalized_lhs_types_chirho: Vec<TyChirho> = lhs_types_chirho
+            .iter()
+            .map(|lhs_ty_chirho| self.normalize_imported_ty_chirho(lhs_ty_chirho))
+            .collect();
+        let normalized_rhs_chirho = self.normalize_imported_ty_chirho(&rhs_chirho);
         self.type_families_chirho
             .entry(family_name_chirho)
             .or_default()
-            .insert(0, (lhs_types_chirho, rhs_chirho));
+            .insert(0, (normalized_lhs_types_chirho, normalized_rhs_chirho));
     }
 
     /// Try to reduce a type family application `F args...` by matching
@@ -546,8 +597,9 @@ impl InferCtxChirho {
         params_chirho: Vec<String>,
         rhs_chirho: TyChirho,
     ) {
+        let normalized_rhs_chirho = self.normalize_imported_ty_chirho(&rhs_chirho);
         self.type_synonyms_chirho
-            .insert(name_chirho, (params_chirho, rhs_chirho));
+            .insert(name_chirho, (params_chirho, normalized_rhs_chirho));
     }
 
     /// Expand type synonyms in a `TyChirho`. Handles both nullary synonyms
@@ -8160,6 +8212,27 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         with_foreign_ptr_scheme_chirho,
     );
 
+    let malloc_plain_foreign_ptr_bytes_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![foreign_ptr_a_chirho],
+        preds_chirho: vec![],
+        ty_chirho: TyChirho::fun_chirho(
+            TyChirho::int_chirho(),
+            TyChirho::io_chirho(foreign_ptr_ty_chirho.clone()),
+        ),
+    };
+    for name_chirho in [
+        "mallocPlainForeignPtrBytes",
+        "Data.ByteString.Internal.mallocPlainForeignPtrBytes",
+        "GHC.ForeignPtr.mallocPlainForeignPtrBytes",
+        "Foreign.ForeignPtr.mallocPlainForeignPtrBytes",
+        "GHC.ForeignPtr.Internal.mallocPlainForeignPtrBytes",
+    ] {
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            malloc_plain_foreign_ptr_bytes_scheme_chirho.clone(),
+        );
+    }
+
     let plus_foreign_ptr_scheme_chirho = SchemeChirho {
         vars_chirho: vec![foreign_ptr_a_chirho],
         preds_chirho: vec![],
@@ -8230,6 +8303,26 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         ] {
             env_chirho.bind_chirho(name_chirho.to_string(), memset_scheme_chirho.clone());
         }
+
+        let memcpy_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Ptr".to_string())),
+                    Box::new(word8_ty_chirho.clone()),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Ptr".to_string())),
+                    Box::new(word8_ty_chirho),
+                ),
+                TyChirho::int_chirho(),
+            ],
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
+        ));
+        env_chirho.bind_chirho("memcpy".to_string(), memcpy_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Data.ByteString.Internal.memcpy".to_string(),
+            memcpy_scheme_chirho,
+        );
     }
 
     {
@@ -16739,11 +16832,7 @@ pub fn infer_module_with_imports_type_synonyms_and_families_chirho(
         );
     }
     for (family_name_chirho, equations_chirho) in imported_type_families_chirho {
-        ctx_chirho
-            .type_families_chirho
-            .entry(family_name_chirho.clone())
-            .or_default()
-            .extend(equations_chirho.clone());
+        ctx_chirho.register_type_family_chirho(family_name_chirho.clone(), equations_chirho.clone());
     }
     // Seed the type environment with imported type schemes, but only if
     // placeholder imports do not override precise built-ins, while real

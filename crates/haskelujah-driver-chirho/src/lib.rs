@@ -1352,35 +1352,50 @@ fn collect_local_type_names_chirho(
         .collect()
 }
 
+fn default_safe_unqualified_imported_type_names_chirho() -> std::collections::HashSet<String> {
+    // These names are already modeled as shared runtime-facing types across
+    // multiple re-export modules, so keeping them bare avoids spurious
+    // mismatches like B.ByteString vs ByteString and I.IORef vs IORef.
+    ["ByteString", "Ordering", "IORef"]
+        .into_iter()
+        .map(str::to_string)
+        .collect()
+}
+
 fn collect_safe_unqualified_imported_type_names_chirho(
     module_chirho: &ModuleChirho,
     ifaces_chirho: &[ModuleIfaceChirho],
 ) -> std::collections::HashSet<String> {
     let local_type_names_chirho = collect_local_type_names_chirho(module_chirho);
-    module_chirho
-        .imports_chirho
-        .iter()
-        .filter(|import_chirho| !import_chirho.qualified_chirho)
-        .flat_map(|import_chirho| {
-            let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
-            ifaces_chirho
-                .iter()
-                .rev()
-                .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
-                .into_iter()
-                .flat_map(|iface_chirho| {
-                    haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho(
-                        &iface_chirho.exports_chirho,
-                        &import_chirho.spec_chirho,
-                    )
-                })
-        })
-        .filter_map(|(name_chirho, namespace_chirho, _span_chirho)| {
-            (namespace_chirho == haskelujah_naming_chirho::env_chirho::NamespaceChirho::TypeChirho
-                && !local_type_names_chirho.contains(&name_chirho))
-            .then_some(name_chirho)
-        })
-        .collect()
+    let mut safe_type_names_chirho = default_safe_unqualified_imported_type_names_chirho();
+    safe_type_names_chirho.retain(|name_chirho| !local_type_names_chirho.contains(name_chirho));
+    safe_type_names_chirho.extend(
+        module_chirho
+            .imports_chirho
+            .iter()
+            .filter(|import_chirho| !import_chirho.qualified_chirho)
+            .flat_map(|import_chirho| {
+                let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
+                ifaces_chirho
+                    .iter()
+                    .rev()
+                    .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
+                    .into_iter()
+                    .flat_map(|iface_chirho| {
+                        haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho(
+                            &iface_chirho.exports_chirho,
+                            &import_chirho.spec_chirho,
+                        )
+                    })
+            })
+            .filter_map(|(name_chirho, namespace_chirho, _span_chirho)| {
+                (namespace_chirho
+                    == haskelujah_naming_chirho::env_chirho::NamespaceChirho::TypeChirho
+                    && !local_type_names_chirho.contains(&name_chirho))
+                .then_some(name_chirho)
+            }),
+    );
+    safe_type_names_chirho
 }
 
 fn collect_preferred_qualified_type_names_chirho(
