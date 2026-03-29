@@ -11339,6 +11339,129 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Prettyprinter (modern pretty-printing library)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "Doc", "Pretty", "pretty", "viaShow", "unsafeViaShow",
+            "emptyDoc", "nest", "line", "line'", "softline", "softline'",
+            "hardline", "group", "flatAlt", "align", "hang", "indent",
+            "encloseSep", "list", "tupled", "concatWith",
+            "hsep", "vsep", "fillSep", "sep", "hcat", "vcat", "fillCat",
+            "cat", "punctuate", "enclose", "surround",
+            "annotate", "unAnnotate", "reAnnotate", "alterAnnotations",
+            "angles", "braces", "brackets", "parens", "dquotes", "squotes",
+            "lparen", "rparen", "lbrace", "rbrace", "lbracket", "rbracket",
+            "langle", "rangle", "space", "dot", "equals", "pipe",
+            "colon", "comma", "semi", "backslash", "slash",
+            "layoutPretty", "layoutCompact", "layoutSmart",
+            "defaultLayoutOptions", "LayoutOptions",
+            "PageWidth", "SimpleDocStream",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Doc", "SimpleDocStream", "LayoutOptions", "PageWidth", "Pretty"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Prettyprinter".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Prettyprinter.Internal".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Vector.Generic
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "Vector", "Mutable", "length", "null", "empty", "singleton",
+            "replicate", "generate", "cons", "snoc", "head", "last",
+            "tail", "init", "slice", "take", "drop", "splitAt",
+            "map", "imap", "concatMap", "mapM", "mapM_", "forM", "forM_",
+            "filter", "ifilter", "takeWhile", "dropWhile",
+            "foldl", "foldl'", "foldl1", "foldl1'", "foldr", "foldr'",
+            "foldr1", "foldr1'", "ifoldl", "ifoldl'", "ifoldr", "ifoldr'",
+            "all", "any", "sum", "product", "maximum", "minimum",
+            "zip", "zipWith", "unzip", "elem", "notElem", "find",
+            "findIndex", "findIndices", "elemIndex",
+            "toList", "fromList", "fromListN", "convert", "freeze", "thaw",
+            "copy", "unsafeFreeze", "unsafeThaw",
+            "basicUnsafeFreeze", "basicUnsafeThaw", "basicLength",
+            "basicUnsafeSlice", "basicUnsafeIndexM", "basicUnsafeCopy",
+            "basicOverlaps", "basicInitialize",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Vector"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Vector.Generic".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Vector.Generic.Base".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Tuple.Solo
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_type_chirho("Solo", &["MkSolo"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["getSolo", "MkSolo"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Tuple.Solo".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Text.PrettyPrint.ANSI.Leijen (ansi-wl-pprint compat)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "Doc", "Pretty", "pretty", "char", "text", "string",
+            "int", "integer", "float", "double", "rational",
+            "nest", "line", "linebreak", "group", "softline", "softbreak",
+            "align", "hang", "indent", "encloseSep", "list", "tupled",
+            "semiBraces", "hsep", "vsep", "fillSep", "sep",
+            "hcat", "vcat", "fillCat", "cat", "punctuate",
+            "enclose", "parens", "braces", "brackets", "angles",
+            "squotes", "dquotes", "lparen", "rparen", "lbrace", "rbrace",
+            "lbracket", "rbracket", "langle", "rangle",
+            "space", "dot", "equals", "pipe", "colon", "comma", "semi",
+            "backslash", "empty", "bold", "debold", "underline", "deunderline",
+            "plain", "black", "red", "green", "yellow", "blue",
+            "magenta", "cyan", "white", "dullblack", "dullred",
+            "dullgreen", "dullyellow", "dullblue", "dullmagenta",
+            "dullcyan", "dullwhite",
+            "renderPretty", "renderCompact", "displayS", "displayIO",
+            "SimpleDoc", "putDoc", "hPutDoc",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Doc", "SimpleDoc", "Pretty"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Text.PrettyPrint.ANSI.Leijen".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Control.Monad.ST.Safe (re-export of Control.Monad.ST)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
@@ -12503,6 +12626,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         "Control.Monad.Error.Class",
         "Control.Monad.Cont",
         "Control.Monad.Cont.Class",
+        "Control.Monad.Writer.CPS",
+        "Control.Monad.RWS.CPS",
         "Control.Monad.Identity",
     ] {
         let mut exports_chirho = IfaceExportsChirho::default();
