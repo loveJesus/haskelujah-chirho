@@ -22,7 +22,8 @@ fn same_tycon_name_chirho(left_name_chirho: &str, right_name_chirho: &str) -> bo
     left_name_chirho == right_name_chirho
         || (has_qualifier_chirho(left_name_chirho)
             && has_qualifier_chirho(right_name_chirho)
-            && strip_qualifier_chirho(left_name_chirho) == strip_qualifier_chirho(right_name_chirho))
+            && strip_qualifier_chirho(left_name_chirho)
+                == strip_qualifier_chirho(right_name_chirho))
 }
 
 use crate::subst_chirho::SubstChirho;
@@ -519,8 +520,7 @@ mod tests_chirho {
     #[test]
     fn unify_same_qualified_suffix_tycons_chirho() {
         let left_ty_chirho = TyChirho::ConChirho("P.Result".to_string());
-        let right_ty_chirho =
-            TyChirho::ConChirho("Test.QuickCheck.Property.Result".to_string());
+        let right_ty_chirho = TyChirho::ConChirho("Test.QuickCheck.Property.Result".to_string());
         let subst_chirho =
             unify_chirho(&left_ty_chirho, &right_ty_chirho, SpanChirho::DUMMY_CHIRHO)
                 .expect("qualified aliases of the same imported type should unify");
@@ -530,8 +530,7 @@ mod tests_chirho {
     #[test]
     fn unify_bare_and_qualified_tycons_do_not_alias_chirho() {
         let left_ty_chirho = TyChirho::ConChirho("Result".to_string());
-        let right_ty_chirho =
-            TyChirho::ConChirho("Test.QuickCheck.Property.Result".to_string());
+        let right_ty_chirho = TyChirho::ConChirho("Test.QuickCheck.Property.Result".to_string());
         let result_chirho =
             unify_chirho(&left_ty_chirho, &right_ty_chirho, SpanChirho::DUMMY_CHIRHO);
         assert!(

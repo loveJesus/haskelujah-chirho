@@ -615,7 +615,9 @@ fn discover_cpp_package_versions_chirho(
     let mut package_versions_chirho = seed_cpp_package_versions_chirho();
 
     // Canonicalise so that paths with ../../ etc. resolve before walking up
-    let canonical_path_chirho = path_chirho.canonicalize().unwrap_or_else(|_| path_chirho.to_path_buf());
+    let canonical_path_chirho = path_chirho
+        .canonicalize()
+        .unwrap_or_else(|_| path_chirho.to_path_buf());
     if let Some(project_dir_chirho) = canonical_path_chirho.parent() {
         if let Some(packages_dir_chirho) = find_dependency_packages_dir_chirho(project_dir_chirho) {
             if let Ok(entries_chirho) = std::fs::read_dir(packages_dir_chirho) {
@@ -1331,7 +1333,9 @@ fn should_override_imported_scheme_chirho(
     }
 }
 
-fn collect_local_type_names_chirho(module_chirho: &ModuleChirho) -> std::collections::HashSet<String> {
+fn collect_local_type_names_chirho(
+    module_chirho: &ModuleChirho,
+) -> std::collections::HashSet<String> {
     module_chirho
         .decls_chirho
         .iter()
@@ -1374,7 +1378,7 @@ fn collect_safe_unqualified_imported_type_names_chirho(
         .filter_map(|(name_chirho, namespace_chirho, _span_chirho)| {
             (namespace_chirho == haskelujah_naming_chirho::env_chirho::NamespaceChirho::TypeChirho
                 && !local_type_names_chirho.contains(&name_chirho))
-                .then_some(name_chirho)
+            .then_some(name_chirho)
         })
         .collect()
 }
@@ -1435,37 +1439,32 @@ fn qualify_imported_ast_type_chirho(
     match ty_chirho {
         TypeChirho::ConChirho(name_chirho) => {
             let bare_name_chirho = name_chirho.text_chirho();
-            let preferred_qualifier_chirho = if unqualified_type_names_chirho
-                .contains(bare_name_chirho)
-            {
-                None
-            } else if qualifiable_type_names_chirho.contains(bare_name_chirho) {
-                Some(qualifier_chirho.to_string())
-            } else {
-                preferred_qualified_type_names_chirho
-                    .get(bare_name_chirho)
-                    .cloned()
-            };
+            let preferred_qualifier_chirho =
+                if unqualified_type_names_chirho.contains(bare_name_chirho) {
+                    None
+                } else if qualifiable_type_names_chirho.contains(bare_name_chirho) {
+                    Some(qualifier_chirho.to_string())
+                } else {
+                    preferred_qualified_type_names_chirho
+                        .get(bare_name_chirho)
+                        .cloned()
+                };
             if let Some(preferred_qualifier_chirho) = preferred_qualifier_chirho {
                 let span_chirho = name_chirho.span_chirho();
-                TypeChirho::ConChirho(
-                    haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
-                        haskelujah_ast_chirho::name_chirho::RawNameChirho::qualified_chirho(
-                            preferred_qualifier_chirho,
-                            bare_name_chirho.to_string(),
-                            span_chirho,
-                        ),
+                TypeChirho::ConChirho(haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
+                    haskelujah_ast_chirho::name_chirho::RawNameChirho::qualified_chirho(
+                        preferred_qualifier_chirho,
+                        bare_name_chirho.to_string(),
+                        span_chirho,
                     ),
-                )
+                ))
             } else if unqualified_type_names_chirho.contains(bare_name_chirho) {
-                TypeChirho::ConChirho(
-                    haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
-                        haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
-                            bare_name_chirho.to_string(),
-                            name_chirho.span_chirho(),
-                        ),
+                TypeChirho::ConChirho(haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
+                    haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+                        bare_name_chirho.to_string(),
+                        name_chirho.span_chirho(),
                     ),
-                )
+                ))
             } else {
                 ty_chirho.clone()
             }

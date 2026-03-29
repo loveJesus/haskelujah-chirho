@@ -2173,6 +2173,18 @@ impl<'src> ParserChirho<'src> {
                     self.eat_trivia_chirho();
                     continue;
                 }
+                // A leaked top-level declaration starter here means the
+                // surrounding layout block should have ended already. Stop
+                // instead of swallowing sibling decls into this where-block.
+                if matches!(
+                    self.current_kind_chirho(),
+                    Some(RawTokenKindChirho::InstanceChirho)
+                        | Some(RawTokenKindChirho::ClassChirho)
+                        | Some(RawTokenKindChirho::ImportChirho)
+                        | Some(RawTokenKindChirho::ModuleChirho)
+                ) {
+                    break;
+                }
                 let before_chirho = self.pos_chirho;
                 self.parse_decl_chirho();
                 self.eat_trivia_chirho();

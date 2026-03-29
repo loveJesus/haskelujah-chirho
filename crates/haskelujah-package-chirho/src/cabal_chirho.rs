@@ -276,6 +276,14 @@ pub fn parse_cabal_chirho(input_chirho: &str) -> PackageDescChirho {
 /// kept (with indentation reduced).  On Windows, the reverse applies.
 /// `if impl(ghc ...)` and `if flag(...)` are treated as true by default.
 fn preprocess_cabal_conditionals_chirho(input_chirho: &str) -> String {
+    let flag_defaults_chirho = collect_flag_defaults_chirho(input_chirho);
+    preprocess_cabal_conditionals_with_flags_chirho(input_chirho, &flag_defaults_chirho)
+}
+
+fn preprocess_cabal_conditionals_with_flags_chirho(
+    input_chirho: &str,
+    flag_defaults_chirho: &HashMap<String, bool>,
+) -> String {
     let lines_chirho: Vec<&str> = input_chirho.lines().collect();
     let mut result_chirho: Vec<String> = Vec::with_capacity(lines_chirho.len());
     let mut i_chirho = 0;
@@ -355,7 +363,9 @@ fn preprocess_cabal_conditionals_chirho(input_chirho: &str) -> String {
             let chosen_chirho = branches_chirho
                 .iter()
                 .find_map(|(cond_chirho, branch_lines_chirho)| match cond_chirho {
-                    Some(cond_chirho) if eval_condition_simple_chirho(cond_chirho) => {
+                    Some(cond_chirho)
+                        if eval_condition_simple_chirho(cond_chirho, flag_defaults_chirho) =>
+                    {
                         Some(branch_lines_chirho)
                     }
                     None => Some(branch_lines_chirho),
@@ -389,8 +399,10 @@ fn preprocess_cabal_conditionals_chirho(input_chirho: &str) -> String {
                 })
                 .collect::<Vec<_>>()
                 .join("\n");
-            let nested_preprocessed_chirho =
-                preprocess_cabal_conditionals_chirho(&dedented_block_chirho);
+            let nested_preprocessed_chirho = preprocess_cabal_conditionals_with_flags_chirho(
+                &dedented_block_chirho,
+                flag_defaults_chirho,
+            );
             result_chirho.extend(
                 nested_preprocessed_chirho
                     .lines()
@@ -405,13 +417,56 @@ fn preprocess_cabal_conditionals_chirho(input_chirho: &str) -> String {
     result_chirho.join("\n")
 }
 
+fn collect_flag_defaults_chirho(input_chirho: &str) -> HashMap<String, bool> {
+    let mut flag_defaults_chirho = HashMap::new();
+    let mut current_flag_name_chirho: Option<String> = None;
+
+    for raw_line_chirho in input_chirho.lines() {
+        let line_chirho = strip_comment_chirho(raw_line_chirho);
+        if line_chirho.trim().is_empty() {
+            continue;
+        }
+
+        let indent_chirho = line_chirho.len() - line_chirho.trim_start().len();
+        let trimmed_chirho = line_chirho.trim();
+        let lower_trimmed_chirho = trimmed_chirho.to_ascii_lowercase();
+
+        if indent_chirho == 0 {
+            current_flag_name_chirho = lower_trimmed_chirho
+                .strip_prefix("flag ")
+                .map(|name_chirho| name_chirho.trim().to_string());
+            continue;
+        }
+
+        let Some(flag_name_chirho) = current_flag_name_chirho.as_ref() else {
+            continue;
+        };
+
+        if let Some(default_value_chirho) = lower_trimmed_chirho.strip_prefix("default:") {
+            let parsed_default_chirho = match default_value_chirho.trim() {
+                "true" => Some(true),
+                "false" => Some(false),
+                _ => None,
+            };
+            if let Some(parsed_default_chirho) = parsed_default_chirho {
+                flag_defaults_chirho.insert(flag_name_chirho.clone(), parsed_default_chirho);
+            }
+        }
+    }
+
+    flag_defaults_chirho
+}
+
 /// Simple condition evaluator for cabal `if` blocks.
 /// - `os(windows)` → false on non-Windows, true on Windows
 /// - `os(linux)` / `os(osx)` → true on respective OS
 /// - `impl(ghc ...)` → evaluated against the emulated GHC version
 /// - `flag(...)` → true by default
 /// - `!`, `&&`, `||` — evaluated recursively
-fn eval_condition_simple_chirho(cond_chirho: &ConditionChirho) -> bool {
+fn eval_condition_simple_chirho(
+    cond_chirho: &ConditionChirho,
+    flag_defaults_chirho: &HashMap<String, bool>,
+) -> bool {
     let current_os_chirho = if cfg!(target_os = "windows") {
         "windows"
     } else if cfg!(target_os = "macos") {
@@ -419,11 +474,9 @@ fn eval_condition_simple_chirho(cond_chirho: &ConditionChirho) -> bool {
     } else {
         "linux"
     };
-    let mut default_flags_chirho = std::collections::HashMap::new();
-    default_flags_chirho.insert("example".to_string(), false);
     eval_condition_chirho(
         cond_chirho,
-        &default_flags_chirho,
+        flag_defaults_chirho,
         current_os_chirho,
         if cfg!(target_arch = "x86_64") {
             "x86_64"
@@ -1086,9 +1139,7 @@ pub fn eval_condition_chirho(
     arch_chirho: &str,
 ) -> bool {
     match cond_chirho {
-        ConditionChirho::FlagChirho(name_chirho) => {
-            *flags_chirho.get(name_chirho).unwrap_or(&false)
-        }
+        ConditionChirho::FlagChirho(name_chirho) => *flags_chirho.get(name_chirho).unwrap_or(&true),
         ConditionChirho::OsChirho(name_chirho) => os_chirho.eq_ignore_ascii_case(name_chirho),
         ConditionChirho::ArchChirho(name_chirho) => arch_chirho.eq_ignore_ascii_case(name_chirho),
         ConditionChirho::ImplChirho(spec_chirho) => eval_impl_condition_chirho(spec_chirho),
