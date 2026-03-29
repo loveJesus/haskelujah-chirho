@@ -724,6 +724,43 @@ reasonFromProviderChirho = P.reason\n",
 }
 
 #[test]
+fn multi_module_transitive_terminal_type_stays_qualified_consistently_chirho() {
+    use crate::compile_modules_chirho;
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho: Vec<(&str, &str)> = vec![
+        (
+            "TextProviderChirho.hs",
+            "module TextProviderChirho where\n\
+data TerminalChirho = MkTerminalChirho\n\
+putLineChirho :: TerminalChirho -> String -> String\n\
+putLineChirho _terminalChirho textChirho = textChirho\n",
+        ),
+        (
+            "StateProviderChirho.hs",
+            "module StateProviderChirho where\n\
+import TextProviderChirho\n\
+data StateChirho = MkStateChirho { terminalChirho :: TerminalChirho }\n",
+        ),
+        (
+            "ConsumerChirho.hs",
+            "module ConsumerChirho where\n\
+import TextProviderChirho (putLineChirho)\n\
+import StateProviderChirho (StateChirho(terminalChirho))\n\
+renderChirho :: StateChirho -> String -> String\n\
+renderChirho stateChirho textChirho = putLineChirho (terminalChirho stateChirho) textChirho\n",
+        ),
+    ];
+
+    let result_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        result_chirho.is_ok(),
+        "transitive imported schemes should agree on qualified Terminal-like types: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_ghc_ioref_stref_constructor_roundtrip_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
@@ -7671,6 +7708,8 @@ fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
 fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
     use crate::{
         ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+        collect_preferred_qualified_type_names_chirho,
+        collect_safe_unqualified_imported_type_names_chirho,
         collect_frontend_artifacts_from_module_sources_chirho,
         qualify_imported_scheme_for_iface_chirho, read_haskell_source_file_chirho,
         scan_dependency_package_ifaces_chirho,
@@ -7729,6 +7768,15 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
             .entry(builtin_name_chirho)
             .or_insert(builtin_scheme_chirho);
     }
+    let safe_unqualified_imported_type_names_chirho =
+        collect_safe_unqualified_imported_type_names_chirho(
+            &module_chirho,
+            &multimap_artifacts_chirho.ifaces_chirho,
+        );
+    let preferred_qualified_type_names_chirho = collect_preferred_qualified_type_names_chirho(
+        &module_chirho,
+        &multimap_artifacts_chirho.ifaces_chirho,
+    );
 
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
@@ -7748,25 +7796,6 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
             .types_chirho
             .keys()
             .cloned()
-            .collect();
-        let unqualified_type_names_chirho: HashSet<String> = module_chirho
-            .imports_chirho
-            .iter()
-            .filter(|candidate_import_chirho| {
-                candidate_import_chirho.module_chirho.full_name_chirho() == module_name_chirho
-                    && !candidate_import_chirho.qualified_chirho
-            })
-            .flat_map(|candidate_import_chirho| {
-                compute_imported_names_chirho(
-                    &import_iface_chirho.exports_chirho,
-                    &candidate_import_chirho.spec_chirho,
-                )
-            })
-            .filter_map(|(name_chirho, namespace_chirho, _span_chirho)| {
-                (namespace_chirho
-                    == haskelujah_naming_chirho::env_chirho::NamespaceChirho::TypeChirho)
-                    .then_some(name_chirho)
-            })
             .collect();
         let names_chirho = compute_imported_names_chirho(
             &import_iface_chirho.exports_chirho,
@@ -7801,7 +7830,8 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
                 &base_scheme_chirho,
                 &qualifiable_type_names_chirho,
                 &qualifier_chirho,
-                &unqualified_type_names_chirho,
+                &safe_unqualified_imported_type_names_chirho,
+                &preferred_qualified_type_names_chirho,
             );
             if !import_chirho.qualified_chirho {
                 merged_imported_types_chirho
