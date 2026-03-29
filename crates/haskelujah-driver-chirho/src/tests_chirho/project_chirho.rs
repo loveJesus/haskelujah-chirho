@@ -1545,8 +1545,8 @@ treeWordSizeChirho = wordSize\n",
     }
 
     #[test]
-    fn compile_real_quickcheck_cabal_project_moves_past_qualified_state_record_label_mismatches_chirho(
-    ) {
+    fn compile_real_quickcheck_cabal_project_moves_past_qualified_state_record_label_mismatches_chirho()
+     {
         use crate::compile_cabal_project_chirho;
         use haskelujah_package_chirho::PackageIndexChirho;
 
@@ -2373,8 +2373,8 @@ buildStateMiniChirho = MkStateMiniChirho\n\
     }
 
     #[test]
-    fn compile_project_imported_record_construction_mixes_qualified_labels_after_omitted_maybe_field_chirho(
-    ) {
+    fn compile_project_imported_record_construction_mixes_qualified_labels_after_omitted_maybe_field_chirho()
+     {
         let tmp_chirho = tempfile::tempdir().unwrap();
         fs::write(
             tmp_chirho.path().join("StateMiniChirho.hs"),
@@ -2569,11 +2569,10 @@ coverageKnownSufficientMiniChirho _ = 0\n",
         };
         use haskelujah_naming_chirho::builtin_module_ifaces_chirho;
 
-        let module_sources_chirho = vec![
-            (
-                "StateMiniChirho".to_string(),
-                "StateMiniChirho.hs".to_string(),
-                "module StateMiniChirho where\n\
+        let module_sources_chirho = vec![(
+            "StateMiniChirho".to_string(),
+            "StateMiniChirho.hs".to_string(),
+            "module StateMiniChirho where\n\
 data ConfidenceMiniChirho = ConfidenceMiniChirho\n\
   { certaintyMiniChirho :: Integer\n\
   }\n\
@@ -2583,9 +2582,8 @@ data StateMiniChirho = MkStateMiniChirho\n\
   , replayStartSizeMiniChirho :: Maybe Int\n\
   , maxTestSizeMiniChirho :: Int\n\
   }\n"
-                .to_string(),
-            ),
-        ];
+            .to_string(),
+        )];
 
         let mut source_map_chirho = SourceMapChirho::new_chirho();
         let artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(

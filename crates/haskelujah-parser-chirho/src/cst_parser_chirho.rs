@@ -3404,7 +3404,6 @@ impl<'src> ParserChirho<'src> {
         if count_chirho > 1 {
             self.builder_chirho.finish_node_chirho(); // AppExpr
         }
-
     }
 
     /// Parse an atomic expression: literal, variable, constructor,
@@ -3460,8 +3459,10 @@ impl<'src> ParserChirho<'src> {
                         self.builder_chirho.finish_node_chirho();
                     } else {
                         self.builder_chirho.finish_node_chirho();
-                        self.builder_chirho
-                            .start_node_at_chirho(cp_chirho, SyntaxKindChirho::RecordUpdateExprChirho);
+                        self.builder_chirho.start_node_at_chirho(
+                            cp_chirho,
+                            SyntaxKindChirho::RecordUpdateExprChirho,
+                        );
                         self.parse_record_expr_chirho();
                         self.builder_chirho.finish_node_chirho();
                     }
