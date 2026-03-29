@@ -447,6 +447,7 @@ impl<'src> LayoutRuleChirho<'src> {
                                     | RawTokenKindChirho::FatArrowChirho
                                     | RawTokenKindChirho::PipeChirho
                                     | RawTokenKindChirho::CommaChirho
+                                    | RawTokenKindChirho::LeftBraceChirho
                             );
                             let previous_token_continues_expr_chirho = matches!(
                                 last_nt_kind_chirho,
@@ -782,6 +783,33 @@ fChirho xsChirho = goChirho [] [] xsChirho where
                 tokens_chirho
             );
         }
+    }
+
+    #[test]
+    fn multiline_record_update_rhs_does_not_insert_virtual_semicolon_before_brace_chirho() {
+        let source_chirho = r#"module RecordUpdateMiniChirho where
+updateMiniChirho stateMiniChirho =
+  stateMiniChirho
+    { fieldMiniChirho = 1
+    }
+"#;
+        let tokens_chirho = layout_tokens_chirho(source_chirho);
+        let state_idx_chirho = tokens_chirho
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(idx_chirho, (kind_chirho, text_chirho))| {
+                (*kind_chirho == RawTokenKindChirho::VarIdChirho
+                    && text_chirho == "stateMiniChirho")
+                    .then_some(idx_chirho)
+            })
+            .expect("expected record-update base expression token");
+        assert_eq!(
+            tokens_chirho[state_idx_chirho + 1].0,
+            RawTokenKindChirho::LeftBraceChirho,
+            "multiline record update should continue directly into the explicit brace, not a virtual separator: {:?}",
+            tokens_chirho
+        );
     }
 
     #[test]

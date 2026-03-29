@@ -157,6 +157,446 @@ encodingsChirho =
 }
 
 #[test]
+fn frontend_multi_constructor_record_fields_typecheck_out_of_order_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module QuickCheckRecordOrderMiniChirho where\n\
+data ResultMiniChirho\n\
+  = SuccessMiniChirho\n\
+    { numTestsMiniChirho :: Int\n\
+    , labelsMiniChirho :: [Int]\n\
+    , outputMiniChirho :: String\n\
+    }\n\
+  | FailureMiniChirho\n\
+    { numTestsMiniChirho :: Int\n\
+    , numDiscardedMiniChirho :: Int\n\
+    , usedSizeMiniChirho :: Int\n\
+    , maybeFlagMiniChirho :: Maybe Bool\n\
+    , labelsMiniChirho :: [Int]\n\
+    , outputMiniChirho :: String\n\
+    }\n\
+\n\
+mkFailureMiniChirho :: ResultMiniChirho\n\
+mkFailureMiniChirho =\n\
+  FailureMiniChirho\n\
+    { usedSizeMiniChirho = 7\n\
+    , maybeFlagMiniChirho = Nothing\n\
+    , numTestsMiniChirho = 3\n\
+    , numDiscardedMiniChirho = 1\n\
+    , labelsMiniChirho = []\n\
+    , outputMiniChirho = \"\"\n\
+    }\n\
+\n\
+recheckMiniChirho :: ResultMiniChirho -> Int\n\
+recheckMiniChirho resultMiniChirho@FailureMiniChirho{} = usedSizeMiniChirho resultMiniChirho\n\
+recheckMiniChirho _ = 0\n",
+        &mut source_map_chirho,
+        "QuickCheckRecordOrderMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "multi-constructor record construction should follow declared field order and keep per-constructor selectors in scope: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_record_pattern_field_types_follow_constructor_layout_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE NamedFieldPuns #-}\n\
+module QuickCheckRecordPatternMiniChirho where\n\
+data CoverageMiniChirho\n\
+  = CoverageMiniChirho\n\
+    { valueMiniChirho :: Int\n\
+    , flagMiniChirho :: Maybe Bool\n\
+    }\n\
+  | OtherMiniChirho\n\
+    { valueMiniChirho :: Int\n\
+    }\n\
+\n\
+useCoverageMiniChirho :: CoverageMiniChirho -> Int\n\
+useCoverageMiniChirho CoverageMiniChirho{valueMiniChirho, flagMiniChirho} =\n\
+  case flagMiniChirho of\n\
+    Just True -> valueMiniChirho\n\
+    Just False -> 0\n\
+    Nothing -> 0\n\
+useCoverageMiniChirho OtherMiniChirho{valueMiniChirho} = valueMiniChirho\n",
+        &mut source_map_chirho,
+        "QuickCheckRecordPatternMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "record pattern bindings should inherit field types from the matched constructor: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_lambda_tuple_pattern_binds_names_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module LambdaTuplePatternMiniChirho where\n\
+pairMapMiniChirho :: [([Int], Int)] -> [Int]\n\
+pairMapMiniChirho pairsMiniChirho = map (\\(xsMiniChirho, nMiniChirho) -> length xsMiniChirho + nMiniChirho) pairsMiniChirho\n",
+        &mut source_map_chirho,
+        "LambdaTuplePatternMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "lambda tuple patterns should bind their component names: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_list_comprehension_tuple_generator_binds_names_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ListCompTuplePatternMiniChirho where\n\
+countsMiniChirho :: [(String, Bool)] -> [(String, Int)]\n\
+countsMiniChirho classesMiniChirho = [ (labelMiniChirho, if flagMiniChirho then 1 else 0) | (labelMiniChirho, flagMiniChirho) <- classesMiniChirho ]\n",
+        &mut source_map_chirho,
+        "ListCompTuplePatternMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "list comprehension tuple generators should bind their pattern names: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_quickcheck_style_tuple_binders_compile_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module QuickCheckCoverageTupleBindersMiniChirho where\n\
+\n\
+classesMiniChirho :: [(String, Bool)] -> [(String, Int)]\n\
+classesMiniChirho pairsMiniChirho =\n\
+  [ (labelMiniChirho, if flagMiniChirho then 1 else 0) | (labelMiniChirho, flagMiniChirho) <- pairsMiniChirho ]\n\
+\n\
+tablesMiniChirho :: [(String, String)] -> [(String, String)]\n\
+tablesMiniChirho pairsMiniChirho =\n\
+  foldr (\\(tabMiniChirho, valueMiniChirho) accMiniChirho -> (tabMiniChirho, valueMiniChirho) : accMiniChirho) [] pairsMiniChirho\n\
+\n\
+requiredCoverageMiniChirho :: [(Maybe String, String, Double)] -> [(Maybe String, String, Double)]\n\
+requiredCoverageMiniChirho triplesMiniChirho =\n\
+  foldr (\\(keyMiniChirho, valueMiniChirho, probMiniChirho) accMiniChirho -> (keyMiniChirho, valueMiniChirho, probMiniChirho) : accMiniChirho) [] triplesMiniChirho\n",
+        &mut source_map_chirho,
+        "QuickCheckCoverageTupleBindersMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "QuickCheck-style list comprehensions and tuple-pattern lambdas should bind local names: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_list_comprehension_let_qualifiers_bind_names_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ListCompLetQualifiersMiniChirho where\n\
+allCoverageMiniChirho :: [((Maybe String, String), Double)] -> [(Maybe String, String, Int, Int, Double)]\n\
+allCoverageMiniChirho requiredCoverageMiniChirho =\n\
+  [ (keyMiniChirho, valueMiniChirho, totMiniChirho, nMiniChirho, pMiniChirho)\n\
+  | ((keyMiniChirho, valueMiniChirho), pMiniChirho) <- requiredCoverageMiniChirho\n\
+  , let totMiniChirho = case keyMiniChirho of\n\
+          Just _tableMiniChirho -> 1\n\
+          Nothing -> 0\n\
+  , let nMiniChirho = 2\n\
+  ]\n",
+        &mut source_map_chirho,
+        "ListCompLetQualifiersMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "list-comprehension let qualifiers should bind later names: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_do_stmt_retains_full_application_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module DoStmtFullApplicationMiniChirho where\n\
+data StateMiniChirho = StateMiniChirho { countMiniChirho :: Int }\n\
+\n\
+localMinMiniChirho :: StateMiniChirho -> Int -> [Int] -> IO Int\n\
+localMinMiniChirho _stateMiniChirho resMiniChirho _tsMiniChirho = return resMiniChirho\n\
+\n\
+foundFailureMiniChirho :: StateMiniChirho -> Int -> [Int] -> IO Int\n\
+foundFailureMiniChirho stateMiniChirho resMiniChirho tsMiniChirho =\n\
+  do localMinMiniChirho stateMiniChirho{ countMiniChirho = 0 } resMiniChirho tsMiniChirho\n",
+        &mut source_map_chirho,
+        "DoStmtFullApplicationMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "do statements should retain the full applied expression: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_quickcheck_style_failure_record_selectors_compile_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module QuickCheckFailureSelectorsMiniChirho where\n\
+import qualified Data.Map as Map\n\
+import qualified Data.Set as Set\n\
+\n\
+type QcGenMiniChirho = Int\n\
+type AnExceptionMiniChirho = String\n\
+data WitnessMiniChirho = WitnessMiniChirho\n\
+\n\
+data ResultMiniChirho\n\
+  = SuccessMiniChirho\n\
+    { numTestsMiniChirho :: Int\n\
+    , numDiscardedMiniChirho :: Int\n\
+    , labelsMiniChirho :: !(Map.Map [String] Int)\n\
+    , classesMiniChirho :: !(Map.Map String Int)\n\
+    , tablesMiniChirho :: !(Map.Map String (Map.Map String Int))\n\
+    , outputMiniChirho :: String\n\
+    }\n\
+  | FailureMiniChirho\n\
+    { numTestsMiniChirho :: Int\n\
+    , numDiscardedMiniChirho :: Int\n\
+    , numShrinksMiniChirho :: Int\n\
+    , numShrinkTriesMiniChirho :: Int\n\
+    , numShrinkFinalMiniChirho :: Int\n\
+    , usedSeedMiniChirho :: QcGenMiniChirho\n\
+    , usedSizeMiniChirho :: Int\n\
+    , reasonMiniChirho :: String\n\
+    , theExceptionMiniChirho :: Maybe AnExceptionMiniChirho\n\
+    , outputMiniChirho :: String\n\
+    , failingTestCaseMiniChirho :: [String]\n\
+    , failingLabelsMiniChirho :: [String]\n\
+    , failingClassesMiniChirho :: Set.Set String\n\
+    , witnessesMiniChirho :: [WitnessMiniChirho]\n\
+    }\n\
+\n\
+recheckMiniChirho :: ResultMiniChirho -> (QcGenMiniChirho, Int)\n\
+recheckMiniChirho resultMiniChirho@FailureMiniChirho{} =\n\
+  (usedSeedMiniChirho resultMiniChirho, usedSizeMiniChirho resultMiniChirho)\n\
+recheckMiniChirho _ = (0, 0)\n",
+        &mut source_map_chirho,
+        "QuickCheckFailureSelectorsMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "QuickCheck-style per-constructor record selectors should stay in scope for multi-constructor data: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_preprocessed_quickcheck_test_retains_failure_record_fields_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
+
+    let repo_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("repo root should exist")
+        .to_path_buf();
+    let path_chirho = repo_root_chirho
+        .join(".haskelujah-packages-chirho/QuickCheck-2.18.0.0/src/Test/QuickCheck/Test.hs");
+    if !path_chirho.exists() {
+        return;
+    }
+
+    let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
+        .expect("QuickCheck Test.hs should preprocess");
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        path_chirho,
+        &source_chirho,
+    );
+    let parser_chirho =
+        ParserChirho::new_chirho(&source_chirho, source_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+
+    let mut data_decl_debugs_chirho = Vec::new();
+    let mut failure_fields_chirho: Option<Vec<String>> = None;
+    for decl_chirho in &module_chirho.decls_chirho {
+        if let DeclChirho::DataDeclChirho {
+            name_chirho,
+            constructors_chirho,
+            ..
+        } = decl_chirho
+        {
+            if name_chirho.text_chirho() == "Result" {
+                data_decl_debugs_chirho.push(format!("{decl_chirho:#?}"));
+                failure_fields_chirho = constructors_chirho.iter().find_map(|constructor_chirho| {
+                    match constructor_chirho {
+                        ConDeclChirho::RecordChirho {
+                            name_chirho,
+                            fields_chirho,
+                            ..
+                        } if name_chirho.text_chirho() == "Failure" => Some(
+                            fields_chirho
+                                .iter()
+                                .flat_map(|field_decl_chirho| {
+                                    field_decl_chirho
+                                        .names_chirho
+                                        .iter()
+                                        .map(|name_chirho| name_chirho.text_chirho().to_string())
+                                })
+                                .collect(),
+                        ),
+                        _ => None,
+                    }
+                });
+            }
+        }
+    }
+    let failure_fields_chirho = failure_fields_chirho.unwrap_or_else(|| {
+        panic!(
+            "QuickCheck Result Failure constructor should lower; matching data decls: {:?}",
+            data_decl_debugs_chirho
+        )
+    });
+
+    assert!(
+        failure_fields_chirho.contains(&"usedSeed".to_string()),
+        "preprocessed QuickCheck Result should retain usedSeed in Failure fields: {:?}",
+        failure_fields_chirho
+    );
+    assert!(
+        failure_fields_chirho.contains(&"usedSize".to_string()),
+        "preprocessed QuickCheck Result should retain usedSize in Failure fields: {:?}",
+        failure_fields_chirho
+    );
+}
+
+#[test]
+fn frontend_preprocessed_quickcheck_test_allcoverage_retains_let_qualifiers_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
+
+    let repo_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("repo root should exist")
+        .to_path_buf();
+    let path_chirho = repo_root_chirho
+        .join(".haskelujah-packages-chirho/QuickCheck-2.18.0.0/src/Test/QuickCheck/Test.hs");
+    if !path_chirho.exists() {
+        return;
+    }
+
+    let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
+        .expect("QuickCheck Test.hs should preprocess");
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        path_chirho,
+        &source_chirho,
+    );
+    let parser_chirho =
+        ParserChirho::new_chirho(&source_chirho, source_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+
+    let all_coverage_decl_debug_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find_map(|decl_chirho| match decl_chirho {
+            DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "allCoverage" =>
+            {
+                Some(format!("{decl_chirho:#?}"))
+            }
+            _ => None,
+        })
+        .expect("QuickCheck allCoverage binding should lower");
+
+    assert!(
+        all_coverage_decl_debug_chirho.contains("LetChirho"),
+        "preprocessed QuickCheck allCoverage should retain list-comprehension let qualifiers: {all_coverage_decl_debug_chirho}",
+    );
+}
+
+#[test]
+fn frontend_qualified_record_update_fields_lower_nested_rhs_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
+
+    let source_chirho = "module UseMiniChirho where\n\
+import qualified StateMiniChirho as S\n\
+\n\
+updateStateMiniChirho stateMiniChirho classPairsMiniChirho tablePairsMiniChirho =\n\
+  stateMiniChirho\n\
+    { S.labelsMiniChirho = [ (labelMiniChirho, if flagMiniChirho then 1 else 0)\n\
+                           | (labelMiniChirho, flagMiniChirho) <- classPairsMiniChirho\n\
+                           ]\n\
+    , S.tablesMiniChirho =\n\
+        foldr\n\
+          (\\(tableMiniChirho, valueMiniChirho) accMiniChirho -> (tableMiniChirho, valueMiniChirho) : accMiniChirho)\n\
+          []\n\
+          tablePairsMiniChirho\n\
+    }\n";
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "UseMiniChirho.hs",
+        source_chirho,
+    );
+    let parser_chirho = ParserChirho::new_chirho(source_chirho, source_file_chirho.file_id_chirho());
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+
+    let update_decl_debug_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find_map(|decl_chirho| match decl_chirho {
+            DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "updateStateMiniChirho" =>
+            {
+                Some(format!("{decl_chirho:#?}"))
+            }
+            _ => None,
+        })
+        .expect("qualified record update binding should lower");
+
+    assert!(
+        update_decl_debug_chirho.contains("RecordUpdateChirho"),
+        "qualified record update should remain a record update expression: {update_decl_debug_chirho}",
+    );
+    assert!(
+        update_decl_debug_chirho.contains("ListCompChirho"),
+        "qualified record update field should keep nested list comprehensions: {update_decl_debug_chirho}",
+    );
+    assert!(
+        update_decl_debug_chirho.contains("classPairsMiniChirho"),
+        "qualified record update field should keep the generator source binding: {update_decl_debug_chirho}",
+    );
+    assert!(
+        update_decl_debug_chirho.contains("valueMiniChirho"),
+        "qualified record update field should keep tuple-pattern lambda binders: {update_decl_debug_chirho}",
+    );
+}
+
+#[test]
 fn frontend_parenthesized_prefix_type_operator_in_instance_head_compiles_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
@@ -3537,12 +3977,16 @@ fn frontend_system_random_split_and_splitmix_surface_typechecks_chirho() {
 #[test]
 fn frontend_text_case_mapping_parse_and_lower_survives_generated_module_size_chirho() {
     use crate::read_haskell_source_file_chirho;
-    use haskelujah_parser_chirho::{cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho};
+    use haskelujah_parser_chirho::{
+        cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho,
+    };
     use std::path::PathBuf;
 
     let case_mapping_path_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join(".haskelujah-packages-chirho/text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs");
+        .join(
+            ".haskelujah-packages-chirho/text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs",
+        );
     let source_chirho = read_haskell_source_file_chirho(&case_mapping_path_chirho)
         .expect("text CaseMapping source should exist");
     let mut source_map_chirho = SourceMapChirho::new_chirho();
@@ -3580,7 +4024,9 @@ fn frontend_text_case_mapping_frontend_survives_generated_module_size_chirho() {
 
     let case_mapping_path_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join(".haskelujah-packages-chirho/text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs");
+        .join(
+            ".haskelujah-packages-chirho/text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs",
+        );
     let source_chirho = read_haskell_source_file_chirho(&case_mapping_path_chirho)
         .expect("text CaseMapping source should exist");
 
@@ -7708,9 +8154,9 @@ fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
 fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
     use crate::{
         ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+        collect_frontend_artifacts_from_module_sources_chirho,
         collect_preferred_qualified_type_names_chirho,
         collect_safe_unqualified_imported_type_names_chirho,
-        collect_frontend_artifacts_from_module_sources_chirho,
         qualify_imported_scheme_for_iface_chirho, read_haskell_source_file_chirho,
         scan_dependency_package_ifaces_chirho,
     };

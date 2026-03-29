@@ -1503,9 +1503,9 @@ treeWordSizeChirho = wordSize\n",
             Err(error_chirho) => {
                 let error_text_chirho = format!("{error_chirho}");
                 assert!(
-                    !(error_text_chirho
-                        .contains("dependency package 'random': Error compiling System.Random.Internal")
-                        && error_text_chirho.contains("expected `(StateT")
+                    !(error_text_chirho.contains(
+                        "dependency package 'random': Error compiling System.Random.Internal"
+                    ) && error_text_chirho.contains("expected `(StateT")
                         && error_text_chirho.contains("found `State`")),
                     "QuickCheck should move past the old random State/StateT dependency mismatch, got: {error_text_chirho}",
                 );
@@ -2206,6 +2206,393 @@ reachOffsetMiniChirho PosStateChirho {..} = pstateOffsetChirho\n",
         assert!(
             result_chirho.is_ok(),
             "project compilation should bind imported RecordWildCards fields from iface metadata: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn compile_project_imported_record_construction_uses_field_labels_chirho() {
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::write(
+            tmp_chirho.path().join("StateMiniChirho.hs"),
+            "module StateMiniChirho where\n\
+data ConfidenceMiniChirho = ConfidenceMiniChirho\n\
+  { certaintyMiniChirho :: Integer\n\
+  }\n\
+\n\
+data StateMiniChirho = MkStateMiniChirho\n\
+  { terminalMiniChirho :: Int\n\
+  , maxSuccessTestsMiniChirho :: Int\n\
+  , maxDiscardedRatioMiniChirho :: Int\n\
+  , coverageConfidenceMiniChirho :: Maybe ConfidenceMiniChirho\n\
+  , replayStartSizeMiniChirho :: Maybe Int\n\
+  , maxTestSizeMiniChirho :: Int\n\
+  , expectedMiniChirho :: Bool\n\
+  }\n",
+        )
+        .unwrap();
+        fs::write(
+            tmp_chirho.path().join("UseMiniChirho.hs"),
+            "module UseMiniChirho where\n\
+import StateMiniChirho\n\
+\n\
+buildStateMiniChirho :: StateMiniChirho\n\
+buildStateMiniChirho = MkStateMiniChirho\n\
+  { coverageConfidenceMiniChirho = Just (ConfidenceMiniChirho { certaintyMiniChirho = 1 })\n\
+  , replayStartSizeMiniChirho = Nothing\n\
+  , maxDiscardedRatioMiniChirho = 10\n\
+  , terminalMiniChirho = 0\n\
+  , maxSuccessTestsMiniChirho = 100\n\
+  , maxTestSizeMiniChirho = 25\n\
+  , expectedMiniChirho = True\n\
+  }\n",
+        )
+        .unwrap();
+
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut source_map_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "project compilation should order imported record construction by field labels, not source order: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn compile_project_imported_record_construction_skips_omitted_maybe_fields_chirho() {
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::write(
+            tmp_chirho.path().join("StateMiniChirho.hs"),
+            "module StateMiniChirho where\n\
+data ConfidenceMiniChirho = ConfidenceMiniChirho\n\
+  { certaintyMiniChirho :: Integer\n\
+  }\n\
+\n\
+data StateMiniChirho = MkStateMiniChirho\n\
+  { maxSuccessTestsMiniChirho :: Int\n\
+  , maxDiscardedRatioMiniChirho :: Int\n\
+  , coverageConfidenceMiniChirho :: Maybe ConfidenceMiniChirho\n\
+  , numTotMaxShrinksMiniChirho :: Int\n\
+  , replayStartSizeMiniChirho :: Maybe Int\n\
+  , maxTestSizeMiniChirho :: Int\n\
+  }\n",
+        )
+        .unwrap();
+        fs::write(
+            tmp_chirho.path().join("UseMiniChirho.hs"),
+            "module UseMiniChirho where\n\
+import StateMiniChirho\n\
+\n\
+buildStateMiniChirho :: StateMiniChirho\n\
+buildStateMiniChirho = MkStateMiniChirho\n\
+  { replayStartSizeMiniChirho = Nothing\n\
+  , maxSuccessTestsMiniChirho = 100\n\
+  , maxTestSizeMiniChirho = 25\n\
+  , maxDiscardedRatioMiniChirho = 10\n\
+  , numTotMaxShrinksMiniChirho = 5\n\
+  }\n",
+        )
+        .unwrap();
+
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut source_map_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "imported record construction should preserve field alignment when an intermediate Maybe field is omitted: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn compile_project_imported_record_construction_mixes_qualified_labels_after_omitted_maybe_field_chirho(
+    ) {
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::write(
+            tmp_chirho.path().join("StateMiniChirho.hs"),
+            "module StateMiniChirho where\n\
+data ConfidenceMiniChirho = ConfidenceMiniChirho\n\
+  { certaintyMiniChirho :: Integer\n\
+  }\n\
+\n\
+data StateMiniChirho = MkStateMiniChirho\n\
+  { maxSuccessTestsMiniChirho :: Int\n\
+  , maxDiscardedRatioMiniChirho :: Int\n\
+  , coverageConfidenceMiniChirho :: Maybe ConfidenceMiniChirho\n\
+  , numTotMaxShrinksMiniChirho :: Int\n\
+  , replayStartSizeMiniChirho :: Maybe Int\n\
+  , maxTestSizeMiniChirho :: Int\n\
+  , labelsMiniChirho :: [(String, Int)]\n\
+  , classesMiniChirho :: [(String, Int)]\n\
+  }\n",
+        )
+        .unwrap();
+        fs::write(
+            tmp_chirho.path().join("UseMiniChirho.hs"),
+            "module UseMiniChirho where\n\
+import StateMiniChirho\n\
+import qualified StateMiniChirho as S\n\
+\n\
+buildStateMiniChirho :: StateMiniChirho\n\
+buildStateMiniChirho = MkStateMiniChirho\n\
+  { maxSuccessTestsMiniChirho = 100\n\
+  , maxDiscardedRatioMiniChirho = 10\n\
+  , replayStartSizeMiniChirho = Nothing\n\
+  , maxTestSizeMiniChirho = 25\n\
+  , numTotMaxShrinksMiniChirho = 5\n\
+  , S.labelsMiniChirho = []\n\
+  , S.classesMiniChirho = []\n\
+  }\n",
+        )
+        .unwrap();
+
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut source_map_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "imported record construction should still match later qualified field labels after omitting an intermediate Maybe field: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn compile_project_imported_record_selectors_preserve_maybe_field_types_chirho() {
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::write(
+            tmp_chirho.path().join("StateMiniChirho.hs"),
+            "module StateMiniChirho where\n\
+data ConfidenceMiniChirho = ConfidenceMiniChirho\n\
+  { certaintyMiniChirho :: Integer\n\
+  }\n\
+\n\
+data StateMiniChirho = MkStateMiniChirho\n\
+  { maybeConfidenceMiniChirho :: Maybe ConfidenceMiniChirho\n\
+  , replayStartSizeMiniChirho :: Maybe Int\n\
+  , maxTestSizeMiniChirho :: Int\n\
+  }\n",
+        )
+        .unwrap();
+        fs::write(
+            tmp_chirho.path().join("UseMiniChirho.hs"),
+            "module UseMiniChirho where\n\
+import Data.Maybe (fromMaybe)\n\
+import StateMiniChirho\n\
+\n\
+confidenceLevelMiniChirho :: StateMiniChirho -> Integer\n\
+confidenceLevelMiniChirho stateMiniChirho =\n\
+  case maybeConfidenceMiniChirho stateMiniChirho of\n\
+    Just confidenceMiniChirho -> certaintyMiniChirho confidenceMiniChirho\n\
+    Nothing -> 0\n\
+\n\
+sizeOrDefaultMiniChirho :: StateMiniChirho -> Maybe Int -> Int\n\
+sizeOrDefaultMiniChirho stateMiniChirho maybeSizeMiniChirho =\n\
+  fromMaybe (maxTestSizeMiniChirho stateMiniChirho) maybeSizeMiniChirho\n\
+\n\
+replayOrSizeMiniChirho :: StateMiniChirho -> Int\n\
+replayOrSizeMiniChirho stateMiniChirho =\n\
+  fromMaybe (maxTestSizeMiniChirho stateMiniChirho) (replayStartSizeMiniChirho stateMiniChirho)\n",
+        )
+        .unwrap();
+
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut source_map_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "project compilation should preserve imported record selector field types, especially Maybe-valued fields: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn compile_project_imported_record_patterns_preserve_maybe_field_types_chirho() {
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::write(
+            tmp_chirho.path().join("StateMiniChirho.hs"),
+            "module StateMiniChirho where\n\
+data ConfidenceMiniChirho = ConfidenceMiniChirho\n\
+  { certaintyMiniChirho :: Integer\n\
+  }\n\
+\n\
+data StateMiniChirho = MkStateMiniChirho\n\
+  { coverageConfidenceMiniChirho :: Maybe ConfidenceMiniChirho\n\
+  , replayStartSizeMiniChirho :: Maybe Int\n\
+  , maxTestSizeMiniChirho :: Int\n\
+  }\n",
+        )
+        .unwrap();
+        fs::write(
+            tmp_chirho.path().join("UseMiniChirho.hs"),
+            "module UseMiniChirho where\n\
+import StateMiniChirho\n\
+\n\
+confidenceLevelMiniChirho :: StateMiniChirho -> Integer\n\
+confidenceLevelMiniChirho MkStateMiniChirho{coverageConfidenceMiniChirho = Just confidenceMiniChirho} =\n\
+  certaintyMiniChirho confidenceMiniChirho\n\
+confidenceLevelMiniChirho _ = 0\n\
+\n\
+combinedSizeMiniChirho :: StateMiniChirho -> Int\n\
+combinedSizeMiniChirho MkStateMiniChirho{replayStartSizeMiniChirho = Just startMiniChirho, maxTestSizeMiniChirho = maxSizeMiniChirho} =\n\
+  startMiniChirho + maxSizeMiniChirho\n\
+combinedSizeMiniChirho MkStateMiniChirho{maxTestSizeMiniChirho = maxSizeMiniChirho} = maxSizeMiniChirho\n",
+        )
+        .unwrap();
+
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut source_map_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "project compilation should preserve imported record-pattern field types, especially Maybe-valued fields: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn compile_project_imported_quickcheck_style_state_patterns_preserve_field_types_chirho() {
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::write(
+            tmp_chirho.path().join("StateMiniChirho.hs"),
+            "module StateMiniChirho where\n\
+data ConfidenceMiniChirho = ConfidenceMiniChirho\n\
+  { certaintyMiniChirho :: Integer\n\
+  }\n\
+\n\
+data StateMiniChirho = MkStateMiniChirho\n\
+  { maxSuccessTestsMiniChirho :: Int\n\
+  , maxDiscardedRatioMiniChirho :: Int\n\
+  , coverageConfidenceMiniChirho :: Maybe ConfidenceMiniChirho\n\
+  , replayStartSizeMiniChirho :: Maybe Int\n\
+  , maxTestSizeMiniChirho :: Int\n\
+  , numSuccessTestsMiniChirho :: Int\n\
+  , numRecentlyDiscardedTestsMiniChirho :: Int\n\
+  }\n",
+        )
+        .unwrap();
+        fs::write(
+            tmp_chirho.path().join("UseMiniChirho.hs"),
+            "module UseMiniChirho where\n\
+import StateMiniChirho\n\
+\n\
+computeSizeMiniChirho :: StateMiniChirho -> Int\n\
+computeSizeMiniChirho MkStateMiniChirho{replayStartSizeMiniChirho = Just sMiniChirho,numSuccessTestsMiniChirho = 0,numRecentlyDiscardedTestsMiniChirho=0} = sMiniChirho\n\
+computeSizeMiniChirho MkStateMiniChirho{maxSuccessTestsMiniChirho = msMiniChirho, maxTestSizeMiniChirho = mtsMiniChirho, maxDiscardedRatioMiniChirho = mdMiniChirho,numSuccessTestsMiniChirho=nMiniChirho,numRecentlyDiscardedTestsMiniChirho=dMiniChirho} =\n\
+  msMiniChirho + mtsMiniChirho + mdMiniChirho + nMiniChirho + dMiniChirho\n\
+\n\
+coverageKnownSufficientMiniChirho :: StateMiniChirho -> Integer\n\
+coverageKnownSufficientMiniChirho stateMiniChirho@MkStateMiniChirho{coverageConfidenceMiniChirho=Just confidenceMiniChirho} =\n\
+  certaintyMiniChirho confidenceMiniChirho + fromIntegral (maxTestSizeMiniChirho stateMiniChirho)\n\
+coverageKnownSufficientMiniChirho _ = 0\n",
+        )
+        .unwrap();
+
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut source_map_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "QuickCheck-style imported State patterns should preserve Maybe and Int field types: {:?}",
+            result_chirho.err()
+        );
+    }
+
+    #[test]
+    fn collect_frontend_artifacts_exports_record_selectors_for_imports_chirho() {
+        use crate::{
+            ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
+            collect_frontend_artifacts_from_module_sources_chirho,
+        };
+        use haskelujah_naming_chirho::builtin_module_ifaces_chirho;
+
+        let module_sources_chirho = vec![
+            (
+                "StateMiniChirho".to_string(),
+                "StateMiniChirho.hs".to_string(),
+                "module StateMiniChirho where\n\
+data ConfidenceMiniChirho = ConfidenceMiniChirho\n\
+  { certaintyMiniChirho :: Integer\n\
+  }\n\
+\n\
+data StateMiniChirho = MkStateMiniChirho\n\
+  { maybeConfidenceMiniChirho :: Maybe ConfidenceMiniChirho\n\
+  , replayStartSizeMiniChirho :: Maybe Int\n\
+  , maxTestSizeMiniChirho :: Int\n\
+  }\n"
+                .to_string(),
+            ),
+        ];
+
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+            module_sources_chirho,
+            &mut source_map_chirho,
+            builtin_module_ifaces_chirho(),
+            std::collections::HashMap::new(),
+            ImportedTypeSynonymsChirho::new(),
+            ImportedTypeFamiliesChirho::new(),
+            true,
+        )
+        .expect("frontend artifact collection should succeed for the defining module");
+
+        assert!(
+            artifacts_chirho
+                .imported_types_chirho
+                .contains_key("maybeConfidenceMiniChirho"),
+            "record selector should be re-exported into imported type seeds: {:?}",
+            artifacts_chirho
+                .imported_types_chirho
+                .keys()
+                .filter(|name_chirho| name_chirho.contains("MiniChirho"))
+                .cloned()
+                .collect::<Vec<_>>()
+        );
+        assert!(
+            artifacts_chirho
+                .imported_types_chirho
+                .contains_key("maxTestSizeMiniChirho"),
+            "plain record selector should be available to downstream modules: {:?}",
+            artifacts_chirho
+                .imported_types_chirho
+                .keys()
+                .filter(|name_chirho| name_chirho.contains("MiniChirho"))
+                .cloned()
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn compile_project_qualified_record_update_fields_preserve_nested_binders_chirho() {
+        let tmp_chirho = tempfile::tempdir().unwrap();
+        fs::write(
+            tmp_chirho.path().join("StateMiniChirho.hs"),
+            "module StateMiniChirho where\n\
+data StateMiniChirho = MkStateMiniChirho\n\
+  { labelsMiniChirho :: [(String, Int)]\n\
+  , tablesMiniChirho :: [(String, String)]\n\
+  }\n",
+        )
+        .unwrap();
+        fs::write(
+            tmp_chirho.path().join("UseMiniChirho.hs"),
+            "module UseMiniChirho where\n\
+import qualified StateMiniChirho as S\n\
+\n\
+updateStateMiniChirho :: S.StateMiniChirho -> [(String, Bool)] -> [(String, String)] -> S.StateMiniChirho\n\
+updateStateMiniChirho stateMiniChirho classPairsMiniChirho tablePairsMiniChirho =\n\
+  stateMiniChirho\n\
+    { S.labelsMiniChirho = [ (labelMiniChirho, if flagMiniChirho then 1 else 0)\n\
+                           | (labelMiniChirho, flagMiniChirho) <- classPairsMiniChirho\n\
+                           ]\n\
+    , S.tablesMiniChirho =\n\
+        foldr\n\
+          (\\(tableMiniChirho, valueMiniChirho) accMiniChirho -> (tableMiniChirho, valueMiniChirho) : accMiniChirho)\n\
+          []\n\
+          tablePairsMiniChirho\n\
+    }\n",
+        )
+        .unwrap();
+
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        let result_chirho = compile_project_dir_chirho(tmp_chirho.path(), &mut source_map_chirho);
+        assert!(
+            result_chirho.is_ok(),
+            "qualified record-update fields should keep their nested tuple binders and list-comprehension binders intact: {:?}",
             result_chirho.err()
         );
     }

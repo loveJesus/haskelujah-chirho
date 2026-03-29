@@ -5423,6 +5423,12 @@ impl LowerCtxChirho {
                                 pats_chirho.push(
                                     self.lower_pat_chirho(n_chirho, child_chirho.start_chirho),
                                 );
+                            } else if !saw_arrow_chirho
+                                && is_expr_kind_chirho(n_chirho.kind_chirho())
+                            {
+                                let pat_expr_chirho =
+                                    self.lower_expr_chirho(n_chirho, child_chirho.start_chirho);
+                                pats_chirho.push(Self::expr_to_pat_chirho(&pat_expr_chirho));
                             } else if saw_arrow_chirho && body_chirho.is_none() {
                                 body_chirho = Some(
                                     self.lower_expr_chirho(n_chirho, child_chirho.start_chirho),
@@ -6252,12 +6258,36 @@ impl LowerCtxChirho {
                                 {
                                     current_qual_parts_chirho.push(QualPartChirho::ArrowChirho);
                                 }
-                                GreenElementChirho::NodeChirho(_) => {
-                                    let expr_chirho =
-                                        self.lower_expr_from_child_chirho(child_chirho);
+                                GreenElementChirho::NodeChirho(n_chirho) => {
                                     if !past_pipe_chirho {
+                                        let expr_chirho =
+                                            self.lower_expr_chirho(n_chirho, child_chirho.start_chirho);
                                         body_expr_chirho = Some(expr_chirho);
+                                    } else if n_chirho.kind_chirho() == SyntaxKindChirho::LetStmtChirho {
+                                        if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                            &current_qual_parts_chirho,
+                                            span_chirho,
+                                        ) {
+                                            quals_chirho.push(qual_chirho);
+                                        }
+                                        current_qual_parts_chirho.clear();
+                                        quals_chirho.push(StmtChirho::LetChirho {
+                                            binds_chirho: self.lower_let_stmt_binds_chirho(
+                                                n_chirho,
+                                                child_chirho.start_chirho,
+                                            ),
+                                            span_chirho: self.span_chirho(
+                                                child_chirho.start_chirho,
+                                                child_chirho.end_chirho,
+                                            ),
+                                        });
+                                    } else if is_pat_kind_chirho(n_chirho.kind_chirho()) {
+                                        current_qual_parts_chirho.push(QualPartChirho::PatChirho(
+                                            self.lower_pat_chirho(n_chirho, child_chirho.start_chirho),
+                                        ));
                                     } else {
+                                        let expr_chirho =
+                                            self.lower_expr_chirho(n_chirho, child_chirho.start_chirho);
                                         current_qual_parts_chirho
                                             .push(QualPartChirho::ExprChirho(expr_chirho));
                                     }
@@ -7067,14 +7097,13 @@ impl LowerCtxChirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
                     if !saw_equals_chirho
                         && (tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
-                            || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho)
+                            || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedVarIdChirho
+                            || tok_chirho.kind_chirho() == TokenKindChirho::QualifiedConIdChirho)
                         && field_name_chirho.is_none()
                     {
                         field_name_chirho =
-                            Some(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                                tok_chirho.text_chirho().to_string(),
-                                span_chirho,
-                            )));
+                            Some(self.name_from_token_chirho(tok_chirho, span_chirho));
                     }
                     if tok_chirho.kind_chirho() == TokenKindChirho::EqualsChirho {
                         saw_equals_chirho = true;
@@ -7190,10 +7219,22 @@ impl LowerCtxChirho {
         base_chirho: usize,
     ) -> ExprChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-        for child_chirho in &children_chirho {
-            if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
-                return self.lower_expr_chirho(n_chirho, child_chirho.start_chirho);
-            }
+        let span_chirho = self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
+        let exprs_chirho: Vec<ExprChirho> = children_chirho
+            .iter()
+            .filter_map(|child_chirho| match child_chirho.element_chirho {
+                GreenElementChirho::NodeChirho(n_chirho)
+                    if is_expr_kind_chirho(n_chirho.kind_chirho()) =>
+                {
+                    Some(self.lower_expr_chirho(n_chirho, child_chirho.start_chirho))
+                }
+                _ => None,
+            })
+            .collect();
+        if let Some(expr_chirho) =
+            self.fold_qual_expr_parts_to_expr_chirho(exprs_chirho, span_chirho)
+        {
+            return expr_chirho;
         }
         self.placeholder_expr_chirho()
     }
