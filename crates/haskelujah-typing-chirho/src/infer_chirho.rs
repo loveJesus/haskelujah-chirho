@@ -41,6 +41,36 @@ fn strip_name_qualifier_chirho(name_text_chirho: &str) -> &str {
         .unwrap_or(name_text_chirho)
 }
 
+fn canonical_value_name_text_chirho(name_text_chirho: &str) -> String {
+    let (qualifier_chirho, bare_name_chirho) =
+        if let Some((qualifier_chirho, suffix_chirho)) = name_text_chirho.rsplit_once('.') {
+            (Some(qualifier_chirho), suffix_chirho)
+        } else {
+            (None, name_text_chirho)
+        };
+    let canonical_bare_name_chirho = if bare_name_chirho.starts_with('(')
+        && bare_name_chirho.ends_with(')')
+        && bare_name_chirho.len() > 2
+    {
+        let inner_chirho = &bare_name_chirho[1..bare_name_chirho.len() - 1];
+        if !inner_chirho.is_empty()
+            && inner_chirho
+                .chars()
+                .all(|char_chirho| !char_chirho.is_alphanumeric() && char_chirho != '_')
+        {
+            inner_chirho.to_string()
+        } else {
+            bare_name_chirho.to_string()
+        }
+    } else {
+        bare_name_chirho.to_string()
+    };
+    match qualifier_chirho {
+        Some(qualifier_chirho) => format!("{qualifier_chirho}.{canonical_bare_name_chirho}"),
+        None => canonical_bare_name_chirho,
+    }
+}
+
 fn record_field_key_chirho(name_chirho: &NameChirho) -> String {
     strip_name_qualifier_chirho(&name_chirho.full_name_chirho()).to_string()
 }
@@ -2082,15 +2112,20 @@ impl InferCtxChirho {
         full_name_chirho: &str,
         bare_name_chirho: &str,
     ) -> Option<SchemeChirho> {
-        if full_name_chirho == bare_name_chirho {
-            return self.env_chirho.lookup_chirho(bare_name_chirho).cloned();
+        let canonical_full_name_chirho = canonical_value_name_text_chirho(full_name_chirho);
+        let canonical_bare_name_chirho = canonical_value_name_text_chirho(bare_name_chirho);
+        if canonical_full_name_chirho == canonical_bare_name_chirho {
+            return self
+                .env_chirho
+                .lookup_chirho(&canonical_bare_name_chirho)
+                .cloned();
         }
 
-        if let Some(scheme_chirho) = self.env_chirho.lookup_chirho(full_name_chirho) {
+        if let Some(scheme_chirho) = self.env_chirho.lookup_chirho(&canonical_full_name_chirho) {
             return Some(scheme_chirho.clone());
         }
 
-        let suffix_chirho = format!(".{full_name_chirho}");
+        let suffix_chirho = format!(".{canonical_full_name_chirho}");
         let mut suffix_matches_chirho = self
             .env_chirho
             .all_bindings_chirho()
@@ -2102,7 +2137,9 @@ impl InferCtxChirho {
             return first_match_chirho;
         }
 
-        self.env_chirho.lookup_chirho(bare_name_chirho).cloned()
+        self.env_chirho
+            .lookup_chirho(&canonical_bare_name_chirho)
+            .cloned()
     }
 
     fn lookup_record_constructor_field_bundle_chirho(
@@ -3545,7 +3582,10 @@ impl InferCtxChirho {
                 ..
             } = bind_chirho
             {
-                local_sigs_chirho.insert(name_chirho.text_chirho().to_string(), ty_chirho.clone());
+                local_sigs_chirho.insert(
+                    canonical_value_name_text_chirho(name_chirho.text_chirho()),
+                    ty_chirho.clone(),
+                );
             }
         }
 
@@ -3561,7 +3601,8 @@ impl InferCtxChirho {
                     matches_chirho,
                     span_chirho,
                 } => {
-                    let name_str_chirho = name_chirho.text_chirho().to_string();
+                    let name_str_chirho =
+                        canonical_value_name_text_chirho(name_chirho.text_chirho());
                     let pre_ty_chirho =
                         if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
                             let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
@@ -4464,7 +4505,10 @@ impl InferCtxChirho {
                 ..
             } = decl_chirho
             {
-                type_sigs_chirho.insert(name_chirho.text_chirho().to_string(), ty_chirho.clone());
+                type_sigs_chirho.insert(
+                    canonical_value_name_text_chirho(name_chirho.text_chirho()),
+                    ty_chirho.clone(),
+                );
             }
         }
 
@@ -4480,8 +4524,10 @@ impl InferCtxChirho {
             } = decl_chirho
             {
                 let foreign_scheme_chirho = self.ast_type_to_scheme_chirho(ty_chirho);
-                self.env_chirho
-                    .bind_chirho(name_chirho.text_chirho().to_string(), foreign_scheme_chirho);
+                self.env_chirho.bind_chirho(
+                    canonical_value_name_text_chirho(name_chirho.text_chirho()),
+                    foreign_scheme_chirho,
+                );
             }
         }
 
@@ -4781,7 +4827,8 @@ impl InferCtxChirho {
                 ..
             } = decl_chirho
             {
-                let binding_name_chirho = name_chirho.text_chirho().to_string();
+                let binding_name_chirho =
+                    canonical_value_name_text_chirho(name_chirho.text_chirho());
                 let pre_ty_chirho =
                     if let Some(sig_ast_chirho) = type_sigs_chirho.get(&binding_name_chirho) {
                         let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
@@ -5469,7 +5516,7 @@ fn collect_expr_refs_chirho(
     use haskelujah_ast_chirho::expr_chirho::ExprChirho;
     match expr_chirho {
         ExprChirho::VarChirho(name_chirho) => {
-            refs_chirho.insert(name_chirho.text_chirho().to_string());
+            refs_chirho.insert(canonical_value_name_text_chirho(name_chirho.text_chirho()));
         }
         ExprChirho::AppChirho {
             fun_chirho,
@@ -5693,8 +5740,10 @@ fn collect_module_shadowed_names_chirho(
     for decl_chirho in &module_chirho.decls_chirho {
         match decl_chirho {
             DeclChirho::FunBindChirho { name_chirho, .. }
-            | DeclChirho::TypeSigChirho { name_chirho, .. }
-            | DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
+            | DeclChirho::TypeSigChirho { name_chirho, .. } => {
+                names_chirho.insert(canonical_value_name_text_chirho(name_chirho.text_chirho()));
+            }
+            DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
             | DeclChirho::ClassDeclChirho { name_chirho, .. } => {
                 names_chirho.insert(name_chirho.text_chirho().to_string());
             }

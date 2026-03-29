@@ -1287,6 +1287,38 @@ fn frontend_symbolic_infix_fun_bind_with_var_operands_typechecks_chirho() {
 }
 
 #[test]
+fn frontend_forward_symbolic_operator_binding_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ForwardSymbolicOperatorBindingChirho where\nconsChirho :: aChirho -> [aChirho] -> [aChirho]\nconsChirho headChirho tailChirho = headChirho <++> tailChirho\ninfixr 5 <++>\n(<++>) :: aChirho -> [aChirho] -> [aChirho]\nvalueChirho <++> valuesChirho = valueChirho : valuesChirho\n",
+        &mut source_map_chirho,
+        "ForwardSymbolicOperatorBindingChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "forward references to symbolic top-level bindings should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_local_symbolic_operator_can_shadow_prelude_binding_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module LocalShadowingPlusPlusChirho where\nconsChirho :: aChirho -> [aChirho] -> [aChirho]\nconsChirho headChirho tailChirho = headChirho ++ tailChirho\n(++) :: aChirho -> [aChirho] -> [aChirho]\nvalueChirho ++ valuesChirho = valueChirho : valuesChirho\n",
+        &mut source_map_chirho,
+        "LocalShadowingPlusPlusChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "local symbolic bindings should shadow Prelude operators: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn check_accepts_mkweak_primop_with_unboxed_tuple_result_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(

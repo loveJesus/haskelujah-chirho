@@ -13392,6 +13392,19 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Control.Monad.Combinators (parser-combinators package)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["many", "some", "optional"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Control.Monad.Combinators".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Test.Tasty / Test.Tasty.Options (tasty package)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
@@ -17245,6 +17258,24 @@ mod tests_chirho {
                 .contains_key("unsafeChr"),
             "GHC.Base should export unsafeChr"
         );
+    }
+
+    #[test]
+    fn builtin_control_monad_combinators_exports_core_reexports_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let control_monad_combinators_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Control.Monad.Combinators")
+            .expect("Control.Monad.Combinators builtin iface should exist");
+        for name_chirho in ["many", "some", "optional"] {
+            assert!(
+                control_monad_combinators_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "Control.Monad.Combinators should export {name_chirho}"
+            );
+        }
     }
 
     #[test]
