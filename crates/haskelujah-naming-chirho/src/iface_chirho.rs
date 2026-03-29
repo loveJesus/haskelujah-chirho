@@ -3438,6 +3438,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "elems",
             "toList",
             "fromList",
+            "fromListWith",
             "toAscList",
             "toDescList",
             "fromAscList",
@@ -3453,6 +3454,36 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Map.Lazy".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Map.Merge.Lazy / Data.Map.Merge.Strict
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "merge", "zipWithMaybeAMatched", "zipWithMatched",
+            "mapMaybeMissing", "dropMissing", "filterMissing",
+            "preserveMissing", "mapMissing", "traverseMissing",
+            "filterAMissing", "mapMaybeMissing",
+            "WhenMissing", "WhenMatched", "SimpleWhenMissing", "SimpleWhenMatched",
+            "runWhenMissing", "runWhenMatched",
+            "zipWithAMatched", "zipWithMaybeMatched",
+            "mergeA",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for type_name_chirho in &["WhenMissing", "WhenMatched", "SimpleWhenMissing", "SimpleWhenMatched"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(type_name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Map.Merge.Lazy".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Map.Merge.Strict".to_string(),
             exports_chirho,
         });
     }
@@ -3826,6 +3857,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "gets",
                     "state",
                     "liftCatch",
+                    "liftCallCC",
+                    "liftCallCC'",
+                    "liftListen",
+                    "liftPass",
                 ],
                 vec![("StateT", &["StateT"][..])],
             ),
@@ -3841,6 +3876,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "gets",
                     "state",
                     "liftCatch",
+                    "liftCallCC",
+                    "liftCallCC'",
+                    "liftListen",
+                    "liftPass",
                 ],
                 vec![("StateT", &["StateT"][..])],
             ),
@@ -3856,6 +3895,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "gets",
                     "state",
                     "liftCatch",
+                    "liftCallCC",
+                    "liftCallCC'",
+                    "liftListen",
+                    "liftPass",
                 ],
                 vec![("StateT", &["StateT"][..])],
             ),
@@ -3869,6 +3912,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "pass",
                     "writer",
                     "liftCatch",
+                    "liftCallCC",
+                    "liftListen",
+                    "liftPass",
                 ],
                 vec![("WriterT", &["WriterT"][..])],
             ),
@@ -3882,6 +3928,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "pass",
                     "writer",
                     "liftCatch",
+                    "liftCallCC",
+                    "liftListen",
+                    "liftPass",
                 ],
                 vec![("WriterT", &["WriterT"][..])],
             ),
@@ -3895,6 +3944,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                     "pass",
                     "writer",
                     "liftCatch",
+                    "liftCallCC",
+                    "liftListen",
+                    "liftPass",
                 ],
                 vec![("WriterT", &["WriterT"][..])],
             ),
@@ -8116,7 +8168,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("(:~~:)", &["HRefl"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("TestEquality", &[]);
+        let (k_chirho, mut v_chirho) = mk_type_chirho("TestEquality", &[]);
+        v_chirho.methods_chirho.push("testEquality".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
             "Refl",
@@ -9069,6 +9122,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "foldrWithKey",
             "toList",
             "fromList",
+            "fromListWith",
             "toAscList",
             "toDescList",
             "elems",
@@ -10038,6 +10092,56 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Binary".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Binary.Put
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "Put", "PutM", "runPut", "putWord8", "putWord16be", "putWord16le",
+            "putWord32be", "putWord32le", "putWord64be", "putWord64le",
+            "putInt8", "putInt16be", "putInt16le", "putInt32be", "putInt32le",
+            "putInt64be", "putInt64le", "putByteString", "putLazyByteString",
+            "putShortByteString", "putBuilder", "execPut", "flush",
+            "putDoublebe", "putDoublele", "putFloatbe", "putFloatle",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Put", "PutM"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Binary.Put".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Binary.Get
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "Get", "runGet", "runGetOrFail", "getWord8", "getWord16be",
+            "getWord16le", "getWord32be", "getWord32le", "getWord64be",
+            "getWord64le", "getInt8", "getInt16be", "getInt16le",
+            "getInt32be", "getInt32le", "getInt64be", "getInt64le",
+            "getByteString", "getLazyByteString", "getLazyByteStringNul",
+            "getRemainingLazyByteString", "isEmpty", "skip", "bytesRead",
+            "isolate", "lookAhead", "lookAheadM", "lookAheadE", "label",
+            "getDoublebe", "getDoublele", "getFloatbe", "getFloatle",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Get"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Binary.Get".to_string(),
             exports_chirho,
         });
     }

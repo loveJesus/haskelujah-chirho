@@ -673,6 +673,57 @@ fn frontend_data_map_local_helper_uses_real_map_types_chirho() {
 }
 
 #[test]
+fn frontend_data_map_strict_from_list_with_surface_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module DataMapFromListWithMiniChirho where\n\
+import qualified Data.Map.Strict as Map\n\
+countsChirho :: Map.Map Int [Int]\n\
+countsChirho = Map.fromListWith (++) [(1, [2]), (1, [3]), (2, [4])]\n",
+        &mut source_map_chirho,
+        "DataMapFromListWithMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Map.Strict.fromListWith should stay in scope with a real map type: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn multi_module_imported_selector_type_avoids_local_type_shadowing_chirho() {
+    use crate::compile_modules_chirho;
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho: Vec<(&str, &str)> = vec![
+        (
+            "ProviderChirho.hs",
+            "module ProviderChirho where\n\
+data Result = ProviderResult { callbacks :: [Int], reason :: String }\n",
+        ),
+        (
+            "ConsumerChirho.hs",
+            "module ConsumerChirho where\n\
+import ProviderChirho hiding (Result(reason))\n\
+import qualified ProviderChirho as P\n\
+data Result = ConsumerResult { reason :: String }\n\
+callbacksFromProviderChirho :: P.Result -> [Int]\n\
+callbacksFromProviderChirho resChirho = callbacks resChirho\n\
+reasonFromProviderChirho :: P.Result -> String\n\
+reasonFromProviderChirho = P.reason\n",
+        ),
+    ];
+
+    let result_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        result_chirho.is_ok(),
+        "imported selectors should keep ProviderChirho.Result distinct from the local Result: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_ghc_ioref_stref_constructor_roundtrip_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
@@ -3442,6 +3493,91 @@ fn frontend_system_random_split_and_splitmix_surface_typechecks_chirho() {
     assert!(
         result_chirho.is_ok(),
         "System.Random / SplitMix builtin surface should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_text_case_mapping_parse_and_lower_survives_generated_module_size_chirho() {
+    use crate::read_haskell_source_file_chirho;
+    use haskelujah_parser_chirho::{cst_parser_chirho::ParserChirho, lower_chirho::lower_module_chirho};
+    use std::path::PathBuf;
+
+    let case_mapping_path_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs");
+    let source_chirho = read_haskell_source_file_chirho(&case_mapping_path_chirho)
+        .expect("text CaseMapping source should exist");
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        &case_mapping_path_chirho,
+        source_chirho,
+    );
+    let parser_chirho = ParserChirho::new_chirho(
+        source_file_chirho.contents_chirho(),
+        source_file_chirho.file_id_chirho(),
+    );
+    let green_chirho = parser_chirho.parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, source_file_chirho.file_id_chirho());
+
+    assert_eq!(
+        module_chirho.name_chirho.full_name_chirho(),
+        "Data.Text.Internal.Fusion.CaseMapping"
+    );
+    assert!(
+        module_chirho.decls_chirho.len() >= 3,
+        "generated text CaseMapping module should lower into top-level declarations"
+    );
+}
+
+#[test]
+fn frontend_text_case_mapping_frontend_survives_generated_module_size_chirho() {
+    use crate::{
+        ImportedTypeSynonymsChirho, merge_stdlib_frontend_artifacts_chirho,
+        read_haskell_source_file_chirho, run_frontend_with_type_synonyms_and_type_families_chirho,
+        seed_builtin_type_families_chirho, source_imports_stdlib_chirho,
+    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    let case_mapping_path_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs");
+    let source_chirho = read_haskell_source_file_chirho(&case_mapping_path_chirho)
+        .expect("text CaseMapping source should exist");
+
+    let mut builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let mut imported_types_chirho = HashMap::new();
+    let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
+    let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
+    if source_imports_stdlib_chirho(&source_chirho) {
+        merge_stdlib_frontend_artifacts_chirho(
+            &mut builtin_ifaces_chirho,
+            &mut imported_types_chirho,
+            &mut imported_type_synonyms_chirho,
+            &mut imported_type_families_chirho,
+        );
+    }
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        &case_mapping_path_chirho,
+        &source_chirho,
+    );
+    let result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
+        &source_chirho,
+        source_file_chirho.file_id_chirho(),
+        &builtin_ifaces_chirho,
+        &imported_types_chirho,
+        &imported_type_synonyms_chirho,
+        &imported_type_families_chirho,
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "generated text CaseMapping module should survive the frontend pipeline: {:?}",
         result_chirho.err()
     );
 }

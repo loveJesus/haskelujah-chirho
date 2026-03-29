@@ -723,6 +723,12 @@ fn discover_cpp_min_version_macro_options_chirho(path_chirho: &Path) -> Vec<Stri
         "unix",
         "integer-gmp",
         "scientific",
+        "filepath",
+        "os_string",
+        "binary",
+        "directory",
+        "process",
+        "exceptions",
     ]
     .into_iter()
     .collect();
@@ -969,6 +975,39 @@ fn preprocess_hsc_source_with_options_chirho(
     Ok(sanitize_hsc_source_chirho(&preprocessed_chirho))
 }
 
+/// Placeholder used to protect Haskell pragma close tokens (`#-}`) from the
+/// C preprocessor, which would otherwise reject them as invalid directives.
+const PRAGMA_CLOSE_PLACEHOLDER_CHIRHO: &str = "HASKELUJAH_PRAGMA_CLOSE_CHIRHO";
+
+/// Returns `true` when the source contains `#-}` that would confuse `cpp`.
+fn source_has_pragma_close_chirho(source_chirho: &str) -> bool {
+    source_chirho.lines().any(|line_chirho| {
+        let trimmed_chirho = line_chirho.trim_start();
+        trimmed_chirho == "#-}" || trimmed_chirho.starts_with("#-}")
+    })
+}
+
+/// Replace `#-}` lines with a safe placeholder before handing to `cpp`.
+fn protect_pragma_close_chirho(source_chirho: &str) -> String {
+    source_chirho
+        .lines()
+        .map(|line_chirho| {
+            let trimmed_chirho = line_chirho.trim_start();
+            if trimmed_chirho == "#-}" || trimmed_chirho.starts_with("#-}") {
+                line_chirho.replace("#-}", PRAGMA_CLOSE_PLACEHOLDER_CHIRHO)
+            } else {
+                line_chirho.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Restore `#-}` from the placeholder in cpp output.
+fn restore_pragma_close_chirho(source_chirho: &str) -> String {
+    source_chirho.replace(PRAGMA_CLOSE_PLACEHOLDER_CHIRHO, "#-}")
+}
+
 fn preprocess_cpp_source_with_options_chirho(
     path_chirho: &Path,
     source_chirho: &str,
@@ -986,8 +1025,37 @@ fn preprocess_cpp_source_with_options_chirho(
         return Ok(source_chirho.to_string());
     }
 
+    // If the file contains #-} (Haskell pragma close), we must write a
+    // sanitised temp file so the C preprocessor does not choke on it.
+    let needs_pragma_close_fix_chirho = source_has_pragma_close_chirho(source_chirho);
+    let (cpp_path_chirho, temp_file_chirho) = if needs_pragma_close_fix_chirho {
+        let sanitized_chirho = protect_pragma_close_chirho(source_chirho);
+        let stamp_chirho = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d_chirho| d_chirho.as_nanos())
+            .unwrap_or(0);
+        let temp_chirho = path_chirho
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(format!(
+                ".haskelujah-cpp-sanitize-{}-{stamp_chirho}.hs",
+                std::process::id()
+            ));
+        std::fs::write(&temp_chirho, sanitized_chirho)?;
+        (temp_chirho, true)
+    } else {
+        (path_chirho.to_path_buf(), false)
+    };
+
     let output_chirho =
-        configure_cpp_command_chirho(path_chirho, true, extra_cpp_options_chirho).output()?;
+        configure_cpp_command_chirho(&cpp_path_chirho, true, extra_cpp_options_chirho).output();
+
+    // Clean up temp file before checking result
+    if temp_file_chirho {
+        let _ = std::fs::remove_file(&cpp_path_chirho);
+    }
+
+    let output_chirho = output_chirho?;
     if !output_chirho.status.success() {
         let stderr_chirho = String::from_utf8_lossy(&output_chirho.stderr)
             .trim()
@@ -999,7 +1067,11 @@ fn preprocess_cpp_source_with_options_chirho(
         )));
     }
 
-    decode_cpp_stdout_chirho(path_chirho, output_chirho.stdout)
+    let mut result_chirho = decode_cpp_stdout_chirho(path_chirho, output_chirho.stdout)?;
+    if needs_pragma_close_fix_chirho {
+        result_chirho = restore_pragma_close_chirho(&result_chirho);
+    }
+    Ok(result_chirho)
 }
 
 fn preprocess_cpp_source_chirho(path_chirho: &Path, source_chirho: &str) -> io::Result<String> {
