@@ -22,7 +22,7 @@ use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredC
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
-use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
+use crate::unify_chirho::{unify_chirho, UnifyErrorChirho};
 
 /// Error code range for type inference diagnostics.
 const TYPE_MISMATCH_CODE_CHIRHO: u16 = 200;
@@ -392,8 +392,7 @@ impl InferCtxChirho {
     ) {
         self.safe_unqualified_imported_type_names_chirho =
             safe_unqualified_imported_type_names_chirho.clone();
-        self.preferred_qualified_type_names_chirho =
-            preferred_qualified_type_names_chirho.clone();
+        self.preferred_qualified_type_names_chirho = preferred_qualified_type_names_chirho.clone();
     }
 
     fn normalize_imported_type_name_chirho(&self, name_text_chirho: &str) -> String {
@@ -2901,7 +2900,8 @@ impl InferCtxChirho {
                                         ) == field_name_chirho
                                     });
                                 let (s_chirho, field_ty_chirho) = if let Some(field_chirho) =
-                                    matched_field_chirho {
+                                    matched_field_chirho
+                                {
                                     self.infer_expr_chirho(&field_chirho.value_chirho)
                                 } else if *has_wildcard_chirho {
                                     let var_scheme_chirho =
@@ -3970,16 +3970,16 @@ impl InferCtxChirho {
             }
             TyChirho::TupleChirho(pattern_elems_chirho) => {
                 matches!(actual_chirho, TyChirho::TupleChirho(actual_elems_chirho)
-                    if pattern_elems_chirho.len() == actual_elems_chirho.len()
-                        && pattern_elems_chirho
-                            .iter()
-                            .zip(actual_elems_chirho.iter())
-                            .all(|(pattern_elem_chirho, actual_elem_chirho)| Self::type_matches_synonym_pattern_chirho(
-                                params_chirho,
-                                pattern_elem_chirho,
-                                actual_elem_chirho,
-                                bindings_chirho,
-                            )))
+                if pattern_elems_chirho.len() == actual_elems_chirho.len()
+                    && pattern_elems_chirho
+                        .iter()
+                        .zip(actual_elems_chirho.iter())
+                        .all(|(pattern_elem_chirho, actual_elem_chirho)| Self::type_matches_synonym_pattern_chirho(
+                            params_chirho,
+                            pattern_elem_chirho,
+                            actual_elem_chirho,
+                            bindings_chirho,
+                        )))
             }
             TyChirho::ForallChirho {
                 vars_chirho: pattern_vars_chirho,
@@ -6267,6 +6267,8 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         Box::new(byte_string_ty_chirho.clone()),
     );
     let char_list_ty_chirho = TyChirho::ListChirho(Box::new(TyChirho::char_chirho()));
+    let word8_list_ty_chirho =
+        TyChirho::ListChirho(Box::new(TyChirho::ConChirho("Word8".to_string())));
     let maybe_text_uncons_ty_chirho = TyChirho::fun_chirho(
         text_ty_chirho.clone(),
         TyChirho::AppChirho(
@@ -6277,12 +6279,22 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             ])),
         ),
     );
-    let maybe_byte_string_uncons_ty_chirho = TyChirho::fun_chirho(
+    let maybe_char_byte_string_uncons_ty_chirho = TyChirho::fun_chirho(
         byte_string_ty_chirho.clone(),
         TyChirho::AppChirho(
             Box::new(TyChirho::ConChirho("Maybe".to_string())),
             Box::new(TyChirho::TupleChirho(vec![
                 TyChirho::char_chirho(),
+                byte_string_ty_chirho.clone(),
+            ])),
+        ),
+    );
+    let maybe_word8_byte_string_uncons_ty_chirho = TyChirho::fun_chirho(
+        byte_string_ty_chirho.clone(),
+        TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Maybe".to_string())),
+            Box::new(TyChirho::TupleChirho(vec![
+                TyChirho::ConChirho("Word8".to_string()),
                 byte_string_ty_chirho.clone(),
             ])),
         ),
@@ -6308,6 +6320,20 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho::mono_chirho(maybe_text_uncons_ty_chirho.clone()),
         );
     }
+    env_chirho.bind_chirho(
+        "utf8LengthByLeader".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::ConChirho("Word8".to_string()),
+            TyChirho::int_chirho(),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "Data.Text.Internal.Encoding.Utf8.utf8LengthByLeader".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::ConChirho("Word8".to_string()),
+            TyChirho::int_chirho(),
+        )),
+    );
     env_chirho.bind_chirho(
         "Data.Text.IO.readFile".to_string(),
         SchemeChirho::mono_chirho(TyChirho::fun_chirho(
@@ -6375,12 +6401,60 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho::mono_chirho(TyChirho::io_chirho(text_lazy_ty_chirho.clone())),
     );
 
-    for module_name_chirho in [
-        "Data.ByteString",
-        "Data.ByteString.Char8",
-        "Data.ByteString.Lazy",
-        "Data.ByteString.Lazy.Char8",
-    ] {
+    for module_name_chirho in ["Data.ByteString", "Data.ByteString.Lazy"] {
+        env_chirho.bind_chirho(
+            format!("{module_name_chirho}.pack"),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                word8_list_ty_chirho.clone(),
+                byte_string_ty_chirho.clone(),
+            )),
+        );
+        env_chirho.bind_chirho(
+            format!("{module_name_chirho}.unpack"),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                byte_string_ty_chirho.clone(),
+                word8_list_ty_chirho.clone(),
+            )),
+        );
+        env_chirho.bind_chirho(
+            format!("{module_name_chirho}.uncons"),
+            SchemeChirho::mono_chirho(maybe_word8_byte_string_uncons_ty_chirho.clone()),
+        );
+        env_chirho.bind_chirho(
+            format!("{module_name_chirho}.readFile"),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                TyChirho::string_chirho(),
+                TyChirho::io_chirho(byte_string_ty_chirho.clone()),
+            )),
+        );
+        env_chirho.bind_chirho(
+            format!("{module_name_chirho}.writeFile"),
+            SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+                vec![TyChirho::string_chirho(), byte_string_ty_chirho.clone()],
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
+            )),
+        );
+        env_chirho.bind_chirho(
+            format!("{module_name_chirho}.putStr"),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                byte_string_ty_chirho.clone(),
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
+            )),
+        );
+        env_chirho.bind_chirho(
+            format!("{module_name_chirho}.putStrLn"),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                byte_string_ty_chirho.clone(),
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
+            )),
+        );
+        env_chirho.bind_chirho(
+            format!("{module_name_chirho}.getContents"),
+            SchemeChirho::mono_chirho(TyChirho::io_chirho(byte_string_ty_chirho.clone())),
+        );
+    }
+
+    for module_name_chirho in ["Data.ByteString.Char8", "Data.ByteString.Lazy.Char8"] {
         env_chirho.bind_chirho(
             format!("{module_name_chirho}.pack"),
             SchemeChirho::mono_chirho(TyChirho::fun_chirho(
@@ -6397,7 +6471,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
         env_chirho.bind_chirho(
             format!("{module_name_chirho}.uncons"),
-            SchemeChirho::mono_chirho(maybe_byte_string_uncons_ty_chirho.clone()),
+            SchemeChirho::mono_chirho(maybe_char_byte_string_uncons_ty_chirho.clone()),
         );
         env_chirho.bind_chirho(
             format!("{module_name_chirho}.readFile"),
@@ -8071,7 +8145,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_n_chirho(
             vec![
-                foreign_ptr_ty_chirho,
+                foreign_ptr_ty_chirho.clone(),
                 TyChirho::fun_chirho(ptr_ty_chirho, io_foreign_ptr_result_ty_chirho.clone()),
             ],
             io_foreign_ptr_result_ty_chirho,
@@ -8085,6 +8159,78 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         "unsafeWithForeignPtr".to_string(),
         with_foreign_ptr_scheme_chirho,
     );
+
+    let plus_foreign_ptr_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![foreign_ptr_a_chirho],
+        preds_chirho: vec![],
+        ty_chirho: TyChirho::fun_n_chirho(
+            vec![foreign_ptr_ty_chirho.clone(), TyChirho::int_chirho()],
+            foreign_ptr_ty_chirho.clone(),
+        ),
+    };
+    for name_chirho in [
+        "plusForeignPtr",
+        "Data.ByteString.Internal.plusForeignPtr",
+        "GHC.ForeignPtr.plusForeignPtr",
+        "Foreign.ForeignPtr.plusForeignPtr",
+        "GHC.ForeignPtr.Internal.plusForeignPtr",
+    ] {
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            plus_foreign_ptr_scheme_chirho.clone(),
+        );
+    }
+
+    {
+        let word8_ty_chirho = TyChirho::ConChirho("Word8".to_string());
+        let char_ty_chirho = TyChirho::ConChirho("Char".to_string());
+        let c2w_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            char_ty_chirho.clone(),
+            word8_ty_chirho.clone(),
+        ));
+        env_chirho.bind_chirho("c2w".to_string(), c2w_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Data.ByteString.Internal.c2w".to_string(),
+            c2w_scheme_chirho,
+        );
+
+        let w2c_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            word8_ty_chirho.clone(),
+            char_ty_chirho,
+        ));
+        env_chirho.bind_chirho("w2c".to_string(), w2c_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Data.ByteString.Internal.w2c".to_string(),
+            w2c_scheme_chirho,
+        );
+
+        let memset_a_chirho = TyVarChirho(1697);
+        let memset_ptr_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Ptr".to_string())),
+            Box::new(TyChirho::VarChirho(memset_a_chirho)),
+        );
+        let memset_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![memset_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    memset_ptr_ty_chirho.clone(),
+                    TyChirho::int_chirho(),
+                    TyChirho::int_chirho(),
+                ],
+                TyChirho::io_chirho(memset_ptr_ty_chirho),
+            ),
+        };
+        for name_chirho in [
+            "memset",
+            "Data.ByteString.Internal.memset",
+            "GHC.ForeignPtr.memset",
+            "Foreign.Marshal.memset",
+            "Foreign.Marshal.Utils.memset",
+        ] {
+            env_chirho.bind_chirho(name_chirho.to_string(), memset_scheme_chirho.clone());
+        }
+    }
 
     {
         let storable_a_chirho = TyVarChirho(1694);
@@ -8341,6 +8487,129 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "Data.Text.Array.aBA".to_string(),
             text_array_a_scheme_chirho,
+        );
+    }
+
+    {
+        let text_array_ty_chirho = TyChirho::ConChirho("Array".to_string());
+        let text_word8_ty_chirho = TyChirho::ConChirho("Word8".to_string());
+        let text_array_state_chirho = TyVarChirho(1698);
+        let text_marray_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("MArray".to_string())),
+            Box::new(TyChirho::VarChirho(text_array_state_chirho)),
+        );
+        let text_st_marray_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ST".to_string())),
+                Box::new(TyChirho::VarChirho(text_array_state_chirho)),
+            )),
+            Box::new(text_marray_ty_chirho.clone()),
+        );
+        let text_st_array_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ST".to_string())),
+                Box::new(TyChirho::VarChirho(text_array_state_chirho)),
+            )),
+            Box::new(text_array_ty_chirho.clone()),
+        );
+        let text_st_unit_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("ST".to_string())),
+                Box::new(TyChirho::VarChirho(text_array_state_chirho)),
+            )),
+            Box::new(TyChirho::unit_chirho()),
+        );
+
+        env_chirho.bind_chirho(
+            "empty".to_string(),
+            SchemeChirho::mono_chirho(text_array_ty_chirho.clone()),
+        );
+        env_chirho.bind_chirho(
+            "Data.Text.Array.empty".to_string(),
+            SchemeChirho::mono_chirho(text_array_ty_chirho.clone()),
+        );
+
+        let text_array_new_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![text_array_state_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), text_st_marray_ty_chirho),
+        };
+        env_chirho.bind_chirho("new".to_string(), text_array_new_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Data.Text.Array.new".to_string(),
+            text_array_new_scheme_chirho,
+        );
+
+        let text_array_copyi_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![text_array_state_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::int_chirho(),
+                    text_marray_ty_chirho.clone(),
+                    TyChirho::int_chirho(),
+                    text_array_ty_chirho.clone(),
+                    TyChirho::int_chirho(),
+                ],
+                text_st_unit_ty_chirho,
+            ),
+        };
+        env_chirho.bind_chirho("copyI".to_string(), text_array_copyi_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Data.Text.Array.copyI".to_string(),
+            text_array_copyi_scheme_chirho,
+        );
+
+        let text_array_unsafe_freeze_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![text_array_state_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(text_marray_ty_chirho, text_st_array_ty_chirho),
+        };
+        env_chirho.bind_chirho(
+            "unsafeFreeze".to_string(),
+            text_array_unsafe_freeze_scheme_chirho.clone(),
+        );
+        env_chirho.bind_chirho(
+            "Data.Text.Array.unsafeFreeze".to_string(),
+            text_array_unsafe_freeze_scheme_chirho,
+        );
+
+        let text_array_unsafe_index_scheme_chirho =
+            SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+                vec![text_array_ty_chirho, TyChirho::int_chirho()],
+                text_word8_ty_chirho,
+            ));
+        env_chirho.bind_chirho(
+            "unsafeIndex".to_string(),
+            text_array_unsafe_index_scheme_chirho.clone(),
+        );
+        env_chirho.bind_chirho(
+            "Data.Text.Array.unsafeIndex".to_string(),
+            text_array_unsafe_index_scheme_chirho,
+        );
+    }
+
+    {
+        let array_elem_chirho = TyVarChirho(1699);
+        let uarray_int_elem_ty_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("UArray".to_string())),
+                Box::new(TyChirho::int_chirho()),
+            )),
+            Box::new(TyChirho::VarChirho(array_elem_chirho)),
+        );
+        let unsafe_at_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![array_elem_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![uarray_int_elem_ty_chirho, TyChirho::int_chirho()],
+                TyChirho::VarChirho(array_elem_chirho),
+            ),
+        };
+        env_chirho.bind_chirho("unsafeAt".to_string(), unsafe_at_scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            "Data.Array.Base.unsafeAt".to_string(),
+            unsafe_at_scheme_chirho,
         );
     }
 
@@ -13993,6 +14262,27 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho("unsafeCoerce#".to_string(), scheme_chirho);
     }
 
+    {
+        let int_hash_ty_chirho = TyChirho::ConChirho("Int#".to_string());
+        let ishift_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![int_hash_ty_chirho.clone(), int_hash_ty_chirho.clone()],
+            int_hash_ty_chirho,
+        ));
+        for name_chirho in [
+            "iShiftL#",
+            "iShiftRA#",
+            "iShiftRL#",
+            "GHC.Exts.iShiftL#",
+            "GHC.Exts.iShiftRA#",
+            "GHC.Exts.iShiftRL#",
+            "GHC.Prim.iShiftL#",
+            "GHC.Prim.iShiftRA#",
+            "GHC.Prim.iShiftRL#",
+        ] {
+            env_chirho.bind_chirho(name_chirho.to_string(), ishift_scheme_chirho.clone());
+        }
+    }
+
     // setByteArray# :: forall s. MutableByteArray# s -> Int# -> Int# -> Int# -> State# s -> State# s
     {
         let s_chirho = TyVarChirho(7112);
@@ -16933,12 +17223,10 @@ mod tests_chirho {
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
         assert!(matches!(final_ty_chirho, TyChirho::VarChirho(_)));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 2);
-        assert!(
-            ctx_chirho
-                .deferred_preds_chirho
-                .iter()
-                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
-        );
+        assert!(ctx_chirho
+            .deferred_preds_chirho
+            .iter()
+            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
     }
 
     #[test]
@@ -17185,12 +17473,10 @@ mod tests_chirho {
                 if matches!(elem_chirho.as_ref(), TyChirho::VarChirho(_))
         ));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 3);
-        assert!(
-            ctx_chirho
-                .deferred_preds_chirho
-                .iter()
-                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
-        );
+        assert!(ctx_chirho
+            .deferred_preds_chirho
+            .iter()
+            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
     }
 
     // -----------------------------------------------------------------------
@@ -17818,11 +18104,9 @@ mod tests_chirho {
             "Class with superclass should not error: {:?}",
             result_chirho.diagnostics_chirho
         );
-        assert!(
-            result_chirho
-                .class_env_chirho
-                .has_class_chirho("MyOrdChirho")
-        );
+        assert!(result_chirho
+            .class_env_chirho
+            .has_class_chirho("MyOrdChirho"));
         let supers_chirho = result_chirho
             .class_env_chirho
             .superclasses_chirho("MyOrdChirho");
@@ -21036,7 +21320,8 @@ mod tests_chirho {
             SchemeChirho::mono_chirho(shared_arg_ty_chirho),
         );
 
-        let (_ordinary_subst_chirho, ordinary_ty_chirho) = ctx_chirho.infer_expr_chirho(&rhs_expr_chirho);
+        let (_ordinary_subst_chirho, ordinary_ty_chirho) =
+            ctx_chirho.infer_expr_chirho(&rhs_expr_chirho);
         assert_eq!(
             ctx_chirho.normalize_ty_chirho(&ordinary_ty_chirho),
             ctx_chirho.normalize_ty_chirho(&expanded_show_s_chirho),
@@ -21056,7 +21341,10 @@ mod tests_chirho {
             "expected-type inference with the seeded parameter types should return ShowS"
         );
         assert!(
-            ctx_chirho.diagnostics_chirho.diagnostics_chirho().is_empty(),
+            ctx_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .is_empty(),
             "seeded composition inference should not emit diagnostics: {:?}",
             ctx_chirho.diagnostics_chirho
         );
@@ -21161,7 +21449,10 @@ mod tests_chirho {
             "match inference should keep the ShowS-returning signature intact"
         );
         assert!(
-            ctx_chirho.diagnostics_chirho.diagnostics_chirho().is_empty(),
+            ctx_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .is_empty(),
             "match inference should not emit diagnostics: {:?}",
             ctx_chirho.diagnostics_chirho
         );
@@ -21234,16 +21525,18 @@ mod tests_chirho {
                     ty_chirho: TypeChirho::FunChirho {
                         arg_chirho: Box::new(TypeChirho::ParenChirho {
                             inner_chirho: Box::new(TypeChirho::FunChirho {
-                                arg_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Int"))),
+                                arg_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
+                                    "Int",
+                                ))),
                                 mult_chirho: None,
                                 result_chirho: Box::new(TypeChirho::FunChirho {
                                     arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
                                         "aChirho",
                                     ))),
                                     mult_chirho: None,
-                                    result_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
-                                        "ShowS",
-                                    ))),
+                                    result_chirho: Box::new(TypeChirho::ConChirho(
+                                        dummy_name_chirho("ShowS"),
+                                    )),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 }),
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -21252,19 +21545,23 @@ mod tests_chirho {
                         }),
                         mult_chirho: None,
                         result_chirho: Box::new(TypeChirho::FunChirho {
-                            arg_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("String"))),
+                            arg_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
+                                "String",
+                            ))),
                             mult_chirho: None,
                             result_chirho: Box::new(TypeChirho::FunChirho {
-                                arg_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Int"))),
+                                arg_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
+                                    "Int",
+                                ))),
                                 mult_chirho: None,
                                 result_chirho: Box::new(TypeChirho::FunChirho {
                                     arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
                                         "aChirho",
                                     ))),
                                     mult_chirho: None,
-                                    result_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
-                                        "ShowS",
-                                    ))),
+                                    result_chirho: Box::new(TypeChirho::ConChirho(
+                                        dummy_name_chirho("ShowS"),
+                                    )),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 }),
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,

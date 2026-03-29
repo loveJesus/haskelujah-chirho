@@ -1439,9 +1439,9 @@ fn qualify_imported_ast_type_chirho(
     match ty_chirho {
         TypeChirho::ConChirho(name_chirho) => {
             let bare_name_chirho = name_chirho.text_chirho();
-            let should_canonicalize_unqualified_chirho =
-                unqualified_type_names_chirho.contains(bare_name_chirho)
-                    || preferred_qualified_type_names_chirho.contains_key(bare_name_chirho);
+            let should_canonicalize_unqualified_chirho = unqualified_type_names_chirho
+                .contains(bare_name_chirho)
+                || preferred_qualified_type_names_chirho.contains_key(bare_name_chirho);
             if should_canonicalize_unqualified_chirho {
                 TypeChirho::ConChirho(haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
                     haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
@@ -4300,11 +4300,9 @@ fn collect_library_package_deps_chirho(
 ) -> Vec<haskelujah_package_chirho::DependencyChirho> {
     let mut deps_chirho = Vec::new();
     let mut seen_chirho = std::collections::HashSet::new();
-    let package_name_chirho = &package_chirho.name_chirho;
-
-    if let Some(lib_chirho) = &package_chirho.library_chirho {
+    for lib_chirho in iter_package_libraries_chirho(package_chirho) {
         for dep_chirho in &lib_chirho.build_info_chirho.build_depends_chirho {
-            if dep_chirho.package_chirho == *package_name_chirho {
+            if is_self_or_internal_library_dep_chirho(package_chirho, &dep_chirho.package_chirho) {
                 continue;
             }
             if seen_chirho.insert(dep_chirho.package_chirho.clone()) {
@@ -4325,11 +4323,9 @@ fn collect_package_deps_chirho(
         .iter()
         .map(|dep_chirho| dep_chirho.package_chirho.clone())
         .collect::<std::collections::HashSet<_>>();
-    let package_name_chirho = &package_chirho.name_chirho;
-
     for exe_chirho in &package_chirho.executables_chirho {
         for dep_chirho in &exe_chirho.build_info_chirho.build_depends_chirho {
-            if dep_chirho.package_chirho == *package_name_chirho {
+            if is_self_or_internal_library_dep_chirho(package_chirho, &dep_chirho.package_chirho) {
                 continue;
             }
             if seen_chirho.insert(dep_chirho.package_chirho.clone()) {
@@ -4373,9 +4369,9 @@ fn package_module_cpp_options_map_chirho(
 ) -> std::collections::HashMap<PathBuf, Vec<String>> {
     let mut module_cpp_options_chirho = std::collections::HashMap::new();
 
-    if let Some(library_chirho) = &package_chirho.library_chirho {
+    for library_chirho in iter_package_libraries_chirho(package_chirho) {
         let library_modules_chirho =
-            discover_library_modules_chirho(package_chirho, project_dir_chirho);
+            discover_modules_for_library_chirho(library_chirho, project_dir_chirho);
         for (_, path_chirho) in library_modules_chirho {
             module_cpp_options_chirho.insert(
                 path_chirho,
@@ -4755,14 +4751,7 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
 
     let source_files_chirho = discover_library_modules_chirho(&package_chirho, &package_dir_chirho);
     let source_file_cpp_options_chirho =
-        if let Some(library_chirho) = &package_chirho.library_chirho {
-            module_cpp_options_map_for_module_files_chirho(
-                &source_files_chirho,
-                &library_chirho.build_info_chirho.cpp_options_chirho,
-            )
-        } else {
-            std::collections::HashMap::new()
-        };
+        package_module_cpp_options_map_chirho(&package_chirho, &package_dir_chirho);
     let mut module_sources_chirho = Vec::new();
     for (module_name_chirho, path_chirho) in &source_files_chirho {
         let raw_source_chirho =
@@ -5908,29 +5897,66 @@ fn discover_library_modules_chirho(
     let mut modules_chirho: Vec<(String, PathBuf)> = Vec::new();
     let mut seen_chirho = std::collections::HashSet::new();
 
-    if let Some(lib_chirho) = &package_chirho.library_chirho {
-        let src_dirs_chirho = if lib_chirho
+    for library_chirho in iter_package_libraries_chirho(package_chirho) {
+        for (module_name_chirho, path_chirho) in
+            discover_modules_for_library_chirho(library_chirho, project_dir_chirho)
+        {
+            if seen_chirho.insert(module_name_chirho.clone()) {
+                modules_chirho.push((module_name_chirho, path_chirho));
+            }
+        }
+    }
+
+    modules_chirho
+}
+
+fn iter_package_libraries_chirho<'a>(
+    package_chirho: &'a haskelujah_package_chirho::PackageDescChirho,
+) -> impl Iterator<Item = &'a haskelujah_package_chirho::LibraryChirho> + 'a {
+    package_chirho
+        .library_chirho
+        .iter()
+        .chain(package_chirho.internal_libraries_chirho.iter())
+}
+
+fn is_self_or_internal_library_dep_chirho(
+    package_chirho: &haskelujah_package_chirho::PackageDescChirho,
+    dep_name_chirho: &str,
+) -> bool {
+    dep_name_chirho == package_chirho.name_chirho
+        || package_chirho
+            .internal_libraries_chirho
+            .iter()
+            .any(|library_chirho| library_chirho.name_chirho.as_deref() == Some(dep_name_chirho))
+}
+
+fn discover_modules_for_library_chirho(
+    library_chirho: &haskelujah_package_chirho::LibraryChirho,
+    project_dir_chirho: &Path,
+) -> Vec<(String, PathBuf)> {
+    let src_dirs_chirho = if library_chirho
+        .build_info_chirho
+        .hs_source_dirs_chirho
+        .is_empty()
+    {
+        vec![".".to_string()]
+    } else {
+        library_chirho
             .build_info_chirho
             .hs_source_dirs_chirho
-            .is_empty()
-        {
-            vec![".".to_string()]
-        } else {
-            lib_chirho.build_info_chirho.hs_source_dirs_chirho.clone()
-        };
+            .clone()
+    };
 
-        for mod_name_chirho in lib_chirho
-            .exposed_modules_chirho
-            .iter()
-            .chain(lib_chirho.other_modules_chirho.iter())
+    let mut modules_chirho = Vec::new();
+    for mod_name_chirho in library_chirho
+        .exposed_modules_chirho
+        .iter()
+        .chain(library_chirho.other_modules_chirho.iter())
+    {
+        if let Some(path_chirho) =
+            find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
         {
-            if seen_chirho.insert(mod_name_chirho.clone()) {
-                if let Some(path_chirho) =
-                    find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
-                {
-                    modules_chirho.push((mod_name_chirho.clone(), path_chirho));
-                }
-            }
+            modules_chirho.push((mod_name_chirho.clone(), path_chirho));
         }
     }
 

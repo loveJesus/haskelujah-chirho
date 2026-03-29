@@ -1347,6 +1347,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "or#",
             "xor#",
             "not#",
+            "iShiftL#",
+            "iShiftRA#",
+            "iShiftRL#",
             "uncheckedIShiftL#",
             "uncheckedIShiftRA#",
             "uncheckedIShiftRL#",
@@ -4607,6 +4610,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         for name_chirho in &[
             "c2w",
             "w2c",
+            "memset",
+            "plusForeignPtr",
             "unsafeCreate",
             "create",
             "createAndTrim",
@@ -4924,7 +4929,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Text.Array
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["aBA", "maBA"] {
+        for name_chirho in &[
+            "aBA",
+            "maBA",
+            "empty",
+            "new",
+            "copyI",
+            "unsafeFreeze",
+            "unsafeIndex",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -5639,6 +5652,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "or#",
             "xor#",
             "not#",
+            "iShiftL#",
+            "iShiftRA#",
+            "iShiftRL#",
             "uncheckedIShiftL#",
             "uncheckedIShiftRA#",
             "uncheckedIShiftRL#",
@@ -7382,19 +7398,62 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "Builder", "toLazyByteString", "hPutBuilder",
-            "byteString", "lazyByteString", "shortByteString",
-            "int8", "word8", "int16BE", "int16LE", "int32BE", "int32LE",
-            "int64BE", "int64LE", "word16BE", "word16LE", "word32BE",
-            "word32LE", "word64BE", "word64LE", "floatBE", "floatLE",
-            "doubleBE", "doubleLE", "char7", "string7", "char8",
-            "string8", "charUtf8", "stringUtf8", "intDec", "integerDec",
-            "int8Dec", "int16Dec", "int32Dec", "int64Dec",
-            "wordDec", "word8Dec", "word16Dec", "word32Dec", "word64Dec",
-            "intHex", "int8HexFixed", "int16HexFixed", "int32HexFixed",
-            "int64HexFixed", "wordHex", "word8Hex", "word16Hex",
-            "word32Hex", "word64Hex", "word8HexFixed", "word16HexFixed",
-            "word32HexFixed", "word64HexFixed", "floatHexFixed",
+            "Builder",
+            "toLazyByteString",
+            "hPutBuilder",
+            "byteString",
+            "lazyByteString",
+            "shortByteString",
+            "int8",
+            "word8",
+            "int16BE",
+            "int16LE",
+            "int32BE",
+            "int32LE",
+            "int64BE",
+            "int64LE",
+            "word16BE",
+            "word16LE",
+            "word32BE",
+            "word32LE",
+            "word64BE",
+            "word64LE",
+            "floatBE",
+            "floatLE",
+            "doubleBE",
+            "doubleLE",
+            "char7",
+            "string7",
+            "char8",
+            "string8",
+            "charUtf8",
+            "stringUtf8",
+            "intDec",
+            "integerDec",
+            "int8Dec",
+            "int16Dec",
+            "int32Dec",
+            "int64Dec",
+            "wordDec",
+            "word8Dec",
+            "word16Dec",
+            "word32Dec",
+            "word64Dec",
+            "intHex",
+            "int8HexFixed",
+            "int16HexFixed",
+            "int32HexFixed",
+            "int64HexFixed",
+            "wordHex",
+            "word8Hex",
+            "word16Hex",
+            "word32Hex",
+            "word64Hex",
+            "word8HexFixed",
+            "word16HexFixed",
+            "word32HexFixed",
+            "word64HexFixed",
+            "floatHexFixed",
             "doubleHexFixed",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
@@ -7551,6 +7610,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "newForeignPtr_",
             "withForeignPtr",
             "unsafeWithForeignPtr",
+            "memset",
+            "plusForeignPtr",
             "castForeignPtr",
             "mallocForeignPtr",
             "FinalizerPtr",
@@ -11283,9 +11344,17 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "Month", "addMonths", "subMonths", "diffMonths",
-            "pattern", "MonthOfYear", "dayOfMonth", "fromMonthAndDay",
-            "fromYearAndMonth", "monthToDay", "dayToMonth",
+            "Month",
+            "addMonths",
+            "subMonths",
+            "diffMonths",
+            "pattern",
+            "MonthOfYear",
+            "dayOfMonth",
+            "fromMonthAndDay",
+            "fromYearAndMonth",
+            "monthToDay",
+            "dayToMonth",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -11302,9 +11371,17 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "PrimMonad", "primitive", "PrimState", "PrimBase",
-            "RealWorld", "primToPrim", "primToIO", "primToST",
-            "stToPrim", "ioToPrim", "liftPrim",
+            "PrimMonad",
+            "primitive",
+            "PrimState",
+            "PrimBase",
+            "RealWorld",
+            "primToPrim",
+            "primToIO",
+            "primToST",
+            "stToPrim",
+            "ioToPrim",
+            "liftPrim",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -11322,7 +11399,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Monad.ST.Lazy.Safe / Control.Monad.ST.Lazy.Unsafe
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["ST", "runST", "fixST", "stToIO", "lazyToStrictST", "strictToLazyST"] {
+        for name_chirho in &[
+            "ST",
+            "runST",
+            "fixST",
+            "stToIO",
+            "lazyToStrictST",
+            "strictToLazyST",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -11341,7 +11425,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.IOArray
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["IOArray", "newIOArray", "readIOArray", "writeIOArray", "boundsIOArray"] {
+        for name_chirho in &[
+            "IOArray",
+            "newIOArray",
+            "readIOArray",
+            "writeIOArray",
+            "boundsIOArray",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -11357,10 +11447,27 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "GenericT", "GenericQ", "GenericM", "GenericB", "GenericR",
-            "GenericT'", "GenericQ'", "GenericM'",
-            "mkT", "mkQ", "mkM", "mkMp", "mkR", "ext0", "extT", "extQ",
-            "extM", "extMp", "extB", "extR", "orElse",
+            "GenericT",
+            "GenericQ",
+            "GenericM",
+            "GenericB",
+            "GenericR",
+            "GenericT'",
+            "GenericQ'",
+            "GenericM'",
+            "mkT",
+            "mkQ",
+            "mkM",
+            "mkMp",
+            "mkR",
+            "ext0",
+            "extT",
+            "extQ",
+            "extM",
+            "extMp",
+            "extB",
+            "extR",
+            "orElse",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -11375,25 +11482,83 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "Doc", "Pretty", "pretty", "viaShow", "unsafeViaShow",
-            "emptyDoc", "nest", "line", "line'", "softline", "softline'",
-            "hardline", "group", "flatAlt", "align", "hang", "indent",
-            "encloseSep", "list", "tupled", "concatWith",
-            "hsep", "vsep", "fillSep", "sep", "hcat", "vcat", "fillCat",
-            "cat", "punctuate", "enclose", "surround",
-            "annotate", "unAnnotate", "reAnnotate", "alterAnnotations",
-            "angles", "braces", "brackets", "parens", "dquotes", "squotes",
-            "lparen", "rparen", "lbrace", "rbrace", "lbracket", "rbracket",
-            "langle", "rangle", "space", "dot", "equals", "pipe",
-            "colon", "comma", "semi", "backslash", "slash",
-            "layoutPretty", "layoutCompact", "layoutSmart",
-            "defaultLayoutOptions", "LayoutOptions",
-            "PageWidth", "SimpleDocStream",
+            "Doc",
+            "Pretty",
+            "pretty",
+            "viaShow",
+            "unsafeViaShow",
+            "emptyDoc",
+            "nest",
+            "line",
+            "line'",
+            "softline",
+            "softline'",
+            "hardline",
+            "group",
+            "flatAlt",
+            "align",
+            "hang",
+            "indent",
+            "encloseSep",
+            "list",
+            "tupled",
+            "concatWith",
+            "hsep",
+            "vsep",
+            "fillSep",
+            "sep",
+            "hcat",
+            "vcat",
+            "fillCat",
+            "cat",
+            "punctuate",
+            "enclose",
+            "surround",
+            "annotate",
+            "unAnnotate",
+            "reAnnotate",
+            "alterAnnotations",
+            "angles",
+            "braces",
+            "brackets",
+            "parens",
+            "dquotes",
+            "squotes",
+            "lparen",
+            "rparen",
+            "lbrace",
+            "rbrace",
+            "lbracket",
+            "rbracket",
+            "langle",
+            "rangle",
+            "space",
+            "dot",
+            "equals",
+            "pipe",
+            "colon",
+            "comma",
+            "semi",
+            "backslash",
+            "slash",
+            "layoutPretty",
+            "layoutCompact",
+            "layoutSmart",
+            "defaultLayoutOptions",
+            "LayoutOptions",
+            "PageWidth",
+            "SimpleDocStream",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Doc", "SimpleDocStream", "LayoutOptions", "PageWidth", "Pretty"] {
+        for name_chirho in &[
+            "Doc",
+            "SimpleDocStream",
+            "LayoutOptions",
+            "PageWidth",
+            "Pretty",
+        ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -11409,16 +11574,31 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         {
             let mut render_exports_chirho = exports_chirho.clone();
             for name_chirho in &[
-                "renderStrict", "renderLazy", "renderIO", "putDoc", "hPutDoc",
-                "AnsiStyle", "Color", "color", "colorDull", "bgColor", "bgColorDull",
-                "bold", "italicized", "underlined",
+                "renderStrict",
+                "renderLazy",
+                "renderIO",
+                "putDoc",
+                "hPutDoc",
+                "AnsiStyle",
+                "Color",
+                "color",
+                "colorDull",
+                "bgColor",
+                "bgColorDull",
+                "bold",
+                "italicized",
+                "underlined",
             ] {
                 let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
-                render_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+                render_exports_chirho
+                    .values_chirho
+                    .insert(k_chirho, v_chirho);
             }
             for name_chirho in &["AnsiStyle", "Color"] {
                 let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
-                render_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+                render_exports_chirho
+                    .types_chirho
+                    .insert(k_chirho, v_chirho);
             }
             modules_chirho.push(ModuleIfaceChirho {
                 name_chirho: "Prettyprinter.Render.Terminal".to_string(),
@@ -11435,21 +11615,66 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "BoundedPrim", "FixedPrim", "primFixed", "primBounded",
-            "primMapListFixed", "primMapListBounded",
-            "primUnfoldrFixed", "primUnfoldrBounded",
-            "primMapByteStringFixed", "primMapLazyByteStringFixed",
-            "word8", "int8", "word16BE", "word16LE", "word32BE", "word32LE",
-            "word64BE", "word64LE", "int16BE", "int16LE", "int32BE",
-            "int32LE", "int64BE", "int64LE", "floatBE", "floatLE",
-            "doubleBE", "doubleLE", "intDec", "int8Dec", "int16Dec",
-            "int32Dec", "int64Dec", "integerDec", "wordDec", "word8Dec",
-            "word16Dec", "word32Dec", "word64Dec", "wordHex", "word8Hex",
-            "word16Hex", "word32Hex", "word64Hex",
-            "int8HexFixed", "int16HexFixed", "int32HexFixed", "int64HexFixed",
-            "word8HexFixed", "word16HexFixed", "word32HexFixed", "word64HexFixed",
-            "floatHexFixed", "doubleHexFixed", "char7", "char8", "charUtf8",
-            "condB", "emptyB", "liftFixedToBounded",
+            "BoundedPrim",
+            "FixedPrim",
+            "primFixed",
+            "primBounded",
+            "primMapListFixed",
+            "primMapListBounded",
+            "primUnfoldrFixed",
+            "primUnfoldrBounded",
+            "primMapByteStringFixed",
+            "primMapLazyByteStringFixed",
+            "word8",
+            "int8",
+            "word16BE",
+            "word16LE",
+            "word32BE",
+            "word32LE",
+            "word64BE",
+            "word64LE",
+            "int16BE",
+            "int16LE",
+            "int32BE",
+            "int32LE",
+            "int64BE",
+            "int64LE",
+            "floatBE",
+            "floatLE",
+            "doubleBE",
+            "doubleLE",
+            "intDec",
+            "int8Dec",
+            "int16Dec",
+            "int32Dec",
+            "int64Dec",
+            "integerDec",
+            "wordDec",
+            "word8Dec",
+            "word16Dec",
+            "word32Dec",
+            "word64Dec",
+            "wordHex",
+            "word8Hex",
+            "word16Hex",
+            "word32Hex",
+            "word64Hex",
+            "int8HexFixed",
+            "int16HexFixed",
+            "int32HexFixed",
+            "int64HexFixed",
+            "word8HexFixed",
+            "word16HexFixed",
+            "word32HexFixed",
+            "word64HexFixed",
+            "floatHexFixed",
+            "doubleHexFixed",
+            "char7",
+            "char8",
+            "charUtf8",
+            "condB",
+            "emptyB",
+            "liftFixedToBounded",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -11472,21 +11697,79 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "Vector", "Mutable", "length", "null", "empty", "singleton",
-            "replicate", "generate", "cons", "snoc", "head", "last",
-            "tail", "init", "slice", "take", "drop", "splitAt",
-            "map", "imap", "concatMap", "mapM", "mapM_", "forM", "forM_",
-            "filter", "ifilter", "takeWhile", "dropWhile",
-            "foldl", "foldl'", "foldl1", "foldl1'", "foldr", "foldr'",
-            "foldr1", "foldr1'", "ifoldl", "ifoldl'", "ifoldr", "ifoldr'",
-            "all", "any", "sum", "product", "maximum", "minimum",
-            "zip", "zipWith", "unzip", "elem", "notElem", "find",
-            "findIndex", "findIndices", "elemIndex",
-            "toList", "fromList", "fromListN", "convert", "freeze", "thaw",
-            "copy", "unsafeFreeze", "unsafeThaw",
-            "basicUnsafeFreeze", "basicUnsafeThaw", "basicLength",
-            "basicUnsafeSlice", "basicUnsafeIndexM", "basicUnsafeCopy",
-            "basicOverlaps", "basicInitialize",
+            "Vector",
+            "Mutable",
+            "length",
+            "null",
+            "empty",
+            "singleton",
+            "replicate",
+            "generate",
+            "cons",
+            "snoc",
+            "head",
+            "last",
+            "tail",
+            "init",
+            "slice",
+            "take",
+            "drop",
+            "splitAt",
+            "map",
+            "imap",
+            "concatMap",
+            "mapM",
+            "mapM_",
+            "forM",
+            "forM_",
+            "filter",
+            "ifilter",
+            "takeWhile",
+            "dropWhile",
+            "foldl",
+            "foldl'",
+            "foldl1",
+            "foldl1'",
+            "foldr",
+            "foldr'",
+            "foldr1",
+            "foldr1'",
+            "ifoldl",
+            "ifoldl'",
+            "ifoldr",
+            "ifoldr'",
+            "all",
+            "any",
+            "sum",
+            "product",
+            "maximum",
+            "minimum",
+            "zip",
+            "zipWith",
+            "unzip",
+            "elem",
+            "notElem",
+            "find",
+            "findIndex",
+            "findIndices",
+            "elemIndex",
+            "toList",
+            "fromList",
+            "fromListN",
+            "convert",
+            "freeze",
+            "thaw",
+            "copy",
+            "unsafeFreeze",
+            "unsafeThaw",
+            "basicUnsafeFreeze",
+            "basicUnsafeThaw",
+            "basicLength",
+            "basicUnsafeSlice",
+            "basicUnsafeIndexM",
+            "basicUnsafeCopy",
+            "basicOverlaps",
+            "basicInitialize",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -11524,23 +11807,91 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "Doc", "Pretty", "pretty", "char", "text", "string",
-            "int", "integer", "float", "double", "rational",
-            "nest", "line", "linebreak", "group", "softline", "softbreak",
-            "align", "hang", "indent", "encloseSep", "list", "tupled",
-            "semiBraces", "hsep", "vsep", "fillSep", "sep",
-            "hcat", "vcat", "fillCat", "cat", "punctuate",
-            "enclose", "parens", "braces", "brackets", "angles",
-            "squotes", "dquotes", "lparen", "rparen", "lbrace", "rbrace",
-            "lbracket", "rbracket", "langle", "rangle",
-            "space", "dot", "equals", "pipe", "colon", "comma", "semi",
-            "backslash", "empty", "bold", "debold", "underline", "deunderline",
-            "plain", "black", "red", "green", "yellow", "blue",
-            "magenta", "cyan", "white", "dullblack", "dullred",
-            "dullgreen", "dullyellow", "dullblue", "dullmagenta",
-            "dullcyan", "dullwhite",
-            "renderPretty", "renderCompact", "displayS", "displayIO",
-            "SimpleDoc", "putDoc", "hPutDoc",
+            "Doc",
+            "Pretty",
+            "pretty",
+            "char",
+            "text",
+            "string",
+            "int",
+            "integer",
+            "float",
+            "double",
+            "rational",
+            "nest",
+            "line",
+            "linebreak",
+            "group",
+            "softline",
+            "softbreak",
+            "align",
+            "hang",
+            "indent",
+            "encloseSep",
+            "list",
+            "tupled",
+            "semiBraces",
+            "hsep",
+            "vsep",
+            "fillSep",
+            "sep",
+            "hcat",
+            "vcat",
+            "fillCat",
+            "cat",
+            "punctuate",
+            "enclose",
+            "parens",
+            "braces",
+            "brackets",
+            "angles",
+            "squotes",
+            "dquotes",
+            "lparen",
+            "rparen",
+            "lbrace",
+            "rbrace",
+            "lbracket",
+            "rbracket",
+            "langle",
+            "rangle",
+            "space",
+            "dot",
+            "equals",
+            "pipe",
+            "colon",
+            "comma",
+            "semi",
+            "backslash",
+            "empty",
+            "bold",
+            "debold",
+            "underline",
+            "deunderline",
+            "plain",
+            "black",
+            "red",
+            "green",
+            "yellow",
+            "blue",
+            "magenta",
+            "cyan",
+            "white",
+            "dullblack",
+            "dullred",
+            "dullgreen",
+            "dullyellow",
+            "dullblue",
+            "dullmagenta",
+            "dullcyan",
+            "dullwhite",
+            "renderPretty",
+            "renderCompact",
+            "displayS",
+            "displayIO",
+            "SimpleDoc",
+            "putDoc",
+            "hPutDoc",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -11848,6 +12199,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "copyBytes",
             "moveBytes",
             "fillBytes",
+            "memset",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -12246,6 +12598,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "inRange",
             "rangeSize",
             "Ix",
+            "unsafeAt",
             "MArray",
             "IOArray",
             "STArray",
@@ -13893,6 +14246,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             exports_chirho,
         });
     }
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        let (k_chirho, v_chirho) = mk_val_chirho("utf8LengthByLeader");
+        exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Text.Internal.Encoding.Utf8".to_string(),
+            exports_chirho,
+        });
+    }
 
     // Attoparsec buffer modules
     {
@@ -15454,30 +15816,22 @@ mod tests_chirho {
 
         let iface_chirho = build_iface_chirho(&module_chirho);
         assert_eq!(iface_chirho.name_chirho, "Lib");
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Color")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Blue")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("paint")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Color"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Blue"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("paint"));
     }
 
     #[test]
@@ -15521,31 +15875,23 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Color")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("paint")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Color"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("paint"));
         // helper is NOT exported
-        assert!(
-            !iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("helper")
-        );
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("helper"));
     }
 
     #[test]
@@ -15571,19 +15917,15 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Color")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Color"));
         // Red is NOT exported — only the type name
-        assert!(
-            !iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
         let color_ty_chirho = &iface_chirho.exports_chirho.types_chirho["Color"];
         assert!(color_ty_chirho.constructors_chirho.is_empty());
     }
@@ -15618,18 +15960,14 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
-        assert!(
-            !iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Blue")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Blue"));
         let ty_chirho = &iface_chirho.exports_chirho.types_chirho["Color"];
         assert_eq!(ty_chirho.constructors_chirho, vec!["Red"]);
     }
@@ -15659,18 +15997,14 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Show")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("show")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Show"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("show"));
         assert_eq!(
             iface_chirho.exports_chirho.types_chirho["Show"].methods_chirho,
             vec!["show"]
@@ -15721,18 +16055,14 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("opLetterChirho")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("reservedNamesChirho")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("opLetterChirho"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("reservedNamesChirho"));
         assert_eq!(
             iface_chirho.exports_chirho.types_chirho["LanguageDefChirho"].methods_chirho,
             vec!["opLetterChirho", "reservedNamesChirho"]
@@ -15759,18 +16089,14 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Wrapper")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Wrap")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Wrapper"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Wrap"));
     }
 
     #[test]
@@ -15913,12 +16239,10 @@ mod tests_chirho {
         };
 
         let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho]);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("innerFn")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("innerFn"));
     }
 
     #[test]
@@ -16000,24 +16324,18 @@ mod tests_chirho {
             &module_chirho,
             &[left_iface_chirho, right_iface_chirho],
         );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("leftFn")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("rightFn")
-        );
-        assert!(
-            !iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("hiddenLeft")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("leftFn"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("rightFn"));
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("hiddenLeft"));
     }
 
     #[test]
@@ -16060,12 +16378,10 @@ mod tests_chirho {
 
         let iface_chirho =
             build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("choice")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("choice"));
     }
 
     #[test]
@@ -16110,12 +16426,10 @@ mod tests_chirho {
 
         let iface_chirho =
             build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Parsec")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Parsec"));
     }
 
     #[test]
@@ -16247,18 +16561,14 @@ mod tests_chirho {
         assert!(monad_chirho.methods_chirho.contains(&"return".to_string()));
         assert!(monad_chirho.methods_chirho.contains(&">>=".to_string()));
         assert!(monad_chirho.methods_chirho.contains(&">>".to_string()));
-        assert!(
-            control_monad_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("return")
-        );
-        assert!(
-            control_monad_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key(">>=")
-        );
+        assert!(control_monad_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("return"));
+        assert!(control_monad_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key(">>="));
     }
 
     #[test]
@@ -16540,8 +16850,16 @@ mod tests_chirho {
             bytestring_internal_chirho
                 .exports_chirho
                 .values_chirho
-                .contains_key("accursedUnutterablePerformIO"),
-            "Data.ByteString.Internal should export accursedUnutterablePerformIO"
+                .contains_key("accursedUnutterablePerformIO")
+                && bytestring_internal_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key("memset")
+                && bytestring_internal_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key("plusForeignPtr"),
+            "Data.ByteString.Internal should export accursedUnutterablePerformIO, memset, and plusForeignPtr"
         );
 
         let system_io_unsafe_chirho = ifaces_chirho
@@ -16570,8 +16888,16 @@ mod tests_chirho {
             ghc_foreign_ptr_chirho
                 .exports_chirho
                 .values_chirho
-                .contains_key("unsafeWithForeignPtr"),
-            "GHC.ForeignPtr should export unsafeWithForeignPtr"
+                .contains_key("unsafeWithForeignPtr")
+                && ghc_foreign_ptr_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key("memset")
+                && ghc_foreign_ptr_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key("plusForeignPtr"),
+            "GHC.ForeignPtr should export unsafeWithForeignPtr, memset, and plusForeignPtr"
         );
     }
 
@@ -16606,6 +16932,22 @@ mod tests_chirho {
                 .values_chirho
                 .contains_key("seq#"),
             "GHC.Exts should export seq#"
+        );
+    }
+
+    #[test]
+    fn builtin_ghc_exts_exports_ishiftra_hash_primop_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_exts_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Exts")
+            .expect("GHC.Exts builtin iface should exist");
+        assert!(
+            ghc_exts_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("iShiftRA#"),
+            "GHC.Exts should export iShiftRA#"
         );
     }
 

@@ -5,7 +5,9 @@
 //!
 //! Parses `.cabal` files into a structured `PackageDescChirho`. Handles:
 //! - Top-level fields (name, version, license, author, etc.)
-//! - `library` stanza (exposed-modules, other-modules, hs-source-dirs, build-depends, default-language, ghc-options, default-extensions)
+//! - `library` and named internal library stanzas (exposed-modules,
+//!   other-modules, hs-source-dirs, build-depends, default-language,
+//!   ghc-options, default-extensions)
 //! - `executable <name>` stanzas (main-is, other-modules, hs-source-dirs, build-depends)
 //! - `test-suite <name>` stanzas (type, main-is, other-modules, build-depends)
 //!
@@ -44,6 +46,7 @@ pub struct PackageDescChirho {
     pub bug_reports_chirho: Option<String>,
     pub build_type_chirho: Option<String>,
     pub library_chirho: Option<LibraryChirho>,
+    pub internal_libraries_chirho: Vec<LibraryChirho>,
     pub executables_chirho: Vec<ExecutableChirho>,
     pub test_suites_chirho: Vec<TestSuiteChirho>,
     pub benchmarks_chirho: Vec<BenchmarkChirho>,
@@ -77,6 +80,7 @@ pub struct DependencyChirho {
 /// The library stanza.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LibraryChirho {
+    pub name_chirho: Option<String>,
     pub exposed_modules_chirho: Vec<String>,
     pub other_modules_chirho: Vec<String>,
     pub build_info_chirho: BuildInfoChirho,
@@ -185,7 +189,7 @@ struct FieldChirho {
 #[derive(Debug, Clone)]
 enum StanzaChirho {
     TopLevelChirho,
-    LibraryChirho,
+    LibraryChirho(Option<String>),
     ExecutableChirho(String),
     TestSuiteChirho(String),
     BenchmarkChirho(String),
@@ -215,6 +219,7 @@ pub fn parse_cabal_chirho(input_chirho: &str) -> PackageDescChirho {
         bug_reports_chirho: None,
         build_type_chirho: None,
         library_chirho: None,
+        internal_libraries_chirho: Vec::new(),
         executables_chirho: Vec::new(),
         test_suites_chirho: Vec::new(),
         benchmarks_chirho: Vec::new(),
@@ -229,9 +234,14 @@ pub fn parse_cabal_chirho(input_chirho: &str) -> PackageDescChirho {
             StanzaChirho::TopLevelChirho => {
                 apply_top_level_chirho(&mut pkg_chirho, stanza_fields_chirho);
             }
-            StanzaChirho::LibraryChirho => {
-                let lib_chirho = parse_library_chirho(stanza_fields_chirho);
-                pkg_chirho.library_chirho = Some(lib_chirho);
+            StanzaChirho::LibraryChirho(name_chirho) => {
+                let mut lib_chirho = parse_library_chirho(stanza_fields_chirho);
+                lib_chirho.name_chirho = name_chirho.clone();
+                if name_chirho.is_some() {
+                    pkg_chirho.internal_libraries_chirho.push(lib_chirho);
+                } else {
+                    pkg_chirho.library_chirho = Some(lib_chirho);
+                }
             }
             StanzaChirho::ExecutableChirho(name_chirho) => {
                 let exe_chirho = parse_executable_chirho(name_chirho, stanza_fields_chirho);
@@ -556,6 +566,7 @@ fn lex_fields_chirho(input_chirho: &str) -> Vec<FieldChirho> {
         // Check for stanza header without colon (e.g. bare `library`)
         let lower_chirho = trimmed_chirho.to_lowercase();
         if lower_chirho == "library"
+            || lower_chirho.starts_with("library ")
             || lower_chirho.starts_with("executable ")
             || lower_chirho.starts_with("test-suite ")
             || lower_chirho.starts_with("benchmark ")
@@ -639,7 +650,14 @@ fn group_stanzas_chirho(fields_chirho: &[FieldChirho]) -> Vec<(StanzaChirho, Vec
             }
 
             current_stanza_chirho = match stanza_type_chirho {
-                "library" => StanzaChirho::LibraryChirho,
+                "library" => {
+                    let library_name_chirho = field_chirho.value_chirho.trim();
+                    if library_name_chirho.is_empty() {
+                        StanzaChirho::LibraryChirho(None)
+                    } else {
+                        StanzaChirho::LibraryChirho(Some(library_name_chirho.to_string()))
+                    }
+                }
                 "executable" => StanzaChirho::ExecutableChirho(field_chirho.value_chirho.clone()),
                 "test-suite" => StanzaChirho::TestSuiteChirho(field_chirho.value_chirho.clone()),
                 "benchmark" => StanzaChirho::BenchmarkChirho(field_chirho.value_chirho.clone()),
@@ -845,6 +863,7 @@ fn parse_library_chirho(fields_chirho: &[&FieldChirho]) -> LibraryChirho {
     }
 
     LibraryChirho {
+        name_chirho: None,
         exposed_modules_chirho: exposed_chirho,
         other_modules_chirho: other_chirho,
         build_info_chirho: parse_build_info_chirho(fields_chirho),
@@ -1316,6 +1335,23 @@ fn apply_imports_chirho(pkg_chirho: &mut PackageDescChirho) {
 
     // Apply to library
     if let Some(lib_chirho) = &mut pkg_chirho.library_chirho {
+        for import_name_chirho in &lib_chirho.build_info_chirho.imports_chirho.clone() {
+            if let Some(common_chirho) = commons_chirho.get(import_name_chirho) {
+                merge_build_info_chirho(
+                    &mut lib_chirho.build_info_chirho,
+                    &common_chirho.build_info_chirho,
+                );
+                lib_chirho
+                    .exposed_modules_chirho
+                    .extend(common_chirho.exposed_modules_chirho.clone());
+                lib_chirho
+                    .other_modules_chirho
+                    .extend(common_chirho.other_modules_chirho.clone());
+            }
+        }
+    }
+
+    for lib_chirho in &mut pkg_chirho.internal_libraries_chirho {
         for import_name_chirho in &lib_chirho.build_info_chirho.imports_chirho.clone() {
             if let Some(common_chirho) = commons_chirho.get(import_name_chirho) {
                 merge_build_info_chirho(
@@ -2369,5 +2405,53 @@ benchmark full-bench
         // Benchmark
         assert_eq!(pkg_chirho.benchmarks_chirho.len(), 1);
         assert_eq!(pkg_chirho.benchmarks_chirho[0].name_chirho, "full-bench");
+    }
+
+    #[test]
+    fn parse_named_internal_library_stanza_chirho() {
+        let input_chirho = r#"
+name: sublib-demo
+version: 0.1.0.0
+
+library demo-internal
+  hs-source-dirs: internal
+  exposed-modules: Demo.Internal
+  build-depends: base, text
+
+library
+  exposed-modules: Demo
+  build-depends: base, demo-internal
+"#;
+        let pkg_chirho = parse_cabal_chirho(input_chirho);
+
+        let main_library_chirho = pkg_chirho.library_chirho.as_ref().unwrap();
+        assert_eq!(main_library_chirho.name_chirho, None);
+        assert_eq!(main_library_chirho.exposed_modules_chirho, vec!["Demo"]);
+        assert_eq!(
+            main_library_chirho
+                .build_info_chirho
+                .build_depends_chirho
+                .iter()
+                .map(|dep_chirho| dep_chirho.package_chirho.as_str())
+                .collect::<Vec<_>>(),
+            vec!["base", "demo-internal"]
+        );
+
+        assert_eq!(pkg_chirho.internal_libraries_chirho.len(), 1);
+        let internal_library_chirho = &pkg_chirho.internal_libraries_chirho[0];
+        assert_eq!(
+            internal_library_chirho.name_chirho.as_deref(),
+            Some("demo-internal")
+        );
+        assert_eq!(
+            internal_library_chirho.exposed_modules_chirho,
+            vec!["Demo.Internal"]
+        );
+        assert_eq!(
+            internal_library_chirho
+                .build_info_chirho
+                .hs_source_dirs_chirho,
+            vec!["internal"]
+        );
     }
 }
