@@ -10966,6 +10966,57 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
     }
 
     #[test]
+    fn lower_list_comp_generator_as_pattern_preserves_alias_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\ndata ChunkChirho = TextChirho Int | GapChirho\nkeepTextChirho xsChirho = [cChirho | cChirho@(TextChirho _) <- xsChirho]\n",
+        );
+        let fun_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "keepTextChirho"
+                )
+            })
+            .expect("expected keepTextChirho fun bind");
+
+        let DeclChirho::FunBindChirho { matches_chirho, .. } = fun_decl_chirho else {
+            panic!("expected function binding");
+        };
+        let RhsChirho::UnguardedChirho(rhs_expr_chirho) = &matches_chirho[0].rhs_chirho else {
+            panic!("expected unguarded rhs");
+        };
+        let ExprChirho::ListCompChirho { quals_chirho, .. } = rhs_expr_chirho else {
+            panic!("expected list comprehension rhs, got {:?}", rhs_expr_chirho);
+        };
+        let StmtChirho::BindChirho { pat_chirho, .. } = &quals_chirho[0] else {
+            panic!(
+                "expected list comprehension generator, got {:?}",
+                quals_chirho[0]
+            );
+        };
+        let PatChirho::AsChirho {
+            name_chirho,
+            pattern_chirho,
+            ..
+        } = pat_chirho
+        else {
+            panic!("expected as-pattern generator, got {:?}", pat_chirho);
+        };
+        assert_eq!(name_chirho.text_chirho(), "cChirho");
+        assert!(
+            matches!(
+                pattern_chirho.as_ref(),
+                PatChirho::ParenChirho { .. } | PatChirho::ConChirho { .. }
+            ),
+            "expected aliased constructor pattern, got {:?}",
+            pattern_chirho
+        );
+    }
+
+    #[test]
     fn lower_guarded_fun_bind_keeps_where_clause_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M where\nsplitFileName_Chirho fpChirho\n  | isWindowsChirho = dirSlashChirho\n  | otherwise = fileChirho\n  where\n    dirSlashChirho = fpChirho\n    fileChirho = fpChirho\n",

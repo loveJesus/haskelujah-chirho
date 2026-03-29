@@ -779,9 +779,15 @@ fn cpp_include_dirs_chirho(path_chirho: &Path) -> Vec<PathBuf> {
     }
 
     for ancestor_chirho in path_chirho.ancestors().skip(1) {
-        let include_dir_chirho = ancestor_chirho.join("include");
-        if include_dir_chirho.is_dir() {
-            include_dirs_chirho.push(include_dir_chirho);
+        for candidate_dir_name_chirho in ["include", "internal", "autogen"] {
+            let include_dir_chirho = ancestor_chirho.join(candidate_dir_name_chirho);
+            if include_dir_chirho.is_dir() {
+                include_dirs_chirho.push(include_dir_chirho);
+            }
+        }
+        let dist_autogen_dir_chirho = ancestor_chirho.join("dist/build/autogen");
+        if dist_autogen_dir_chirho.is_dir() {
+            include_dirs_chirho.push(dist_autogen_dir_chirho);
         }
         if find_cabal_in_dir_chirho(ancestor_chirho).is_some() {
             include_dirs_chirho.push(ancestor_chirho.to_path_buf());

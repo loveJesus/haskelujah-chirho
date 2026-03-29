@@ -22,7 +22,7 @@ use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredC
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
-use crate::unify_chirho::{unify_chirho, UnifyErrorChirho};
+use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
 
 /// Error code range for type inference diagnostics.
 const TYPE_MISMATCH_CODE_CHIRHO: u16 = 200;
@@ -12435,6 +12435,15 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             char_ty_chirho.clone(),
         )),
     );
+    for name_chirho in ["unsafeChr", "GHC.Base.unsafeChr", "GHC.Char.unsafeChr"] {
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                TyChirho::int_chirho(),
+                char_ty_chirho.clone(),
+            )),
+        );
+    }
 
     // ord :: Char -> Int
     env_chirho.bind_chirho(
@@ -14376,9 +14385,42 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         }
     }
 
+    // keepAlive# :: forall a s b. a -> State# s -> (State# s -> b) -> b
+    {
+        let keep_alive_a_chirho = TyVarChirho(7112);
+        let keep_alive_s_chirho = TyVarChirho(7113);
+        let keep_alive_b_chirho = TyVarChirho(7114);
+        let state_s_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("State#".to_string())),
+            Box::new(TyChirho::VarChirho(keep_alive_s_chirho)),
+        );
+        let keep_alive_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![
+                keep_alive_a_chirho,
+                keep_alive_s_chirho,
+                keep_alive_b_chirho,
+            ],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(keep_alive_a_chirho),
+                    state_s_chirho.clone(),
+                    TyChirho::fun_chirho(
+                        state_s_chirho.clone(),
+                        TyChirho::VarChirho(keep_alive_b_chirho),
+                    ),
+                ],
+                TyChirho::VarChirho(keep_alive_b_chirho),
+            ),
+        };
+        for name_chirho in ["keepAlive#", "GHC.Exts.keepAlive#", "GHC.Prim.keepAlive#"] {
+            env_chirho.bind_chirho(name_chirho.to_string(), keep_alive_scheme_chirho.clone());
+        }
+    }
+
     // setByteArray# :: forall s. MutableByteArray# s -> Int# -> Int# -> Int# -> State# s -> State# s
     {
-        let s_chirho = TyVarChirho(7112);
+        let s_chirho = TyVarChirho(7115);
         let mutable_byte_array_s_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::ConChirho("MutableByteArray#".to_string())),
             Box::new(TyChirho::VarChirho(s_chirho)),
@@ -16832,7 +16874,8 @@ pub fn infer_module_with_imports_type_synonyms_and_families_chirho(
         );
     }
     for (family_name_chirho, equations_chirho) in imported_type_families_chirho {
-        ctx_chirho.register_type_family_chirho(family_name_chirho.clone(), equations_chirho.clone());
+        ctx_chirho
+            .register_type_family_chirho(family_name_chirho.clone(), equations_chirho.clone());
     }
     // Seed the type environment with imported type schemes, but only if
     // placeholder imports do not override precise built-ins, while real
@@ -17312,10 +17355,12 @@ mod tests_chirho {
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
         assert!(matches!(final_ty_chirho, TyChirho::VarChirho(_)));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 2);
-        assert!(ctx_chirho
-            .deferred_preds_chirho
-            .iter()
-            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
+        assert!(
+            ctx_chirho
+                .deferred_preds_chirho
+                .iter()
+                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
+        );
     }
 
     #[test]
@@ -17562,10 +17607,12 @@ mod tests_chirho {
                 if matches!(elem_chirho.as_ref(), TyChirho::VarChirho(_))
         ));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 3);
-        assert!(ctx_chirho
-            .deferred_preds_chirho
-            .iter()
-            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
+        assert!(
+            ctx_chirho
+                .deferred_preds_chirho
+                .iter()
+                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -18193,9 +18240,11 @@ mod tests_chirho {
             "Class with superclass should not error: {:?}",
             result_chirho.diagnostics_chirho
         );
-        assert!(result_chirho
-            .class_env_chirho
-            .has_class_chirho("MyOrdChirho"));
+        assert!(
+            result_chirho
+                .class_env_chirho
+                .has_class_chirho("MyOrdChirho")
+        );
         let supers_chirho = result_chirho
             .class_env_chirho
             .superclasses_chirho("MyOrdChirho");

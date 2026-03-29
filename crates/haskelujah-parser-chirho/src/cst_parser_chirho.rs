@@ -2067,6 +2067,55 @@ impl<'src> ParserChirho<'src> {
         false
     }
 
+    /// Scan ahead to see whether the current list-comprehension qualifier
+    /// contains a top-level `<-` before the next comma or `]`.
+    fn scan_for_list_comp_bind_arrow_chirho(&self) -> bool {
+        let mut i_chirho = self.pos_chirho;
+        let mut paren_depth_chirho = 0u32;
+        let mut bracket_depth_chirho = 0u32;
+        let mut brace_depth_chirho = 0u32;
+
+        while i_chirho < self.tokens_chirho.len() {
+            let kind_chirho = self.tokens_chirho[i_chirho].kind_chirho;
+            match kind_chirho {
+                RawTokenKindChirho::LeftArrowChirho
+                    if paren_depth_chirho == 0
+                        && bracket_depth_chirho == 0
+                        && brace_depth_chirho == 0 =>
+                {
+                    return true;
+                }
+                RawTokenKindChirho::CommaChirho | RawTokenKindChirho::RightBracketChirho
+                    if paren_depth_chirho == 0
+                        && bracket_depth_chirho == 0
+                        && brace_depth_chirho == 0 =>
+                {
+                    return false;
+                }
+                RawTokenKindChirho::LeftParenChirho => paren_depth_chirho += 1,
+                RawTokenKindChirho::RightParenChirho => {
+                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                }
+                RawTokenKindChirho::LeftBracketChirho => bracket_depth_chirho += 1,
+                RawTokenKindChirho::RightBracketChirho => {
+                    bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
+                }
+                RawTokenKindChirho::LeftBraceChirho
+                | RawTokenKindChirho::VirtualLeftBraceChirho => {
+                    brace_depth_chirho += 1;
+                }
+                RawTokenKindChirho::RightBraceChirho
+                | RawTokenKindChirho::VirtualRightBraceChirho => {
+                    brace_depth_chirho = brace_depth_chirho.saturating_sub(1);
+                }
+                _ => {}
+            }
+            i_chirho += 1;
+        }
+
+        false
+    }
+
     // -----------------------------------------------------------------------
     // Where blocks
     // -----------------------------------------------------------------------
@@ -3778,17 +3827,18 @@ impl<'src> ParserChirho<'src> {
                         self.parse_layout_block_chirho();
                         self.builder_chirho.finish_node_chirho();
                         self.eat_trivia_chirho();
-                    } else {
-                        // Parse the first expression (could be a pattern for a generator)
-                        self.parse_expr_chirho();
+                    } else if self.scan_for_list_comp_bind_arrow_chirho() {
+                        self.parse_pat_chirho();
                         self.eat_trivia_chirho();
-                        // If followed by <-, this is a generator: pat <- source
                         if self.at_chirho(RawTokenKindChirho::LeftArrowChirho) {
                             self.bump_chirho(); // <-
                             self.eat_trivia_chirho();
                             self.parse_expr_chirho();
                             self.eat_trivia_chirho();
                         }
+                    } else {
+                        self.parse_expr_chirho();
+                        self.eat_trivia_chirho();
                     }
                 }
                 if self.pos_chirho == before_chirho {

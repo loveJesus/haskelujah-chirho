@@ -1350,6 +1350,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "iShiftL#",
             "iShiftRA#",
             "iShiftRL#",
+            "keepAlive#",
             "uncheckedIShiftL#",
             "uncheckedIShiftRA#",
             "uncheckedIShiftRL#",
@@ -2873,6 +2874,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "thenIO",
             "chr#",
             "ord#",
+            "unsafeChr",
             "+#",
             "seq",
             "maxInt",
@@ -5672,6 +5674,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "iShiftL#",
             "iShiftRA#",
             "iShiftRL#",
+            "keepAlive#",
             "uncheckedIShiftL#",
             "uncheckedIShiftRA#",
             "uncheckedIShiftRL#",
@@ -8488,6 +8491,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "oneShot",
             "chr#",
             "ord#",
+            "unsafeChr",
             "+#",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
@@ -15835,22 +15839,30 @@ mod tests_chirho {
 
         let iface_chirho = build_iface_chirho(&module_chirho);
         assert_eq!(iface_chirho.name_chirho, "Lib");
-        assert!(iface_chirho
-            .exports_chirho
-            .types_chirho
-            .contains_key("Color"));
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("Red"));
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("Blue"));
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("paint"));
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("Color")
+        );
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("Red")
+        );
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("Blue")
+        );
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("paint")
+        );
     }
 
     #[test]
@@ -15894,23 +15906,31 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(iface_chirho
-            .exports_chirho
-            .types_chirho
-            .contains_key("Color"));
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("Red"));
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("paint"));
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("Color")
+        );
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("Red")
+        );
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("paint")
+        );
         // helper is NOT exported
-        assert!(!iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("helper"));
+        assert!(
+            !iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("helper")
+        );
     }
 
     #[test]
@@ -15936,15 +15956,19 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(iface_chirho
-            .exports_chirho
-            .types_chirho
-            .contains_key("Color"));
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("Color")
+        );
         // Red is NOT exported — only the type name
-        assert!(!iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("Red"));
+        assert!(
+            !iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("Red")
+        );
         let color_ty_chirho = &iface_chirho.exports_chirho.types_chirho["Color"];
         assert!(color_ty_chirho.constructors_chirho.is_empty());
     }
@@ -15979,14 +16003,18 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("Red"));
-        assert!(!iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("Blue"));
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("Red")
+        );
+        assert!(
+            !iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("Blue")
+        );
         let ty_chirho = &iface_chirho.exports_chirho.types_chirho["Color"];
         assert_eq!(ty_chirho.constructors_chirho, vec!["Red"]);
     }
@@ -16016,14 +16044,18 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(iface_chirho
-            .exports_chirho
-            .types_chirho
-            .contains_key("Show"));
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("show"));
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("Show")
+        );
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("show")
+        );
         assert_eq!(
             iface_chirho.exports_chirho.types_chirho["Show"].methods_chirho,
             vec!["show"]
@@ -16074,14 +16106,18 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("opLetterChirho"));
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("reservedNamesChirho"));
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("opLetterChirho")
+        );
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("reservedNamesChirho")
+        );
         assert_eq!(
             iface_chirho.exports_chirho.types_chirho["LanguageDefChirho"].methods_chirho,
             vec!["opLetterChirho", "reservedNamesChirho"]
@@ -16108,14 +16144,18 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(iface_chirho
-            .exports_chirho
-            .types_chirho
-            .contains_key("Wrapper"));
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("Wrap"));
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("Wrapper")
+        );
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("Wrap")
+        );
     }
 
     #[test]
@@ -16258,10 +16298,12 @@ mod tests_chirho {
         };
 
         let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho]);
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("innerFn"));
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("innerFn")
+        );
     }
 
     #[test]
@@ -16343,18 +16385,24 @@ mod tests_chirho {
             &module_chirho,
             &[left_iface_chirho, right_iface_chirho],
         );
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("leftFn"));
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("rightFn"));
-        assert!(!iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("hiddenLeft"));
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("leftFn")
+        );
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("rightFn")
+        );
+        assert!(
+            !iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("hiddenLeft")
+        );
     }
 
     #[test]
@@ -16397,10 +16445,12 @@ mod tests_chirho {
 
         let iface_chirho =
             build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
-        assert!(iface_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("choice"));
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("choice")
+        );
     }
 
     #[test]
@@ -16445,10 +16495,12 @@ mod tests_chirho {
 
         let iface_chirho =
             build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
-        assert!(iface_chirho
-            .exports_chirho
-            .types_chirho
-            .contains_key("Parsec"));
+        assert!(
+            iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("Parsec")
+        );
     }
 
     #[test]
@@ -16580,14 +16632,18 @@ mod tests_chirho {
         assert!(monad_chirho.methods_chirho.contains(&"return".to_string()));
         assert!(monad_chirho.methods_chirho.contains(&">>=".to_string()));
         assert!(monad_chirho.methods_chirho.contains(&">>".to_string()));
-        assert!(control_monad_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key("return"));
-        assert!(control_monad_chirho
-            .exports_chirho
-            .values_chirho
-            .contains_key(">>="));
+        assert!(
+            control_monad_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("return")
+        );
+        assert!(
+            control_monad_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key(">>=")
+        );
     }
 
     #[test]
@@ -16976,6 +17032,13 @@ mod tests_chirho {
                 .contains_key("iShiftRA#"),
             "GHC.Exts should export iShiftRA#"
         );
+        assert!(
+            ghc_exts_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("keepAlive#"),
+            "GHC.Exts should export keepAlive#"
+        );
     }
 
     #[test]
@@ -17010,6 +17073,7 @@ mod tests_chirho {
             "cloneMutableArray#",
             "sameMutableArray#",
             "setByteArray#",
+            "keepAlive#",
         ] {
             assert!(
                 ghc_prim_chirho
@@ -17041,6 +17105,22 @@ mod tests_chirho {
                 .values_chirho
                 .contains_key("lazyToStrictST"),
             "Control.Monad.ST.Lazy should export lazyToStrictST"
+        );
+    }
+
+    #[test]
+    fn builtin_ghc_base_exports_unsafe_chr_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_base_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Base")
+            .expect("GHC.Base builtin iface should exist");
+        assert!(
+            ghc_base_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("unsafeChr"),
+            "GHC.Base should export unsafeChr"
         );
     }
 
