@@ -14391,7 +14391,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     rwst_a_chirho,
                 ],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(runner_chirho, rwst_full_chirho.clone()),
+                ty_chirho: TyChirho::fun_chirho(runner_chirho.clone(), rwst_full_chirho.clone()),
             },
         );
         env_chirho.bind_chirho(
