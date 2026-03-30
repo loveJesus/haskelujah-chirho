@@ -6671,6 +6671,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "listP",
             "wildP",
             "asP",
+            "sigP",
             // Type constructors
             "conT",
             "varT",
@@ -6908,7 +6909,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
             "litE", "varE", "conE", "appE", "lamE", "tupE", "listE", "litP", "varP", "conP",
-            "tupP", "wildP", "conT", "varT", "appT", "appKindT", "appK", "arrowT", "arrowK",
+            "tupP", "wildP", "sigP", "conT", "varT", "appT", "appKindT", "appK", "arrowT", "arrowK",
             "starK", "funD", "valD", "sigD", "clause", "normalB",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);

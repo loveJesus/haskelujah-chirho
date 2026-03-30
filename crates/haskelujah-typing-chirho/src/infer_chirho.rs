@@ -6139,6 +6139,25 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         )),
     );
+    env_chirho.bind_chirho(
+        "sigP".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![
+                TyChirho::AppChirho(
+                    Box::new(th_q_tycon_ty_chirho.clone()),
+                    Box::new(TyChirho::ConChirho("Pat".to_string())),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(th_q_tycon_ty_chirho.clone()),
+                    Box::new(th_type_ty_chirho.clone()),
+                ),
+            ],
+            TyChirho::AppChirho(
+                Box::new(th_q_tycon_ty_chirho.clone()),
+                Box::new(TyChirho::ConChirho("Pat".to_string())),
+            ),
+        )),
+    );
     for (name_chirho, ty_chirho) in [
         (
             "ConT",

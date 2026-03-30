@@ -453,6 +453,24 @@ valueChirho = runIO\n",
 }
 
 #[test]
+fn frontend_template_haskell_sigp_stays_in_scope_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module TemplateSigPMiniChirho where\n\
+import Language.Haskell.TH\n\
+typedWildPatChirho = sigP wildP (conT (mkName \"Int\"))\n",
+        &mut source_map_chirho,
+        "TemplateSigPMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Language.Haskell.TH should keep sigP in scope for tagged-style TH helpers: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_preprocessed_transformers_functor_classes_keeps_building_block_helpers_top_level_chirho()
  {
     let path_chirho = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
