@@ -1329,6 +1329,179 @@ unify'Chirho _ _ = False
 }
 
 #[test]
+fn frontend_recursive_class_method_composition_list_instance_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"module RecursiveFreeVariablesComposeMiniChirho where
+import Data.List (nub)
+
+class TypeSubstitutionChirho aChirho where
+  freeVariablesChirho :: aChirho -> [Int]
+
+instance TypeSubstitutionChirho aChirho => TypeSubstitutionChirho [aChirho] where
+  freeVariablesChirho = nub . concat . map freeVariablesChirho
+
+data TypeChirho
+  = VarTChirho Int
+  | AppTChirho TypeChirho TypeChirho
+
+instance TypeSubstitutionChirho TypeChirho where
+  freeVariablesChirho typeChirho =
+    case typeChirho of
+      VarTChirho varChirho -> [varChirho]
+      AppTChirho leftChirho rightChirho ->
+        freeVariablesChirho leftChirho ++ freeVariablesChirho rightChirho
+
+freeVariablesFromListChirho :: [TypeChirho] -> [Int]
+freeVariablesFromListChirho tysChirho = freeVariablesChirho tysChirho
+
+unify'Chirho :: TypeChirho -> TypeChirho -> Bool
+unify'Chirho (VarTChirho nameChirho) typeChirho =
+  nameChirho `elem` freeVariablesChirho typeChirho
+unify'Chirho typeChirho (VarTChirho nameChirho) =
+  nameChirho `elem` freeVariablesChirho typeChirho
+unify'Chirho _ _ = False
+"#,
+        &mut source_map_chirho,
+        "RecursiveFreeVariablesComposeMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "recursive class-method composition through nub/concat/map should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_th_abstraction_style_local_sig_in_instance_typechecks_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        r#"module ThAbstractionLocalSigMiniChirho where
+import qualified Data.Map as Map
+import Data.Map (Map)
+import qualified Data.Set as Set
+import Data.Set (Set)
+import Data.List (nub, union, (\\))
+
+type NameChirho = Int
+type KindChirho = [NameChirho]
+
+data TyVarBndrUnitChirho flagChirho
+  = MkTyVarBndrUnitChirho NameChirho KindChirho
+
+data TypeChirho
+  = ForallTChirho [TyVarBndrUnitChirho ()] [TypeChirho] TypeChirho
+  | AppTChirho TypeChirho TypeChirho
+  | SigTChirho TypeChirho KindChirho
+  | VarTChirho NameChirho
+  | OtherTChirho
+
+tvNameChirho :: TyVarBndrUnitChirho flagChirho -> NameChirho
+tvNameChirho (MkTyVarBndrUnitChirho nameChirho _) = nameChirho
+
+tvKindChirho :: TyVarBndrUnitChirho flagChirho -> KindChirho
+tvKindChirho (MkTyVarBndrUnitChirho _ kindChirho) = kindChirho
+
+plainTVChirho :: NameChirho -> TyVarBndrUnitChirho ()
+plainTVChirho nameChirho = MkTyVarBndrUnitChirho nameChirho []
+
+kindedTVChirho :: NameChirho -> KindChirho -> TyVarBndrUnitChirho ()
+kindedTVChirho = MkTyVarBndrUnitChirho
+
+class TypeSubstitutionChirho aChirho where
+  freeVariablesChirho :: aChirho -> [NameChirho]
+
+instance TypeSubstitutionChirho aChirho => TypeSubstitutionChirho [aChirho] where
+  freeVariablesChirho = nub . concat . map freeVariablesChirho
+
+instance TypeSubstitutionChirho TypeChirho where
+  freeVariablesChirho typeChirho =
+    case typeChirho of
+      ForallTChirho tvsChirho contextChirho bodyChirho ->
+        fvsUnderForallChirho tvsChirho
+          (freeVariablesChirho contextChirho `union` freeVariablesChirho bodyChirho)
+      AppTChirho leftChirho rightChirho ->
+        freeVariablesChirho leftChirho `union` freeVariablesChirho rightChirho
+      SigTChirho innerChirho kindChirho ->
+        freeVariablesChirho innerChirho `union` kindChirho
+      VarTChirho nameChirho -> [nameChirho]
+      OtherTChirho -> []
+    where
+      fvsUnderForallChirho :: [TyVarBndrUnitChirho flagChirho] -> [NameChirho] -> [NameChirho]
+      fvsUnderForallChirho tvsChirho fvsChirho =
+        (freeVariablesChirho (map tvKindChirho tvsChirho) `union` fvsChirho)
+          \\ map tvNameChirho tvsChirho
+
+freeVariablesWellScopedChirho :: [TypeChirho] -> [TyVarBndrUnitChirho ()]
+freeVariablesWellScopedChirho tysChirho =
+  let fvsChirho :: [NameChirho]
+      fvsChirho = freeVariablesChirho tysChirho
+
+      varKindSigsChirho :: Map NameChirho KindChirho
+      varKindSigsChirho = foldMap goTyChirho tysChirho
+        where
+          goTyChirho :: TypeChirho -> Map NameChirho KindChirho
+          goTyChirho (ForallTChirho tvbsChirho ctxtChirho bodyChirho) =
+            foldr (\tvbChirho -> Map.delete (tvNameChirho tvbChirho))
+                  (foldMap goTyChirho ctxtChirho `mappend` goTyChirho bodyChirho)
+                  tvbsChirho
+          goTyChirho (AppTChirho leftChirho rightChirho) =
+            goTyChirho leftChirho `mappend` goTyChirho rightChirho
+          goTyChirho (SigTChirho innerChirho kindChirho) =
+            let kindSigsChirho =
+                  foldMap (\nameChirho -> Map.insert nameChirho kindChirho mempty) kindChirho
+            in case innerChirho of
+                 VarTChirho nameChirho -> Map.insert nameChirho kindChirho kindSigsChirho
+                 _ -> goTyChirho innerChirho `mappend` kindSigsChirho
+          goTyChirho _ = mempty
+
+      scopedSortChirho :: [NameChirho] -> [NameChirho]
+      scopedSortChirho = goChirho [] []
+
+      goChirho :: [NameChirho] -> [Set NameChirho] -> [NameChirho] -> [NameChirho]
+      goChirho accChirho _ [] = reverse accChirho
+      goChirho accChirho fvListChirho (tvChirho:tvsChirho) =
+        goChirho accPrimeChirho fvListPrimeChirho tvsChirho
+        where
+          (accPrimeChirho, fvListPrimeChirho) =
+            insertChirho tvChirho accChirho fvListChirho
+
+      insertChirho :: NameChirho -> [NameChirho] -> [Set NameChirho] -> ([NameChirho], [Set NameChirho])
+      insertChirho tvChirho [] [] = ([tvChirho], [kindFVSetChirho tvChirho])
+      insertChirho tvChirho (aChirho:asChirho) (fvsHereChirho:fvssChirho)
+        | tvChirho `Set.member` fvsHereChirho
+        , (asPrimeChirho, fvssPrimeChirho) <- insertChirho tvChirho asChirho fvssChirho
+        = (aChirho:asPrimeChirho, fvsHereChirho `Set.union` fvTvChirho : fvssPrimeChirho)
+        | otherwise
+        = (tvChirho:aChirho:asChirho, fvsHereChirho `Set.union` fvTvChirho : fvsHereChirho : fvssChirho)
+        where
+          fvTvChirho = kindFVSetChirho tvChirho
+
+      insertChirho _ _ _ = error "scopedSort"
+
+      kindFVSetChirho :: NameChirho -> Set NameChirho
+      kindFVSetChirho nameChirho =
+        maybe Set.empty (Set.fromList . freeVariablesChirho) (Map.lookup nameChirho varKindSigsChirho)
+
+      ascribeWithKindChirho :: NameChirho -> TyVarBndrUnitChirho ()
+      ascribeWithKindChirho nameChirho =
+        maybe (plainTVChirho nameChirho) (kindedTVChirho nameChirho) (Map.lookup nameChirho varKindSigsChirho)
+
+  in map ascribeWithKindChirho (scopedSortChirho fvsChirho)
+"#,
+        &mut source_map_chirho,
+        "ThAbstractionLocalSigMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "th-abstraction-style local signatures inside instance methods should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_symbolic_infix_fun_bind_with_var_operands_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
