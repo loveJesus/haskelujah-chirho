@@ -11573,6 +11573,41 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Time.Calendar.Quarter
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "Quarter", "QuarterOfYear", "Q1", "Q2", "Q3", "Q4",
+            "addQuarters", "diffQuarters", "dayOfQuarter",
+            "fromQuarterAndDay", "fromYearAndQuarter",
+            "quarterToDay", "dayToQuarter",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Quarter", "QuarterOfYear"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["Q1", "Q2", "Q3", "Q4"]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.Calendar.Quarter".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Map.Internal.Debug
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["showTree", "showTreeWith", "valid"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Map.Internal.Debug".to_string(),
+            exports_chirho,
+        });
+    }
+
     // Control.Monad.Primitive
     {
         let mut exports_chirho = IfaceExportsChirho::default();
