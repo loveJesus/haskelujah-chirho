@@ -7649,8 +7649,28 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.ByteString.Lazy.Char8".to_string(),
-            exports_chirho,
+            exports_chirho: exports_chirho.clone(),
         });
+        // Data.ByteString.Lazy.Internal
+        {
+            let mut internal_exports_chirho = exports_chirho.clone();
+            for name_chirho in &[
+                "ByteString", "chunk", "foldrChunks", "foldlChunks",
+                "packBytes", "packChars", "unpackBytes", "unpackChars",
+                "smallChunkSize", "defaultChunkSize", "Chunk", "Empty",
+                "invariant", "checkInvariant",
+                "unsafeHead", "unsafeTail",
+            ] {
+                let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+                internal_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+            }
+            let (k_chirho, v_chirho) = mk_type_chirho("ByteString", &["Chunk", "Empty"]);
+            internal_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: "Data.ByteString.Lazy.Internal".to_string(),
+                exports_chirho: internal_exports_chirho,
+            });
+        }
     }
 
     // Data.Vector
@@ -10091,6 +10111,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "showEFloat",
             "showFFloat",
             "showGFloat",
+            "castFloatToWord32",
+            "castWord32ToFloat",
+            "castDoubleToWord64",
+            "castWord64ToDouble",
+            "isNaN",
+            "isInfinite",
+            "isDenormalized",
+            "isNegativeZero",
+            "isIEEE",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -11801,6 +11830,17 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "condB",
             "emptyB",
             "liftFixedToBounded",
+            // Host-endian variants
+            "wordHost",
+            "word16Host",
+            "word32Host",
+            "word64Host",
+            "intHost",
+            "int16Host",
+            "int32Host",
+            "int64Host",
+            "floatHost",
+            "doubleHost",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
