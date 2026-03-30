@@ -7147,6 +7147,23 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             },
         );
     }
+    for (byteswap_name_chirho, word_type_name_chirho) in [
+        ("byteSwap16", "Word16"),
+        ("byteSwap32", "Word32"),
+        ("byteSwap64", "Word64"),
+    ] {
+        let byteswap_scheme_chirho = SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            TyChirho::ConChirho(word_type_name_chirho.to_string()),
+            TyChirho::ConChirho(word_type_name_chirho.to_string()),
+        ));
+        for qualified_name_chirho in [
+            byteswap_name_chirho.to_string(),
+            format!("Data.Word.{byteswap_name_chirho}"),
+            format!("GHC.Word.{byteswap_name_chirho}"),
+        ] {
+            env_chirho.bind_chirho(qualified_name_chirho, byteswap_scheme_chirho.clone());
+        }
+    }
 
     // fromInteger :: forall a. Num a => Integer -> a
     let fi_v_chirho = TyVarChirho(1160);
@@ -8715,6 +8732,22 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 name_chirho.to_string(),
                 new_encoded_cstring_len_scheme_chirho.clone(),
             );
+        }
+    }
+
+    {
+        let byteorder_ty_chirho = TyChirho::ConChirho("ByteOrder".to_string());
+        let byteorder_scheme_chirho = SchemeChirho::mono_chirho(byteorder_ty_chirho);
+        for name_chirho in ["LittleEndian", "BigEndian"] {
+            env_chirho.bind_chirho(name_chirho.to_string(), byteorder_scheme_chirho.clone());
+        }
+        for name_chirho in [
+            "GHC.ByteOrder.LittleEndian",
+            "GHC.ByteOrder.BigEndian",
+            "targetByteOrder",
+            "GHC.ByteOrder.targetByteOrder",
+        ] {
+            env_chirho.bind_chirho(name_chirho.to_string(), byteorder_scheme_chirho.clone());
         }
     }
 
@@ -21931,6 +21964,11 @@ mod tests_chirho {
         for name_chirho in [
             "GHC.CString.unpackCString#",
             "GHC.Base.unpackCStringUtf8#",
+            "LittleEndian",
+            "BigEndian",
+            "GHC.ByteOrder.targetByteOrder",
+            "byteSwap32",
+            "GHC.Word.byteSwap64",
             "GHC.Foreign.withCStringLen",
             "GHC.Foreign.peekCStringLen",
             "Foreign.C.String.withCStringLen",

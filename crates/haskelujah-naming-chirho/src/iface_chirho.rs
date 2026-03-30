@@ -1361,6 +1361,22 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // GHC.ByteOrder
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["LittleEndian", "BigEndian", "targetByteOrder"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) =
+            mk_type_chirho("ByteOrder", &["LittleEndian", "BigEndian"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.ByteOrder".to_string(),
+            exports_chirho,
+        });
+    }
+
     // GHC.Exts re-exports all GHC.Prim primops. Add a second entry
     // that the deduplication pass will merge with the first GHC.Exts.
     {
@@ -2244,6 +2260,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Word
     {
         let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["byteSwap16", "byteSwap32", "byteSwap64"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
         for name_chirho in &["Word", "Word8", "Word16", "Word32", "Word64"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -3191,6 +3211,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.Word
     {
         let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["byteSwap16", "byteSwap32", "byteSwap64"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
         for name_chirho in &["Word8", "Word16", "Word32", "Word64"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -9453,6 +9477,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Word
     {
         let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["byteSwap16", "byteSwap32", "byteSwap64"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
         for name_chirho in &["Word", "Word8", "Word16", "Word32", "Word64"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -11027,6 +11055,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Word
     {
         let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["byteSwap16", "byteSwap32", "byteSwap64"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
         for name_chirho in &["Word", "Word8", "Word16", "Word32", "Word64"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -18010,6 +18042,58 @@ mod tests_chirho {
                     .contains_key(name_chirho),
                 "GHC.CString should export {name_chirho}"
             );
+        }
+    }
+
+    #[test]
+    fn builtin_ghc_byteorder_exports_type_and_value_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_byteorder_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.ByteOrder")
+            .expect("GHC.ByteOrder builtin iface should exist");
+        assert!(
+            ghc_byteorder_chirho
+                .exports_chirho
+                .types_chirho
+                .get("ByteOrder")
+                .is_some_and(|byteorder_ty_chirho| byteorder_ty_chirho
+                    .constructors_chirho
+                    .contains(&"LittleEndian".to_string())
+                    && byteorder_ty_chirho
+                        .constructors_chirho
+                        .contains(&"BigEndian".to_string())),
+            "GHC.ByteOrder should export ByteOrder(..)"
+        );
+        for name_chirho in ["LittleEndian", "BigEndian", "targetByteOrder"] {
+            assert!(
+                ghc_byteorder_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "GHC.ByteOrder should export {name_chirho}"
+            );
+        }
+    }
+
+    #[test]
+    fn builtin_word_modules_export_byteswap_helpers_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        for module_name_chirho in ["Data.Word", "GHC.Word"] {
+            let word_iface_chirho = ifaces_chirho
+                .iter()
+                .rev()
+                .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
+                .unwrap_or_else(|| panic!("{module_name_chirho} builtin iface should exist"));
+            for value_name_chirho in ["byteSwap16", "byteSwap32", "byteSwap64"] {
+                assert!(
+                    word_iface_chirho
+                        .exports_chirho
+                        .values_chirho
+                        .contains_key(value_name_chirho),
+                    "{module_name_chirho} should export {value_name_chirho}"
+                );
+            }
         }
     }
 
