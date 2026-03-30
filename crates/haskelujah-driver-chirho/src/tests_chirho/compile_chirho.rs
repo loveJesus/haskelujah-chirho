@@ -7197,6 +7197,167 @@ valueChirho = (, True) <$> Just 1
     .expect("tuple sections under <$> should lower without placeholder variables");
 }
 
+#[test]
+fn frontend_local_data_map_alias_signature_typechecks_chirho() {
+    let src_chirho = r#"module LocalDataMapAliasMiniChirho where
+import Data.Map (Map)
+import qualified Data.Map as Map
+
+valueChirho :: [Int] -> Map Int Int
+valueChirho xsChirho =
+  let buildChirho :: [Int] -> Map Int Int
+      buildChirho _ = Map.fromList [(1, 2), (3, 4)]
+  in buildChirho xsChirho
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    compile_source_chirho(src_chirho, &mut sm_chirho, "LocalDataMapAliasMiniChirho.hs")
+        .expect("local signatures should preserve imported Map aliases");
+}
+
+#[test]
+fn frontend_local_guarded_tuple_helper_signature_typechecks_chirho() {
+    let src_chirho = r#"module LocalGuardedTupleHelperMiniChirho where
+import qualified Data.Set as Set
+
+goChirho :: Int -> Set.Set Int -> [Set.Set Int] -> ([Int], [Set.Set Int])
+goChirho tvChirho fvsChirho fvssChirho =
+  let insertChirho :: Int -> [Int] -> [Set.Set Int] -> ([Int], [Set.Set Int])
+      insertChirho tvPrimeChirho [] [] = ([tvPrimeChirho], [])
+      insertChirho tvPrimeChirho (aChirho:asChirho) (fvsPrimeChirho:fvssPrimeChirho)
+        | tvPrimeChirho `Set.member` fvsPrimeChirho
+        , (asPrimeChirho, fvssDoublePrimeChirho) <- insertChirho tvPrimeChirho asChirho fvssPrimeChirho
+        = (aChirho:asPrimeChirho, fvsPrimeChirho:fvssDoublePrimeChirho)
+        | otherwise
+        = (tvPrimeChirho:aChirho:asChirho, fvsPrimeChirho:fvsPrimeChirho:fvssPrimeChirho)
+      insertChirho _ _ _ = ([], [])
+  in insertChirho tvChirho [] fvssChirho
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    compile_source_chirho(
+        src_chirho,
+        &mut sm_chirho,
+        "LocalGuardedTupleHelperMiniChirho.hs",
+    )
+    .expect("local guarded helpers should preserve tuple result signatures");
+}
+
+#[test]
+fn frontend_tuple_element_with_qualified_backticked_operator_and_cons_typechecks_chirho() {
+    let src_chirho = r#"module QualifiedBacktickTupleMiniChirho where
+import qualified Data.Set as Set
+
+valueChirho :: Set.Set Int -> Set.Set Int -> [Set.Set Int] -> ([Int], [Set.Set Int])
+valueChirho leftChirho rightChirho restChirho =
+  ([], leftChirho `Set.union` rightChirho : restChirho)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    compile_source_chirho(
+        src_chirho,
+        &mut sm_chirho,
+        "QualifiedBacktickTupleMiniChirho.hs",
+    )
+    .expect("tuple elements should preserve qualified backticked operators before cons");
+}
+
+#[test]
+fn frontend_th_abstraction_scoped_sort_mini_typechecks_chirho() {
+    let src_chirho = r#"module ThAbstractionScopedSortMiniChirho where
+import qualified Data.Map as Map
+import Data.Map (Map)
+import qualified Data.Set as Set
+import Data.Set (Set)
+
+type NameChirho = Int
+type TypeChirho = Int
+type KindChirho = Int
+data TyVarBndrUnitChirho = MkTyVarBndrUnitChirho
+
+tvNameChirho :: TyVarBndrUnitChirho -> NameChirho
+tvNameChirho _ = 0
+
+plainTVChirho :: NameChirho -> TyVarBndrUnitChirho
+plainTVChirho _ = MkTyVarBndrUnitChirho
+
+kindedTVChirho :: NameChirho -> KindChirho -> TyVarBndrUnitChirho
+kindedTVChirho _ _ = MkTyVarBndrUnitChirho
+
+freeVariablesChirho :: aChirho -> [NameChirho]
+freeVariablesChirho _ = []
+
+freeVariablesWellScopedChirho :: [TypeChirho] -> [TyVarBndrUnitChirho]
+freeVariablesWellScopedChirho tysChirho =
+  let fvsChirho :: [NameChirho]
+      fvsChirho = freeVariablesChirho tysChirho
+
+      varKindSigsChirho :: Map NameChirho KindChirho
+      varKindSigsChirho = Map.empty
+
+      scopedSortChirho :: [NameChirho] -> [NameChirho]
+      scopedSortChirho = goChirho [] []
+
+      goChirho :: [NameChirho] -> [Set NameChirho] -> [NameChirho] -> [NameChirho]
+      goChirho accChirho _ [] = reverse accChirho
+      goChirho accChirho fvListChirho (tvChirho:tvsChirho)
+        = goChirho accPrimeChirho fvListPrimeChirho tvsChirho
+        where
+          (accPrimeChirho, fvListPrimeChirho) = insertChirho tvChirho accChirho fvListChirho
+
+      insertChirho :: NameChirho -> [NameChirho] -> [Set NameChirho] -> ([NameChirho], [Set NameChirho])
+      insertChirho tvChirho [] [] = ([tvChirho], [kindFVSetChirho tvChirho])
+      insertChirho tvChirho (aChirho:asChirho) (fvsChirhoHere:fvssChirho)
+        | tvChirho `Set.member` fvsChirhoHere
+        , (asPrimeChirho, fvssPrimeChirho) <- insertChirho tvChirho asChirho fvssChirho
+        = (aChirho:asPrimeChirho, fvsChirhoHere `Set.union` fvTvChirho : fvssPrimeChirho)
+        | otherwise
+        = (tvChirho:aChirho:asChirho, fvsChirhoHere `Set.union` fvTvChirho : fvsChirhoHere : fvssChirho)
+        where
+          fvTvChirho = kindFVSetChirho tvChirho
+
+      insertChirho _ _ _ = error "scopedSort"
+
+      kindFVSetChirho :: NameChirho -> Set NameChirho
+      kindFVSetChirho nChirho =
+        maybe Set.empty (Set.fromList . freeVariablesChirho) (Map.lookup nChirho varKindSigsChirho)
+
+      ascribeWithKindChirho :: NameChirho -> TyVarBndrUnitChirho
+      ascribeWithKindChirho nChirho =
+        maybe (plainTVChirho nChirho) (kindedTVChirho nChirho) (Map.lookup nChirho varKindSigsChirho)
+
+  in map ascribeWithKindChirho (scopedSortChirho fvsChirho)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    compile_source_chirho(
+        src_chirho,
+        &mut sm_chirho,
+        "ThAbstractionScopedSortMiniChirho.hs",
+    )
+    .expect("th-abstraction-style local scoped sort should typecheck");
+}
+
+#[test]
+fn frontend_tuple_section_inside_case_lambda_typechecks_chirho() {
+    let src_chirho = r#"{-# LANGUAGE TupleSections #-}
+module TupleSectionCaseLambdaMiniChirho where
+import Data.Maybe (mapMaybe)
+
+valueChirho :: [(Int, Either Bool Char)] -> [(Int, Bool)]
+valueChirho xsChirho =
+  mapMaybe
+    (\(instTyChirho, argChirho) ->
+        case argChirho of
+          Left kChirho -> (, kChirho) <$> Just instTyChirho
+          Right _ -> Nothing)
+    xsChirho
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    compile_source_chirho(
+        src_chirho,
+        &mut sm_chirho,
+        "TupleSectionCaseLambdaMiniChirho.hs",
+    )
+    .expect("tuple sections inside lambda case branches should lower without dummy variables");
+}
+
 // ── Cranelift backend driver integration tests ────────────────────────
 
 #[test]
@@ -8934,6 +9095,26 @@ fn frontend_real_random_frontier_moves_past_stref_and_atomic_modify_ioref2lazy_c
                 && !error_text_chirho.contains("atomicModifyIORef2Lazy"),
             "random frontend should move past the old STRef/atomicModifyIORef2Lazy frontier, got: {error_text_chirho}",
         );
+    }
+}
+
+#[test]
+fn frontend_constraints_package_regression_chirho() {
+    use crate::compile_cabal_project_chirho;
+    use haskelujah_package_chirho::PackageIndexChirho;
+    use std::path::PathBuf;
+
+    let cabal_path_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(".haskelujah-packages-chirho/constraints-0.14.4/constraints.cabal");
+    if !cabal_path_chirho.exists() {
+        return;
+    }
+
+    let index_chirho = PackageIndexChirho::new_chirho();
+    let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho);
+    if let Err(error_chirho) = result_chirho {
+        panic!("constraints regression: {error_chirho}");
     }
 }
 
