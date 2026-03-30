@@ -3862,6 +3862,40 @@ impl LowerCtxChirho {
             };
         }
 
+        if let Some(double_colon_idx_chirho) = self
+            .find_top_level_token_index_in_token_slice_chirho(
+                tokens_chirho,
+                TokenKindChirho::DoubleColonChirho,
+            )
+            .filter(|idx_chirho| *idx_chirho > 0)
+        {
+            return self.lower_type_from_token_slice_chirho(
+                &tokens_chirho[..double_colon_idx_chirho],
+                span_chirho,
+            );
+        }
+
+        if let Some(arrow_idx_chirho) = self
+            .find_top_level_token_index_in_token_slice_chirho(
+                tokens_chirho,
+                TokenKindChirho::RightArrowChirho,
+            )
+            .filter(|idx_chirho| *idx_chirho > 0 && *idx_chirho + 1 < tokens_chirho.len())
+        {
+            let arg_chirho =
+                self.lower_type_from_token_slice_chirho(&tokens_chirho[..arrow_idx_chirho], span_chirho);
+            let result_chirho = self.lower_type_from_token_slice_chirho(
+                &tokens_chirho[arrow_idx_chirho + 1..],
+                span_chirho,
+            );
+            return TypeChirho::FunChirho {
+                arg_chirho: Box::new(arg_chirho),
+                mult_chirho: None,
+                result_chirho: Box::new(result_chirho),
+                span_chirho,
+            };
+        }
+
         let mut paren_depth_chirho = 0usize;
         let mut bracket_depth_chirho = 0usize;
         for (idx_chirho, (tok_chirho, tok_span_chirho)) in tokens_chirho.iter().enumerate() {
@@ -3934,6 +3968,28 @@ impl LowerCtxChirho {
                     ));
                     idx_chirho += 1;
                 }
+                TokenKindChirho::ConSymChirho
+                | TokenKindChirho::QualifiedConSymChirho
+                | TokenKindChirho::TildeChirho
+                | TokenKindChirho::RightArrowChirho => {
+                    let (tok_chirho, tok_span_chirho) = tokens_chirho[idx_chirho];
+                    atom_tys_chirho.push(TypeChirho::ConChirho(
+                        self.name_from_token_chirho(tok_chirho, tok_span_chirho),
+                    ));
+                    idx_chirho += 1;
+                }
+                TokenKindChirho::VarSymChirho | TokenKindChirho::QualifiedVarSymChirho
+                    if !matches!(
+                        tokens_chirho[idx_chirho].0.text_chirho(),
+                        "." | "!" | "%" | "@" | "|" | "->" | "=>"
+                    ) =>
+                {
+                    let (tok_chirho, tok_span_chirho) = tokens_chirho[idx_chirho];
+                    atom_tys_chirho.push(TypeChirho::VarChirho(
+                        self.name_from_token_chirho(tok_chirho, tok_span_chirho),
+                    ));
+                    idx_chirho += 1;
+                }
                 TokenKindChirho::LeftParenChirho => {
                     if let Some(end_idx_chirho) = Self::find_matching_token_index_chirho(
                         tokens_chirho,
@@ -3998,6 +4054,38 @@ impl LowerCtxChirho {
             };
         }
         result_chirho
+    }
+
+    fn find_top_level_token_index_in_token_slice_chirho(
+        &self,
+        tokens_chirho: &[(&GreenTokenChirho, SpanChirho)],
+        token_kind_chirho: TokenKindChirho,
+    ) -> Option<usize> {
+        let mut paren_depth_chirho = 0usize;
+        let mut bracket_depth_chirho = 0usize;
+
+        for (idx_chirho, (tok_chirho, _)) in tokens_chirho.iter().enumerate() {
+            match tok_chirho.kind_chirho() {
+                TokenKindChirho::LeftParenChirho => paren_depth_chirho += 1,
+                TokenKindChirho::RightParenChirho => {
+                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                }
+                TokenKindChirho::LeftBracketChirho => bracket_depth_chirho += 1,
+                TokenKindChirho::RightBracketChirho => {
+                    bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
+                }
+                kind_chirho
+                    if kind_chirho == token_kind_chirho
+                        && paren_depth_chirho == 0
+                        && bracket_depth_chirho == 0 =>
+                {
+                    return Some(idx_chirho);
+                }
+                _ => {}
+            }
+        }
+
+        None
     }
 
     fn find_matching_token_index_chirho(
