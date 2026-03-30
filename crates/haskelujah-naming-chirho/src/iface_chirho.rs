@@ -1724,6 +1724,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "sameSymbol",
             "someNatVal",
             "someSymbolVal",
+            "isDigit",
+            "isSymbol",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -7469,6 +7471,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "unsafePackCStringLen",
             "unsafePackCStringFinalizer",
             "unsafePackMallocCString",
+            "unsafeHead",
+            "unsafeTail",
+            "unsafeLast",
+            "unsafeInit",
             "unsafeTake",
             "unsafeDrop",
             "unsafeIndex",
@@ -9170,6 +9176,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "someSymbolVal",
             "sameNat",
             "sameSymbol",
+            "isDigit",
+            "isSymbol",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -10588,6 +10596,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "sameSymbol",
             "someNatVal",
             "someSymbolVal",
+            "isDigit",
+            "isSymbol",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -17163,6 +17173,20 @@ mod tests_chirho {
             "Data.ByteString.Internal should export accursedUnutterablePerformIO, memset, memcpy, and plusForeignPtr"
         );
 
+        let bytestring_unsafe_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.ByteString.Unsafe")
+            .expect("Data.ByteString.Unsafe builtin iface should exist");
+        for name_chirho in ["unsafeHead", "unsafeTail", "unsafeLast", "unsafeInit"] {
+            assert!(
+                bytestring_unsafe_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "Data.ByteString.Unsafe should export {name_chirho}"
+            );
+        }
+
         let system_io_unsafe_chirho = ifaces_chirho
             .iter()
             .find(|iface_chirho| iface_chirho.name_chirho == "System.IO.Unsafe")
@@ -17174,6 +17198,24 @@ mod tests_chirho {
                     .values_chirho
                     .contains_key(name_chirho),
                 "System.IO.Unsafe should export {name_chirho}"
+            );
+        }
+    }
+
+    #[test]
+    fn builtin_ghc_typelits_exports_symbol_predicates_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let ghc_typelits_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "GHC.TypeLits")
+            .expect("GHC.TypeLits builtin iface should exist");
+        for name_chirho in ["isDigit", "isSymbol"] {
+            assert!(
+                ghc_typelits_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "GHC.TypeLits should export {name_chirho}"
             );
         }
     }
