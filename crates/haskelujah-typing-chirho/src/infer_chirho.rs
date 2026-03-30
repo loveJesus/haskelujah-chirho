@@ -13907,6 +13907,265 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // indexed-traversable core methods
+    {
+        let index_i_chirho = TyVarChirho(9091);
+        let indexed_f_chirho = TyVarChirho(9092);
+        let indexed_t_chirho = TyVarChirho(9093);
+        let indexed_g_chirho = TyVarChirho(9094);
+        let indexed_a_chirho = TyVarChirho(9095);
+        let indexed_b_chirho = TyVarChirho(9096);
+        let indexed_m_chirho = TyVarChirho(9097);
+
+        let foldable_with_index_pred_chirho = SchemePredChirho {
+            class_name_chirho: "FoldableWithIndex".to_string(),
+            ty_chirho: TyChirho::VarChirho(index_i_chirho),
+            extra_tys_chirho: vec![TyChirho::VarChirho(indexed_f_chirho)],
+        };
+        let functor_with_index_pred_chirho = SchemePredChirho {
+            class_name_chirho: "FunctorWithIndex".to_string(),
+            ty_chirho: TyChirho::VarChirho(index_i_chirho),
+            extra_tys_chirho: vec![TyChirho::VarChirho(indexed_f_chirho)],
+        };
+        let traversable_with_index_pred_chirho = SchemePredChirho {
+            class_name_chirho: "TraversableWithIndex".to_string(),
+            ty_chirho: TyChirho::VarChirho(index_i_chirho),
+            extra_tys_chirho: vec![TyChirho::VarChirho(indexed_t_chirho)],
+        };
+        let monoid_pred_chirho = SchemePredChirho {
+            class_name_chirho: "Monoid".to_string(),
+            ty_chirho: TyChirho::VarChirho(indexed_m_chirho),
+            extra_tys_chirho: vec![],
+        };
+        let applicative_pred_chirho = SchemePredChirho {
+            class_name_chirho: "Applicative".to_string(),
+            ty_chirho: TyChirho::VarChirho(indexed_g_chirho),
+            extra_tys_chirho: vec![],
+        };
+
+        let fa_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(indexed_f_chirho)),
+            Box::new(TyChirho::VarChirho(indexed_a_chirho)),
+        );
+        let fb_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(indexed_f_chirho)),
+            Box::new(TyChirho::VarChirho(indexed_b_chirho)),
+        );
+        let ta_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(indexed_t_chirho)),
+            Box::new(TyChirho::VarChirho(indexed_a_chirho)),
+        );
+        let tb_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(indexed_t_chirho)),
+            Box::new(TyChirho::VarChirho(indexed_b_chirho)),
+        );
+        let gb_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(indexed_g_chirho)),
+            Box::new(TyChirho::VarChirho(indexed_b_chirho)),
+        );
+        let gtb_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(indexed_g_chirho)),
+            Box::new(tb_chirho.clone()),
+        );
+
+        let indexed_modules_chirho = [
+            "WithIndex",
+            "Data.Functor.WithIndex",
+            "Data.Foldable.WithIndex",
+            "Data.Traversable.WithIndex",
+        ];
+        let mut bind_indexed_method_chirho = |name_chirho: &str, scheme_chirho: SchemeChirho| {
+            env_chirho.bind_chirho(name_chirho.to_string(), scheme_chirho.clone());
+            for module_name_chirho in indexed_modules_chirho {
+                env_chirho.bind_chirho(
+                    format!("{module_name_chirho}.{name_chirho}"),
+                    scheme_chirho.clone(),
+                );
+            }
+        };
+
+        let imap_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![
+                index_i_chirho,
+                indexed_f_chirho,
+                indexed_a_chirho,
+                indexed_b_chirho,
+            ],
+            preds_chirho: vec![functor_with_index_pred_chirho],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::VarChirho(index_i_chirho),
+                            TyChirho::VarChirho(indexed_a_chirho),
+                        ],
+                        TyChirho::VarChirho(indexed_b_chirho),
+                    ),
+                    fa_chirho.clone(),
+                ],
+                fb_chirho,
+            ),
+        };
+        bind_indexed_method_chirho("imap", imap_scheme_chirho);
+
+        let imap_default_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![
+                index_i_chirho,
+                indexed_t_chirho,
+                indexed_a_chirho,
+                indexed_b_chirho,
+            ],
+            preds_chirho: vec![traversable_with_index_pred_chirho.clone()],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::VarChirho(index_i_chirho),
+                            TyChirho::VarChirho(indexed_a_chirho),
+                        ],
+                        TyChirho::VarChirho(indexed_b_chirho),
+                    ),
+                    ta_chirho.clone(),
+                ],
+                tb_chirho.clone(),
+            ),
+        };
+        bind_indexed_method_chirho("imapDefault", imap_default_scheme_chirho);
+
+        let ifold_map_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![
+                index_i_chirho,
+                indexed_f_chirho,
+                indexed_a_chirho,
+                indexed_m_chirho,
+            ],
+            preds_chirho: vec![
+                foldable_with_index_pred_chirho.clone(),
+                monoid_pred_chirho.clone(),
+            ],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::VarChirho(index_i_chirho),
+                            TyChirho::VarChirho(indexed_a_chirho),
+                        ],
+                        TyChirho::VarChirho(indexed_m_chirho),
+                    ),
+                    fa_chirho.clone(),
+                ],
+                TyChirho::VarChirho(indexed_m_chirho),
+            ),
+        };
+        bind_indexed_method_chirho("ifoldMap", ifold_map_scheme_chirho);
+
+        let ifold_map_default_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![
+                index_i_chirho,
+                indexed_t_chirho,
+                indexed_a_chirho,
+                indexed_m_chirho,
+            ],
+            preds_chirho: vec![
+                traversable_with_index_pred_chirho.clone(),
+                monoid_pred_chirho,
+            ],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::VarChirho(index_i_chirho),
+                            TyChirho::VarChirho(indexed_a_chirho),
+                        ],
+                        TyChirho::VarChirho(indexed_m_chirho),
+                    ),
+                    ta_chirho.clone(),
+                ],
+                TyChirho::VarChirho(indexed_m_chirho),
+            ),
+        };
+        bind_indexed_method_chirho("ifoldMapDefault", ifold_map_default_scheme_chirho);
+
+        let ifoldr_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![
+                index_i_chirho,
+                indexed_f_chirho,
+                indexed_a_chirho,
+                indexed_b_chirho,
+            ],
+            preds_chirho: vec![foldable_with_index_pred_chirho.clone()],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::VarChirho(index_i_chirho),
+                            TyChirho::VarChirho(indexed_a_chirho),
+                            TyChirho::VarChirho(indexed_b_chirho),
+                        ],
+                        TyChirho::VarChirho(indexed_b_chirho),
+                    ),
+                    TyChirho::VarChirho(indexed_b_chirho),
+                    fa_chirho.clone(),
+                ],
+                TyChirho::VarChirho(indexed_b_chirho),
+            ),
+        };
+        bind_indexed_method_chirho("ifoldr", ifoldr_scheme_chirho.clone());
+        bind_indexed_method_chirho("ifoldr'", ifoldr_scheme_chirho);
+
+        let ifoldl_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![
+                index_i_chirho,
+                indexed_f_chirho,
+                indexed_a_chirho,
+                indexed_b_chirho,
+            ],
+            preds_chirho: vec![foldable_with_index_pred_chirho],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::VarChirho(index_i_chirho),
+                            TyChirho::VarChirho(indexed_b_chirho),
+                            TyChirho::VarChirho(indexed_a_chirho),
+                        ],
+                        TyChirho::VarChirho(indexed_b_chirho),
+                    ),
+                    TyChirho::VarChirho(indexed_b_chirho),
+                    fa_chirho,
+                ],
+                TyChirho::VarChirho(indexed_b_chirho),
+            ),
+        };
+        bind_indexed_method_chirho("ifoldl", ifoldl_scheme_chirho.clone());
+        bind_indexed_method_chirho("ifoldl'", ifoldl_scheme_chirho);
+
+        let itraverse_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![
+                index_i_chirho,
+                indexed_t_chirho,
+                indexed_g_chirho,
+                indexed_a_chirho,
+                indexed_b_chirho,
+            ],
+            preds_chirho: vec![traversable_with_index_pred_chirho, applicative_pred_chirho],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_n_chirho(
+                        vec![
+                            TyChirho::VarChirho(index_i_chirho),
+                            TyChirho::VarChirho(indexed_a_chirho),
+                        ],
+                        gb_chirho,
+                    ),
+                    ta_chirho,
+                ],
+                gtb_chirho,
+            ),
+        };
+        bind_indexed_method_chirho("itraverse", itraverse_scheme_chirho);
+    }
+
     // ── Monad transformer infrastructure ──
     //
     // MaybeT is a newtype: newtype MaybeT m a = MaybeT { runMaybeT :: m (Maybe a) }
@@ -21679,6 +21938,33 @@ mod tests_chirho {
             "Data.ByteString.packCStringLen",
             "Data.ByteString.useAsCStringLen",
             "assert",
+        ] {
+            assert!(
+                ctx_chirho.env_chirho.lookup_chirho(name_chirho).is_some(),
+                "seeded environment should include {name_chirho}"
+            );
+        }
+    }
+
+    #[test]
+    fn seed_builtins_include_indexed_traversable_core_methods_chirho() {
+        let ctx_chirho = InferCtxChirho::new_chirho();
+        for name_chirho in [
+            "imap",
+            "WithIndex.imap",
+            "Data.Functor.WithIndex.imap",
+            "ifoldMap",
+            "WithIndex.ifoldMap",
+            "Data.Foldable.WithIndex.ifoldMap",
+            "ifoldr",
+            "WithIndex.ifoldr",
+            "Data.Foldable.WithIndex.ifoldr",
+            "ifoldl",
+            "WithIndex.ifoldl",
+            "Data.Foldable.WithIndex.ifoldl",
+            "itraverse",
+            "WithIndex.itraverse",
+            "Data.Traversable.WithIndex.itraverse",
         ] {
             assert!(
                 ctx_chirho.env_chirho.lookup_chirho(name_chirho).is_some(),
