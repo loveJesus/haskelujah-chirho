@@ -7167,6 +7167,36 @@ valueChirho = Map.unions [Map.singleton 1 2, Map.singleton 3 4]
         .expect("Data.Map builtins should expose unions/unionsWith");
 }
 
+#[test]
+fn frontend_data_map_unqualified_alias_and_qualified_values_typecheck_chirho() {
+    let src_chirho = r#"module DataMapAliasMiniChirho where
+import Data.Map (Map)
+import qualified Data.Map as Map
+
+valueChirho :: Map Int Int
+valueChirho = Map.fromList [(1, 2), (3, 4)]
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    compile_source_chirho(src_chirho, &mut sm_chirho, "DataMapAliasMiniChirho.hs")
+        .expect("Data.Map builtins should agree on Map across qualified and unqualified imports");
+}
+
+#[test]
+fn frontend_tuple_section_applicative_chain_typechecks_chirho() {
+    let src_chirho = r#"{-# LANGUAGE TupleSections #-}
+module TupleSectionApplicativeMiniChirho where
+
+valueChirho = (, True) <$> Just 1
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    compile_source_chirho(
+        src_chirho,
+        &mut sm_chirho,
+        "TupleSectionApplicativeMiniChirho.hs",
+    )
+    .expect("tuple sections under <$> should lower without placeholder variables");
+}
+
 // ── Cranelift backend driver integration tests ────────────────────────
 
 #[test]
