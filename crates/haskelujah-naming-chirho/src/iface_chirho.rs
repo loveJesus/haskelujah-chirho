@@ -8031,6 +8031,16 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "rnfModule",
             "eqTypeRep",
             "typeRepTyCon",
+            "typeRepKind",
+            "tyConPackage",
+            "tyConModule",
+            "tyConName",
+            "tyConKindArgs",
+            "tyConKindRep",
+            "mkTyCon",
+            "mkTrCon",
+            "mkTrApp",
+            "HRefl",
             "withTypeable",
             "pattern App",
             "pattern Con",
@@ -8047,10 +8057,18 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "SomeTypeRep",
             "Typeable",
             "TyCon",
+            "KindRep",
+            "TypeLitSort",
             "Module",
             "Fingerprint",
+            "(:~~:)",
         ] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            let constructor_names_chirho: &[&str] = match name_chirho {
+                "SomeTypeRep" => &["SomeTypeRep"],
+                "(:~~:)" => &["HRefl"],
+                _ => &[],
+            };
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, constructor_names_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
@@ -10669,6 +10687,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "toDescList",
             "map",
             "filter",
+            "fromDistinctAscList",
             "foldl'",
             "foldr",
             "elems",
@@ -11289,6 +11308,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "hIsEOF",
             "isEOF",
             "withFile",
+            "withBinaryFile",
             "readFile",
             "writeFile",
             "appendFile",
@@ -11423,6 +11443,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "mapWithKey",
             "filterWithKey",
             "mapKeysWith",
+            "fromDistinctAscList",
             "toAscList",
             "toDescList",
         ] {
@@ -11803,6 +11824,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "FixedPrim",
             "primFixed",
             "primBounded",
+            ">*<",
             "primMapListFixed",
             "primMapListBounded",
             "primUnfoldrFixed",
@@ -12557,6 +12579,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "fromList",
             "fromListWith",
             "fromAscList",
+            "fromDistinctAscList",
             "toList",
             "toAscList",
             "toDescList",
@@ -12649,6 +12672,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "singleton",
             "fromList",
             "fromAscList",
+            "fromDistinctAscList",
             "toList",
             "toAscList",
             "toDescList",
