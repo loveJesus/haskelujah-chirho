@@ -14064,64 +14064,89 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     //   bindWriterT, execWriterT, execWriter)
     // -----------------------------------------------------------------------
 
-    // WriterT :: forall w a. (a, w) -> WriterT w a
+    // WriterT :: forall w m a. m (a, w) -> WriterT w m a
     {
         let wt_w_chirho = TyVarChirho(3580);
-        let wt_a_chirho = TyVarChirho(3581);
-        let writert_wa_chirho = TyChirho::AppChirho(
+        let wt_m_chirho = TyVarChirho(3581);
+        let wt_a_chirho = TyVarChirho(3582);
+        let writert_wma_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("WriterT".to_string())),
                 Box::new(TyChirho::VarChirho(wt_w_chirho)),
             )),
-            Box::new(TyChirho::VarChirho(wt_a_chirho)),
+            Box::new(TyChirho::VarChirho(wt_m_chirho)),
         );
         let tuple_aw_chirho = TyChirho::TupleChirho(vec![
             TyChirho::VarChirho(wt_a_chirho),
             TyChirho::VarChirho(wt_w_chirho),
         ]);
+        let m_tuple_aw_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(wt_m_chirho)),
+            Box::new(tuple_aw_chirho),
+        );
         env_chirho.bind_chirho(
             "WriterT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![wt_w_chirho, wt_a_chirho],
+                vars_chirho: vec![wt_w_chirho, wt_m_chirho, wt_a_chirho],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(tuple_aw_chirho, writert_wa_chirho),
+                ty_chirho: TyChirho::fun_chirho(
+                    m_tuple_aw_chirho,
+                    TyChirho::AppChirho(
+                        Box::new(writert_wma_chirho),
+                        Box::new(TyChirho::VarChirho(wt_a_chirho)),
+                    ),
+                ),
             },
         );
     }
 
-    // runWriterT :: forall w a. WriterT w a -> (a, w)
+    // runWriterT :: forall w m a. WriterT w m a -> m (a, w)
     {
-        let rwt_w_chirho = TyVarChirho(3582);
-        let rwt_a_chirho = TyVarChirho(3583);
-        let writert_wa_chirho = TyChirho::AppChirho(
+        let rwt_w_chirho = TyVarChirho(3583);
+        let rwt_m_chirho = TyVarChirho(3584);
+        let rwt_a_chirho = TyVarChirho(3585);
+        let writert_wma_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("WriterT".to_string())),
                 Box::new(TyChirho::VarChirho(rwt_w_chirho)),
             )),
-            Box::new(TyChirho::VarChirho(rwt_a_chirho)),
+            Box::new(TyChirho::VarChirho(rwt_m_chirho)),
         );
         let tuple_aw_chirho = TyChirho::TupleChirho(vec![
             TyChirho::VarChirho(rwt_a_chirho),
             TyChirho::VarChirho(rwt_w_chirho),
         ]);
+        let m_tuple_aw_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(rwt_m_chirho)),
+            Box::new(tuple_aw_chirho),
+        );
         env_chirho.bind_chirho(
             "runWriterT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![rwt_w_chirho, rwt_a_chirho],
+                vars_chirho: vec![rwt_w_chirho, rwt_m_chirho, rwt_a_chirho],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(writert_wa_chirho, tuple_aw_chirho),
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::AppChirho(
+                        Box::new(writert_wma_chirho),
+                        Box::new(TyChirho::VarChirho(rwt_a_chirho)),
+                    ),
+                    m_tuple_aw_chirho,
+                ),
             },
         );
     }
 
-    // runWriter :: forall w a. WriterT w a -> (a, w)  (alias)
+    // runWriter :: forall w a. WriterT w Identity a -> (a, w)  (alias)
     {
-        let rw_w_chirho = TyVarChirho(3584);
-        let rw_a_chirho = TyVarChirho(3585);
-        let writert_wa_chirho = TyChirho::AppChirho(
+        let rw_w_chirho = TyVarChirho(3586);
+        let rw_a_chirho = TyVarChirho(3587);
+        let writer_identity_wa_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("WriterT".to_string())),
-                Box::new(TyChirho::VarChirho(rw_w_chirho)),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("WriterT".to_string())),
+                    Box::new(TyChirho::VarChirho(rw_w_chirho)),
+                )),
+                Box::new(TyChirho::ConChirho("Identity".to_string())),
             )),
             Box::new(TyChirho::VarChirho(rw_a_chirho)),
         );
@@ -14134,128 +14159,173 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![rw_w_chirho, rw_a_chirho],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(writert_wa_chirho, tuple_aw_chirho),
+                ty_chirho: TyChirho::fun_chirho(writer_identity_wa_chirho, tuple_aw_chirho),
             },
         );
     }
 
-    // tell :: forall w. w -> WriterT w ()
+    // tell :: forall w m. Monad m => w -> WriterT w m ()
     {
-        let t_w_chirho = TyVarChirho(3586);
-        let writert_w_unit_chirho = TyChirho::AppChirho(
+        let t_w_chirho = TyVarChirho(3588);
+        let t_m_chirho = TyVarChirho(3589);
+        let writert_wm_unit_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("WriterT".to_string())),
-                Box::new(TyChirho::VarChirho(t_w_chirho)),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("WriterT".to_string())),
+                    Box::new(TyChirho::VarChirho(t_w_chirho)),
+                )),
+                Box::new(TyChirho::VarChirho(t_m_chirho)),
             )),
             Box::new(TyChirho::unit_chirho()),
         );
         env_chirho.bind_chirho(
             "tell".to_string(),
             SchemeChirho {
-                vars_chirho: vec![t_w_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![t_w_chirho, t_m_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(t_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(t_w_chirho),
-                    writert_w_unit_chirho,
+                    writert_wm_unit_chirho,
                 ),
             },
         );
     }
 
-    // returnWriterT :: forall w a. a -> WriterT w a
+    // returnWriterT :: forall w m a. Monad m => a -> WriterT w m a
     {
-        let rwt_w_chirho = TyVarChirho(3587);
-        let rwt_a_chirho = TyVarChirho(3588);
-        let writert_wa_chirho = TyChirho::AppChirho(
+        let rwt_w_chirho = TyVarChirho(3590);
+        let rwt_m_chirho = TyVarChirho(3591);
+        let rwt_a_chirho = TyVarChirho(3592);
+        let writert_wma_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("WriterT".to_string())),
-                Box::new(TyChirho::VarChirho(rwt_w_chirho)),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("WriterT".to_string())),
+                    Box::new(TyChirho::VarChirho(rwt_w_chirho)),
+                )),
+                Box::new(TyChirho::VarChirho(rwt_m_chirho)),
             )),
             Box::new(TyChirho::VarChirho(rwt_a_chirho)),
         );
         env_chirho.bind_chirho(
             "returnWriterT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![rwt_w_chirho, rwt_a_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![rwt_w_chirho, rwt_m_chirho, rwt_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(rwt_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(rwt_a_chirho),
-                    writert_wa_chirho,
-                ),
-            },
-        );
-    }
-
-    // bindWriterT :: forall w a b. WriterT w a -> (a -> WriterT w b) -> WriterT w b
-    {
-        let bwt_w_chirho = TyVarChirho(3589);
-        let bwt_a_chirho = TyVarChirho(3590);
-        let bwt_b_chirho = TyVarChirho(3591);
-        let writert_wa_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("WriterT".to_string())),
-                Box::new(TyChirho::VarChirho(bwt_w_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(bwt_a_chirho)),
-        );
-        let writert_wb_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("WriterT".to_string())),
-                Box::new(TyChirho::VarChirho(bwt_w_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(bwt_b_chirho)),
-        );
-        env_chirho.bind_chirho(
-            "bindWriterT".to_string(),
-            SchemeChirho {
-                vars_chirho: vec![bwt_w_chirho, bwt_a_chirho, bwt_b_chirho],
-                preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(
-                    writert_wa_chirho,
-                    TyChirho::fun_chirho(
-                        TyChirho::fun_chirho(
-                            TyChirho::VarChirho(bwt_a_chirho),
-                            writert_wb_chirho.clone(),
-                        ),
-                        writert_wb_chirho,
+                    TyChirho::AppChirho(
+                        Box::new(writert_wma_chirho),
+                        Box::new(TyChirho::VarChirho(rwt_a_chirho)),
                     ),
                 ),
             },
         );
     }
 
-    // execWriterT :: forall w a. WriterT w a -> w
+    // bindWriterT :: forall w m a b. Monad m =>
+    //   WriterT w m a -> (a -> WriterT w m b) -> WriterT w m b
     {
-        let ewt_w_chirho = TyVarChirho(3592);
-        let ewt_a_chirho = TyVarChirho(3593);
-        let writert_wa_chirho = TyChirho::AppChirho(
+        let bwt_w_chirho = TyVarChirho(3593);
+        let bwt_m_chirho = TyVarChirho(3594);
+        let bwt_a_chirho = TyVarChirho(3595);
+        let bwt_b_chirho = TyVarChirho(3596);
+        let writert_wma_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("WriterT".to_string())),
-                Box::new(TyChirho::VarChirho(ewt_w_chirho)),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("WriterT".to_string())),
+                    Box::new(TyChirho::VarChirho(bwt_w_chirho)),
+                )),
+                Box::new(TyChirho::VarChirho(bwt_m_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(bwt_a_chirho)),
+        );
+        let writert_wmb_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("WriterT".to_string())),
+                    Box::new(TyChirho::VarChirho(bwt_w_chirho)),
+                )),
+                Box::new(TyChirho::VarChirho(bwt_m_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(bwt_b_chirho)),
+        );
+        env_chirho.bind_chirho(
+            "bindWriterT".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![bwt_w_chirho, bwt_m_chirho, bwt_a_chirho, bwt_b_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(bwt_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    writert_wma_chirho,
+                    TyChirho::fun_chirho(
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(bwt_a_chirho),
+                            writert_wmb_chirho.clone(),
+                        ),
+                        writert_wmb_chirho,
+                    ),
+                ),
+            },
+        );
+    }
+
+    // execWriterT :: forall w m a. Monad m => WriterT w m a -> m w
+    {
+        let ewt_w_chirho = TyVarChirho(3597);
+        let ewt_m_chirho = TyVarChirho(3598);
+        let ewt_a_chirho = TyVarChirho(3599);
+        let writert_wma_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("WriterT".to_string())),
+                    Box::new(TyChirho::VarChirho(ewt_w_chirho)),
+                )),
+                Box::new(TyChirho::VarChirho(ewt_m_chirho)),
             )),
             Box::new(TyChirho::VarChirho(ewt_a_chirho)),
         );
         env_chirho.bind_chirho(
             "execWriterT".to_string(),
             SchemeChirho {
-                vars_chirho: vec![ewt_w_chirho, ewt_a_chirho],
-                preds_chirho: vec![],
+                vars_chirho: vec![ewt_w_chirho, ewt_m_chirho, ewt_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(ewt_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(
-                    writert_wa_chirho,
-                    TyChirho::VarChirho(ewt_w_chirho),
+                    writert_wma_chirho,
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::VarChirho(ewt_m_chirho)),
+                        Box::new(TyChirho::VarChirho(ewt_w_chirho)),
+                    ),
                 ),
             },
         );
     }
 
-    // execWriter :: forall w a. WriterT w a -> w  (alias)
+    // execWriter :: forall w a. WriterT w Identity a -> w
     {
-        let ew_w_chirho = TyVarChirho(3594);
-        let ew_a_chirho = TyVarChirho(3595);
-        let writert_wa_chirho = TyChirho::AppChirho(
+        let ew_w_chirho = TyVarChirho(3600);
+        let ew_a_chirho = TyVarChirho(3601);
+        let writer_identity_wa_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("WriterT".to_string())),
-                Box::new(TyChirho::VarChirho(ew_w_chirho)),
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("WriterT".to_string())),
+                    Box::new(TyChirho::VarChirho(ew_w_chirho)),
+                )),
+                Box::new(TyChirho::ConChirho("Identity".to_string())),
             )),
             Box::new(TyChirho::VarChirho(ew_a_chirho)),
         );
@@ -14265,9 +14335,77 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 vars_chirho: vec![ew_w_chirho, ew_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    writert_wa_chirho,
+                    writer_identity_wa_chirho,
                     TyChirho::VarChirho(ew_w_chirho),
                 ),
+            },
+        );
+    }
+
+    // RWST :: forall r w s m a. (r -> s -> m (a, s, w)) -> RWST r w s m a
+    // runRWST :: forall r w s m a. RWST r w s m a -> r -> s -> m (a, s, w)
+    {
+        let rwst_r_chirho = TyVarChirho(3602);
+        let rwst_w_chirho = TyVarChirho(3603);
+        let rwst_s_chirho = TyVarChirho(3604);
+        let rwst_m_chirho = TyVarChirho(3605);
+        let rwst_a_chirho = TyVarChirho(3606);
+        let tuple_asw_chirho = TyChirho::TupleChirho(vec![
+            TyChirho::VarChirho(rwst_a_chirho),
+            TyChirho::VarChirho(rwst_s_chirho),
+            TyChirho::VarChirho(rwst_w_chirho),
+        ]);
+        let m_tuple_asw_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(rwst_m_chirho)),
+            Box::new(tuple_asw_chirho.clone()),
+        );
+        let rwst_rwsm_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("RWST".to_string())),
+                        Box::new(TyChirho::VarChirho(rwst_r_chirho)),
+                    )),
+                    Box::new(TyChirho::VarChirho(rwst_w_chirho)),
+                )),
+                Box::new(TyChirho::VarChirho(rwst_s_chirho)),
+            )),
+            Box::new(TyChirho::VarChirho(rwst_m_chirho)),
+        );
+        let rwst_full_chirho = TyChirho::AppChirho(
+            Box::new(rwst_rwsm_chirho.clone()),
+            Box::new(TyChirho::VarChirho(rwst_a_chirho)),
+        );
+        let runner_chirho = TyChirho::fun_chirho(
+            TyChirho::VarChirho(rwst_r_chirho),
+            TyChirho::fun_chirho(TyChirho::VarChirho(rwst_s_chirho), m_tuple_asw_chirho.clone()),
+        );
+        env_chirho.bind_chirho(
+            "RWST".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![
+                    rwst_r_chirho,
+                    rwst_w_chirho,
+                    rwst_s_chirho,
+                    rwst_m_chirho,
+                    rwst_a_chirho,
+                ],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(runner_chirho, rwst_full_chirho.clone()),
+            },
+        );
+        env_chirho.bind_chirho(
+            "runRWST".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![
+                    rwst_r_chirho,
+                    rwst_w_chirho,
+                    rwst_s_chirho,
+                    rwst_m_chirho,
+                    rwst_a_chirho,
+                ],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(rwst_full_chirho, runner_chirho),
             },
         );
     }

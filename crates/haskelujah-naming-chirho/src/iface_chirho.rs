@@ -6351,6 +6351,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "lex",
             "parens",
             "prec",
+            "step",
+            "reset",
             "readPrec",
             "readListPrec",
         ] {
@@ -8298,6 +8300,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "readParen",
             "parens",
             "prec",
+            "step",
+            "reset",
             "readPrec",
             "readListPrec",
             "readMaybe",
@@ -14882,6 +14886,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "GHC.Weak".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "System.Mem.Weak".to_string(),
             exports_chirho,
         });
     }
@@ -17489,6 +17497,15 @@ mod tests_chirho {
                 .contains_key("parens"),
             "Text.Read should export parens"
         );
+        for name_chirho in ["step", "reset"] {
+            assert!(
+                text_read_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "Text.Read should export {name_chirho}"
+            );
+        }
         assert!(
             text_read_chirho
                 .exports_chirho
@@ -17515,6 +17532,31 @@ mod tests_chirho {
                 .contains_key("+++"),
             "Text.ParserCombinators.ReadP should export +++"
         );
+    }
+
+    #[test]
+    fn builtin_system_mem_weak_reexports_ghc_weak_surface_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let system_mem_weak_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "System.Mem.Weak")
+            .expect("System.Mem.Weak builtin iface should exist");
+        assert!(
+            system_mem_weak_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("Weak"),
+            "System.Mem.Weak should export Weak"
+        );
+        for name_chirho in ["mkWeak", "deRefWeak", "finalize", "mkWeakIORef"] {
+            assert!(
+                system_mem_weak_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .contains_key(name_chirho),
+                "System.Mem.Weak should export {name_chirho}"
+            );
+        }
     }
 
     #[test]
