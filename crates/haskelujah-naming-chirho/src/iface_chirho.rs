@@ -725,6 +725,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "readLitChar",
             "lexLitChar",
             "generalCategory",
+            "isSymbol",
+            "isMark",
+            "isNumber",
             "UppercaseLetter",
             "LowercaseLetter",
             "TitlecaseLetter",
@@ -10155,6 +10158,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "showParen",
             "shows",
             "showList__",
+            "appPrec",
+            "appPrec1",
+            "showSpace",
+            "showCommaSpace",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
