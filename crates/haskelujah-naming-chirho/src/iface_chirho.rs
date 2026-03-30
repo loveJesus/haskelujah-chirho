@@ -10177,7 +10177,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         let (k_chirho, v_chirho) = mk_type_chirho("Read", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        for name_chirho in &["read", "reads", "readPrec", "readList", "readParen", "lex"] {
+        for name_chirho in &[
+            "read", "reads", "readPrec", "readList", "readParen", "lex",
+            "expectP", "list", "paren", "parens", "choose", "readListDefault",
+            "readListPrecDefault", "readPrec_to_S", "readS_to_Prec",
+            "readPrec_to_P", "readP_to_Prec", "readNumber",
+            "ReadPrec", "Lexeme",
+        ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
