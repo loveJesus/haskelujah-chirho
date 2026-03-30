@@ -10190,6 +10190,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "expectP", "list", "paren", "parens", "choose", "readListDefault",
             "readListPrecDefault", "readPrec_to_S", "readS_to_Prec",
             "readPrec_to_P", "readP_to_Prec", "readNumber",
+            "readField", "readSymField", "reset", "step", "prec",
+            "pfail", "get", "look", "readListPrec",
             "ReadPrec", "Lexeme",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
