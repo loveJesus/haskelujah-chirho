@@ -12804,6 +12804,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "unfoldl",
             "unfoldr",
             "iterateN",
+            "|>",
+            "<|",
+            "><",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
