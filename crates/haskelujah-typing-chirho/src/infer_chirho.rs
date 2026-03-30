@@ -169,6 +169,24 @@ impl InferCtxChirho {
             "Nat".to_string(),
             (vec![], TyChirho::ConChirho("Natural".to_string())),
         );
+        // GHC.Generics metadata aliases:
+        // type D1 = M1 D
+        // type C1 = M1 C
+        // type S1 = M1 S
+        for (metadata_alias_chirho, metadata_tag_chirho) in
+            [("D1", "D"), ("C1", "C"), ("S1", "S")]
+        {
+            type_synonyms_chirho.insert(
+                metadata_alias_chirho.to_string(),
+                (
+                    vec![],
+                    TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("M1".to_string())),
+                        Box::new(TyChirho::ConChirho(metadata_tag_chirho.to_string())),
+                    ),
+                ),
+            );
+        }
         // type FilePath = String
         type_synonyms_chirho.insert("FilePath".to_string(), (vec![], TyChirho::string_chirho()));
         // Monad transformer aliases from transformers / mtl.
@@ -20630,6 +20648,39 @@ mod tests_chirho {
                 )),
             ),
             "normalization should keep expanding synonyms that appear after family reduction"
+        );
+    }
+
+    #[test]
+    fn normalize_ty_expands_ghc_generics_metadata_aliases_chirho() {
+        let ctx_chirho = InferCtxChirho::new_chirho();
+        let normalized_d1_chirho = ctx_chirho.normalize_ty_chirho(&TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("D1".to_string())),
+                    Box::new(TyChirho::ConChirho("MetaData".to_string())),
+                )),
+                Box::new(TyChirho::ConChirho("Proxy".to_string())),
+            )),
+            Box::new(TyChirho::ConChirho("Int".to_string())),
+        ));
+        let expected_d1_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("M1".to_string())),
+                        Box::new(TyChirho::ConChirho("D".to_string())),
+                    )),
+                    Box::new(TyChirho::ConChirho("MetaData".to_string())),
+                )),
+                Box::new(TyChirho::ConChirho("Proxy".to_string())),
+            )),
+            Box::new(TyChirho::ConChirho("Int".to_string())),
+        );
+
+        assert_eq!(
+            normalized_d1_chirho, expected_d1_chirho,
+            "normalization should reduce D1 applications to the corresponding M1 metadata form"
         );
     }
 
