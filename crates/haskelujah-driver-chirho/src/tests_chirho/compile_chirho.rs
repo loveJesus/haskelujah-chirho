@@ -471,6 +471,46 @@ typedWildPatChirho = sigP wildP (conT (mkName \"Int\"))\n",
 }
 
 #[test]
+fn frontend_type_equality_hrefl_keeps_heterogeneous_witnesses_in_scope_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE TypeOperators #-}\n\
+module TypeEqualityHReflMiniChirho where\n\
+import Data.Type.Equality\n\
+heteroWitnessChirho = HRefl :: Int :~~: Int\n",
+        &mut source_map_chirho,
+        "TypeEqualityHReflMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Type.Equality should keep HRefl in scope with the right :~~: witness type: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn frontend_type_equality_prefix_partial_application_keeps_heterogeneous_kind_shape_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE PolyKinds #-}\n\
+{-# LANGUAGE TypeOperators #-}\n\
+{-# LANGUAGE KindSignatures #-}\n\
+module TypeEqualityPrefixMiniChirho where\n\
+import Data.Kind (Type)\n\
+type HeteroEqPrefixChirho (a :: k1) = ((:~~:) (a :: k1) :: k2 -> Type)\n",
+        &mut source_map_chirho,
+        "TypeEqualityPrefixMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Type.Equality should keep :~~: well-kinded under prefix partial application: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_preprocessed_transformers_functor_classes_keeps_building_block_helpers_top_level_chirho()
  {
     let path_chirho = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))

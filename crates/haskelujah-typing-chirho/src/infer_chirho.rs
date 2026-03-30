@@ -16078,6 +16078,25 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // Data.Type.Equality: (:~~:) constructor — HRefl :: a :~~: a
+    {
+        let a_chirho = TyVarChirho(7381);
+        env_chirho.bind_chirho(
+            "HRefl".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho(":~~:".to_string())),
+                        Box::new(TyChirho::VarChirho(a_chirho)),
+                    )),
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                ),
+            },
+        );
+    }
+
     // realToFrac :: (Real a, Fractional b) => a -> b
     {
         let a_chirho = TyVarChirho(7390);

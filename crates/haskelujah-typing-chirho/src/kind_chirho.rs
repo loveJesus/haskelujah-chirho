@@ -389,6 +389,29 @@ impl KindEnvChirho {
                 KindChirho::StarChirho,
             ),
         );
+        let equality_kind_var_chirho = KindVarChirho(10_003_1);
+        env_chirho.bind_chirho(
+            ":~:".to_string(),
+            KindChirho::arrow_n_chirho(
+                vec![
+                    KindChirho::VarChirho(equality_kind_var_chirho),
+                    KindChirho::VarChirho(equality_kind_var_chirho),
+                ],
+                KindChirho::StarChirho,
+            ),
+        );
+        let hetero_eq_left_kind_chirho = KindVarChirho(10_003_2);
+        let hetero_eq_right_kind_chirho = KindVarChirho(10_003_3);
+        env_chirho.bind_chirho(
+            ":~~:".to_string(),
+            KindChirho::arrow_n_chirho(
+                vec![
+                    KindChirho::VarChirho(hetero_eq_left_kind_chirho),
+                    KindChirho::VarChirho(hetero_eq_right_kind_chirho),
+                ],
+                KindChirho::StarChirho,
+            ),
+        );
         let const_second_kind_var_chirho = KindVarChirho(10_004);
         env_chirho.bind_chirho(
             "Const".to_string(),
