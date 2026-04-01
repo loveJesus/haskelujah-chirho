@@ -2733,6 +2733,84 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
+        // ── Alternative / MonadPlus ──
+        let alt_var_chirho = TyVarChirho(9055);
+        let alt_a_chirho = TyVarChirho(9056);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Alternative".to_string(),
+            supers_chirho: vec!["Applicative".to_string()],
+            var_chirho: alt_var_chirho,
+            methods_chirho: HashMap::from([
+                (
+                    "empty".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![alt_var_chirho, alt_a_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(alt_var_chirho)),
+                            Box::new(TyChirho::VarChirho(alt_a_chirho)),
+                        ),
+                    },
+                ),
+                (
+                    "<|>".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![alt_var_chirho, alt_a_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [
+                                TyChirho::AppChirho(
+                                    Box::new(TyChirho::VarChirho(alt_var_chirho)),
+                                    Box::new(TyChirho::VarChirho(alt_a_chirho)),
+                                ),
+                                TyChirho::AppChirho(
+                                    Box::new(TyChirho::VarChirho(alt_var_chirho)),
+                                    Box::new(TyChirho::VarChirho(alt_a_chirho)),
+                                ),
+                            ],
+                            TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(alt_var_chirho)),
+                                Box::new(TyChirho::VarChirho(alt_a_chirho)),
+                            ),
+                        ),
+                    },
+                ),
+            ]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        // Alternative instances for [], Maybe, IO, STM, ReadP, ReadPrec
+        for ty_chirho in ["[]", "Maybe", "IO", "STM", "ReadP", "ReadPrec"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "Alternative".to_string(),
+                head_ty_chirho: TyChirho::ConChirho(ty_chirho.to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
+
+        // MonadPlus class (superclass: Monad, Alternative)
+        let mp_var_chirho = TyVarChirho(9057);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "MonadPlus".to_string(),
+            supers_chirho: vec!["Monad".to_string(), "Alternative".to_string()],
+            var_chirho: mp_var_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+        for ty_chirho in ["[]", "Maybe", "IO", "STM", "ReadP", "ReadPrec"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "MonadPlus".to_string(),
+                head_ty_chirho: TyChirho::ConChirho(ty_chirho.to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
+
         // ── Semigroup / Monoid ──
 
         // Semigroup (no superclass)
