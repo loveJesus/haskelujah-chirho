@@ -11927,6 +11927,28 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Time.Calendar.Julian and other time sub-modules
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "toJulianYearAndDay", "fromJulianYearAndDay",
+            "isJulianLeapYear", "julianMonthLength",
+            "toJulian", "fromJulian",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for mod_name_chirho in &[
+            "Data.Time.Calendar.Julian",
+            "Data.Time.Calendar.Julian.YearDay",
+        ] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
     // Text.ParserCombinators.Parsec (re-export of parsec)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
