@@ -7405,6 +7405,64 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // (^) :: forall a b. (Num a, Integral b) => a -> b -> a
+    let pow_a_chirho = TyVarChirho(1191);
+    let pow_b_chirho = TyVarChirho(1192);
+    env_chirho.bind_chirho(
+        "^".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![pow_a_chirho, pow_b_chirho],
+            preds_chirho: vec![
+                SchemePredChirho {
+                    class_name_chirho: "Num".to_string(),
+                    ty_chirho: TyChirho::VarChirho(pow_a_chirho),
+                    extra_tys_chirho: vec![],
+                },
+                SchemePredChirho {
+                    class_name_chirho: "Integral".to_string(),
+                    ty_chirho: TyChirho::VarChirho(pow_b_chirho),
+                    extra_tys_chirho: vec![],
+                },
+            ],
+            ty_chirho: TyChirho::fun_n_chirho(
+                [
+                    TyChirho::VarChirho(pow_a_chirho),
+                    TyChirho::VarChirho(pow_b_chirho),
+                ],
+                TyChirho::VarChirho(pow_a_chirho),
+            ),
+        },
+    );
+
+    // (^^) :: forall a b. (Fractional a, Integral b) => a -> b -> a
+    let fpow_a_chirho = TyVarChirho(1193);
+    let fpow_b_chirho = TyVarChirho(1194);
+    env_chirho.bind_chirho(
+        "^^".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![fpow_a_chirho, fpow_b_chirho],
+            preds_chirho: vec![
+                SchemePredChirho {
+                    class_name_chirho: "Fractional".to_string(),
+                    ty_chirho: TyChirho::VarChirho(fpow_a_chirho),
+                    extra_tys_chirho: vec![],
+                },
+                SchemePredChirho {
+                    class_name_chirho: "Integral".to_string(),
+                    ty_chirho: TyChirho::VarChirho(fpow_b_chirho),
+                    extra_tys_chirho: vec![],
+                },
+            ],
+            ty_chirho: TyChirho::fun_n_chirho(
+                [
+                    TyChirho::VarChirho(fpow_a_chirho),
+                    TyChirho::VarChirho(fpow_b_chirho),
+                ],
+                TyChirho::VarChirho(fpow_a_chirho),
+            ),
+        },
+    );
+
     // read :: forall a. Read a => String -> a
     let read_v_chirho = TyVarChirho(1195);
     env_chirho.bind_chirho(
