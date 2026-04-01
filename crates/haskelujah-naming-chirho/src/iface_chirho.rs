@@ -6385,6 +6385,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "floatToDigits",
             "showIntAtBase",
             "readFloat",
+            "showEFloat",
+            "showFFloat",
+            "showGFloat",
+            "readBin",
+            "Lexeme",
+            "readLitChar",
+            "showLitChar",
+            "lexDigits",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -15898,6 +15906,67 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                 exports_chirho: exports_chirho.clone(),
             });
         }
+    }
+
+    // GHC.IO.FD / GHC.IO.Handle stubs
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["FD", "fdFD", "openFile", "mkFD", "closeFD"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for mod_name_chirho in &[
+            "GHC.IO.FD",
+            "GHC.IO.Handle",
+            "GHC.IO.Handle.FD",
+            "GHC.IO.Handle.Types",
+            "GHC.IO.Handle.Internals",
+        ] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
+    // Data.ByteString.UTF8 (utf8-string package)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "fromString", "toString", "decode", "encode",
+            "length", "lines", "unlines", "words", "unwords",
+            "take", "drop", "span", "break", "splitAt",
+            "foldl", "foldr", "null",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("ByteString", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.ByteString.UTF8".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.ByteString.Lazy.UTF8".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Text.Builder.Linear stub
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "Builder", "runBuilder", "fromText", "fromChar",
+            "fromString", "fromDec", "flush",
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Text.Builder.Linear".to_string(),
+            exports_chirho,
+        });
     }
 
     normalize_builtin_class_exports_chirho(&mut modules_chirho);
