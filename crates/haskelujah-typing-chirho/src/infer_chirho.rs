@@ -6574,6 +6574,246 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    let mk_parsec_gen_parser_ty_chirho =
+        |token_ty_chirho: TyChirho, state_ty_chirho: TyChirho, result_ty_chirho: TyChirho| {
+            TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("GenParser".to_string())),
+                        Box::new(token_ty_chirho),
+                    )),
+                    Box::new(state_ty_chirho),
+                )),
+                Box::new(result_ty_chirho),
+            )
+        };
+    let mk_parsec_either_ty_chirho = |left_ty_chirho: TyChirho, right_ty_chirho: TyChirho| {
+        TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Either".to_string())),
+                Box::new(left_ty_chirho),
+            )),
+            Box::new(right_ty_chirho),
+        )
+    };
+    let parsec_tok_chirho = TyVarChirho(1693);
+    let parsec_state_chirho = TyVarChirho(1694);
+    let parsec_a_chirho = TyVarChirho(1695);
+    let parsec_parser_a_ty_chirho = mk_parsec_gen_parser_ty_chirho(
+        TyChirho::VarChirho(parsec_tok_chirho),
+        TyChirho::VarChirho(parsec_state_chirho),
+        TyChirho::VarChirho(parsec_a_chirho),
+    );
+    let parsec_error_ty_chirho = TyChirho::ConChirho("ParseError".to_string());
+    let mut bind_parsec_value_chirho = |name_chirho: &str, scheme_chirho: SchemeChirho| {
+        env_chirho.bind_chirho(name_chirho.to_string(), scheme_chirho.clone());
+        env_chirho.bind_chirho(
+            format!("Text.ParserCombinators.Parsec.{name_chirho}"),
+            scheme_chirho,
+        );
+    };
+    for name_chirho in ["try", "lookAhead"] {
+        bind_parsec_value_chirho(
+            name_chirho,
+            SchemeChirho {
+                vars_chirho: vec![parsec_tok_chirho, parsec_state_chirho, parsec_a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    parsec_parser_a_ty_chirho.clone(),
+                    parsec_parser_a_ty_chirho.clone(),
+                ),
+            },
+        );
+    }
+    bind_parsec_value_chirho(
+        "(<?>)",
+        SchemeChirho {
+            vars_chirho: vec![parsec_tok_chirho, parsec_state_chirho, parsec_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![parsec_parser_a_ty_chirho.clone(), TyChirho::string_chirho()],
+                parsec_parser_a_ty_chirho.clone(),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "option",
+        SchemeChirho {
+            vars_chirho: vec![parsec_tok_chirho, parsec_state_chirho, parsec_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(parsec_a_chirho),
+                    parsec_parser_a_ty_chirho.clone(),
+                ],
+                parsec_parser_a_ty_chirho.clone(),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "many1",
+        SchemeChirho {
+            vars_chirho: vec![parsec_tok_chirho, parsec_state_chirho, parsec_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                parsec_parser_a_ty_chirho.clone(),
+                mk_parsec_gen_parser_ty_chirho(
+                    TyChirho::VarChirho(parsec_tok_chirho),
+                    TyChirho::VarChirho(parsec_state_chirho),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(parsec_a_chirho))),
+                ),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "count",
+        SchemeChirho {
+            vars_chirho: vec![parsec_tok_chirho, parsec_state_chirho, parsec_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![TyChirho::int_chirho(), parsec_parser_a_ty_chirho.clone()],
+                mk_parsec_gen_parser_ty_chirho(
+                    TyChirho::VarChirho(parsec_tok_chirho),
+                    TyChirho::VarChirho(parsec_state_chirho),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(parsec_a_chirho))),
+                ),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "notFollowedBy",
+        SchemeChirho {
+            vars_chirho: vec![parsec_tok_chirho, parsec_state_chirho, parsec_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                parsec_parser_a_ty_chirho.clone(),
+                mk_parsec_gen_parser_ty_chirho(
+                    TyChirho::VarChirho(parsec_tok_chirho),
+                    TyChirho::VarChirho(parsec_state_chirho),
+                    TyChirho::unit_chirho(),
+                ),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "satisfy",
+        SchemeChirho {
+            vars_chirho: vec![parsec_tok_chirho, parsec_state_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::fun_chirho(
+                    TyChirho::VarChirho(parsec_tok_chirho),
+                    TyChirho::bool_chirho(),
+                ),
+                mk_parsec_gen_parser_ty_chirho(
+                    TyChirho::VarChirho(parsec_tok_chirho),
+                    TyChirho::VarChirho(parsec_state_chirho),
+                    TyChirho::VarChirho(parsec_tok_chirho),
+                ),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "char",
+        SchemeChirho {
+            vars_chirho: vec![parsec_state_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::char_chirho(),
+                mk_parsec_gen_parser_ty_chirho(
+                    TyChirho::char_chirho(),
+                    TyChirho::VarChirho(parsec_state_chirho),
+                    TyChirho::char_chirho(),
+                ),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "oneOf",
+        SchemeChirho {
+            vars_chirho: vec![parsec_state_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::string_chirho(),
+                mk_parsec_gen_parser_ty_chirho(
+                    TyChirho::char_chirho(),
+                    TyChirho::VarChirho(parsec_state_chirho),
+                    TyChirho::char_chirho(),
+                ),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "string",
+        SchemeChirho {
+            vars_chirho: vec![parsec_state_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::string_chirho(),
+                mk_parsec_gen_parser_ty_chirho(
+                    TyChirho::char_chirho(),
+                    TyChirho::VarChirho(parsec_state_chirho),
+                    TyChirho::string_chirho(),
+                ),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "eof",
+        SchemeChirho {
+            vars_chirho: vec![parsec_tok_chirho, parsec_state_chirho],
+            preds_chirho: vec![],
+            ty_chirho: mk_parsec_gen_parser_ty_chirho(
+                TyChirho::VarChirho(parsec_tok_chirho),
+                TyChirho::VarChirho(parsec_state_chirho),
+                TyChirho::unit_chirho(),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "unexpected",
+        SchemeChirho {
+            vars_chirho: vec![parsec_tok_chirho, parsec_state_chirho, parsec_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::string_chirho(),
+                parsec_parser_a_ty_chirho.clone(),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "parse",
+        SchemeChirho {
+            vars_chirho: vec![parsec_tok_chirho, parsec_state_chirho, parsec_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    parsec_parser_a_ty_chirho.clone(),
+                    TyChirho::string_chirho(),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(parsec_tok_chirho))),
+                ],
+                mk_parsec_either_ty_chirho(
+                    parsec_error_ty_chirho.clone(),
+                    TyChirho::VarChirho(parsec_a_chirho),
+                ),
+            ),
+        },
+    );
+    bind_parsec_value_chirho(
+        "parseTest",
+        SchemeChirho {
+            vars_chirho: vec![parsec_tok_chirho, parsec_state_chirho, parsec_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    parsec_parser_a_ty_chirho.clone(),
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(parsec_tok_chirho))),
+                ],
+                TyChirho::io_chirho(TyChirho::unit_chirho()),
+            ),
+        },
+    );
+
     let assert_a_chirho = TyVarChirho(1686);
     let assert_scheme_chirho = SchemeChirho {
         vars_chirho: vec![assert_a_chirho],

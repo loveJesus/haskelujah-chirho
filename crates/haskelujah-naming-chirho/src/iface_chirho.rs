@@ -11953,7 +11953,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "Parser", "ParseError", "parse", "parseTest",
+            "parse", "parseTest",
             "try", "choice", "option", "many", "many1",
             "sepBy", "sepBy1", "endBy", "endBy1",
             "chainl", "chainl1", "chainr", "chainr1",
@@ -11961,9 +11961,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "char", "string", "satisfy", "oneOf", "noneOf",
             "digit", "letter", "alphaNum", "space", "spaces",
             "anyChar", "newline", "tab", "upper", "lower",
+            "(<?>)",
             "SourcePos", "sourceName", "sourceLine", "sourceColumn",
             "getPosition", "setPosition",
         ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Parser", "ParseError", "SourcePos"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -18590,6 +18595,36 @@ mod tests_chirho {
                 .values_chirho
                 .contains_key("sinChirho"),
             "foreign import names should be exported through module interfaces"
+        );
+    }
+
+    #[test]
+    fn builtin_text_parser_combinators_parsec_exports_parser_values_chirho() {
+        let ifaces_chirho = builtin_module_ifaces_chirho();
+        let parsec_iface_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Text.ParserCombinators.Parsec")
+            .expect("Text.ParserCombinators.Parsec builtin iface should exist");
+        assert!(
+            parsec_iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("<?>"),
+            "Text.ParserCombinators.Parsec should export <?> as a value"
+        );
+        assert!(
+            parsec_iface_chirho
+                .exports_chirho
+                .values_chirho
+                .contains_key("parse"),
+            "Text.ParserCombinators.Parsec should export parse as a value"
+        );
+        assert!(
+            parsec_iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("ParseError"),
+            "Text.ParserCombinators.Parsec should still export ParseError as a type"
         );
     }
 }

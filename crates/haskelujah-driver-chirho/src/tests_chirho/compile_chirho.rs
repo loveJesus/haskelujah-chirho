@@ -2160,6 +2160,30 @@ parseMaybeDayChirho = parseTimeM True defaultTimeLocale \"%Y-%m-%d\" \"2020-01-0
 }
 
 #[test]
+fn frontend_text_parser_combinators_parsec_operator_and_combinators_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module ParsecCompatMiniChirho where\n\
+import Text.ParserCombinators.Parsec (GenParser, ParseError, parse, (<?>), try, option, char, string)\n\
+type ParserChirho aChirho = GenParser Char () aChirho\n\
+parserChirho :: ParserChirho String\n\
+parserChirho = option \"\" (try (string \"a\")) <?> \"demo\"\n\
+valueChirho :: Either ParseError String\n\
+valueChirho = parse parserChirho \"demo\" \"a\"\n\
+charParserChirho :: ParserChirho Char\n\
+charParserChirho = char 'a' <?> \"letter a\"\n",
+        &mut source_map_chirho,
+        "ParsecCompatMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Text.ParserCombinators.Parsec compat operator/combinator surface should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_from_integral_can_target_word64_in_subtraction_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

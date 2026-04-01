@@ -356,7 +356,7 @@ fn collect_export_names_chirho(
 
     for val_chirho in exports_chirho.values_chirho.values() {
         result_chirho.push((
-            val_chirho.name_chirho.clone(),
+            canonical_value_name_chirho(&val_chirho.name_chirho),
             NamespaceChirho::ValueChirho,
             val_chirho.span_chirho,
         ));
