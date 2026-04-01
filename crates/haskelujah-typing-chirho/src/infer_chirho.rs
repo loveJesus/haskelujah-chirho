@@ -991,24 +991,7 @@ impl InferCtxChirho {
         let mut remaining_chirho = Vec::new();
         for (pred_chirho, span_chirho) in self.deferred_preds_chirho.drain(..) {
             let pred_fvs_chirho = pred_chirho.ty_chirho.free_vars_chirho();
-            if pred_fvs_chirho.is_empty() {
-                // Ground predicate (no free type variables). Check immediately:
-                // if the class env knows it's unsatisfiable, keep it deferred so
-                // check_deferred_preds_chirho will report the error. Otherwise
-                // absorb into the scheme (user-defined instances may exist).
-                let has_instances_chirho = self
-                    .class_env_chirho
-                    .instances_chirho
-                    .get(&pred_chirho.class_name_chirho)
-                    .is_some_and(|insts_chirho| !insts_chirho.is_empty());
-                if has_instances_chirho && !self.class_env_chirho.entails_chirho(&pred_chirho) {
-                    // Known class with instances, but this specific type is NOT
-                    // entailed (e.g. Num Bool) — keep deferred for error reporting.
-                    remaining_chirho.push((pred_chirho, span_chirho));
-                }
-                // Otherwise: either no instances (user-defined class), or the
-                // constraint is satisfiable — either way, don't propagate.
-            } else if pred_fvs_chirho
+            if pred_fvs_chirho
                 .iter()
                 .all(|v_chirho| vars_chirho.contains(v_chirho))
             {
@@ -2516,6 +2499,31 @@ impl InferCtxChirho {
                 ) {
                     Ok(sc_chirho) => {
                         self.apply_subst_all_chirho(&sc_chirho);
+                        // After unifying condition with Bool, eagerly check if
+                        // any deferred numeric predicate now targets Bool (e.g.
+                        // `if 42 then ...` → Num Bool). Generalization would
+                        // absorb this ground predicate silently; catch it here.
+                        for (pred_chirho, pred_span_chirho) in &self.deferred_preds_chirho {
+                            if pred_chirho.ty_chirho == TyChirho::bool_chirho()
+                                && matches!(
+                                    pred_chirho.class_name_chirho.as_str(),
+                                    "Num" | "Integral" | "Fractional" | "Floating"
+                                        | "Real" | "RealFrac" | "RealFloat"
+                                )
+                            {
+                                self.diagnostics_chirho
+                                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                                        ErrorCodeChirho::error_chirho(
+                                            UNSATISFIED_CONSTRAINT_CODE_CHIRHO,
+                                        ),
+                                        format!(
+                                            "no instance for `{} Bool`",
+                                            pred_chirho.class_name_chirho
+                                        ),
+                                        *pred_span_chirho,
+                                    ));
+                            }
+                        }
                     }
                     Err(err_chirho) => {
                         self.report_unify_error_chirho(&err_chirho);
