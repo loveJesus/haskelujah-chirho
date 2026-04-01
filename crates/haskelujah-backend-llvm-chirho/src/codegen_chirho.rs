@@ -1449,6 +1449,11 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(
             self.output_chirho,
+            "declare i64 @haskelujah_unpack_string_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
             "declare i64 @haskelujah_read_int_chirho(i64)"
         )
         .unwrap();
@@ -3798,13 +3803,15 @@ impl LlvmCodegenChirho {
         scrut_val_chirho: &str,
         alts_chirho: &[CoreAltChirho],
     ) -> String {
+        let scrut_val_chirho =
+            self.maybe_unpack_list_case_string_scrutinee_chirho(scrut_val_chirho, alts_chirho);
         let end_label_chirho = self.fresh_label_chirho("case.end");
         // For data constructors, we use the tag (encoded as i64) to branch.
         // For now, handle default-only case by just compiling the default RHS.
         if alts_chirho.len() == 1 && alts_chirho[0].con_chirho == AltConChirho::DefaultChirho {
             // Bind any alt binders to scrutinee
             for binder_chirho in &alts_chirho[0].binders_chirho {
-                self.bind_local_value_name_chirho(binder_chirho, scrut_val_chirho);
+                self.bind_local_value_name_chirho(binder_chirho, &scrut_val_chirho);
             }
             return self.compile_expr_chirho(&alts_chirho[0].rhs_chirho);
         }
@@ -3812,7 +3819,7 @@ impl LlvmCodegenChirho {
         // Multi-alt with data constructors: use tag comparison chain
         // Each constructor gets a tag (True=1, False=0, etc.)
         let default_label_chirho = self.fresh_label_chirho("case.default");
-        let scrut_tag_tmp_chirho = self.load_constructor_tag_chirho(scrut_val_chirho);
+        let scrut_tag_tmp_chirho = self.load_constructor_tag_chirho(&scrut_val_chirho);
         let mut incoming_values_chirho = Vec::new();
 
         for (i_chirho, alt_chirho) in alts_chirho.iter().enumerate() {
@@ -3840,7 +3847,7 @@ impl LlvmCodegenChirho {
 
                     writeln!(self.output_chirho, "{then_label_chirho}:").unwrap();
                     self.bind_constructor_fields_chirho(
-                        scrut_val_chirho,
+                        &scrut_val_chirho,
                         &alt_chirho.binders_chirho,
                     );
                     let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
@@ -3859,7 +3866,7 @@ impl LlvmCodegenChirho {
                 AltConChirho::DefaultChirho => {
                     // Bind any alt binders to scrutinee
                     for binder_chirho in &alt_chirho.binders_chirho {
-                        self.bind_local_value_name_chirho(binder_chirho, scrut_val_chirho);
+                        self.bind_local_value_name_chirho(binder_chirho, &scrut_val_chirho);
                     }
                     let val_chirho = self.compile_expr_chirho(&alt_chirho.rhs_chirho);
                     // Use a landing pad label so the phi references the
@@ -3903,11 +3910,13 @@ impl LlvmCodegenChirho {
         scrut_val_chirho: &str,
         alts_chirho: &[CoreAltChirho],
     ) -> TailCompileOutcomeChirho {
+        let scrut_val_chirho =
+            self.maybe_unpack_list_case_string_scrutinee_chirho(scrut_val_chirho, alts_chirho);
         let end_label_chirho = self.fresh_label_chirho("case.end");
 
         if alts_chirho.len() == 1 && alts_chirho[0].con_chirho == AltConChirho::DefaultChirho {
             for binder_chirho in &alts_chirho[0].binders_chirho {
-                self.bind_local_value_name_chirho(binder_chirho, scrut_val_chirho);
+                self.bind_local_value_name_chirho(binder_chirho, &scrut_val_chirho);
             }
             return match self.compile_tail_expr_chirho(&alts_chirho[0].rhs_chirho) {
                 TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
@@ -3920,7 +3929,7 @@ impl LlvmCodegenChirho {
         }
 
         let default_label_chirho = self.fresh_label_chirho("case.default");
-        let scrut_tag_tmp_chirho = self.load_constructor_tag_chirho(scrut_val_chirho);
+        let scrut_tag_tmp_chirho = self.load_constructor_tag_chirho(&scrut_val_chirho);
         let mut incoming_values_chirho = Vec::new();
         let data_alts_chirho = alts_chirho
             .iter()
@@ -3951,7 +3960,7 @@ impl LlvmCodegenChirho {
             .unwrap();
 
             writeln!(self.output_chirho, "{then_label_chirho}:").unwrap();
-            self.bind_constructor_fields_chirho(scrut_val_chirho, &alt_chirho.binders_chirho);
+            self.bind_constructor_fields_chirho(&scrut_val_chirho, &alt_chirho.binders_chirho);
             match self.compile_tail_expr_chirho(&alt_chirho.rhs_chirho) {
                 TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
                     // Landing pad: compile_tail_expr may emit many blocks,
@@ -3976,7 +3985,7 @@ impl LlvmCodegenChirho {
         {
             writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
             for binder_chirho in &default_alt_chirho.binders_chirho {
-                self.bind_local_value_name_chirho(binder_chirho, scrut_val_chirho);
+                self.bind_local_value_name_chirho(binder_chirho, &scrut_val_chirho);
             }
             match self.compile_tail_expr_chirho(&default_alt_chirho.rhs_chirho) {
                 TailCompileOutcomeChirho::ValueChirho(val_chirho) => {
@@ -4062,6 +4071,85 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         scrut_tag_tmp_chirho
+    }
+
+    fn alts_match_list_constructors_chirho(&self, alts_chirho: &[CoreAltChirho]) -> bool {
+        let mut saw_list_alt_chirho = false;
+        for alt_chirho in alts_chirho {
+            if let AltConChirho::DataConChirho(name_chirho) = &alt_chirho.con_chirho {
+                if !matches!(name_chirho.as_str(), "[]" | ":") {
+                    return false;
+                }
+                saw_list_alt_chirho = true;
+            }
+        }
+        saw_list_alt_chirho
+    }
+
+    fn maybe_unpack_list_case_string_scrutinee_chirho(
+        &mut self,
+        scrut_val_chirho: &str,
+        alts_chirho: &[CoreAltChirho],
+    ) -> String {
+        if !self.alts_match_list_constructors_chirho(alts_chirho) {
+            return scrut_val_chirho.to_string();
+        }
+
+        let boxed_label_chirho = self.fresh_label_chirho("case.list.boxed");
+        let immediate_label_chirho = self.fresh_label_chirho("case.list.immediate");
+        let unpack_label_chirho = self.fresh_label_chirho("case.list.unpack");
+        let join_label_chirho = self.fresh_label_chirho("case.list.join");
+        let boxed_probe_tmp_chirho = self.fresh_tmp_chirho();
+        let is_boxed_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {boxed_probe_tmp_chirho} = call i64 @haskelujah_is_heap_ptr_chirho(i64 {scrut_val_chirho})"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {is_boxed_tmp_chirho} = icmp ne i64 {boxed_probe_tmp_chirho}, 0"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  br i1 {is_boxed_tmp_chirho}, label %{boxed_label_chirho}, label %{immediate_label_chirho}"
+        )
+        .unwrap();
+
+        writeln!(self.output_chirho, "{boxed_label_chirho}:").unwrap();
+        writeln!(self.output_chirho, "  br label %{join_label_chirho}").unwrap();
+
+        writeln!(self.output_chirho, "{immediate_label_chirho}:").unwrap();
+        let is_zero_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {is_zero_tmp_chirho} = icmp eq i64 {scrut_val_chirho}, 0"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  br i1 {is_zero_tmp_chirho}, label %{join_label_chirho}, label %{unpack_label_chirho}"
+        )
+        .unwrap();
+
+        writeln!(self.output_chirho, "{unpack_label_chirho}:").unwrap();
+        let unpacked_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {unpacked_tmp_chirho} = call i64 @haskelujah_unpack_string_chirho(i64 {scrut_val_chirho})"
+        )
+        .unwrap();
+        writeln!(self.output_chirho, "  br label %{join_label_chirho}").unwrap();
+
+        writeln!(self.output_chirho, "{join_label_chirho}:").unwrap();
+        let normalized_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {normalized_tmp_chirho} = phi i64 [{scrut_val_chirho}, %{boxed_label_chirho}], [0, %{immediate_label_chirho}], [{unpacked_tmp_chirho}, %{unpack_label_chirho}]"
+        )
+        .unwrap();
+        normalized_tmp_chirho
     }
 
     fn decode_boxed_constructor_ptr_chirho(&mut self, scrut_val_chirho: &str) -> String {
@@ -4283,6 +4371,11 @@ fn constructor_tag_chirho(name_chirho: &str) -> i64 {
         "LT" => 0,
         "EQ" => 1,
         "GT" => 2,
+        "[]" => 0,
+        ":" => 1,
+        "()" => 0,
+        "(,)" => 0,
+        "(,,)" => 0,
         _ => {
             // Hash the name to get a tag (placeholder strategy)
             let mut hash_chirho: i64 = 0;
@@ -5356,6 +5449,11 @@ mod tests_chirho {
         assert_eq!(constructor_tag_chirho("True"), 1);
         assert_eq!(constructor_tag_chirho("Nothing"), 0);
         assert_eq!(constructor_tag_chirho("Just"), 1);
+        assert_eq!(constructor_tag_chirho("LT"), 0);
+        assert_eq!(constructor_tag_chirho("EQ"), 1);
+        assert_eq!(constructor_tag_chirho("GT"), 2);
+        assert_eq!(constructor_tag_chirho("[]"), 0);
+        assert_eq!(constructor_tag_chirho(":"), 1);
     }
 
     #[test]

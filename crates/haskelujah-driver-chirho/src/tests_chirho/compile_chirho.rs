@@ -7218,6 +7218,17 @@ main = do
 }
 
 #[test]
+fn llvm_round_trip_null_empty_string_output_chirho() {
+    let src_chirho = r#"module Main where
+main = if null "" then print (1 :: Int) else print (2 :: Int)
+"#;
+    if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
+        assert_eq!(exit_code_chirho, 0);
+        assert_eq!(stdout_chirho, "1\n");
+    }
+}
+
+#[test]
 fn llvm_round_trip_string_case_and_read_int_output_chirho() {
     let src_chirho = r#"module Main where
 classifyChirho s = case s of
@@ -8340,6 +8351,18 @@ main = do
     if let Some((code_chirho, stdout_chirho)) = result_chirho {
         assert_eq!(code_chirho, 0);
         assert_eq!(stdout_chirho, "True\nFalse\n");
+    }
+}
+
+#[test]
+fn cranelift_round_trip_null_empty_string_output_chirho() {
+    let src_chirho = r#"module Main where
+main = if null "" then print (1 :: Int) else print (2 :: Int)
+"#;
+    let result_chirho = cranelift_round_trip_output_chirho(src_chirho);
+    if let Some((code_chirho, stdout_chirho)) = result_chirho {
+        assert_eq!(code_chirho, 0);
+        assert_eq!(stdout_chirho, "1\n");
     }
 }
 

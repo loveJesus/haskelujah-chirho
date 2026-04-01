@@ -723,6 +723,8 @@ fn lower_case_chirho(
     } else {
         scrut_raw_chirho
     };
+    let scrut_i64_chirho =
+        maybe_unpack_list_case_string_scrutinee_chirho(builder_chirho, ctx_chirho, scrut_i64_chirho, alts_chirho);
     let needs_constructor_tags_chirho = concrete_alts_need_constructor_tag_chirho(alts_chirho);
     let scrut_cmp_i64_chirho = if needs_constructor_tags_chirho {
         load_constructor_tag_chirho(builder_chirho, ctx_chirho, scrut_i64_chirho)
@@ -890,6 +892,8 @@ fn lower_tail_case_chirho(
     } else {
         scrut_raw_chirho
     };
+    let scrut_i64_chirho =
+        maybe_unpack_list_case_string_scrutinee_chirho(builder_chirho, ctx_chirho, scrut_i64_chirho, alts_chirho);
     let needs_constructor_tags_chirho = concrete_alts_need_constructor_tag_chirho(alts_chirho);
     let scrut_cmp_i64_chirho = if needs_constructor_tags_chirho {
         load_constructor_tag_chirho(builder_chirho, ctx_chirho, scrut_i64_chirho)
@@ -1130,6 +1134,92 @@ fn looks_like_data_constructor_name_chirho(name_chirho: &str) -> bool {
         .chars()
         .next()
         .is_some_and(|chirho| chirho.is_ascii_uppercase())
+}
+
+fn alts_match_list_constructors_chirho(alts_chirho: &[CoreAltChirho]) -> bool {
+    let mut saw_list_alt_chirho = false;
+    for alt_chirho in alts_chirho {
+        if let AltConChirho::DataConChirho(name_chirho) = &alt_chirho.con_chirho {
+            if !matches!(name_chirho.as_str(), "[]" | ":") {
+                return false;
+            }
+            saw_list_alt_chirho = true;
+        }
+    }
+    saw_list_alt_chirho
+}
+
+fn maybe_unpack_list_case_string_scrutinee_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    scrut_i64_chirho: ClValueChirho,
+    alts_chirho: &[CoreAltChirho],
+) -> ClValueChirho {
+    if !alts_match_list_constructors_chirho(alts_chirho) {
+        return scrut_i64_chirho;
+    }
+    let Some(unpack_string_ref_chirho) = ctx_chirho.unpack_string_ref_chirho else {
+        return scrut_i64_chirho;
+    };
+    let Some(is_heap_ptr_ref_chirho) = ctx_chirho.is_heap_ptr_ref_chirho else {
+        return scrut_i64_chirho;
+    };
+
+    let boxed_block_chirho = builder_chirho.create_block();
+    let immediate_block_chirho = builder_chirho.create_block();
+    let unpack_block_chirho = builder_chirho.create_block();
+    let join_block_chirho = builder_chirho.create_block();
+    builder_chirho.append_block_param(join_block_chirho, cl_types_chirho::I64);
+
+    let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    let is_boxed_call_chirho = builder_chirho
+        .ins()
+        .call(is_heap_ptr_ref_chirho, &[scrut_i64_chirho]);
+    let is_boxed_bits_chirho = builder_chirho.inst_results(is_boxed_call_chirho)[0];
+    let is_boxed_chirho =
+        builder_chirho
+            .ins()
+            .icmp(IntCcChirho::NotEqual, is_boxed_bits_chirho, zero_chirho);
+    builder_chirho.ins().brif(
+        is_boxed_chirho,
+        boxed_block_chirho,
+        &[],
+        immediate_block_chirho,
+        &[],
+    );
+
+    builder_chirho.switch_to_block(boxed_block_chirho);
+    builder_chirho
+        .ins()
+        .jump(join_block_chirho, &[scrut_i64_chirho]);
+    builder_chirho.seal_block(boxed_block_chirho);
+
+    builder_chirho.switch_to_block(immediate_block_chirho);
+    let is_zero_chirho = builder_chirho
+        .ins()
+        .icmp(IntCcChirho::Equal, scrut_i64_chirho, zero_chirho);
+    builder_chirho.ins().brif(
+        is_zero_chirho,
+        join_block_chirho,
+        &[zero_chirho],
+        unpack_block_chirho,
+        &[],
+    );
+    builder_chirho.seal_block(immediate_block_chirho);
+
+    builder_chirho.switch_to_block(unpack_block_chirho);
+    let unpack_call_chirho = builder_chirho
+        .ins()
+        .call(unpack_string_ref_chirho, &[scrut_i64_chirho]);
+    let unpacked_list_chirho = builder_chirho.inst_results(unpack_call_chirho)[0];
+    builder_chirho
+        .ins()
+        .jump(join_block_chirho, &[unpacked_list_chirho]);
+    builder_chirho.seal_block(unpack_block_chirho);
+
+    builder_chirho.switch_to_block(join_block_chirho);
+    builder_chirho.seal_block(join_block_chirho);
+    builder_chirho.block_params(join_block_chirho)[0]
 }
 
 fn load_constructor_tag_chirho(
