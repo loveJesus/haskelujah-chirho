@@ -991,9 +991,13 @@ impl InferCtxChirho {
         let mut remaining_chirho = Vec::new();
         for (pred_chirho, span_chirho) in self.deferred_preds_chirho.drain(..) {
             let pred_fvs_chirho = pred_chirho.ty_chirho.free_vars_chirho();
-            if pred_fvs_chirho
-                .iter()
-                .all(|v_chirho| vars_chirho.contains(v_chirho))
+            // Ground predicates (no free type variables) must remain deferred
+            // for checking — they cannot be generalized. E.g. `Num Bool` from
+            // `if 42 then ...` must be rejected, not absorbed into the scheme.
+            if !pred_fvs_chirho.is_empty()
+                && pred_fvs_chirho
+                    .iter()
+                    .all(|v_chirho| vars_chirho.contains(v_chirho))
             {
                 scheme_preds_chirho.push(SchemePredChirho {
                     class_name_chirho: pred_chirho.class_name_chirho,

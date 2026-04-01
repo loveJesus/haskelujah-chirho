@@ -11809,6 +11809,118 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Time (umbrella re-export module)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "UTCTime", "NominalDiffTime", "DiffTime", "Day", "TimeOfDay",
+            "LocalTime", "ZonedTime", "TimeZone", "UniversalTime",
+            "addUTCTime", "diffUTCTime", "getCurrentTime",
+            "toGregorian", "fromGregorian", "addDays", "diffDays",
+            "utc", "getTimeZone", "getCurrentTimeZone",
+            "formatTime", "parseTimeM", "defaultTimeLocale",
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.Format".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.Format.ISO8601".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.Format.Internal".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.LocalTime".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+    }
+
+    // Data.Time.Clock.TAI
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "AbsoluteTime", "taiEpoch", "taiClock",
+            "addAbsoluteTime", "diffAbsoluteTime",
+            "utcToTAITime", "taiToUTCTime",
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.Clock.TAI".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Time.Clock.System
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "SystemTime", "systemEpochDay", "getSystemTime",
+            "systemToUTCTime", "utcToSystemTime",
+            "systemToTAITime", "truncateSystemTimeLeapSecond",
+            "systemSeconds", "systemNanoseconds",
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.Clock.System".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Data.Time.Calendar.Easter
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["easterDayGregorian", "orthodoxEasterDay"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Data.Time.Calendar.Easter".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Text.ParserCombinators.Parsec (re-export of parsec)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "Parser", "ParseError", "parse", "parseTest",
+            "try", "choice", "option", "many", "many1",
+            "sepBy", "sepBy1", "endBy", "endBy1",
+            "chainl", "chainl1", "chainr", "chainr1",
+            "eof", "notFollowedBy", "lookAhead",
+            "char", "string", "satisfy", "oneOf", "noneOf",
+            "digit", "letter", "alphaNum", "space", "spaces",
+            "anyChar", "newline", "tab", "upper", "lower",
+            "SourcePos", "sourceName", "sourceLine", "sourceColumn",
+            "getPosition", "setPosition",
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Text.ParserCombinators.Parsec".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Text.ParserCombinators.ReadP".to_string(),
+            exports_chirho,
+        });
+    }
+
     // System.Posix.ByteString
     {
         let mut exports_chirho = IfaceExportsChirho::default();

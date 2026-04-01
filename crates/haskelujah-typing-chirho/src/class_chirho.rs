@@ -359,6 +359,14 @@ impl ClassEnvChirho {
     /// Check if a predicate is entailed by the class environment
     /// (i.e., there exists an instance that satisfies it with no remaining goals).
     pub fn entails_chirho(&self, pred_chirho: &PredChirho) -> bool {
+        self.entails_depth_chirho(pred_chirho, 0)
+    }
+
+    fn entails_depth_chirho(&self, pred_chirho: &PredChirho, depth_chirho: usize) -> bool {
+        // Prevent stack overflow from deep or cyclic instance resolution
+        if depth_chirho > 64 {
+            return true; // assume satisfiable at excessive depth
+        }
         // If the predicate's type (or any extra type argument) is still a
         // variable, we cannot resolve it concretely — defer it (assume
         // satisfiable, like GHC does for ambiguous/deferred constraints).
@@ -373,7 +381,7 @@ impl ClassEnvChirho {
         if let Some(sub_goals_chirho) = self.resolve_chirho(pred_chirho) {
             sub_goals_chirho
                 .iter()
-                .all(|sg_chirho| self.entails_chirho(sg_chirho))
+                .all(|sg_chirho| self.entails_depth_chirho(sg_chirho, depth_chirho + 1))
         } else {
             false
         }
@@ -2011,12 +2019,28 @@ impl ClassEnvChirho {
             });
         }
 
-        // instance Num Int / Integer
+        // instance Num Int / Integer / Word / FFI types
         for ty_chirho in [
             TyChirho::int_chirho(),
             TyChirho::ConChirho("Integer".to_string()),
             TyChirho::ConChirho("Rational".to_string()),
             TyChirho::ConChirho("Word".to_string()),
+            TyChirho::ConChirho("Word8".to_string()),
+            TyChirho::ConChirho("Word16".to_string()),
+            TyChirho::ConChirho("Word32".to_string()),
+            TyChirho::ConChirho("Word64".to_string()),
+            TyChirho::ConChirho("Int8".to_string()),
+            TyChirho::ConChirho("Int16".to_string()),
+            TyChirho::ConChirho("Int32".to_string()),
+            TyChirho::ConChirho("Int64".to_string()),
+            TyChirho::ConChirho("Natural".to_string()),
+            TyChirho::ConChirho("CSize".to_string()),
+            TyChirho::ConChirho("CInt".to_string()),
+            TyChirho::ConChirho("CChar".to_string()),
+            TyChirho::ConChirho("CLong".to_string()),
+            TyChirho::ConChirho("CUInt".to_string()),
+            TyChirho::ConChirho("CULong".to_string()),
+            TyChirho::ConChirho("Float".to_string()),
         ] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Num".to_string(),
@@ -2118,6 +2142,39 @@ impl ClassEnvChirho {
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });
+
+        // Bulk instances for Word/Int/C FFI types: Eq, Ord, Show, Bounded,
+        // Enum, Real, Integral for all fixed-width numeric and C types.
+        let ffi_numeric_types_chirho: &[&str] = &[
+            "Word8", "Word16", "Word32", "Word64",
+            "Int8", "Int16", "Int32", "Int64",
+            "Natural",
+            "CSize", "CInt", "CChar", "CLong", "CUInt", "CULong",
+            "Float",
+        ];
+        let ffi_classes_chirho: &[&str] = &[
+            "Eq", "Ord", "Show", "Bounded", "Enum", "Real", "Integral",
+            "Read", "Bits", "FiniteBits", "Storable",
+        ];
+        for &ty_name_chirho in ffi_numeric_types_chirho {
+            for &class_name_chirho in ffi_classes_chirho {
+                self.add_instance_chirho(InstDeclChirho {
+                    class_name_chirho: class_name_chirho.to_string(),
+                    head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
+                    extra_head_tys_chirho: vec![],
+                    context_chirho: vec![],
+                });
+            }
+        }
+        // Fractional/Floating/RealFloat for Float
+        for class_chirho in ["Fractional", "Floating", "RealFrac", "RealFloat"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: class_chirho.to_string(),
+                head_ty_chirho: TyChirho::ConChirho("Float".to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
 
         // Ground instance: Eq String (i.e. Eq [Char])
         // This is a special case of the conditional Eq [a] instance
@@ -2416,6 +2473,16 @@ impl ClassEnvChirho {
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });
+
+        // instance Functor/Applicative/Monad Identity
+        for class_chirho in ["Functor", "Applicative", "Monad"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: class_chirho.to_string(),
+                head_ty_chirho: TyChirho::ConChirho("Identity".to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
 
         let state_token_var_chirho = TyVarChirho(4000);
         let state_monad_var_chirho = TyVarChirho(4001);
@@ -2726,6 +2793,107 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
+        // instance Semigroup/Monoid Ordering
+        for class_chirho in ["Semigroup", "Monoid"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: class_chirho.to_string(),
+                head_ty_chirho: TyChirho::ConChirho("Ordering".to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
+
+        // Foldable / Traversable instances for [], Maybe, Identity
+        for class_chirho in ["Foldable", "Traversable"] {
+            for ty_chirho in ["[]", "Maybe", "Identity"] {
+                self.add_instance_chirho(InstDeclChirho {
+                    class_name_chirho: class_chirho.to_string(),
+                    head_ty_chirho: TyChirho::ConChirho(ty_chirho.to_string()),
+                    extra_head_tys_chirho: vec![],
+                    context_chirho: vec![],
+                });
+            }
+        }
+
+        // Functor/Applicative/Monad for ReadP, ReadPrec
+        for class_chirho in ["Functor", "Applicative", "Monad"] {
+            for ty_chirho in ["ReadP", "ReadPrec"] {
+                self.add_instance_chirho(InstDeclChirho {
+                    class_name_chirho: class_chirho.to_string(),
+                    head_ty_chirho: TyChirho::ConChirho(ty_chirho.to_string()),
+                    extra_head_tys_chirho: vec![],
+                    context_chirho: vec![],
+                });
+            }
+        }
+
+        // Eq/Ord/Show for Identity
+        for class_chirho in ["Eq", "Ord", "Show", "Read"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: class_chirho.to_string(),
+                head_ty_chirho: TyChirho::ConChirho("Identity".to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
+
+        // Functor/Applicative/Monad for STM, Either, Proxy, First, Last,
+        // Sum, Product, Dual, Down, Const, and other common types
+        let common_monad_types_chirho: &[&str] = &[
+            "STM", "Either", "Proxy", "First", "Last", "Sum", "Product",
+            "Dual", "Down", "Const", "Min", "Max",
+        ];
+        for &ty_name_chirho in common_monad_types_chirho {
+            for class_chirho in ["Functor", "Applicative", "Monad"] {
+                self.add_instance_chirho(InstDeclChirho {
+                    class_name_chirho: class_chirho.to_string(),
+                    head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
+                    extra_head_tys_chirho: vec![],
+                    context_chirho: vec![],
+                });
+            }
+        }
+        // Foldable/Traversable for Either, Proxy, Identity, Const, Down
+        for ty_chirho in ["Either", "Proxy", "Const", "Down"] {
+            for class_chirho in ["Foldable", "Traversable"] {
+                self.add_instance_chirho(InstDeclChirho {
+                    class_name_chirho: class_chirho.to_string(),
+                    head_ty_chirho: TyChirho::ConChirho(ty_chirho.to_string()),
+                    extra_head_tys_chirho: vec![],
+                    context_chirho: vec![],
+                });
+            }
+        }
+        // MonadFail for STM
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "MonadFail".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("STM".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+        // Functor/Applicative/Monad for Q (Template Haskell)
+        for class_chirho in ["Functor", "Applicative", "Monad", "MonadFail", "MonadIO"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: class_chirho.to_string(),
+                head_ty_chirho: TyChirho::ConChirho("Q".to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
+        // Semigroup/Monoid for common wrapper types
+        for ty_chirho in [
+            "First", "Last", "Sum", "Product", "Dual", "Min", "Max", "All", "Any",
+        ] {
+            for class_chirho in ["Semigroup", "Monoid"] {
+                self.add_instance_chirho(InstDeclChirho {
+                    class_name_chirho: class_chirho.to_string(),
+                    head_ty_chirho: TyChirho::ConChirho(ty_chirho.to_string()),
+                    extra_head_tys_chirho: vec![],
+                    context_chirho: vec![],
+                });
+            }
+        }
+
         // ── MonadTrans ──
         // class MonadTrans t where
         //   lift :: Monad m => m a -> t m a
@@ -2939,6 +3107,18 @@ fn match_ty_chirho(pattern_chirho: &TyChirho, target_chirho: &TyChirho) -> Optio
         }
 
         (TyChirho::ListChirho(p_chirho), TyChirho::ListChirho(t_chirho)) => {
+            match_ty_chirho(p_chirho, t_chirho)
+        }
+
+        // Cross-representation: ListChirho ↔ AppChirho(ConChirho("[]"), elem)
+        (TyChirho::ListChirho(p_chirho), TyChirho::AppChirho(f_chirho, t_chirho))
+            if matches!(f_chirho.as_ref(), TyChirho::ConChirho(n) if n == "[]") =>
+        {
+            match_ty_chirho(p_chirho, t_chirho)
+        }
+        (TyChirho::AppChirho(f_chirho, p_chirho), TyChirho::ListChirho(t_chirho))
+            if matches!(f_chirho.as_ref(), TyChirho::ConChirho(n) if n == "[]") =>
+        {
             match_ty_chirho(p_chirho, t_chirho)
         }
 
