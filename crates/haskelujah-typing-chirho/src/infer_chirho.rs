@@ -991,13 +991,26 @@ impl InferCtxChirho {
         let mut remaining_chirho = Vec::new();
         for (pred_chirho, span_chirho) in self.deferred_preds_chirho.drain(..) {
             let pred_fvs_chirho = pred_chirho.ty_chirho.free_vars_chirho();
-            // Ground predicates (no free type variables) must remain deferred
-            // for checking — they cannot be generalized. E.g. `Num Bool` from
-            // `if 42 then ...` must be rejected, not absorbed into the scheme.
-            if !pred_fvs_chirho.is_empty()
-                && pred_fvs_chirho
-                    .iter()
-                    .all(|v_chirho| vars_chirho.contains(v_chirho))
+            if pred_fvs_chirho.is_empty() {
+                // Ground predicate (no free type variables). Check immediately:
+                // if the class env knows it's unsatisfiable, keep it deferred so
+                // check_deferred_preds_chirho will report the error. Otherwise
+                // absorb into the scheme (user-defined instances may exist).
+                let has_instances_chirho = self
+                    .class_env_chirho
+                    .instances_chirho
+                    .get(&pred_chirho.class_name_chirho)
+                    .is_some_and(|insts_chirho| !insts_chirho.is_empty());
+                if has_instances_chirho && !self.class_env_chirho.entails_chirho(&pred_chirho) {
+                    // Known class with instances, but this specific type is NOT
+                    // entailed (e.g. Num Bool) — keep deferred for error reporting.
+                    remaining_chirho.push((pred_chirho, span_chirho));
+                }
+                // Otherwise: either no instances (user-defined class), or the
+                // constraint is satisfiable — either way, don't propagate.
+            } else if pred_fvs_chirho
+                .iter()
+                .all(|v_chirho| vars_chirho.contains(v_chirho))
             {
                 scheme_preds_chirho.push(SchemePredChirho {
                     class_name_chirho: pred_chirho.class_name_chirho,
