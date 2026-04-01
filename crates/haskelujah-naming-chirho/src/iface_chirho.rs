@@ -15854,6 +15854,33 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
     }
 
+    // Data.Bifunctor.Tannen / Biff / Clown / Joker / Flip / Product / Sum
+    // (bifunctors package, needed by lens)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "Tannen", "Biff", "Clown", "Joker", "Flip",
+            "Product", "Sum", "runTannen", "runBiff",
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for mod_name_chirho in &[
+            "Data.Bifunctor.Tannen",
+            "Data.Bifunctor.Biff",
+            "Data.Bifunctor.Clown",
+            "Data.Bifunctor.Joker",
+            "Data.Bifunctor.Flip",
+            "Data.Bifunctor.Product",
+            "Data.Bifunctor.Sum",
+        ] {
+            modules_chirho.push(ModuleIfaceChirho {
+                name_chirho: mod_name_chirho.to_string(),
+                exports_chirho: exports_chirho.clone(),
+            });
+        }
+    }
+
     normalize_builtin_class_exports_chirho(&mut modules_chirho);
     merge_module_ifaces_chirho(modules_chirho)
 }
