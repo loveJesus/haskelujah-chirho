@@ -11842,13 +11842,20 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         for name_chirho in &[
             "UTCTime", "NominalDiffTime", "DiffTime", "Day", "TimeOfDay",
             "LocalTime", "ZonedTime", "TimeZone", "UniversalTime",
-            "addUTCTime", "diffUTCTime", "getCurrentTime",
-            "toGregorian", "fromGregorian", "addDays", "diffDays",
-            "utc", "getTimeZone", "getCurrentTimeZone",
-            "formatTime", "parseTimeM", "defaultTimeLocale",
+            "TimeLocale", "FormatTime", "ParseTime",
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &[
+            "addUTCTime", "diffUTCTime", "getCurrentTime",
+            "toGregorian", "fromGregorian", "addDays", "diffDays",
+            "utc", "getTimeZone", "getCurrentTimeZone",
+            "formatTime", "parseTimeM", "parseTimeOrError",
+            "defaultTimeLocale", "readSTime", "readPTime",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Time".to_string(),

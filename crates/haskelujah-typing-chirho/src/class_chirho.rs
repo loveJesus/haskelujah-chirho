@@ -1553,6 +1553,49 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
+        let format_time_var_chirho = TyVarChirho(9065);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "FormatTime".to_string(),
+            supers_chirho: vec![],
+            var_chirho: format_time_var_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        let parse_time_var_chirho = TyVarChirho(9066);
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "ParseTime".to_string(),
+            supers_chirho: vec![],
+            var_chirho: parse_time_var_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+
+        for class_name_chirho in ["FormatTime", "ParseTime"] {
+            for ty_name_chirho in [
+                "Day",
+                "TimeOfDay",
+                "LocalTime",
+                "ZonedTime",
+                "TimeZone",
+                "UTCTime",
+                "UniversalTime",
+                "NominalDiffTime",
+                "DiffTime",
+            ] {
+                self.add_instance_chirho(InstDeclChirho {
+                    class_name_chirho: class_name_chirho.to_string(),
+                    head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
+                    extra_head_tys_chirho: vec![],
+                    context_chirho: vec![],
+                });
+            }
+        }
+
         // Typeable — GHC built-in class. Every type is automatically Typeable.
         // We add a universal instance so that any Typeable constraint is satisfied.
         let typeable_var_chirho = TyVarChirho(9070);

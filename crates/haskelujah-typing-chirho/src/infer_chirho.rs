@@ -6444,6 +6444,136 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         )),
     );
 
+    let time_locale_ty_chirho = TyChirho::ConChirho("TimeLocale".to_string());
+    env_chirho.bind_chirho(
+        "defaultTimeLocale".to_string(),
+        SchemeChirho::mono_chirho(time_locale_ty_chirho.clone()),
+    );
+
+    let format_time_t_chirho = TyVarChirho(1687);
+    env_chirho.bind_chirho(
+        "formatTime".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![format_time_t_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "FormatTime".to_string(),
+                ty_chirho: TyChirho::VarChirho(format_time_t_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    time_locale_ty_chirho.clone(),
+                    TyChirho::string_chirho(),
+                    TyChirho::VarChirho(format_time_t_chirho),
+                ],
+                TyChirho::string_chirho(),
+            ),
+        },
+    );
+
+    let parse_time_m_chirho = TyVarChirho(1688);
+    let parse_time_t_chirho = TyVarChirho(1689);
+    env_chirho.bind_chirho(
+        "parseTimeM".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![parse_time_m_chirho, parse_time_t_chirho],
+            preds_chirho: vec![
+                SchemePredChirho {
+                    class_name_chirho: "MonadFail".to_string(),
+                    ty_chirho: TyChirho::VarChirho(parse_time_m_chirho),
+                    extra_tys_chirho: vec![],
+                },
+                SchemePredChirho {
+                    class_name_chirho: "ParseTime".to_string(),
+                    ty_chirho: TyChirho::VarChirho(parse_time_t_chirho),
+                    extra_tys_chirho: vec![],
+                },
+            ],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::bool_chirho(),
+                    time_locale_ty_chirho.clone(),
+                    TyChirho::string_chirho(),
+                    TyChirho::string_chirho(),
+                ],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(parse_time_m_chirho)),
+                    Box::new(TyChirho::VarChirho(parse_time_t_chirho)),
+                ),
+            ),
+        },
+    );
+
+    let parse_time_or_error_t_chirho = TyVarChirho(1690);
+    env_chirho.bind_chirho(
+        "parseTimeOrError".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![parse_time_or_error_t_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "ParseTime".to_string(),
+                ty_chirho: TyChirho::VarChirho(parse_time_or_error_t_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::bool_chirho(),
+                    time_locale_ty_chirho.clone(),
+                    TyChirho::string_chirho(),
+                    TyChirho::string_chirho(),
+                ],
+                TyChirho::VarChirho(parse_time_or_error_t_chirho),
+            ),
+        },
+    );
+
+    let read_s_time_t_chirho = TyVarChirho(1691);
+    env_chirho.bind_chirho(
+        "readSTime".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![read_s_time_t_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "ParseTime".to_string(),
+                ty_chirho: TyChirho::VarChirho(read_s_time_t_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::bool_chirho(),
+                    time_locale_ty_chirho.clone(),
+                    TyChirho::string_chirho(),
+                ],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("ReadS".to_string())),
+                    Box::new(TyChirho::VarChirho(read_s_time_t_chirho)),
+                ),
+            ),
+        },
+    );
+
+    let read_p_time_t_chirho = TyVarChirho(1692);
+    env_chirho.bind_chirho(
+        "readPTime".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![read_p_time_t_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "ParseTime".to_string(),
+                ty_chirho: TyChirho::VarChirho(read_p_time_t_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::bool_chirho(),
+                    time_locale_ty_chirho.clone(),
+                    TyChirho::string_chirho(),
+                ],
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("ReadP".to_string())),
+                    Box::new(TyChirho::VarChirho(read_p_time_t_chirho)),
+                ),
+            ),
+        },
+    );
+
     let assert_a_chirho = TyVarChirho(1686);
     let assert_scheme_chirho = SchemeChirho {
         vars_chirho: vec![assert_a_chirho],

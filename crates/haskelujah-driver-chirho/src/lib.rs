@@ -595,6 +595,7 @@ fn seed_cpp_package_versions_chirho()
         ("template-haskell", "2.16.0"),
         ("ghc", "8.10.0"),
         ("process", "1.6.0"),
+        ("time", "1.15.0"),
     ] {
         if let Some(version_chirho) =
             haskelujah_package_chirho::parse_version_chirho(version_text_chirho)

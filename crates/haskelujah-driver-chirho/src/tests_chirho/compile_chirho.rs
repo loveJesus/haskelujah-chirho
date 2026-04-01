@@ -2136,6 +2136,30 @@ barChirho = hIsTerminalDevice\n",
 }
 
 #[test]
+fn frontend_data_time_format_parse_helpers_typecheck_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module TimeFormatMiniChirho where\n\
+import Data.Time\n\
+import Data.Time.Format\n\
+parseDayChirho :: Day\n\
+parseDayChirho = parseTimeOrError True defaultTimeLocale \"%Y-%m-%d\" \"2020-01-01\"\n\
+readDayChirho :: ReadS Day\n\
+readDayChirho = readSTime True defaultTimeLocale \"%Y-%m-%d\"\n\
+parseMaybeDayChirho :: Maybe Day\n\
+parseMaybeDayChirho = parseTimeM True defaultTimeLocale \"%Y-%m-%d\" \"2020-01-01\"\n",
+        &mut source_map_chirho,
+        "TimeFormatMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Time.Format parse helpers should typecheck for Day: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_from_integral_can_target_word64_in_subtraction_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

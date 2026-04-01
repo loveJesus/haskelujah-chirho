@@ -1040,6 +1040,24 @@ main = 0
 }
 
 #[test]
+fn cpp_extension_min_version_time_chirho() {
+    let src_chirho = "\
+{-# LANGUAGE CPP #-}
+module Test where
+#if MIN_VERSION_time(1,9,0)
+main = 42
+#else
+main = 0
+#endif
+";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    assert_eq!(
+        eval_source_chirho(src_chirho, &mut sm_chirho, "CPPTimeChirho.hs", None).unwrap(),
+        ValueChirho::IntChirho(42)
+    );
+}
+
+#[test]
 fn cpp_extension_min_version_template_haskell_chirho() {
     let src_chirho = "\
 {-# LANGUAGE CPP #-}
