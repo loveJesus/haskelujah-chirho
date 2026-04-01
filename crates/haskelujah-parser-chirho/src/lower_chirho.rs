@@ -1500,6 +1500,20 @@ impl LowerCtxChirho {
                             current_qual_parts_chirho.clear();
                         } else if tok_chirho.kind_chirho() == TokenKindChirho::LeftArrowChirho {
                             current_qual_parts_chirho.push(QualPartChirho::ArrowChirho);
+                        } else if matches!(
+                            tok_chirho.kind_chirho(),
+                            TokenKindChirho::ConSymChirho
+                                | TokenKindChirho::QualifiedConSymChirho
+                        ) {
+                            current_qual_parts_chirho.push(QualPartChirho::PatOpChirho(
+                                self.name_from_token_chirho(
+                                    tok_chirho,
+                                    self.span_chirho(
+                                        child_chirho.start_chirho,
+                                        child_chirho.end_chirho,
+                                    ),
+                                ),
+                            ));
                         }
                     }
                 }
@@ -6426,6 +6440,24 @@ impl LowerCtxChirho {
                                 {
                                     current_qual_parts_chirho.push(QualPartChirho::ArrowChirho);
                                 }
+                                GreenElementChirho::TokenChirho(tok_chirho)
+                                    if past_pipe_chirho
+                                        && matches!(
+                                            tok_chirho.kind_chirho(),
+                                            TokenKindChirho::ConSymChirho
+                                                | TokenKindChirho::QualifiedConSymChirho
+                                        ) =>
+                                {
+                                    current_qual_parts_chirho.push(QualPartChirho::PatOpChirho(
+                                        self.name_from_token_chirho(
+                                            tok_chirho,
+                                            self.span_chirho(
+                                                child_chirho.start_chirho,
+                                                child_chirho.end_chirho,
+                                            ),
+                                        ),
+                                    ));
+                                }
                                 GreenElementChirho::NodeChirho(n_chirho) => {
                                     if !past_pipe_chirho {
                                         let expr_chirho = self
@@ -7462,6 +7494,23 @@ impl LowerCtxChirho {
                         && !in_guard_body_chirho
                     {
                         current_qual_parts_chirho.push(QualPartChirho::ArrowChirho);
+                    } else if saw_pipe_chirho
+                        && !in_guard_body_chirho
+                        && matches!(
+                            tok_chirho.kind_chirho(),
+                            TokenKindChirho::ConSymChirho
+                                | TokenKindChirho::QualifiedConSymChirho
+                        )
+                    {
+                        current_qual_parts_chirho.push(QualPartChirho::PatOpChirho(
+                            self.name_from_token_chirho(
+                                tok_chirho,
+                                self.span_chirho(
+                                    child_chirho.start_chirho,
+                                    child_chirho.end_chirho,
+                                ),
+                            ),
+                        ));
                     } else if tok_chirho.kind_chirho() == TokenKindChirho::RightArrowChirho {
                         if saw_pipe_chirho {
                             if let Some(qual_chirho) = self
@@ -8743,26 +8792,14 @@ impl LowerCtxChirho {
         if let Some(pos_chirho) = arrow_pos_chirho {
             // Generator: parts before arrow form the pattern (as expr),
             // parts after arrow form the source expression.
-            let mut pat_parts_chirho: Vec<PatChirho> = parts_chirho
+            let pat_parts_chirho = parts_chirho
                 .iter()
                 .take(pos_chirho)
-                .filter_map(|p_chirho| match p_chirho {
-                    QualPartChirho::PatChirho(pat_chirho) => Some(pat_chirho.clone()),
-                    QualPartChirho::ExprChirho(e_chirho) => {
-                        Some(Self::expr_to_pat_chirho(e_chirho))
-                    }
-                    QualPartChirho::ArrowChirho => None,
-                })
-                .collect();
-            let pat_chirho = if pat_parts_chirho.is_empty() {
-                PatChirho::WildcardChirho(span_chirho)
-            } else {
-                let mut merged_pat_chirho = pat_parts_chirho.remove(0);
-                if let PatChirho::ConChirho { args_chirho, .. } = &mut merged_pat_chirho {
-                    args_chirho.extend(pat_parts_chirho);
-                }
-                merged_pat_chirho
-            };
+                .cloned()
+                .collect::<Vec<_>>();
+            let pat_chirho = self
+                .fold_qual_pat_parts_to_pat_chirho(&pat_parts_chirho, span_chirho)
+                .unwrap_or(PatChirho::WildcardChirho(span_chirho));
 
             let src_exprs_chirho: Vec<ExprChirho> = parts_chirho
                 .iter()
@@ -8795,6 +8832,45 @@ impl LowerCtxChirho {
                 self.fold_qual_expr_parts_to_expr_chirho(exprs_chirho, span_chirho)?;
             Some(StmtChirho::ExprChirho(expr_chirho))
         }
+    }
+
+    fn fold_qual_pat_parts_to_pat_chirho(
+        &self,
+        parts_chirho: &[QualPartChirho],
+        span_chirho: SpanChirho,
+    ) -> Option<PatChirho> {
+        let mut pats_chirho = Vec::new();
+        let mut ops_chirho = Vec::new();
+
+        for part_chirho in parts_chirho {
+            match part_chirho {
+                QualPartChirho::PatChirho(pat_chirho) => pats_chirho.push(pat_chirho.clone()),
+                QualPartChirho::ExprChirho(expr_chirho) => {
+                    pats_chirho.push(Self::expr_to_pat_chirho(expr_chirho));
+                }
+                QualPartChirho::PatOpChirho(op_chirho) => ops_chirho.push(op_chirho.clone()),
+                QualPartChirho::ArrowChirho => {}
+            }
+        }
+
+        if pats_chirho.is_empty() {
+            return None;
+        }
+
+        if pats_chirho.len() == 2 && ops_chirho.len() == 1 {
+            return Some(PatChirho::InfixConChirho {
+                left_chirho: Box::new(pats_chirho.remove(0)),
+                op_chirho: ops_chirho.remove(0),
+                right_chirho: Box::new(pats_chirho.remove(0)),
+                span_chirho,
+            });
+        }
+
+        let mut merged_pat_chirho = pats_chirho.remove(0);
+        if let PatChirho::ConChirho { args_chirho, .. } = &mut merged_pat_chirho {
+            args_chirho.extend(pats_chirho);
+        }
+        Some(merged_pat_chirho)
     }
 
     /// Convert a parsed expression back to a pattern.
@@ -8908,11 +8984,14 @@ impl LowerCtxChirho {
 // ---------------------------------------------------------------------------
 
 /// A part of a list comprehension qualifier, used during CST→AST lowering.
+#[derive(Clone)]
 enum QualPartChirho {
     /// An expression or pattern.
     ExprChirho(ExprChirho),
     /// A real pattern parsed on the left of `<-`.
     PatChirho(PatChirho),
+    /// An infix constructor operator captured inside a generator pattern.
+    PatOpChirho(NameChirho),
     /// The `<-` arrow token separating pattern from source.
     ArrowChirho,
 }
@@ -14287,6 +14366,24 @@ class Describable a where
                     2,
                     "pattern guard should lower to case with fallback"
                 );
+                match &alts_chirho[0].pat_chirho {
+                    PatChirho::InfixConChirho {
+                        left_chirho,
+                        op_chirho,
+                        right_chirho,
+                        ..
+                    } => {
+                        assert!(
+                            matches!(left_chirho.as_ref(), PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "msgChirho")
+                        );
+                        assert_eq!(op_chirho.text_chirho(), ":");
+                        assert!(matches!(right_chirho.as_ref(), PatChirho::WildcardChirho(_)));
+                    }
+                    other_chirho => panic!(
+                        "expected infix constructor pattern from pattern guard, got {:?}",
+                        other_chirho
+                    ),
+                }
             }
             other_chirho => panic!(
                 "expected top-level case from pattern guard lowering, got {:?}",
