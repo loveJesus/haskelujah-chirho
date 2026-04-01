@@ -4167,6 +4167,30 @@ fn frontend_imported_user_class_methods_seed_real_schemes_chirho() {
 }
 
 #[test]
+fn frontend_imported_sibling_module_instances_satisfy_constraints_chirho() {
+    use crate::compile_modules_chirho;
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let sources_chirho: Vec<(&str, &str)> = vec![
+        (
+            "ParseErrorProviderChirho.hs",
+            "module ParseErrorProviderChirho (ParseErrorChirho(..)) where\ndata ParseErrorChirho = ParseErrorChirho\ninstance Show ParseErrorChirho where\n  show ParseErrorChirho = \"ok\"\n",
+        ),
+        (
+            "ParseErrorConsumerChirho.hs",
+            "module ParseErrorConsumerChirho where\nimport ParseErrorProviderChirho\nrenderParseErrorChirho :: String\nrenderParseErrorChirho = show ParseErrorChirho\n",
+        ),
+    ];
+
+    let results_chirho = compile_modules_chirho(&sources_chirho, &mut source_map_chirho);
+    assert!(
+        results_chirho.is_ok(),
+        "imported sibling-module instances should satisfy downstream constraints: {:?}",
+        results_chirho.err()
+    );
+}
+
+#[test]
 fn multi_module_import_chirho() {
     use crate::compile_modules_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();

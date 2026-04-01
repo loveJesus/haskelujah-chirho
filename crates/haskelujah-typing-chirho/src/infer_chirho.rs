@@ -462,6 +462,16 @@ impl InferCtxChirho {
         }
     }
 
+    pub fn new_with_imported_class_env_chirho(imported_class_env_chirho: &ClassEnvChirho) -> Self {
+        let mut ctx_chirho = Self::new_chirho();
+        if !imported_class_env_chirho.classes_chirho.is_empty()
+            || !imported_class_env_chirho.instances_chirho.is_empty()
+        {
+            ctx_chirho.class_env_chirho = imported_class_env_chirho.clone();
+        }
+        ctx_chirho
+    }
+
     fn set_imported_type_name_preferences_chirho(
         &mut self,
         safe_unqualified_imported_type_names_chirho: &HashSet<String>,
@@ -18545,7 +18555,31 @@ pub fn infer_module_with_imports_type_synonyms_and_families_chirho(
     safe_unqualified_imported_type_names_chirho: &HashSet<String>,
     preferred_qualified_type_names_chirho: &HashMap<String, String>,
 ) -> InferResultChirho {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let imported_class_env_chirho = ClassEnvChirho::new_chirho();
+    infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
+        module_chirho,
+        imported_types_chirho,
+        imported_type_synonyms_chirho,
+        imported_type_families_chirho,
+        &imported_class_env_chirho,
+        imported_record_field_names_chirho,
+        safe_unqualified_imported_type_names_chirho,
+        preferred_qualified_type_names_chirho,
+    )
+}
+
+pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
+    module_chirho: &ModuleChirho,
+    imported_types_chirho: &HashMap<String, SchemeChirho>,
+    imported_type_synonyms_chirho: &HashMap<String, (Vec<String>, TypeChirho)>,
+    imported_type_families_chirho: &TypeFamilyEnvChirho,
+    imported_class_env_chirho: &ClassEnvChirho,
+    imported_record_field_names_chirho: &HashMap<String, Vec<String>>,
+    safe_unqualified_imported_type_names_chirho: &HashSet<String>,
+    preferred_qualified_type_names_chirho: &HashMap<String, String>,
+) -> InferResultChirho {
+    let mut ctx_chirho =
+        InferCtxChirho::new_with_imported_class_env_chirho(imported_class_env_chirho);
     ctx_chirho.set_imported_type_name_preferences_chirho(
         safe_unqualified_imported_type_names_chirho,
         preferred_qualified_type_names_chirho,
