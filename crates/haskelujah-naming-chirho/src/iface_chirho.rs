@@ -15295,11 +15295,15 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "registerTimeout",
             "unregisterTimeout",
             "updateTimeout",
+            "getSystemEventManager",
+            "getSystemTimerManager",
+            "registerFd",
+            "unregisterFd",
         ] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["TimerManager", "TimeoutKey"] {
+        for name_chirho in &["TimerManager", "TimeoutKey", "EventManager", "FdKey"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -15309,6 +15313,28 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         });
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "GHC.Event.TimerManager".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // GHC.Compact
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &[
+            "compact", "compactAdd", "compactAddWithSharing",
+            "compactSize", "getCompact", "isCompact",
+        ] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        let (k_chirho, v_chirho) = mk_type_chirho("Compact", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Compact".to_string(),
+            exports_chirho: exports_chirho.clone(),
+        });
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "GHC.Compact.Serialized".to_string(),
             exports_chirho,
         });
     }
