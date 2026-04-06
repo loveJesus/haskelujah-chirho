@@ -2258,6 +2258,27 @@ class GFiniteMiniChirho f where\n\
 }
 
 #[test]
+fn frontend_type_binder_type_runtime_rep_annotation_preserves_newtype_application_kind_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "{-# LANGUAGE PolyKinds #-}\n{-# LANGUAGE KindSignatures #-}\nmodule CodeKindMiniChirho where\nimport Data.Kind (Type)\n\
+data RuntimeRep\n\
+data TYPE (rChirho :: RuntimeRep)\n\
+newtype CodeChirho mChirho (aChirho :: TYPE rChirho) = CodeChirho (mChirho aChirho)\n\
+valueChirho :: CodeChirho Maybe Int\n\
+valueChirho = undefined\n",
+        &mut source_map_chirho,
+        "CodeKindMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "TYPE r binder annotations should not leave higher-kinded newtypes one argument short: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_fractional_literal_unifies_with_rational_annotation_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

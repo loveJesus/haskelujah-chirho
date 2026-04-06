@@ -1839,12 +1839,12 @@ impl LowerCtxChirho {
                         && !saw_equals_chirho
                     {
                         // Standalone kind signature: `data T :: K where`
-                        // Collect token atoms between `::` and `where`/`=`, then
-                        // build a TypeChirho from them (the CST stores these as
-                        // flat tokens, not a parsed type node).
+                        // Collect kind segments between top-level arrows and
+                        // preserve application inside each segment so
+                        // signatures like `TYPE r -> Type` lower as
+                        // `(TYPE r) -> Type` rather than `TYPE -> r -> Type`.
                         saw_double_colon_chirho = true;
-                        let mut atoms_chirho: Vec<TypeChirho> = Vec::new();
-                        let mut arrows_chirho: Vec<usize> = Vec::new(); // indices into atoms where -> appears
+                        let mut segments_chirho: Vec<Vec<TypeChirho>> = vec![Vec::new()];
                         let mut j_chirho = idx_chirho + 1;
                         while j_chirho < children_chirho.len() {
                             let kc_chirho = &children_chirho[j_chirho];
@@ -1861,7 +1861,7 @@ impl LowerCtxChirho {
                                     if kt_chirho.kind_chirho()
                                         == TokenKindChirho::RightArrowChirho =>
                                 {
-                                    arrows_chirho.push(atoms_chirho.len());
+                                    segments_chirho.push(Vec::new());
                                 }
                                 GreenElementChirho::TokenChirho(kt_chirho)
                                     if kt_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
@@ -1873,9 +1873,15 @@ impl LowerCtxChirho {
                                     let nm_chirho =
                                         self.name_from_token_chirho(kt_chirho, s_chirho);
                                     if kt_chirho.kind_chirho() == TokenKindChirho::ConIdChirho {
-                                        atoms_chirho.push(TypeChirho::ConChirho(nm_chirho));
+                                        segments_chirho
+                                            .last_mut()
+                                            .expect("kind sig segment should exist")
+                                            .push(TypeChirho::ConChirho(nm_chirho));
                                     } else {
-                                        atoms_chirho.push(TypeChirho::VarChirho(nm_chirho));
+                                        segments_chirho
+                                            .last_mut()
+                                            .expect("kind sig segment should exist")
+                                            .push(TypeChirho::VarChirho(nm_chirho));
                                     }
                                 }
                                 GreenElementChirho::TokenChirho(kt_chirho)
@@ -1887,44 +1893,51 @@ impl LowerCtxChirho {
                                 {
                                     let s_chirho = self
                                         .span_chirho(kc_chirho.start_chirho, kc_chirho.end_chirho);
-                                    atoms_chirho.push(TypeChirho::ConChirho(
-                                        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                                            "*", s_chirho,
-                                        )),
-                                    ));
+                                    segments_chirho
+                                        .last_mut()
+                                        .expect("kind sig segment should exist")
+                                        .push(TypeChirho::ConChirho(NameChirho::RawChirho(
+                                            RawNameChirho::unqualified_chirho("*", s_chirho),
+                                        )));
                                 }
                                 GreenElementChirho::NodeChirho(_) => {
                                     // If the parser wrapped part of the kind sig
                                     // in a node, lower it as a type.
-                                    atoms_chirho.push(self.lower_type_from_child_chirho(kc_chirho));
+                                    segments_chirho
+                                        .last_mut()
+                                        .expect("kind sig segment should exist")
+                                        .push(self.lower_type_from_child_chirho(kc_chirho));
                                 }
                                 _ => {}
                             }
                             j_chirho += 1;
                         }
-                        // Build the kind type: fold right over arrows.
-                        // `N -> Type` with atoms=[N, Type], arrows=[1 position]
-                        // becomes FunChirho { arg: N, result: Type }.
-                        if !atoms_chirho.is_empty() {
-                            if arrows_chirho.is_empty() {
-                                // Single atom, no arrows (e.g. `data T :: Type where`).
-                                kind_sig_chirho = Some(atoms_chirho.remove(0));
-                            } else {
-                                // Split atoms by arrow positions and fold right.
-                                // atoms_chirho contains the types between arrows.
-                                // arrows_chirho[i] = the atom index at which arrow i occurs
-                                // (arrows separate atoms, so atom count = arrow count + 1).
-                                let mut result_chirho = atoms_chirho.pop().unwrap();
-                                for a_chirho in atoms_chirho.into_iter().rev() {
-                                    result_chirho = TypeChirho::FunChirho {
-                                        arg_chirho: Box::new(a_chirho),
-                                        mult_chirho: None,
-                                        result_chirho: Box::new(result_chirho),
-                                        span_chirho: span_chirho,
-                                    };
+                        let fold_segment_chirho = |segment_chirho: Vec<TypeChirho>| -> Option<TypeChirho> {
+                            let mut iter_chirho = segment_chirho.into_iter();
+                            let first_chirho = iter_chirho.next()?;
+                            Some(iter_chirho.fold(first_chirho, |acc_chirho, arg_chirho| {
+                                TypeChirho::AppChirho {
+                                    fun_chirho: Box::new(acc_chirho),
+                                    arg_chirho: Box::new(arg_chirho),
+                                    span_chirho,
                                 }
-                                kind_sig_chirho = Some(result_chirho);
+                            }))
+                        };
+                        let mut folded_segments_chirho: Vec<TypeChirho> = segments_chirho
+                            .into_iter()
+                            .filter_map(fold_segment_chirho)
+                            .collect();
+                        if !folded_segments_chirho.is_empty() {
+                            let mut result_chirho = folded_segments_chirho.pop().unwrap();
+                            for arg_chirho in folded_segments_chirho.into_iter().rev() {
+                                result_chirho = TypeChirho::FunChirho {
+                                    arg_chirho: Box::new(arg_chirho),
+                                    mult_chirho: None,
+                                    result_chirho: Box::new(result_chirho),
+                                    span_chirho,
+                                };
                             }
+                            kind_sig_chirho = Some(result_chirho);
                         }
                         idx_chirho = j_chirho;
                         continue;
@@ -8635,6 +8648,17 @@ impl LowerCtxChirho {
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 Self::try_type_to_ast_kind_chirho(inner_chirho)
             }
+            TypeChirho::AppChirho { fun_chirho, .. }
+                if matches!(
+                    fun_chirho.as_ref(),
+                    TypeChirho::ConChirho(name_chirho)
+                        if name_chirho.text_chirho() == "TYPE"
+                ) =>
+            {
+                // Levity-polymorphic binder kinds like `a :: TYPE r` are
+                // represented as `Type` in our current kind AST.
+                Some(AstKindChirho::StarChirho)
+            }
             // Type applications, lists, tuples etc. can't be represented as
             // AstKindChirho — return None so the kind checker infers the kind.
             _ => None,
@@ -12954,6 +12978,26 @@ foo = 1
                 assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "a");
                 assert_eq!(
                     type_vars_chirho[0].kind_annotation_chirho,
+                    Some(AstKindChirho::StarChirho)
+                );
+            }
+            other_chirho => panic!("expected NewtypeDecl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_kind_sig_newtype_type_application_maps_to_star_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\nnewtype CodeChirho mChirho (aChirho :: TYPE rChirho) = CodeChirho (mChirho aChirho)\n",
+        );
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::NewtypeDeclChirho {
+                type_vars_chirho, ..
+            } => {
+                assert_eq!(type_vars_chirho.len(), 2);
+                assert_eq!(type_vars_chirho[1].name_chirho.text_chirho(), "aChirho");
+                assert_eq!(
+                    type_vars_chirho[1].kind_annotation_chirho,
                     Some(AstKindChirho::StarChirho)
                 );
             }
