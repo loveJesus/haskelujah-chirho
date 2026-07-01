@@ -45,7 +45,7 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 |---|---|
 | GHC Compat | **833/938 (88.8%)** typecheck/should_compile |
 | Curated Tests | **537/537 (100%)** compile-and-run correctness tests |
-| Total Tests | **2,500+ passing**, 0 failures |
+| Total Tests | Cached/live pass and failure counts from `spec-chirho/stats-chirho.sh`; do not claim zero failures without a fresh failure count |
 | Hackage Packages | **140 verified** (strict 50s timeout) including **parsec** (25 modules) + **mtl** (24 modules) + **QuickCheck** (18 modules) + **binary** + **cereal** + **hashable** + **multiset** + **lens-family-core** |
 | Workspace | 25 crates (compiler + MCP + LSP + GUI + editor + runtime) |
 | Codebase | ~176,000 lines of Rust |
@@ -53,7 +53,7 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |
 
-> Run `bash spec-chirho/stats-chirho.sh` for live stats from the repo.
+> Run `bash spec-chirho/stats-chirho.sh` for cached stats, or `bash spec-chirho/stats-chirho.sh --run-tests` to refresh pass/fail/ignored counts from `cargo test --workspace --quiet`.
 
 ## Features
 
