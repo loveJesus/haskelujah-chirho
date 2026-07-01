@@ -7337,7 +7337,10 @@ impl DictPassCtxChirho {
             let x_chirho = self.fresh_binder_chirho("x", char_ty_chirho.clone());
             let rhs_chirho = CoreExprChirho::LamChirho {
                 binder_chirho: x_chirho.clone(),
-                body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "ord#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
+                }),
             };
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {

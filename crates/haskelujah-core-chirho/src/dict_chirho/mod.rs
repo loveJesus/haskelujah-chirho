@@ -342,6 +342,8 @@ impl DictPassCtxChirho {
                     "+#" | "-#" | "*#" | "div#" | "mod#" | "negate#" | "readInt#" => {
                         Some("Int".to_string())
                     }
+                    "chr#" => Some("Char".to_string()),
+                    "ord#" => Some("Int".to_string()),
                     "+.#" | "-.#" | "*.#" | "/.#" | "negateFloat#" | "recip#" | "readFloat#" => {
                         Some("Double".to_string())
                     }
@@ -410,7 +412,11 @@ impl DictPassCtxChirho {
                             "fromEnum" | "ord" => {
                                 return Some("Int".to_string());
                             }
-                            // :: Int -> a (for toEnum/chr, we don't know the
+                            // :: Int -> Char
+                            "chr" => {
+                                return Some("Char".to_string());
+                            }
+                            // :: Int -> a (for toEnum, we don't know the
                             // result type without context, so skip)
                             _ => {}
                         }

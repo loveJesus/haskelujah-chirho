@@ -889,6 +889,23 @@ fn eval_ord_chr_chirho() {
 }
 
 #[test]
+fn eval_from_enum_chr_dispatches_char_instance_chirho() {
+    use crate::eval_source_chirho;
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(
+        "module Test where\nmain = fromEnum (chr 97)\n",
+        &mut source_map_chirho,
+        "TestChirho.hs",
+        None,
+    )
+    .expect("fromEnum (chr 97) should evaluate through Enum Char");
+    assert_eq!(
+        result_chirho,
+        haskelujah_runtime_chirho::ValueChirho::IntChirho(97)
+    );
+}
+
+#[test]
 fn eval_sin_cos_chirho() {
     use crate::eval_source_chirho;
     // sin 0.0 = 0.0
