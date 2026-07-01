@@ -8525,16 +8525,54 @@ impl LowerCtxChirho {
             _ => return None,
         }
 
-        // Parse the kind expression starting at idx_chirho+3, stop at `)`
+        // Parse the kind expression starting at idx_chirho+3, stop at `)`.
+        // `TYPE r` is a kind application, but our flat kind-token parser only
+        // represents AstKindChirho and would otherwise stop after `TYPE`.
         let kind_start_chirho = idx_chirho + 3;
-        let (kind_chirho, end_idx_chirho) =
-            self.parse_kind_tokens_chirho(children_chirho, kind_start_chirho)?;
-
-        // children_chirho[end_idx_chirho] must be `)`
-        if end_idx_chirho >= children_chirho.len() {
+        let mut close_idx_chirho = kind_start_chirho;
+        let mut depth_chirho = 0usize;
+        while close_idx_chirho < children_chirho.len() {
+            match children_chirho[close_idx_chirho].element_chirho {
+                GreenElementChirho::TokenChirho(t_chirho)
+                    if t_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho =>
+                {
+                    depth_chirho += 1;
+                }
+                GreenElementChirho::TokenChirho(t_chirho)
+                    if t_chirho.kind_chirho() == TokenKindChirho::RightParenChirho =>
+                {
+                    if depth_chirho == 0 {
+                        break;
+                    }
+                    depth_chirho -= 1;
+                }
+                _ => {}
+            }
+            close_idx_chirho += 1;
+        }
+        if close_idx_chirho >= children_chirho.len() {
             return None;
         }
-        match children_chirho[end_idx_chirho].element_chirho {
+
+        let kind_chirho = match children_chirho[kind_start_chirho].element_chirho {
+            GreenElementChirho::TokenChirho(t_chirho)
+                if t_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                    && t_chirho.text_chirho() == "TYPE" =>
+            {
+                AstKindChirho::StarChirho
+            }
+            _ => {
+                let (parsed_kind_chirho, end_idx_chirho) =
+                    self.parse_kind_tokens_chirho(children_chirho, kind_start_chirho)?;
+                if end_idx_chirho != close_idx_chirho {
+                    return None;
+                }
+                parsed_kind_chirho
+            }
+        };
+
+        // children_chirho[close_idx_chirho] must be `)`
+        match children_chirho[close_idx_chirho].element_chirho {
             GreenElementChirho::TokenChirho(t_chirho)
                 if t_chirho.kind_chirho() == TokenKindChirho::RightParenChirho => {}
             _ => return None,
@@ -8545,7 +8583,7 @@ impl LowerCtxChirho {
         let tv_chirho = TyVarChirho::annotated_chirho(name_chirho, kind_chirho);
 
         // Total tokens consumed: from `(` through `)` inclusive
-        let consumed_chirho = end_idx_chirho - idx_chirho + 1;
+        let consumed_chirho = close_idx_chirho - idx_chirho + 1;
         Some((tv_chirho, consumed_chirho))
     }
 

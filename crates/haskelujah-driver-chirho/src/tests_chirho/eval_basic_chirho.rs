@@ -6038,11 +6038,9 @@ fn eval_lambda_con_pattern_chirho() {
 fn eval_map_section_subtract_chirho() {
     // map (subtract 1) [10, 20, 30] → [9, 19, 29], sum → 57
     // (subtract is \a b -> b - a in Prelude)
-    // For now use a lambda instead since subtract isn't defined
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho =
-        "module Test where\nsubtract a b = b - a\nmain = sum (map (subtract 1) [10, 20, 30])\n";
+    let src_chirho = "module Test where\nmain = sum (map (subtract 1) [10, 20, 30])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -6050,6 +6048,21 @@ fn eval_map_section_subtract_chirho() {
             haskelujah_runtime_chirho::ValueChirho::IntChirho(57)
         ),
         Err(e_chirho) => panic!("map subtract: {}", e_chirho),
+    }
+}
+
+#[test]
+fn eval_prelude_gcd_lcm_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "module Test where\nmain = gcd 12 18 + lcm 12 18\n";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(42)
+        ),
+        Err(e_chirho) => panic!("gcd/lcm should use Prelude bodies: {}", e_chirho),
     }
 }
 
