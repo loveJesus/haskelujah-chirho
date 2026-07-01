@@ -6127,6 +6127,42 @@ fn eval_fmap_dispatch_chirho() {
     }
 }
 
+#[test]
+fn eval_applicative_either_dispatch_chirho() {
+    use crate::eval_source_chirho;
+    let cases_chirho: [(&str, i64); 4] = [
+        (
+            "main = case (Right (+1) <*> Right 2 :: Either Int Int) of { Right x -> x; Left e -> e }\n",
+            3,
+        ),
+        (
+            "main = case (Left 9 <*> Right 2 :: Either Int Int) of { Right x -> x; Left e -> e }\n",
+            9,
+        ),
+        (
+            "main = case (Right (+1) <*> Left 8 :: Either Int Int) of { Right x -> x; Left e -> e }\n",
+            8,
+        ),
+        (
+            "main = case (Just (+1) <*> Just 2) of { Just x -> x; Nothing -> 0 }\n",
+            3,
+        ),
+    ];
+    for (body_chirho, want_chirho) in cases_chirho {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = format!("module Test where\n{body_chirho}");
+        let result_chirho = eval_source_chirho(&src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(
+                val_chirho,
+                haskelujah_runtime_chirho::ValueChirho::IntChirho(want_chirho),
+                "unexpected Applicative result for: {body_chirho}"
+            ),
+            Err(e_chirho) => panic!("Either Applicative should dispatch: {e_chirho}"),
+        }
+    }
+}
+
 // ── Where with multiple helper functions ─────────────────────────
 
 // ── Where with multiple helper functions ─────────────────────────

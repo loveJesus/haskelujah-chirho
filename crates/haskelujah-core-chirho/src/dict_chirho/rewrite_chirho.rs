@@ -328,24 +328,37 @@ impl DictPassCtxChirho {
             if let Some((class_name_chirho, sel_id_chirho)) =
                 self.method_selectors_chirho.get(name_chirho)
             {
-                // Try type-specific instance dict first
+                // Try type-specific instance dict first. For higher-kinded
+                // classes, value inference sees keys like `Either Int Int`
+                // while generated dictionaries are keyed by the type head
+                // (`Either`, `Maybe`, `[]`).
                 if let Some(type_key_chirho) = type_key_override_chirho {
-                    if let Some(dict_id_chirho) = local_instance_dicts_chirho
-                        .get(&(class_name_chirho.clone(), type_key_chirho.to_string()))
-                    {
-                        return CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(CoreExprChirho::VarChirho(*sel_id_chirho)),
-                            arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
-                        };
+                    let mut candidate_keys_chirho = vec![type_key_chirho.to_string()];
+                    if Self::should_normalize_instance_head_for_class_chirho(class_name_chirho) {
+                        let normalized_chirho =
+                            Self::normalize_instance_head_key_chirho(type_key_chirho);
+                        if normalized_chirho != type_key_chirho {
+                            candidate_keys_chirho.push(normalized_chirho);
+                        }
                     }
-                    if let Some(dict_id_chirho) = self
-                        .instance_dicts_chirho
-                        .get(&(class_name_chirho.clone(), type_key_chirho.to_string()))
-                    {
-                        return CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(CoreExprChirho::VarChirho(*sel_id_chirho)),
-                            arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
-                        };
+                    for candidate_key_chirho in candidate_keys_chirho {
+                        if let Some(dict_id_chirho) = local_instance_dicts_chirho
+                            .get(&(class_name_chirho.clone(), candidate_key_chirho.clone()))
+                        {
+                            return CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(CoreExprChirho::VarChirho(*sel_id_chirho)),
+                                arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
+                            };
+                        }
+                        if let Some(dict_id_chirho) = self
+                            .instance_dicts_chirho
+                            .get(&(class_name_chirho.clone(), candidate_key_chirho))
+                        {
+                            return CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(CoreExprChirho::VarChirho(*sel_id_chirho)),
+                                arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
+                            };
+                        }
                     }
                 }
 
@@ -375,8 +388,21 @@ impl DictPassCtxChirho {
         }
     }
 
-    /// Dispatch a higher-kinded class method (currently `fmap`) to the correct
-    /// per-type instance body based on the type key of its dispatch argument.
+    fn should_normalize_instance_head_for_class_chirho(class_name_chirho: &str) -> bool {
+        matches!(
+            class_name_chirho,
+            "Functor"
+                | "Applicative"
+                | "Monad"
+                | "Foldable"
+                | "Traversable"
+                | "Alternative"
+                | "MonadPlus"
+        )
+    }
+
+    /// Dispatch a higher-kinded class method to the correct per-type instance
+    /// body based on the type key of its dispatch argument.
     /// The method otherwise resolves to a monomorphic default binding, which is
     /// left in place (returns `None`) when the key cannot be determined — so IO
     /// / unknown cases keep their existing behaviour.
@@ -1121,8 +1147,15 @@ impl DictPassCtxChirho {
             &local_instance_dicts_chirho,
         );
 
-        // Wrap in superclass extraction let-bindings (inside dict lambdas)
+        // Wrap in only the superclass extraction let-bindings that the
+        // rewritten body actually references. Unused extraction lets can keep
+        // an otherwise-resolved entry point abstracted over a dead subclass
+        // dictionary.
+        let used_super_ids_chirho = crate::simplify_chirho::free_vars_chirho(&rhs_chirho);
         for (binder_chirho, extraction_chirho) in super_let_binds_chirho.iter().rev() {
+            if !used_super_ids_chirho.contains(&binder_chirho.id_chirho) {
+                continue;
+            }
             rhs_chirho = CoreExprChirho::LetChirho {
                 rec_chirho: false,
                 binds_chirho: vec![(binder_chirho.clone(), extraction_chirho.clone())],
