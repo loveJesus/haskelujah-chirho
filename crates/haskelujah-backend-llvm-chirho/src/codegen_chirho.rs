@@ -1426,6 +1426,10 @@ impl LlvmCodegenChirho {
         writeln!(self.output_chirho, "; target: native").unwrap();
         writeln!(self.output_chirho).unwrap();
 
+        let has_toplevel_show_chirho = module_chirho.bindings_chirho.iter().any(|binding_chirho| {
+            mangle_name_chirho(&binding_chirho.binder_chirho.name_chirho) == "haskelujah_show"
+        });
+
         // Declare external functions we might call
         writeln!(
             self.output_chirho,
@@ -1502,11 +1506,23 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         // Fallback: if print's show call isn't elided, provide a default
-        writeln!(
-            self.output_chirho,
-            "@haskelujah_show = alias i64 (i64), ptr @haskelujah_show_int_chirho"
-        )
-        .unwrap();
+        // wrapper. LLVM aliases must point at definitions, but the RTS show
+        // helpers are external declarations.
+        if !has_toplevel_show_chirho {
+            writeln!(
+                self.output_chirho,
+                "define i64 @haskelujah_show(i64 %value_chirho) {{"
+            )
+            .unwrap();
+            writeln!(self.output_chirho, "entry:").unwrap();
+            writeln!(
+                self.output_chirho,
+                "  %shown_chirho = call i64 @haskelujah_show_int_chirho(i64 %value_chirho)"
+            )
+            .unwrap();
+            writeln!(self.output_chirho, "  ret i64 %shown_chirho").unwrap();
+            writeln!(self.output_chirho, "}}").unwrap();
+        }
         writeln!(
             self.output_chirho,
             "declare i64 @haskelujah_put_str_chirho(i64)"
@@ -2461,18 +2477,10 @@ impl LlvmCodegenChirho {
                         "-#" => "sub",
                         "*#" => "mul",
                         "div#" => {
-                            return self.emit_floor_div_mod_chirho(
-                                &lhs_chirho,
-                                &rhs_chirho,
-                                false,
-                            );
+                            return self.emit_floor_div_mod_chirho(&lhs_chirho, &rhs_chirho, false);
                         }
                         "mod#" => {
-                            return self.emit_floor_div_mod_chirho(
-                                &lhs_chirho,
-                                &rhs_chirho,
-                                true,
-                            );
+                            return self.emit_floor_div_mod_chirho(&lhs_chirho, &rhs_chirho, true);
                         }
                         "quot#" => "sdiv",
                         "rem#" => "srem",
@@ -6037,6 +6045,30 @@ mod tests_chirho {
         assert!(ir_chirho.contains("define i64 @haskelujah__u003e_u003e_u003d(i64 %v1, i64 %v2)"));
         assert!(ir_chirho.contains("inttoptr i64 %v2 to ptr"));
         assert!(ir_chirho.contains("call i64 %t"));
+    }
+
+    #[test]
+    fn compile_executable_show_fallback_is_definition_not_alias_chirho() {
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Main".to_string(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: dummy_binder_chirho("main", 0),
+                rhs_chirho: int_lit_chirho(42),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: HashMap::new(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+        assert!(ir_chirho.contains("define i64 @haskelujah_show(i64 %value_chirho)"));
+        assert!(ir_chirho.contains("call i64 @haskelujah_show_int_chirho"));
+        assert!(
+            !ir_chirho.contains("@haskelujah_show = alias"),
+            "LLVM aliases cannot target external declarations:\n{ir_chirho}"
+        );
     }
 
     #[test]
