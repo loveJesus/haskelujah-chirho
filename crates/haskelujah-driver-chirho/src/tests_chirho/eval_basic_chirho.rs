@@ -6066,6 +6066,36 @@ fn eval_prelude_gcd_lcm_chirho() {
     }
 }
 
+#[test]
+fn eval_prelude_divmod_quotrem_splitat_chirho() {
+    use crate::eval_source_chirho;
+    // divMod floors (div#/mod#), quotRem truncates (quot#/rem#), and splitAt
+    // reuses take/drop — each destructured to a distinctive Int result.
+    let cases_chirho: [(&str, i64); 3] = [
+        ("main = case divMod (-7) 2 of (q,r) -> q*10+r\n", -39),
+        ("main = case quotRem (-7) 2 of (q,r) -> q*10+r\n", -31),
+        (
+            "main = case splitAt 2 [1,2,3,4,5] of (l,r) -> sum l * 100 + sum r\n",
+            312,
+        ),
+    ];
+    for (body_chirho, want_chirho) in cases_chirho {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = format!("module Test where\n{body_chirho}");
+        let result_chirho = eval_source_chirho(&src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(
+                val_chirho,
+                haskelujah_runtime_chirho::ValueChirho::IntChirho(want_chirho),
+                "unexpected result for: {body_chirho}"
+            ),
+            Err(e_chirho) => {
+                panic!("divMod/quotRem/splitAt should use Prelude bodies: {e_chirho}")
+            }
+        }
+    }
+}
+
 // ── Where with multiple helper functions ─────────────────────────
 
 // ── Where with multiple helper functions ─────────────────────────

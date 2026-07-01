@@ -7855,6 +7855,159 @@ impl DictPassCtxChirho {
             });
         }
 
+        // Prelude-level divMod and quotRem: tuple wrappers over the same
+        // primops as their scalar counterparts, so they inherit the correct
+        // flooring div#/mod# and truncating quot#/rem# semantics everywhere.
+        {
+            let tuple_ty_chirho = TyChirho::ConChirho("(,)".to_string());
+
+            let divmod_id_chirho = self.resolve_or_fresh_id_chirho("divMod");
+            let a_chirho = self.fresh_binder_chirho("a", int_ty_chirho.clone());
+            let b_chirho = self.fresh_binder_chirho("b", int_ty_chirho.clone());
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: divmod_id_chirho,
+                    name_chirho: "divMod".to_string(),
+                    ty_chirho: TyChirho::fun_n_chirho(
+                        [int_ty_chirho.clone(), int_ty_chirho.clone()],
+                        tuple_ty_chirho.clone(),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: a_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::LamChirho {
+                        binder_chirho: b_chirho.clone(),
+                        body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                            con_name_chirho: "$tuple2".to_string(),
+                            args_chirho: vec![
+                                CoreExprChirho::PrimOpChirho {
+                                    name_chirho: "div#".to_string(),
+                                    args_chirho: vec![
+                                        CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                                        CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                                    ],
+                                },
+                                CoreExprChirho::PrimOpChirho {
+                                    name_chirho: "mod#".to_string(),
+                                    args_chirho: vec![
+                                        CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                                        CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                                    ],
+                                },
+                            ],
+                        }),
+                    }),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+
+            let quotrem_id_chirho = self.resolve_or_fresh_id_chirho("quotRem");
+            let a_chirho = self.fresh_binder_chirho("a", int_ty_chirho.clone());
+            let b_chirho = self.fresh_binder_chirho("b", int_ty_chirho.clone());
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: quotrem_id_chirho,
+                    name_chirho: "quotRem".to_string(),
+                    ty_chirho: TyChirho::fun_n_chirho(
+                        [int_ty_chirho.clone(), int_ty_chirho.clone()],
+                        tuple_ty_chirho.clone(),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: a_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::LamChirho {
+                        binder_chirho: b_chirho.clone(),
+                        body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                            con_name_chirho: "$tuple2".to_string(),
+                            args_chirho: vec![
+                                CoreExprChirho::PrimOpChirho {
+                                    name_chirho: "quot#".to_string(),
+                                    args_chirho: vec![
+                                        CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                                        CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                                    ],
+                                },
+                                CoreExprChirho::PrimOpChirho {
+                                    name_chirho: "rem#".to_string(),
+                                    args_chirho: vec![
+                                        CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                                        CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                                    ],
+                                },
+                            ],
+                        }),
+                    }),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // Prelude-level splitAt n xs = (take n xs, drop n xs), reusing the
+        // existing take/drop bindings so behaviour stays consistent.
+        {
+            let list_ty_chirho = TyChirho::string_chirho(); // placeholder list type (see take/drop)
+            let tuple_ty_chirho = TyChirho::ConChirho("(,)".to_string());
+            let take_id_chirho = self.resolve_or_fresh_id_chirho("take");
+            let drop_id_chirho = self.resolve_or_fresh_id_chirho("drop");
+            let splitat_id_chirho = self.resolve_or_fresh_id_chirho("splitAt");
+            let n_chirho = self.fresh_binder_chirho("n", int_ty_chirho.clone());
+            let xs_chirho = self.fresh_binder_chirho("xs", list_ty_chirho.clone());
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: splitat_id_chirho,
+                    name_chirho: "splitAt".to_string(),
+                    ty_chirho: TyChirho::fun_n_chirho(
+                        [int_ty_chirho.clone(), list_ty_chirho.clone()],
+                        tuple_ty_chirho,
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: n_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::LamChirho {
+                        binder_chirho: xs_chirho.clone(),
+                        body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                            con_name_chirho: "$tuple2".to_string(),
+                            args_chirho: vec![
+                                CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            take_id_chirho,
+                                        )),
+                                        arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            n_chirho.id_chirho,
+                                        )),
+                                    }),
+                                    arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                        xs_chirho.id_chirho,
+                                    )),
+                                },
+                                CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            drop_id_chirho,
+                                        )),
+                                        arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            n_chirho.id_chirho,
+                                        )),
+                                    }),
+                                    arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                        xs_chirho.id_chirho,
+                                    )),
+                                },
+                            ],
+                        }),
+                    }),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
         // Prelude-level gcd binding.
         // gcd a b = go (abs a) (abs b), inlined to avoid depending on local lets.
         {
