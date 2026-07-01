@@ -361,6 +361,76 @@ impl DictPassCtxChirho {
         CoreExprChirho::VarChirho(id_chirho)
     }
 
+    /// Normalize a value-shaped type key (`Maybe Int`, `Either e a`, `[Char]`)
+    /// to the instance head key (`Maybe`, `Either`, `[]`) used to name the
+    /// generated per-type instance bodies. Non-higher-kinded keys pass through.
+    fn normalize_instance_head_key_chirho(value_key_chirho: &str) -> String {
+        let trimmed_chirho = value_key_chirho.trim();
+        if trimmed_chirho.starts_with('[') {
+            return "[]".to_string();
+        }
+        match trimmed_chirho.split_whitespace().next() {
+            Some(head_chirho) => head_chirho.to_string(),
+            None => trimmed_chirho.to_string(),
+        }
+    }
+
+    /// Dispatch a higher-kinded class method (currently `fmap`) to the correct
+    /// per-type instance body based on the type key of its dispatch argument.
+    /// The method otherwise resolves to a monomorphic default binding, which is
+    /// left in place (returns `None`) when the key cannot be determined — so IO
+    /// / unknown cases keep their existing behaviour.
+    fn try_dispatch_hk_method_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        // Collect the application spine: head + ordered args.
+        let mut args_rev_chirho: Vec<&CoreExprChirho> = Vec::new();
+        let mut cur_chirho = expr_chirho;
+        while let CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } = cur_chirho
+        {
+            args_rev_chirho.push(arg_chirho);
+            cur_chirho = fun_chirho;
+        }
+        let head_id_chirho = match cur_chirho {
+            CoreExprChirho::VarChirho(id_chirho) => *id_chirho,
+            _ => return None,
+        };
+        // (instance-body name prefix, index of the dispatch argument)
+        let (prefix_chirho, dispatch_idx_chirho) =
+            match self.names_chirho.get(&head_id_chirho)?.as_str() {
+                "fmap" => ("$prim_Functor_fmap_", 1usize),
+                _ => return None,
+            };
+        let args_chirho: Vec<&CoreExprChirho> = args_rev_chirho.iter().rev().copied().collect();
+        let dispatch_arg_chirho = args_chirho.get(dispatch_idx_chirho)?;
+        let value_key_chirho =
+            self.infer_type_key_for_rewrite_chirho(dispatch_arg_chirho, local_type_keys_chirho)?;
+        let head_key_chirho = Self::normalize_instance_head_key_chirho(&value_key_chirho);
+        let inst_id_chirho =
+            self.lookup_name_id_chirho(&format!("{prefix_chirho}{head_key_chirho}"))?;
+        // Rebuild the application with the instance body as head; rewrite args.
+        let mut result_chirho = CoreExprChirho::VarChirho(inst_id_chirho);
+        for a_chirho in &args_chirho {
+            result_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(result_chirho),
+                arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
+                    a_chirho,
+                    dict_vars_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                )),
+            };
+        }
+        Some(result_chirho)
+    }
+
     /// Rewrite method references in an expression body.
     ///
     /// Given a mapping of in-scope dictionary variables
@@ -422,6 +492,19 @@ impl DictPassCtxChirho {
                 fun_chirho,
                 arg_chirho,
             } => {
+                // Higher-kinded class-method dispatch (fmap, ...): the method
+                // resolves to a monomorphic default binding, so select the right
+                // per-type instance body from the dispatch argument's type key
+                // (normalized to the instance head, e.g. `Maybe Int` -> `Maybe`).
+                if let Some(dispatched_chirho) = self.try_dispatch_hk_method_chirho(
+                    expr_chirho,
+                    dict_vars_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ) {
+                    return dispatched_chirho;
+                }
+
                 // Detect the pattern App(Var(method), arg) or
                 // App(App(Var(method), arg1), arg2) to determine the
                 // argument type for type-aware dictionary selection.

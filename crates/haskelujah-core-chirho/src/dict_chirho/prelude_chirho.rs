@@ -8956,6 +8956,67 @@ impl DictPassCtxChirho {
             });
         }
 
+        // ── instance Functor Either (Left passthrough, Right maps) ──
+        // $prim_Functor_fmap_Either = \f -> \ex -> case ex of
+        //     Left a  -> Left a
+        //     Right b -> Right (f b)
+        {
+            let prim_name_chirho = "$prim_Functor_fmap_Either";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let f_chirho = self.fresh_binder_chirho("f", any_ty_chirho.clone());
+            let ex_chirho = self.fresh_binder_chirho("ex", any_ty_chirho.clone());
+            let a_chirho = self.fresh_binder_chirho("a", any_ty_chirho.clone());
+            let b_chirho = self.fresh_binder_chirho("b", any_ty_chirho.clone());
+            let scrut_chirho = self.fresh_binder_chirho("_s", any_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: f_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: ex_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::CaseChirho {
+                        scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(ex_chirho.id_chirho)),
+                        bind_chirho: scrut_chirho.clone(),
+                        result_ty_chirho: any_ty_chirho.clone(),
+                        alts_chirho: vec![
+                            CoreAltChirho {
+                                con_chirho: AltConChirho::DataConChirho("Left".to_string()),
+                                binders_chirho: vec![a_chirho.clone()],
+                                rhs_chirho: CoreExprChirho::ConAppChirho {
+                                    con_name_chirho: "Left".to_string(),
+                                    args_chirho: vec![CoreExprChirho::VarChirho(a_chirho.id_chirho)],
+                                },
+                            },
+                            CoreAltChirho {
+                                con_chirho: AltConChirho::DataConChirho("Right".to_string()),
+                                binders_chirho: vec![b_chirho.clone()],
+                                rhs_chirho: CoreExprChirho::ConAppChirho {
+                                    con_name_chirho: "Right".to_string(),
+                                    args_chirho: vec![CoreExprChirho::AppChirho {
+                                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            f_chirho.id_chirho,
+                                        )),
+                                        arg_chirho: Box::new(CoreExprChirho::VarChirho(
+                                            b_chirho.id_chirho,
+                                        )),
+                                    }],
+                                },
+                            },
+                        ],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: any_ty_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
         // ── instance Applicative Maybe ──
         // $prim_Applicative_pure_Maybe = \x -> Just x
         {

@@ -6096,6 +6096,37 @@ fn eval_prelude_divmod_quotrem_splitat_chirho() {
     }
 }
 
+#[test]
+fn eval_fmap_dispatch_chirho() {
+    use crate::eval_source_chirho;
+    // fmap dispatches to the per-type Functor instance by the shape of its
+    // second argument: Either (Right maps, Left passes through), Maybe, and [].
+    let cases_chirho: [(&str, i64); 3] = [
+        (
+            "main = case fmap (+1) (Right 2 :: Either Int Int) of { Right x -> x; Left _ -> 0 }\n",
+            3,
+        ),
+        (
+            "main = case fmap (+10) (Just 5) of { Just x -> x; Nothing -> 0 }\n",
+            15,
+        ),
+        ("main = sum (fmap (*2) [1,2,3])\n", 12),
+    ];
+    for (body_chirho, want_chirho) in cases_chirho {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = format!("module Test where\n{body_chirho}");
+        let result_chirho = eval_source_chirho(&src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(
+                val_chirho,
+                haskelujah_runtime_chirho::ValueChirho::IntChirho(want_chirho),
+                "unexpected fmap result for: {body_chirho}"
+            ),
+            Err(e_chirho) => panic!("fmap should dispatch by functor type: {e_chirho}"),
+        }
+    }
+}
+
 // ── Where with multiple helper functions ─────────────────────────
 
 // ── Where with multiple helper functions ─────────────────────────
