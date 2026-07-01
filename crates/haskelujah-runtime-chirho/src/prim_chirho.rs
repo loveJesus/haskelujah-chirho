@@ -61,14 +61,33 @@ pub fn apply_prim_binop_chirho(
             if b_chirho == 0 {
                 Err(PrimErrorChirho::DivByZeroChirho)
             } else {
-                Ok(ValueChirho::IntChirho(a_chirho / b_chirho))
+                // Haskell `div` floors toward negative infinity, unlike Rust `/`
+                // which truncates toward zero. When the truncated remainder is
+                // nonzero and the operands' signs differ, step the quotient down.
+                let q_chirho = a_chirho / b_chirho;
+                let r_chirho = a_chirho % b_chirho;
+                let div_chirho = if r_chirho != 0 && ((r_chirho < 0) != (b_chirho < 0)) {
+                    q_chirho.wrapping_sub(1)
+                } else {
+                    q_chirho
+                };
+                Ok(ValueChirho::IntChirho(div_chirho))
             }
         }),
         PrimOpKindChirho::ModIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             if b_chirho == 0 {
                 Err(PrimErrorChirho::DivByZeroChirho)
             } else {
-                Ok(ValueChirho::IntChirho(a_chirho % b_chirho))
+                // Haskell `mod` yields a result with the divisor's sign, unlike
+                // Rust `%` which follows the dividend. Correct the sign so that
+                // `(a `div` b) * b + (a `mod` b) == a` holds.
+                let r_chirho = a_chirho % b_chirho;
+                let mod_chirho = if r_chirho != 0 && ((r_chirho < 0) != (b_chirho < 0)) {
+                    r_chirho.wrapping_add(b_chirho)
+                } else {
+                    r_chirho
+                };
+                Ok(ValueChirho::IntChirho(mod_chirho))
             }
         }),
         PrimOpKindChirho::QuotIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
@@ -925,5 +944,94 @@ mod tests_chirho {
             &ValueChirho::CharChirho('a'),
         );
         assert_eq!(r_chirho.unwrap(), ValueChirho::BoolChirho(true));
+    }
+
+    #[test]
+    fn div_int_floors_toward_neg_infinity_chirho() {
+        let div_chirho = |a_chirho: i64, b_chirho: i64| {
+            apply_prim_binop_chirho(
+                PrimOpKindChirho::DivIntChirho,
+                &ValueChirho::IntChirho(a_chirho),
+                &ValueChirho::IntChirho(b_chirho),
+            )
+            .unwrap()
+        };
+        // Exact division needs no adjustment.
+        assert_eq!(div_chirho(6, 2), ValueChirho::IntChirho(3));
+        // Same-sign operands: truncation already equals floor.
+        assert_eq!(div_chirho(7, 2), ValueChirho::IntChirho(3));
+        assert_eq!(div_chirho(-7, -2), ValueChirho::IntChirho(3));
+        // Opposite-sign operands round toward negative infinity (GHC semantics).
+        assert_eq!(div_chirho(-7, 2), ValueChirho::IntChirho(-4));
+        assert_eq!(div_chirho(7, -2), ValueChirho::IntChirho(-4));
+    }
+
+    #[test]
+    fn mod_int_takes_divisor_sign_chirho() {
+        let mod_chirho = |a_chirho: i64, b_chirho: i64| {
+            apply_prim_binop_chirho(
+                PrimOpKindChirho::ModIntChirho,
+                &ValueChirho::IntChirho(a_chirho),
+                &ValueChirho::IntChirho(b_chirho),
+            )
+            .unwrap()
+        };
+        assert_eq!(mod_chirho(6, 2), ValueChirho::IntChirho(0));
+        assert_eq!(mod_chirho(7, 2), ValueChirho::IntChirho(1));
+        assert_eq!(mod_chirho(-7, -2), ValueChirho::IntChirho(-1));
+        // Result carries the divisor's sign (GHC semantics).
+        assert_eq!(mod_chirho(-7, 2), ValueChirho::IntChirho(1));
+        assert_eq!(mod_chirho(7, -2), ValueChirho::IntChirho(-1));
+    }
+
+    #[test]
+    fn div_mod_satisfy_euclid_law_chirho() {
+        // (a `div` b) * b + (a `mod` b) == a for every sign combination, and
+        // the remainder carries the divisor's sign (or is zero).
+        let eval_chirho = |op_chirho, a_chirho: i64, b_chirho: i64| match apply_prim_binop_chirho(
+            op_chirho,
+            &ValueChirho::IntChirho(a_chirho),
+            &ValueChirho::IntChirho(b_chirho),
+        )
+        .unwrap()
+        {
+            ValueChirho::IntChirho(v_chirho) => v_chirho,
+            other_chirho => panic!("expected Int, got {other_chirho}"),
+        };
+        for a_chirho in [-9_i64, -7, -1, 0, 1, 7, 9] {
+            for b_chirho in [-3_i64, -2, 2, 3] {
+                let d_chirho = eval_chirho(PrimOpKindChirho::DivIntChirho, a_chirho, b_chirho);
+                let m_chirho = eval_chirho(PrimOpKindChirho::ModIntChirho, a_chirho, b_chirho);
+                assert_eq!(
+                    d_chirho * b_chirho + m_chirho,
+                    a_chirho,
+                    "div/mod law failed for {a_chirho} `divMod` {b_chirho}"
+                );
+                assert!(
+                    m_chirho == 0 || m_chirho.signum() == b_chirho.signum(),
+                    "mod sign wrong for {a_chirho} `mod` {b_chirho} = {m_chirho}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn quot_rem_retain_truncation_chirho() {
+        // Regression guard: quot/rem keep truncate-toward-zero semantics,
+        // distinct from the flooring div/mod above.
+        let quot_chirho = apply_prim_binop_chirho(
+            PrimOpKindChirho::QuotIntChirho,
+            &ValueChirho::IntChirho(-7),
+            &ValueChirho::IntChirho(2),
+        )
+        .unwrap();
+        assert_eq!(quot_chirho, ValueChirho::IntChirho(-3));
+        let rem_chirho = apply_prim_binop_chirho(
+            PrimOpKindChirho::RemIntChirho,
+            &ValueChirho::IntChirho(-7),
+            &ValueChirho::IntChirho(2),
+        )
+        .unwrap();
+        assert_eq!(rem_chirho, ValueChirho::IntChirho(-1));
     }
 }
