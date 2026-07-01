@@ -6658,6 +6658,21 @@ fn llvm_round_trip_modulo_chirho() {
 }
 
 #[test]
+fn llvm_round_trip_floor_div_mod_negative_operands_chirho() {
+    let src_chirho = "\
+module Main where
+main = ((-7) `div` 2) + ((-7) `mod` 2) + ((-7) `quot` 2) + ((-7) `rem` 2) + 49
+";
+    let exit_code_chirho = llvm_round_trip_chirho(src_chirho);
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(
+            code_chirho, 42,
+            "LLVM should floor div/mod but keep quot/rem truncating"
+        );
+    }
+}
+
+#[test]
 fn llvm_round_trip_fibonacci_chirho() {
     // fib 10 = 55 → exit code 55
     let src_chirho = r#"module Main where
@@ -7693,6 +7708,21 @@ main = print (fChirho ["", "x"])
             "pattern guard executable should exit successfully"
         );
         assert_eq!(stdout_chirho, "1\n");
+    }
+}
+
+#[test]
+fn cranelift_round_trip_floor_div_mod_negative_operands_chirho() {
+    let src_chirho = "\
+module Main where
+main = ((-7) `div` 2) + ((-7) `mod` 2) + ((-7) `quot` 2) + ((-7) `rem` 2) + 49
+";
+    let exit_code_chirho = cranelift_round_trip_chirho(src_chirho);
+    if let Some(code_chirho) = exit_code_chirho {
+        assert_eq!(
+            code_chirho, 42,
+            "Cranelift should floor div/mod but keep quot/rem truncating"
+        );
     }
 }
 

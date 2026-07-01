@@ -2156,6 +2156,48 @@ fn lower_indirect_app_chirho(
 
 // ─── Primitive operation lowering ─────────────────────────────────────────────
 
+fn lower_floor_div_mod_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    lhs_chirho: ClValueChirho,
+    rhs_chirho: ClValueChirho,
+    want_mod_chirho: bool,
+) -> ClValueChirho {
+    let quot_chirho = builder_chirho.ins().sdiv(lhs_chirho, rhs_chirho);
+    let rem_chirho = builder_chirho.ins().srem(lhs_chirho, rhs_chirho);
+    let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+    let one_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 1);
+    let rem_nonzero_chirho =
+        builder_chirho
+            .ins()
+            .icmp(IntCcChirho::NotEqual, rem_chirho, zero_chirho);
+    let rem_negative_chirho =
+        builder_chirho
+            .ins()
+            .icmp(IntCcChirho::SignedLessThan, rem_chirho, zero_chirho);
+    let rhs_negative_chirho =
+        builder_chirho
+            .ins()
+            .icmp(IntCcChirho::SignedLessThan, rhs_chirho, zero_chirho);
+    let signs_differ_chirho = builder_chirho
+        .ins()
+        .bxor(rem_negative_chirho, rhs_negative_chirho);
+    let adjust_chirho = builder_chirho
+        .ins()
+        .band(rem_nonzero_chirho, signs_differ_chirho);
+
+    if want_mod_chirho {
+        let adjusted_rem_chirho = builder_chirho.ins().iadd(rem_chirho, rhs_chirho);
+        builder_chirho
+            .ins()
+            .select(adjust_chirho, adjusted_rem_chirho, rem_chirho)
+    } else {
+        let adjusted_quot_chirho = builder_chirho.ins().isub(quot_chirho, one_chirho);
+        builder_chirho
+            .ins()
+            .select(adjust_chirho, adjusted_quot_chirho, quot_chirho)
+    }
+}
+
 /// Lower a primitive operation to Cranelift instructions.
 ///
 /// Handles integer arithmetic, integer comparisons, float arithmetic,
@@ -2199,12 +2241,22 @@ pub fn lower_primop_chirho(
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
             builder_chirho.ins().imul(lhs_chirho, rhs_chirho)
         }
-        "div#" | "quot#" | "divInt#" | "quotInt#" => {
+        "div#" | "divInt#" => {
+            let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
+            lower_floor_div_mod_chirho(builder_chirho, lhs_chirho, rhs_chirho, false)
+        }
+        "quot#" | "quotInt#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
             builder_chirho.ins().sdiv(lhs_chirho, rhs_chirho)
         }
-        "mod#" | "rem#" | "modInt#" | "remInt#" => {
+        "mod#" | "modInt#" => {
+            let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
+            lower_floor_div_mod_chirho(builder_chirho, lhs_chirho, rhs_chirho, true)
+        }
+        "rem#" | "remInt#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
             builder_chirho.ins().srem(lhs_chirho, rhs_chirho)

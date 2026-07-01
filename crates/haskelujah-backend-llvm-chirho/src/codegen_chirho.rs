@@ -132,6 +132,86 @@ impl LlvmCodegenChirho {
         tmp_chirho
     }
 
+    fn emit_floor_div_mod_chirho(
+        &mut self,
+        lhs_chirho: &str,
+        rhs_chirho: &str,
+        want_mod_chirho: bool,
+    ) -> String {
+        let quot_chirho = self.fresh_tmp_chirho();
+        let rem_chirho = self.fresh_tmp_chirho();
+        let rem_nonzero_chirho = self.fresh_tmp_chirho();
+        let rem_negative_chirho = self.fresh_tmp_chirho();
+        let rhs_negative_chirho = self.fresh_tmp_chirho();
+        let signs_differ_chirho = self.fresh_tmp_chirho();
+        let adjust_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {quot_chirho} = sdiv i64 {lhs_chirho}, {rhs_chirho}"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {rem_chirho} = srem i64 {lhs_chirho}, {rhs_chirho}"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {rem_nonzero_chirho} = icmp ne i64 {rem_chirho}, 0"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {rem_negative_chirho} = icmp slt i64 {rem_chirho}, 0"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {rhs_negative_chirho} = icmp slt i64 {rhs_chirho}, 0"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {signs_differ_chirho} = xor i1 {rem_negative_chirho}, {rhs_negative_chirho}"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {adjust_chirho} = and i1 {rem_nonzero_chirho}, {signs_differ_chirho}"
+        )
+        .unwrap();
+
+        if want_mod_chirho {
+            let adjusted_rem_chirho = self.fresh_tmp_chirho();
+            let result_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {adjusted_rem_chirho} = add i64 {rem_chirho}, {rhs_chirho}"
+            )
+            .unwrap();
+            writeln!(
+                self.output_chirho,
+                "  {result_chirho} = select i1 {adjust_chirho}, i64 {adjusted_rem_chirho}, i64 {rem_chirho}"
+            )
+            .unwrap();
+            result_chirho
+        } else {
+            let adjusted_quot_chirho = self.fresh_tmp_chirho();
+            let result_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {adjusted_quot_chirho} = sub i64 {quot_chirho}, 1"
+            )
+            .unwrap();
+            writeln!(
+                self.output_chirho,
+                "  {result_chirho} = select i1 {adjust_chirho}, i64 {adjusted_quot_chirho}, i64 {quot_chirho}"
+            )
+            .unwrap();
+            result_chirho
+        }
+    }
+
     /// Generate a fresh LLVM label.
     fn fresh_label_chirho(&mut self, prefix_chirho: &str) -> String {
         let label_chirho = format!("{prefix_chirho}.{}", self.next_label_chirho);
@@ -2380,8 +2460,22 @@ impl LlvmCodegenChirho {
                         "+#" => "add",
                         "-#" => "sub",
                         "*#" => "mul",
-                        "div#" => "sdiv",
-                        "mod#" => "srem",
+                        "div#" => {
+                            return self.emit_floor_div_mod_chirho(
+                                &lhs_chirho,
+                                &rhs_chirho,
+                                false,
+                            );
+                        }
+                        "mod#" => {
+                            return self.emit_floor_div_mod_chirho(
+                                &lhs_chirho,
+                                &rhs_chirho,
+                                true,
+                            );
+                        }
+                        "quot#" => "sdiv",
+                        "rem#" => "srem",
                         "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" => {
                             let cmp_pred_chirho = match name_chirho.as_str() {
                                 "==#" => "eq",
