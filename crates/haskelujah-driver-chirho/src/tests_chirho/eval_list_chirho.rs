@@ -445,6 +445,42 @@ main = sum (concatMap dup [1, 2, 3])
 }
 
 #[test]
+fn eval_concat_nested_int_lists_chirho() {
+    use crate::eval_source_chirho;
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+main = sum (concat [[1, 2], [3, 4]])
+";
+    let result_chirho =
+        eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None)
+            .expect("concat should evaluate nested Int lists");
+    assert_eq!(
+        result_chirho,
+        haskelujah_runtime_chirho::ValueChirho::IntChirho(10),
+        "sum (concat [[1,2],[3,4]]) = 10"
+    );
+}
+
+#[test]
+fn eval_concat_strings_still_uses_list_append_chirho() {
+    use crate::eval_source_chirho;
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+main = length (concat [\"ab\", \"cd\"])
+";
+    let result_chirho =
+        eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None)
+            .expect("concat should still evaluate String lists");
+    assert_eq!(
+        result_chirho,
+        haskelujah_runtime_chirho::ValueChirho::IntChirho(4),
+        "length (concat [\"ab\",\"cd\"]) = 4"
+    );
+}
+
+#[test]
 fn eval_takewhile_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();

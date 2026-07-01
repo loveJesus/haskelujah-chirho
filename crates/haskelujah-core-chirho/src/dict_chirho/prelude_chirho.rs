@@ -1145,31 +1145,64 @@ impl DictPassCtxChirho {
             });
         }
 
-        // concat :: [String] -> String
-        // concat xs = concatStr# xs
+        // concat :: [[a]] -> [a]
+        // concat [] = []; concat (xs:xss) = append xs (concat xss)
         {
-            let str_ty_chirho = TyChirho::string_chirho();
-            let list_str_ty_chirho = TyChirho::ListChirho(Box::new(str_ty_chirho.clone()));
+            let a_chirho = TyChirho::VarChirho(TyVarChirho(9984));
+            let list_a_chirho = TyChirho::ListChirho(Box::new(a_chirho.clone()));
+            let list_list_a_chirho = TyChirho::ListChirho(Box::new(list_a_chirho.clone()));
             let concat_id_chirho = self.resolve_or_fresh_id_chirho("concat");
-            let xs_chirho = self.fresh_binder_chirho("xs", list_str_ty_chirho.clone());
-            let body_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "concatStr#".to_string(),
-                args_chirho: vec![CoreExprChirho::VarChirho(xs_chirho.id_chirho)],
+            let append_id_chirho = self.resolve_or_fresh_id_chirho("append");
+            let xss_chirho = self.fresh_binder_chirho("xss", list_list_a_chirho.clone());
+            let xs_chirho = self.fresh_binder_chirho("xs", list_a_chirho.clone());
+            let rest_chirho = self.fresh_binder_chirho("rest", list_list_a_chirho.clone());
+            let w_chirho = self.fresh_binder_chirho("$w", list_list_a_chirho.clone());
+
+            let concat_rec_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(concat_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(rest_chirho.id_chirho)),
+            };
+            let append_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(append_id_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(xs_chirho.id_chirho)),
+                }),
+                arg_chirho: Box::new(concat_rec_chirho),
+            };
+            let body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(xss_chirho.id_chirho)),
+                bind_chirho: w_chirho,
+                result_ty_chirho: list_a_chirho.clone(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("[]".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: CoreExprChirho::ConAppChirho {
+                            con_name_chirho: "[]".to_string(),
+                            args_chirho: vec![],
+                        },
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho(":".to_string()),
+                        binders_chirho: vec![xs_chirho, rest_chirho],
+                        rhs_chirho: append_call_chirho,
+                    },
+                ],
             };
             let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: xs_chirho,
+                binder_chirho: xss_chirho,
                 body_chirho: Box::new(body_chirho),
             };
             let binder_chirho = BinderChirho {
                 id_chirho: concat_id_chirho,
                 name_chirho: "concat".to_string(),
-                ty_chirho: TyChirho::fun_chirho(list_str_ty_chirho, str_ty_chirho),
+                ty_chirho: TyChirho::fun_chirho(list_list_a_chirho, list_a_chirho),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             };
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho,
                 rhs_chirho,
-                is_rec_chirho: false,
+                is_rec_chirho: true,
                 inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
