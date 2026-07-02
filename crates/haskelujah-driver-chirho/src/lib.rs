@@ -3017,6 +3017,13 @@ fn compile_backend_chirho(
     {
         newtype_cons_chirho.insert("Identity".to_string());
     }
+    if !con_types_chirho.contains_key("Const")
+        && module_chirho.imports_chirho.iter().any(|import_chirho| {
+            import_chirho.module_chirho.full_name_chirho() == "Data.Functor.Const"
+        })
+    {
+        newtype_cons_chirho.insert("Const".to_string());
+    }
     let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_full_chirho(
         &desugar_output_chirho.module_chirho,
         desugar_output_chirho.names_chirho,
