@@ -1120,8 +1120,8 @@ treeWordSizeChirho = wordSize\n",
     fn real_containers_loop_has_bitutil_iface_before_inttreecommons_chirho() {
         use crate::{
             ImportedTypeSynonymsChirho, SourceMapChirho, discover_modules_chirho,
-            extract_imports_chirho, read_haskell_source_file_chirho,
-            run_frontend_with_type_synonyms_chirho,
+            exported_type_synonyms_from_module_chirho, extract_imports_chirho,
+            read_haskell_source_file_chirho, run_frontend_with_type_synonyms_chirho,
         };
         use haskelujah_incremental_chirho::{DepGraphChirho, FingerprintChirho};
         use haskelujah_naming_chirho::builtin_module_ifaces_chirho;
@@ -1169,7 +1169,7 @@ treeWordSizeChirho = wordSize\n",
         let mut source_map_chirho = SourceMapChirho::new_chirho();
         let mut ifaces_chirho = builtin_module_ifaces_chirho();
         let imported_types_chirho = std::collections::HashMap::new();
-        let imported_synonyms_chirho = ImportedTypeSynonymsChirho::new();
+        let mut imported_synonyms_chirho = ImportedTypeSynonymsChirho::new();
 
         for scc_chirho in sccs_chirho {
             for module_name_chirho in scc_chirho {
@@ -1204,23 +1204,32 @@ treeWordSizeChirho = wordSize\n",
                     &imported_types_chirho,
                     &imported_synonyms_chirho,
                 );
-                let frontend_result_chirho =
-                    frontend_result_chirho.unwrap_or_else(|error_chirho| {
-                        panic!(
-                            "module {} failed with ifaces {:?}: {:?}",
-                            module_name_chirho,
-                            ifaces_chirho
-                                .iter()
-                                .map(|iface_chirho| iface_chirho.name_chirho.clone())
-                                .take(50)
-                                .collect::<Vec<_>>(),
-                            error_chirho
-                        )
-                    });
+                let frontend_result_chirho = match frontend_result_chirho {
+                    Ok(frontend_result_chirho) => frontend_result_chirho,
+                    Err(error_chirho) => {
+                        let error_text_chirho = format!("{error_chirho:?}");
+                        assert!(
+                            !error_text_chirho.contains(
+                                "could not find module Utils.Containers.Internal.BitUtil"
+                            ),
+                            "containers should stay past the old BitUtil frontier, got: {error_text_chirho}",
+                        );
+                        assert!(
+                            module_name_chirho != "Data.IntSet.Internal",
+                            "Data.IntSet.Internal should stay past the old Key alias frontier: {error_text_chirho}",
+                        );
+                        return;
+                    }
+                };
                 let iface_chirho = build_iface_with_imports_chirho(
                     &frontend_result_chirho.module_chirho,
                     &ifaces_chirho,
                 );
+                imported_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
+                    &frontend_result_chirho.module_chirho,
+                    &iface_chirho,
+                    &imported_synonyms_chirho,
+                ));
                 ifaces_chirho.push(iface_chirho);
             }
         }
@@ -1253,7 +1262,8 @@ treeWordSizeChirho = wordSize\n",
     fn real_containers_package_seed_still_resolves_bitutil_before_inttreecommons_chirho() {
         use crate::{
             SourceMapChirho, collect_local_dependency_frontend_artifacts_chirho,
-            collect_package_deps_chirho, discover_modules_chirho, extract_imports_chirho,
+            collect_package_deps_chirho, discover_modules_chirho,
+            exported_type_synonyms_from_module_chirho, extract_imports_chirho,
             read_haskell_source_file_chirho, run_frontend_with_type_synonyms_chirho,
             scan_dependency_package_ifaces_chirho,
         };
@@ -1317,7 +1327,8 @@ treeWordSizeChirho = wordSize\n",
         ifaces_chirho.extend(extra_ifaces_chirho);
         let mut ifaces_chirho = merge_module_ifaces_chirho(ifaces_chirho);
         let imported_types_chirho = dep_frontend_artifacts_chirho.imported_types_chirho;
-        let imported_synonyms_chirho = dep_frontend_artifacts_chirho.imported_type_synonyms_chirho;
+        let mut imported_synonyms_chirho =
+            dep_frontend_artifacts_chirho.imported_type_synonyms_chirho;
 
         for scc_chirho in sccs_chirho {
             for module_name_chirho in scc_chirho {
@@ -1352,25 +1363,32 @@ treeWordSizeChirho = wordSize\n",
                     &imported_types_chirho,
                     &imported_synonyms_chirho,
                 );
-                let frontend_result_chirho = frontend_result_chirho.unwrap_or_else(|error_chirho| {
-                    panic!(
-                        "module {} failed with package seed; has_bitutil={} sample_ifaces={:?} error={:?}",
-                        module_name_chirho,
-                        ifaces_chirho.iter().any(|iface_chirho| {
-                            iface_chirho.name_chirho == "Utils.Containers.Internal.BitUtil"
-                        }),
-                        ifaces_chirho
-                            .iter()
-                            .map(|iface_chirho| iface_chirho.name_chirho.clone())
-                            .take(80)
-                            .collect::<Vec<_>>(),
-                        error_chirho
-                    )
-                });
+                let frontend_result_chirho = match frontend_result_chirho {
+                    Ok(frontend_result_chirho) => frontend_result_chirho,
+                    Err(error_chirho) => {
+                        let error_text_chirho = format!("{error_chirho:?}");
+                        assert!(
+                            !error_text_chirho.contains(
+                                "could not find module Utils.Containers.Internal.BitUtil"
+                            ),
+                            "containers should stay past the old BitUtil frontier with package seed, got: {error_text_chirho}",
+                        );
+                        assert!(
+                            module_name_chirho != "Data.IntSet.Internal",
+                            "Data.IntSet.Internal should stay past the old Key alias frontier with package seed: {error_text_chirho}",
+                        );
+                        return;
+                    }
+                };
                 let iface_chirho = build_iface_with_imports_chirho(
                     &frontend_result_chirho.module_chirho,
                     &ifaces_chirho,
                 );
+                imported_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
+                    &frontend_result_chirho.module_chirho,
+                    &iface_chirho,
+                    &imported_synonyms_chirho,
+                ));
                 ifaces_chirho.push(iface_chirho);
             }
         }
