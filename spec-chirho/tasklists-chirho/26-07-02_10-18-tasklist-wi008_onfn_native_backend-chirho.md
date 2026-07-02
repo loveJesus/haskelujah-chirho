@@ -8,4 +8,4 @@
 - [x] Patch the focused LLVM backend path without touching dict/typing lanes.
 - [x] Run targeted backend regression gates only.
 - [x] Update `spec-chirho/prd_chirho.json` and progress log.
-- [ ] Commit, push, and release the builder slot.
+- [x] Commit, push, and release the builder slot.
