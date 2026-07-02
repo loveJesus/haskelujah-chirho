@@ -22,7 +22,7 @@ use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredC
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
-use crate::unify_chirho::{unify_chirho, UnifyErrorChirho};
+use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
 
 /// Error code range for type inference diagnostics.
 const TYPE_MISMATCH_CODE_CHIRHO: u16 = 200;
@@ -1649,6 +1649,12 @@ impl InferCtxChirho {
                 let lhs_chirho = self.ast_type_to_ty_chirho(&args_chirho[0], &mut var_map_chirho);
                 let rhs_chirho = self.ast_type_to_ty_chirho(&args_chirho[1], &mut var_map_chirho);
                 equality_pairs_chirho.push((lhs_chirho, rhs_chirho));
+            } else if let Some(expanded_preds_chirho) = self.expand_constraint_alias_pred_chirho(
+                &class_name_chirho,
+                args_chirho,
+                &mut var_map_chirho,
+            ) {
+                scheme_preds_chirho.extend(expanded_preds_chirho);
             } else {
                 let pred_ty_chirho = if let Some(first_arg_chirho) = args_chirho.first() {
                     self.ast_type_to_ty_chirho(first_arg_chirho, &mut var_map_chirho)
@@ -1713,6 +1719,72 @@ impl InferCtxChirho {
             vars_chirho,
             preds_chirho: scheme_preds_chirho,
             ty_chirho: inner_ty_chirho,
+        }
+    }
+
+    fn expand_constraint_alias_pred_chirho(
+        &mut self,
+        class_name_chirho: &str,
+        args_chirho: &[TypeChirho],
+        var_map_chirho: &mut HashMap<String, TyVarChirho>,
+    ) -> Option<Vec<SchemePredChirho>> {
+        self.lookup_type_synonym_chirho(class_name_chirho)?;
+
+        let mut alias_ty_chirho = TyChirho::ConChirho(class_name_chirho.to_string());
+        for arg_chirho in args_chirho {
+            alias_ty_chirho = TyChirho::AppChirho(
+                Box::new(alias_ty_chirho),
+                Box::new(self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho)),
+            );
+        }
+
+        let expanded_chirho = self.expand_type_synonyms_chirho(&alias_ty_chirho);
+        let mut preds_chirho = Vec::new();
+        self.scheme_preds_from_constraint_ty_chirho(&expanded_chirho, &mut preds_chirho);
+        if preds_chirho.is_empty() {
+            None
+        } else {
+            Some(preds_chirho)
+        }
+    }
+
+    fn scheme_preds_from_constraint_ty_chirho(
+        &mut self,
+        ty_chirho: &TyChirho,
+        out_chirho: &mut Vec<SchemePredChirho>,
+    ) {
+        match ty_chirho {
+            TyChirho::TupleChirho(elems_chirho) => {
+                for elem_chirho in elems_chirho {
+                    self.scheme_preds_from_constraint_ty_chirho(elem_chirho, out_chirho);
+                }
+            }
+            TyChirho::AppChirho(_, _) => {
+                let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
+                let TyChirho::ConChirho(class_name_chirho) = head_chirho else {
+                    return;
+                };
+                if class_name_chirho == "~" {
+                    return;
+                }
+                let pred_ty_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or_else(|| self.fresh_var_chirho());
+                out_chirho.push(SchemePredChirho {
+                    class_name_chirho,
+                    ty_chirho: pred_ty_chirho,
+                    extra_tys_chirho: args_chirho.into_iter().skip(1).collect(),
+                });
+            }
+            TyChirho::ConChirho(class_name_chirho) if class_name_chirho != "~" => {
+                out_chirho.push(SchemePredChirho {
+                    class_name_chirho: class_name_chirho.clone(),
+                    ty_chirho: self.fresh_var_chirho(),
+                    extra_tys_chirho: Vec::new(),
+                });
+            }
+            _ => {}
         }
     }
 
@@ -19611,10 +19683,12 @@ mod tests_chirho {
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
         assert!(matches!(final_ty_chirho, TyChirho::VarChirho(_)));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 2);
-        assert!(ctx_chirho
-            .deferred_preds_chirho
-            .iter()
-            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
+        assert!(
+            ctx_chirho
+                .deferred_preds_chirho
+                .iter()
+                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
+        );
     }
 
     #[test]
@@ -19861,10 +19935,12 @@ mod tests_chirho {
                 if matches!(elem_chirho.as_ref(), TyChirho::VarChirho(_))
         ));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 3);
-        assert!(ctx_chirho
-            .deferred_preds_chirho
-            .iter()
-            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
+        assert!(
+            ctx_chirho
+                .deferred_preds_chirho
+                .iter()
+                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -20492,9 +20568,11 @@ mod tests_chirho {
             "Class with superclass should not error: {:?}",
             result_chirho.diagnostics_chirho
         );
-        assert!(result_chirho
-            .class_env_chirho
-            .has_class_chirho("MyOrdChirho"));
+        assert!(
+            result_chirho
+                .class_env_chirho
+                .has_class_chirho("MyOrdChirho")
+        );
         let supers_chirho = result_chirho
             .class_env_chirho
             .superclasses_chirho("MyOrdChirho");
@@ -20714,6 +20792,56 @@ mod tests_chirho {
             scheme_chirho.vars_chirho.len(),
             4,
             "alias-based scheme should quantify a, b, p, and t: {scheme_chirho}"
+        );
+    }
+
+    #[test]
+    fn ast_scheme_expands_constraint_type_alias_predicates_chirho() {
+        use haskelujah_ast_chirho::ty_chirho::ConstraintChirho as AstConstraintChirho;
+
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.register_type_synonym_chirho(
+            "ShowEq".to_string(),
+            vec!["a".to_string()],
+            TyChirho::TupleChirho(vec![
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Show".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("a".to_string())),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Eq".to_string())),
+                    Box::new(TyChirho::ForallVarChirho("a".to_string())),
+                ),
+            ]),
+        );
+
+        let a_ty_chirho = TypeChirho::VarChirho(dummy_name_chirho("a"));
+        let sig_chirho = TypeChirho::QualChirho {
+            context_chirho: vec![AstConstraintChirho::ClassChirho {
+                class_chirho: dummy_name_chirho("ShowEq"),
+                args_chirho: vec![a_ty_chirho.clone()],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            body_chirho: Box::new(TypeChirho::FunChirho {
+                arg_chirho: Box::new(a_ty_chirho),
+                mult_chirho: None,
+                result_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("String"))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let scheme_chirho = ctx_chirho.ast_type_to_scheme_chirho(&sig_chirho);
+        let pred_classes_chirho: Vec<String> = scheme_chirho
+            .preds_chirho
+            .iter()
+            .map(|pred_chirho| pred_chirho.class_name_chirho.clone())
+            .collect();
+
+        assert_eq!(
+            pred_classes_chirho,
+            vec!["Show".to_string(), "Eq".to_string()],
+            "constraint aliases should expand to real class predicates: {scheme_chirho}"
         );
     }
 

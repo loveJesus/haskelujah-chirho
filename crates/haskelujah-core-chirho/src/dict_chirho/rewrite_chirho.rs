@@ -2043,12 +2043,22 @@ impl DictPassCtxChirho {
                     self.collect_dict_param_app_chirho(expr_chirho)
                 {
                     // Infer the type key from the actual arguments
-                    let type_key_chirho = args_chirho.iter().find_map(|a_chirho| {
-                        self.infer_strict_dispatch_key_for_rewrite_chirho(
-                            a_chirho,
-                            local_type_keys_chirho,
-                        )
-                    });
+                    let type_key_chirho = args_chirho
+                        .iter()
+                        .find_map(|a_chirho| {
+                            self.infer_strict_dispatch_key_for_rewrite_chirho(
+                                a_chirho,
+                                local_type_keys_chirho,
+                            )
+                        })
+                        .or_else(|| {
+                            args_chirho
+                                .iter()
+                                .any(|a_chirho| {
+                                    self.expr_contains_numeric_default_marker_chirho(a_chirho)
+                                })
+                                .then(|| "Int".to_string())
+                        });
 
                     // Build dict args: for each required class, select the
                     // type-appropriate dict if we can infer the type
