@@ -106,13 +106,44 @@ impl LowerCtxChirho {
     }
 
     /// Look up the runtime value for a CoreId.
-    fn lookup_chirho(&self, id_chirho: CoreIdChirho) -> ValueChirho {
-        // TODO(codex-audit): defaulting a missing binding to `Int 0` can hide
-        // lowering/environment bugs and produce incorrect STG silently.
-        self.env_chirho
+    fn lookup_chirho(&self, id_chirho: CoreIdChirho) -> Option<ValueChirho> {
+        self.env_chirho.get(&id_chirho).cloned()
+    }
+
+    fn missing_global_message_chirho(&self, id_chirho: CoreIdChirho) -> String {
+        let name_chirho = self
+            .id_names_chirho
             .get(&id_chirho)
             .cloned()
-            .unwrap_or(ValueChirho::IntChirho(0))
+            .unwrap_or_else(|| format!("v{}", id_chirho.0));
+        format!(
+            "missing STG binding `{name_chirho}` for CoreId {}",
+            id_chirho.0
+        )
+    }
+
+    fn emit_missing_global_error_chirho(&mut self, id_chirho: CoreIdChirho) -> u32 {
+        self.emit_chirho(CodeChirho::PrimChirho {
+            op_chirho: PrimOpKindChirho::ErrorChirho,
+            args_chirho: vec![ArgSourceChirho::StaticChirho(ValueChirho::StringChirho(
+                self.missing_global_message_chirho(id_chirho),
+            ))],
+        })
+    }
+
+    fn missing_global_value_chirho(&mut self, id_chirho: CoreIdChirho) -> ValueChirho {
+        let entry_chirho = self.emit_missing_global_error_chirho(id_chirho);
+        let name_chirho = self
+            .id_names_chirho
+            .get(&id_chirho)
+            .cloned()
+            .unwrap_or_else(|| format!("v{}", id_chirho.0));
+        let closure_chirho = ClosureChirho::thunk_chirho(
+            CodePtrChirho(entry_chirho),
+            &format!("$missing_global_{name_chirho}"),
+            vec![],
+        );
+        ValueChirho::HeapPtrChirho(self.heap_chirho.alloc_chirho(closure_chirho))
     }
 
     /// Check if a CoreId refers to a known I/O primop and return the name if so.
@@ -215,7 +246,9 @@ impl LowerCtxChirho {
                         return self.emit_chirho(CodeChirho::LitChirho(value_chirho));
                     }
                 }
-                let val_chirho = self.lookup_chirho(*id_chirho);
+                let Some(val_chirho) = self.lookup_chirho(*id_chirho) else {
+                    return self.emit_missing_global_error_chirho(*id_chirho);
+                };
                 match val_chirho {
                     ValueChirho::HeapPtrChirho(addr_chirho) => {
                         self.emit_chirho(CodeChirho::EnterChirho(addr_chirho))
@@ -260,7 +293,9 @@ impl LowerCtxChirho {
                             });
                         }
 
-                        let fun_val_chirho = self.lookup_chirho(*fun_id_chirho);
+                        let fun_val_chirho = self
+                            .lookup_chirho(*fun_id_chirho)
+                            .unwrap_or_else(|| self.missing_global_value_chirho(*fun_id_chirho));
                         let arg_sources_chirho: Vec<ArgSourceChirho> = args_chirho
                             .iter()
                             .map(|a_chirho| self.lower_arg_source_chirho(a_chirho))
@@ -1169,7 +1204,10 @@ impl LowerCtxChirho {
                         return ArgSourceChirho::StaticChirho(value_chirho);
                     }
                 }
-                ArgSourceChirho::StaticChirho(self.lookup_chirho(*id_chirho))
+                let value_chirho = self
+                    .lookup_chirho(*id_chirho)
+                    .unwrap_or_else(|| self.missing_global_value_chirho(*id_chirho));
+                ArgSourceChirho::StaticChirho(value_chirho)
             }
             _ => {
                 // Complex expression: if we're inside a function body
@@ -1228,6 +1266,7 @@ impl LowerCtxChirho {
                     }
                 }
                 self.lookup_chirho(*id_chirho)
+                    .unwrap_or_else(|| self.missing_global_value_chirho(*id_chirho))
             }
             _ => {
                 // Complex expression: lower it and wrap in a thunk
@@ -2029,6 +2068,36 @@ mod tests_chirho {
         let (result_chirho, _) =
             lower_and_run_chirho(&module_chirho, None, HashSet::new()).unwrap();
         assert_eq!(result_chirho, ValueChirho::IntChirho(99));
+    }
+
+    #[test]
+    fn missing_global_binding_errors_instead_of_zero_chirho() {
+        let missing_id_chirho = CoreIdChirho(404);
+        let mut names_chirho = HashMap::new();
+        names_chirho.insert(missing_id_chirho, "missingValueChirho".to_string());
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "Test".to_string(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: int_binder_chirho("main", 0),
+                rhs_chirho: CoreExprChirho::VarChirho(missing_id_chirho),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho,
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: vec![],
+        };
+
+        let err_chirho = lower_and_run_chirho(&module_chirho, None, HashSet::new())
+            .expect_err("missing STG binding should fail loudly");
+        assert!(
+            err_chirho.contains("missing STG binding `missingValueChirho`"),
+            "missing STG binding error should name the unresolved global: {err_chirho}"
+        );
+        assert!(
+            !err_chirho.contains("literal 0"),
+            "missing STG binding must not become the old literal-0 failure: {err_chirho}"
+        );
     }
 
     #[test]
