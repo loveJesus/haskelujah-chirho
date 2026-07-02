@@ -9409,6 +9409,143 @@ impl DictPassCtxChirho {
             });
         }
 
+        // ── instance Functor/Applicative/Monad Proxy ──
+        {
+            let prim_name_chirho = "$prim_Functor_fmap_Proxy";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let f_chirho = self.fresh_binder_chirho("f", any_ty_chirho.clone());
+            let x_chirho = self.fresh_binder_chirho("x", any_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: f_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: x_chirho,
+                    body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                        con_name_chirho: "Proxy".to_string(),
+                        args_chirho: vec![],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: any_ty_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        {
+            let prim_name_chirho = "$prim_Applicative_pure_Proxy";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", any_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho,
+                body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                    con_name_chirho: "Proxy".to_string(),
+                    args_chirho: vec![],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: any_ty_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        {
+            let prim_name_chirho = "$prim_Applicative_<*>_Proxy";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let f_chirho = self.fresh_binder_chirho("f", any_ty_chirho.clone());
+            let x_chirho = self.fresh_binder_chirho("x", any_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: f_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: x_chirho,
+                    body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                        con_name_chirho: "Proxy".to_string(),
+                        args_chirho: vec![],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: any_ty_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        {
+            let prim_name_chirho = "$prim_Monad_>>=_Proxy";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", any_ty_chirho.clone());
+            let f_chirho = self.fresh_binder_chirho("f", any_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: f_chirho,
+                    body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                        con_name_chirho: "Proxy".to_string(),
+                        args_chirho: vec![],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: any_ty_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        {
+            let prim_name_chirho = "$prim_Monad_>>_Proxy";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", any_ty_chirho.clone());
+            let y_chirho = self.fresh_binder_chirho("y", any_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: y_chirho,
+                    body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                        con_name_chirho: "Proxy".to_string(),
+                        args_chirho: vec![],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: any_ty_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
         // ── instance Applicative [] ──
         // $prim_Applicative_pure_[] = \x -> [x]
         {

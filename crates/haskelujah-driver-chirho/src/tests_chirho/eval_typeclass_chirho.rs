@@ -897,6 +897,32 @@ main =
 }
 
 #[test]
+fn eval_proxy_functor_applicative_monad_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import Data.Proxy
+scoreChirho :: Proxy a -> Int
+scoreChirho Proxy = 1
+main =
+  scoreChirho (fmap (+1) (Proxy :: Proxy Int))
+  + scoreChirho (pure 3 :: Proxy Int)
+  + scoreChirho ((Proxy :: Proxy (Int -> Int)) <*> (Proxy :: Proxy Int))
+  + scoreChirho ((Proxy :: Proxy Int) >>= \\xChirho -> Proxy)
+  + scoreChirho ((Proxy :: Proxy Int) >> (Proxy :: Proxy Int))
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(5)
+        ),
+        Err(e_chirho) => panic!("proxy functor/applicative/monad: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_ordering_monoid_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
