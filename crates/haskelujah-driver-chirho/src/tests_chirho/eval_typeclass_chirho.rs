@@ -1072,6 +1072,33 @@ main =
 }
 
 #[test]
+fn eval_refutable_do_patterns_use_monadfail_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+scoreMaybe m = case m of
+  Nothing -> 0
+  Just x -> x
+scoreList xs = case xs of
+  a : b : [] -> a + b
+  _ -> 0
+main =
+  scoreMaybe ((do { Just x <- Just Nothing; return x }) :: Maybe Int)
+  + scoreMaybe ((do { Just x <- Just (Just 3); return x }) :: Maybe Int)
+  + scoreList ((do { Just x <- [Just 1, Nothing, Just 3]; return x }) :: [Int])
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(7)
+        ),
+        Err(e_chirho) => panic!("refutable do patterns should use MonadFail: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_min_max_semigroup_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();

@@ -1488,6 +1488,46 @@ impl DictPassCtxChirho {
             return Some(result_chirho);
         }
 
+        if head_name_chirho == "fail" {
+            let Some(context_key_chirho) = self.monad_context_stack_chirho.borrow().last().cloned()
+            else {
+                return Some(self.rebuild_preserved_method_app_chirho(
+                    head_id_chirho,
+                    &args_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ));
+            };
+            let Some(inst_id_chirho) = self.lookup_dispatch_body_name_id_chirho(&format!(
+                "$prim_MonadFail_fail_{context_key_chirho}"
+            )) else {
+                return Some(self.rebuild_preserved_method_app_chirho(
+                    head_id_chirho,
+                    &args_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ));
+            };
+            let mut result_chirho = CoreExprChirho::VarChirho(inst_id_chirho);
+            for a_chirho in &args_chirho {
+                result_chirho = CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(result_chirho),
+                    arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
+                        a_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_type_keys_chirho,
+                        local_instance_dicts_chirho,
+                    )),
+                };
+            }
+            return Some(result_chirho);
+        }
+
         // (instance-body name prefix, candidate dispatch-argument indexes)
         let (prefix_chirho, dispatch_indices_chirho): (&str, &[usize]) =
             match head_name_chirho.as_str() {

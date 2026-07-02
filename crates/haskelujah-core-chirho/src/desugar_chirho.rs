@@ -5123,6 +5123,15 @@ impl DesugarCtxChirho {
                             )),
                             SpanChirho::DUMMY_CHIRHO,
                         );
+                        let fail_id_chirho = self.resolve_var_chirho("fail");
+                        let fail_chirho = CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(fail_id_chirho)),
+                            arg_chirho: Box::new(CoreExprChirho::LitChirho(
+                                CoreLitChirho::StringChirho(
+                                    "Pattern match failure in do expression".to_string(),
+                                ),
+                            )),
+                        };
                         let case_chirho = CoreExprChirho::CaseChirho {
                             scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(scrut_id_chirho)),
                             bind_chirho: case_wild_chirho,
@@ -5131,11 +5140,18 @@ impl DesugarCtxChirho {
                                     self.next_id_chirho,
                                 ),
                             ),
-                            alts_chirho: vec![CoreAltChirho {
-                                con_chirho,
-                                binders_chirho: top_binders_chirho,
-                                rhs_chirho: wrapped_chirho,
-                            }],
+                            alts_chirho: vec![
+                                CoreAltChirho {
+                                    con_chirho,
+                                    binders_chirho: top_binders_chirho,
+                                    rhs_chirho: wrapped_chirho,
+                                },
+                                CoreAltChirho {
+                                    con_chirho: AltConChirho::DefaultChirho,
+                                    binders_chirho: vec![],
+                                    rhs_chirho: fail_chirho,
+                                },
+                            ],
                         };
                         CoreExprChirho::LamChirho {
                             binder_chirho: scrut_binder_chirho,
@@ -5475,10 +5491,12 @@ mod tests_chirho {
             CoreExprChirho::LamChirho { .. }
         ));
         // Name map should contain the binder's name
-        assert!(output_chirho
-            .names_chirho
-            .values()
-            .any(|n_chirho| n_chirho == "f"));
+        assert!(
+            output_chirho
+                .names_chirho
+                .values()
+                .any(|n_chirho| n_chirho == "f")
+        );
     }
 
     #[test]
@@ -5717,7 +5735,7 @@ mod tests_chirho {
         assert!(matches!(core_chirho, CoreExprChirho::CaseChirho { .. }));
         if let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho {
             assert_eq!(alts_chirho.len(), 2); // True branch + default
-                                              // Default branch should be another case
+            // Default branch should be another case
             assert!(matches!(
                 alts_chirho[1].rhs_chirho,
                 CoreExprChirho::CaseChirho { .. }
