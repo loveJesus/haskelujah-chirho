@@ -3753,6 +3753,21 @@ fn eval_getline_echo_chirho() {
 }
 
 #[test]
+fn eval_getline_bind_putstrln_chirho() {
+    use crate::eval_source_with_input_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let (_val_chirho, machine_chirho) = eval_source_with_input_chirho(
+        "module Test where\nmain = getLine >>= putStrLn\n",
+        &mut sm_chirho,
+        "TestChirho.hs",
+        None,
+        &["bind echo"],
+    )
+    .expect("getLine >>= putStrLn should evaluate");
+    assert_eq!(machine_chirho.io_output_chirho, "bind echo\n");
+}
+
+#[test]
 fn eval_getchar_chirho() {
     use crate::eval_source_with_input_chirho;
     // getChar with input "ABC" should return 'A'

@@ -130,6 +130,59 @@ impl LowerCtxChirho {
         }
     }
 
+    fn io_primop_value_arity_chirho(name_chirho: &str) -> Option<u16> {
+        match name_chirho {
+            "getLine" | "getLine#" | "getChar" | "getContents" | "getContents#" | "retry"
+            | "retry#" => Some(0),
+            "putStrLn" | "putStrLn#" | "putStr" | "putStr#" | "putChar" | "putChar#" | "print"
+            | "interact" | "readFile" | "readFile#" | "return" | "pure" | "returnIO#"
+            | "newIORef" | "newIORef#" | "readIORef" | "readIORef#" | "newSTRef" | "newSTRef#"
+            | "readSTRef" | "readSTRef#" | "runST" | "runST#" | "newTVar" | "newTVar#"
+            | "newTVarIO" | "newTVarIO#" | "readTVar" | "readTVar#" | "readTVarIO"
+            | "readTVarIO#" | "atomically" | "atomically#" | "error" | "undefined" | "seq"
+            | "deepseq" | "evaluate" | "force" | "force#" | "throw" | "throw#" | "throwIO"
+            | "throwIO#" | "try" | "try#" => Some(1),
+            "writeFile" | "writeFile#" | "appendFile" | "appendFile#" | ">>=" | "bindIO#"
+            | ">>" | "thenIO#" | "writeIORef" | "writeIORef#" | "modifyIORef" | "modifyIORef#"
+            | "writeSTRef" | "writeSTRef#" | "modifySTRef" | "modifySTRef#" | "writeTVar"
+            | "writeTVar#" | "orElse" | "orElse#" | "catch" | "catch#" | "finally" | "finally#" => {
+                Some(2)
+            }
+            "bracket" | "bracket#" => Some(3),
+            _ => None,
+        }
+    }
+
+    /// Lower an IO primop name used as a value into a real heap closure.
+    ///
+    /// WI-001/002 PRD note: the strict monad dispatcher intentionally
+    /// preserves unknown IO method names for the STG fallback. If such a name
+    /// appears in argument position (`getLine >>= putStrLn`), it still needs a
+    /// runtime value instead of the missing-binding `Int 0` placeholder.
+    fn lower_io_primop_value_chirho(&mut self, name_chirho: &str) -> Option<ValueChirho> {
+        let arity_chirho = Self::io_primop_value_arity_chirho(name_chirho)?;
+        let prim_op_chirho = primop_name_to_kind_chirho(name_chirho);
+        let args_chirho: Vec<ArgSourceChirho> = (0..usize::from(arity_chirho))
+            .map(ArgSourceChirho::ArgRegChirho)
+            .collect();
+        let entry_chirho = self.emit_chirho(CodeChirho::PrimChirho {
+            op_chirho: prim_op_chirho,
+            args_chirho,
+        });
+        let closure_chirho = if arity_chirho == 0 {
+            ClosureChirho::thunk_chirho(CodePtrChirho(entry_chirho), name_chirho, vec![])
+        } else {
+            ClosureChirho::fun_chirho(
+                arity_chirho,
+                CodePtrChirho(entry_chirho),
+                name_chirho,
+                vec![],
+            )
+        };
+        let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
+        Some(ValueChirho::HeapPtrChirho(addr_chirho))
+    }
+
     /// Lower a Core expression, emitting code and returning the code table
     /// index of the entry point for this expression.
     fn lower_expr_chirho(&mut self, expr_chirho: &CoreExprChirho) -> u32 {
@@ -1100,6 +1153,13 @@ impl LowerCtxChirho {
                 if let Some(&idx_chirho) = self.arg_param_indices_chirho.get(id_chirho) {
                     return ArgSourceChirho::ArgRegChirho(idx_chirho);
                 }
+                if let Some(io_name_chirho) =
+                    self.is_io_primop_chirho(*id_chirho).map(str::to_string)
+                {
+                    if let Some(value_chirho) = self.lower_io_primop_value_chirho(&io_name_chirho) {
+                        return ArgSourceChirho::StaticChirho(value_chirho);
+                    }
+                }
                 ArgSourceChirho::StaticChirho(self.lookup_chirho(*id_chirho))
             }
             _ => {
@@ -1150,6 +1210,13 @@ impl LowerCtxChirho {
                     );
                     let addr_chirho = self.heap_chirho.alloc_chirho(thunk_chirho);
                     return ValueChirho::HeapPtrChirho(addr_chirho);
+                }
+                if let Some(io_name_chirho) =
+                    self.is_io_primop_chirho(*id_chirho).map(str::to_string)
+                {
+                    if let Some(value_chirho) = self.lower_io_primop_value_chirho(&io_name_chirho) {
+                        return value_chirho;
+                    }
                 }
                 self.lookup_chirho(*id_chirho)
             }

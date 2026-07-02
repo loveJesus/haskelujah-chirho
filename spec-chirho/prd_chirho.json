@@ -3,14 +3,15 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.0",
+    "prd_version_chirho": "2.2.1",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
       "claude_chirho (Fable, ultracode session, L.J. directive) — detailed version",
       "gpt_chirho (Codex) — broker input #1388 + initial 9-item scaffold (fully merged; see scaffold_map_chirho)",
       "audit: 25-agent read-only workflow wf_4c365bea-fb4 (results merged under AUDIT-MERGE markers)",
-      "gpt_chirho (Codex) — audit merge v2.2.0 from wf_4c365bea-fb4"
+      "gpt_chirho (Codex) — audit merge v2.2.0 from wf_4c365bea-fb4",
+      "gpt_chirho (Codex) — WI-001/002 IO argument-position primop value lowering v2.2.1"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -60,6 +61,17 @@
       "status_chirho": "No fresh full run after 29d9f262 due resource guard. Audit catalog uses baseline 1609/73, completed b5203335 delta 1569/117, and incomplete 29d9f262 logs; full ghc_bulk/driver sweeps require explicit L.J. approval."
     },
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
+    "latest_targeted_gate_chirho": {
+      "date_chirho": "2026-07-02",
+      "scope_chirho": "WI-001/002 IO primop values in argument position; no full suites run per resource guard",
+      "commands_chirho": [
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_do_getline_bind_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_getline_bind_putstrln_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_io_do_effect_chains_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_getline_echo_chirho -- --test-threads=1"
+      ],
+      "result_chirho": "4 focused driver tests passed. Pre-existing haskelujah-typing warning remained: instantiate_instance_method_expected_ty_chirho is unused."
+    },
     "workspace_chirho": {
       "crates_chirho": 25,
       "rust_loc_chirho": 210723,
@@ -200,7 +212,7 @@
       "title_chirho": "User-level >>= and >> dispatch by monad type",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P0",
-      "status_chirho": "LANDED b5203335 + 29d9f262 strict-key hardening; audit merge notes residual WI-003/WI-014/WI-015 work, especially IO primop names in argument position and signature-driven keys.",
+      "status_chirho": "LANDED b5203335 + 29d9f262 strict-key hardening + v2.2.1 IO primop value lowering for argument position. Remaining work is WI-003/WI-014/WI-015 signature-driven keys and arbitrary-default retirement.",
       "owner_chirho": "claude_chirho (holds builder slot 2026-07-01; per gpt #1388 owner split)",
       "problem_chirho": "WAS: Explicit `m >>= f` / `m >> n` on Maybe/Either/[] print 0: desugar emits PrimOp '>>=' (desugar_chirho.rs:3894-3900) and '>>' (:3886-3892), which STG-lowers unconditionally to BindIOChirho/ThenIOChirho — IO semantics applied to non-IO values. DEEPER TRUTH (audit map): BindIO/ThenIO were Int-0 machine stubs, and the generic dict rewrite consumed unresolved method names into garbage dicts.",
       "evidence_chirho": [
@@ -213,7 +225,8 @@
         "1. desugar_chirho.rs ~3886-3900: emit Var applications (resolve_or_fresh_id_chirho('>>=') / ('>>')) instead of PrimOpChirho for the user-level operators.",
         "2. dict_chirho/rewrite_chirho.rs try_dispatch_hk_method_chirho (~409): add match arms '>>=' -> (\"$prim_Monad_>>=_\", 0usize), '>>' -> (\"$prim_Monad_>>_\", 0usize) — dispatch on the FIRST argument's normalized type key.",
         "3. Monad-context for continuations: while rewriting the args of a positively-dispatched Monad method at head key K, push K on a context stack (RefCell<Vec<String>>); bare `return`/`pure` heads rewrite to $prim_Applicative_pure_K when a body exists and the var is not locally shadowed; pop after. This makes `do { x <- Just 1; ...; return e }` produce Just e without touching IO returns (no context -> ReturnIOChirho fallback).",
-        "4. NO stg_lower change needed: verified 2026-07-01 that Var-App '>>=' lowers byte-identically to PrimOp '>>=' via is_io_primop_chirho (INV-001)."
+        "4. IO fallback still routes through STG primops; however, v2.2.1 corrected argument-position IO names by lowering bare IO primop values to heap closures instead of missing-binding `Int 0` placeholders.",
+        "5. stg_lower_chirho.rs lower_io_primop_value_chirho: nullary IO actions (for example getLine) become thunks; IO functions (for example putStrLn/print) become function closures over arg registers."
       ],
       "acceptance_tests_chirho": [
         {
@@ -240,6 +253,11 @@
           "test_name_chirho": "eval_io_bind_unchanged_chirho",
           "program_chirho": "main = return 7 >>= print",
           "expected_stdout_chirho": "7"
+        },
+        {
+          "test_name_chirho": "eval_getline_bind_putstrln_chirho",
+          "program_chirho": "main = getLine >>= putStrLn",
+          "expected_stdout_chirho": "input line"
         }
       ],
       "regression_gates_chirho": "Full verification_protocol_chirho; watch: IO do-blocks, getLine/file-IO probes, any type with a class-registered Monad but placeholder dict fields (selector path must not hijack — no ('Monad','IO') dict exists at baseline, verified by grep).",
@@ -255,11 +273,11 @@
         ],
         "corrections_chirho": [
           "Do not widen shared infer_type_key_chirho for IO heads; scope IO-head evidence to monad dispatch only.",
-          "Fix argument-position IO primop lowering before adding $prim_Monad_>>=_IO bodies, otherwise getLine/putStrLn still lower as literal 0 arguments.",
+          "LANDED v2.2.1: argument-position IO primop lowering now creates runtime closures, so getLine/putStrLn no longer lower as literal 0 arguments.",
           "Existing eval_do_getline_bind_chirho is a likely red pin and should be the step-2 gate for IO value passing.",
           "MonadFail/refutable do-pattern behavior remains deferred and needs a Maybe-do pattern failure test."
         ],
-        "next_chirho": "Move remaining work into WI-003, WI-014, and WI-015; do not rework landed b5203335/29d9f262 mechanics without targeted regressions."
+        "next_chirho": "Move remaining work into WI-003, WI-014, and WI-015; do not rework landed b5203335/29d9f262/v2.2.1 mechanics without targeted regressions."
       }
     },
     {
@@ -268,7 +286,7 @@
       "title_chirho": "do-notation desugars to real >>= / >> chains",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P0",
-      "status_chirho": "LANDED b5203335 + 29d9f262 strict-key hardening; audit merge keeps it landed but adds follow-up gates for IO do value passing and MonadFail/refutable patterns.",
+      "status_chirho": "LANDED b5203335 + 29d9f262 strict-key hardening + v2.2.1 IO do value passing fix; MonadFail/refutable patterns remain deferred.",
       "owner_chirho": "claude_chirho (same patch series as WI-001)",
       "problem_chirho": "desugar_do_chirho lowers `p <- e; rest` to `let p = e in rest` (desugar_chirho.rs:4959-4986) — binding the WHOLE monadic value (maybe-do adds Just 1 + Just 2 => AddIntChirho crash); `e; rest` becomes case-forcing (:4934-4958) instead of >>; non-Var patterns in <- don't destructure at all (:4966-4968 bind '_bind' and drop the pattern).",
       "evidence_chirho": [
@@ -307,7 +325,7 @@
       "audit_merge_chirho": {
         "verdict_chirho": "needs_revision",
         "residual_risks_chirho": [
-          "do { l <- getLine; putStrLn l } currently belongs to the IO argument-position/value-passing gap, not the Maybe/Either/list dispatch gap.",
+          "LANDED v2.2.1: do { l <- getLine; putStrLn l } passes through IO argument-position/value-passing closure lowering.",
           "Refutable pattern binds need MonadFail semantics instead of a single-alt case crash.",
           "Nested cross-monad return/pure contexts need negative pins before further context-stack widening."
         ]
