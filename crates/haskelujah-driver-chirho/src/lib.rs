@@ -2679,7 +2679,11 @@ pub fn compile_source_chirho(
         warnings_chirho: _warnings_chirho,
     } = frontend_result_chirho;
 
-    compile_backend_chirho(module_chirho, infer_result_chirho)
+    compile_backend_chirho(
+        module_chirho,
+        infer_result_chirho,
+        std::collections::HashSet::new(),
+    )
 }
 
 /// Compile a source file, also searching sibling `.hs` files in the same directory
@@ -2793,7 +2797,11 @@ pub fn compile_source_with_search_path_chirho(
         warnings_chirho: _warnings_chirho,
     } = frontend_result_chirho;
 
-    compile_backend_chirho(module_chirho, infer_result_chirho)
+    compile_backend_chirho(
+        module_chirho,
+        infer_result_chirho,
+        std::collections::HashSet::new(),
+    )
 }
 
 /// Recursively scan subdirectories for `.hs` files and build module interfaces.
@@ -2997,6 +3005,7 @@ fn extract_module_name_from_source_chirho(source_chirho: &str) -> Option<String>
 fn compile_backend_chirho(
     module_chirho: ModuleChirho,
     infer_result_chirho: InferResultChirho,
+    extra_dict_param_names_chirho: std::collections::HashSet<String>,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
     // Phase 5: Desugar AST → Core IR
     let desugar_output_chirho = desugar_module_chirho(&module_chirho);
@@ -3055,13 +3064,15 @@ fn compile_backend_chirho(
             }
         }
     }
-    let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_full_chirho(
+    let dict_result_chirho =
+        haskelujah_core_chirho::dict_pass_module_full_with_extra_dict_param_names_chirho(
         &desugar_output_chirho.module_chirho,
         desugar_output_chirho.names_chirho,
         &infer_result_chirho.env_chirho,
         &infer_result_chirho.class_env_chirho,
         con_types_chirho,
         newtype_info_chirho,
+        extra_dict_param_names_chirho,
     );
     let core_chirho = dict_result_chirho.module_chirho;
 
@@ -3134,6 +3145,9 @@ pub fn compile_modules_chirho(
         // Use import-aware variant so `module Foo` re-exports work.
         let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
 
+        let extra_dict_param_names_chirho: std::collections::HashSet<String> =
+            imported_types_chirho.keys().cloned().collect();
+
         // Carry both bare and module-qualified export names forward so
         // downstream modules can resolve selective and qualified imports.
         insert_exported_schemes_into_imports_chirho(
@@ -3152,7 +3166,11 @@ pub fn compile_modules_chirho(
         ifaces_chirho.push(iface_chirho);
 
         // Phases 5–7: back-end
-        let compile_result_chirho = compile_backend_chirho(module_chirho, infer_result_chirho)?;
+        let compile_result_chirho = compile_backend_chirho(
+            module_chirho,
+            infer_result_chirho,
+            extra_dict_param_names_chirho,
+        )?;
         results_chirho.push(compile_result_chirho);
     }
 
@@ -3778,7 +3796,11 @@ pub fn compile_modules_incremental_chirho(
         ifaces_chirho.push(iface_chirho);
 
         // Phases 5–7: back-end
-        let compile_result_chirho = compile_backend_chirho(module_chirho, infer_result_chirho)?;
+        let compile_result_chirho = compile_backend_chirho(
+            module_chirho,
+            infer_result_chirho,
+            std::collections::HashSet::new(),
+        )?;
 
         results_chirho.push((compile_result_chirho, recompiled_chirho));
     }
@@ -4276,6 +4298,9 @@ pub fn compile_project_dir_chirho(
             // Build interface for downstream modules
             let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
 
+            let extra_dict_param_names_chirho: std::collections::HashSet<String> =
+                imported_types_chirho.keys().cloned().collect();
+
             // Accumulate exported type schemes
             for (name_chirho, val_chirho) in &iface_chirho.exports_chirho.values_chirho {
                 if let Some(scheme_chirho) =
@@ -4296,7 +4321,11 @@ pub fn compile_project_dir_chirho(
             ifaces_chirho.push(iface_chirho);
 
             // Backend compilation
-            let compile_result_chirho = compile_backend_chirho(module_chirho, infer_result_chirho)
+            let compile_result_chirho = compile_backend_chirho(
+                module_chirho,
+                infer_result_chirho,
+                extra_dict_param_names_chirho,
+            )
                 .map_err(|e_chirho| {
                     format!("Backend error for {}: {}", module_name_chirho, e_chirho)
                 })?;
@@ -5443,6 +5472,8 @@ fn compile_module_sources_with_extra_ifaces_chirho(
             all_warnings_chirho.extend(warnings_chirho);
 
             let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+            let extra_dict_param_names_chirho: std::collections::HashSet<String> =
+                imported_types_chirho.keys().cloned().collect();
             insert_exported_schemes_into_imports_chirho(
                 &iface_chirho,
                 &infer_result_chirho,
@@ -5457,7 +5488,11 @@ fn compile_module_sources_with_extra_ifaces_chirho(
             imported_class_env_chirho = infer_result_chirho.class_env_chirho.clone();
             ifaces_chirho.push(iface_chirho);
 
-            let compile_result_chirho = compile_backend_chirho(module_chirho, infer_result_chirho)
+            let compile_result_chirho = compile_backend_chirho(
+                module_chirho,
+                infer_result_chirho,
+                extra_dict_param_names_chirho,
+            )
                 .map_err(|e_chirho| {
                     format!("Backend error for {}: {}", module_name_chirho, e_chirho)
                 })?;

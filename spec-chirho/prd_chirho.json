@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.57",
+    "prd_version_chirho": "2.2.58",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -68,7 +68,8 @@
       "gpt_chirho (Codex) — LLVM native numeric residual recheck narrowed bucket to qsort/list nondeterminism v2.2.54",
       "gpt_chirho (Codex) — default-method literal-0 bucket rechecked stale-green and closed v2.2.55",
       "gpt_chirho (Codex) — Cranelift string traversal fixed by IO sequencing and thunked-tail pack forcing v2.2.56",
-      "gpt_chirho (Codex) — multi-module constrained export calls now carry dict-param metadata through imported names and module ID ranges v2.2.57"
+      "gpt_chirho (Codex) — multi-module constrained export calls now carry dict-param metadata through imported names and module ID ranges v2.2.57",
+      "gpt_chirho (Codex) — narrowed imported dict-param metadata to an explicit cross-module allowlist after d09a4735 probe regression v2.2.58"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -112,7 +113,7 @@
     "probe_harness_chirho": {
       "passed_chirho": 70,
       "total_chirho": 70,
-      "note_chirho": "Claude full-probe acceptance at f8498696 after v2.2.40: PASS=70 FAIL=0. v2.2.41 MonadFail []/Maybe row used targeted gates only; broader driver --lib impact remains unmeasured per resource guard and needs L.J. approval for a heavy sweep."
+      "note_chirho": "Local full-probe gate after v2.2.58 allowlist narrowing: PASS=70 FAIL=0. Claude's acceptance probe at d09a4735/v2.2.57 caught PASS=7 FAIL=63 from broad dict_param_bindings seeding that treated Prelude class methods such as `show` as constrained user functions; v2.2.58 confines extra seeding to explicit cross-module imported export names and restores the 70/70 probe baseline."
     },
     "ghc_suite_chirho": {
       "status_chirho": "No fresh full run after 29d9f262 due resource guard. Audit catalog uses baseline 1609/73, completed b5203335 delta 1569/117, and incomplete 29d9f262 logs; full ghc_bulk/driver sweeps require explicit L.J. approval."
@@ -120,13 +121,15 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "Multi-module constrained export calls: imported helpers like `add1 x = x + 1` now receive the concrete `Num Int` dictionary at downstream call sites, and module CoreId offsetting accounts for binder IDs inside expressions.",
+      "scope_chirho": "Multi-module constrained export calls with narrowed dict-param import allowlist: imported helpers like `add1 x = x + 1` receive the concrete `Num Int` dictionary at downstream call sites without seeding Prelude class methods such as `show`.",
       "commands_chirho": [
         "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_multi_module_function_call_chirho -- --test-threads=1",
         "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_multi_module_three_modules_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_module_re_export_chirho -- --test-threads=1"
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_module_re_export_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo build -p haskelujah --bin haskelujah",
+        "timeout 420 env B=./target/debug/haskelujah bash /private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/scratchpad/probe_chirho.sh"
       ],
-      "result_chirho": "`multi-module-unforced-result` is resolved for all three representatives. The returned PAP was not a final-force bug: imported constrained helpers retained a dictionary lambda, but downstream modules had not registered imported constrained variable IDs in dict_param_bindings_chirho, so call-site dictionary insertion never fired. Full probe impact deferred to broker acceptance gate."
+      "result_chirho": "`multi-module-unforced-result` remains resolved for all three representatives and the 70-case probe is restored to PASS=70 FAIL=0. The d09a4735 broad metadata seed regressed probe output to raw dict selectors (`$Dict_Show ...`); v2.2.58 replaces it with an explicit imported-export allowlist."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1308,7 +1311,7 @@
       {
         "bucket_chirho": "multi-module-unforced-result",
         "count_chirho": 0,
-        "resolved_chirho": "RESOLVED v2.2.57: dict_pass transform_module_chirho now seeds dict_param_bindings_chirho from all named variables in the module type environment, excluding class methods, so imported constrained exports such as `add1 :: Num a => a -> a` receive concrete dictionaries at downstream call sites. eval_modules_chirho also advances CoreId offsets by the maximum ID found in binding RHS/binders, not names_chirho keys alone, preventing cross-module local-binder ID range collisions.",
+        "resolved_chirho": "RESOLVED v2.2.57, narrowed v2.2.58: multi-module compile paths pass an explicit allowlist of previously imported export names to the dict pass, so imported constrained exports such as `add1 :: Num a => a -> a` receive concrete dictionaries at downstream call sites without treating Prelude class methods as ordinary dict-parameterized bindings. eval_modules_chirho also advances CoreId offsets by the maximum ID found in binding RHS/binders, not names_chirho keys alone, preventing cross-module local-binder ID range collisions.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "dict-pass",
         "representative_tests_chirho": [
@@ -1316,7 +1319,7 @@
           "tests_chirho::eval_basic_chirho::eval_module_re_export_chirho",
           "tests_chirho::eval_basic_chirho::eval_multi_module_three_modules_chirho"
         ],
-        "notes_chirho": "The old symptom returned HeapPtrChirho(HeapAddrChirho(N)) instead of IntChirho for trivial cross-module calls, e.g. Lib.add1 with `main = add1 42` expecting 43. Diagnosis showed the heap value was a PAP over `add1` and its argument because `add1` had arity 2: dictionary parameter plus value parameter. The fix reuses the existing constrained-user-function call-site rewrite for imported variables."
+        "notes_chirho": "The old symptom returned HeapPtrChirho(HeapAddrChirho(N)) instead of IntChirho for trivial cross-module calls, e.g. Lib.add1 with `main = add1 42` expecting 43. Diagnosis showed the heap value was a PAP over `add1` and its argument because `add1` had arity 2: dictionary parameter plus value parameter. d09a4735 proved the call-site rewrite was right but the metadata source was too broad: Claude's full-probe gate dropped to 7/70 with raw `$Dict_Show ...` output. v2.2.58 confines extra metadata to cross-module imported exports and restores the probe to 70/70."
       },
       {
         "bucket_chirho": "constraint-alias-dict-pap",

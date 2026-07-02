@@ -2849,10 +2849,34 @@ impl DictPassCtxChirho {
             }
         }
         for (id_chirho, name_chirho) in self.names_chirho.clone() {
-            if self
-                .class_method_selector_for_name_chirho(&name_chirho)
-                .is_some()
-            {
+            let short_name_chirho = name_chirho
+                .rsplit('.')
+                .next()
+                .unwrap_or(name_chirho.as_str());
+            let stripped_name_chirho = short_name_chirho
+                .strip_prefix('(')
+                .and_then(|n_chirho| n_chirho.strip_suffix(')'))
+                .unwrap_or(short_name_chirho);
+            let is_extra_imported_chirho =
+                self.extra_dict_param_names_chirho.contains(&name_chirho)
+                    || self
+                        .extra_dict_param_names_chirho
+                        .contains(short_name_chirho)
+                    || self
+                        .extra_dict_param_names_chirho
+                        .contains(stripped_name_chirho);
+            if !is_extra_imported_chirho {
+                continue;
+            }
+            let is_class_method_chirho = self.method_selectors_chirho.contains_key(&name_chirho)
+                || self.method_selectors_chirho.contains_key(short_name_chirho)
+                || self
+                    .method_selectors_chirho
+                    .contains_key(stripped_name_chirho)
+                || self
+                    .class_method_selector_for_name_chirho(&name_chirho)
+                    .is_some();
+            if is_class_method_chirho {
                 continue;
             }
             if let Some(scheme_chirho) = type_env_chirho.lookup_chirho(&name_chirho) {

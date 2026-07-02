@@ -94,6 +94,11 @@ pub struct DictPassCtxChirho {
     /// `CoreIdChirho` to the ordered list of class names whose dictionaries
     /// must be passed at each call site.
     dict_param_bindings_chirho: HashMap<CoreIdChirho, Vec<String>>,
+    /// Imported names that should be treated as constrained user bindings.
+    /// This is intentionally an allowlist: seeding every name in the type env
+    /// incorrectly treats Prelude class methods such as `show` as ordinary
+    /// dictionary-parameterized functions.
+    extra_dict_param_names_chirho: HashSet<String>,
     /// Superclass selector CoreIds: `(subclass, superclass)` → selector id.
     /// Used to extract a superclass dictionary from a subclass dictionary.
     super_selectors_chirho: HashMap<(String, String), CoreIdChirho>,
@@ -140,6 +145,7 @@ impl DictPassCtxChirho {
             instance_dicts_chirho: HashMap::new(),
             con_types_chirho,
             dict_param_bindings_chirho: HashMap::new(),
+            extra_dict_param_names_chirho: HashSet::new(),
             super_selectors_chirho: HashMap::new(),
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),
@@ -718,10 +724,31 @@ pub fn dict_pass_module_full_chirho(
     con_types_chirho: HashMap<String, String>,
     newtype_info_chirho: HashMap<String, (String, String)>,
 ) -> DictPassResultChirho {
+    dict_pass_module_full_with_extra_dict_param_names_chirho(
+        module_chirho,
+        names_chirho,
+        type_env_chirho,
+        class_env_chirho,
+        con_types_chirho,
+        newtype_info_chirho,
+        HashSet::new(),
+    )
+}
+
+pub fn dict_pass_module_full_with_extra_dict_param_names_chirho(
+    module_chirho: &CoreModuleChirho,
+    names_chirho: HashMap<CoreIdChirho, String>,
+    type_env_chirho: &TyEnvChirho,
+    class_env_chirho: &ClassEnvChirho,
+    con_types_chirho: HashMap<String, String>,
+    newtype_info_chirho: HashMap<String, (String, String)>,
+    extra_dict_param_names_chirho: HashSet<String>,
+) -> DictPassResultChirho {
     let max_id_chirho = find_max_id_chirho(module_chirho);
     let mut ctx_chirho =
         DictPassCtxChirho::new_chirho(max_id_chirho + 1, names_chirho, con_types_chirho);
     ctx_chirho.newtype_info_chirho = newtype_info_chirho;
+    ctx_chirho.extra_dict_param_names_chirho = extra_dict_param_names_chirho;
     let transformed_chirho =
         ctx_chirho.transform_module_chirho(module_chirho, type_env_chirho, class_env_chirho);
     ctx_chirho.finish_chirho(transformed_chirho)
