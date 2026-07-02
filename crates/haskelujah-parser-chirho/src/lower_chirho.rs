@@ -4254,6 +4254,7 @@ impl LowerCtxChirho {
                     let is_method_like_decl_chirho = matches!(
                         decl_chirho,
                         DeclChirho::FunBindChirho { .. }
+                            | DeclChirho::DefaultDeclChirho { .. }
                             | DeclChirho::TypeAliasDeclChirho { .. }
                             | DeclChirho::TypeFamilyInstanceDeclChirho { .. }
                     );
