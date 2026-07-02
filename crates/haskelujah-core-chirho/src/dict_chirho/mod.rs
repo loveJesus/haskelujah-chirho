@@ -313,6 +313,8 @@ impl DictPassCtxChirho {
                         "Product" => Some("Product".to_string()),
                         "All" => Some("All".to_string()),
                         "Any" => Some("Any".to_string()),
+                        "Min" => Some("Min".to_string()),
+                        "Max" => Some("Max".to_string()),
                         "Nothing" => Some("Maybe Int".to_string()),
                         "Left" => {
                             if let Some(inner_chirho) = args_chirho.first() {
@@ -413,6 +415,8 @@ impl DictPassCtxChirho {
                         "Product" => return Some("Product".to_string()),
                         "All" => return Some("All".to_string()),
                         "Any" => return Some("Any".to_string()),
+                        "Min" => return Some("Min".to_string()),
+                        "Max" => return Some("Max".to_string()),
                         _ => {}
                     }
                 }
@@ -505,9 +509,8 @@ impl DictPassCtxChirho {
                         }
                         // Constructor applications: App(Just, x) → Maybe <x-type>
                         match name_chirho.as_str() {
-                            "Identity" | "Const" | "Sum" | "Product" | "All" | "Any" => {
-                                return Some(name_chirho.clone());
-                            }
+                            "Identity" | "Const" | "Sum" | "Product" | "All" | "Any" | "Min"
+                            | "Max" => return Some(name_chirho.clone()),
                             "Just" => {
                                 let inner_chirho = self
                                     .infer_type_key_chirho(arg_chirho)

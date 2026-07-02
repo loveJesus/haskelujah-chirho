@@ -969,6 +969,29 @@ main =
 }
 
 #[test]
+fn eval_min_max_semigroup_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import Data.Semigroup
+main =
+  getMin (Min 4 <> Min 2)
+  + getMin (Min 9 <> Min 12)
+  + getMax (Max 4 <> Max 2)
+  + getMax (Max 9 <> Max 12)
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(27)
+        ),
+        Err(e_chirho) => panic!("min/max semigroup: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_ordering_monoid_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();

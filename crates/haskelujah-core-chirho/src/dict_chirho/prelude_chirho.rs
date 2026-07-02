@@ -255,6 +255,10 @@ impl DictPassCtxChirho {
             "getAll",
             "Any",
             "getAny",
+            "Min",
+            "getMin",
+            "Max",
+            "getMax",
         ] {
             let a_chirho = TyChirho::VarChirho(TyVarChirho(9980));
             let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
@@ -14999,6 +15003,70 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(body_chirho),
                 },
                 is_rec_chirho: true,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── Data.Semigroup.Min/Max: interface newtypes are erased to payloads ──
+        for (type_key_chirho, pick_first_chirho) in [("Min", true), ("Max", false)] {
+            let semigroup_name_chirho = format!("$prim_Semigroup_<>_{}", type_key_chirho);
+            let fn_id_chirho = self.resolve_or_fresh_id_chirho(&semigroup_name_chirho);
+            let a_chirho = self.fresh_binder_chirho("a", TyChirho::int_chirho());
+            let b_chirho = self.fresh_binder_chirho("b", TyChirho::int_chirho());
+            let wild_chirho = self.fresh_binder_chirho("wild", TyChirho::bool_chirho());
+            let (true_rhs_chirho, false_rhs_chirho) = if pick_first_chirho {
+                (
+                    CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                    CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                )
+            } else {
+                (
+                    CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                    CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                )
+            };
+            let body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "<=#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                        CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                    ],
+                }),
+                bind_chirho: wild_chirho,
+                result_ty_chirho: TyChirho::int_chirho(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: true_rhs_chirho,
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: false_rhs_chirho,
+                    },
+                ],
+            };
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: a_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: b_chirho.clone(),
+                    body_chirho: Box::new(body_chirho),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: fn_id_chirho,
+                    name_chirho: semigroup_name_chirho,
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::int_chirho(),
+                        TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho()),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
                 inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
