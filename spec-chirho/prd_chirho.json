@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.51",
+    "prd_version_chirho": "2.2.52",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -62,7 +62,8 @@
       "gpt_chirho (Codex) — WI-002 refutable do-patterns route failed matches through contextual MonadFail v2.2.48",
       "gpt_chirho (Codex) — test-harness/CLI parity audit resolved frontend WriterT case as Rust string-layout artifact v2.2.49",
       "gpt_chirho (Codex) — failure catalog cleanup after WriterT test-literal fix v2.2.50",
-      "gpt_chirho (Codex) — frontend instance-method fixture corrected to type-valid ExceptT mzipWith body v2.2.51"
+      "gpt_chirho (Codex) — frontend instance-method fixture corrected to type-valid ExceptT mzipWith body v2.2.51",
+      "gpt_chirho (Codex) — Data.Typeable rnf export fixture aligned with poly-kinded TypeRep v2.2.52"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -114,13 +115,15 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "Frontend one-off cleanup for `frontend_instance_methods_stay_nested_chirho`: the source fixture checked nested instance-method lowering with an invalid `ExceptT` `mzipWith` body. After unwrapping `ExceptT`, the inner `mzipWith` must receive `liftA2 fChirho`, not `fChirho`, because the inner monad carries `Either e` payloads.",
+      "scope_chirho": "Frontend one-off cleanup for `iface_data_typeable_rnf_exports_chirho`: the fixture imported the poly-kinded `TypeRep` constructor but used bare `TypeRep -> ()`. The export check now uses `TypeRep a -> ()`, matching the seeded `TypeRep :: k -> *` model while still verifying `rnfTypeRep` is exported and typed.",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_instance_methods_stay_nested_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_instance_methods_complex_shape_stay_nested_chirho -- --test-threads=1",
-        "rustfmt --edition 2024 --check crates/haskelujah-driver-chirho/src/tests_chirho/compile_chirho.rs"
+        "target/debug/haskelujah check /tmp/typeable-rnf-chirho-*/IfaceTypeableRnf.hs",
+        "target/debug/haskelujah compile /tmp/typeable-rnf-chirho-*/IfaceTypeableRnf.hs",
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib iface_data_typeable_rnf_exports_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib typeable -- --test-threads=1",
+        "rustfmt --edition 2024 --check crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho.rs"
       ],
-      "result_chirho": "The simple and complex nested instance-method shape tests now pass without compiler semantics changes. The frontend-typing-one-offs catalog drops from 4 to 3 remaining real one-offs; broader probe/full driver impact remains unmeasured by this targeted pass."
+      "result_chirho": "The Data.Typeable rnf export test now passes without compiler semantics changes. The frontend-typing-one-offs catalog drops from 3 to 2 remaining real one-offs; broader probe/full driver impact remains unmeasured by this targeted pass."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1264,16 +1267,15 @@
       },
       {
         "bucket_chirho": "frontend-typing-one-offs",
-        "count_chirho": 3,
-        "resolved_chirho": "2 of 5 RESOLVED. v2.2.49/c815ef17 resolved the nested WriterT `$`/callCC `mempty` E0202 case as a Rust string-continuation layout artifact in `frontend_writer_t_nested_dollar_callcc_chirho`. v2.2.51 resolved `frontend_instance_methods_stay_nested_chirho` as an invalid fixture: after unwrapping `ExceptT`, inner `mzipWith` operates on `m (Either e a)`/`m (Either e b)`, so the method body must use `mzipWith (liftA2 fChirho) aChirho bChirho`, matching the already-passing complex sibling.",
+        "count_chirho": 2,
+        "resolved_chirho": "3 of 5 RESOLVED. v2.2.49/c815ef17 resolved the nested WriterT `$`/callCC `mempty` E0202 case as a Rust string-continuation layout artifact in `frontend_writer_t_nested_dollar_callcc_chirho`. v2.2.51 resolved `frontend_instance_methods_stay_nested_chirho` as an invalid fixture: after unwrapping `ExceptT`, inner `mzipWith` operates on `m (Either e a)`/`m (Either e b)`, so the method body must use `mzipWith (liftA2 fChirho) aChirho bChirho`, matching the already-passing complex sibling. v2.2.52 resolved `iface_data_typeable_rnf_exports_chirho` as a fixture mismatch with the current poly-kinded `TypeRep :: k -> *` model; `g :: TypeRep a -> ()` preserves the export check without weakening kind inference.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "typing",
         "representative_tests_chirho": [
-          "tests_chirho::compile_chirho::frontend_instance_methods_stay_nested_chirho",
           "tests_chirho::compile_chirho::frontend_constraints_package_regression_chirho",
-          "tests_chirho::extensions_chirho::iface_data_typeable_rnf_exports_chirho"
+          "tests_chirho::compile_chirho::frontend_th_abstraction_style_local_sig_in_instance_typechecks_chirho"
         ],
-        "notes_chirho": "Heterogeneous frontend typecheck failures, one test each after removing resolved test-fixture artifacts: E0200 '[Int]' vs '(t240 -> t241)' plus a bogus unbound EMPTY-name `` diagnostic at a synthetic span (compile_chirho.rs:1497); E0200 'expected `Dict`, found `(-> t455)`' compiling real Data.Constraint; E0300 kind mismatch in Data.Typeable rnfTyCon/rnfTypeRep exports (kind-infer/iface interaction)."
+        "notes_chirho": "Heterogeneous frontend typecheck failures, one test each after removing resolved test-fixture artifacts: E0200 '[Int]' vs `(t240 -> t241)` plus a bogus unbound EMPTY-name `` diagnostic at a synthetic span in the TH-style local `foldMap`/`Map.insert` expression (compile_chirho.rs:1497); E0200 'expected `Dict`, found `(-> t455)`' compiling real Data.Constraint."
       },
       {
         "bucket_chirho": "stg-eval-thunk-forcing",

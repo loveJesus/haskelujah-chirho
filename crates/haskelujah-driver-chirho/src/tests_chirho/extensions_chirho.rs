@@ -2797,7 +2797,7 @@ import Data.Typeable (TyCon, TypeRep, rnfTyCon, rnfTypeRep)
 f :: TyCon -> ()
 f = rnfTyCon
 
-g :: TypeRep -> ()
+g :: TypeRep a -> ()
 g = rnfTypeRep
 "#;
     let mut sm_chirho = SourceMapChirho::new_chirho();
