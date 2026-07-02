@@ -4199,6 +4199,37 @@ finiteBitSizeAliasChirho = finiteBitSize
 }
 
 #[test]
+fn frontend_normalized_class_dot_imports_expose_floating_methods_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ClassDotFloatingMethodsChirho where
+import GHC.Float (Floating(..))
+
+piAliasChirho :: Floating a => a
+piAliasChirho = pi
+
+sqrtAliasChirho :: Floating a => a -> a
+sqrtAliasChirho = sqrt
+
+sinAliasChirho :: Floating a => a -> a
+sinAliasChirho = sin
+
+atanAliasChirho :: Floating a => a -> a
+atanAliasChirho = atan
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ClassDotFloatingMethodsChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "normalized Floating `(..)` import should expose associated methods: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_exceptt_single_contravariant_instance_method_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_chirho = "\

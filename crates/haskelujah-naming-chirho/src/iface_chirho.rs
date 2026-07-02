@@ -80,6 +80,9 @@ fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'s
         "Read" => Some(&["read"]),
         "Num" => Some(&["+", "*", "-", "negate", "fromInteger", "abs", "signum"]),
         "Fractional" => Some(&["/", "recip", "fromRational"]),
+        "Floating" => Some(&[
+            "pi", "exp", "log", "sqrt", "sin", "cos", "tan", "asin", "acos", "atan",
+        ]),
         "Integral" => Some(&["div", "mod", "quot", "rem", "toInteger"]),
         "Enum" => Some(&["succ", "pred", "toEnum", "fromEnum"]),
         "Bounded" => Some(&["minBound", "maxBound"]),
