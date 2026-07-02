@@ -318,6 +318,7 @@ impl DictPassCtxChirho {
                         "First" => Some("First".to_string()),
                         "Last" => Some("Last".to_string()),
                         "Down" => Some("Down".to_string()),
+                        "Endo" => Some("Endo".to_string()),
                         "Nothing" => Some("Maybe Int".to_string()),
                         "Left" => {
                             if let Some(inner_chirho) = args_chirho.first() {
@@ -395,6 +396,7 @@ impl DictPassCtxChirho {
                                     Some("First") => Some("[First]".to_string()),
                                     Some("Last") => Some("[Last]".to_string()),
                                     Some("Down") => Some("[Down]".to_string()),
+                                    Some("Endo") => Some("[Endo]".to_string()),
                                     _ => Some("[Int]".to_string()), // default
                                 }
                             } else {
@@ -428,6 +430,7 @@ impl DictPassCtxChirho {
                         "First" => return Some("First".to_string()),
                         "Last" => return Some("Last".to_string()),
                         "Down" => return Some("Down".to_string()),
+                        "Endo" => return Some("Endo".to_string()),
                         _ => {}
                     }
                 }
@@ -521,7 +524,7 @@ impl DictPassCtxChirho {
                         // Constructor applications: App(Just, x) → Maybe <x-type>
                         match name_chirho.as_str() {
                             "Identity" | "Const" | "Sum" | "Product" | "All" | "Any" | "Min"
-                            | "Max" | "First" | "Last" | "Down" => {
+                            | "Max" | "First" | "Last" | "Down" | "Endo" => {
                                 return Some(name_chirho.clone());
                             }
                             "Just" => {

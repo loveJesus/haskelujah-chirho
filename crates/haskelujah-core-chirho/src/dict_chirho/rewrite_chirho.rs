@@ -301,6 +301,7 @@ impl DictPassCtxChirho {
                             | "First"
                             | "Last"
                             | "Down"
+                            | "Endo"
                             | ":"
                             | "(,)"
                             | "(,,)"
@@ -363,6 +364,7 @@ impl DictPassCtxChirho {
                     | "First"
                     | "Last"
                     | "Down"
+                    | "Endo"
                     | ":"
                     | "[]"
                     | "(,)"
@@ -1043,7 +1045,8 @@ impl DictPassCtxChirho {
                 let is_con_head_chirho = self.con_types_chirho.contains_key(name_chirho)
                     || matches!(
                         name_chirho.as_str(),
-                        "Just" | "Left" | "Right" | "Down" | ":" | "(,)" | "(,,)" | "(,,,)"
+                        "Just" | "Left" | "Right" | "Down" | "Endo" | ":" | "(,)" | "(,,)"
+                        | "(,,,)"
                     )
                     || name_chirho.starts_with("$tuple");
                 if is_con_head_chirho {
@@ -1628,6 +1631,7 @@ impl DictPassCtxChirho {
                                             | "Any"
                                             | "First"
                                             | "Last"
+                                            | "Endo"
                                     )
                                 {
                                     Some(elem_key_chirho.to_string())

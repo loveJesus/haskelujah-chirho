@@ -1093,6 +1093,28 @@ main = score (EQ <> LT) + score (GT <> LT) + score (mempty <> EQ) + score (mconc
 }
 
 #[test]
+fn eval_endo_monoid_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import Data.Monoid
+main =
+  appEndo (Endo (+1) <> Endo (*2)) 10
+  + appEndo (mempty <> Endo (+5)) 7
+  + appEndo (mconcat [Endo (+3), Endo (*4)]) 2
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(44)
+        ),
+        Err(e_chirho) => panic!("endo monoid: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_monoid_mconcat_chirho() {
     // mconcat [[1,2],[3],[4,5]] should give [1,2,3,4,5] → length 5
     use crate::eval_source_chirho;

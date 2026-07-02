@@ -3040,7 +3040,7 @@ impl ClassEnvChirho {
         }
         // Semigroup/Monoid for common wrapper types
         for ty_chirho in [
-            "First", "Last", "Sum", "Product", "Dual", "Min", "Max", "All", "Any",
+            "First", "Last", "Sum", "Product", "Dual", "Endo", "Min", "Max", "All", "Any",
         ] {
             for class_chirho in ["Semigroup", "Monoid"] {
                 self.add_instance_chirho(InstDeclChirho {

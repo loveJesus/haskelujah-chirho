@@ -3037,7 +3037,7 @@ fn compile_backend_chirho(
         .iter()
         .any(|import_chirho| import_chirho.module_chirho.full_name_chirho() == "Data.Semigroup")
     {
-        for con_name_chirho in ["Min", "Max"] {
+        for con_name_chirho in ["Min", "Max", "Endo"] {
             if !con_types_chirho.contains_key(con_name_chirho) {
                 newtype_cons_chirho.insert(con_name_chirho.to_string());
             }
@@ -3048,7 +3048,7 @@ fn compile_backend_chirho(
         .iter()
         .any(|import_chirho| import_chirho.module_chirho.full_name_chirho() == "Data.Monoid")
     {
-        for con_name_chirho in ["First", "Last"] {
+        for con_name_chirho in ["First", "Last", "Endo"] {
             if !con_types_chirho.contains_key(con_name_chirho) {
                 newtype_cons_chirho.insert(con_name_chirho.to_string());
             }
