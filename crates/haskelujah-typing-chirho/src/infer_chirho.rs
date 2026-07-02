@@ -195,6 +195,11 @@ impl InferCtxChirho {
         }
         // type FilePath = String
         type_synonyms_chirho.insert("FilePath".to_string(), (vec![], TyChirho::string_chirho()));
+        // Test.Hspec frontiers: model Spec/Expectation as IO () for type-checking
+        // package test suites without implementing the Hspec runner.
+        let hspec_action_ty_chirho = TyChirho::io_chirho(TyChirho::unit_chirho());
+        type_synonyms_chirho.insert("Spec".to_string(), (vec![], hspec_action_ty_chirho.clone()));
+        type_synonyms_chirho.insert("Expectation".to_string(), (vec![], hspec_action_ty_chirho));
         // Monad transformer aliases from transformers / mtl.
         type_synonyms_chirho.insert(
             "State".to_string(),
@@ -16630,20 +16635,40 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // typeRep :: Typeable a => TypeRep a
+    // typeRep variants:
+    // Data.Typeable exports the older proxy-argument form, while Type.Reflection
+    // exports the modern visible-type-application form.
     {
         let a_chirho = TyVarChirho(7150);
-        let type_rep_scheme_chirho = SchemeChirho {
+        let type_reflection_rep_scheme_chirho = SchemeChirho {
             vars_chirho: vec![a_chirho],
             preds_chirho: vec![],
             ty_chirho: mk_type_rep_ty_chirho(TyChirho::VarChirho(a_chirho)),
         };
-        env_chirho.bind_chirho("typeRep".to_string(), type_rep_scheme_chirho.clone());
+        let proxy_rep_a_chirho = TyVarChirho(7151);
+        let data_typeable_rep_scheme_chirho = SchemeChirho {
+            vars_chirho: vec![proxy_rep_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
+                    Box::new(TyChirho::VarChirho(proxy_rep_a_chirho)),
+                ),
+                mk_type_rep_ty_chirho(TyChirho::VarChirho(proxy_rep_a_chirho)),
+            ),
+        };
+        env_chirho.bind_chirho(
+            "typeRep".to_string(),
+            data_typeable_rep_scheme_chirho.clone(),
+        );
         env_chirho.bind_chirho(
             "Type.Reflection.typeRep".to_string(),
-            type_rep_scheme_chirho.clone(),
+            type_reflection_rep_scheme_chirho,
         );
-        env_chirho.bind_chirho("Data.Typeable.typeRep".to_string(), type_rep_scheme_chirho);
+        env_chirho.bind_chirho(
+            "Data.Typeable.typeRep".to_string(),
+            data_typeable_rep_scheme_chirho,
+        );
     }
 
     // Proxy :: Proxy a (constructor)
@@ -19039,8 +19064,47 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
+    // Test.Hspec DSL stubs used by package test suites.
+    let hspec_spec_ty_chirho = TyChirho::io_chirho(TyChirho::unit_chirho());
+    let hspec_a_chirho = TyVarChirho(1801);
+    env_chirho.bind_chirho(
+        "hspec".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+            hspec_spec_ty_chirho.clone(),
+            hspec_spec_ty_chirho.clone(),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "describe".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::string_chirho(), hspec_spec_ty_chirho.clone()],
+            hspec_spec_ty_chirho.clone(),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "it".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
+            vec![TyChirho::string_chirho(), hspec_spec_ty_chirho.clone()],
+            hspec_spec_ty_chirho.clone(),
+        )),
+    );
+    env_chirho.bind_chirho(
+        "shouldBe".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![hspec_a_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(hspec_a_chirho),
+                    TyChirho::VarChirho(hspec_a_chirho),
+                ],
+                hspec_spec_ty_chirho,
+            ),
+        },
+    );
+
     // List cons constructor: (:) :: forall a. a -> [a] -> [a]
-    let cons_v_chirho = TyVarChirho(1801);
+    let cons_v_chirho = TyVarChirho(1802);
     env_chirho.bind_chirho(
         ":".to_string(),
         SchemeChirho {

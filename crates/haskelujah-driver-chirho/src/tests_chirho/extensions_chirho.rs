@@ -2810,6 +2810,69 @@ g = rnfTypeRep
 }
 
 #[test]
+fn iface_data_typeable_type_rep_proxy_arg_chirho() {
+    let src_chirho = r#"
+{-# LANGUAGE ScopedTypeVariables, TypeApplications #-}
+module IfaceTypeableTypeRepProxy where
+import Data.Proxy
+import Data.Typeable (Typeable, typeRep)
+
+showTypeRep :: forall t. Typeable t => String
+showTypeRep = show $ typeRep (Proxy @t)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut sm_chirho, "IfaceTypeableTypeRepProxy.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Data.Typeable.typeRep should accept a proxy argument: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn iface_ghc_typelits_charval_chirho() {
+    let src_chirho = r#"
+{-# LANGUAGE DataKinds, ScopedTypeVariables, TypeApplications #-}
+module IfaceTypeLitsCharVal where
+import Data.Proxy
+import GHC.TypeLits
+
+charName :: forall c. KnownChar c => Char
+charName = charVal (Proxy @c)
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho =
+        compile_source_chirho(src_chirho, &mut sm_chirho, "IfaceTypeLitsCharVal.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "GHC.TypeLits should export charVal/KnownChar: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
+fn iface_test_hspec_minimal_spec_chirho() {
+    let src_chirho = r#"
+module IfaceHspec where
+import Test.Hspec
+
+spec :: Spec
+spec = describe "stub" $ it "checks equality" $ (1 :: Int) `shouldBe` 1
+
+main :: IO ()
+main = hspec spec
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "IfaceHspec.hs");
+    assert!(
+        result_chirho.is_ok(),
+        "Test.Hspec minimal spec should typecheck: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn iface_data_coerce_chirho() {
     let src_chirho = r#"
 module IfaceCoerce where

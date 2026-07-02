@@ -1802,6 +1802,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
             "natVal",
+            "charVal",
             "symbolVal",
             "sameNat",
             "sameSymbol",
@@ -1817,6 +1818,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "Nat",
             "Symbol",
             "KnownNat",
+            "KnownChar",
             "KnownSymbol",
             "SomeNat",
             "SomeSymbol",
@@ -9353,6 +9355,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "Nat",
             "Symbol",
             "KnownNat",
+            "KnownChar",
             "KnownSymbol",
             "SomeNat",
             "SomeSymbol",
@@ -9365,6 +9368,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         for name_chirho in &[
             "natVal",
             "natVal'",
+            "charVal",
             "symbolVal",
             "symbolVal'",
             "someNatVal",
@@ -10847,6 +10851,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         for name_chirho in &[
             "natVal",
             "natVal'",
+            "charVal",
             "symbolVal",
             "symbolVal'",
             "sameNat",
@@ -10863,6 +10868,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "Nat",
             "Symbol",
             "KnownNat",
+            "KnownChar",
             "KnownSymbol",
             "SomeNat",
             "SomeSymbol",
@@ -12984,6 +12990,23 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Test.HUnit.Lang".to_string(),
+            exports_chirho,
+        });
+    }
+
+    // Test.Hspec (for package test-suite frontiers)
+    {
+        let mut exports_chirho = IfaceExportsChirho::default();
+        for name_chirho in &["hspec", "describe", "it", "shouldBe"] {
+            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho.values_chirho.insert(k_chirho, v_chirho);
+        }
+        for name_chirho in &["Spec", "Expectation"] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        modules_chirho.push(ModuleIfaceChirho {
+            name_chirho: "Test.Hspec".to_string(),
             exports_chirho,
         });
     }
