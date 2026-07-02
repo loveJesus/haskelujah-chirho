@@ -940,7 +940,10 @@ impl DictPassCtxChirho {
                             {
                                 let elem_key_chirho = &key_chirho[1..key_chirho.len() - 1];
                                 if elem_key_chirho.starts_with('[')
-                                    || matches!(elem_key_chirho, "Sum" | "Product" | "All" | "Any")
+                                    || matches!(
+                                        elem_key_chirho,
+                                        "Ordering" | "Sum" | "Product" | "All" | "Any"
+                                    )
                                 {
                                     Some(elem_key_chirho.to_string())
                                 } else {

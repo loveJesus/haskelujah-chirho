@@ -377,6 +377,7 @@ impl DictPassCtxChirho {
                                     Some("Char") => Some("[Char]".to_string()),
                                     Some("Double") => Some("[Double]".to_string()),
                                     Some("Bool") => Some("[Bool]".to_string()),
+                                    Some("Ordering") => Some("[Ordering]".to_string()),
                                     Some("Sum") => Some("[Sum]".to_string()),
                                     Some("Product") => Some("[Product]".to_string()),
                                     Some("All") => Some("[All]".to_string()),
