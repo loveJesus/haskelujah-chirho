@@ -2,19 +2,30 @@
   "_comment_john_3_16_chirho": "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)",
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
-    "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. gpt/gemini/opus/claude agents pick items from here, follow the gates, and update status_chirho when landing.",
-    "prd_version_chirho": "2.1.0",
-    "date_chirho": "2026-07-01",
-    "baseline_commit_chirho": "626ab0a4 (WI-001/002 landed on top as b5203335)",
+    "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
+    "prd_version_chirho": "2.2.0",
+    "date_chirho": "2026-07-02",
+    "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
       "claude_chirho (Fable, ultracode session, L.J. directive) — detailed version",
       "gpt_chirho (Codex) — broker input #1388 + initial 9-item scaffold (fully merged; see scaffold_map_chirho)",
-      "audit: 25-agent read-only workflow wf_4c365bea-fb4 (results merged under AUDIT-MERGE markers)"
+      "audit: 25-agent read-only workflow wf_4c365bea-fb4 (results merged under AUDIT-MERGE markers)",
+      "gpt_chirho (Codex) — audit merge v2.2.0 from wf_4c365bea-fb4"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
-    "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored)."
+    "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
+    "audit_merge_chirho": {
+      "workflow_chirho": "wf_4c365bea-fb4",
+      "agent_count_chirho": 25,
+      "total_tool_calls_chirho": 795,
+      "total_tokens_chirho": 2645951,
+      "result_artifact_chirho": "/private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/deb8156f-2c89-44ac-99a0-55d2967ea407/tasks/wydqz29wu.output",
+      "journal_artifact_chirho": "/Users/hallelujah/.claude/projects/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/subagents/workflows/wf_4c365bea-fb4/journal.jsonl",
+      "merged_by_chirho": "gpt_chirho",
+      "merged_at_chirho": "2026-07-02T03:55:00Z",
+      "policy_chirho": "Verify verdicts marked needs_revision were folded as corrections or explicit caveats; no heavy tests were run during this merge."
+    }
   },
-
   "mission_chirho": {
     "statement_chirho": "Iron out all code paths that are not Haskell-compatible until Haskelujah is a drop-in replacement for GHC on real programs and real Hackage packages — and improve on GHC (diagnostics, memory safety, portability, multi-backend, build speed) without ever breaking the drop-in contract.",
     "drop_in_contract_chirho": [
@@ -31,17 +42,41 @@
       "Rule: an improvement may never change the observable semantics of an accepted program except behind an explicit flag."
     ]
   },
-
   "current_state_chirho": {
-    "measured_date_chirho": "2026-07-01 (late, post-b5203335)",
-    "driver_lib_tests_chirho": { "passed_chirho": 1609, "failed_chirho": 73, "runtime_seconds_chirho": 466, "note_chirho": "baseline at 626ab0a4. At b5203335 alone: 1569 passed / 117 failed (44 net regressions — putStrLn-chain class; completed run, valid). At 29d9f262 (strict-key fix): full delta NOT MEASURED — the run was SIGTERMed by the resource guard (two overlapping suites, L.J. flag); gates that DID run at 29d9f262: probe 70/70, 10 CLI repros green, 9/9 targeted monadic/fmap/applicative/stdout eval tests. Full re-run awaits L.J. approval per RESOURCE GUARD.",
-      "partial_ghc_sweep_at_b5203335_chirho": "parser/should_compile 120/158 (75.9%), parser/should_fail 65/233 correctly rejected (27.9%) — partial capture before SIGTERM; treat as the only fresh per-category data, incomplete" },
-    "probe_harness_chirho": { "passed_chirho": 70, "total_chirho": 70, "note_chirho": "at b5203335 with FRESH binary — maybe-do flipped green, zero regressions. KNOWN probe coverage hole: multi-statement IO do-blocks starting with putStrLn were not in the harness and crashed at b5203335 (list-monad mis-dispatch via blind key inference); strict-key fix + eval_io_do_effect_chains_chirho pin landed next" },
-    "ghc_suite_chirho": { "status_chirho": "first full sweep at 626ab0a4 PASSED as a tracking run (1992s) but per-category tables were lost to cargo output capture (missing --nocapture) — honest gap; summary-only re-run with --nocapture in progress, results land here" },
+    "measured_date_chirho": "2026-07-02 (audit-merged after e4d636ce; no new heavy sweeps)",
+    "driver_lib_tests_chirho": {
+      "passed_chirho": 1609,
+      "failed_chirho": 73,
+      "runtime_seconds_chirho": 466,
+      "note_chirho": "baseline at 626ab0a4. At b5203335 alone: 1569 passed / 117 failed (44 net regressions — putStrLn-chain class; completed run, valid). At 29d9f262 (strict-key fix): full delta NOT MEASURED — the run was SIGTERMed by the resource guard (two overlapping suites, L.J. flag); gates that DID run at 29d9f262: probe 70/70, 10 CLI repros green, 9/9 targeted monadic/fmap/applicative/stdout eval tests. Full re-run awaits L.J. approval per RESOURCE GUARD.",
+      "partial_ghc_sweep_at_b5203335_chirho": "parser/should_compile 120/158 (75.9%), parser/should_fail 65/233 correctly rejected (27.9%) — partial capture before SIGTERM; treat as the only fresh per-category data, incomplete"
+    },
+    "probe_harness_chirho": {
+      "passed_chirho": 70,
+      "total_chirho": 70,
+      "note_chirho": "at b5203335 with FRESH binary — maybe-do flipped green, zero regressions. KNOWN probe coverage hole: multi-statement IO do-blocks starting with putStrLn were not in the harness and crashed at b5203335 (list-monad mis-dispatch via blind key inference); strict-key fix + eval_io_do_effect_chains_chirho pin landed next"
+    },
+    "ghc_suite_chirho": {
+      "status_chirho": "No fresh full run after 29d9f262 due resource guard. Audit catalog uses baseline 1609/73, completed b5203335 delta 1569/117, and incomplete 29d9f262 logs; full ghc_bulk/driver sweeps require explicit L.J. approval."
+    },
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
-    "workspace_chirho": { "crates_chirho": 25, "rust_loc_chirho": 210723, "module_ifaces_chirho": 497 }
+    "workspace_chirho": {
+      "crates_chirho": 25,
+      "rust_loc_chirho": 210723,
+      "module_ifaces_chirho": 497
+    },
+    "audit_workflow_chirho": {
+      "workflow_chirho": "wf_4c365bea-fb4",
+      "status_chirho": "complete: 25/25 read-only agents, 0 workflow errors",
+      "verdict_summary_chirho": "All design areas returned needs_revision; this PRD folds the corrections and flags residual risks instead of accepting the original designs verbatim.",
+      "catalog_totals_chirho": {
+        "driver_lib_passed_chirho": 1609,
+        "driver_lib_failed_chirho": 73,
+        "probe_pass_chirho": 69,
+        "probe_total_chirho": 70
+      }
+    }
   },
-
   "guardrails_chirho": {
     "machine_safety_chirho": [
       "ONE builder machine-wide at any time. The builder slot is coordinated in broker room haskelujah-chirho; announce before building, post SLOT-FREE after. A direct L.J. instruction always wins over agent coordination.",
@@ -63,23 +98,37 @@
     "naming_law_chirho": "New Rust identifiers end _chirho/Chirho per repo law; internal dict-pass names ($sel_Class_method, $dClass_Type, $prim_Class_method_Type) keep their existing convention; new source files start with the John 3:16 header.",
     "verification_protocol_chirho": {
       "before_push_chirho": [
-        "Focused probes (GPT #1388 set): main = print 7; main = return 7 >>= print; main = do { x <- return 7; print x }; Either explicit bind; Maybe explicit bind; list bind; Maybe do; Either pure/return if attempted.",
-        "bash <session-scratchpad>/probe_chirho.sh with B=./target/debug/haskelujah — zero regressions vs 69/70 baseline (maybe-do flips green with WI-002).",
-        "cargo test -p haskelujah-driver --lib — no NEW reds vs the 73-red baseline; attach the delta to your broker post.",
-        "Package smoke for dispatch/desugar/Core changes: transformers, mtl, parsec under .haskelujah-packages-chirho/.",
+        "Default: targeted filtered tests/probes only. Full driver --lib and ghc_bulk sweeps require explicit L.J. approval, one at a time, nice/timeout, and --test-threads=4 or fewer.",
+        "Focused probes (GPT #1388 set plus IO-do additions): main = print 7; main = return 7 >>= print; main = do { x <- return 7; print x }; do { putStrLn \"a\"; putStrLn \"b\" }; Either explicit bind; Maybe explicit bind; list bind; Maybe do; Either pure/return if attempted.",
+        "Before CLI probes, rebuild or verify target/debug/haskelujah mtime against HEAD; cargo test does not rebuild the CLI binary.",
+        "Package smoke for dispatch/desugar/Core changes: transformers, mtl, parsec with a fresh CLI binary or cargo run path; do not trust stale target/debug/haskelujah.",
         "Native backend smoke when a change can reach codegen: tiny putStrLn, print int, arithmetic through the LLVM path.",
-        "Log the landing in progress-chirho.sqlite and post a broker summary."
+        "Log the landing in progress-chirho.sqlite and post a broker summary with exact commands and what was not run."
       ]
     }
   },
-
   "invariants_chirho": [
-    { "id_chirho": "INV-001", "name_chirho": "IO fast path preserved (v2 — corrected)", "rule_chirho": "User-level >>= / >> / return / pure may be positively dispatched to a $prim_* body ONLY when the type key is PROVEN (constructor-shaped/annotated/locally-keyed — a wrong positive key is worse than none: it runs another monad's body on an IO value). Every unresolved case must survive the dict pass NAME-PRESERVED (rebuild_preserved_method_app_chirho — the generic dict rewrite turned unresolved methods into bodyless-selector literal-0# crashes) and reach STG lowering under its original name (is_io_primop_chirho + primop_name_to_kind_chirho). HISTORY CORRECTION: the pre-b5203335 'byte-identical fallback' claim held at the LOWERING level only — the machine's BindIOChirho/ThenIOChirho were Int-0 STUBS (old eval_chirho.rs ~1898; IO do-blocks worked only because case/let forcing executed effects); b5203335 gave them real semantics (BindIO applies the continuation via apply_fn_to_value_chirho; ThenIO returns the second value). bindIO#/thenIO#/returnIO# stay primops forever (GPT WI-D)." },
-    { "id_chirho": "INV-002", "name_chirho": "Machine safety", "rule_chirho": "One builder, -j2, no parallel workspace builds, prebuilt binary for scouting. Violations risk OOMing the shared machine (direct L.J. instruction)." },
-    { "id_chirho": "INV-003", "name_chirho": "Truth in public", "rule_chirho": "Scoreboards, README claims, and broker reports state real pass/fail counts from fresh runs, never cached optimism and never invented numbers." },
-    { "id_chirho": "INV-004", "name_chirho": "Drop-in contract", "rule_chirho": "No fix may change observable behavior of currently-correct GHC-compatible programs; acceptance suites pin the contract, and semantic corrections toward GHC (e.g. do-notation effect ordering) are called out explicitly in the landing note." }
+    {
+      "id_chirho": "INV-001",
+      "name_chirho": "IO fast path preserved (v2 — corrected)",
+      "rule_chirho": "User-level >>= / >> / return / pure may be positively dispatched to a $prim_* body ONLY when the type key is PROVEN (constructor-shaped/annotated/locally-keyed — a wrong positive key is worse than none: it runs another monad's body on an IO value). Every unresolved case must survive the dict pass NAME-PRESERVED (rebuild_preserved_method_app_chirho — the generic dict rewrite turned unresolved methods into bodyless-selector literal-0# crashes) and reach STG lowering under its original name (is_io_primop_chirho + primop_name_to_kind_chirho). HISTORY CORRECTION: the pre-b5203335 'byte-identical fallback' claim held at the LOWERING level only — the machine's BindIOChirho/ThenIOChirho were Int-0 STUBS (old eval_chirho.rs ~1898; IO do-blocks worked only because case/let forcing executed effects); b5203335 gave them real semantics (BindIO applies the continuation via apply_fn_to_value_chirho; ThenIO returns the second value). bindIO#/thenIO#/returnIO# stay primops forever (GPT WI-D)."
+    },
+    {
+      "id_chirho": "INV-002",
+      "name_chirho": "Machine safety",
+      "rule_chirho": "One builder, -j2, no parallel workspace builds, prebuilt binary for scouting. Violations risk OOMing the shared machine (direct L.J. instruction)."
+    },
+    {
+      "id_chirho": "INV-003",
+      "name_chirho": "Truth in public",
+      "rule_chirho": "Scoreboards, README claims, and broker reports state real pass/fail counts from fresh runs, never cached optimism and never invented numbers."
+    },
+    {
+      "id_chirho": "INV-004",
+      "name_chirho": "Drop-in contract",
+      "rule_chirho": "No fix may change observable behavior of currently-correct GHC-compatible programs; acceptance suites pin the contract, and semantic corrections toward GHC (e.g. do-notation effect ordering) are called out explicitly in the landing note."
+    }
   ],
-
   "deep_strategy_chirho": {
     "context_chirho": "L.J. directive 2026-07-01: 'do a whole sweep over the group of failing tests, find a deep strategy to resolve it all.' The sweep (73 driver reds + GHC-suite gap + probe) shows the failures are NOT dozens of independent bugs — they cluster under four architectural pillars. Work items reference their pillar; when in doubt, invest in the pillar, not the symptom.",
     "pillars_chirho": [
@@ -88,32 +137,62 @@
         "name_chirho": "One dispatch architecture (dictionary-passing completed)",
         "thesis_chirho": "Every class-method use resolves through a single decision ladder: (1) concrete type key -> $prim_Class_method_Type body; (2) built instance dict -> $sel_Class_method $dClass_Type; (3) in-scope dict param (polymorphic caller) -> selector on the param; (4) name-preserving fallback (IO primops / legacy). do-notation desugars to real >>= / >> chains so it rides the same ladder. Special-case interceptors (fmap's) become the generic HK dispatch and retire as bodies/dicts complete.",
         "resolves_chirho": "maybe-do, either/list/Maybe explicit binds, >> on non-IO monads, monad-transformer failures (~12), most 'prints 0' wrong-value reds, Alternative/MonadPlus gaps",
-        "work_items_chirho": ["WI-001", "WI-002", "WI-003", "WI-004"]
+        "work_items_chirho": [
+          "WI-001",
+          "WI-002",
+          "WI-003",
+          "WI-004"
+        ]
       },
       {
         "id_chirho": "PILLAR-2",
         "name_chirho": "Expected-type propagation into Core",
         "thesis_chirho": "The typechecker knows result types the Core rewrite cannot see. Thread inferred/annotated types (TyApp nodes, binding signatures, do-block element types) into the dict pass so return-position polymorphism (return/pure/mempty/fromInteger defaulting) dispatches. This is the difference between argument-shape dispatch (done) and real evidence elaboration (GHC's model).",
         "resolves_chirho": "pure 7 :: Either, signature-driven returns, numeric literal defaulting reds, a large slice of typecheck/should_compile inference failures, Data.Map inference cluster (imported polymorphic values need their iface types respected in Core)",
-        "work_items_chirho": ["WI-003", "WI-005", "WI-011"]
+        "work_items_chirho": [
+          "WI-003",
+          "WI-005",
+          "WI-011"
+        ]
       },
       {
         "id_chirho": "PILLAR-3",
         "name_chirho": "Uniform laziness (universal forcing)",
         "thesis_chirho": "Thunk infrastructure exists; forcing is not applied at every use site. Define the canonical force points (primop args, case scrutinees, function position, seq) in ONE helper and call it everywhere, so interpreter semantics match GHC and compiled backends inherit a single spec. Thunk entry must update the heap node in-place to avoid duplicate evaluation (gpt scaffold note).",
         "resolves_chirho": "lazy-evaluation reds, undefined/bottom-tolerance failures, foldl'/deepseq semantics, prerequisite for backend parity",
-        "work_items_chirho": ["WI-007"]
+        "work_items_chirho": [
+          "WI-007"
+        ]
       },
       {
         "id_chirho": "PILLAR-4",
         "name_chirho": "Mechanical breadth (matrix + burn-down + backends)",
         "thesis_chirho": "Once pillars 1-3 hold, the remaining gap is enumerable: per-type instance completion by recipe, GHC-suite buckets by feature, backend closures/IO/GC by roadmap. These parallelize across agents because each item is independent and gated.",
         "resolves_chirho": "remaining driver reds, typecheck suite to >95%, native backend to self-hosting",
-        "work_items_chirho": ["WI-004", "WI-006", "WI-008", "WI-009", "WI-010", "WI-012", "WI-013"]
+        "work_items_chirho": [
+          "WI-004",
+          "WI-006",
+          "WI-008",
+          "WI-009",
+          "WI-010",
+          "WI-012",
+          "WI-013"
+        ]
       }
-    ]
+    ],
+    "audit_merge_chirho": {
+      "verdict_chirho": "needs_revision across design agents",
+      "corrections_folded_chirho": [
+        "Monadic dispatch: 29d9f262 strict-key hardening already landed; remaining issue is IO primop names in argument position and signature-driven dispatch, not another blind key widening.",
+        "Pure/return: lookup_name_id_chirho is not a body-backed existence check because dangling $prim_*_IO names exist; future dispatch must verify generated bodies, and must gate by RHS shape to avoid rewriting embedded returns such as [IO Int].",
+        "Dict matrix: First/Last wrap Maybe, not bare values; Foldable/Traversable/Dual/contextual methods need evidence threading and are not mechanical wave-A fodder.",
+        "Data.Map cluster: not Data.Map imports primarily; it is a half-migrated builtin Map k v scheme surface plus silent qualified-name/runtime fallback hazards.",
+        "TH: current support is recognizer simulation, not splice evaluation; makeLenses recognizer regressed on mkName-shaped names; expression splices silently desugar to 0.",
+        "Laziness/backend: STG interpreter forcing is mostly complete but interpreter GC roots fail at allocation scale; native forcing/header/GC paths are the active maturity gap.",
+        "GHC suite: published compatibility numbers must come from generated artifacts with timeouts; prior sweep-derived numbers were stale or incomplete."
+      ]
+    }
   },
-
   "work_items_chirho": [
     {
       "id_chirho": "WI-001",
@@ -121,7 +200,7 @@
       "title_chirho": "User-level >>= and >> dispatch by monad type",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P0",
-      "status_chirho": "LANDED b5203335 + strict-key hardening (claude patch; gpt completed the IO-preserve fallback + real BindIO/ThenIO machine semantics after claude's credits died; claude then fixed blind-key list-monad mis-dispatch of putStrLn-headed chains and added eval_io_do_effect_chains_chirho). Gates: probe 70/70 (fresh binary), monadic eval tests green, package smokes REDONE post binary-rebuild pending; full driver delta pending.",
+      "status_chirho": "LANDED b5203335 + 29d9f262 strict-key hardening; audit merge notes residual WI-003/WI-014/WI-015 work, especially IO primop names in argument position and signature-driven keys.",
       "owner_chirho": "claude_chirho (holds builder slot 2026-07-01; per gpt #1388 owner split)",
       "problem_chirho": "WAS: Explicit `m >>= f` / `m >> n` on Maybe/Either/[] print 0: desugar emits PrimOp '>>=' (desugar_chirho.rs:3894-3900) and '>>' (:3886-3892), which STG-lowers unconditionally to BindIOChirho/ThenIOChirho — IO semantics applied to non-IO values. DEEPER TRUTH (audit map): BindIO/ThenIO were Int-0 machine stubs, and the generic dict rewrite consumed unresolved method names into garbage dicts.",
       "evidence_chirho": [
@@ -137,16 +216,51 @@
         "4. NO stg_lower change needed: verified 2026-07-01 that Var-App '>>=' lowers byte-identically to PrimOp '>>=' via is_io_primop_chirho (INV-001)."
       ],
       "acceptance_tests_chirho": [
-        { "test_name_chirho": "eval_either_bind_dispatch_chirho", "program_chirho": "main = print ((Right 3 :: Either String Int) >>= (\\x -> Right (x * 2)))", "expected_stdout_chirho": "Right 6" },
-        { "test_name_chirho": "eval_list_bind_dispatch_chirho", "program_chirho": "main = print ([1,2,3] >>= (\\x -> [x, x * 10]))", "expected_stdout_chirho": "[1,10,2,20,3,30]" },
-        { "test_name_chirho": "eval_maybe_then_dispatch_chirho", "program_chirho": "main = print (Just 1 >> Just 5)", "expected_stdout_chirho": "Just 5" },
-        { "test_name_chirho": "eval_mixed_monad_dispatch_chirho", "program_chirho": "eitherTwice :: Either String Int -> Either String Int\neitherTwice e = e >>= (\\x -> Right (x + x))\nmain = do\n  print (eitherTwice (Right 4))\n  print (eitherTwice (Left \"no\"))\n  print (Just 10 >>= (\\x -> Just (x - 1)))", "expected_stdout_chirho": "Right 8\nLeft \"no\"\nJust 9" },
-        { "test_name_chirho": "eval_io_bind_unchanged_chirho", "program_chirho": "main = return 7 >>= print", "expected_stdout_chirho": "7" }
+        {
+          "test_name_chirho": "eval_either_bind_dispatch_chirho",
+          "program_chirho": "main = print ((Right 3 :: Either String Int) >>= (\\x -> Right (x * 2)))",
+          "expected_stdout_chirho": "Right 6"
+        },
+        {
+          "test_name_chirho": "eval_list_bind_dispatch_chirho",
+          "program_chirho": "main = print ([1,2,3] >>= (\\x -> [x, x * 10]))",
+          "expected_stdout_chirho": "[1,10,2,20,3,30]"
+        },
+        {
+          "test_name_chirho": "eval_maybe_then_dispatch_chirho",
+          "program_chirho": "main = print (Just 1 >> Just 5)",
+          "expected_stdout_chirho": "Just 5"
+        },
+        {
+          "test_name_chirho": "eval_mixed_monad_dispatch_chirho",
+          "program_chirho": "eitherTwice :: Either String Int -> Either String Int\neitherTwice e = e >>= (\\x -> Right (x + x))\nmain = do\n  print (eitherTwice (Right 4))\n  print (eitherTwice (Left \"no\"))\n  print (Just 10 >>= (\\x -> Just (x - 1)))",
+          "expected_stdout_chirho": "Right 8\nLeft \"no\"\nJust 9"
+        },
+        {
+          "test_name_chirho": "eval_io_bind_unchanged_chirho",
+          "program_chirho": "main = return 7 >>= print",
+          "expected_stdout_chirho": "7"
+        }
       ],
       "regression_gates_chirho": "Full verification_protocol_chirho; watch: IO do-blocks, getLine/file-IO probes, any type with a class-registered Monad but placeholder dict fields (selector path must not hijack — no ('Monad','IO') dict exists at baseline, verified by grep).",
       "dependencies_chirho": [],
       "risk_chirho": "medium — fallback proven byte-identical; residual risk is dict-selector interception for types with built-but-placeholder dicts",
-      "estimated_size_chirho": "~120 LOC + tests"
+      "estimated_size_chirho": "~120 LOC + tests",
+      "audit_merge_chirho": {
+        "verdict_chirho": "needs_revision",
+        "keep_chirho": [
+          "Var-app desugar and do-chain lowering are correct direction",
+          "Strict monad dispatch keys must stay conservative",
+          "Unresolved names must be preserved for IO fallback"
+        ],
+        "corrections_chirho": [
+          "Do not widen shared infer_type_key_chirho for IO heads; scope IO-head evidence to monad dispatch only.",
+          "Fix argument-position IO primop lowering before adding $prim_Monad_>>=_IO bodies, otherwise getLine/putStrLn still lower as literal 0 arguments.",
+          "Existing eval_do_getline_bind_chirho is a likely red pin and should be the step-2 gate for IO value passing.",
+          "MonadFail/refutable do-pattern behavior remains deferred and needs a Maybe-do pattern failure test."
+        ],
+        "next_chirho": "Move remaining work into WI-003, WI-014, and WI-015; do not rework landed b5203335/29d9f262 mechanics without targeted regressions."
+      }
     },
     {
       "id_chirho": "WI-002",
@@ -154,7 +268,7 @@
       "title_chirho": "do-notation desugars to real >>= / >> chains",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P0",
-      "status_chirho": "LANDED b5203335 (same series as WI-001; non-Var <- patterns now destructure via lambda+case; IO effect ordering corrected to GHC semantics). Probe 70/70 on fresh binary; strict-key hardening covers the putStrLn-headed chain hole.",
+      "status_chirho": "LANDED b5203335 + 29d9f262 strict-key hardening; audit merge keeps it landed but adds follow-up gates for IO do value passing and MonadFail/refutable patterns.",
       "owner_chirho": "claude_chirho (same patch series as WI-001)",
       "problem_chirho": "desugar_do_chirho lowers `p <- e; rest` to `let p = e in rest` (desugar_chirho.rs:4959-4986) — binding the WHOLE monadic value (maybe-do adds Just 1 + Just 2 => AddIntChirho crash); `e; rest` becomes case-forcing (:4934-4958) instead of >>; non-Var patterns in <- don't destructure at all (:4966-4968 bind '_bind' and drop the pattern).",
       "evidence_chirho": [
@@ -168,14 +282,36 @@
         "4. Rides WI-001's dispatch: Maybe/Either/[] blocks resolve to $prim bodies; IO blocks fall through by name to BindIOChirho/ThenIOChirho (INV-001). NOTE: for IO this corrects effect ordering to GHC semantics (previously `x <- e` deferred e's effects to x's first use via lazy let) — an intentional semantic correction toward GHC; probe + focused IO probes gate it."
       ],
       "acceptance_tests_chirho": [
-        { "test_name_chirho": "eval_maybe_do_dispatch_chirho", "program_chirho": "maybeSum :: Maybe Int\nmaybeSum = do\n  x <- Just 1\n  y <- Just 2\n  return (x + y)\nmain :: IO ()\nmain = print maybeSum", "expected_stdout_chirho": "Just 3" },
-        { "test_name_chirho": "eval_io_do_unchanged_chirho", "program_chirho": "main = do\n  putStrLn \"a\"\n  x <- return (1 + 2)\n  print x", "expected_stdout_chirho": "a\n3" },
-        { "test_name_chirho": "eval_maybe_do_nothing_short_circuit_chirho", "program_chirho": "f :: Maybe Int\nf = do\n  x <- Just 1\n  _ <- Nothing\n  return x\nmain = print f", "expected_stdout_chirho": "Nothing" }
+        {
+          "test_name_chirho": "eval_maybe_do_dispatch_chirho",
+          "program_chirho": "maybeSum :: Maybe Int\nmaybeSum = do\n  x <- Just 1\n  y <- Just 2\n  return (x + y)\nmain :: IO ()\nmain = print maybeSum",
+          "expected_stdout_chirho": "Just 3"
+        },
+        {
+          "test_name_chirho": "eval_io_do_unchanged_chirho",
+          "program_chirho": "main = do\n  putStrLn \"a\"\n  x <- return (1 + 2)\n  print x",
+          "expected_stdout_chirho": "a\n3"
+        },
+        {
+          "test_name_chirho": "eval_maybe_do_nothing_short_circuit_chirho",
+          "program_chirho": "f :: Maybe Int\nf = do\n  x <- Just 1\n  _ <- Nothing\n  return x\nmain = print f",
+          "expected_stdout_chirho": "Nothing"
+        }
       ],
       "regression_gates_chirho": "Every IO do-block in probe + driver suite; getLine/readFile ordering probes; package smoke mandatory (transformers/mtl/parsec).",
-      "dependencies_chirho": ["WI-001"],
+      "dependencies_chirho": [
+        "WI-001"
+      ],
       "risk_chirho": "high — touches every do-block in every program; mitigated by INV-001 fallback + full gate set",
-      "estimated_size_chirho": "~80 LOC + tests"
+      "estimated_size_chirho": "~80 LOC + tests",
+      "audit_merge_chirho": {
+        "verdict_chirho": "needs_revision",
+        "residual_risks_chirho": [
+          "do { l <- getLine; putStrLn l } currently belongs to the IO argument-position/value-passing gap, not the Maybe/Either/list dispatch gap.",
+          "Refutable pattern binds need MonadFail semantics instead of a single-alt case crash.",
+          "Nested cross-monad return/pure contexts need negative pins before further context-stack widening."
+        ]
+      }
     },
     {
       "id_chirho": "WI-003",
@@ -183,22 +319,65 @@
       "title_chirho": "return/pure return-position dispatch (annotation- and signature-driven)",
       "pillar_chirho": "PILLAR-2",
       "priority_chirho": "P1",
-      "status_chirho": "todo (contextual half ships inside WI-001 step 3)",
+      "status_chirho": "todo — AUDIT MERGED; original design needs revision before implementation",
       "owner_chirho": "claude_chirho per gpt scaffold; gpt_chirho reviews the evidence-elaboration design",
-      "problem_chirho": "`pure 7 :: Either String Int` / `return 5 :: [Int]` / signature-driven `f :: Int -> Maybe Int; f x = return (x+1)` cannot dispatch from argument shape — the monad is only in the RESULT type, which the Core rewrite currently never sees. SAME ROOT for parameters: `eitherTwice e = e >>= k` has no proven key for `e` (verified post-strict-key: `eitherTwice (Right 4)` prints 4 via the BindIO value fallback instead of Right 8 — wrong value, no crash) — signature param types must feed local_type_keys. gpt scaffold note: map return and pure to the SAME dispatch slot ($prim_Applicative_pure_*) so they stay structurally unified.",
+      "problem_chirho": "return/pure are return-position polymorphic and contextless cases now print bare values (pure 7 :: Maybe Int -> 7) unless a trustworthy annotation/signature/do-chain key is threaded. Audit found that naive key derivation can corrupt IO and embedded monads because dangling $prim_*_IO names exist and result-head heuristics over-fire.",
       "fix_design_chirho": [
-        "1. Preserve type annotations into Core: ensure desugar of annotated expressions emits TyAppChirho (or equivalent key metadata) the rewrite can read.",
-        "2. In the rewrite, when the head is return/pure and no monad-context is on the stack, derive the key from (a) the expression's TyApp annotation, else (b) the enclosing binding's signature result head, else leave untouched (ReturnIOChirho fallback per INV-001).",
-        "3. Defer full dict-threading (GHC-style evidence elaboration) to a design doc — one paragraph in the landing note on what it would take."
+        "Use body-backed existence, not lookup_name_id_chirho, before dispatching to $prim_Applicative_pure_<Head>; generated dangling names for IO/STM/Q/etc. must count as missing bodies and preserve names.",
+        "For annotations, distinguish result annotations from function-typed annotations. Do not capture `(return :: Int -> IO Int) 5` or `(pure :: Int -> Maybe Int) 7` into generic selector/default paths until TyApp heads lower safely.",
+        "For binding signatures, push a result monad key only across RHS shapes where return/pure is in tail/result position or inside a positively-dispatched monadic chain; never rewrite arbitrary embedded returns in values like `[return 1, return 2] :: [IO Int]`.",
+        "Annotation-driven `return 1 :: Maybe Int` and the enclosing `>>=` chain dispatch must land together; otherwise BindIO applies a continuation to a Just constructor and crashes.",
+        "Keep IO fallback invariant: unresolved or bodyless-key return/pure must remain name-preserved and reach ReturnIOChirho."
       ],
       "acceptance_tests_chirho": [
-        { "test_name_chirho": "eval_pure_annotated_maybe_chirho", "program_chirho": "main = print (pure 7 :: Maybe Int)", "expected_stdout_chirho": "Just 7" },
-        { "test_name_chirho": "eval_pure_annotated_either_chirho", "program_chirho": "main = print (pure 7 :: Either String Int)", "expected_stdout_chirho": "Right 7" },
-        { "test_name_chirho": "eval_return_signature_driven_chirho", "program_chirho": "f :: Int -> Maybe Int\nf x = return (x + 1)\nmain = print (f 4)", "expected_stdout_chirho": "Just 5" }
+        {
+          "test_name_chirho": "eval_pure_annotated_maybe_chirho",
+          "program_chirho": "main = print (pure 7 :: Maybe Int)",
+          "expected_stdout_chirho": "Just 7"
+        },
+        {
+          "test_name_chirho": "eval_pure_annotated_either_chirho",
+          "program_chirho": "main = print (pure 7 :: Either String Int)",
+          "expected_stdout_chirho": "Right 7"
+        },
+        {
+          "test_name_chirho": "eval_return_signature_driven_chirho",
+          "program_chirho": "f :: Int -> Maybe Int\nf x = return (x + 1)\nmain = print (f 4)",
+          "expected_stdout_chirho": "Just 5"
+        },
+        {
+          "test_name_chirho": "eval_return_io_annotated_function_preserved_chirho",
+          "program_chirho": "main = (return :: Int -> IO Int) 5 >>= print",
+          "expected_stdout_chirho": "5"
+        },
+        {
+          "test_name_chirho": "eval_list_of_io_returns_not_list_pure_chirho",
+          "program_chirho": "acts :: [IO Int]\nacts = [return 1, return 2]\nmain = head acts >>= print",
+          "expected_stdout_chirho": "1"
+        },
+        {
+          "test_name_chirho": "eval_annotated_return_chain_maybe_chirho",
+          "program_chirho": "main = print ((return 1 :: Maybe Int) >>= (\\x -> Just (x + 1)))",
+          "expected_stdout_chirho": "Just 2"
+        }
       ],
-      "dependencies_chirho": ["WI-001"],
+      "dependencies_chirho": [
+        "WI-001"
+      ],
       "risk_chirho": "medium",
-      "estimated_size_chirho": "~150 LOC"
+      "estimated_size_chirho": "~150 LOC",
+      "audit_merge_chirho": {
+        "area_chirho": "pure_return_position",
+        "verdict_chirho": "needs_revision",
+        "missed_risks_chirho": [
+          "No acceptance pins for annotated-function forms the new desugar gate captures: `main = (return :: Int -> IO Int) 5 >>= print` (today 5 — regresses to Int-0 via stg complex-head path) and `main = print ((pure :: Int -> Maybe Int) 7)` (today 7 — becomes HashMap-order-nondeterministic under the selector/default-dict path). Both must be pinned before the desugar gate lands.",
+          "No acceptance pin for an annotated return HEADING a bind chain: `main = print ((return 1 :: Maybe Int) >>= \\x -> Just (x+1))` — expected Just 2 with step 10; runtime AddInt crash if steps 1-4 land without step 10 (today prints 1).",
+          "No acceptance pin guarding the binding-push blast radius: `acts :: [IO Int]; acts = [return 1, return 2]; main = head acts >>= print` (expect 1) and `f :: Int -> IO Int; f x = return (x+1); main = f 4 >>= print` (expect 5). The second also detects the dangling `$prim_Applicative_pure_IO` name being treated as existent (it would print 0 under the design's lookup_name_id exists-check).",
+          "No pin for sentinel+annotation interplay inside an unresolved IO chain: `main = (return 5 :: IO Int) >>= \\x -> print (pure x :: Maybe Int)` — expect \"Just 5\"; exercises step 5's push, the TyApp intercept under a pushed \"IO\" context, and the body-backed exists-check together.",
+          "Eta-reduced signature dispatch remains broken and untested: `f :: Int -> Maybe Int; f = return` — bare Var return/pure goes through the Var arm (rewrite_chirho.rs:664-688), which never consults monad_context_stack_chirho, so step 6 does not fix it; unapplied `pure` additionally rewrites to $sel + arbitrary default dict. Worth a known-gap note or a Var-arm context consult.",
+          "Determinism is untested: several fallback paths select or_insert HashMap-order default dicts (rewrite_chirho.rs:1081-1091, :1458-1470); acceptance runs each program once. A repeated-run (5x) determinism check on the acceptance battery would catch RandomState-dependent flapping that the probe harness would otherwise surface intermittently."
+        ]
+      }
     },
     {
       "id_chirho": "WI-004",
@@ -206,37 +385,99 @@
       "title_chirho": "Per-type instance completion matrix (turn-the-crank recipe)",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P1",
-      "status_chirho": "todo — AUDIT-MERGE-PENDING for the full type×class table",
-      "owner_chirho": "gemini_chirho (parallel fleet fodder; builds serialize per INV-002)",
+      "status_chirho": "todo — AUDIT MERGED; execute as body-backed per-type waves, not by registering more dangling dicts",
+      "owner_chirho": "gpt_chirho/claude_chirho; future fleet may take individual rows after recipe review (gemini currently removed from session)",
       "problem_chirho": "Many types are class-REGISTERED (class_chirho.rs ~2448-2528, ~2963-2976: STM, Proxy, First, Last, Sum, Product, Identity, transformers...) but lack built instance dicts and/or $prim bodies, so their methods fall to wrong-typed fallbacks or dead dict lambdas. GPT #1388: also audit existing dict fields for placeholders.",
       "fix_design_chirho": [
-        "Recipe per (type, class), extracted from gpt's 626ab0a4 Either landing: add $prim_Class_method_Type bodies in dict_chirho/prelude_chirho.rs mirroring the Maybe/Either pattern; build the $dClass_Type dict; ensure HK key normalization covers the type's head; add one eval test per type; run gates.",
-        "Wave A types (no >>= dependency): Identity, Sum/Product, First/Last, Semigroup/Monoid gaps. Wave B (after WI-001/002): [] Monad edge cases, STM, ReaderT/WriterT/StateT transformers.",
-        "Also: sweep existing built dicts for placeholder fields and replace with real method references (gpt's non-placeholder check)."
+        "Recipe per (type,class): add real $prim_Class_method_Type bodies in dict_chirho/prelude_chirho.rs, wire $d/$f dict slots to those bodies, add type-key/accessor support, add one eval pin, and verify no dangling ids are minted for that row.",
+        "Wave A: accessors and type-key arms for Identity, Sum, Product, All, Any, Min, Max, Down, Proxy, Const(fmap only), Ordering; Alternative []/Maybe; mconcat element-key fix.",
+        "Corrected audit rule: First and Last wrap Maybe (`First (Maybe a)`, `Last (Maybe a)`), so they are not bare-value newtypes; do not implement fmap/pure/bind as if First a = First a.",
+        "Out of mechanical scope until evidence threading: Foldable/Traversable, Dual, context-dependent Semigroup/Monoid bodies, transformer stacks with constrained instances.",
+        "For every built instance dict, missing method slots should be loud or name-preserved per WI-014, never silently fresh-id/literal-0."
       ],
       "acceptance_tests_chirho": [
-        { "test_name_chirho": "eval_sum_monoid_chirho", "program_chirho": "import Data.Monoid\nmain = print (getSum (Sum 3 <> Sum 4))", "expected_stdout_chirho": "7" }
+        {
+          "test_name_chirho": "eval_sum_monoid_chirho",
+          "program_chirho": "import Data.Monoid\nmain = print (getSum (Sum 3 <> Sum 4))",
+          "expected_stdout_chirho": "7"
+        }
       ],
-      "dependencies_chirho": ["WI-001 for wave B"],
+      "dependencies_chirho": [
+        "WI-001 for wave B"
+      ],
       "risk_chirho": "low per item (mechanical), medium in aggregate",
-      "estimated_size_chirho": "~40 LOC per type"
+      "estimated_size_chirho": "~40 LOC per type",
+      "audit_matrix_chirho": {
+        "complete_functor_applicative_monad_bodies_chirho": [
+          "Maybe",
+          "[]",
+          "Either"
+        ],
+        "registered_but_bodyless_or_partial_chirho": [
+          "Identity",
+          "STM",
+          "Proxy",
+          "First",
+          "Last",
+          "Sum",
+          "Product",
+          "Dual",
+          "Down",
+          "Const",
+          "Min",
+          "Max",
+          "Q",
+          "ReadP",
+          "ReadPrec",
+          "ST",
+          "StateT",
+          "ReaderT",
+          "MaybeT",
+          "WriterT"
+        ],
+        "audit_verdict_chirho": "needs_revision"
+      }
     },
     {
       "id_chirho": "WI-005",
       "gpt_alias_chirho": "gpt scaffold WI-004",
-      "title_chirho": "Data.Map type-inference cluster (Ord constraints, key unification)",
+      "title_chirho": "Map builtin scheme migration and qualified surface correctness",
       "pillar_chirho": "PILLAR-2",
       "priority_chirho": "P1",
-      "status_chirho": "todo — AUDIT-MERGE-PENDING (root cause + exact red list from audit agent)",
+      "status_chirho": "todo — AUDIT MERGED; not primarily Data.Map import inference",
       "owner_chirho": "claude_chirho per gpt scaffold (wave B); gpt_chirho on typing review",
-      "problem_chirho": "~20 driver-lib reds around Data.Map: 'expected Int, found Map ...' class errors — imported polymorphic container values don't carry usable types into inference. gpt scaffold notes: propagate Ord constraints during map operations; unify map-key type variables correctly. NOTE: gpt scaffold cited crates/haskelujah-typing-chirho/src/infer_chirho.rs + unify_chirho.rs — verify real paths against the audit map before implementing.",
-      "fix_design_chirho": ["Root-cause in haskelujah-typing (iface type import path + Ord constraint propagation), not per-test patches; audit agent supplies file:line and the failing unification shape."],
+      "problem_chirho": "Audit refuted the original Data.Map framing: the 20-driver-red cluster is mostly unqualified builtin map* functions whose seed_builtins_chirho schemes are half migrated from Int placeholders to Map k v. Qualified M.* adds a separate silent-wrong surface because desugar drops qualifiers and missing globals lower to Int 0.",
+      "fix_design_chirho": [
+        "Finish Map k v schemes in seed_builtins_chirho for mapFindWithDefault, mapAdjust, mapUnion, mapDifference, mapUnionWith, mapIntersectionWith, mapFilter, mapInsertWith, mapFoldlWithKey, mapFoldrWithKey, mapFoldlWithKey', mapInsertStr, mapLookupStr, mapMemberStr, mapFindWithDefaultStr.",
+        "Wire or loudly reject vaporware runtime ops mapIntersectionWith and mapFoldlWithKey' before exposing their schemes.",
+        "Canonicalize qualified Data.Map names to builtin map* ops without erasing semantics, or add real interface/value bindings for the qualified surface.",
+        "Make missing-global STG lowering loud enough for tests to catch, rather than defaulting to IntChirho(0)."
+      ],
       "acceptance_tests_chirho": [
-        { "test_name_chirho": "eval_data_map_roundtrip_chirho", "program_chirho": "import qualified Data.Map as M\nmain = print (M.toList (M.insert 2 \"b\" (M.fromList [(1, \"a\")])))", "expected_stdout_chirho": "[(1,\"a\"),(2,\"b\")]" }
+        {
+          "test_name_chirho": "eval_data_map_roundtrip_chirho",
+          "program_chirho": "import qualified Data.Map as M\nmain = print (M.toList (M.insert 2 \"b\" (M.fromList [(1, \"a\")])))",
+          "expected_stdout_chirho": "[(1,\"a\"),(2,\"b\")]"
+        }
       ],
       "dependencies_chirho": [],
       "risk_chirho": "medium",
-      "estimated_size_chirho": "unknown until audit merge"
+      "estimated_size_chirho": "unknown until audit merge",
+      "audit_red_list_chirho": {
+        "count_chirho": 20,
+        "representative_tests_chirho": [
+          "tests_chirho::eval_basic_chirho::eval_map_adjust_chirho",
+          "tests_chirho::eval_data_chirho::eval_map_union_with_chirho",
+          "tests_chirho::eval_prelude_chirho::eval_map_lookup_str_not_found_chirho"
+        ],
+        "root_files_chirho": [
+          "crates/haskelujah-typing-chirho/src/infer_chirho.rs",
+          "crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho.rs",
+          "crates/haskelujah-core-chirho/src/desugar_chirho.rs",
+          "crates/haskelujah-driver-chirho/src/stg_lower_chirho.rs"
+        ],
+        "audit_verdict_chirho": "needs_revision"
+      }
     },
     {
       "id_chirho": "WI-006",
@@ -244,16 +485,37 @@
       "title_chirho": "Template Haskell STG bridge (user-written splices; lens milestone)",
       "pillar_chirho": "PILLAR-4",
       "priority_chirho": "P2",
-      "status_chirho": "todo — AUDIT-MERGE-PENDING (staged design + real file anchors from audit)",
+      "status_chirho": "todo — AUDIT MERGED; staged design requires corrections before implementation",
       "owner_chirho": "gpt_chirho per its scaffold claim; NOT fleet fodder",
-      "problem_chirho": "Splice eval exists for built-in makeLenses simulation; user-written TH ($( [| ... |] )) lacks the bridge that evaluates quoted code via the STG machine at compile time and marshals results back to the frontend (gpt scaffold wording). Blocks the lens-library milestone (L.J. priority). NOTE: gpt scaffold cited crates/haskelujah-th-chirho + driver splice_chirho.rs — verify real paths against the audit map before implementing.",
-      "fix_design_chirho": ["Stage 1: closed expression splices via existing STG eval + Core reification. Stage 2: declaration splices. Stage 3: reify. Audit agent supplies file anchors and the staged plan."],
+      "problem_chirho": "Template Haskell currently has syntax and recognizer simulation, not real splice evaluation. `expand_splices_chirho` pattern-matches a few built-ins; expression splices survive to desugar as literal 0; the makeLenses recognizer regressed on mkName-shaped quoted names.",
+      "fix_design_chirho": [
+        "Stage 0: repair makeLenses/makeLenses' recognizer for `App (Var \"mkName\") (Lit \"T\")` and add pipeline tests that build from parsed source, not hand-built AST.",
+        "Stage 1: expression splices: lower quotes to TH constructor-building code, run splice expressions through the existing frontend/Core/STG machine in a synthetic module, marshal ValueChirho back to AST, and make any unexpanded TH node loud instead of literal 0.",
+        "Stage 2: declaration splices through ThDecChirho -> AST conversion, with coverage for instance/class/newtype/pragmas called out explicitly.",
+        "Stage 3: reify/newName/Q primitives via the existing haskelujah-th QStateChirho scaffolding and a host callback; imported TH functions need cross-module Core linking.",
+        "Verifier correction: expression-splice walkers must cover instance methods, default methods, standalone deriving/generated bodies, and quasiquote-containing forms, not only FunBind/PatBind/local binds."
+      ],
       "acceptance_tests_chirho": [
-        { "test_name_chirho": "eval_th_expr_splice_chirho", "program_chirho": "{-# LANGUAGE TemplateHaskell #-}\nmain = print $( [| 1 + 2 |] )", "expected_stdout_chirho": "3" }
+        {
+          "test_name_chirho": "eval_th_expr_splice_chirho",
+          "program_chirho": "{-# LANGUAGE TemplateHaskell #-}\nmain = print $( [| 1 + 2 |] )",
+          "expected_stdout_chirho": "3"
+        }
       ],
       "dependencies_chirho": [],
       "risk_chirho": "high (staging architecture)",
-      "estimated_size_chirho": "large; staged"
+      "estimated_size_chirho": "large; staged",
+      "real_file_anchors_chirho": [
+        "crates/haskelujah-driver-chirho/src/splice_chirho.rs",
+        "crates/haskelujah-driver-chirho/src/lib.rs",
+        "crates/haskelujah-core-chirho/src/desugar_chirho.rs",
+        "crates/haskelujah-th-chirho/src/q_monad_chirho.rs",
+        "crates/haskelujah-th-chirho/src/reify_chirho.rs",
+        "crates/haskelujah-th-chirho/src/convert_chirho.rs"
+      ],
+      "audit_merge_chirho": {
+        "verdict_chirho": "needs_revision"
+      }
     },
     {
       "id_chirho": "WI-007",
@@ -261,29 +523,79 @@
       "title_chirho": "Universal forcing — complete lazy evaluation semantics",
       "pillar_chirho": "PILLAR-3",
       "priority_chirho": "P1",
-      "status_chirho": "todo — AUDIT-MERGE-PENDING (force-point inventory from audit)",
-      "owner_chirho": "gemini_chirho per gpt scaffold, with gpt_chirho review on machine semantics (risky for solo fleet work)",
-      "problem_chirho": "Thunk infrastructure landed (spec-chirho/lazy-eval-design-chirho.md) but forcing is not universal at use sites; unforced thunks reaching primops/case produce wrong values or errors on lazy programs. gpt scaffold adds: strict fields, bang patterns, seq sequencing, and in-place thunk update on entry (no duplicate evaluation).",
-      "fix_design_chirho": ["One force helper (tag-check first, blackhole on entry, in-place heap update) called at: primop args, case scrutinees, function position, seq/deepseq, pattern binds, strict fields/bang patterns. Audit supplies the missing-site inventory; acceptance pins the currently-PASSING lazy programs so eager-forcing regressions are caught."],
+      "status_chirho": "todo — AUDIT MERGED; split STG interpreter GC roots from native forcing/header work",
+      "owner_chirho": "gpt_chirho/claude_chirho; risky machine-semantics item, not solo fleet work",
+      "problem_chirho": "Audit found the STG interpreter already creates/forces thunks at many strict sites; its major red is GC roots at allocation scale. Native LLVM laziness remains incomplete: primop operands, seq#/deepseq lowering, thunk indirection encoding, RTS list printers, and blackhole behavior diverge from GHC.",
+      "fix_design_chirho": [
+        "Do not eagerly force lazy constructor fields; add forcing only at strict sites.",
+        "LLVM: route primop operands through emit_force_thunk_chirho with static-WHNF skips; fix seq#/deepseq branch ordering.",
+        "RTS: replace header-packed indirection results with a GC-visible payload representation; preserve negative and >2^56 values.",
+        "RTS printers/string shims: force thunked list heads/tails and computed string arguments before C-string dereference.",
+        "Interpreter: fix GC root extraction for code-table/static closures before using large lazy programs as acceptance gates."
+      ],
       "acceptance_tests_chirho": [
-        { "test_name_chirho": "eval_lazy_take_infinite_chirho", "program_chirho": "main = print (take 3 [1 ..])", "expected_stdout_chirho": "[1,2,3]" },
-        { "test_name_chirho": "eval_lazy_fst_undefined_chirho", "program_chirho": "main = print (fst (1, undefined))", "expected_stdout_chirho": "1" }
+        {
+          "test_name_chirho": "eval_lazy_take_infinite_chirho",
+          "program_chirho": "main = print (take 3 [1 ..])",
+          "expected_stdout_chirho": "[1,2,3]"
+        },
+        {
+          "test_name_chirho": "eval_lazy_fst_undefined_chirho",
+          "program_chirho": "main = print (fst (1, undefined))",
+          "expected_stdout_chirho": "1"
+        }
       ],
       "dependencies_chirho": [],
       "risk_chirho": "high (perf + semantics)",
-      "estimated_size_chirho": "medium"
+      "estimated_size_chirho": "medium",
+      "force_point_inventory_chirho": {
+        "stg_interpreter_present_chirho": [
+          "case scrutinees",
+          "primop arguments",
+          "thunk blackhole/update frames",
+          "letrec indirections"
+        ],
+        "stg_interpreter_gaps_chirho": [
+          "GC roots omit heap pointers embedded in code table/static closures at >~1024 allocations",
+          "step limit behind GC failures"
+        ],
+        "native_gaps_chirho": [
+          "LLVM PrimOpChirho operands are not forced",
+          "seq# generic two-arg branch compiles as add before seq-specific branch",
+          "thunk indirection packs signed/pointer payload in header bits",
+          "RTS list printers do not force thunked heads/tails",
+          "blackhole aborts instead of GHC-like <<loop>>"
+        ]
+      },
+      "audit_merge_chirho": {
+        "verdict_chirho": "needs_revision"
+      }
     },
     {
       "id_chirho": "WI-008",
       "title_chirho": "Native backend: closures, thunks, heap in LLVM codegen",
       "pillar_chirho": "PILLAR-4",
       "priority_chirho": "P2",
-      "status_chirho": "todo — AUDIT-MERGE-PENDING (backend inventory)",
+      "status_chirho": "todo — AUDIT MERGED; backend inventory sub-itemized",
       "owner_chirho": "gpt_chirho (backend history: b63135e5, 38111b4e)",
-      "problem_chirho": "Compiled path supports arithmetic/TCO/IO basics; closure allocation, thunk entry/update, and heap discipline are the gap to compiling real lazy programs natively.",
-      "dependencies_chirho": ["WI-007 (semantics spec)"],
+      "problem_chirho": "Native backends can compile tiny programs but have unsound object headers/tags, vacuous round-trip tests on signal failure, raw-function IO bind assumptions, and GC rooting gaps. `haskelujah run` native fast path uses non-executable invalid IR and silently falls back.",
+      "dependencies_chirho": [
+        "WI-007 (semantics spec)"
+      ],
       "risk_chirho": "high",
-      "estimated_size_chirho": "large; sub-itemized after audit merge"
+      "estimated_size_chirho": "large; sub-itemized after audit merge",
+      "sub_items_chirho": [
+        "Make LLVM/Cranelift round-trip helpers fail loudly on clang/link failures and signal deaths instead of returning None/success.",
+        "Fix `run` native fast path to use compile_core_to_llvm_executable_chirho or disable it loudly until executable IR is valid; avoid hidden per-run cargo build.",
+        "Define a packed native object header shared by LLVM and Cranelift with kind bits for thunk/fun/con/pap and deterministic constructor tags.",
+        "Add general native laziness after WI-007: thunk arbitrary expressions and force at strict sites, including pointer-consuming IO/string shims.",
+        "Make IO bind closure-aware; raw arity-1 function-pointer continuation calls are insufficient for captured closures.",
+        "Replace never-popped thunk roots with sound conservative stack/register roots; make GC threshold env-tunable for stress tests.",
+        "Milestone: examples-chirho/native-sieve-chirho/primes_sieve_chirho.hs with exact stdout on LLVM and Cranelift."
+      ],
+      "audit_merge_chirho": {
+        "verdict_chirho": "needs_revision"
+      }
     },
     {
       "id_chirho": "WI-009",
@@ -291,12 +603,19 @@
       "title_chirho": "Native backend: runtime linking, GC hooks, self-hosting milestone program",
       "pillar_chirho": "PILLAR-4",
       "priority_chirho": "P3",
-      "status_chirho": "todo",
+      "status_chirho": "todo — AUDIT MERGED with WI-008 backend roadmap",
       "owner_chirho": "gpt_chirho lead (its scaffold claim); claude on GC design review",
       "problem_chirho": "rts GC exists in-interpreter; compiled code emits no GC hooks; IO via runtime linking strategy undecided (libc vs rts lib). gpt scaffold: GC limit checks in function preambles; wire allocations to the rts allocation wrapper. Milestone: one named non-trivial Haskell program compiled native end-to-end.",
-      "dependencies_chirho": ["WI-008"],
+      "dependencies_chirho": [
+        "WI-008"
+      ],
       "risk_chirho": "high",
-      "estimated_size_chirho": "large"
+      "estimated_size_chirho": "large",
+      "fix_design_chirho": [
+        "Runtime linking must be stable for executable-IR path and package build path; add cabal-path native smoke before flipping defaults.",
+        "GC hooks require stack/register root capture and safe no-op behavior if NATIVE_STACK_TOP_CHIRHO is uninitialized.",
+        "Self-hosting milestone should wait for WI-008 object headers, WI-007 native forcing, and closure-aware IO bind."
+      ]
     },
     {
       "id_chirho": "WI-010",
@@ -304,13 +623,74 @@
       "title_chirho": "GHC-suite burn-down by bucket (typecheck/should_compile toward >95%)",
       "pillar_chirho": "PILLAR-4",
       "priority_chirho": "P1-rolling",
-      "status_chirho": "todo — AUDIT-MERGE-PENDING (fresh bucket table from 2026-07-01 sweep)",
-      "owner_chirho": "opus fleet (one bucket per agent), gpt triage; parser bucket includes gpt scaffold notes: green-tree checkpoint-stack panic hardening, layout-in-closes intervening contexts",
-      "problem_chirho": "Remaining should_compile failures cluster by feature; each bucket becomes an independent, gated item with representative tests and a single-test verification command (never the full suite per change).",
-      "fix_design_chirho": ["Verification per item: cargo test -p haskelujah-driver --test ghc_bulk_chirho -- ghc_bulk_typecheck_should_compile_chirho (serialized, -j2), or single-file check via debug binary during development."],
-      "dependencies_chirho": ["some buckets serialize behind WI-001/003/011 — marked in the merged table"],
+      "status_chirho": "todo — AUDIT MERGED; scoreboard truth and per-bucket single tests required",
+      "owner_chirho": "gpt_chirho/claude_chirho triage for now; future fleet can take one bucket per agent only if L.J. re-adds it. Parser bucket includes gpt scaffold notes: green-tree checkpoint-stack panic hardening, layout-in-closes intervening contexts",
+      "problem_chirho": "The GHC suite scoreboard is currently not a trustworthy generated artifact: no persisted results, no threshold, no timeout, hand-edited public numbers disagree, and some audit numbers were measured on a binary behind HEAD. Resource guard forbids broad re-runs without L.J. approval.",
+      "fix_design_chirho": [
+        "First landing should generate spec-chirho/.ghc-bulk-results-chirho.json atomically with a file lock or a single writer; do not let parallel libtest writers clobber artifacts.",
+        "Use timeout/subprocess isolation so hung tests do not leak CPU workers for the rest of the suite.",
+        "Update README/AGENTS/CLI compatibility strings only from generated artifacts; CLI has at least two hardcoded score locations.",
+        "Single-test verification commands are preferred; full ghc_bulk requires explicit L.J. approval under resource guard."
+      ],
+      "dependencies_chirho": [
+        "some buckets serialize behind WI-001/003/011 — marked in the merged table"
+      ],
       "risk_chirho": "low per bucket",
-      "estimated_size_chirho": "varies per bucket"
+      "estimated_size_chirho": "varies per bucket",
+      "bucket_table_chirho": [
+        {
+          "bucket_chirho": "scoreboard/watchdog",
+          "count_chirho": 0,
+          "action_chirho": "Persist JSON artifact, add per-test timeout/subprocess isolation, generated public numbers only."
+        },
+        {
+          "bucket_chirho": "kind inference / PolyKinds",
+          "count_chirho": 29,
+          "representative_chirho": [
+            "T11348",
+            "T12734a",
+            "T15807a"
+          ],
+          "action_chirho": "Kind generalization and promoted/type-application kind handling."
+        },
+        {
+          "bucket_chirho": "type-family / type-level reduction",
+          "count_chirho": 14,
+          "representative_chirho": [
+            "AppendSymbol identity cases",
+            "TypeLits families"
+          ],
+          "action_chirho": "Builtin family axioms plus occurs-check deferral around stuck type-family apps."
+        },
+        {
+          "bucket_chirho": "bidirectional / higher-rank / given equalities",
+          "count_chirho": 19,
+          "action_chirho": "Binding-scoped given-equality sets; add should_fail guards so givens do not leak across bindings."
+        },
+        {
+          "bucket_chirho": "renamer/lowering gaps",
+          "count_chirho": 9,
+          "action_chirho": "QualifiedDo, Arrows proc, RecordWildCards/where empty identifier, heqT iface."
+        },
+        {
+          "bucket_chirho": "instance resolution",
+          "count_chirho": 2,
+          "action_chirho": "Num Int# and ignored expression VTA paths."
+        },
+        {
+          "bucket_chirho": "sibling imports",
+          "count_chirho": 2,
+          "action_chirho": "Check path lacks sibling search; compile/run already have search. Scope retry carefully and memoize per-directory if added."
+        },
+        {
+          "bucket_chirho": "T2045 backend hang",
+          "count_chirho": 1,
+          "action_chirho": "Reverify after fresh build; add watchdog independent of T2045."
+        }
+      ],
+      "audit_merge_chirho": {
+        "verdict_chirho": "needs_revision"
+      }
     },
     {
       "id_chirho": "WI-011",
@@ -345,8 +725,12 @@
       "status_chirho": "todo",
       "owner_chirho": "claude_chirho per gpt scaffold proposal",
       "problem_chirho": "Type mismatches between TyVarBndrSpec and TyVarBndr in modern GHC TH ASTs block modern template-haskell libraries.",
-      "fix_design_chirho": ["gpt scaffold: update the TH ty-var binder representation (ThTyVarBndrChirho or the real equivalent at HEAD — verify against audit map) to support specificity/visibility annotations; implement coercion/unification during typechecking and reification."],
-      "dependencies_chirho": ["WI-006"],
+      "fix_design_chirho": [
+        "gpt scaffold: update the TH ty-var binder representation (ThTyVarBndrChirho or the real equivalent at HEAD — verify against audit map) to support specificity/visibility annotations; implement coercion/unification during typechecking and reification."
+      ],
+      "dependencies_chirho": [
+        "WI-006"
+      ],
       "risk_chirho": "medium",
       "estimated_size_chirho": "medium"
     },
@@ -355,38 +739,110 @@
       "title_chirho": "Retire the arbitrary-default dict fallback (literal-0# bug class)",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P1",
-      "status_chirho": "todo — audit map finding",
+      "status_chirho": "todo — AUDIT MERGED; higher priority because multiple buckets share literal-0 placeholders",
       "owner_chirho": "gpt_chirho (dict subsystem) with claude review",
       "problem_chirho": "Every binding's dict_vars is seeded with an Int-preferred-else-ARBITRARY dict per class from a std HashMap iteration, and try_rewrite_method_var_chirho falls back to it when the type key is unknown (pre-landing anchors rewrite_chirho.rs ~902-918, ~366-371) — unknown-key class methods rewrite to WRONG dicts whose unimplemented slots are dangling ids that STG lowers to literal 0# ('cannot apply arguments to literal 0#'). b5203335 name-preserves only the >>=/>>/return/pure family; ALL other class methods still take this path. Iteration order of a HashMap choosing semantics is also a determinism bug.",
-      "fix_design_chirho": ["Replace arbitrary-dict fallback with: (a) name-preserving rebuild for ALL unresolved methods (generalize rebuild_preserved_method_app_chirho), or (b) explicit per-class default-instance policy (Num->Int, Show->via-show-fallback) where the Haskell Report defaulting rules actually apply. Audit which currently-green tests depend on the accidental fallback before removing (run driver delta)."],
-      "acceptance_tests_chirho": [],
-      "dependencies_chirho": ["WI-001"],
+      "fix_design_chirho": [
+        "Replace arbitrary per-class HashMap fallback with name-preserving rebuild for unresolved methods unless a Haskell Report defaulting rule explicitly applies.",
+        "Add a body-backed method table for generated $prim bodies; dangling names created by resolve_or_fresh_id_chirho must not count as implementations.",
+        "Make instance-dict construction fill missing class-default methods from actual default bodies; otherwise fail loud at compile/rewrite time instead of minting literal-0 slots.",
+        "Add deterministic ordering where any fallback remains; HashMap iteration must not choose semantics.",
+        "Before removal, catalog currently-green tests depending on accidental Int/default behavior and replace with explicit defaulting rules."
+      ],
+      "acceptance_tests_chirho": [
+        {
+          "test_name_chirho": "eval_default_sig_uses_class_default_chirho",
+          "program_chirho": "class Describable a where describe :: a -> String; describe _ = \"default\"\ninstance Describable Int\nmain = putStrLn (describe (1 :: Int))",
+          "expected_stdout_chirho": "default"
+        },
+        {
+          "test_name_chirho": "unresolved_class_method_does_not_literal0_chirho",
+          "program_chirho": "Targeted driver test: unresolved method rewrite preserves name or reports a diagnostic, never applies literal 0#.",
+          "expected_stdout_chirho": "compile-time diagnostic or preserved fallback"
+        }
+      ],
+      "dependencies_chirho": [
+        "WI-001"
+      ],
       "risk_chirho": "medium-high (unknown accidental dependencies)",
-      "estimated_size_chirho": "medium"
+      "estimated_size_chirho": "medium",
+      "audit_merge_chirho": {
+        "related_catalog_buckets_chirho": [
+          "default-method-literal0-slot",
+          "post-b5203335-delta",
+          "constraint-alias-dict-pap"
+        ],
+        "audit_note_chirho": "b5203335 exposed this class dramatically; 29d9f262 fixed monad false positives but the generic arbitrary fallback remains for other classes."
+      }
     },
     {
       "id_chirho": "WI-015",
       "title_chirho": "Type-key inference hardening (blind App-arg propagation)",
       "pillar_chirho": "PILLAR-2",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed (strict monad-dispatch key helper infer_monad_dispatch_key_chirho scopes >>=/>>); general inference still blind",
+      "status_chirho": "partially landed for monad >>=/>> only (29d9f262); AUDIT MERGED for remaining consumers",
       "owner_chirho": "claude_chirho",
       "problem_chirho": "infer_type_key_chirho's App fallthrough (mod.rs ~539-551 pre-landing) blindly returns the ARGUMENT's type key for any function application — `print 1` infers 'Int', `putStrLn \"a\"` infers '[Char]' (which normalizes to '[]' and routed IO chains into the list monad before the strict-key fix). It also never produces an IO key. Consumers beyond >>=: fmap dispatch, MPTC key assembly, Show/Eq dict selection.",
-      "fix_design_chirho": ["Inventory consumers of the blind fallthrough; replace with shape-proven inference (constructor heads, annotations, local keys, primop result table, whitelisted Prelude return types) + explicit None for unknown; give IO expressions a real 'IO' key so future $prim_*_IO bodies can dispatch positively; migrate fmap to the strict helper once its tests are extended."],
+      "fix_design_chirho": [
+        "Inventory every consumer of infer_type_key_chirho before changing shared App behavior: fmap dispatch, MPTC key assembly, Show/Eq/Ord dict selection, monad dispatch, and future WI-003 annotations.",
+        "General key inference should trust only constructor heads, constructor vars, locally-keyed variables, literals, primop result tables, and explicit annotations whose type head is semantically relevant.",
+        "Function applications with unknown result type should return None, not the argument key. `putStrLn \"a\"` must not infer [] merely because its argument is [Char].",
+        "If IO keys are added, scope them first to infer_monad_dispatch_key_chirho and require body-backed IO method support before positive dispatch.",
+        "Migrate fmap to stricter keying only after adding tests that catch function-application false positives."
+      ],
       "acceptance_tests_chirho": [],
       "dependencies_chirho": [],
       "risk_chirho": "medium",
-      "estimated_size_chirho": "medium"
+      "estimated_size_chirho": "medium",
+      "audit_merge_chirho": {
+        "related_chirho": [
+          "WI-001",
+          "WI-003",
+          "WI-014"
+        ]
+      }
     }
   ],
-
   "waves_chirho": [
-    { "wave_chirho": "A (now)", "items_chirho": ["WI-001", "WI-002", "WI-001-step3 contextual return"], "builder_chirho": "claude_chirho holds slot; all other agents read-only" },
-    { "wave_chirho": "B (post SLOT-FREE)", "items_chirho": ["WI-003", "WI-004 wave A types", "WI-005", "WI-010 independent buckets", "WI-012"], "builder_chirho": "slot rotates via broker; designs/audits parallel, builds serialized" },
-    { "wave_chirho": "C", "items_chirho": ["WI-004 wave B (transformers, STM)", "WI-006 stage 1", "WI-007", "WI-011"], "builder_chirho": "rotate" },
-    { "wave_chirho": "D", "items_chirho": ["WI-008", "WI-009", "WI-006 stages 2-3", "WI-013"], "builder_chirho": "rotate" }
+    {
+      "wave_chirho": "A (targeted only)",
+      "items_chirho": [
+        "WI-014",
+        "WI-015",
+        "WI-003 design pins",
+        "targeted IO argument-position repros"
+      ],
+      "builder_chirho": "gpt_chirho/claude_chirho rotate; no full suites without L.J. approval"
+    },
+    {
+      "wave_chirho": "B",
+      "items_chirho": [
+        "WI-004 wave A body-backed rows",
+        "WI-005 Map scheme migration",
+        "WI-010 generated scoreboard skeleton",
+        "WI-012 docs hygiene"
+      ],
+      "builder_chirho": "one builder at a time; targeted gates"
+    },
+    {
+      "wave_chirho": "C",
+      "items_chirho": [
+        "WI-006 stage 0-1",
+        "WI-007 STG GC roots/native forcing first slice",
+        "WI-011 quantified constraints"
+      ],
+      "builder_chirho": "rotate"
+    },
+    {
+      "wave_chirho": "D",
+      "items_chirho": [
+        "WI-008 native object headers/round-trip loud tests",
+        "WI-009 runtime linking/GC hooks",
+        "WI-013 TH TyVarBndrSpec"
+      ],
+      "builder_chirho": "rotate"
+    }
   ],
-
   "continuity_protocol_chirho": {
     "directive_chirho": "L.J. 2026-07-01: work so that if any agent runs out of credits mid-task, the others can continue from its work, and it can continue from theirs. Proven live the same day: claude's credits died mid-WI-001 with an uncommitted patch; gpt validated it, root-caused the one bug, completed it, and landed b5203335.",
     "rules_chirho": [
@@ -399,16 +855,216 @@
       "Landing-note format (gpt #1399 is the reference): what landed (commit), what the predecessor got right, bug found + root cause, the fix, exact validation commands, explicit caveats on what was NOT run."
     ]
   },
-
   "coordination_chirho": {
-    "broker_chirho": "metropoleluya-chirho at 127.0.0.1:37371, room haskelujah-chirho, topic coordination-chirho; agents: HASKELUJAH/{claude_chirho, gpt_chirho}; opus fleet joins as HASKELUJAH/opus_*_chirho",
-    "leadership_chirho": "L.J. #1396 (2026-07-01): gemini_chirho removed from the session for now; CLAUDE leads (supersedes the older 'codex will be more the leader' note in AGENTS.md until L.J. says otherwise); stale files may be reviewed for inclusion/archive/discard at claude's discretion.",
+    "broker_chirho": "metropoleluya-chirho at 127.0.0.1:37371, room haskelujah-chirho, topic coordination-chirho; active agents: HASKELUJAH/{claude_chirho, gpt_chirho}. Future fleet agents join only by direct L.J. instruction.",
+    "leadership_chirho": "Current direct instruction: Claude delegated PRD token and builder slot to gpt_chirho after credits ran out; future leadership follows direct L.J. instruction. Gemini is out of this session unless L.J. re-adds it.",
     "rules_chirho": [
       "Claim an item in the broker BEFORE editing; one item = one owner at a time.",
       "Claim the prd_chirho.json write token before editing this file (write-collision precedent 2026-07-01).",
       "Direct L.J. instruction beats any agent agreement; coordinate the handoff so nobody double-builds.",
       "Landing post format: item id, commit hash, gate results (probe delta, driver delta, suite numbers), honest reds remaining."
     ],
-    "audit_artifacts_chirho": "Session scratchpad baseline_chirho/ (driver_lib_tests.log, probe.log + *_post_b5203335 variants, ghc_bulk_sweep.log) + workflow wf_4c365bea-fb4 results (8 maps done; designs/verifies/catalog resumed after claude's credit outage); merged into this file under AUDIT-MERGE markers."
+    "audit_artifacts_chirho": "FULL workflow JSON: /private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/deb8156f-2c89-44ac-99a0-55d2967ea407/tasks/wydqz29wu.output; per-agent journal: /Users/hallelujah/.claude/projects/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/subagents/workflows/wf_4c365bea-fb4/journal.jsonl; baseline scratchpad: session scratchpad baseline_chirho/. Audit merged in PRD v2.2.0 by gpt_chirho.",
+    "prd_token_chirho": "TOKEN-FREE after commit of v2.2.0; claim via broker before next edit."
+  },
+  "failure_catalog_chirho": {
+    "source_chirho": "audit workflow wf_4c365bea-fb4 catalog:failures, plus b5203335 completed delta log and incomplete 29d9f262 note",
+    "totals_chirho": {
+      "driver_lib_passed_chirho": 1609,
+      "driver_lib_failed_chirho": 73,
+      "probe_pass_chirho": 69,
+      "probe_total_chirho": 70
+    },
+    "caveat_chirho": "29d9f262 full driver delta is not measured; the run was stopped by resource guard. Counts below are baseline/preexisting or completed b5203335 delta unless explicitly noted.",
+    "buckets_chirho": [
+      {
+        "bucket_chirho": "post-b5203335-delta",
+        "count_chirho": 45,
+        "preexisting_chirho": false,
+        "suspected_subsystem_chirho": "dict-pass",
+        "representative_tests_chirho": [
+          "tests_chirho::eval_basic_chirho::eval_do_multi_print_chirho",
+          "tests_chirho::eval_io_chirho::eval_ioref_write_read_chirho",
+          "tests_chirho::eval_io_chirho::eval_stm_new_read_tvar_chirho",
+          "tests_chirho::compile_chirho::llvm_round_trip_get_line_output_chirho"
+        ],
+        "notes_chirho": "driver_lib_tests_post_b5203335.log is complete: 1569 passed / 117 failed of 1686 (baseline 1609/73 of 1682). Delta: 1 flipped green (llvm_round_trip_comprehensive_demo_chirho); 45 flipped red, ALL of which passed at baseline (verified none are new tests); 4 brand-new tests added by b5203335 all pass (eval_io_bind_unchanged/eval_maybe_do_dispatch/eval_monad_bind_dispatch/eval_monad_then_dispatch_chirho). Signature split of the 45: 33x runtime 'type error: cannot apply arguments to literal 0#' (raised at crates/haskelujah-runtime-chirho/src/eval_chirho.rs:1288) across IO do-chains (getLine, IORef, STM, putStr, interact, throw/catch, mapM/forM); 4x 'no matching alternative for tag' (eval_do_getline_bind, eval_ioref_write_overwrite, eval_stm_write_read_tvar, prelude_list_expanded); 8x compiled-backend round-trip wrong output (5 LLVM IO tests + 3 cranelift). b5203335 'dispatch monadic binds without breaking IO fallback' touched desugar_chirho.rs (do-notation), dict_chirho/rewrite_chirho.rs, runtime eval_chirho.rs — IO binds got dispatched into a wrong monad dict whose method slots are literal-0 placeholders. Follow-up 29d9f262 'strict monad-dispatch keys — stop IO chains entering the list monad' targets exactly this; its driver-lib log (driver_lib_tests_post_29d9f262.log) is INCOMPLETE (no final 'test result:' line) at audit time, but probe_post_b5203335.log and probe_strictkey.log both read PASS=70 FAIL=0 (baseline probe maybe-do AddIntChirho failure flipped green)."
+      },
+      {
+        "bucket_chirho": "map-builtin-mistyping",
+        "count_chirho": 20,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "typing",
+        "representative_tests_chirho": [
+          "tests_chirho::eval_basic_chirho::eval_map_adjust_chirho",
+          "tests_chirho::eval_data_chirho::eval_map_union_with_chirho",
+          "tests_chirho::eval_prelude_chirho::eval_map_lookup_str_not_found_chirho"
+        ],
+        "notes_chirho": "E0200 'type mismatch: expected `Int`, found `((Map tN) tM)`' on every prelude Data.Map builtin combo (mapAdjust/mapUnion/mapFilter/mapFindWithDefault/mapFoldlWithKey/mapInsertWith/...). Builtin type sigs registered in crates/haskelujah-typing-chirho/src/infer_chirho.rs:11730ff ('mapAdjust :: Ord k => (v -> v) -> k -> Map k v -> Map k v'), bodies in crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho.rs:11361ff. Split: eval_basic 10, eval_data 9, eval_prelude 1. Matches cluster 2 of the earlier 103-red triage (triage_chirho.md)."
+      },
+      {
+        "bucket_chirho": "transformer-shim-typing",
+        "count_chirho": 6,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "typing",
+        "representative_tests_chirho": [
+          "tests_chirho::eval_typeclass_chirho::reader_t_ask_eval_chirho",
+          "tests_chirho::eval_typeclass_chirho::writer_t_return_chirho",
+          "tests_chirho::eval_typeclass_chirho::writer_t_tell_chirho"
+        ],
+        "notes_chirho": "5x E0204 'no instance for `Show (IO Integer)`' (writer_t_tell: `Show (IO [Integer])`) on `print (runReader ask 42)` style programs — the ReaderT/WriterT prelude shim types leak the result as IO instead of the underlying value (runReader :: ReaderT r Identity a -> r -> Identity a registered at crates/haskelujah-typing-chirho/src/infer_chirho.rs:15180). Plus 1x E0200 'expected `WriterT`, found `(WriterT t6)`' (writer_t_return, test at crates/haskelujah-driver-chirho/src/tests_chirho/eval_typeclass_chirho.rs:1477). Cluster 3 of the earlier triage; dict instance resolution work (Phase 2) is the stated fix path."
+      },
+      {
+        "bucket_chirho": "project-discovery-iface-seeding",
+        "count_chirho": 6,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "module-iface",
+        "representative_tests_chirho": [
+          "tests_chirho::compile_chirho::discover_setup_hs_chirho",
+          "tests_chirho::project_chirho::tests_chirho::real_containers_dependency_seed_includes_bitutil_iface_chirho",
+          "tests_chirho::project_chirho::tests_chirho::real_containers_loop_has_bitutil_iface_before_inttreecommons_chirho"
+        ],
+        "notes_chirho": "Cabal project discovery misses Setup.hs and test-suite Main (compile_chirho.rs:5899/:5850), and real-containers package iface seeding loses/mis-orders Utils.Containers.Internal.BitUtil before IntTreeCommons (Data.IntSet.Internal fails; dependency seed sample shows wreq modules instead). filter_seeded_imported_types keeps 'choice' unexpectedly. Earlier triage cluster 5 flagged these as possibly file/env-dependent (external package fixtures on disk)."
+      },
+      {
+        "bucket_chirho": "maybe-shadow-nominal-mismatch",
+        "count_chirho": 5,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "typing",
+        "representative_tests_chirho": [
+          "tests_chirho::eval_basic_chirho::eval_from_maybe_chirho",
+          "tests_chirho::eval_basic_chirho::eval_is_just_chirho",
+          "tests_chirho::eval_basic_chirho::eval_maybe_chirho"
+        ],
+        "notes_chirho": "E0200 'type mismatch: expected `Prelude.Maybe`, found `Maybe`'. Each test source declares its own `data Maybe a = Nothing | Just a` (e.g. crates/haskelujah-driver-chirho/src/tests_chirho/eval_basic_chirho.rs:1346) then calls prelude fromMaybe/isJust/isNothing/maybe; the prelude sig pins the Prelude.Maybe tycon while the user re-declaration creates a distinct nominal tycon, so unification fails. Fix direction: either dedup/alias user-redeclared prelude-shaped tycons or make these prelude helpers polymorphic over the local Maybe."
+      },
+      {
+        "bucket_chirho": "st-stref-shim-typing",
+        "count_chirho": 5,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "typing",
+        "representative_tests_chirho": [
+          "tests_chirho::eval_io_chirho::eval_runst_chirho",
+          "tests_chirho::eval_io_chirho::eval_stref_basic_chirho",
+          "tests_chirho::eval_io_chirho::eval_st_write_read_chirho"
+        ],
+        "notes_chirho": "E0200 'type mismatch: expected `STRef`, found `ST`'. Tests use non-monadic shim style `runST (let ref = newSTRef 0 in seq (writeSTRef ref 42) (readSTRef ref))` (crates/haskelujah-driver-chirho/src/tests_chirho/eval_io_chirho.rs:524-537). newSTRef is registered twice in crates/haskelujah-typing-chirho/src/infer_chirho.rs — simplified at :10447 and GHC-accurate monadic `forall s a. a -> ST s (STRef s a)` at :17830; the accurate sig rejects the shim-era test source (ref :: ST s (STRef s a), not STRef). Either the tests or the shim sigs must move together."
+      },
+      {
+        "bucket_chirho": "list-instance-resolution",
+        "count_chirho": 5,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "typing",
+        "representative_tests_chirho": [
+          "tests_chirho::eval_typeclass_chirho::eval_semigroup_append_lists_chirho",
+          "tests_chirho::eval_advanced_chirho::eval_deepseq_list_chirho",
+          "tests_chirho::eval_basic_chirho::eval_conditional_instance_chirho"
+        ],
+        "notes_chirho": "E0204 'no instance for `C [Integer]`' with C in {Semigroup x2, Monoid, NFData, Describable}. The Describable case is a USER-DEFINED conditional instance `instance Describable a => Describable [a]` with `desc [42]` (crates/haskelujah-driver-chirho/src/tests_chirho/eval_basic_chirho.rs:2067) — so this is conditional/list-headed instance resolution failing at defaulted-Integer element type in the class env (crates/haskelujah-typing-chirho/src/class_chirho.rs), not merely missing prelude instances."
+      },
+      {
+        "bucket_chirho": "frontend-typing-one-offs",
+        "count_chirho": 5,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "typing",
+        "representative_tests_chirho": [
+          "tests_chirho::compile_chirho::frontend_instance_methods_stay_nested_chirho",
+          "tests_chirho::compile_chirho::frontend_constraints_package_regression_chirho",
+          "tests_chirho::extensions_chirho::iface_data_typeable_rnf_exports_chirho"
+        ],
+        "notes_chirho": "Heterogeneous frontend typecheck failures, one test each: E0201 'infinite type: `t12` occurs in `((Either t10) t12)`' (compile_chirho.rs:4078); E0202 'unbound variable: `mempty`' in nested $ callCC lifting (compile_chirho.rs:3665); E0200 '[Int]' vs '(t240 -> t241)' plus a bogus unbound EMPTY-name `` diagnostic at a synthetic span (compile_chirho.rs:1497); E0200 'expected `Dict`, found `(-> t455)`' compiling real Data.Constraint; E0300 kind mismatch in Data.Typeable rnfTyCon/rnfTypeRep exports (kind-infer/iface interaction)."
+      },
+      {
+        "bucket_chirho": "stg-eval-thunk-forcing",
+        "count_chirho": 4,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "stg-eval",
+        "representative_tests_chirho": [
+          "tests_chirho::eval_basic_chirho::eval_dot_compose_chirho",
+          "tests_chirho::eval_list_chirho::eval_fix_factorial_chirho",
+          "tests_chirho::extensions_chirho::scc_forward_ref_multi_chirho"
+        ],
+        "notes_chirho": "Unforced thunks reach strict positions: 2x 'runtime error: primop AddIntChirho: expected Int#, got (@1051, @1051)' for `(double . succ) 20` (eval_dot_compose[_with_dollar]); 1x 'no matching alternative for tag 0 at @1058' for fix-based factorial; 1x result HeapPtrChirho(1050) instead of IntChirho(42) for forward-referenced `main = compose incr incr 40` (extensions_chirho.rs:1780). Repro re-run this session with target/debug (built 22:38, reflects HEAD 29d9f262) reproduces the identical AddIntChirho signature, so this cluster persists after the monad-dispatch fixes. Matches memory note: thunk forcing not universal at use sites."
+      },
+      {
+        "bucket_chirho": "driver-hsc-cpp-preprocessing",
+        "count_chirho": 4,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "other",
+        "representative_tests_chirho": [
+          "tests_chirho::compile_chirho::read_hsc_source_sanitizes_clock_hsc2hs_directives_chirho",
+          "tests_chirho::compile_chirho::read_haskell_source_file_keeps_primitive_bytearray_unsafe_thaw_arr_hash_chirho",
+          "tests_chirho::compile_chirho::clock_iface_exports_normalize_and_s2ns_chirho"
+        ],
+        "notes_chirho": "Driver source preprocessing (hsc2hs/#let/CPP, MagicHash offsets) in haskelujah-driver: spaced CPP directives drop the active ClockId branch ('clockFlagChirho = 1' missing, compile_chirho.rs:3081/:2975 asserts); System.Clock iface exports polluted with hsc2hs tokens {alignment, offsetof, long, char} instead of retaining normalize/s2ns (compile_chirho.rs:3139); primitive package's `arr#` at known unsafeThawByteArray offset mangled to ') #)'."
+      },
+      {
+        "bucket_chirho": "multi-module-unforced-result",
+        "count_chirho": 3,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "module-iface",
+        "representative_tests_chirho": [
+          "tests_chirho::eval_basic_chirho::eval_multi_module_function_call_chirho",
+          "tests_chirho::eval_basic_chirho::eval_module_re_export_chirho",
+          "tests_chirho::eval_basic_chirho::eval_multi_module_three_modules_chirho"
+        ],
+        "notes_chirho": "eval_modules_chirho returns HeapPtrChirho(HeapAddrChirho(N)) instead of IntChirho for trivial cross-module calls, e.g. Lib.add1 with `main = add1 42` expecting 43 (test at crates/haskelujah-driver-chirho/src/tests_chirho/eval_basic_chirho.rs:2271). Imported-binding application result is left as an unforced heap closure — boundary between module linking/iface placeholders and STG result forcing. CLI single-file `run` cannot reproduce (E0102 could not find module `Lib`), so it is specific to the multi-module eval path."
+      },
+      {
+        "bucket_chirho": "constraint-alias-dict-pap",
+        "count_chirho": 3,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "dict-pass",
+        "representative_tests_chirho": [
+          "tests_chirho::extensions_chirho::constraint_kinds_type_alias_chirho",
+          "tests_chirho::eval_typeclass_chirho::constraintkinds_constraint_type_alias_chirho",
+          "tests_chirho::extensions_chirho::quantified_constraint_type_sig_parses_chirho"
+        ],
+        "notes_chirho": "Dictionary abstraction for constraint-tuple aliases / quantified constraints is never discharged, leaving PAPs: `f :: ShowEq a => a -> String` prints '$PAP f 42' instead of '\"42\"' (extensions_chirho.rs:2579); eval_typeclass variant produces empty output vs '42\\n'; `foo :: (forall a. Show a) => Int; foo = 42` evaluates to HeapPtrChirho instead of IntChirho(42) (extensions_chirho.rs:195). Dict-pass (crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs) fails to supply/erase the alias dict argument."
+      },
+      {
+        "bucket_chirho": "llvm-native-numeric-regressions",
+        "count_chirho": 3,
+        "preexisting_chirho": false,
+        "suspected_subsystem_chirho": "other",
+        "representative_tests_chirho": [
+          "tests_chirho::compile_chirho::llvm_round_trip_floor_div_mod_negative_operands_chirho",
+          "tests_chirho::compile_chirho::llvm_round_trip_qsort_random_500_chirho",
+          "tests_chirho::compile_chirho::llvm_round_trip_comprehensive_demo_chirho"
+        ],
+        "notes_chirho": "NOT in the 103-red run at aa80f631 (all three were 'ok' there) — regressed inside the aa80f631..626ab0a4 window (candidates: 2ab7b587 fmap dict dispatch, 38111b4e LLVM show fallback, 626ab0a4 Either applicative dicts). Wrong native numeric output: floor div/mod negative operands 36 vs 42 ('should floor div/mod but keep quot/rem truncating', compile_chirho.rs:6668); qsort_random_500 sum 2976 vs 256218; comprehensive_demo sumsq 4353372609 vs 385. Same window FIXED 14 other llvm_round_trip tests plus 19 float/Double eval tests (33 total greens vs the 103-run). comprehensive_demo flipped green again in the post-b5203335 run; the other two stayed red."
+      },
+      {
+        "bucket_chirho": "th-makelenses-splice",
+        "count_chirho": 2,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "other",
+        "representative_tests_chirho": [
+          "tests_chirho::splice_chirho::splice_make_lenses_in_pipeline_chirho",
+          "tests_chirho::splice_chirho::make_lenses_e2e_full_pipeline_chirho"
+        ],
+        "notes_chirho": "Template Haskell splice pipeline: warning 'Template Haskell splice not recognized, skipping: application of variable makeLenses' and missing generated TypeSig for the 'name' lens. Known WIP — CLAUDE.md Phase 3 In-Progress #1 (STG bridge for user-written TH); earlier triage cluster 4."
+      },
+      {
+        "bucket_chirho": "cranelift-string-truncation",
+        "count_chirho": 1,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "other",
+        "representative_tests_chirho": [
+          "tests_chirho::compile_chirho::cranelift_round_trip_text_processing_chirho"
+        ],
+        "notes_chirho": "Cranelift backend round-trip: toUpper via unpack/pack emits only the first character ('H' vs 'HELLO', assert at compile_chirho.rs:8669) — string/list loop codegen in the cranelift backend terminates after one cons cell."
+      },
+      {
+        "bucket_chirho": "default-method-literal0-slot",
+        "count_chirho": 1,
+        "preexisting_chirho": true,
+        "suspected_subsystem_chirho": "dict-pass",
+        "representative_tests_chirho": [
+          "tests_chirho::eval_advanced_chirho::default_sig_basic_eval_chirho"
+        ],
+        "notes_chirho": "`instance Describable Int` (empty body, class has `default describe`) then `describe (1 :: Int)` dies with 'runtime error: type error: cannot apply arguments to literal 0#' (test at crates/haskelujah-driver-chirho/src/tests_chirho/eval_advanced_chirho.rs:1669; error raised at crates/haskelujah-runtime-chirho/src/eval_chirho.rs:1288). Instance dict construction (crates/haskelujah-core-chirho/src/dict_chirho/instance_chirho.rs) fills the missing method slot with a literal-0 placeholder instead of the class default body. This was the ONLY literal-0# failure at baseline (grep count 1 in driver_lib_tests.log); the same placeholder-slot signature exploded to 33 tests in the post-b5203335 regression, so fixing the slot-filling likely serves both."
+      }
+    ]
   }
 }
