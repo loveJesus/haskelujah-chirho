@@ -223,6 +223,42 @@ main = 42
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
+#[test]
+fn quantified_constraint_local_polykinded_classes_instantiate_per_use_chirho() {
+    let src_chirho = r#"
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+module Test where
+import Data.Kind (Constraint)
+data Dict c = Dict
+data a :- b = Sub (a => Dict b)
+class (forall a. p a) => Forall (p :: k -> Constraint)
+instance (forall a. p a) => Forall (p :: k -> Constraint)
+class p (f a) => ComposeC (p :: k2 -> Constraint) (f :: k1 -> k2) (a :: k1)
+instance p (f a) => ComposeC p f a
+class Forall (ComposeC p f) => ForallF (p :: k2 -> Constraint) (f :: k1 -> k2)
+instance Forall (ComposeC p f) => ForallF p f
+instF :: forall p f a . ForallF p f :- p (f a)
+instF = undefined
+class p (t a b) => R (p :: k3 -> Constraint) (t :: k1 -> k2 -> k3) (a :: k1) (b :: k2)
+instance p (t a b) => R p t a b
+class Forall (R p t a) => Q (p :: k3 -> Constraint) (t :: k1 -> k2 -> k3) (a :: k1)
+instance Forall (R p t a) => Q p t a
+class Forall (Q p t) => ForallT (p :: k4 -> Constraint) (t :: (k1 -> k2) -> k3 -> k4)
+instance Forall (Q p t) => ForallT p t
+instT :: forall k1 k2 k3 k4 (p :: k4 -> Constraint) (t :: (k1 -> k2) -> k3 -> k4) (f :: k1 -> k2) (a :: k3). ForallT p t :- p (t f a)
+instT = undefined
+main = 42
+"#;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "QCLocalPolyKinds.hs", None);
+    assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
+}
+
 // ── LambdaCase ──────────────────────────────────────────────────────────
 
 #[test]

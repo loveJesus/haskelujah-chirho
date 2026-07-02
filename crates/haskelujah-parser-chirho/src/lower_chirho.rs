@@ -5343,43 +5343,69 @@ impl LowerCtxChirho {
                 // TypeOperators: `a :+: b` or `a `Either` b`
                 // Children: left-type, operator-token (or backtick-name-backtick), right-type
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                let type_nodes_chirho: Vec<_> = children_chirho
-                    .iter()
-                    .filter(|c_chirho| {
-                        matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(n_chirho)
-                            if is_type_kind_chirho(n_chirho.kind_chirho()))
-                    })
-                    .collect();
-                // Extract the operator name from tokens
-                let op_name_chirho = children_chirho.iter().find_map(|c_chirho| {
-                    if let GreenElementChirho::TokenChirho(tok_chirho) = c_chirho.element_chirho {
-                        let k_chirho = tok_chirho.kind_chirho();
-                        if k_chirho == TokenKindChirho::VarSymChirho
-                            || k_chirho == TokenKindChirho::ConSymChirho
-                            || k_chirho == TokenKindChirho::ConIdChirho
-                            || k_chirho == TokenKindChirho::VarIdChirho
-                            || k_chirho == TokenKindChirho::TildeChirho
-                        {
-                            let txt_chirho = tok_chirho.text_chirho();
-                            if txt_chirho != "`" {
-                                let s_chirho =
-                                    self.span_chirho(c_chirho.start_chirho, c_chirho.end_chirho);
-                                return Some(self.name_from_token_chirho(tok_chirho, s_chirho));
+                let lower_type_app_segment_chirho =
+                    |segment_chirho: &[ChildChirho<'_>]| -> Option<TypeChirho> {
+                        let mut lowered_chirho = segment_chirho
+                            .iter()
+                            .filter(|c_chirho| {
+                                matches!(
+                                    c_chirho.element_chirho,
+                                    GreenElementChirho::NodeChirho(n_chirho)
+                                        if is_type_kind_chirho(n_chirho.kind_chirho())
+                                )
+                            })
+                            .map(|type_child_chirho| {
+                                self.lower_type_from_child_chirho(type_child_chirho)
+                            });
+                        let first_chirho = lowered_chirho.next()?;
+                        Some(lowered_chirho.fold(first_chirho, |fun_chirho, arg_chirho| {
+                            TypeChirho::AppChirho {
+                                fun_chirho: Box::new(fun_chirho),
+                                arg_chirho: Box::new(arg_chirho),
+                                span_chirho,
                             }
-                        }
-                    }
-                    None
-                });
-                if type_nodes_chirho.len() >= 2 {
-                    let left_chirho = self.lower_type_from_child_chirho(type_nodes_chirho[0]);
-                    let right_chirho = self.lower_type_from_child_chirho(
-                        type_nodes_chirho[type_nodes_chirho.len() - 1],
-                    );
-                    let op_ty_chirho = if let Some(name_chirho) = op_name_chirho {
-                        TypeChirho::ConChirho(name_chirho)
-                    } else {
-                        self.placeholder_type_chirho()
+                        }))
                     };
+
+                // Extract the operator name from tokens.
+                let op_index_and_name_chirho =
+                    children_chirho
+                        .iter()
+                        .enumerate()
+                        .find_map(|(idx_chirho, c_chirho)| {
+                            if let GreenElementChirho::TokenChirho(tok_chirho) =
+                                c_chirho.element_chirho
+                            {
+                                let k_chirho = tok_chirho.kind_chirho();
+                                if k_chirho == TokenKindChirho::VarSymChirho
+                                    || k_chirho == TokenKindChirho::ConSymChirho
+                                    || k_chirho == TokenKindChirho::ConIdChirho
+                                    || k_chirho == TokenKindChirho::VarIdChirho
+                                    || k_chirho == TokenKindChirho::TildeChirho
+                                {
+                                    let txt_chirho = tok_chirho.text_chirho();
+                                    if txt_chirho != "`" {
+                                        let s_chirho = self.span_chirho(
+                                            c_chirho.start_chirho,
+                                            c_chirho.end_chirho,
+                                        );
+                                        return Some((
+                                            idx_chirho,
+                                            self.name_from_token_chirho(tok_chirho, s_chirho),
+                                        ));
+                                    }
+                                }
+                            }
+                            None
+                        });
+                if let Some((op_index_chirho, name_chirho)) = op_index_and_name_chirho {
+                    let left_chirho =
+                        lower_type_app_segment_chirho(&children_chirho[..op_index_chirho])
+                            .unwrap_or_else(|| self.placeholder_type_chirho());
+                    let right_chirho =
+                        lower_type_app_segment_chirho(&children_chirho[op_index_chirho + 1..])
+                            .unwrap_or_else(|| self.placeholder_type_chirho());
+                    let op_ty_chirho = TypeChirho::ConChirho(name_chirho);
                     // Desugar: `a Op b` → `Op a b` = App(App(Op, a), b)
                     TypeChirho::AppChirho {
                         fun_chirho: Box::new(TypeChirho::AppChirho {
@@ -11113,6 +11139,62 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                     }
                 }
                 other_chirho => panic!("expected QualChirho, got: {:?}", other_chirho),
+            }
+        }
+    }
+
+    #[test]
+    fn lower_infix_type_operator_keeps_left_application_spine_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE TypeOperators #-}\nmodule M where\ndata a :- b = Sub\ninstF :: forall p f a . ForallF p f :- p (f a)\n",
+        );
+        let ty_sig_chirho = module_chirho.decls_chirho.iter().find(|decl_chirho| {
+            matches!(decl_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "instF")
+        });
+        assert!(ty_sig_chirho.is_some(), "should have a TypeSig for instF");
+        if let Some(DeclChirho::TypeSigChirho { ty_chirho, .. }) = ty_sig_chirho {
+            let body_chirho = match ty_chirho {
+                TypeChirho::ForallChirho { body_chirho, .. } => body_chirho.as_ref(),
+                other_chirho => panic!("expected forall type, got {other_chirho:?}"),
+            };
+            let lhs_chirho = match body_chirho {
+                TypeChirho::AppChirho { fun_chirho, .. } => match fun_chirho.as_ref() {
+                    TypeChirho::AppChirho { arg_chirho, .. } => arg_chirho.as_ref(),
+                    other_chirho => panic!("expected operator application, got {other_chirho:?}"),
+                },
+                other_chirho => panic!("expected infix type application, got {other_chirho:?}"),
+            };
+            match lhs_chirho {
+                TypeChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    assert!(
+                        matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "f"),
+                        "left operand should keep final f argument, got {lhs_chirho:?}"
+                    );
+                    match fun_chirho.as_ref() {
+                        TypeChirho::AppChirho {
+                            fun_chirho,
+                            arg_chirho,
+                            ..
+                        } => {
+                            assert!(
+                                matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "p"),
+                                "left operand should keep p argument, got {lhs_chirho:?}"
+                            );
+                            assert!(
+                                matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "ForallF"),
+                                "left operand should keep ForallF head, got {lhs_chirho:?}"
+                            );
+                        }
+                        other_chirho => {
+                            panic!("expected ForallF p application, got {other_chirho:?}")
+                        }
+                    }
+                }
+                other_chirho => panic!("expected ForallF p f application, got {other_chirho:?}"),
             }
         }
     }

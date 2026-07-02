@@ -817,14 +817,12 @@ impl KindInferCtxChirho {
                 let text_chirho = name_chirho.full_name_chirho();
                 if let Some(k_chirho) = self.env_chirho.lookup_chirho(&text_chirho) {
                     let k_chirho = k_chirho.clone();
-                    // Imported poly-kinded constructors should instantiate at
-                    // each use site, but local declarations in the current
-                    // module still have unsolved kind variables that need to
-                    // stay shared across all occurrences while inference
-                    // constrains them.
-                    if !k_chirho.free_vars_chirho().is_empty()
-                        && !self.local_kind_decl_names_chirho.contains(&text_chirho)
-                    {
+                    // Poly-kinded constructors instantiate at each use site.
+                    // This applies to local classes too: sharing `Forall`'s
+                    // kind variables across all superclass/signature uses
+                    // incorrectly monomorphizes quantified-constraint helpers
+                    // such as `ForallF` before later `ForallT` signatures.
+                    if !k_chirho.free_vars_chirho().is_empty() {
                         self.instantiate_kind_chirho(&k_chirho)
                     } else {
                         k_chirho

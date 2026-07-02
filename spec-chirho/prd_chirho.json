@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.67",
+    "prd_version_chirho": "2.2.68",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -78,7 +78,8 @@
       "gpt_chirho (Codex) — PRD bucket rebaseline: containers project tests now mirror production current-package type-synonym accumulation; stale STG forcing bucket reduced to the real fix recursion residual v2.2.64",
       "gpt_chirho (Codex) — constraint type aliases now expand to real scheme predicates and constrained numeric-literal calls receive Int dictionaries v2.2.65",
       "gpt_chirho (Codex) — constraints package frontier advanced through Test.Hspec, KnownChar/charVal, and Data.Typeable proxy typeRep stubs; remaining frontend one-off is Data.Constraint.Forall quantified-constraint kinding v2.2.66",
-      "gpt_chirho (Codex) — quantified constraints now lower to QuantifiedChirho instead of synthetic `$Dict_?`, closing the simple quantified signature PAP residual v2.2.67"
+      "gpt_chirho (Codex) — quantified constraints now lower to QuantifiedChirho instead of synthetic `$Dict_?`, closing the simple quantified signature PAP residual v2.2.67",
+      "gpt_chirho (Codex) — Data.Constraint.Forall prerequisites: local poly-kinded constructors instantiate per use and infix type-operator lowering preserves left application spines; real constraints package remains blocked at higher-kinded quantified-constraint kinding v2.2.68"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -130,13 +131,14 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "Quantified constraint lowering and constraints package frontier recheck.",
+      "scope_chirho": "Data.Constraint.Forall prerequisite fixes: local poly-kinded constructor use-site instantiation plus infix type-operator application-spine lowering.",
       "commands_chirho": [
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib lower_quantified_constraint_type_sig_keeps_quantified_constraint_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib quantified_constraint_type_sig_parses_chirho -- --test-threads=1",
-        "timeout 240 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_constraints_package_regression_chirho -- --test-threads=1"
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib infix_type_operator -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib polykinded -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_gadt_type_operator_with_operator_constructor_typechecks_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_constraints_package_regression_chirho -- --test-threads=1 (expected red frontier)"
       ],
-      "result_chirho": "The reduced lowerer regression confirms `(forall a. Show a) => Int` now lowers through `ConstraintChirho::QuantifiedChirho` instead of synthetic class `?`, and `quantified_constraint_type_sig_parses_chirho` now evaluates to Int 42. The real constraints package still fails in Data.Constraint.Forall with E0300 higher-kinded quantified-constraint mismatches for `Forall (ComposeC p f)` / `Forall (Q p t)`, so `constraint-alias-dict-pap` is closed and `frontend-typing-one-offs` remains count 1."
+      "result_chirho": "Parser lowering now preserves `ForallF p f` as the full left operand of `(ForallF p f) :- p (f a)`, and local poly-kinded class constructors instantiate per use so the reduced ForallF/ForallT driver case evaluates to Int 42 without regressing existing local type-operator tests. The real constraints package still fails in Data.Constraint.Forall with E0300 higher-kinded quantified-constraint mismatches at `ForallF p f :- p (f a)` and `ForallT p t :- p (t f a)`, so `frontend-typing-one-offs` remains count 1."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1282,13 +1284,13 @@
       {
         "bucket_chirho": "frontend-typing-one-offs",
         "count_chirho": 1,
-        "resolved_chirho": "4 of 5 RESOLVED. v2.2.49/c815ef17 resolved the nested WriterT `$`/callCC `mempty` E0202 case as a Rust string-continuation layout artifact in `frontend_writer_t_nested_dollar_callcc_chirho`. v2.2.51 resolved `frontend_instance_methods_stay_nested_chirho` as an invalid fixture: after unwrapping `ExceptT`, inner `mzipWith` operates on `m (Either e a)`/`m (Either e b)`, so the method body must use `mzipWith (liftA2 fChirho) aChirho bChirho`, matching the already-passing complex sibling. v2.2.52 resolved `iface_data_typeable_rnf_exports_chirho` as a fixture mismatch with the current poly-kinded `TypeRep :: k -> *` model; `g :: TypeRep a -> ()` preserves the export check without weakening kind inference. v2.2.63 resolved `frontend_th_abstraction_style_local_sig_in_instance_typechecks_chirho`: `(\\\\)` was lexed as lambda/backslash tokens and then lacked a Data.List export/type scheme; it now lexes as `VarSymChirho` when followed by a symbol and resolves as `Eq a => [a] -> [a] -> [a]`. v2.2.66 advanced the real constraints package through three shallow frontiers: Test.Hspec module/scheme stubs, GHC.TypeLits charVal/KnownChar, and Data.Typeable proxy-argument typeRep.",
+        "resolved_chirho": "4 of 5 RESOLVED. v2.2.49/c815ef17 resolved the nested WriterT `$`/callCC `mempty` E0202 case as a Rust string-continuation layout artifact in `frontend_writer_t_nested_dollar_callcc_chirho`. v2.2.51 resolved `frontend_instance_methods_stay_nested_chirho` as an invalid fixture: after unwrapping `ExceptT`, inner `mzipWith` operates on `m (Either e a)`/`m (Either e b)`, so the method body must use `mzipWith (liftA2 fChirho) aChirho bChirho`, matching the already-passing complex sibling. v2.2.52 resolved `iface_data_typeable_rnf_exports_chirho` as a fixture mismatch with the current poly-kinded `TypeRep :: k -> *` model; `g :: TypeRep a -> ()` preserves the export check without weakening kind inference. v2.2.63 resolved `frontend_th_abstraction_style_local_sig_in_instance_typechecks_chirho`: `(\\\\)` was lexed as lambda/backslash tokens and then lacked a Data.List export/type scheme; it now lexes as `VarSymChirho` when followed by a symbol and resolves as `Eq a => [a] -> [a] -> [a]`. v2.2.66 advanced the real constraints package through three shallow frontiers: Test.Hspec module/scheme stubs, GHC.TypeLits charVal/KnownChar, and Data.Typeable proxy-argument typeRep. v2.2.68 landed prerequisite fixes for the remaining Data.Constraint.Forall frontier: local poly-kinded constructors instantiate per use and infix type-operator lowering keeps left application spines such as `ForallF p f`.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "typing",
         "representative_tests_chirho": [
           "tests_chirho::compile_chirho::frontend_constraints_package_regression_chirho"
         ],
-        "notes_chirho": "Remaining real package frontier: Data.Constraint.Forall fails with E0300 quantified-constraint kind mismatches in signatures such as `Forall (ComposeC p f) :- ComposeC p f a` and `Forall (Q p t) :- Q p t f`. The older E0200 `Dict`/function mismatch, Test.Hspec module-not-found, Hspec Spec/return mismatch, charVal unbound, and Data.Typeable.typeRep proxy mismatch are no longer the active frontier."
+        "notes_chirho": "Remaining real package frontier: Data.Constraint.Forall fails with E0300 higher-kinded quantified-constraint kind mismatches in signatures such as `ForallF p f :- p (f a)` and `ForallT p t :- p (t f a)` (current offsets 1984..2007 and 2766..2791). The older E0200 `Dict`/function mismatch, Test.Hspec module-not-found, Hspec Spec/return mismatch, charVal unbound, Data.Typeable.typeRep proxy mismatch, local poly-kind constructor monomorphization, and infix type-operator left-spine dropping are no longer the active frontier."
       },
       {
         "bucket_chirho": "stg-eval-thunk-forcing",
