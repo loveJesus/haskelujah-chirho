@@ -424,6 +424,62 @@ impl DictPassCtxChirho {
         result_chirho
     }
 
+    /// Conservative type key for monad-chain dispatch (`>>=` / `>>`): only
+    /// shapes that PROVE the monad head are trusted — constructor
+    /// applications (Just x, Right y, x : xs), constructor vars, locally
+    /// keyed vars, literals, primops with exact result types, and type
+    /// annotations. Non-constructor function applications are NOT trusted:
+    /// the general inference blindly propagates argument types through Apps,
+    /// which routed IO chains into the list monad (`putStrLn "a" >> ...`
+    /// inferred as `[Char]` -> `[]`). workflow: monadic-dispatch-chirho
+    fn infer_monad_dispatch_key_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+    ) -> Option<String> {
+        match expr_chirho {
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => self.infer_monad_dispatch_key_chirho(inner_chirho, local_type_keys_chirho),
+            CoreExprChirho::VarChirho(id_chirho) => local_type_keys_chirho
+                .get(id_chirho)
+                .cloned()
+                .or_else(|| self.infer_type_key_chirho(expr_chirho)),
+            CoreExprChirho::ConAppChirho { .. }
+            | CoreExprChirho::LitChirho(_)
+            | CoreExprChirho::PrimOpChirho { .. } => self.infer_type_key_chirho(expr_chirho),
+            CoreExprChirho::AppChirho { .. } => {
+                let mut cur_chirho = expr_chirho;
+                while let CoreExprChirho::AppChirho { fun_chirho, .. } = cur_chirho {
+                    cur_chirho = fun_chirho;
+                }
+                while let CoreExprChirho::TyAppChirho {
+                    expr_chirho: inner_chirho,
+                    ..
+                } = cur_chirho
+                {
+                    cur_chirho = inner_chirho;
+                }
+                let CoreExprChirho::VarChirho(head_id_chirho) = cur_chirho else {
+                    return None;
+                };
+                let name_chirho = self.names_chirho.get(head_id_chirho)?;
+                let is_con_head_chirho = self.con_types_chirho.contains_key(name_chirho)
+                    || matches!(
+                        name_chirho.as_str(),
+                        "Just" | "Left" | "Right" | ":" | "(,)" | "(,,)" | "(,,,)"
+                    )
+                    || name_chirho.starts_with("$tuple");
+                if is_con_head_chirho {
+                    return self.infer_type_key_chirho(expr_chirho);
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+
     /// Dispatch a higher-kinded class method to the correct per-type instance
     /// body based on the type key of its dispatch argument.
     /// The method otherwise resolves to a monomorphic default binding, which is
@@ -511,8 +567,26 @@ impl DictPassCtxChirho {
             _ => return None,
         };
         let dispatch_arg_chirho = args_chirho.get(dispatch_idx_chirho)?;
-        let value_key_chirho =
-            self.infer_type_key_for_rewrite_chirho(dispatch_arg_chirho, local_type_keys_chirho)?;
+        // >>= / >> use the conservative key: a wrong positive key sends an IO
+        // chain into another monad's body (worse than no dispatch). fmap keeps
+        // the permissive inference its existing tests pin.
+        let value_key_opt_chirho = if matches!(head_name_chirho.as_str(), ">>=" | ">>") {
+            self.infer_monad_dispatch_key_chirho(dispatch_arg_chirho, local_type_keys_chirho)
+        } else {
+            self.infer_type_key_for_rewrite_chirho(dispatch_arg_chirho, local_type_keys_chirho)
+        };
+        let Some(value_key_chirho) = value_key_opt_chirho else {
+            if matches!(head_name_chirho.as_str(), ">>=" | ">>") {
+                return Some(self.rebuild_preserved_method_app_chirho(
+                    head_id_chirho,
+                    &args_chirho,
+                    dict_vars_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ));
+            }
+            return None;
+        };
         let head_key_chirho = Self::normalize_instance_head_key_chirho(&value_key_chirho);
         let Some(inst_id_chirho) =
             self.lookup_name_id_chirho(&format!("{prefix_chirho}{head_key_chirho}"))

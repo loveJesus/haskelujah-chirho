@@ -6230,6 +6230,44 @@ fn eval_maybe_do_dispatch_chirho() {
     }
 }
 
+// workflow: monadic-dispatch-chirho — INV-001 stdout regression pin: IO
+// do-blocks whose first statement is a real effect (putStrLn/print) must NOT
+// be routed into another monad's body by blind key inference (the bug where
+// `putStrLn "a" >> rest` inferred [Char] -> [] and ran the list-monad body).
+#[test]
+fn eval_io_do_effect_chains_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let cases_chirho: [(&str, &str); 4] = [
+        ("main = do\n  putStrLn \"a\"\n  putStrLn \"b\"\n", "a\nb\n"),
+        ("main = do\n  putStrLn \"a\"\n  print 3\n", "a\n3\n"),
+        (
+            "main = do\n  putStrLn \"a\"\n  x <- return (1 + 2)\n  print x\n",
+            "a\n3\n",
+        ),
+        // Direct-argument dispatch inside an IO do-block. NOTE deliberately
+        // NOT pinned here: binds on function PARAMETERS (`f e = e >>= k`)
+        // have no proven type key yet and take the BindIO value fallback —
+        // that is WI-003 signature-driven dispatch territory (prd_chirho.json).
+        (
+            "main = do\n  print ((Right 4 :: Either String Int) >>= (\\x -> Right (x + x)))\n  print (Just 10 >>= (\\x -> Just (x - 1)))\n",
+            "Right 8\nJust 9\n",
+        ),
+    ];
+    for (body_chirho, want_chirho) in cases_chirho {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = format!("module Test where\n{body_chirho}");
+        let result_chirho =
+            eval_source_with_machine_chirho(&src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_, machine_chirho)) => assert_eq!(
+                machine_chirho.io_output_chirho, want_chirho,
+                "IO do-block stdout changed for: {body_chirho}"
+            ),
+            Err(e_chirho) => panic!("IO do-block must evaluate: {e_chirho}"),
+        }
+    }
+}
+
 // workflow: monadic-dispatch-chirho — INV-001 regression pin (prd_chirho.json)
 #[test]
 fn eval_io_bind_unchanged_chirho() {

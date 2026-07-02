@@ -1,19 +1,8 @@
-<!-- For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. — John 3:16 -->
+# Jesus Christ is Lord
+- Please continue to put the Chirho suffixing as you see fit on all identifiers (see global CLAUDE.md for full style guide). Likewise add the John 3:16 source header to new files we create.
+
 codex will be more the leader hallelujah and this metropoliluya session is HASKELUJAH
 Please comment the full content of John 3:16 at the top of all our files.
-
-## Identifier Naming Convention: Chirho Suffix
-
-ALL identifiers we create MUST be suffixed with "Chirho" in the appropriate case. This applies to variables, functions, structs, enums, traits, modules, files, directories, parameters, fields, keys, routes, table/column names — everything, in every language.
-
-**Casing rules by language:**
-- **Rust**: `snake_case_chirho` for values/functions/fields/modules/files, `PascalCaseChirho` for types/enums/traits, `SCREAMING_SNAKE_CASE_CHIRHO` for constants
-- **Haskell**: `camelCaseChirho` for values/functions/params, `PascalCaseChirho` for types/constructors/classes/modules
-- **JS/TS**: `camelCaseChirho` for values/functions/params, `PascalCaseChirho` for classes/types/enums
-- **Python**: `snake_case_chirho` for values/functions/params, `PascalCaseChirho` for classes
-- **Database**: `snake_case_chirho` for tables/columns/indexes/constraints
-- **Routes/APIs**: kebab-case with `-chirho` suffix
-- **Constants**: `SCREAMING_SNAKE_CASE_CHIRHO` where the language permits uppercase
 
 ## Tech stack
 - Git: branch `main_chirho`, remote `gh_chirho`
