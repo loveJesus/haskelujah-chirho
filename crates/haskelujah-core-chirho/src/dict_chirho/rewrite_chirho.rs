@@ -2848,6 +2848,22 @@ impl DictPassCtxChirho {
                 }
             }
         }
+        for (id_chirho, name_chirho) in self.names_chirho.clone() {
+            if self
+                .class_method_selector_for_name_chirho(&name_chirho)
+                .is_some()
+            {
+                continue;
+            }
+            if let Some(scheme_chirho) = type_env_chirho.lookup_chirho(&name_chirho) {
+                let classes_chirho = Self::dict_param_classes_for_scheme_chirho(scheme_chirho);
+                if !classes_chirho.is_empty() {
+                    self.dict_param_bindings_chirho
+                        .entry(id_chirho)
+                        .or_insert(classes_chirho);
+                }
+            }
+        }
 
         // Transform each binding
         let mut bindings_chirho = Vec::new();

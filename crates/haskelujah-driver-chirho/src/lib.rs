@@ -3187,6 +3187,84 @@ pub fn eval_modules_chirho(
         CoreIdChirho(id_chirho.0 + off_chirho)
     }
 
+    fn max_id_in_expr_chirho(expr_chirho: &CoreExprChirho, max_id_chirho: &mut u32) {
+        match expr_chirho {
+            CoreExprChirho::VarChirho(id_chirho) => {
+                *max_id_chirho = (*max_id_chirho).max(id_chirho.0);
+            }
+            CoreExprChirho::LitChirho(_) => {}
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                max_id_in_expr_chirho(fun_chirho, max_id_chirho);
+                max_id_in_expr_chirho(arg_chirho, max_id_chirho);
+            }
+            CoreExprChirho::LamChirho {
+                binder_chirho,
+                body_chirho,
+            } => {
+                *max_id_chirho = (*max_id_chirho).max(binder_chirho.id_chirho.0);
+                max_id_in_expr_chirho(body_chirho, max_id_chirho);
+            }
+            CoreExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
+                for (binder_chirho, rhs_chirho) in binds_chirho {
+                    *max_id_chirho = (*max_id_chirho).max(binder_chirho.id_chirho.0);
+                    max_id_in_expr_chirho(rhs_chirho, max_id_chirho);
+                }
+                max_id_in_expr_chirho(body_chirho, max_id_chirho);
+            }
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                bind_chirho,
+                alts_chirho,
+                ..
+            } => {
+                *max_id_chirho = (*max_id_chirho).max(bind_chirho.id_chirho.0);
+                max_id_in_expr_chirho(scrutinee_chirho, max_id_chirho);
+                for alt_chirho in alts_chirho {
+                    for binder_chirho in &alt_chirho.binders_chirho {
+                        *max_id_chirho = (*max_id_chirho).max(binder_chirho.id_chirho.0);
+                    }
+                    max_id_in_expr_chirho(&alt_chirho.rhs_chirho, max_id_chirho);
+                }
+            }
+            CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+                max_id_in_expr_chirho(body_chirho, max_id_chirho);
+            }
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => {
+                max_id_in_expr_chirho(inner_chirho, max_id_chirho);
+            }
+            CoreExprChirho::PrimOpChirho { args_chirho, .. }
+            | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+                for arg_chirho in args_chirho {
+                    max_id_in_expr_chirho(arg_chirho, max_id_chirho);
+                }
+            }
+        }
+    }
+
+    fn max_id_in_module_chirho(module_chirho: &CoreModChirho) -> u32 {
+        let mut max_id_chirho = module_chirho
+            .names_chirho
+            .keys()
+            .map(|id_chirho| id_chirho.0)
+            .max()
+            .unwrap_or(0);
+        for binding_chirho in &module_chirho.bindings_chirho {
+            max_id_chirho = max_id_chirho.max(binding_chirho.binder_chirho.id_chirho.0);
+            max_id_in_expr_chirho(&binding_chirho.rhs_chirho, &mut max_id_chirho);
+        }
+        max_id_chirho
+    }
+
     fn offset_binder_chirho(
         b_chirho: &mut haskelujah_core_chirho::expr_chirho::BinderChirho,
         off_chirho: u32,
@@ -3355,13 +3433,7 @@ pub fn eval_modules_chirho(
         merged_newtype_cons_chirho.extend(result_chirho.newtype_cons_chirho.clone());
 
         // Advance the offset past this module's ID range.
-        let max_id_chirho = result_chirho
-            .core_chirho
-            .names_chirho
-            .keys()
-            .map(|id_chirho| id_chirho.0)
-            .max()
-            .unwrap_or(0);
+        let max_id_chirho = max_id_in_module_chirho(&result_chirho.core_chirho);
         id_offset_chirho += max_id_chirho + 1;
     }
 

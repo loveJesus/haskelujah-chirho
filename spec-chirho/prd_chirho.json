@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.56",
+    "prd_version_chirho": "2.2.57",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -67,7 +67,8 @@
       "gpt_chirho (Codex) — LLVM divInt#/modInt# aliases now use floor div/mod helper v2.2.53",
       "gpt_chirho (Codex) — LLVM native numeric residual recheck narrowed bucket to qsort/list nondeterminism v2.2.54",
       "gpt_chirho (Codex) — default-method literal-0 bucket rechecked stale-green and closed v2.2.55",
-      "gpt_chirho (Codex) — Cranelift string traversal fixed by IO sequencing and thunked-tail pack forcing v2.2.56"
+      "gpt_chirho (Codex) — Cranelift string traversal fixed by IO sequencing and thunked-tail pack forcing v2.2.56",
+      "gpt_chirho (Codex) — multi-module constrained export calls now carry dict-param metadata through imported names and module ID ranges v2.2.57"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -119,14 +120,13 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "Cranelift string/text backend fix: `cranelift_round_trip_text_processing_chirho` now runs all do-chain IO actions and traverses thunked `[Char]` tails in `pack`, so `toUpper`/`isAlpha` over `unpack`/`pack` prints full strings instead of only the last effect or first character.",
+      "scope_chirho": "Multi-module constrained export calls: imported helpers like `add1 x = x + 1` now receive the concrete `Num Int` dictionary at downstream call sites, and module CoreId offsetting accounts for binder IDs inside expressions.",
       "commands_chirho": [
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib cranelift_round_trip_text_processing_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib cranelift_round_trip_io_order_output_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-rts --lib pack_string_forces_thunked_tail_chirho -- --test-threads=1",
-        "rustfmt --edition 2024 --check crates/haskelujah-backend-cranelift-chirho/src/lower_chirho.rs crates/haskelujah-rts-chirho/src/ffi_chirho.rs"
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_multi_module_function_call_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_multi_module_three_modules_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_module_re_export_chirho -- --test-threads=1"
       ],
-      "result_chirho": "`cranelift-string-truncation` is resolved and its representative is green. The first failure layer was Cranelift `(>>)` lowering skipping the first IO action; after fixing that, the original truncation was a lazy list tail thunk in `haskelujah_pack_string_chirho`, now forced before inspecting each cons cell. Broader probe/full driver impact remains unmeasured by this targeted pass."
+      "result_chirho": "`multi-module-unforced-result` is resolved for all three representatives. The returned PAP was not a final-force bug: imported constrained helpers retained a dictionary lambda, but downstream modules had not registered imported constrained variable IDs in dict_param_bindings_chirho, so call-site dictionary insertion never fired. Full probe impact deferred to broker acceptance gate."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1307,15 +1307,16 @@
       },
       {
         "bucket_chirho": "multi-module-unforced-result",
-        "count_chirho": 3,
+        "count_chirho": 0,
+        "resolved_chirho": "RESOLVED v2.2.57: dict_pass transform_module_chirho now seeds dict_param_bindings_chirho from all named variables in the module type environment, excluding class methods, so imported constrained exports such as `add1 :: Num a => a -> a` receive concrete dictionaries at downstream call sites. eval_modules_chirho also advances CoreId offsets by the maximum ID found in binding RHS/binders, not names_chirho keys alone, preventing cross-module local-binder ID range collisions.",
         "preexisting_chirho": true,
-        "suspected_subsystem_chirho": "module-iface",
+        "suspected_subsystem_chirho": "dict-pass",
         "representative_tests_chirho": [
           "tests_chirho::eval_basic_chirho::eval_multi_module_function_call_chirho",
           "tests_chirho::eval_basic_chirho::eval_module_re_export_chirho",
           "tests_chirho::eval_basic_chirho::eval_multi_module_three_modules_chirho"
         ],
-        "notes_chirho": "eval_modules_chirho returns HeapPtrChirho(HeapAddrChirho(N)) instead of IntChirho for trivial cross-module calls, e.g. Lib.add1 with `main = add1 42` expecting 43 (test at crates/haskelujah-driver-chirho/src/tests_chirho/eval_basic_chirho.rs:2271). Imported-binding application result is left as an unforced heap closure — boundary between module linking/iface placeholders and STG result forcing. CLI single-file `run` cannot reproduce (E0102 could not find module `Lib`), so it is specific to the multi-module eval path."
+        "notes_chirho": "The old symptom returned HeapPtrChirho(HeapAddrChirho(N)) instead of IntChirho for trivial cross-module calls, e.g. Lib.add1 with `main = add1 42` expecting 43. Diagnosis showed the heap value was a PAP over `add1` and its argument because `add1` had arity 2: dictionary parameter plus value parameter. The fix reuses the existing constrained-user-function call-site rewrite for imported variables."
       },
       {
         "bucket_chirho": "constraint-alias-dict-pap",
