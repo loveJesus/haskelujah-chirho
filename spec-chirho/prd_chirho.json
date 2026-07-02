@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.55",
+    "prd_version_chirho": "2.2.56",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -66,7 +66,8 @@
       "gpt_chirho (Codex) — Data.Typeable rnf export fixture aligned with poly-kinded TypeRep v2.2.52",
       "gpt_chirho (Codex) — LLVM divInt#/modInt# aliases now use floor div/mod helper v2.2.53",
       "gpt_chirho (Codex) — LLVM native numeric residual recheck narrowed bucket to qsort/list nondeterminism v2.2.54",
-      "gpt_chirho (Codex) — default-method literal-0 bucket rechecked stale-green and closed v2.2.55"
+      "gpt_chirho (Codex) — default-method literal-0 bucket rechecked stale-green and closed v2.2.55",
+      "gpt_chirho (Codex) — Cranelift string traversal fixed by IO sequencing and thunked-tail pack forcing v2.2.56"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -118,13 +119,14 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "PRD stale-bucket recheck: `default_sig_basic_eval_chirho` now passes, confirming the old default-method literal-0 slot issue is closed. The two frontend one-off representatives remain current failures: Data.Constraint still reports `Dict` vs function type mismatches, and the TH-style local-signature mini repro still reports `[Int]` vs function plus synthetic empty-name unbound diagnostic.",
+      "scope_chirho": "Cranelift string/text backend fix: `cranelift_round_trip_text_processing_chirho` now runs all do-chain IO actions and traverses thunked `[Char]` tails in `pack`, so `toUpper`/`isAlpha` over `unpack`/`pack` prints full strings instead of only the last effect or first character.",
       "commands_chirho": [
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib default_sig_basic_eval_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_constraints_package_regression_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_th_abstraction_style_local_sig_in_instance_typechecks_chirho -- --test-threads=1"
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib cranelift_round_trip_text_processing_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib cranelift_round_trip_io_order_output_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-rts --lib pack_string_forces_thunked_tail_chirho -- --test-threads=1",
+        "rustfmt --edition 2024 --check crates/haskelujah-backend-cranelift-chirho/src/lower_chirho.rs crates/haskelujah-rts-chirho/src/ffi_chirho.rs"
       ],
-      "result_chirho": "`default-method-literal0-slot` is no longer open; its only representative is green, so the bucket count is now 0 with a resolved note. `frontend-typing-one-offs` remains at 2 with current failure output. Broader probe/full driver impact remains unmeasured by this targeted pass."
+      "result_chirho": "`cranelift-string-truncation` is resolved and its representative is green. The first failure layer was Cranelift `(>>)` lowering skipping the first IO action; after fixing that, the original truncation was a lazy list tail thunk in `haskelujah_pack_string_chirho`, now forced before inspecting each cons cell. Broader probe/full driver impact remains unmeasured by this targeted pass."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1351,7 +1353,8 @@
       },
       {
         "bucket_chirho": "cranelift-string-truncation",
-        "count_chirho": 1,
+        "count_chirho": 0,
+        "resolved_chirho": "RESOLVED v2.2.56: `cranelift_round_trip_text_processing_chirho` now passes. Cranelift `(>>)`/`thenIO#` lowering now lowers the first IO argument before the second so earlier `putStrLn` effects are not skipped, and RTS `haskelujah_pack_string_chirho` forces thunked list tails before checking constructor tags so packed `[Char]` traversal reaches every cons cell.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "other",
         "representative_tests_chirho": [

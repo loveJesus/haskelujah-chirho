@@ -796,6 +796,7 @@ pub extern "C" fn haskelujah_pack_string_chirho(list_bits_chirho: u64) -> u64 {
     let mut current_chirho = list_bits_chirho;
 
     loop {
+        current_chirho = haskelujah_enter_thunk_chirho(current_chirho);
         // Check if boxed (low bit set)
         if current_chirho == 0 {
             break; // Nil (immediate 0)
@@ -1288,6 +1289,44 @@ mod tests_chirho {
             assert_eq!(tag_chirho, 1, "first cell tag should be Cons (1)");
             assert_eq!(head_chirho, b'H' as u64, "first char should be 'H'");
         }
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+    }
+
+    unsafe extern "C" fn ffi_test_tail_string_thunk_chirho(_fvs_chirho: *const u64) -> u64 {
+        static TAIL_TEXT_CHIRHO: &[u8] = b"i\0";
+        haskelujah_unpack_string_chirho(TAIL_TEXT_CHIRHO.as_ptr() as u64)
+    }
+
+    #[test]
+    fn pack_string_forces_thunked_tail_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let tail_thunk_chirho = haskelujah_alloc_thunk_chirho(
+            ffi_test_tail_string_thunk_chirho as *const () as usize as u64,
+            0,
+            std::ptr::null(),
+        );
+        let head_cell_chirho = haskelujah_alloc_chirho(24);
+        unsafe {
+            *(head_cell_chirho as *mut u64) = 1;
+            *(head_cell_chirho.add(8) as *mut u64) = b'H' as u64;
+            *(head_cell_chirho.add(16) as *mut u64) = tail_thunk_chirho;
+        }
+        let packed_chirho = haskelujah_pack_string_chirho((head_cell_chirho as u64) | 1);
+        let packed_text_chirho = unsafe {
+            std::ffi::CStr::from_ptr(packed_chirho as *const std::ffi::c_char)
+                .to_string_lossy()
+                .into_owned()
+        };
+
+        assert_eq!(packed_text_chirho, "Hi");
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
         runtime_chirho.reset_chirho();

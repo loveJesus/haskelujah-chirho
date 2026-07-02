@@ -723,8 +723,12 @@ fn lower_case_chirho(
     } else {
         scrut_raw_chirho
     };
-    let scrut_i64_chirho =
-        maybe_unpack_list_case_string_scrutinee_chirho(builder_chirho, ctx_chirho, scrut_i64_chirho, alts_chirho);
+    let scrut_i64_chirho = maybe_unpack_list_case_string_scrutinee_chirho(
+        builder_chirho,
+        ctx_chirho,
+        scrut_i64_chirho,
+        alts_chirho,
+    );
     let needs_constructor_tags_chirho = concrete_alts_need_constructor_tag_chirho(alts_chirho);
     let scrut_cmp_i64_chirho = if needs_constructor_tags_chirho {
         load_constructor_tag_chirho(builder_chirho, ctx_chirho, scrut_i64_chirho)
@@ -892,8 +896,12 @@ fn lower_tail_case_chirho(
     } else {
         scrut_raw_chirho
     };
-    let scrut_i64_chirho =
-        maybe_unpack_list_case_string_scrutinee_chirho(builder_chirho, ctx_chirho, scrut_i64_chirho, alts_chirho);
+    let scrut_i64_chirho = maybe_unpack_list_case_string_scrutinee_chirho(
+        builder_chirho,
+        ctx_chirho,
+        scrut_i64_chirho,
+        alts_chirho,
+    );
     let needs_constructor_tags_chirho = concrete_alts_need_constructor_tag_chirho(alts_chirho);
     let scrut_cmp_i64_chirho = if needs_constructor_tags_chirho {
         load_constructor_tag_chirho(builder_chirho, ctx_chirho, scrut_i64_chirho)
@@ -1195,9 +1203,10 @@ fn maybe_unpack_list_case_string_scrutinee_chirho(
     builder_chirho.seal_block(boxed_block_chirho);
 
     builder_chirho.switch_to_block(immediate_block_chirho);
-    let is_zero_chirho = builder_chirho
-        .ins()
-        .icmp(IntCcChirho::Equal, scrut_i64_chirho, zero_chirho);
+    let is_zero_chirho =
+        builder_chirho
+            .ins()
+            .icmp(IntCcChirho::Equal, scrut_i64_chirho, zero_chirho);
     builder_chirho.ins().brif(
         is_zero_chirho,
         join_block_chirho,
@@ -1404,6 +1413,15 @@ fn lower_app_chirho(
             }
             // (>>) :: IO a -> IO b -> IO b
             if matches!(name_chirho.as_str(), ">>" | "thenIO#") {
+                if all_args_chirho.len() >= 2 {
+                    let _first_effect_chirho =
+                        lower_expr_chirho(builder_chirho, ctx_chirho, all_args_chirho[0]);
+                    return lower_expr_chirho(
+                        builder_chirho,
+                        ctx_chirho,
+                        all_args_chirho[all_args_chirho.len() - 1],
+                    );
+                }
                 if let Some(arg_expr_chirho) = all_args_chirho.last() {
                     return lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
                 }
