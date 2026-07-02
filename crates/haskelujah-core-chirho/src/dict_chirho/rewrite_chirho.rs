@@ -477,6 +477,24 @@ impl DictPassCtxChirho {
         }
     }
 
+    fn try_dispatch_contextual_return_pure_var_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+    ) -> Option<CoreExprChirho> {
+        if self.local_shadow_ids_chirho.borrow().contains(&id_chirho) {
+            return None;
+        }
+        let name_chirho = self.names_chirho.get(&id_chirho)?;
+        if name_chirho != "return" && name_chirho != "pure" {
+            return None;
+        }
+        let context_key_chirho = self.monad_context_stack_chirho.borrow().last().cloned()?;
+        let inst_id_chirho = self.lookup_dispatch_body_name_id_chirho(&format!(
+            "$prim_Applicative_pure_{context_key_chirho}"
+        ))?;
+        Some(CoreExprChirho::VarChirho(inst_id_chirho))
+    }
+
     fn should_normalize_instance_head_for_class_chirho(class_name_chirho: &str) -> bool {
         matches!(
             class_name_chirho,
@@ -767,6 +785,11 @@ impl DictPassCtxChirho {
     ) -> CoreExprChirho {
         match expr_chirho {
             CoreExprChirho::VarChirho(id_chirho) => {
+                if let Some(dispatched_chirho) =
+                    self.try_dispatch_contextual_return_pure_var_chirho(*id_chirho)
+                {
+                    return dispatched_chirho;
+                }
                 // Check if this var references a constrained user binding
                 // that needs dict arguments inserted at the call site.
                 if let Some(classes_chirho) = self.dict_param_bindings_chirho.get(id_chirho) {

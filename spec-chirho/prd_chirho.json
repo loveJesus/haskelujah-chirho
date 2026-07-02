@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.8",
+    "prd_version_chirho": "2.2.9",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -18,7 +18,8 @@
       "gpt_chirho (Codex) — WI-014 GND underlying method alias loud-error fallback v2.2.5",
       "gpt_chirho (Codex) — WI-014 evidence-gated unresolved method fallback v2.2.6",
       "gpt_chirho (Codex) — WI-014 body-backed method implementation lookup v2.2.7",
-      "gpt_chirho (Codex) — WI-003 annotated/signature direct return-pure dispatch v2.2.8"
+      "gpt_chirho (Codex) — WI-003 annotated/signature direct return-pure dispatch v2.2.8",
+      "gpt_chirho (Codex) — WI-003 eta-reduced body-backed return-pure dispatch v2.2.9"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -70,14 +71,13 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "WI-003 return/pure return-position dispatch: direct result annotations and direct signature result positions now push monad context only when a non-missing dispatch body exists; no full suites run per resource guard",
+      "scope_chirho": "WI-003 return/pure return-position dispatch: direct result annotations, direct binding signatures, and eta-reduced body-backed Maybe/Either return-pure signatures now push monad context only when a non-missing dispatch body exists; no full suites run per resource guard",
       "commands_chirho": [
         "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_annotated_pure_return_dispatch_chirho -- --test-threads=1",
         "CARGO_BUILD_JOBS=1 timeout 120 cargo test -p haskelujah-driver --lib eval_monad_bind_dispatch_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 120 cargo test -p haskelujah-driver --lib eval_io_bind_unchanged_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo run -p haskelujah -- build .haskelujah-packages-chirho/transformers-0.6.3.0/"
+        "CARGO_BUILD_JOBS=1 timeout 120 cargo test -p haskelujah-driver --lib eval_io_bind_unchanged_chirho -- --test-threads=1"
       ],
-      "result_chirho": "New annotated return/pure dispatch test passed, including Maybe/Either pure, direct signature-driven Maybe return, annotated return feeding Maybe >>=, function-shaped IO return preservation, and [IO] embedded return preservation. Existing monad bind and IO fallback pins passed; transformers package smoke passed. Pre-existing warnings remained: haskelujah-typing instantiate_instance_method_expected_ty_chirho is unused; transformers standalone deriving warnings during package smoke."
+      "result_chirho": "Annotated return/pure dispatch test passed with added eta-reduced Maybe/Either cases (`f :: Int -> Maybe Int; f = return`, `g :: Int -> Either String Int; g = pure`). Existing monad bind and IO fallback pins passed. A deliberately tried IO eta-reduced case (`f :: Int -> IO Int; f = return`) still fails with a bodyless literal-0 application and remains documented as a separate IO primop-value gap. Pre-existing warning remained: haskelujah-typing instantiate_instance_method_expected_ty_chirho is unused."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -344,13 +344,13 @@
       "title_chirho": "return/pure return-position dispatch (annotation- and signature-driven)",
       "pillar_chirho": "PILLAR-2",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed v2.2.8: direct result annotations and direct binding-signature result positions dispatch return/pure only when the target `$prim_Applicative_pure_<Head>` is a non-missing body; annotated return feeding >>= now dispatches with the same monad key; function-shaped annotations and embedded [IO] returns preserve IO fallback. Remaining gaps: eta-reduced `f = return`, broader expected-type propagation, and unresolved IO-chain sentinel cases from the audit notes.",
+      "status_chirho": "partially landed v2.2.9: direct result annotations, direct binding-signature result positions, and eta-reduced body-backed Maybe/Either signatures dispatch return/pure only when the target `$prim_Applicative_pure_<Head>` is a non-missing body; annotated return feeding >>= now dispatches with the same monad key; function-shaped annotations and embedded [IO] returns preserve IO fallback. Remaining gaps: eta-reduced IO signatures such as `f :: Int -> IO Int; f = return`, broader expected-type propagation, and unresolved IO-chain sentinel cases from the audit notes.",
       "owner_chirho": "claude_chirho per gpt scaffold; gpt_chirho reviews the evidence-elaboration design",
       "problem_chirho": "return/pure are return-position polymorphic and contextless cases now print bare values (pure 7 :: Maybe Int -> 7) unless a trustworthy annotation/signature/do-chain key is threaded. Audit found that naive key derivation can corrupt IO and embedded monads because dangling $prim_*_IO names exist and result-head heuristics over-fire.",
       "fix_design_chirho": [
         "Use dispatch-body existence, not lookup_name_id_chirho, before dispatching to $prim_Applicative_pure_<Head>; generated dangling names and generated missing-method error bodies for IO/STM/Q/etc. must count as non-dispatchable and preserve names. v2.2.8 implements this for direct annotation/signature return-pure dispatch.",
         "For annotations, distinguish result annotations from function-typed annotations. v2.2.8 preserves supported result annotations as erased Core TyAppChirho, erases unsupported/function-shaped annotations such as `(return :: Int -> IO Int)`, and only pushes context when the annotated expression has direct return/pure head.",
-        "For binding signatures, push a result monad key only across RHS shapes where return/pure is directly in tail/result position after value lambdas. v2.2.8 implements the direct shape and deliberately does not rewrite arbitrary embedded returns in values like `[return 1, return 2] :: [IO Int]`.",
+        "For binding signatures, push a result monad key only across RHS shapes where return/pure is directly in tail/result position after value lambdas. v2.2.8 implements the direct applied shape and deliberately does not rewrite arbitrary embedded returns in values like `[return 1, return 2] :: [IO Int]`; v2.2.9 extends the same context to bare return/pure vars for eta-reduced body-backed Maybe/Either signatures.",
         "Annotation-driven `return 1 :: Maybe Int` and the enclosing `>>=` chain dispatch must land together. v2.2.8 teaches conservative monad dispatch to trust annotated direct return/pure operands, fixing the Just/BindIO crash class for this shape.",
         "Keep IO fallback invariant: unresolved or bodyless-key return/pure must remain name-preserved and reach ReturnIOChirho."
       ],
@@ -399,22 +399,24 @@
           "No acceptance pin for an annotated return HEADING a bind chain: `main = print ((return 1 :: Maybe Int) >>= \\x -> Just (x+1))` — expected Just 2 with step 10; runtime AddInt crash if steps 1-4 land without step 10 (today prints 1).",
           "No acceptance pin guarding the binding-push blast radius: `acts :: [IO Int]; acts = [return 1, return 2]; main = head acts >>= print` (expect 1) and `f :: Int -> IO Int; f x = return (x+1); main = f 4 >>= print` (expect 5). The second also detects the dangling `$prim_Applicative_pure_IO` name being treated as existent (it would print 0 under the design's lookup_name_id exists-check).",
           "No pin for sentinel+annotation interplay inside an unresolved IO chain: `main = (return 5 :: IO Int) >>= \\x -> print (pure x :: Maybe Int)` — expect \"Just 5\"; exercises step 5's push, the TyApp intercept under a pushed \"IO\" context, and the body-backed exists-check together.",
-          "Eta-reduced signature dispatch remains broken and untested: `f :: Int -> Maybe Int; f = return` — bare Var return/pure goes through the Var arm (rewrite_chirho.rs:664-688), which never consults monad_context_stack_chirho, so step 6 does not fix it; unapplied `pure` additionally rewrites to $sel + arbitrary default dict. Worth a known-gap note or a Var-arm context consult.",
+          "Eta-reduced body-backed signature dispatch for Maybe/Either landed in v2.2.9 via a Var-arm context consult. Eta-reduced IO signatures are still open because preserving a bare `return` value under `f :: Int -> IO Int; f = return` currently reaches a bodyless literal-0 application instead of an IO primop value closure.",
           "Determinism is untested: several fallback paths select or_insert HashMap-order default dicts (rewrite_chirho.rs:1081-1091, :1458-1470); acceptance runs each program once. A repeated-run (5x) determinism check on the acceptance battery would catch RandomState-dependent flapping that the probe harness would otherwise surface intermittently."
         ]
       },
-      "landed_v2_2_8_chirho": {
+      "landed_v2_2_9_chirho": {
         "test_chirho": "tests_chirho::eval_basic_chirho::eval_annotated_pure_return_dispatch_chirho",
         "covered_chirho": [
           "pure 7 :: Maybe Int",
           "pure 7 :: Either String Int",
           "f :: Int -> Maybe Int; f x = return (x + 1)",
+          "f :: Int -> Maybe Int; f = return",
+          "g :: Int -> Either String Int; g = pure",
           "(return 1 :: Maybe Int) >>= (\\x -> Just (x + 1))",
           "(return :: Int -> IO Int) 5 >>= print remains IO",
           "acts :: [IO Int]; acts = [return 1, return 2] remains embedded IO"
         ],
         "remaining_chirho": [
-          "eta-reduced signature dispatch such as f :: Int -> Maybe Int; f = return",
+          "eta-reduced IO signatures such as f :: Int -> IO Int; f = return",
           "full expected-type propagation beyond direct return/pure heads",
           "audit sentinel case combining IO bind context with nested annotated Maybe pure"
         ]

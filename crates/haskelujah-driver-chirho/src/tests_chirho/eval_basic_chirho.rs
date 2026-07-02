@@ -6315,7 +6315,7 @@ fn eval_io_bind_unchanged_chirho() {
 #[test]
 fn eval_annotated_pure_return_dispatch_chirho() {
     use crate::{eval_source_chirho, eval_source_with_machine_chirho};
-    let value_cases_chirho: [(&str, i64); 4] = [
+    let value_cases_chirho: [(&str, i64); 6] = [
         (
             "main = case (pure 7 :: Maybe Int) of { Just x -> x; Nothing -> 0 }\n",
             7,
@@ -6327,6 +6327,14 @@ fn eval_annotated_pure_return_dispatch_chirho() {
         (
             "f :: Int -> Maybe Int\nf x = return (x + 1)\nmain = case f 4 of { Just x -> x; Nothing -> 0 }\n",
             5,
+        ),
+        (
+            "f :: Int -> Maybe Int\nf = return\nmain = case f 8 of { Just x -> x; Nothing -> 0 }\n",
+            8,
+        ),
+        (
+            "g :: Int -> Either String Int\ng = pure\nmain = case g 9 of { Right x -> x; Left _ -> 0 }\n",
+            9,
         ),
         (
             "main = case ((return 1 :: Maybe Int) >>= (\\x -> Just (x + 1))) of { Just x -> x; Nothing -> 0 }\n",
