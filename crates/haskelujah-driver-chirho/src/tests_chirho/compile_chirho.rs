@@ -4134,6 +4134,71 @@ splitGenAliasChirho = splitGen
 }
 
 #[test]
+fn frontend_normalized_class_dot_imports_expose_standard_methods_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ClassDotStandardMethodsChirho where
+import Prelude (Bool, Int, Integer, String, Ordering, Rational)
+import Data.Bits (Bits(..), FiniteBits(..))
+import Data.Eq (Eq(..))
+import Data.Ord (Ord(..))
+import Data.String (IsString(..))
+import GHC.Enum (Enum(..), Bounded(..))
+import GHC.Num (Num(..))
+import GHC.Read (Read(..))
+
+eqAliasChirho :: Eq a => a -> a -> Bool
+eqAliasChirho = (==)
+
+neqAliasChirho :: Eq a => a -> a -> Bool
+neqAliasChirho = (/=)
+
+compareAliasChirho :: Ord a => a -> a -> Ordering
+compareAliasChirho = compare
+
+maxAliasChirho :: Ord a => a -> a -> a
+maxAliasChirho = max
+
+plusAliasChirho :: Num a => a -> a -> a
+plusAliasChirho = (+)
+
+fromIntegerAliasChirho :: Num a => Integer -> a
+fromIntegerAliasChirho = fromInteger
+
+readAliasChirho :: Read a => String -> a
+readAliasChirho = read
+
+fromStringAliasChirho :: IsString a => String -> a
+fromStringAliasChirho = fromString
+
+toEnumAliasChirho :: Enum a => Int -> a
+toEnumAliasChirho = toEnum
+
+fromEnumAliasChirho :: Enum a => a -> Int
+fromEnumAliasChirho = fromEnum
+
+minBoundAliasChirho :: Bounded a => a
+minBoundAliasChirho = minBound
+
+bitAndAliasChirho :: Bits a => a -> a -> a
+bitAndAliasChirho = (.&.)
+
+finiteBitSizeAliasChirho :: FiniteBits a => a -> Int
+finiteBitSizeAliasChirho = finiteBitSize
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ClassDotStandardMethodsChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "normalized standard class `(..)` imports should expose associated methods: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_exceptt_single_contravariant_instance_method_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_chirho = "\
