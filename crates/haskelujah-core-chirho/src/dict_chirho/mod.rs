@@ -77,6 +77,10 @@ pub struct DictPassCtxChirho {
     layouts_chirho: HashMap<String, DictLayoutChirho>,
     /// Generated top-level dictionary bindings (instance dicts, selectors).
     generated_bindings_chirho: Vec<CoreBindingChirho>,
+    /// Names that are backed by a real top-level RHS body, not just an entry in
+    /// the name map. This prevents missing class methods from silently resolving
+    /// to dangling `$prim_*` IDs that later evaluate as placeholder values.
+    body_backed_names_chirho: HashMap<String, CoreIdChirho>,
     /// Method name -> (class_name, selector CoreId).
     method_selectors_chirho: HashMap<String, (String, CoreIdChirho)>,
     /// (class_name, type_key) -> CoreId of instance dictionary binding.
@@ -131,6 +135,7 @@ impl DictPassCtxChirho {
             names_chirho,
             layouts_chirho: HashMap::new(),
             generated_bindings_chirho: Vec::new(),
+            body_backed_names_chirho: HashMap::new(),
             method_selectors_chirho: HashMap::new(),
             instance_dicts_chirho: HashMap::new(),
             con_types_chirho,
@@ -174,6 +179,31 @@ impl DictPassCtxChirho {
         }
         // Not found — create a fresh one
         self.fresh_id_chirho(name_chirho)
+    }
+
+    /// Record top-level source bindings before generated dictionaries are built.
+    fn seed_body_backed_bindings_chirho(&mut self, module_chirho: &CoreModuleChirho) {
+        for binding_chirho in &module_chirho.bindings_chirho {
+            self.body_backed_names_chirho
+                .entry(binding_chirho.binder_chirho.name_chirho.clone())
+                .or_insert(binding_chirho.binder_chirho.id_chirho);
+        }
+    }
+
+    /// Look up a binding only if this pass can see an actual RHS body for it.
+    ///
+    /// `names_chirho` is a global name table and can contain fresh placeholder
+    /// IDs. Instance dictionaries must not treat those placeholders as method
+    /// implementations.
+    fn lookup_body_backed_name_id_chirho(&self, name_chirho: &str) -> Option<CoreIdChirho> {
+        if let Some(id_chirho) = self.body_backed_names_chirho.get(name_chirho) {
+            return Some(*id_chirho);
+        }
+
+        self.generated_bindings_chirho
+            .iter()
+            .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == name_chirho)
+            .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho)
     }
 
     /// Check whether a predicate's type variable is "defaultable" in the
@@ -703,7 +733,7 @@ fn max_in_expr_chirho(expr_chirho: &CoreExprChirho, max_chirho: &mut u32) {
 mod tests_chirho {
     use super::*;
     use crate::expr_chirho::{CoreLitChirho, InlineAnnotationChirho};
-    use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
+    use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho};
     use haskelujah_typing_chirho::ty_chirho::SchemePredChirho;
 
     fn dummy_binder_chirho(name_chirho: &str, id_chirho: u32) -> BinderChirho {
@@ -946,14 +976,18 @@ mod tests_chirho {
         assert!(!ctx_chirho.instance_dicts_chirho.is_empty());
 
         // Check Eq Int dict exists
-        assert!(ctx_chirho
-            .instance_dicts_chirho
-            .contains_key(&("Eq".to_string(), "Int".to_string())));
+        assert!(
+            ctx_chirho
+                .instance_dicts_chirho
+                .contains_key(&("Eq".to_string(), "Int".to_string()))
+        );
 
         // Check Num Int dict exists
-        assert!(ctx_chirho
-            .instance_dicts_chirho
-            .contains_key(&("Num".to_string(), "Int".to_string())));
+        assert!(
+            ctx_chirho
+                .instance_dicts_chirho
+                .contains_key(&("Num".to_string(), "Int".to_string()))
+        );
 
         // Find the $fEqInt binding
         let eq_int_binding_chirho = ctx_chirho
@@ -967,6 +1001,76 @@ mod tests_chirho {
             eq_int_binding_chirho.rhs_chirho,
             CoreExprChirho::ConAppChirho { .. }
         ));
+    }
+
+    #[test]
+    fn missing_method_ignores_dangling_name_map_entry_chirho() {
+        let mut methods_chirho = HashMap::new();
+        methods_chirho.insert(
+            "needed".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::fun_chirho(
+                TyChirho::int_chirho(),
+                TyChirho::int_chirho(),
+            )),
+        );
+
+        let mut class_env_chirho = ClassEnvChirho::new_chirho();
+        class_env_chirho.add_class_chirho(ClassDeclChirho {
+            name_chirho: "Needs".to_string(),
+            supers_chirho: vec![],
+            var_chirho: haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
+            methods_chirho,
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+        class_env_chirho.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Needs".to_string(),
+            head_ty_chirho: TyChirho::int_chirho(),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+
+        let mut names_chirho = HashMap::new();
+        names_chirho.insert(CoreIdChirho(7), "$prim_Needs_needed_Int".to_string());
+        let mut ctx_chirho = DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
+        ctx_chirho.build_layouts_chirho(&class_env_chirho);
+        ctx_chirho.generate_instance_dicts_chirho(&class_env_chirho);
+
+        let dict_binding_chirho = ctx_chirho
+            .generated_bindings_chirho
+            .iter()
+            .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == "$fNeedsInt")
+            .expect("Needs Int dictionary should be generated");
+        let method_id_chirho = match &dict_binding_chirho.rhs_chirho {
+            CoreExprChirho::ConAppChirho { args_chirho, .. } => match args_chirho.first() {
+                Some(CoreExprChirho::VarChirho(id_chirho)) => *id_chirho,
+                other_chirho => panic!("expected method var slot, got {other_chirho:?}"),
+            },
+            other_chirho => panic!("expected dictionary constructor, got {other_chirho:?}"),
+        };
+
+        assert_ne!(
+            method_id_chirho,
+            CoreIdChirho(7),
+            "dangling name-map entry must not be used as a method body"
+        );
+        let missing_binding_chirho = ctx_chirho
+            .generated_bindings_chirho
+            .iter()
+            .find(|binding_chirho| binding_chirho.binder_chirho.id_chirho == method_id_chirho)
+            .expect("missing-method body should be generated");
+        assert_eq!(
+            missing_binding_chirho.binder_chirho.name_chirho,
+            "$prim_Needs_needed_Int"
+        );
+        assert!(
+            matches!(
+                missing_binding_chirho.rhs_chirho,
+                CoreExprChirho::LamChirho { .. }
+            ),
+            "missing method should be a callable loud-error body"
+        );
     }
 
     #[test]

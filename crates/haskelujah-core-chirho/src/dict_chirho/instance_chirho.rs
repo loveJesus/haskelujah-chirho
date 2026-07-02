@@ -922,7 +922,7 @@ impl DictPassCtxChirho {
         type_key_chirho: &str,
         prim_name_chirho: &str,
     ) -> CoreIdChirho {
-        if let Some(prim_id_chirho) = self.lookup_name_id_chirho(prim_name_chirho) {
+        if let Some(prim_id_chirho) = self.lookup_body_backed_name_id_chirho(prim_name_chirho) {
             return prim_id_chirho;
         }
 
@@ -1298,7 +1298,9 @@ impl DictPassCtxChirho {
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, tk_chirho
                 );
-                if let Some(prim_id_chirho) = self.lookup_name_id_chirho(&prim_name_chirho) {
+                if let Some(prim_id_chirho) =
+                    self.lookup_body_backed_name_id_chirho(&prim_name_chirho)
+                {
                     let mut method_expr_chirho = CoreExprChirho::VarChirho(prim_id_chirho);
                     for context_class_chirho in context_classes_chirho {
                         if let Some(context_dict_id_chirho) = self
