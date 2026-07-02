@@ -438,8 +438,15 @@ impl<'src> LexerChirho<'src> {
                 }
             }
             b'\\' => {
-                self.pos_chirho += 1;
-                self.make_token_chirho(RawTokenKindChirho::BackslashChirho, start_chirho)
+                if self
+                    .peek_at_chirho(1)
+                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
+                {
+                    self.lex_operator_chirho(start_chirho)
+                } else {
+                    self.pos_chirho += 1;
+                    self.make_token_chirho(RawTokenKindChirho::BackslashChirho, start_chirho)
+                }
             }
             b'|' => {
                 // Template Haskell closing quotes
@@ -1490,6 +1497,46 @@ mod tests_chirho {
                 RawTokenKindChirho::BackslashChirho,
                 RawTokenKindChirho::AtChirho,
                 RawTokenKindChirho::TildeChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_double_backslash_operator_chirho() {
+        let source_chirho = "xs \\\\ ys";
+        let tokens_chirho = lex_chirho(source_chirho);
+        let op_token_chirho = tokens_chirho
+            .iter()
+            .find(|token_chirho| token_chirho.kind_chirho == RawTokenKindChirho::VarSymChirho)
+            .expect("expected double backslash operator token");
+        let text_chirho =
+            &source_chirho[op_token_chirho.span_chirho.start_chirho().as_usize_chirho()
+                ..op_token_chirho.span_chirho.end_chirho().as_usize_chirho()];
+        assert_eq!(text_chirho, "\\\\");
+
+        let kinds_chirho = non_trivia_kinds_chirho(source_chirho);
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::VarIdChirho,
+                RawTokenKindChirho::VarSymChirho,
+                RawTokenKindChirho::VarIdChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_lambda_backslash_still_lambda_chirho() {
+        let kinds_chirho = non_trivia_kinds_chirho("\\x -> x");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::BackslashChirho,
+                RawTokenKindChirho::VarIdChirho,
+                RawTokenKindChirho::RightArrowChirho,
+                RawTokenKindChirho::VarIdChirho,
                 RawTokenKindChirho::EofChirho,
             ]
         );
