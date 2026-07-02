@@ -454,10 +454,7 @@ impl DictPassCtxChirho {
                     if let Some((class_name_chirho, _)) =
                         self.class_method_selector_for_name_chirho(name_chirho)
                     {
-                        if matches!(
-                            class_name_chirho.as_str(),
-                            "Num" | "Integral" | "Enum" | "Real"
-                        ) {
+                        if matches!(class_name_chirho.as_str(), "Num" | "Integral" | "Real") {
                             return self.try_rewrite_method_var_chirho(
                                 *id_chirho,
                                 dict_vars_chirho,

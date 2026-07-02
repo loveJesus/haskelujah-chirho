@@ -3107,6 +3107,16 @@ fn eval_to_from_enum_chirho() {
         r3_chirho,
         haskelujah_runtime_chirho::ValueChirho::IntChirho(99)
     );
+
+    let mut sm4_chirho = SourceMapChirho::new_chirho();
+    let r4_chirho = crate::eval_source_with_machine_chirho(
+        "module Test where\nmain = print (fromEnum (chr 97))\n",
+        &mut sm4_chirho,
+        "TestChirho.hs",
+        None,
+    )
+    .expect("fromEnum . chr should print the ordinal");
+    assert_eq!(r4_chirho.1.io_output_chirho, "97\n");
 }
 
 #[test]
@@ -5522,6 +5532,22 @@ fn eval_map_foldl_with_key_chirho() {
             haskelujah_runtime_chirho::ValueChirho::IntChirho(60)
         ),
         Err(e_chirho) => panic!("mapFoldlWithKey sum should be 60: {}", e_chirho),
+    }
+}
+
+#[test]
+fn eval_map_foldl_with_key_strict_chirho() {
+    // mapFoldlWithKey' reuses the strict left-fold runtime path and keeps Map typed.
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "module Test where\nmain = mapFoldlWithKey' (\\acc k v -> acc + k + v) 0 (mapFromList [(1,10),(2,20)])\n";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(33)
+        ),
+        Err(e_chirho) => panic!("mapFoldlWithKey' sum should be 33: {}", e_chirho),
     }
 }
 

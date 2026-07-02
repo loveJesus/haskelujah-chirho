@@ -11674,29 +11674,23 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     }
 
     // mapFoldlWithKey' :: (b -> k -> v -> b) -> b -> Map k v -> b
-    // NOTE (WI-005): the strict runtime op is NOT wired — there is no Core body or
-    // primop for it (grep-verified: only this scheme references the name). It is
-    // deliberately kept as the `Int` placeholder so that a genuine `Map` argument
-    // fails loudly at type-check (E0200) rather than lowering to a silent
-    // `IntChirho(0)` via the missing-global path. Restore the real `Map k v` scheme
-    // once a body is wired in dict_chirho/prelude_chirho.rs (a strict left fold can
-    // reuse the existing mapFoldlWithKey# op in our strict runtime).
     {
+        let k_chirho = TyChirho::VarChirho(TyVarChirho(3862));
         let b_chirho = TyChirho::VarChirho(TyVarChirho(3845));
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3846));
         env_chirho.bind_chirho(
             "mapFoldlWithKey'".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3845), TyVarChirho(3846)],
+                vars_chirho: vec![TyVarChirho(3845), TyVarChirho(3846), TyVarChirho(3862)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         TyChirho::fun_n_chirho(
-                            vec![b_chirho.clone(), TyChirho::int_chirho(), v_chirho],
+                            vec![b_chirho.clone(), k_chirho.clone(), v_chirho.clone()],
                             b_chirho.clone(),
                         ),
                         b_chirho.clone(),
-                        TyChirho::int_chirho(),
+                        map_ty_chirho(k_chirho, v_chirho),
                     ],
                     b_chirho,
                 ),

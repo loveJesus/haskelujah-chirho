@@ -11719,8 +11719,8 @@ impl DictPassCtxChirho {
         }
 
         // mapFoldlWithKey :: (b -> k -> v -> b) -> b -> Map k v -> b
-        {
-            let id_chirho = self.resolve_or_fresh_id_chirho("mapFoldlWithKey");
+        for name_chirho in ["mapFoldlWithKey", "mapFoldlWithKey'"] {
+            let id_chirho = self.resolve_or_fresh_id_chirho(name_chirho);
             let f_chirho = self.fresh_binder_chirho("f", any_b_chirho.clone());
             let z_chirho = self.fresh_binder_chirho("z", any_b_chirho.clone());
             let m_chirho = self.fresh_binder_chirho("m", map_ty_chirho.clone());
@@ -11751,7 +11751,7 @@ impl DictPassCtxChirho {
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
                     id_chirho,
-                    name_chirho: "mapFoldlWithKey".to_string(),
+                    name_chirho: name_chirho.to_string(),
                     ty_chirho,
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
