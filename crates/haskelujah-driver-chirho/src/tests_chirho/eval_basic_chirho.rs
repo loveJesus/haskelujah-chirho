@@ -3093,6 +3093,20 @@ fn eval_to_from_enum_chirho() {
         r2_chirho,
         haskelujah_runtime_chirho::ValueChirho::IntChirho(99)
     );
+
+    // fromEnum (99 :: Integer) = 99 in the current runtime representation
+    let mut sm3_chirho = SourceMapChirho::new_chirho();
+    let r3_chirho = eval_source_chirho(
+        "module Test where\nmain = fromEnum (99 :: Integer)\n",
+        &mut sm3_chirho,
+        "TestChirho.hs",
+        None,
+    )
+    .expect("fromEnum Integer should evaluate");
+    assert_eq!(
+        r3_chirho,
+        haskelujah_runtime_chirho::ValueChirho::IntChirho(99)
+    );
 }
 
 #[test]
@@ -6263,6 +6277,28 @@ main = ((+) `on` abs) (-3) 3
             haskelujah_runtime_chirho::ValueChirho::IntChirho(6)
         ),
         Err(e_chirho) => panic!("higher-order on function should evaluate: {e_chirho}"),
+    }
+}
+
+// workflow: monadic-dispatch-chirho — The CLI probe's `on` shape goes through
+// `print`, so it must select a body-backed Product Applicative path rather than
+// a loud missing-method placeholder.
+#[test]
+fn eval_higher_order_on_function_print_output_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+main = print (((+) `on` abs) (-3) 3)
+  where on f g x y = f (g x) (g y)
+";
+    let result_chirho =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho, "6\n")
+        }
+        Err(e_chirho) => panic!("higher-order on print should evaluate: {e_chirho}"),
     }
 }
 

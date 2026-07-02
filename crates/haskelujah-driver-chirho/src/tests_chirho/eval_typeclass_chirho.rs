@@ -921,6 +921,30 @@ main =
 }
 
 #[test]
+fn eval_product_functor_applicative_monad_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import Data.Monoid
+main =
+  getProduct (fmap (+1) (Product 2))
+  + getProduct (pure 3 :: Product Int)
+  + getProduct (Product (+4) <*> Product 5)
+  + getProduct (Product 6 >>= \\x -> Product (x + 1))
+  + getProduct (Product 8 >> Product 9)
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(31)
+        ),
+        Err(e_chirho) => panic!("product functor/applicative/monad: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_proxy_functor_applicative_monad_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();

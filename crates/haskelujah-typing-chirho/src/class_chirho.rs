@@ -2193,11 +2193,12 @@ impl ClassEnvChirho {
             context_chirho: vec![],
         });
 
-        // Bulk instances for Word/Int/C FFI types: Eq, Ord, Show, Bounded,
-        // Enum, Real, Integral for all fixed-width numeric and C types.
+        // Bulk instances for Word/Int/C FFI integer types: Eq, Ord, Show,
+        // Bounded, Enum, Real, Integral for all fixed-width numeric and C types.
+        // Float is handled separately below; it is Real/Fractional, but not Integral.
         let ffi_numeric_types_chirho: &[&str] = &[
             "Word8", "Word16", "Word32", "Word64", "Int8", "Int16", "Int32", "Int64", "Natural",
-            "CSize", "CInt", "CChar", "CLong", "CUInt", "CULong", "Float",
+            "CSize", "CInt", "CChar", "CLong", "CUInt", "CULong",
         ];
         let ffi_classes_chirho: &[&str] = &[
             "Eq",
@@ -2221,6 +2222,14 @@ impl ClassEnvChirho {
                     context_chirho: vec![],
                 });
             }
+        }
+        for class_chirho in ["Eq", "Ord", "Show", "Enum", "Read", "Real", "Storable"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: class_chirho.to_string(),
+                head_ty_chirho: TyChirho::ConChirho("Float".to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
         }
         // Fractional/Floating/RealFloat for Float
         for class_chirho in ["Fractional", "Floating", "RealFrac", "RealFloat"] {

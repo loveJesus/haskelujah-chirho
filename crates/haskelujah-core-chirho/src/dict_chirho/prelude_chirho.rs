@@ -7355,6 +7355,113 @@ impl DictPassCtxChirho {
             });
         }
 
+        // ── Enum Integer: currently represented by the same runtime integer value ──
+        let integer_ty_chirho = TyChirho::ConChirho("Integer".to_string());
+        {
+            let prim_name_chirho = "$prim_Enum_toEnum_Integer";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", int_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        int_ty_chirho.clone(),
+                        integer_ty_chirho.clone(),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+        {
+            let prim_name_chirho = "$prim_Enum_fromEnum_Integer";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", integer_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        integer_ty_chirho.clone(),
+                        int_ty_chirho.clone(),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+        {
+            let prim_name_chirho = "$prim_Enum_succ_Integer";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", integer_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "+#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+                    ],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        integer_ty_chirho.clone(),
+                        integer_ty_chirho.clone(),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+        {
+            let prim_name_chirho = "$prim_Enum_pred_Integer";
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let x_chirho = self.fresh_binder_chirho("x", integer_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "-#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+                    ],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        integer_ty_chirho.clone(),
+                        integer_ty_chirho.clone(),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
         // ── Enum Char: toEnum = chr-like, fromEnum = ord-like ──
         // For Char, toEnum and fromEnum are identity on the underlying Int representation
         {
@@ -9421,10 +9528,10 @@ impl DictPassCtxChirho {
             });
         }
 
-        // ── instance Functor/Applicative/Monad Down ──
-        // Data.Ord.Down is erased to its payload, so its higher-kinded methods
-        // have the same runtime bodies as Identity.
-        for type_key_chirho in ["Down"] {
+        // ── instance Functor/Applicative/Monad for erased payload newtypes ──
+        // These imported newtypes erase to their payloads, so their
+        // higher-kinded methods have the same runtime bodies as Identity.
+        for type_key_chirho in ["Down", "Product"] {
             {
                 let prim_name_chirho = format!("$prim_Functor_fmap_{}", type_key_chirho);
                 let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
