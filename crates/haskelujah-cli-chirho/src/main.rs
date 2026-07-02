@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
 use haskelujah_backend_cranelift_chirho::{
-    TargetConfigChirho, compile_core_to_object_executable_chirho,
+    compile_core_to_object_executable_chirho, TargetConfigChirho,
 };
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
@@ -23,30 +23,6 @@ use haskelujah_span_chirho::SourceMapChirho;
 // Keep CLI linking on the same unoptimized path the LLVM round-trip tests verify.
 const CLANG_OPT_LEVEL_CHIRHO: &str = "-O0";
 const LINKER_STACK_SIZE_ARG_CHIRHO: &str = "-Wl,-stack_size,0x10000000";
-
-/// 2 GB virtual memory limit for compiled executables.
-const MAX_RSS_BYTES_CHIRHO: u64 = 2 * 1024 * 1024 * 1024;
-
-/// Apply memory limit to a Command before spawning (Unix only).
-#[cfg(unix)]
-fn apply_mem_limit_chirho(cmd_chirho: &mut Command) -> &mut Command {
-    use std::os::unix::process::CommandExt;
-    unsafe {
-        cmd_chirho.pre_exec(|| {
-            let limit_chirho = libc::rlimit {
-                rlim_cur: MAX_RSS_BYTES_CHIRHO,
-                rlim_max: MAX_RSS_BYTES_CHIRHO,
-            };
-            libc::setrlimit(libc::RLIMIT_AS, &limit_chirho);
-            Ok(())
-        })
-    }
-}
-
-#[cfg(not(unix))]
-fn apply_mem_limit_chirho(cmd_chirho: &mut Command) -> &mut Command {
-    cmd_chirho
-}
 
 fn main() -> ExitCode {
     main_chirho()
@@ -241,9 +217,10 @@ fn main_chirho() -> ExitCode {
     }
 }
 
-/// `haskelujah run <file.hs>` — compile via LLVM and execute the resulting
-/// native binary. Falls back to the STG interpreter if LLVM compilation
-/// or linking fails.
+/// `haskelujah run <file.hs>` — execute through the STG interpreter.
+/// Native execution remains available through `haskelujah compile`; `run`
+/// stays interpreter-backed until native output is trustworthy enough to avoid
+/// silently printing raw runtime pointers for ordinary Haskell values.
 fn run_command_chirho(
     program_name_chirho: &str,
     path_arg_chirho: Option<String>,
@@ -291,53 +268,9 @@ fn run_command_chirho(
         }
     }
 
-    // Try LLVM compile-and-run first for programs with main :: IO ()
-    {
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let search_dir_chirho = Path::new(&path_chirho).parent().unwrap_or(Path::new("."));
-        if let Ok(result_chirho) = haskelujah_driver_chirho::compile_source_with_search_path_chirho(
-            &source_text_chirho,
-            &mut sm_chirho,
-            file_name_chirho,
-            search_dir_chirho,
-        ) {
-            let tmp_dir_chirho = std::env::temp_dir().join("haskelujah-run-chirho");
-            let _ = fs::create_dir_all(&tmp_dir_chirho);
-            let exe_path_chirho = tmp_dir_chirho.join("a.out");
-            // Suppress clang stderr for the try-LLVM path
-            let link_result_chirho = {
-                let ll_path_chirho = exe_path_chirho.with_extension("ll");
-                let exec_ir_chirho =
-                    compile_core_to_llvm_executable_chirho(&result_chirho.core_chirho);
-                let _ = fs::write(&ll_path_chirho, &exec_ir_chirho);
-                let link_result_chirho = link_llvm_file_chirho(
-                    &ll_path_chirho,
-                    &exe_path_chirho,
-                    CLANG_OPT_LEVEL_CHIRHO,
-                    true,
-                );
-                let _ = fs::remove_file(&ll_path_chirho);
-                link_result_chirho.map_err(|_| ())
-            };
-            if let Ok(()) = link_result_chirho {
-                let status_chirho =
-                    apply_mem_limit_chirho(&mut Command::new(&exe_path_chirho)).status();
-                let _ = fs::remove_file(&exe_path_chirho);
-                match status_chirho {
-                    Ok(s_chirho) => {
-                        return if s_chirho.success() {
-                            ExitCode::SUCCESS
-                        } else {
-                            ExitCode::from(s_chirho.code().unwrap_or(1) as u8)
-                        };
-                    }
-                    Err(_) => {} // fall through to STG interpreter
-                }
-            }
-        }
-    }
-
-    // Fallback: STG interpreter
+    // `run` is the user-facing semantic path; keep it on STG until native
+    // output has value-level Show/list/constructor parity instead of merely
+    // linking successfully.
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
     match eval_source_with_machine_chirho(
@@ -995,7 +928,8 @@ fn init_command_chirho(name_arg_chirho: Option<String>) -> ExitCode {
         name = project_name_chirho
     );
 
-    let main_content_chirho = "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
+    let main_content_chirho =
+        "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
 -- believes in him should not perish but have eternal life. -- John 3:16\n\
 \n\
 module Main where\n\
@@ -1029,7 +963,8 @@ main = do\n\
     // Create tests/ directory with a sample test
     let tests_dir_chirho = project_dir_chirho.join("tests");
     let _ = fs::create_dir_all(&tests_dir_chirho);
-    let test_content_chirho = "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
+    let test_content_chirho =
+        "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
 -- believes in him should not perish but have eternal life. -- John 3:16\n\
 \n\
 module Main where\n\
@@ -1197,7 +1132,7 @@ fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("  init      [name]                create a new project with .cabal scaffold");
     eprintln!("  build     [dir]                 compile a Cabal project to native executable");
     eprintln!("  build-run [dir]                 build and run in one step");
-    eprintln!("  run       <file.hs>             compile and execute (LLVM, STG fallback)");
+    eprintln!("  run       <file.hs>             execute through the STG interpreter");
     eprintln!("  check     <file.hs>             type-check without code generation");
     eprintln!("  compile   <file.hs> -o <exe>    compile to native executable");
     eprintln!("  clean     [dir]                 remove build artifacts (dist-chirho/)");
