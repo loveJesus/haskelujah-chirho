@@ -6,7 +6,7 @@
 - [x] Patch module interface stubs so `MonadIO(..)`, `MonadTrans(..)`, and `MonadZip(..)` expose their methods.
 - [x] Add targeted compile tests for `Class(..)` imports.
 - [x] Run targeted tests and formatting without full sweeps.
-- [ ] Update PRD/progress, commit explicit files, push, and release the slot.
+- [x] Update PRD/progress, commit explicit files, push, and release the slot.
 
 Validation notes:
 - `CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_class_dot_imports_expose_monad_methods_chirho -- --test-threads=1`
