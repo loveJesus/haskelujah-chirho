@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.54",
+    "prd_version_chirho": "2.2.55",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -65,7 +65,8 @@
       "gpt_chirho (Codex) — frontend instance-method fixture corrected to type-valid ExceptT mzipWith body v2.2.51",
       "gpt_chirho (Codex) — Data.Typeable rnf export fixture aligned with poly-kinded TypeRep v2.2.52",
       "gpt_chirho (Codex) — LLVM divInt#/modInt# aliases now use floor div/mod helper v2.2.53",
-      "gpt_chirho (Codex) — LLVM native numeric residual recheck narrowed bucket to qsort/list nondeterminism v2.2.54"
+      "gpt_chirho (Codex) — LLVM native numeric residual recheck narrowed bucket to qsort/list nondeterminism v2.2.54",
+      "gpt_chirho (Codex) — default-method literal-0 bucket rechecked stale-green and closed v2.2.55"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -117,17 +118,13 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "LLVM native numeric residual recheck after v2.2.53: `comprehensive_demo` is green, `qsort_random_500` remains red, and temp native repros show LCG arithmetic/sum is correct while the same compiled qsort/filter/append binary returns nondeterministic wrong sums.",
+      "scope_chirho": "PRD stale-bucket recheck: `default_sig_basic_eval_chirho` now passes, confirming the old default-method literal-0 slot issue is closed. The two frontend one-off representatives remain current failures: Data.Constraint still reports `Dict` vs function type mismatches, and the TH-style local-signature mini repro still reports `[Int]` vs function plus synthetic empty-name unbound diagnostic.",
       "commands_chirho": [
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib llvm_round_trip_comprehensive_demo_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib llvm_round_trip_qsort_random_500_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib llvm_round_trip_quicksort_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib llvm_round_trip_merge_sort_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib llvm_round_trip_foldl_at_scale_chirho -- --test-threads=1",
-        "target/debug/haskelujah compile /tmp/llvm-lcg-chirho-*/Lcg.hs -o /tmp/llvm-lcg-chirho-*/lcg && /tmp/llvm-lcg-chirho-*/lcg",
-        "target/debug/haskelujah compile /tmp/llvm-qsort-chirho-*/Qsort.hs -o /tmp/llvm-qsort-chirho-*/qsort && repeated /tmp/llvm-qsort-chirho-*/qsort"
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib default_sig_basic_eval_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_constraints_package_regression_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_th_abstraction_style_local_sig_in_instance_typechecks_chirho -- --test-threads=1"
       ],
-      "result_chirho": "`llvm_round_trip_comprehensive_demo_chirho`, small LLVM quicksort, merge sort, foldl-at-scale, and native LCG sum pass. `llvm_round_trip_qsort_random_500_chirho` remains the only representative in this bucket; the same compiled qsort binary printed different wrong sums (`27`, `2066`, `2615`), pointing to LLVM native list/closure/runtime nondeterminism rather than arithmetic lowering. Broader probe/full driver impact remains unmeasured by this targeted pass."
+      "result_chirho": "`default-method-literal0-slot` is no longer open; its only representative is green, so the bucket count is now 0 with a resolved note. `frontend-typing-one-offs` remains at 2 with current failure output. Broader probe/full driver impact remains unmeasured by this targeted pass."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1364,7 +1361,8 @@
       },
       {
         "bucket_chirho": "default-method-literal0-slot",
-        "count_chirho": 1,
+        "count_chirho": 0,
+        "resolved_chirho": "RESOLVED by earlier WI-014 work and rechecked in v2.2.55: `default_sig_basic_eval_chirho` now passes. Default method bodies survive class/instance collection, missing method slots are loud/body-backed rather than literal-0, and this catalog entry is no longer an open driver failure.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "lowerer/dict-pass boundary",
         "representative_tests_chirho": [
