@@ -306,6 +306,7 @@ impl DictPassCtxChirho {
                     match con_name_chirho.as_str() {
                         "True" | "False" => Some("Bool".to_string()),
                         "LT" | "EQ" | "GT" => Some("Ordering".to_string()),
+                        "()" | "$tuple0" => Some("()".to_string()),
                         "Identity" => Some("Identity".to_string()),
                         "Proxy" => Some("Proxy".to_string()),
                         "Const" => Some("Const".to_string()),
@@ -384,6 +385,7 @@ impl DictPassCtxChirho {
                                     Some("Int") => Some("[Int]".to_string()),
                                     Some("[Char]") => Some("[[Char]]".to_string()),
                                     Some("Char") => Some("[Char]".to_string()),
+                                    Some("()") => Some("[()]".to_string()),
                                     Some("Double") => Some("[Double]".to_string()),
                                     Some("Bool") => Some("[Bool]".to_string()),
                                     Some("Ordering") => Some("[Ordering]".to_string()),
@@ -418,6 +420,7 @@ impl DictPassCtxChirho {
                         "True" | "False" => return Some("Bool".to_string()),
                         "Nothing" => return Some("Maybe Int".to_string()),
                         "LT" | "EQ" | "GT" => return Some("Ordering".to_string()),
+                        "()" | "$tuple0" => return Some("()".to_string()),
                         "Identity" => return Some("Identity".to_string()),
                         "Proxy" => return Some("Proxy".to_string()),
                         "Const" => return Some("Const".to_string()),

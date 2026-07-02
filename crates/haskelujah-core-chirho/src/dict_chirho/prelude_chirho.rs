@@ -15882,7 +15882,7 @@ impl DictPassCtxChirho {
                 body_chirho: Box::new(CoreExprChirho::LamChirho {
                     binder_chirho: b_chirho,
                     body_chirho: Box::new(CoreExprChirho::ConAppChirho {
-                        con_name_chirho: "()".to_string(),
+                        con_name_chirho: "$tuple0".to_string(),
                         args_chirho: vec![],
                     }),
                 }),
@@ -15904,7 +15904,7 @@ impl DictPassCtxChirho {
         {
             let fn_id_chirho = self.resolve_or_fresh_id_chirho("$prim_Monoid_mempty_()");
             let rhs_chirho = CoreExprChirho::ConAppChirho {
-                con_name_chirho: "()".to_string(),
+                con_name_chirho: "$tuple0".to_string(),
                 args_chirho: vec![],
             };
             self.generated_bindings_chirho.push(CoreBindingChirho {
@@ -15927,7 +15927,7 @@ impl DictPassCtxChirho {
             let rhs_chirho = CoreExprChirho::LamChirho {
                 binder_chirho: xs_chirho,
                 body_chirho: Box::new(CoreExprChirho::ConAppChirho {
-                    con_name_chirho: "()".to_string(),
+                    con_name_chirho: "$tuple0".to_string(),
                     args_chirho: vec![],
                 }),
             };

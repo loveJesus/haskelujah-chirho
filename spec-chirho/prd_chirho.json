@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.38",
+    "prd_version_chirho": "2.2.39",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -49,7 +49,8 @@
     "gpt_chirho (Codex) — WI-004 Monoid mappend method slot delegates to Semigroup body v2.2.35",
     "gpt_chirho (Codex) — driver HSC/CPP preprocessing: sanitize hsc2hs splices before CPP and replace brittle primitive arr# offset pin v2.2.36",
     "gpt_chirho (Codex) — WI-015 higher-order dict-param composition specialization for `(.)` v2.2.37",
-    "gpt_chirho (Codex) — WI-015 forward-reference dict-param predeclaration and higher-order argument specialization v2.2.38"
+    "gpt_chirho (Codex) — WI-015 forward-reference dict-param predeclaration and higher-order argument specialization v2.2.38",
+    "gpt_chirho (Codex) — WI-004 unit Semigroup/Monoid row and source-level unit constructor preservation v2.2.39"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -93,7 +94,7 @@
     "probe_harness_chirho": {
       "passed_chirho": 70,
       "total_chirho": 70,
-      "note_chirho": "Claude full-probe acceptance at 827adba7 after v2.2.31: PASS=70 FAIL=0. The STG missing-global loudness fix flipped zero probe cases; none of the 70 were silently relying on Int-0. Broader driver --lib impact remains unmeasured per resource guard and needs L.J. approval for a heavy sweep."
+      "note_chirho": "Claude full-probe acceptance at eaa31cf3 after v2.2.38: PASS=70 FAIL=0. v2.2.39 unit Semigroup/Monoid row used targeted gates only; broader driver --lib impact remains unmeasured per resource guard and needs L.J. approval for a heavy sweep."
     },
     "ghc_suite_chirho": {
       "status_chirho": "No fresh full run after 29d9f262 due resource guard. Audit catalog uses baseline 1609/73, completed b5203335 delta 1569/117, and incomplete 29d9f262 logs; full ghc_bulk/driver sweeps require explicit L.J. approval."
@@ -101,16 +102,21 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "WI-015 forward-reference dict-param specialization: `main = compose incr incr 40` previously rewrote before later constrained binding `incr` was recorded as dict-parameterized, so both higher-order function arguments stayed unspecialized. The dict pass now predeclares dict-param binding metadata for all module bindings before rewriting any body and specializes higher-order dict-param arguments when a later value argument proves the key.",
+      "scope_chirho": "WI-004 unit Semigroup/Monoid row: source-level `()` used to desugar to numeric `0`, so `() <> ()` type-checked but reached runtime as unresolved `<>`. Unit tuples now lower to `$tuple0`, type-key inference recognizes `$tuple0`/`[()]`, `mconcat` peels `[()]` to `()`, and the generated unit bodies return `$tuple0` consistently.",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib scc_forward_ref -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_dot_compose -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_higher_order_on_function_dispatch_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_maybe_do -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_fix_factorial_chirho -- --test-threads=1 (expected still failing; confirms separate runtime recursion/fix bucket)",
-        "rustfmt --check crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs"
+        "CARGO_BUILD_JOBS=1 cargo test -p haskelujah-driver --lib eval_unit_monoid_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 cargo test -p haskelujah-driver --lib eval_monoid -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 cargo test -p haskelujah-driver --lib eval_mappend_uses_semigroup_body_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 cargo test -p haskelujah-driver --lib eval_maybe_do_dispatch_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 cargo test -p haskelujah-driver --lib eval_higher_order_on_function_dispatch_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 cargo test -p haskelujah-driver --lib eval_tuple -- --test-threads=1",
+        "rustfmt --check crates/haskelujah-core-chirho/src/desugar_chirho.rs crates/haskelujah-core-chirho/src/dict_chirho/mod.rs crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho.rs crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs crates/haskelujah-driver-chirho/src/tests_chirho/eval_typeclass_chirho.rs",
+        "jq empty spec-chirho/prd_chirho.json",
+        "git diff --check",
+        "CARGO_BUILD_JOBS=1 cargo build -p haskelujah",
+        "timeout 30 target/debug/haskelujah run /tmp/unit_monoid_exact_chirho.hs"
       ],
-      "result_chirho": "`scc_forward_ref_id_id_chirho` and `scc_forward_ref_multi_chirho` now pass; dot composition, higher-order `on`, and Maybe do dispatch stayed green. `eval_fix_factorial_chirho` still fails with `no matching alternative for tag 0`, so that forcing-bucket representative remains a separate recursion/runtime issue. No driver --lib full suite, ghc_bulk, package scan, or full probe run by gpt_chirho."
+      "result_chirho": "`eval_unit_monoid_chirho` now passes, including `() <> ()`, `mappend () ()`, `mempty :: ()`, and `mconcat [(),(),()]`; the fresh CLI exact repro prints `4`. Adjacent Monoid, mappend, Maybe-do, higher-order `on`, and tuple filters stayed green. No driver --lib full suite, ghc_bulk, package scan, or full probe run by gpt_chirho."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -468,7 +474,7 @@
       "title_chirho": "Per-type instance completion matrix (turn-the-crank recipe)",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed v2.2.35 — Sum/Product/All/Any/Ordering Semigroup/Monoid rows, Endo function-payload Semigroup/Monoid row, First/Last Maybe-payload Semigroup/Monoid rows, Min/Max Semigroup rows, Identity/Down/Proxy/Product Functor/Applicative/Monad rows, Const Functor fmap-only row, Alternative []/Maybe rows, and Monoid.mappend slots for body-backed Semigroup rows are pinned; continue Wave A for remaining rows.",
+      "status_chirho": "partially landed v2.2.39 — Sum/Product/All/Any/Ordering/Unit Semigroup/Monoid rows, Endo function-payload Semigroup/Monoid row, First/Last Maybe-payload Semigroup/Monoid rows, Min/Max Semigroup rows, Identity/Down/Proxy/Product Functor/Applicative/Monad rows, Const Functor fmap-only row, Alternative []/Maybe rows, and Monoid.mappend slots for body-backed Semigroup rows are pinned; continue Wave A for remaining rows.",
       "owner_chirho": "gpt_chirho/claude_chirho; future fleet may take individual rows after recipe review (gemini currently removed from session)",
       "problem_chirho": "Many types are class-REGISTERED (class_chirho.rs ~2448-2528, ~2963-2976: STM, Proxy, First, Last, Sum, Product, Identity, transformers...) but lack built instance dicts and/or $prim bodies, so their methods fall to wrong-typed fallbacks or dead dict lambdas. GPT #1388: also audit existing dict fields for placeholders.",
       "fix_design_chirho": [
@@ -486,6 +492,7 @@
         "DOCUMENTED v2.2.32: Product also has body-backed Identity-like Functor, Applicative, and Monad methods over the erased payload in prelude_chirho.rs and is covered by eval_product_functor_applicative_monad_chirho.",
         "LANDED v2.2.34: Data.Monoid/Data.Semigroup Endo constructor and appEndo accessor are body-backed erased wrappers; imported Endo feeds newtype erasure and type-key inference; Endo has body-backed Semigroup composition, Monoid identity, and mconcat composition bodies over the erased function payload.",
         "LANDED v2.2.35: Monoid now exposes mappend as a real seeded class method; generated Monoid dictionaries fill the mappend slot from the same type key's body-backed Semigroup <> implementation when present, otherwise the existing WI-014 loud missing-method path remains in force.",
+        "LANDED v2.2.39: Unit `()` now preserves source-level unit as `$tuple0` instead of numeric `0`; `$tuple0` and `[()]` feed type-key inference; mconcat peels `[()]` to the unit instance; existing body-backed Semigroup/Monoid `()` methods now return `$tuple0` consistently.",
         "Wave A: accessors and type-key arms for Sum, Product, All, Any, Min, Max, Down, Proxy, Const(fmap only), Ordering, Identity, Endo; Alternative []/Maybe; mconcat element-key fix.",
         "Corrected audit rule: First and Last wrap Maybe (`First (Maybe a)`, `Last (Maybe a)`), so they are not bare-value newtypes; do not implement fmap/pure/bind as if First a = First a.",
         "Out of mechanical scope until evidence threading: Foldable/Traversable, Dual, context-dependent Semigroup/Monoid bodies, transformer stacks with constrained instances.",
@@ -581,6 +588,12 @@
       "program_chirho": "import Data.Monoid\nmain = length (mappend [1,2] [3,4]) + getSum (mappend (Sum 3) (Sum 4)) + getSum (mappend mempty (Sum 5)) + appEndo (mappend (Endo (+1)) (Endo (*2))) 10",
       "expected_stdout_chirho": "37",
       "landed_chirho": "v2.2.35"
+    },
+    {
+      "test_name_chirho": "eval_unit_monoid_chirho",
+      "program_chirho": "import Data.Monoid\nscoreChirho () = 1\nmain = scoreChirho (() <> ()) + scoreChirho (mappend () ()) + scoreChirho (mempty :: ()) + scoreChirho (mconcat [(), (), ()])",
+      "expected_stdout_chirho": "4",
+      "landed_chirho": "v2.2.39"
     }
   ],
       "dependencies_chirho": [
@@ -615,6 +628,9 @@
         ],
         "complete_function_payload_semigroup_monoid_bodies_chirho": [
           "Endo"
+        ],
+        "complete_unit_semigroup_monoid_bodies_chirho": [
+          "()"
         ],
         "monoid_mappend_slot_chirho": "complete for rows whose matching Semigroup <> body is body-backed; unsupported rows remain loud-missing",
         "registered_but_bodyless_or_partial_chirho": [

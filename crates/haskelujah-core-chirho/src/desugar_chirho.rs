@@ -3777,7 +3777,10 @@ impl DesugarCtxChirho {
                 elements_chirho, ..
             } => {
                 if elements_chirho.is_empty() {
-                    CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)) // unit
+                    CoreExprChirho::ConAppChirho {
+                        con_name_chirho: "$tuple0".to_string(),
+                        args_chirho: vec![],
+                    }
                 } else {
                     let arity_chirho = elements_chirho.len();
                     let con_args_chirho: Vec<CoreExprChirho> = elements_chirho
