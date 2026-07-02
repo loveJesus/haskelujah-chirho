@@ -162,6 +162,16 @@ impl DictPassCtxChirho {
         None
     }
 
+    fn dict_param_classes_for_scheme_chirho(scheme_chirho: &SchemeChirho) -> Vec<String> {
+        scheme_chirho
+            .preds_chirho
+            .iter()
+            .filter(|p_chirho| matches!(p_chirho.ty_chirho, TyChirho::VarChirho(_)))
+            .filter(|p_chirho| !Self::is_defaultable_pred_chirho(p_chirho, scheme_chirho))
+            .map(|p_chirho| p_chirho.class_name_chirho.clone())
+            .collect()
+    }
+
     fn extend_alt_type_keys_chirho(
         &self,
         scrutinee_type_key_chirho: Option<String>,
@@ -928,6 +938,87 @@ impl DictPassCtxChirho {
                         local_instance_dicts_chirho,
                     )
                 });
+            result_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(result_chirho),
+                arg_chirho: Box::new(rewritten_arg_chirho),
+            };
+        }
+        Some(result_chirho)
+    }
+
+    fn try_rewrite_typed_higher_order_args_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let mut args_chirho = Vec::new();
+        let mut head_chirho = expr_chirho;
+        while let CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } = head_chirho
+        {
+            args_chirho.push(arg_chirho.as_ref());
+            head_chirho = fun_chirho.as_ref();
+        }
+        if args_chirho.len() < 2 {
+            return None;
+        }
+        args_chirho.reverse();
+
+        let type_key_chirho = args_chirho.iter().rev().find_map(|arg_chirho| {
+            self.infer_strict_dispatch_key_for_rewrite_chirho(arg_chirho, local_type_keys_chirho)
+        })?;
+
+        let mut changed_chirho = false;
+        let mut rewritten_args_chirho = Vec::with_capacity(args_chirho.len());
+        for arg_chirho in &args_chirho {
+            if let Some(rewritten_chirho) = self
+                .try_rewrite_typed_dict_param_arg_chirho(
+                    arg_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                    &type_key_chirho,
+                )
+                .or_else(|| {
+                    self.try_rewrite_typed_method_arg_chirho(
+                        arg_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_instance_dicts_chirho,
+                        &type_key_chirho,
+                    )
+                })
+            {
+                changed_chirho = true;
+                rewritten_args_chirho.push(rewritten_chirho);
+            } else {
+                rewritten_args_chirho.push(self.rewrite_method_refs_with_locals_chirho(
+                    arg_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ));
+            }
+        }
+        if !changed_chirho {
+            return None;
+        }
+
+        let mut result_chirho = self.rewrite_method_refs_with_locals_chirho(
+            head_chirho,
+            dict_vars_chirho,
+            evidence_classes_chirho,
+            local_type_keys_chirho,
+            local_instance_dicts_chirho,
+        );
+        for rewritten_arg_chirho in rewritten_args_chirho {
             result_chirho = CoreExprChirho::AppChirho {
                 fun_chirho: Box::new(result_chirho),
                 arg_chirho: Box::new(rewritten_arg_chirho),
@@ -1924,6 +2015,16 @@ impl DictPassCtxChirho {
                     return result_chirho;
                 }
 
+                if let Some(rewritten_chirho) = self.try_rewrite_typed_higher_order_args_chirho(
+                    expr_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ) {
+                    return rewritten_chirho;
+                }
+
                 // Default: recursively rewrite fun and arg
                 CoreExprChirho::AppChirho {
                     fun_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
@@ -2275,13 +2376,7 @@ impl DictPassCtxChirho {
         // Record which classes this binding abstracts over so that call
         // sites can insert the corresponding dict arguments.
         if !dict_binders_chirho.is_empty() {
-            let classes_chirho: Vec<String> = scheme_chirho
-                .preds_chirho
-                .iter()
-                .filter(|p_chirho| matches!(p_chirho.ty_chirho, TyChirho::VarChirho(_)))
-                .filter(|p_chirho| !Self::is_defaultable_pred_chirho(p_chirho, scheme_chirho))
-                .map(|p_chirho| p_chirho.class_name_chirho.clone())
-                .collect();
+            let classes_chirho = Self::dict_param_classes_for_scheme_chirho(scheme_chirho);
             if !classes_chirho.is_empty() {
                 self.dict_param_bindings_chirho
                     .insert(binding_chirho.binder_chirho.id_chirho, classes_chirho);
@@ -2592,6 +2687,13 @@ impl DictPassCtxChirho {
                     self.local_shadow_ids_chirho
                         .borrow_mut()
                         .insert(binding_chirho.binder_chirho.id_chirho);
+                }
+            }
+            if let Some(scheme_chirho) = type_env_chirho.lookup_chirho(name_chirho) {
+                let classes_chirho = Self::dict_param_classes_for_scheme_chirho(scheme_chirho);
+                if !classes_chirho.is_empty() {
+                    self.dict_param_bindings_chirho
+                        .insert(binding_chirho.binder_chirho.id_chirho, classes_chirho);
                 }
             }
         }
