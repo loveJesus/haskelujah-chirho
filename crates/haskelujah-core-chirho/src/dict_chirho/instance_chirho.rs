@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
-use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
+use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 
 use super::{DictLayoutChirho, DictPassCtxChirho};
 use crate::expr_chirho::{
@@ -885,7 +885,13 @@ impl DictPassCtxChirho {
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, type_key_chirho
                 );
-                let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
+                let prim_id_chirho = self.resolve_or_missing_method_id_chirho(
+                    class_env_chirho,
+                    &class_name_chirho,
+                    method_name_chirho,
+                    &type_key_chirho,
+                    &prim_name_chirho,
+                );
                 field_args_chirho.push(CoreExprChirho::VarChirho(prim_id_chirho));
             }
 
@@ -905,6 +911,95 @@ impl DictPassCtxChirho {
 
             self.instance_dicts_chirho
                 .insert((class_name_chirho, type_key_chirho), dict_id_chirho);
+        }
+    }
+
+    fn resolve_or_missing_method_id_chirho(
+        &mut self,
+        class_env_chirho: &ClassEnvChirho,
+        class_name_chirho: &str,
+        method_name_chirho: &str,
+        type_key_chirho: &str,
+        prim_name_chirho: &str,
+    ) -> CoreIdChirho {
+        if let Some(prim_id_chirho) = self.lookup_name_id_chirho(prim_name_chirho) {
+            return prim_id_chirho;
+        }
+
+        self.generate_missing_method_binding_chirho(
+            class_env_chirho,
+            class_name_chirho,
+            method_name_chirho,
+            type_key_chirho,
+            prim_name_chirho,
+        )
+    }
+
+    fn generate_missing_method_binding_chirho(
+        &mut self,
+        class_env_chirho: &ClassEnvChirho,
+        class_name_chirho: &str,
+        method_name_chirho: &str,
+        type_key_chirho: &str,
+        prim_name_chirho: &str,
+    ) -> CoreIdChirho {
+        let method_scheme_chirho = class_env_chirho
+            .classes_chirho
+            .get(class_name_chirho)
+            .and_then(|decl_chirho| decl_chirho.methods_chirho.get(method_name_chirho));
+
+        let arity_chirho = method_scheme_chirho
+            .map(Self::scheme_arity_chirho)
+            .unwrap_or(0);
+
+        let mut rhs_chirho = CoreExprChirho::PrimOpChirho {
+            name_chirho: "error".to_string(),
+            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                format!(
+                    "missing method {}.{} for {}",
+                    class_name_chirho, method_name_chirho, type_key_chirho
+                ),
+            ))],
+        };
+
+        let fresh_ty_var_seed_chirho = self.next_id_chirho + 10_000;
+        for arg_idx_chirho in (0..arity_chirho).rev() {
+            let arg_ty_chirho = TyChirho::VarChirho(TyVarChirho(
+                fresh_ty_var_seed_chirho + arg_idx_chirho as u32,
+            ));
+            let arg_binder_chirho =
+                self.fresh_binder_chirho(&format!("missing_arg_{arg_idx_chirho}"), arg_ty_chirho);
+            rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: arg_binder_chirho,
+                body_chirho: Box::new(rhs_chirho),
+            };
+        }
+
+        let binder_ty_chirho = method_scheme_chirho
+            .map(|scheme_chirho| scheme_chirho.ty_chirho.clone())
+            .unwrap_or_else(|| TyChirho::VarChirho(TyVarChirho(self.next_id_chirho)));
+        let binder_chirho = self.fresh_binder_chirho(prim_name_chirho, binder_ty_chirho);
+        let binder_id_chirho = binder_chirho.id_chirho;
+
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho,
+            rhs_chirho,
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        });
+
+        binder_id_chirho
+    }
+
+    fn scheme_arity_chirho(scheme_chirho: &SchemeChirho) -> usize {
+        Self::ty_arity_chirho(&scheme_chirho.ty_chirho)
+    }
+
+    fn ty_arity_chirho(ty_chirho: &TyChirho) -> usize {
+        match ty_chirho {
+            TyChirho::FunChirho(_, result_chirho, _) => 1 + Self::ty_arity_chirho(result_chirho),
+            TyChirho::ForallChirho { body_chirho, .. } => Self::ty_arity_chirho(body_chirho),
+            _ => 0,
         }
     }
 
