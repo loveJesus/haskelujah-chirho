@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.31",
+    "prd_version_chirho": "2.2.32",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -42,7 +42,8 @@
       "gpt_chirho (Codex) — WI-005 mapFoldlWithKey' wiring + WI-014 fromEnum(chr) regression fix v2.2.28",
       "gpt_chirho (Codex) — WI-005 mapIntersectionWith runtime/Core/scheme wiring v2.2.29",
       "gpt_chirho (Codex) — WI-005 qualified Data.Map real-export surface aliases and desugar qualifier preservation v2.2.30",
-      "gpt_chirho (Codex) — WI-014 STG missing-global lookup becomes loud runtime error instead of Int 0 fallback v2.2.31"
+      "gpt_chirho (Codex) — WI-014 STG missing-global lookup becomes loud runtime error instead of Int 0 fallback v2.2.31",
+      "gpt_chirho (Codex) — PRD accuracy: record 827adba7 full-probe acceptance and already-landed Product Functor/Applicative/Monad row v2.2.32"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -86,7 +87,7 @@
     "probe_harness_chirho": {
       "passed_chirho": 70,
       "total_chirho": 70,
-      "note_chirho": "Claude full-probe acceptance at 4e236d86 after v2.2.30: PASS=70 FAIL=0. Qualified Data.Map surface change is clean and WI-005 is fully complete end-to-end. v2.2.31 adds targeted STG missing-global loudness after that accepted baseline; no full probe was run by gpt_chirho per the resource guard."
+      "note_chirho": "Claude full-probe acceptance at 827adba7 after v2.2.31: PASS=70 FAIL=0. The STG missing-global loudness fix flipped zero probe cases; none of the 70 were silently relying on Int-0. Broader driver --lib impact remains unmeasured per resource guard and needs L.J. approval for a heavy sweep."
     },
     "ghc_suite_chirho": {
       "status_chirho": "No fresh full run after 29d9f262 due resource guard. Audit catalog uses baseline 1609/73, completed b5203335 delta 1569/117, and incomplete 29d9f262 logs; full ghc_bulk/driver sweeps require explicit L.J. approval."
@@ -94,15 +95,11 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "WI-014 missing STG binding loudness: LowerCtxChirho no longer converts unknown CoreId lookups to `IntChirho(0)`. Demanded missing globals now lower to an `error#` thunk/value that reports `missing STG binding ...`, while ordinary variable lookup and recent qualified Data.Map dispatch remain green. No full suites or full probe run by gpt_chirho per resource guard; Claude may own the holistic full-probe acceptance window after SLOT-FREE.",
+      "scope_chirho": "PRD accuracy / WI-004 evidence correction: Product already has body-backed Functor/Applicative/Monad methods in prelude_chirho.rs and the existing targeted eval pin is green, so WI-004 status and matrix no longer list Product as bodyless for that class family. No full suites or full probe run by gpt_chirho per resource guard.",
       "commands_chirho": [
-        "rustfmt crates/haskelujah-driver-chirho/src/stg_lower_chirho.rs",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib missing_global_binding_errors_instead_of_zero_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib run_var_reference_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_import_qualified_data_map -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_maybe_do_dispatch_chirho -- --test-threads=1"
+        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_product_functor_applicative_monad_chirho -- --test-threads=1"
       ],
-      "result_chirho": "All targeted gates passed. Missing global STG lookup now fails loudly with the unresolved name instead of returning `IntChirho(0)`; normal STG var lookup, qualified Data.Map imports, and Maybe do-dispatch remain green. Cargo still emits the pre-existing typing dead_code warning for instantiate_instance_method_expected_ty_chirho. No driver --lib full suite, ghc_bulk, package scan, or full probe run by gpt_chirho (resource guard)."
+      "result_chirho": "Targeted Product Functor/Applicative/Monad gate passed. Cargo still emits the pre-existing typing dead_code warning for instantiate_instance_method_expected_ty_chirho. No driver --lib full suite, ghc_bulk, package scan, or full probe run by gpt_chirho (resource guard)."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -460,7 +457,7 @@
       "title_chirho": "Per-type instance completion matrix (turn-the-crank recipe)",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed v2.2.24 — Sum/Product/All/Any/Ordering Semigroup/Monoid rows, First/Last Maybe-payload Semigroup/Monoid rows, Min/Max Semigroup rows, Identity/Down/Proxy Functor/Applicative/Monad rows, Const Functor fmap-only row, and Alternative []/Maybe rows are body-backed and pinned; continue Wave A for remaining rows.",
+      "status_chirho": "partially landed v2.2.32 — Sum/Product/All/Any/Ordering Semigroup/Monoid rows, First/Last Maybe-payload Semigroup/Monoid rows, Min/Max Semigroup rows, Identity/Down/Proxy/Product Functor/Applicative/Monad rows, Const Functor fmap-only row, and Alternative []/Maybe rows are body-backed and pinned; continue Wave A for remaining rows.",
       "owner_chirho": "gpt_chirho/claude_chirho; future fleet may take individual rows after recipe review (gemini currently removed from session)",
       "problem_chirho": "Many types are class-REGISTERED (class_chirho.rs ~2448-2528, ~2963-2976: STM, Proxy, First, Last, Sum, Product, Identity, transformers...) but lack built instance dicts and/or $prim bodies, so their methods fall to wrong-typed fallbacks or dead dict lambdas. GPT #1388: also audit existing dict fields for placeholders.",
       "fix_design_chirho": [
@@ -475,6 +472,7 @@
         "LANDED v2.2.21: Data.Semigroup Min/Max constructors and getMin/getMax accessors are body-backed erased wrappers; Min/Max feed type-key inference and have body-backed Semigroup <> methods over Int payloads. Monoid remains intentionally excluded because it needs Bounded evidence.",
         "LANDED v2.2.22: Data.Monoid First/Last constructors and getFirst/getLast accessors are body-backed erased wrappers; First/Last feed type-key inference and have body-backed Maybe-payload Semigroup/Monoid methods. This follows the corrected audit rule: First/Last wrap Maybe values, not bare values.",
         "LANDED v2.2.24: Data.Ord Down constructor and getDown accessor are body-backed erased wrappers when imported from Data.Ord; Down feeds type-key inference and has body-backed Identity-like Functor, Applicative, and Monad methods over the erased payload.",
+        "DOCUMENTED v2.2.32: Product also has body-backed Identity-like Functor, Applicative, and Monad methods over the erased payload in prelude_chirho.rs and is covered by eval_product_functor_applicative_monad_chirho.",
         "Wave A: accessors and type-key arms for Sum, Product, All, Any, Min, Max, Down, Proxy, Const(fmap only), Ordering, Identity; Alternative []/Maybe; mconcat element-key fix.",
         "Corrected audit rule: First and Last wrap Maybe (`First (Maybe a)`, `Last (Maybe a)`), so they are not bare-value newtypes; do not implement fmap/pure/bind as if First a = First a.",
         "Out of mechanical scope until evidence threading: Foldable/Traversable, Dual, context-dependent Semigroup/Monoid bodies, transformer stacks with constrained instances.",
@@ -547,13 +545,19 @@
           "expected_stdout_chirho": "48",
           "landed_chirho": "v2.2.22"
         },
-        {
-          "test_name_chirho": "eval_down_functor_applicative_monad_chirho",
-          "program_chirho": "import Data.Ord\nmain = getDown (fmap (+1) (Down 2)) + getDown (pure 3 :: Down Int) + getDown (Down (+4) <*> Down 5) + getDown (Down 6 >>= \\x -> Down (x + 1)) + getDown (Down 8 >> Down 9)",
-          "expected_stdout_chirho": "31",
-          "landed_chirho": "v2.2.24"
-        }
-      ],
+    {
+      "test_name_chirho": "eval_down_functor_applicative_monad_chirho",
+      "program_chirho": "import Data.Ord\nmain = getDown (fmap (+1) (Down 2)) + getDown (pure 3 :: Down Int) + getDown (Down (+4) <*> Down 5) + getDown (Down 6 >>= \\x -> Down (x + 1)) + getDown (Down 8 >> Down 9)",
+      "expected_stdout_chirho": "31",
+      "landed_chirho": "v2.2.24"
+    },
+    {
+      "test_name_chirho": "eval_product_functor_applicative_monad_chirho",
+      "program_chirho": "import Data.Monoid\nmain = getProduct (fmap (+1) (Product 2)) + getProduct (pure 3 :: Product Int) + getProduct (Product (+4) <*> Product 5) + getProduct (Product 6 >>= \\x -> Product (x + 1)) + getProduct (Product 8 >> Product 9)",
+      "expected_stdout_chirho": "31",
+      "documented_chirho": "v2.2.32"
+    }
+  ],
       "dependencies_chirho": [
         "WI-001 for wave B"
       ],
@@ -566,7 +570,8 @@
           "Either",
           "Identity",
           "Down",
-          "Proxy"
+      "Proxy",
+      "Product"
         ],
         "partial_functor_only_bodies_chirho": [
           "Const"
@@ -588,7 +593,6 @@
           "First",
           "Last",
           "Sum",
-          "Product",
           "Dual",
           "Down",
           "Const",
