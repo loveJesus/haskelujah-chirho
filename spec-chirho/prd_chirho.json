@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.35",
+    "prd_version_chirho": "2.2.36",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -46,7 +46,8 @@
       "gpt_chirho (Codex) — PRD accuracy: record 827adba7 full-probe acceptance and already-landed Product Functor/Applicative/Monad row v2.2.32",
     "gpt_chirho (Codex) — WI-012 warning hygiene: mark test-only instance-method expected-type helper cfg(test) v2.2.33",
     "gpt_chirho (Codex) — WI-004 Endo Semigroup/Monoid body-backed row v2.2.34",
-    "gpt_chirho (Codex) — WI-004 Monoid mappend method slot delegates to Semigroup body v2.2.35"
+    "gpt_chirho (Codex) — WI-004 Monoid mappend method slot delegates to Semigroup body v2.2.35",
+    "gpt_chirho (Codex) — driver HSC/CPP preprocessing: sanitize hsc2hs splices before CPP and replace brittle primitive arr# offset pin v2.2.36"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -98,15 +99,16 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "WI-004 Monoid mappend class-method completion: seeded Monoid now includes mappend, and generated Monoid dictionaries fill that method slot from the body-backed Semigroup <> implementation for the same type key when present; unsupported rows remain loud-missing instead of fake.",
+      "scope_chirho": "driver HSC/CPP preprocessing bucket: sanitize hsc2hs #{...} splices before invoking cpp so real CPP conditionals are evaluated instead of falling back to blind branch stripping; strip # let helper lines; keep primitive ByteArray arr# guard semantic instead of byte-offset fragile.",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_mappend_uses_semigroup_body_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib monoid_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-core build_layouts_from_class_env_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-core generate_selectors_creates_bindings_chirho -- --test-threads=1",
-        "git diff --check"
+        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib read_hsc_source_sanitizes_clock_hsc2hs_directives_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib clock_iface_exports_normalize_and_s2ns_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib read_haskell_source_file_keeps_primitive_bytearray_unsafe_thaw_arr_hash_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib read_hsc_source_file_strips_spaced_cpp_directives_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib hsc_source -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib read_haskell_source_file_expands_primitive_deriveprim_cpp_macros_chirho -- --test-threads=1"
       ],
-      "result_chirho": "All targeted gates passed: eval_mappend_uses_semigroup_body_chirho passed, adjacent monoid filter passed 7/7, Core layout and selector unit gates passed, and git diff --check passed. Caveat: the two Core unit gates were accidentally launched in parallel but Cargo serialized them on package/artifact locks; do not repeat this pattern under the resource guard. No driver --lib full suite, ghc_bulk, package scan, or full probe run by gpt_chirho."
+      "result_chirho": "All targeted preprocessing gates passed: real clock-0.8.4 System.Clock preprocessing now keeps the active ClockId branch and exports normalize/s2ns; the synthetic spaced-directive HSC fixture passes with an explicit macro definition; primitive ByteArray preprocessing still preserves arr# through parsing/lowering. No driver --lib full suite, ghc_bulk, package scan, or full probe run by gpt_chirho."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1219,6 +1221,7 @@
       {
         "bucket_chirho": "driver-hsc-cpp-preprocessing",
         "count_chirho": 4,
+        "resolved_chirho": "RESOLVED v2.2.36: preprocess_hsc_source_with_options_chirho now strips hsc2hs-only #let helper lines and sanitizes #{...} hsc2hs splices before invoking cpp, so CPP can evaluate real platform/MIN_VERSION branches instead of failing into blind strip_cpp_directives_chirho fallback. The primitive ByteArray arr# guard was corrected from a brittle absolute byte-offset assertion to a semantic source/AST assertion; arr# was already preserved at current HEAD.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "other",
         "representative_tests_chirho": [

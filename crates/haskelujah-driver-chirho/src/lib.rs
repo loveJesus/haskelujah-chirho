@@ -944,7 +944,7 @@ fn strip_hsc_include_directives_chirho(source_chirho: &str) -> String {
                 .strip_prefix('#')
                 .map(|rest_chirho| rest_chirho.trim_start())
                 .unwrap_or_default();
-            !directive_chirho.starts_with("include")
+            !(directive_chirho.starts_with("include") || directive_chirho.starts_with("let"))
         })
         .collect::<Vec<_>>()
         .join("\n")
@@ -956,6 +956,7 @@ fn preprocess_hsc_source_with_options_chirho(
     extra_cpp_options_chirho: &[String],
 ) -> io::Result<String> {
     let stripped_source_chirho = strip_hsc_include_directives_chirho(source_chirho);
+    let sanitized_source_chirho = sanitize_hsc_source_chirho(&stripped_source_chirho);
     let temp_stamp_chirho = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration_chirho| duration_chirho.as_nanos())
@@ -967,7 +968,7 @@ fn preprocess_hsc_source_with_options_chirho(
             ".haskelujah-hsc-preprocess-{}-{temp_stamp_chirho}.hsc",
             std::process::id()
         ));
-    std::fs::write(&temp_path_chirho, stripped_source_chirho)?;
+    std::fs::write(&temp_path_chirho, sanitized_source_chirho)?;
     let output_chirho =
         configure_cpp_command_chirho(&temp_path_chirho, true, extra_cpp_options_chirho).output();
     let _ = std::fs::remove_file(&temp_path_chirho);

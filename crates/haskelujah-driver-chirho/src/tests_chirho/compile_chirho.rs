@@ -2972,10 +2972,10 @@ fn read_haskell_source_file_keeps_primitive_bytearray_unsafe_thaw_arr_hash_chirh
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("primitive ByteArray source should preprocess");
 
-    assert_eq!(
-        &source_chirho[11306..11310],
-        "arr#",
-        "driver preprocessing should keep arr# at the known unsafeThawByteArray offset"
+    assert!(
+        source_chirho.contains("unsafeThawByteArray (ByteArray arr#)")
+            && source_chirho.contains("unsafeCoerce# arr#"),
+        "driver preprocessing should keep arr# in unsafeThawByteArray: {source_chirho}"
     );
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
@@ -6187,6 +6187,7 @@ fn read_hsc_source_file_strips_spaced_cpp_directives_chirho() {
         &file_path_chirho,
         "module System.Clock where\n\
 #  include <time.h>\n\
+#  define CLOCK_PROCESS_CPUTIME_ID 1\n\
 #  ifdef CLOCK_PROCESS_CPUTIME_ID\n\
 clockFlagChirho = 1\n\
 #  endif\n",
