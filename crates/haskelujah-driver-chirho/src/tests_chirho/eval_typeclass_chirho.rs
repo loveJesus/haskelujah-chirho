@@ -873,6 +873,30 @@ fn eval_any_monoid_chirho() {
 }
 
 #[test]
+fn eval_identity_functor_applicative_monad_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import Data.Functor.Identity
+main =
+  runIdentity (fmap (+1) (Identity 2))
+  + runIdentity (pure 3 :: Identity Int)
+  + runIdentity (Identity (+4) <*> Identity 5)
+  + runIdentity (Identity 6 >>= \\x -> Identity (x + 1))
+  + runIdentity (Identity 8 >> Identity 9)
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(31)
+        ),
+        Err(e_chirho) => panic!("identity functor/applicative/monad: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_ordering_monoid_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();

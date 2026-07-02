@@ -306,6 +306,7 @@ impl DictPassCtxChirho {
                     match con_name_chirho.as_str() {
                         "True" | "False" => Some("Bool".to_string()),
                         "LT" | "EQ" | "GT" => Some("Ordering".to_string()),
+                        "Identity" => Some("Identity".to_string()),
                         "Sum" => Some("Sum".to_string()),
                         "Product" => Some("Product".to_string()),
                         "All" => Some("All".to_string()),
@@ -403,6 +404,7 @@ impl DictPassCtxChirho {
                         "True" | "False" => return Some("Bool".to_string()),
                         "Nothing" => return Some("Maybe Int".to_string()),
                         "LT" | "EQ" | "GT" => return Some("Ordering".to_string()),
+                        "Identity" => return Some("Identity".to_string()),
                         "Sum" => return Some("Sum".to_string()),
                         "Product" => return Some("Product".to_string()),
                         "All" => return Some("All".to_string()),
@@ -499,7 +501,7 @@ impl DictPassCtxChirho {
                         }
                         // Constructor applications: App(Just, x) → Maybe <x-type>
                         match name_chirho.as_str() {
-                            "Sum" | "Product" | "All" | "Any" => {
+                            "Identity" | "Sum" | "Product" | "All" | "Any" => {
                                 return Some(name_chirho.clone());
                             }
                             "Just" => {

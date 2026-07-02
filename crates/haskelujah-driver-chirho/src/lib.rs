@@ -3003,10 +3003,20 @@ fn compile_backend_chirho(
     // Phase 5.5: Dictionary-passing transform (desugar typeclass constraints)
     let con_types_chirho = build_con_type_map_chirho(&module_chirho);
     let newtype_info_chirho = build_newtype_info_chirho(&module_chirho);
-    let newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
+    let mut newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
         .values()
         .map(|(con_name_chirho, _)| con_name_chirho.clone())
         .collect();
+    if !con_types_chirho.contains_key("Identity")
+        && module_chirho.imports_chirho.iter().any(|import_chirho| {
+            matches!(
+                import_chirho.module_chirho.full_name_chirho().as_str(),
+                "Data.Functor.Identity" | "Control.Monad.Identity"
+            )
+        })
+    {
+        newtype_cons_chirho.insert("Identity".to_string());
+    }
     let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_full_chirho(
         &desugar_output_chirho.module_chirho,
         desugar_output_chirho.names_chirho,

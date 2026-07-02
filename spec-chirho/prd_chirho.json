@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.16",
+    "prd_version_chirho": "2.2.17",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -27,7 +27,8 @@
       "gpt_chirho (Codex) — WI-004 Ordering Monoid row and mconcat element-key dispatch v2.2.14",
       "claude_chirho (Opus 4.8) — WI-005 Data.Map builtin scheme migration: 13 wired seed_builtins_chirho schemes moved from Int placeholders to real Map k v via map_ty_chirho helper; mapFoldlWithKey'/mapIntersectionWith held as loud int placeholders (unwired runtime) v2.2.15",
       "gpt_chirho (Codex) — stale-handoff preservation, targeted revalidation, formatting, and commit of Claude WI-005 v2.2.15",
-      "gpt_chirho (Codex) — WI-002/WI-015 dispatched bind payload-key propagation through lambda and tuple case alternatives v2.2.16"
+      "gpt_chirho (Codex) — WI-002/WI-015 dispatched bind payload-key propagation through lambda and tuple case alternatives v2.2.16",
+      "gpt_chirho (Codex) — WI-004 Identity Functor/Applicative/Monad body-backed row v2.2.17"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -79,16 +80,14 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "WI-002/WI-015 monad dispatch regression fix: dispatched >>= continuations now carry the proven payload type key into the first lambda binder, and tuple case alternatives seed their element binders from tuple payload keys. This restores Maybe do-block payload arithmetic without widening monad dispatch keys. No full suites run per resource guard.",
+      "scope_chirho": "WI-004 Identity Functor/Applicative/Monad row: imported Identity/runIdentity are body-backed erased newtype wrappers when Data.Functor.Identity or Control.Monad.Identity is imported, Identity feeds type-key inference, and Functor/Applicative/Monad Identity method bodies are generated. No full suites run per resource guard.",
       "commands_chirho": [
+        "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_identity_functor_applicative_monad_chirho -- --test-threads=1",
         "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_maybe_do_dispatch_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_higher_order_on_function_dispatch_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_io_do_effect_chains_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_identity_functor_applicative_monad_chirho -- --test-threads=1 (dirty Identity-row cross-check before stashing)",
-        "rustfmt --config skip_children=true crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs",
+        "rustfmt --check --config skip_children=true crates/haskelujah-core-chirho/src/dict_chirho/mod.rs crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho.rs crates/haskelujah-driver-chirho/src/lib.rs crates/haskelujah-driver-chirho/src/tests_chirho/eval_typeclass_chirho.rs",
         "jq empty spec-chirho/prd_chirho.json && git diff --check"
       ],
-      "result_chirho": "Claude reported probe regression maybe-do => Just 0 after WI-004 line. gpt_chirho isolated the cause by stashing the dirty Identity row and confirming eval_maybe_do_dispatch_chirho still failed on clean eb230556, so Identity was not causal. Fix adds payload-key propagation for dispatched >>= continuations and tuple case alternatives. Clean regression tree (Identity row stashed) gates passed: eval_maybe_do_dispatch_chirho 1/1, eval_higher_order_on_function_dispatch_chirho 1/1, eval_io_do_effect_chains_chirho 1/1. Dirty Identity-row cross-check also passed eval_identity_functor_applicative_monad_chirho 1/1 before stashing. Cargo still emits the pre-existing typing dead_code warning for instantiate_instance_method_expected_ty_chirho. CLI run repros timed out even after a fresh CLI build, so they were not used as acceptance evidence; driver check mode succeeded and in-process eval tests are the gate. No driver --lib full suite, ghc_bulk, package scan, or full probe run (resource guard)."
+      "result_chirho": "Identity row gate passed: eval_identity_functor_applicative_monad_chirho 1/1 covers fmap, pure, <*>, >>=, and >> over Identity. Composition gate also passed: eval_maybe_do_dispatch_chirho 1/1 on top of the v2.2.16 payload-key fix. Cargo still emits the pre-existing typing dead_code warning for instantiate_instance_method_expected_ty_chirho. No driver --lib full suite, ghc_bulk, package scan, or full probe run (resource guard)."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -446,7 +445,7 @@
       "title_chirho": "Per-type instance completion matrix (turn-the-crank recipe)",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed v2.2.14 — Sum/Product/All/Any/Ordering Semigroup/Monoid rows are body-backed and pinned; continue Wave A for Identity/Min/Max/etc.",
+      "status_chirho": "partially landed v2.2.17 — Sum/Product/All/Any/Ordering Semigroup/Monoid rows and Identity Functor/Applicative/Monad row are body-backed and pinned; continue Wave A for Min/Max/etc.",
       "owner_chirho": "gpt_chirho/claude_chirho; future fleet may take individual rows after recipe review (gemini currently removed from session)",
       "problem_chirho": "Many types are class-REGISTERED (class_chirho.rs ~2448-2528, ~2963-2976: STM, Proxy, First, Last, Sum, Product, Identity, transformers...) but lack built instance dicts and/or $prim bodies, so their methods fall to wrong-typed fallbacks or dead dict lambdas. GPT #1388: also audit existing dict fields for placeholders.",
       "fix_design_chirho": [
@@ -454,7 +453,8 @@
         "LANDED v2.2.12: Data.Monoid Sum/getSum and sibling wrapper accessors now have body-backed identity wrappers; interface wrapper constructors Sum/Product/All/Any feed newtype erasure and type-key inference; Sum has $prim_Semigroup_<>_Sum, $prim_Monoid_mempty_Sum, and $prim_Monoid_mconcat_Sum bodies; [Integer] list Semigroup/Monoid rows are seeded/body-backed; method-application rebuilding propagates a proven outer type key to nullary method arguments such as `mempty`.",
         "LANDED v2.2.13: Product, All, and Any now have body-backed Semigroup/Monoid methods; wrapper constructor applications and wrapper list literals feed type-key inference; mconcat strips list element keys only for nested-list and known-wrapper cases so existing list Monoid dispatch remains intact.",
         "LANDED v2.2.14: Ordering now has body-backed left-biased Semigroup, EQ Monoid identity, and mconcat bodies; [Ordering] list literals feed type-key inference and mconcat element-key dispatch without widening list Monoid stripping.",
-        "Wave A: accessors and type-key arms for Identity, Sum, Product, All, Any, Min, Max, Down, Proxy, Const(fmap only), Ordering; Alternative []/Maybe; mconcat element-key fix.",
+        "LANDED v2.2.17: Identity and runIdentity are body-backed erased wrapper/accessor values when imported from Data.Functor.Identity or Control.Monad.Identity; Identity feeds type-key inference and has body-backed Functor, Applicative, and Monad methods.",
+        "Wave A: accessors and type-key arms for Sum, Product, All, Any, Min, Max, Down, Proxy, Const(fmap only), Ordering, Identity; Alternative []/Maybe; mconcat element-key fix.",
         "Corrected audit rule: First and Last wrap Maybe (`First (Maybe a)`, `Last (Maybe a)`), so they are not bare-value newtypes; do not implement fmap/pure/bind as if First a = First a.",
         "Out of mechanical scope until evidence threading: Foldable/Traversable, Dual, context-dependent Semigroup/Monoid bodies, transformer stacks with constrained instances.",
         "For every built instance dict, missing method slots should be loud or name-preserved per WI-014, never silently fresh-id/literal-0."
@@ -489,6 +489,12 @@
           "program_chirho": "import Data.Monoid\nscore x = case x of { LT -> 1; EQ -> 2; GT -> 3 }\nmain = print (score (EQ <> LT) + score (GT <> LT) + score (mempty <> EQ) + score (mconcat [EQ, GT, LT]))",
           "expected_stdout_chirho": "9",
           "landed_chirho": "v2.2.14"
+        },
+        {
+          "test_name_chirho": "eval_identity_functor_applicative_monad_chirho",
+          "program_chirho": "import Data.Functor.Identity\nmain = runIdentity (fmap (+1) (Identity 2)) + runIdentity (pure 3 :: Identity Int) + runIdentity (Identity (+4) <*> Identity 5) + runIdentity (Identity 6 >>= \\x -> Identity (x + 1)) + runIdentity (Identity 8 >> Identity 9)",
+          "expected_stdout_chirho": "31",
+          "landed_chirho": "v2.2.17"
         }
       ],
       "dependencies_chirho": [
@@ -500,10 +506,10 @@
         "complete_functor_applicative_monad_bodies_chirho": [
           "Maybe",
           "[]",
-          "Either"
+          "Either",
+          "Identity"
         ],
         "registered_but_bodyless_or_partial_chirho": [
-          "Identity",
           "STM",
           "Proxy",
           "First",
