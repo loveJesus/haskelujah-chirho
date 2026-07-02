@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-  "prd_version_chirho": "2.2.48",
+    "prd_version_chirho": "2.2.49",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -59,7 +59,8 @@
       "gpt_chirho (Codex) — central interface class-method normalizer extended for standard Eq/Ord/Show/Read/Num/Enum/Bounded/Bits-style classes v2.2.45",
       "gpt_chirho (Codex) — central interface class-method normalizer extended for Floating v2.2.46",
       "gpt_chirho (Codex) — WI-004 Min/Max Monoid row plus WI-007 primitive wrapper-payload force hardening v2.2.47",
-      "gpt_chirho (Codex) — WI-002 refutable do-patterns route failed matches through contextual MonadFail v2.2.48"
+      "gpt_chirho (Codex) — WI-002 refutable do-patterns route failed matches through contextual MonadFail v2.2.48",
+      "gpt_chirho (Codex) — test-harness/CLI parity audit resolved frontend WriterT case as Rust string-layout artifact v2.2.49"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -111,16 +112,16 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "WI-002/WI-004 targeted row: refutable do-pattern binds now emit a `fail` fallback, and dict rewrite dispatches `fail` from the already-proven monad-chain context so Maybe returns Nothing and list do filters mismatches without weakening IO fallback.",
+      "scope_chirho": "Test-harness/CLI parity audit for `frontend_writer_t_nested_dollar_callcc_chirho`: the apparent helper-vs-CLI discrepancy was a Rust string-continuation layout artifact. The test source intended `mempty` to be a class method, but the runtime string stripped its indentation; keeping the two spaces inside the string segment makes the in-memory test match fresh CLI `check`/`compile`.",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib monadfail -- --test-threads=1",
-        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib monad -- --test-threads=1",
-        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_io_do_effect_chains_chirho -- --test-threads=1",
-        "rustfmt --edition 2024 --check crates/haskelujah-core-chirho/src/desugar_chirho.rs crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs crates/haskelujah-driver-chirho/src/tests_chirho/eval_typeclass_chirho.rs",
-        "jq empty spec-chirho/prd_chirho.json",
-        "git diff --check"
+        "CARGO_BUILD_JOBS=2 cargo build -p haskelujah --bin haskelujah",
+        "target/debug/haskelujah check /tmp/writer-parity-fresh-chirho-*/WriterLazyMiniChirho.hs",
+        "target/debug/haskelujah compile /tmp/writer-parity-fresh-chirho-*/WriterLazyMiniChirho.hs",
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_writer_t_nested_dollar_callcc_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_writer_t_lift_callcc_and_catch_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_builtin_readert_partial_application_surface_typechecks_chirho -- --test-threads=1"
       ],
-      "result_chirho": "Targeted MonadFail, broader monad filter, and IO do-chain sentinel passed under resource guard. Broader probe/full driver impact remains unmeasured until Claude or L.J. requests a probe gate; no heavy suite was run."
+      "result_chirho": "The WriterT nested callCC test now passes without compiler semantics changes. This item is resolved as test hygiene, not a true compiler or CLI parity failure. Broader probe/full driver impact remains unmeasured by this targeted pass."
     },
     "workspace_chirho": {
       "crates_chirho": 25,

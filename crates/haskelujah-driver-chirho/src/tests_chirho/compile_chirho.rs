@@ -3654,8 +3654,7 @@ fn frontend_writer_t_nested_dollar_callcc_chirho() {
     let result_chirho = compile_source_chirho(
         "module WriterLazyMini where\n\
 type CallCC m a b = ((a -> m b) -> m a) -> m a\n\
-class Monoid w where\n\
-  mempty :: w\n\
+class Monoid w where\n  mempty :: w\n\
 newtype WriterT w m a = WriterT { runWriterT :: m (a,w) }\n\
 liftCallCC :: (Monoid w) => CallCC m (a,w) (b,w) -> CallCC (WriterT w m) a b\n\
 liftCallCC callCC f = WriterT $ callCC $ \\ c -> runWriterT (f (\\ a -> WriterT (c (a, mempty))))\n",
