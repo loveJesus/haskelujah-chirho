@@ -926,6 +926,16 @@ impl DictPassCtxChirho {
             return prim_id_chirho;
         }
 
+        if class_name_chirho == "Monoid" && method_name_chirho == "mappend" {
+            let semigroup_prim_name_chirho =
+                format!("$prim_Semigroup_<>_{}", type_key_chirho);
+            if let Some(prim_id_chirho) =
+                self.lookup_body_backed_name_id_chirho(&semigroup_prim_name_chirho)
+            {
+                return prim_id_chirho;
+            }
+        }
+
         self.generate_missing_method_binding_chirho(
             class_env_chirho,
             class_name_chirho,

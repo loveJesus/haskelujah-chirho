@@ -2881,6 +2881,20 @@ impl ClassEnvChirho {
             var_chirho: mon_var_chirho,
             methods_chirho: HashMap::from([
                 (
+                    "mappend".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![mon_var_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [
+                                TyChirho::VarChirho(mon_var_chirho),
+                                TyChirho::VarChirho(mon_var_chirho),
+                            ],
+                            TyChirho::VarChirho(mon_var_chirho),
+                        ),
+                    },
+                ),
+                (
                     "mempty".to_string(),
                     SchemeChirho {
                         vars_chirho: vec![mon_var_chirho],

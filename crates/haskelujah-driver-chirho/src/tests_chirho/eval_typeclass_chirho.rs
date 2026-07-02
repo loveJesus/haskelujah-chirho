@@ -1115,6 +1115,29 @@ main =
 }
 
 #[test]
+fn eval_mappend_uses_semigroup_body_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import Data.Monoid
+main =
+  length (mappend [1,2] [3,4])
+  + getSum (mappend (Sum 3) (Sum 4))
+  + getSum (mappend mempty (Sum 5))
+  + appEndo (mappend (Endo (+1)) (Endo (*2))) 10
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(37)
+        ),
+        Err(e_chirho) => panic!("mappend semigroup body: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_monoid_mconcat_chirho() {
     // mconcat [[1,2],[3],[4,5]] should give [1,2,3,4,5] → length 5
     use crate::eval_source_chirho;
