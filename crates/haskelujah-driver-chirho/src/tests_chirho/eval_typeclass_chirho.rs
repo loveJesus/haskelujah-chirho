@@ -897,6 +897,30 @@ main =
 }
 
 #[test]
+fn eval_down_functor_applicative_monad_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import Data.Ord
+main =
+  getDown (fmap (+1) (Down 2))
+  + getDown (pure 3 :: Down Int)
+  + getDown (Down (+4) <*> Down 5)
+  + getDown (Down 6 >>= \\x -> Down (x + 1))
+  + getDown (Down 8 >> Down 9)
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(31)
+        ),
+        Err(e_chirho) => panic!("down functor/applicative/monad: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_proxy_functor_applicative_monad_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();

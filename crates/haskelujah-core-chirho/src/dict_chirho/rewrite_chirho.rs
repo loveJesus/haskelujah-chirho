@@ -672,7 +672,7 @@ impl DictPassCtxChirho {
                 let is_con_head_chirho = self.con_types_chirho.contains_key(name_chirho)
                     || matches!(
                         name_chirho.as_str(),
-                        "Just" | "Left" | "Right" | ":" | "(,)" | "(,,)" | "(,,,)"
+                        "Just" | "Left" | "Right" | "Down" | ":" | "(,)" | "(,,)" | "(,,,)"
                     )
                     || name_chirho.starts_with("$tuple");
                 if is_con_head_chirho {
@@ -750,9 +750,11 @@ impl DictPassCtxChirho {
                 con_name_chirho,
                 args_chirho,
             } => match con_name_chirho.as_str() {
-                "Just" | "Right" | "Identity" => args_chirho.first().and_then(|arg_chirho| {
-                    self.infer_type_key_for_rewrite_chirho(arg_chirho, local_type_keys_chirho)
-                }),
+                "Just" | "Right" | "Identity" | "Down" => {
+                    args_chirho.first().and_then(|arg_chirho| {
+                        self.infer_type_key_for_rewrite_chirho(arg_chirho, local_type_keys_chirho)
+                    })
+                }
                 ":" => Self::list_payload_type_key_chirho(value_key_chirho),
                 _ => Self::payload_type_key_from_value_key_chirho(value_key_chirho),
             },
@@ -772,7 +774,7 @@ impl DictPassCtxChirho {
                     return Self::payload_type_key_from_value_key_chirho(value_key_chirho);
                 };
                 match self.names_chirho.get(head_id_chirho).map(String::as_str) {
-                    Some("Just" | "Right" | "Identity") => {
+                    Some("Just" | "Right" | "Identity" | "Down") => {
                         Self::payload_type_key_from_value_key_chirho(value_key_chirho)
                     }
                     Some(":") => Self::list_payload_type_key_chirho(value_key_chirho),

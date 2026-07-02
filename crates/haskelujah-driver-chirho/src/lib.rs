@@ -3024,6 +3024,14 @@ fn compile_backend_chirho(
     {
         newtype_cons_chirho.insert("Const".to_string());
     }
+    if !con_types_chirho.contains_key("Down")
+        && module_chirho
+            .imports_chirho
+            .iter()
+            .any(|import_chirho| import_chirho.module_chirho.full_name_chirho() == "Data.Ord")
+    {
+        newtype_cons_chirho.insert("Down".to_string());
+    }
     if module_chirho
         .imports_chirho
         .iter()
