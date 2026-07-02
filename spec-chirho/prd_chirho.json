@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.58",
+    "prd_version_chirho": "2.2.59",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -69,7 +69,8 @@
       "gpt_chirho (Codex) — default-method literal-0 bucket rechecked stale-green and closed v2.2.55",
       "gpt_chirho (Codex) — Cranelift string traversal fixed by IO sequencing and thunked-tail pack forcing v2.2.56",
       "gpt_chirho (Codex) — multi-module constrained export calls now carry dict-param metadata through imported names and module ID ranges v2.2.57",
-      "gpt_chirho (Codex) — narrowed imported dict-param metadata to an explicit cross-module allowlist after d09a4735 probe regression v2.2.58"
+      "gpt_chirho (Codex) — narrowed imported dict-param metadata to an explicit cross-module allowlist after d09a4735 probe regression v2.2.58",
+      "gpt_chirho (Codex) — PRD consistency cleanup for fully resolved Map and HSC/CPP bucket counts v2.2.59"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -1199,7 +1200,7 @@
       },
       {
         "bucket_chirho": "map-builtin-mistyping",
-        "count_chirho": 20,
+        "count_chirho": 0,
         "resolved_chirho": "RESOLVED v2.2.15/v2.2.28/v2.2.29/v2.2.30 (claude_chirho + gpt_chirho, WI-005): all 19 original E0200 typing reds flipped green by migrating wired seed_builtins_chirho Map schemes from Int placeholders to real Map k v (map_ty_chirho helper). v2.2.28 wired mapFoldlWithKey' by reusing mapFoldlWithKey#; v2.2.29 wired mapIntersectionWith# and restored its real Map k v scheme. v2.2.30 fixed the qualified Data.Map real-export surface (`M.insert`, `M.fromList`, `M.lookup`, `M.size`, `M.toList`) by seeding qualified desugar aliases and Core Prelude aliases to backed map* wrappers. No WI-005 vaporware Map op remains in this bucket. eval_map targeted at v2.2.15: 47->66 of 68; the 2 residual are OTHER buckets (eval_map_basic runtime IO-output, eval_map_maybe user-defined mapMaybe).",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "typing",
@@ -1297,7 +1298,7 @@
       },
       {
         "bucket_chirho": "driver-hsc-cpp-preprocessing",
-        "count_chirho": 4,
+        "count_chirho": 0,
         "resolved_chirho": "RESOLVED v2.2.36: preprocess_hsc_source_with_options_chirho now strips hsc2hs-only #let helper lines and sanitizes #{...} hsc2hs splices before invoking cpp, so CPP can evaluate real platform/MIN_VERSION branches instead of failing into blind strip_cpp_directives_chirho fallback. The primitive ByteArray arr# guard was corrected from a brittle absolute byte-offset assertion to a semantic source/AST assertion; arr# was already preserved at current HEAD.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "other",
