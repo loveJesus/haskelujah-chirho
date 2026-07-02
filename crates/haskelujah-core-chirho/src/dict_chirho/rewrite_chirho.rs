@@ -883,10 +883,10 @@ impl DictPassCtxChirho {
                 if let Some((method_id_chirho, args_chirho, type_key_hint_chirho)) =
                     self.collect_method_app_chirho(expr_chirho)
                 {
+                    let method_name_chirho = self.names_chirho.get(&method_id_chirho).cloned();
                     // Infer the type key, combining multiple argument types
                     // for multi-parameter type classes.
                     let type_key_chirho = {
-                        let method_name_chirho = self.names_chirho.get(&method_id_chirho).cloned();
                         let class_name_chirho =
                             method_name_chirho.as_deref().and_then(|n_chirho| {
                                 self.class_method_selector_for_name_chirho(n_chirho)
@@ -925,6 +925,32 @@ impl DictPassCtxChirho {
                                 })
                             })
                         }
+                    };
+
+                    let type_key_chirho = match (method_name_chirho.as_deref(), type_key_chirho) {
+                        (Some(method_name_chirho), Some(key_chirho)) => {
+                            let short_name_chirho = method_name_chirho
+                                .rsplit('.')
+                                .next()
+                                .unwrap_or(method_name_chirho);
+                            if short_name_chirho == "mconcat"
+                                && key_chirho.starts_with('[')
+                                && key_chirho.ends_with(']')
+                                && key_chirho.len() > 2
+                            {
+                                let elem_key_chirho = &key_chirho[1..key_chirho.len() - 1];
+                                if elem_key_chirho.starts_with('[')
+                                    || matches!(elem_key_chirho, "Sum" | "Product" | "All" | "Any")
+                                {
+                                    Some(elem_key_chirho.to_string())
+                                } else {
+                                    Some(key_chirho)
+                                }
+                            } else {
+                                Some(key_chirho)
+                            }
+                        }
+                        (_, key_chirho) => key_chirho,
                     };
 
                     let type_key_override_chirho = type_key_chirho.as_deref();

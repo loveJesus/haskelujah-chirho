@@ -816,14 +816,59 @@ fn eval_monoid_mempty_list_chirho() {
 fn eval_sum_monoid_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nimport Data.Monoid\nmain = getSum (Sum 3 <> Sum 4)\n";
+    let src_chirho = "module Test where\nimport Data.Monoid\nmain = getSum (Sum 3 <> Sum 4) + getSum (mconcat [Sum 5, Sum 6]) + getSum (mempty <> Sum 7)\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
             val_chirho,
-            haskelujah_runtime_chirho::ValueChirho::IntChirho(7)
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(25)
         ),
         Err(e_chirho) => panic!("sum monoid: {}", e_chirho),
+    }
+}
+
+#[test]
+fn eval_product_monoid_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "module Test where\nimport Data.Monoid\nmain = getProduct (Product 3 <> Product 4) + getProduct (mconcat [Product 2, Product 5]) + getProduct (mempty <> Product 7)\n";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(29)
+        ),
+        Err(e_chirho) => panic!("product monoid: {}", e_chirho),
+    }
+}
+
+#[test]
+fn eval_all_monoid_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "module Test where\nimport Data.Monoid\nmain = if getAll (mempty <> All True <> mconcat [All True, All False]) then 1 else 0\n";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(0)
+        ),
+        Err(e_chirho) => panic!("all monoid: {}", e_chirho),
+    }
+}
+
+#[test]
+fn eval_any_monoid_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "module Test where\nimport Data.Monoid\nmain = if getAny (mempty <> Any False <> mconcat [Any False, Any True]) then 1 else 0\n";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(1)
+        ),
+        Err(e_chirho) => panic!("any monoid: {}", e_chirho),
     }
 }
 

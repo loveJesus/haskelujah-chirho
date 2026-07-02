@@ -377,6 +377,10 @@ impl DictPassCtxChirho {
                                     Some("Char") => Some("[Char]".to_string()),
                                     Some("Double") => Some("[Double]".to_string()),
                                     Some("Bool") => Some("[Bool]".to_string()),
+                                    Some("Sum") => Some("[Sum]".to_string()),
+                                    Some("Product") => Some("[Product]".to_string()),
+                                    Some("All") => Some("[All]".to_string()),
+                                    Some("Any") => Some("[Any]".to_string()),
                                     _ => Some("[Int]".to_string()), // default
                                 }
                             } else {
@@ -494,6 +498,9 @@ impl DictPassCtxChirho {
                         }
                         // Constructor applications: App(Just, x) → Maybe <x-type>
                         match name_chirho.as_str() {
+                            "Sum" | "Product" | "All" | "Any" => {
+                                return Some(name_chirho.clone());
+                            }
                             "Just" => {
                                 let inner_chirho = self
                                     .infer_type_key_chirho(arg_chirho)
