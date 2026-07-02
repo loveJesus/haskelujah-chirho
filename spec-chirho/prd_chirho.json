@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.21",
+    "prd_version_chirho": "2.2.22",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -32,7 +32,8 @@
       "gpt_chirho (Codex) — WI-004 Proxy Functor/Applicative/Monad body-backed row + probe baseline note v2.2.18",
       "gpt_chirho (Codex) — WI-004 Const Functor fmap-only body-backed row v2.2.19",
       "gpt_chirho (Codex) — WI-004 Alternative []/Maybe body-backed row v2.2.20",
-      "gpt_chirho (Codex) — WI-004 Min/Max Semigroup body-backed row v2.2.21"
+      "gpt_chirho (Codex) — WI-004 Min/Max Semigroup body-backed row v2.2.21",
+      "gpt_chirho (Codex) — WI-004 First/Last Maybe-payload Semigroup/Monoid body-backed row v2.2.22"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -84,15 +85,14 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "WI-004 Min/Max Semigroup row: Data.Semigroup Min/Max constructors and getMin/getMax accessors are body-backed erased wrappers, Data.Semigroup imports seed Min/Max as erased interface newtypes, Min/Max feed type-key dispatch, and $prim_Semigroup_<>_Min/Max select min/max payloads. Monoid remains intentionally out of scope pending Bounded evidence. No full suites or full probe run per resource guard.",
+      "scope_chirho": "WI-004 First/Last Maybe-payload Semigroup/Monoid row: Data.Monoid First/Last constructors and getFirst/getLast accessors are body-backed erased wrappers, Data.Monoid imports seed First/Last as erased interface newtypes, First/Last feed type-key dispatch, and $prim Semigroup/Monoid bodies preserve the Haskell semantics that First/Last wrap Maybe payloads. No full suites or full probe run per resource guard.",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_min_max_semigroup_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_alternative_maybe_list_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_sum_monoid_chirho -- --test-threads=1 && CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_product_monoid_chirho -- --test-threads=1 && CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_all_monoid_chirho -- --test-threads=1 && CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_any_monoid_chirho -- --test-threads=1 && CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_ordering_monoid_chirho -- --test-threads=1",
-        "rustfmt --check --config skip_children=true crates/haskelujah-core-chirho/src/dict_chirho/mod.rs crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho.rs crates/haskelujah-driver-chirho/src/lib.rs crates/haskelujah-driver-chirho/src/tests_chirho/eval_typeclass_chirho.rs",
+        "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_first_last_monoid_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_min_max_semigroup_chirho -- --test-threads=1 && CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_alternative_maybe_list_chirho -- --test-threads=1 && CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_sum_monoid_chirho -- --test-threads=1 && CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_ordering_monoid_chirho -- --test-threads=1",
+        "rustfmt --check --config skip_children=true crates/haskelujah-core-chirho/src/dict_chirho/mod.rs crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho.rs crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs crates/haskelujah-driver-chirho/src/lib.rs crates/haskelujah-driver-chirho/src/tests_chirho/eval_typeclass_chirho.rs",
         "jq empty spec-chirho/prd_chirho.json && git diff --check"
       ],
-      "result_chirho": "Min/Max Semigroup row gate passed: eval_min_max_semigroup_chirho 1/1 covers Min choosing the smaller payload and Max choosing the larger payload. Regression gates also passed: eval_alternative_maybe_list_chirho 1/1 plus Sum/Product/All/Any/Ordering Semigroup/Monoid pins. Cargo still emits the pre-existing typing dead_code warning for instantiate_instance_method_expected_ty_chirho. No driver --lib full suite, ghc_bulk, package scan, or full probe run by gpt_chirho (resource guard)."
+      "result_chirho": "First/Last Maybe-payload Semigroup/Monoid row gate passed: eval_first_last_monoid_chirho 1/1 covers First choosing the first Just, Last choosing the last Just, mempty as Nothing, and mconcat over Maybe payloads. Regression gates also passed: Min/Max Semigroup, Alternative []/Maybe, Sum Monoid, and Ordering Monoid pins. Cargo still emits the pre-existing typing dead_code warning for instantiate_instance_method_expected_ty_chirho. No driver --lib full suite, ghc_bulk, package scan, or full probe run by gpt_chirho (resource guard)."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -450,7 +450,7 @@
       "title_chirho": "Per-type instance completion matrix (turn-the-crank recipe)",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed v2.2.21 — Sum/Product/All/Any/Ordering Semigroup/Monoid rows, Min/Max Semigroup rows, Identity and Proxy Functor/Applicative/Monad rows, Const Functor fmap-only row, and Alternative []/Maybe rows are body-backed and pinned; continue Wave A for Down/etc.",
+      "status_chirho": "partially landed v2.2.22 — Sum/Product/All/Any/Ordering Semigroup/Monoid rows, First/Last Maybe-payload Semigroup/Monoid rows, Min/Max Semigroup rows, Identity and Proxy Functor/Applicative/Monad rows, Const Functor fmap-only row, and Alternative []/Maybe rows are body-backed and pinned; continue Wave A for Down/etc.",
       "owner_chirho": "gpt_chirho/claude_chirho; future fleet may take individual rows after recipe review (gemini currently removed from session)",
       "problem_chirho": "Many types are class-REGISTERED (class_chirho.rs ~2448-2528, ~2963-2976: STM, Proxy, First, Last, Sum, Product, Identity, transformers...) but lack built instance dicts and/or $prim bodies, so their methods fall to wrong-typed fallbacks or dead dict lambdas. GPT #1388: also audit existing dict fields for placeholders.",
       "fix_design_chirho": [
@@ -463,6 +463,7 @@
         "LANDED v2.2.19: Const and getConst are body-backed erased wrapper/accessor values when imported from Data.Functor.Const; Const feeds type-key inference and has a body-backed Functor fmap method that preserves the stored payload. Applicative/Monad are intentionally excluded because they require Monoid evidence for the accumulator parameter.",
         "LANDED v2.2.20: Alternative [] and Maybe now have body-backed empty and <|> methods; direct <|> applications dispatch by either operand's higher-kinded value shape, and typed method arguments such as empty are rewritten under the selected type key.",
         "LANDED v2.2.21: Data.Semigroup Min/Max constructors and getMin/getMax accessors are body-backed erased wrappers; Min/Max feed type-key inference and have body-backed Semigroup <> methods over Int payloads. Monoid remains intentionally excluded because it needs Bounded evidence.",
+        "LANDED v2.2.22: Data.Monoid First/Last constructors and getFirst/getLast accessors are body-backed erased wrappers; First/Last feed type-key inference and have body-backed Maybe-payload Semigroup/Monoid methods. This follows the corrected audit rule: First/Last wrap Maybe values, not bare values.",
         "Wave A: accessors and type-key arms for Sum, Product, All, Any, Min, Max, Down, Proxy, Const(fmap only), Ordering, Identity; Alternative []/Maybe; mconcat element-key fix.",
         "Corrected audit rule: First and Last wrap Maybe (`First (Maybe a)`, `Last (Maybe a)`), so they are not bare-value newtypes; do not implement fmap/pure/bind as if First a = First a.",
         "Out of mechanical scope until evidence threading: Foldable/Traversable, Dual, context-dependent Semigroup/Monoid bodies, transformer stacks with constrained instances.",
@@ -528,6 +529,12 @@
           "program_chirho": "import Data.Semigroup\nmain = getMin (Min 4 <> Min 2) + getMin (Min 9 <> Min 12) + getMax (Max 4 <> Max 2) + getMax (Max 9 <> Max 12)",
           "expected_stdout_chirho": "27",
           "landed_chirho": "v2.2.21"
+        },
+        {
+          "test_name_chirho": "eval_first_last_monoid_chirho",
+          "program_chirho": "import Data.Monoid\nscoreMaybe m = case m of { Nothing -> 0; Just x -> x }\nmain = scoreMaybe (getFirst (First Nothing <> First (Just 4))) + scoreMaybe (getFirst (First (Just 7) <> First (Just 9))) + scoreMaybe (getFirst (mempty <> First (Just 5))) + scoreMaybe (getFirst (mconcat [First Nothing, First (Just 6), First (Just 8)])) + scoreMaybe (getLast (Last Nothing <> Last (Just 4))) + scoreMaybe (getLast (Last (Just 7) <> Last (Just 9))) + scoreMaybe (getLast (mempty <> Last (Just 5))) + scoreMaybe (getLast (mconcat [Last (Just 6), Last Nothing, Last (Just 8)]))",
+          "expected_stdout_chirho": "48",
+          "landed_chirho": "v2.2.22"
         }
       ],
       "dependencies_chirho": [
@@ -553,6 +560,10 @@
         "complete_semigroup_only_bodies_chirho": [
           "Min",
           "Max"
+        ],
+        "complete_maybe_payload_semigroup_monoid_bodies_chirho": [
+          "First",
+          "Last"
         ],
         "registered_but_bodyless_or_partial_chirho": [
           "STM",

@@ -992,6 +992,36 @@ main =
 }
 
 #[test]
+fn eval_first_last_monoid_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import Data.Monoid
+scoreMaybe m = case m of
+  Nothing -> 0
+  Just x -> x
+main =
+  scoreMaybe (getFirst (First Nothing <> First (Just 4)))
+  + scoreMaybe (getFirst (First (Just 7) <> First (Just 9)))
+  + scoreMaybe (getFirst (mempty <> First (Just 5)))
+  + scoreMaybe (getFirst (mconcat [First Nothing, First (Just 6), First (Just 8)]))
+  + scoreMaybe (getLast (Last Nothing <> Last (Just 4)))
+  + scoreMaybe (getLast (Last (Just 7) <> Last (Just 9)))
+  + scoreMaybe (getLast (mempty <> Last (Just 5)))
+  + scoreMaybe (getLast (mconcat [Last (Just 6), Last Nothing, Last (Just 8)]))
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(48)
+        ),
+        Err(e_chirho) => panic!("first/last monoid: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_ordering_monoid_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();

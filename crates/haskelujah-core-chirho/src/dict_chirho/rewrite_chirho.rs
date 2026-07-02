@@ -1208,7 +1208,13 @@ impl DictPassCtxChirho {
                                 if elem_key_chirho.starts_with('[')
                                     || matches!(
                                         elem_key_chirho,
-                                        "Ordering" | "Sum" | "Product" | "All" | "Any"
+                                        "Ordering"
+                                            | "Sum"
+                                            | "Product"
+                                            | "All"
+                                            | "Any"
+                                            | "First"
+                                            | "Last"
                                     )
                                 {
                                     Some(elem_key_chirho.to_string())

@@ -315,6 +315,8 @@ impl DictPassCtxChirho {
                         "Any" => Some("Any".to_string()),
                         "Min" => Some("Min".to_string()),
                         "Max" => Some("Max".to_string()),
+                        "First" => Some("First".to_string()),
+                        "Last" => Some("Last".to_string()),
                         "Nothing" => Some("Maybe Int".to_string()),
                         "Left" => {
                             if let Some(inner_chirho) = args_chirho.first() {
@@ -387,6 +389,10 @@ impl DictPassCtxChirho {
                                     Some("Product") => Some("[Product]".to_string()),
                                     Some("All") => Some("[All]".to_string()),
                                     Some("Any") => Some("[Any]".to_string()),
+                                    Some("Min") => Some("[Min]".to_string()),
+                                    Some("Max") => Some("[Max]".to_string()),
+                                    Some("First") => Some("[First]".to_string()),
+                                    Some("Last") => Some("[Last]".to_string()),
                                     _ => Some("[Int]".to_string()), // default
                                 }
                             } else {
@@ -417,6 +423,8 @@ impl DictPassCtxChirho {
                         "Any" => return Some("Any".to_string()),
                         "Min" => return Some("Min".to_string()),
                         "Max" => return Some("Max".to_string()),
+                        "First" => return Some("First".to_string()),
+                        "Last" => return Some("Last".to_string()),
                         _ => {}
                     }
                 }
@@ -510,7 +518,7 @@ impl DictPassCtxChirho {
                         // Constructor applications: App(Just, x) → Maybe <x-type>
                         match name_chirho.as_str() {
                             "Identity" | "Const" | "Sum" | "Product" | "All" | "Any" | "Min"
-                            | "Max" => return Some(name_chirho.clone()),
+                            | "Max" | "First" | "Last" => return Some(name_chirho.clone()),
                             "Just" => {
                                 let inner_chirho = self
                                     .infer_type_key_chirho(arg_chirho)
