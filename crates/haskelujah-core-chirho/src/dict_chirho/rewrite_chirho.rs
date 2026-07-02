@@ -192,6 +192,24 @@ impl DictPassCtxChirho {
                     }
                 }
             }
+            (AltConChirho::DataConChirho(con_name_chirho), binders_chirho)
+                if Self::is_tuple_constructor_name_chirho(con_name_chirho) =>
+            {
+                if let Some(scrutinee_tuple_key_chirho) = scrutinee_type_key_chirho {
+                    if let Some(elem_type_keys_chirho) =
+                        Self::tuple_payload_type_keys_chirho(&scrutinee_tuple_key_chirho)
+                    {
+                        if elem_type_keys_chirho.len() == binders_chirho.len() {
+                            for (binder_chirho, elem_type_key_chirho) in
+                                binders_chirho.iter().zip(elem_type_keys_chirho.into_iter())
+                            {
+                                alt_type_keys_chirho
+                                    .insert(binder_chirho.id_chirho, elem_type_key_chirho);
+                            }
+                        }
+                    }
+                }
+            }
             (AltConChirho::DataConChirho(con_name_chirho), [inner_binder_chirho])
                 if con_name_chirho == "Just" =>
             {
@@ -633,6 +651,159 @@ impl DictPassCtxChirho {
         }
     }
 
+    fn is_tuple_constructor_name_chirho(name_chirho: &str) -> bool {
+        name_chirho == "(,)"
+            || name_chirho == "(,,)"
+            || name_chirho == "(,,,)"
+            || name_chirho.starts_with("$tuple")
+    }
+
+    fn tuple_payload_type_keys_chirho(value_key_chirho: &str) -> Option<Vec<String>> {
+        let trimmed_chirho = value_key_chirho.trim();
+        if !trimmed_chirho.starts_with('(')
+            || !trimmed_chirho.ends_with(')')
+            || trimmed_chirho.len() <= 2
+        {
+            return None;
+        }
+
+        let inner_chirho = &trimmed_chirho[1..trimmed_chirho.len() - 1];
+        let mut parts_chirho = Vec::new();
+        let mut depth_chirho = 0i32;
+        let mut start_chirho = 0usize;
+        let mut saw_comma_chirho = false;
+        for (idx_chirho, ch_chirho) in inner_chirho.char_indices() {
+            match ch_chirho {
+                '(' | '[' => depth_chirho += 1,
+                ')' | ']' => depth_chirho -= 1,
+                ',' if depth_chirho == 0 => {
+                    saw_comma_chirho = true;
+                    parts_chirho.push(inner_chirho[start_chirho..idx_chirho].trim().to_string());
+                    start_chirho = idx_chirho + ch_chirho.len_utf8();
+                }
+                _ => {}
+            }
+        }
+        if !saw_comma_chirho {
+            return None;
+        }
+
+        parts_chirho.push(inner_chirho[start_chirho..].trim().to_string());
+        if parts_chirho
+            .iter()
+            .any(|part_chirho| part_chirho.is_empty())
+        {
+            return None;
+        }
+        Some(parts_chirho)
+    }
+
+    fn monad_payload_type_key_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        value_key_chirho: &str,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+    ) -> Option<String> {
+        match expr_chirho {
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => self.monad_payload_type_key_chirho(
+                inner_chirho,
+                value_key_chirho,
+                local_type_keys_chirho,
+            ),
+            CoreExprChirho::ConAppChirho {
+                con_name_chirho,
+                args_chirho,
+            } => match con_name_chirho.as_str() {
+                "Just" | "Right" | "Identity" => args_chirho.first().and_then(|arg_chirho| {
+                    self.infer_type_key_for_rewrite_chirho(arg_chirho, local_type_keys_chirho)
+                }),
+                ":" => Self::list_payload_type_key_chirho(value_key_chirho),
+                _ => Self::payload_type_key_from_value_key_chirho(value_key_chirho),
+            },
+            CoreExprChirho::AppChirho { .. } => {
+                let mut cur_chirho = expr_chirho;
+                while let CoreExprChirho::AppChirho { fun_chirho, .. } = cur_chirho {
+                    cur_chirho = fun_chirho;
+                }
+                while let CoreExprChirho::TyAppChirho {
+                    expr_chirho: inner_chirho,
+                    ..
+                } = cur_chirho
+                {
+                    cur_chirho = inner_chirho;
+                }
+                let CoreExprChirho::VarChirho(head_id_chirho) = cur_chirho else {
+                    return Self::payload_type_key_from_value_key_chirho(value_key_chirho);
+                };
+                match self.names_chirho.get(head_id_chirho).map(String::as_str) {
+                    Some("Just" | "Right" | "Identity") => {
+                        Self::payload_type_key_from_value_key_chirho(value_key_chirho)
+                    }
+                    Some(":") => Self::list_payload_type_key_chirho(value_key_chirho),
+                    _ => Self::payload_type_key_from_value_key_chirho(value_key_chirho),
+                }
+            }
+            _ => Self::payload_type_key_from_value_key_chirho(value_key_chirho),
+        }
+    }
+
+    fn payload_type_key_from_value_key_chirho(value_key_chirho: &str) -> Option<String> {
+        let trimmed_chirho = value_key_chirho.trim();
+        if let Some(inner_chirho) = Self::list_payload_type_key_chirho(trimmed_chirho) {
+            return Some(inner_chirho);
+        }
+        if let Some(inner_chirho) = trimmed_chirho.strip_prefix("Maybe ") {
+            return Some(inner_chirho.to_string());
+        }
+        if let Some(rest_chirho) = trimmed_chirho.strip_prefix("Either ") {
+            return rest_chirho
+                .split_whitespace()
+                .last()
+                .map(|payload_chirho| payload_chirho.to_string());
+        }
+        None
+    }
+
+    fn list_payload_type_key_chirho(value_key_chirho: &str) -> Option<String> {
+        let trimmed_chirho = value_key_chirho.trim();
+        if trimmed_chirho.starts_with('[')
+            && trimmed_chirho.ends_with(']')
+            && trimmed_chirho.len() > 2
+        {
+            return Some(trimmed_chirho[1..trimmed_chirho.len() - 1].to_string());
+        }
+        None
+    }
+
+    fn extend_first_lambda_type_key_chirho(
+        expr_chirho: &CoreExprChirho,
+        payload_key_chirho: &str,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+    ) -> HashMap<CoreIdChirho, String> {
+        let mut extended_chirho = local_type_keys_chirho.clone();
+        let mut cur_chirho = expr_chirho;
+        loop {
+            match cur_chirho {
+                CoreExprChirho::LamChirho { binder_chirho, .. } => {
+                    extended_chirho.insert(binder_chirho.id_chirho, payload_key_chirho.to_string());
+                    break;
+                }
+                CoreExprChirho::TyLamChirho { body_chirho, .. }
+                | CoreExprChirho::TyAppChirho {
+                    expr_chirho: body_chirho,
+                    ..
+                } => {
+                    cur_chirho = body_chirho;
+                }
+                _ => break,
+            }
+        }
+        extended_chirho
+    }
+
     /// Dispatch a higher-kinded class method to the correct per-type instance
     /// body based on the type key of its dispatch argument.
     /// The method otherwise resolves to a monomorphic default binding, which is
@@ -770,18 +941,53 @@ impl DictPassCtxChirho {
                 .borrow_mut()
                 .push(head_key_chirho.clone());
         }
+        let bind_payload_key_chirho = if head_name_chirho == ">>=" {
+            self.monad_payload_type_key_chirho(
+                dispatch_arg_chirho,
+                &value_key_chirho,
+                local_type_keys_chirho,
+            )
+        } else {
+            None
+        };
         // Rebuild the application with the instance body as head; rewrite args.
         let mut result_chirho = CoreExprChirho::VarChirho(inst_id_chirho);
-        for a_chirho in &args_chirho {
-            result_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(result_chirho),
-                arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
+        for (idx_chirho, a_chirho) in args_chirho.iter().enumerate() {
+            let rewritten_arg_chirho = if idx_chirho == 1 && head_name_chirho == ">>=" {
+                if let Some(payload_key_chirho) = bind_payload_key_chirho.as_deref() {
+                    let continuation_type_keys_chirho = Self::extend_first_lambda_type_key_chirho(
+                        a_chirho,
+                        payload_key_chirho,
+                        local_type_keys_chirho,
+                    );
+                    self.rewrite_method_refs_with_locals_chirho(
+                        a_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        &continuation_type_keys_chirho,
+                        local_instance_dicts_chirho,
+                    )
+                } else {
+                    self.rewrite_method_refs_with_locals_chirho(
+                        a_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_type_keys_chirho,
+                        local_instance_dicts_chirho,
+                    )
+                }
+            } else {
+                self.rewrite_method_refs_with_locals_chirho(
                     a_chirho,
                     dict_vars_chirho,
                     evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
-                )),
+                )
+            };
+            result_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(result_chirho),
+                arg_chirho: Box::new(rewritten_arg_chirho),
             };
         }
         if is_monad_chain_chirho {

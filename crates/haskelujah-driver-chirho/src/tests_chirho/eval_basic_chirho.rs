@@ -6245,6 +6245,27 @@ fn eval_maybe_do_dispatch_chirho() {
     }
 }
 
+// workflow: monadic-dispatch-chirho — Higher-order non-monadic functions must
+// not be rewritten through the higher-kinded method dispatch fallback.
+#[test]
+fn eval_higher_order_on_function_dispatch_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+on f g x y = f (g x) (g y)
+main = ((+) `on` abs) (-3) 3
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(6)
+        ),
+        Err(e_chirho) => panic!("higher-order on function should evaluate: {e_chirho}"),
+    }
+}
+
 // workflow: monadic-dispatch-chirho — INV-001 stdout regression pin: IO
 // do-blocks whose first statement is a real effect (putStrLn/print) must NOT
 // be routed into another monad's body by blind key inference (the bug where
