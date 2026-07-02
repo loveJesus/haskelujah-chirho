@@ -2052,8 +2052,15 @@ impl ClassEnvChirho {
             });
         }
 
-        // NFData instances for primitive types
-        for ty_name_chirho in &["Int", "Char", "Bool", "Double"] {
+        // NFData instances for primitive/scalar types. GHC's `deepseq` package
+        // provides NFData for all of these; our runtime `deepseq`/`rnf` are
+        // seq-based (type-agnostic), so these are pure type-checker facts.
+        // (Integer was previously missing, so `NFData [Integer]` — the type of a
+        // literal list like `[1,2,3]` under defaulting — had no instance.)
+        for ty_name_chirho in &[
+            "Int", "Integer", "Char", "Bool", "Double", "Float", "Word", "Ordering", "Natural",
+            "Int8", "Int16", "Int32", "Int64", "Word8", "Word16", "Word32", "Word64",
+        ] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "NFData".to_string(),
                 head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
@@ -2271,6 +2278,19 @@ impl ClassEnvChirho {
             extra_head_tys_chirho: vec![],
             context_chirho: vec![PredChirho::new_chirho(
                 "Show",
+                TyChirho::VarChirho(a_var_chirho),
+            )],
+        });
+
+        // instance NFData a => NFData [a]
+        // (GHC provides this; needed so `NFData [Integer]` from `deepseq [1,2,3] y`
+        // resolves via the element instance. deepseq is seq-based at runtime.)
+        self.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "NFData".to_string(),
+            head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_var_chirho))),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![PredChirho::new_chirho(
+                "NFData",
                 TyChirho::VarChirho(a_var_chirho),
             )],
         });
