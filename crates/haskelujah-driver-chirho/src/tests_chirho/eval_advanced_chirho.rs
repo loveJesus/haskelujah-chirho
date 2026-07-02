@@ -1748,6 +1748,38 @@ main = needed (1 :: Int)
     );
 }
 
+#[test]
+fn conditional_list_missing_class_method_slot_errors_by_name_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Main where
+class Needs a where
+  needed :: a -> Int
+instance Needs Int where
+  needed x = x
+instance Needs a => Needs [a]
+main = needed [1 :: Int]
+";
+    let result_chirho = eval_source_chirho(
+        src_chirho,
+        &mut sm_chirho,
+        "ConditionalListMissingMethod.hs",
+        None,
+    );
+    let err_chirho =
+        result_chirho.expect_err("missing conditional list instance method should fail loudly");
+    let msg_chirho = format!("{err_chirho}");
+    assert!(
+        msg_chirho.contains("missing method Needs.needed for [Int]"),
+        "expected named missing-method error, got {msg_chirho}"
+    );
+    assert!(
+        !msg_chirho.contains("literal 0"),
+        "conditional list missing method must not become a literal-0 slot failure: {msg_chirho}"
+    );
+}
+
 // ── Shared let-bound variable bug reproduction ───────────────────────
 
 #[test]

@@ -932,6 +932,7 @@ impl DictPassCtxChirho {
             method_name_chirho,
             type_key_chirho,
             prim_name_chirho,
+            0,
         )
     }
 
@@ -942,6 +943,7 @@ impl DictPassCtxChirho {
         method_name_chirho: &str,
         type_key_chirho: &str,
         prim_name_chirho: &str,
+        leading_dict_arity_chirho: usize,
     ) -> CoreIdChirho {
         let method_scheme_chirho = class_env_chirho
             .classes_chirho
@@ -975,9 +977,26 @@ impl DictPassCtxChirho {
             };
         }
 
-        let binder_ty_chirho = method_scheme_chirho
+        for dict_idx_chirho in (0..leading_dict_arity_chirho).rev() {
+            let dict_binder_chirho = self.fresh_binder_chirho(
+                &format!("missing_dict_{dict_idx_chirho}"),
+                TyChirho::ConChirho("$Dict_Missing".to_string()),
+            );
+            rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: dict_binder_chirho,
+                body_chirho: Box::new(rhs_chirho),
+            };
+        }
+
+        let mut binder_ty_chirho = method_scheme_chirho
             .map(|scheme_chirho| scheme_chirho.ty_chirho.clone())
             .unwrap_or_else(|| TyChirho::VarChirho(TyVarChirho(self.next_id_chirho)));
+        for _ in 0..leading_dict_arity_chirho {
+            binder_ty_chirho = TyChirho::fun_chirho(
+                TyChirho::ConChirho("$Dict_Missing".to_string()),
+                binder_ty_chirho,
+            );
+        }
         let binder_chirho = self.fresh_binder_chirho(prim_name_chirho, binder_ty_chirho);
         let binder_id_chirho = binder_chirho.id_chirho;
 
@@ -1185,6 +1204,7 @@ impl DictPassCtxChirho {
                 // Generate the ground dict for this list type.
                 // We need method implementations that use the element dict.
                 self.generate_list_instance_dict_chirho(
+                    class_env_chirho,
                     class_name_chirho,
                     elem_type_chirho,
                     &list_type_key_chirho,
@@ -1197,6 +1217,7 @@ impl DictPassCtxChirho {
 
     fn generate_list_instance_dict_chirho(
         &mut self,
+        class_env_chirho: &ClassEnvChirho,
         class_name_chirho: &str,
         elem_type_chirho: &str,
         list_type_key_chirho: &str,
@@ -1220,6 +1241,7 @@ impl DictPassCtxChirho {
                 // for the conditional instance (type key contains a variable,
                 // e.g. "[a]") and build a dict constructor referencing them.
                 self.generate_generic_list_dict_chirho(
+                    class_env_chirho,
                     class_name_chirho,
                     elem_type_chirho,
                     list_type_key_chirho,
@@ -1234,6 +1256,7 @@ impl DictPassCtxChirho {
     /// by referencing the user's `$prim_` method bindings.
     fn generate_generic_list_dict_chirho(
         &mut self,
+        class_env_chirho: &ClassEnvChirho,
         class_name_chirho: &str,
         elem_type_chirho: &str,
         list_type_key_chirho: &str,
@@ -1290,12 +1313,18 @@ impl DictPassCtxChirho {
                 }
             }
             if !found_chirho {
-                // Fallback: create a fresh reference
                 let prim_name_chirho = format!(
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, list_type_key_chirho
                 );
-                let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
+                let prim_id_chirho = self.generate_missing_method_binding_chirho(
+                    class_env_chirho,
+                    class_name_chirho,
+                    method_name_chirho,
+                    list_type_key_chirho,
+                    &prim_name_chirho,
+                    context_classes_chirho.len(),
+                );
                 let mut method_expr_chirho = CoreExprChirho::VarChirho(prim_id_chirho);
                 for context_class_chirho in context_classes_chirho {
                     if let Some(context_dict_id_chirho) = self

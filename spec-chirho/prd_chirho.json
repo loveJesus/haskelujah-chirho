@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.3",
+    "prd_version_chirho": "2.2.4",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -13,7 +13,8 @@
       "gpt_chirho (Codex) — audit merge v2.2.0 from wf_4c365bea-fb4",
       "gpt_chirho (Codex) — WI-001/002 IO argument-position primop value lowering v2.2.1",
       "gpt_chirho (Codex) — DefaultSignatures class default lowering fix v2.2.2",
-      "gpt_chirho (Codex) — WI-014 missing ground instance method slot loud-error fallback v2.2.3"
+      "gpt_chirho (Codex) — WI-014 missing ground instance method slot loud-error fallback v2.2.3",
+      "gpt_chirho (Codex) — WI-014 conditional list method slot loud-error fallback v2.2.4"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -65,14 +66,13 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "WI-014 literal-0 slot class: missing ground instance methods now get body-backed loud-error fallbacks; DefaultSignatures controls retained; no full suites run per resource guard",
+      "scope_chirho": "WI-014 literal-0 slot class: missing conditional list instance methods now get body-backed loud-error fallbacks; ground missing-method controls retained; no full suites run per resource guard",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib missing_class_method_slot_errors_by_name_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib default_sig_basic_eval_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib default_sig_with_override_eval_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib conditional_list_missing_class_method_slot_errors_by_name_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib missing_class_method_slot_errors_by_name_chirho -- --test-threads=1",
         "CARGO_BUILD_JOBS=1 timeout 180 cargo run -p haskelujah -- build .haskelujah-packages-chirho/transformers-0.6.3.0/"
       ],
-      "result_chirho": "New missing-method regression, DefaultSignatures default/override controls, and transformers package smoke all passed. Pre-existing haskelujah-typing warning remained: instantiate_instance_method_expected_ty_chirho is unused."
+      "result_chirho": "New conditional-list missing-method regression, previous ground missing-method control, and transformers package smoke all passed. Pre-existing haskelujah-typing warning remained: instantiate_instance_method_expected_ty_chirho is unused."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -759,14 +759,14 @@
       "title_chirho": "Retire the arbitrary-default dict fallback (literal-0# bug class)",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed v2.2.3: DefaultSignatures class default bodies no longer get dropped before instance dict construction; missing ground instance methods now generate body-backed loud-error slots instead of fresh dangling IDs; arbitrary default dict fallback, conditional dict slots, and GND alias slots remain open",
+      "status_chirho": "partially landed v2.2.4: DefaultSignatures class default bodies no longer get dropped before instance dict construction; missing ground and conditional-list instance methods now generate body-backed loud-error slots instead of fresh dangling IDs; arbitrary default dict fallback, GND alias slots, and name-map-only existence checks remain open",
       "owner_chirho": "gpt_chirho (dict subsystem) with claude review",
       "problem_chirho": "Every binding's dict_vars is seeded with an Int-preferred-else-ARBITRARY dict per class from a std HashMap iteration, and try_rewrite_method_var_chirho falls back to it when the type key is unknown (pre-landing anchors rewrite_chirho.rs ~902-918, ~366-371) — unknown-key class methods rewrite to WRONG dicts whose unimplemented slots are dangling ids that STG lowers to literal 0# ('cannot apply arguments to literal 0#'). b5203335 name-preserves only the >>=/>>/return/pure family; ALL other class methods still take this path. Iteration order of a HashMap choosing semantics is also a determinism bug.",
       "fix_design_chirho": [
         "Replace arbitrary per-class HashMap fallback with name-preserving rebuild for unresolved methods unless a Haskell Report defaulting rule explicitly applies.",
-        "Add a body-backed method table for generated $prim bodies; dangling names created by resolve_or_fresh_id_chirho must not count as implementations. v2.2.3 landed the first slice for ground instance method slots by generating arity-shaped error bodies when no $prim binding exists.",
+        "Add a body-backed method table for generated $prim bodies; dangling names created by resolve_or_fresh_id_chirho must not count as implementations. v2.2.3 landed ground instance method slots; v2.2.4 landed conditional-list instance method slots with leading context-dict lambdas.",
         "Preserve class default method bodies through lowering before instance-dict construction; v2.2.2 fixed DefaultSignatures declarations that previously interrupted method collection and produced dangling slots.",
-        "Make remaining instance-dict construction fill missing class-default methods from actual default bodies; otherwise fail loud at compile/rewrite time instead of minting literal-0 slots. Remaining coverage: conditional list dict fallbacks, GND aliases, and any selector path that still trusts name-map-only existence.",
+        "Make remaining instance-dict construction fill missing class-default methods from actual default bodies; otherwise fail loud at compile/rewrite time instead of minting literal-0 slots. Remaining coverage: GND aliases and any selector path that still trusts name-map-only existence.",
         "Add deterministic ordering where any fallback remains; HashMap iteration must not choose semantics.",
         "Before removal, catalog currently-green tests depending on accidental Int/default behavior and replace with explicit defaulting rules."
       ],
@@ -780,6 +780,11 @@
           "test_name_chirho": "unresolved_class_method_does_not_literal0_chirho",
           "program_chirho": "class Needs a where needed :: a -> Int; instance Needs Int; main = needed (1 :: Int)",
           "expected_stdout_chirho": "runtime error containing `missing method Needs.needed for Int`, and never `literal 0`"
+        },
+        {
+          "test_name_chirho": "conditional_list_unresolved_class_method_does_not_literal0_chirho",
+          "program_chirho": "class Needs a where needed :: a -> Int; instance Needs Int where needed x = x; instance Needs a => Needs [a]; main = needed [1 :: Int]",
+          "expected_stdout_chirho": "runtime error containing `missing method Needs.needed for [Int]`, and never `literal 0`"
         }
       ],
       "dependencies_chirho": [
@@ -1084,7 +1089,7 @@
         "representative_tests_chirho": [
           "tests_chirho::eval_advanced_chirho::default_sig_basic_eval_chirho"
         ],
-        "notes_chirho": "`instance Describable Int` (empty body, class has `default describe`) then `describe (1 :: Int)` died with 'runtime error: type error: cannot apply arguments to literal 0#' (test at crates/haskelujah-driver-chirho/src/tests_chirho/eval_advanced_chirho.rs:1669; error raised at crates/haskelujah-runtime-chirho/src/eval_chirho.rs:1288). Validated root cause for this specific baseline red: `default describe :: ...` lowered as `DefaultDeclChirho` and prematurely stopped class method collection before the following `describe x = ...`, so desugar never emitted `$prim_Describable_describe_Int` and the dict slot pointed at dangling `v3565`. v2.2.2 treats `DefaultDeclChirho` as method-like during class/instance collection, preserving the default body. v2.2.3 adds body-backed loud-error fallbacks for missing ground instance method slots and pins `missing_class_method_slot_errors_by_name_chirho`. Remaining WI-014 arbitrary dict fallback/body-backed slot work stays open for conditional dicts, GND aliases, and name-map-only existence checks."
+        "notes_chirho": "`instance Describable Int` (empty body, class has `default describe`) then `describe (1 :: Int)` died with 'runtime error: type error: cannot apply arguments to literal 0#' (test at crates/haskelujah-driver-chirho/src/tests_chirho/eval_advanced_chirho.rs:1669; error raised at crates/haskelujah-runtime-chirho/src/eval_chirho.rs:1288). Validated root cause for this specific baseline red: `default describe :: ...` lowered as `DefaultDeclChirho` and prematurely stopped class method collection before the following `describe x = ...`, so desugar never emitted `$prim_Describable_describe_Int` and the dict slot pointed at dangling `v3565`. v2.2.2 treats `DefaultDeclChirho` as method-like during class/instance collection, preserving the default body. v2.2.3 adds body-backed loud-error fallbacks for missing ground instance method slots and pins `missing_class_method_slot_errors_by_name_chirho`. v2.2.4 extends that fallback to generic conditional-list dictionaries and pins `conditional_list_missing_class_method_slot_errors_by_name_chirho`. Remaining WI-014 arbitrary dict fallback/body-backed slot work stays open for GND aliases and name-map-only existence checks."
       }
     ]
   }
