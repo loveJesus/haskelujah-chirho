@@ -574,6 +574,47 @@ main = case Data.Map.mapLookup 42 (Data.Map.mapInsert 42 100 Data.Map.mapEmpty) 
 }
 
 #[test]
+fn eval_import_qualified_data_map_real_exports_chirho() {
+    // Real Data.Map export names should route to backed map* Prelude wrappers.
+    use crate::{eval_source_chirho, eval_source_with_machine_chirho};
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import qualified Data.Map as M
+main = case M.lookup 2 (M.insert 2 20 (M.fromList [(1, 10)])) of
+         Just v  -> v
+         Nothing -> 0
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(20)
+        ),
+        Err(e_chirho) => panic!("qualified Data.Map real exports: {}", e_chirho),
+    }
+
+    let mut print_sm_chirho = SourceMapChirho::new_chirho();
+    let print_src_chirho = "\
+module Test where
+import qualified Data.Map as M
+main = print (M.size (M.insert 2 \"b\" (M.fromList [(1, \"a\")])))
+";
+    let print_result_chirho = eval_source_with_machine_chirho(
+        print_src_chirho,
+        &mut print_sm_chirho,
+        "TestChirho.hs",
+        None,
+    );
+    match print_result_chirho {
+        Ok((_val_chirho, machine_chirho)) => {
+            assert_eq!(machine_chirho.io_output_chirho, "2\n");
+        }
+        Err(e_chirho) => panic!("qualified Data.Map real export print: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_import_data_set_chirho() {
     // import Data.Set functions
     use crate::eval_source_chirho;

@@ -3223,6 +3223,9 @@ impl DictPassCtxChirho {
         // ── Data.Map String-keyed operations ──
         self.generate_map_str_prelude_chirho();
 
+        // ── Qualified Data.Map surface aliases ──
+        self.generate_fixed_map_qualified_aliases_chirho();
+
         // ── Data.Set (BST-based) ──
         self.generate_set_prelude_chirho();
 
@@ -3255,6 +3258,89 @@ impl DictPassCtxChirho {
 
         // ── NFData / deepseq / evaluate / force ──
         self.generate_nfdata_prelude_chirho();
+    }
+
+    fn push_prelude_alias_chirho(&mut self, alias_name_chirho: &str, source_name_chirho: &str) {
+        if self
+            .generated_bindings_chirho
+            .iter()
+            .any(|binding_chirho| binding_chirho.binder_chirho.name_chirho == alias_name_chirho)
+        {
+            return;
+        }
+
+        let Some((source_id_chirho, source_ty_chirho)) = self
+            .generated_bindings_chirho
+            .iter()
+            .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == source_name_chirho)
+            .map(|binding_chirho| {
+                (
+                    binding_chirho.binder_chirho.id_chirho,
+                    binding_chirho.binder_chirho.ty_chirho.clone(),
+                )
+            })
+        else {
+            return;
+        };
+
+        let alias_id_chirho = self.resolve_or_fresh_id_chirho(alias_name_chirho);
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho: BinderChirho {
+                id_chirho: alias_id_chirho,
+                name_chirho: alias_name_chirho.to_string(),
+                ty_chirho: source_ty_chirho,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            rhs_chirho: CoreExprChirho::VarChirho(source_id_chirho),
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        });
+    }
+
+    fn map_qualified_aliases_chirho() -> [(&'static str, &'static str); 30] {
+        [
+            ("empty", "mapEmpty"),
+            ("singleton", "mapSingleton"),
+            ("insert", "mapInsert"),
+            ("delete", "mapDelete"),
+            ("lookup", "mapLookup"),
+            ("member", "mapMember"),
+            ("notMember", "mapNotMember"),
+            ("findWithDefault", "mapFindWithDefault"),
+            ("union", "mapUnion"),
+            ("unionWith", "mapUnionWith"),
+            ("unions", "mapUnions"),
+            ("intersection", "mapIntersection"),
+            ("intersectionWith", "mapIntersectionWith"),
+            ("difference", "mapDifference"),
+            ("map", "mapMap"),
+            ("filter", "mapFilter"),
+            ("filterWithKey", "mapFilterWithKey"),
+            ("foldlWithKey", "mapFoldlWithKey"),
+            ("foldlWithKey'", "mapFoldlWithKey'"),
+            ("foldrWithKey", "mapFoldrWithKey"),
+            ("toList", "mapToList"),
+            ("assocs", "mapToList"),
+            ("toAscList", "mapToAscList"),
+            ("fromList", "mapFromList"),
+            ("elems", "mapElems"),
+            ("keys", "mapKeys"),
+            ("size", "mapSize"),
+            ("null", "mapNull"),
+            ("adjust", "mapAdjust"),
+            ("insertWith", "mapInsertWith"),
+        ]
+    }
+
+    fn generate_fixed_map_qualified_aliases_chirho(&mut self) {
+        for module_name_chirho in ["Data.Map", "Data.Map.Strict", "Data.Map.Lazy"] {
+            for (export_name_chirho, source_name_chirho) in Self::map_qualified_aliases_chirho() {
+                self.push_prelude_alias_chirho(
+                    &format!("{}.{}", module_name_chirho, export_name_chirho),
+                    source_name_chirho,
+                );
+            }
+        }
     }
 
     /// Generate Core IR bindings for monad transformer infrastructure.

@@ -111,6 +111,67 @@ impl DesugarCtxChirho {
         }
     }
 
+    fn data_map_import_aliases_chirho() -> [(&'static str, &'static str); 30] {
+        [
+            ("empty", "mapEmpty"),
+            ("singleton", "mapSingleton"),
+            ("insert", "mapInsert"),
+            ("delete", "mapDelete"),
+            ("lookup", "mapLookup"),
+            ("member", "mapMember"),
+            ("notMember", "mapNotMember"),
+            ("findWithDefault", "mapFindWithDefault"),
+            ("union", "mapUnion"),
+            ("unionWith", "mapUnionWith"),
+            ("unions", "mapUnions"),
+            ("intersection", "mapIntersection"),
+            ("intersectionWith", "mapIntersectionWith"),
+            ("difference", "mapDifference"),
+            ("map", "mapMap"),
+            ("filter", "mapFilter"),
+            ("filterWithKey", "mapFilterWithKey"),
+            ("foldlWithKey", "mapFoldlWithKey"),
+            ("foldlWithKey'", "mapFoldlWithKey'"),
+            ("foldrWithKey", "mapFoldrWithKey"),
+            ("toList", "mapToList"),
+            ("assocs", "mapToList"),
+            ("toAscList", "mapToAscList"),
+            ("fromList", "mapFromList"),
+            ("elems", "mapElems"),
+            ("keys", "mapKeys"),
+            ("size", "mapSize"),
+            ("null", "mapNull"),
+            ("adjust", "mapAdjust"),
+            ("insertWith", "mapInsertWith"),
+        ]
+    }
+
+    fn seed_builtin_import_aliases_chirho(&mut self, module_chirho: &ModuleChirho) {
+        for import_chirho in &module_chirho.imports_chirho {
+            let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
+            if !matches!(
+                module_name_chirho.as_str(),
+                "Data.Map" | "Data.Map.Strict" | "Data.Map.Lazy"
+            ) {
+                continue;
+            }
+
+            let qualifier_chirho = import_chirho
+                .alias_chirho
+                .as_ref()
+                .map(|alias_chirho| alias_chirho.text_chirho().to_string())
+                .unwrap_or_else(|| module_name_chirho.clone());
+
+            for (export_name_chirho, source_name_chirho) in Self::data_map_import_aliases_chirho() {
+                let source_id_chirho = self.resolve_var_chirho(source_name_chirho);
+                self.bind_in_scope_chirho(
+                    &format!("{}.{}", qualifier_chirho, export_name_chirho),
+                    source_id_chirho,
+                );
+            }
+        }
+    }
+
     /// Push a new scope level.
     fn push_scope_chirho(&mut self) {
         self.scope_chirho.push(HashMap::new());
@@ -752,6 +813,10 @@ impl DesugarCtxChirho {
 
         // Pass -0.5: Collect pattern synonym definitions for expansion during desugaring
         self.collect_pat_syns_chirho(module_chirho);
+
+        // Pass -0.25: Seed aliases for built-in qualified imports whose Core
+        // bodies use internal Prelude wrapper names.
+        self.seed_builtin_import_aliases_chirho(module_chirho);
 
         // Pass 0: Build map of class → (method_name → default MatchArms) from class declarations
         let mut class_defaults_chirho: HashMap<String, HashMap<String, Vec<MatchArmChirho>>> =
@@ -3230,7 +3295,15 @@ impl DesugarCtxChirho {
     pub fn desugar_expr_chirho(&mut self, expr_chirho: &ExprChirho) -> CoreExprChirho {
         match expr_chirho {
             ExprChirho::VarChirho(name_chirho) => {
-                let id_chirho = self.resolve_var_chirho(name_chirho.text_chirho());
+                let full_name_chirho = name_chirho.full_name_chirho();
+                let lookup_name_chirho = if full_name_chirho != name_chirho.text_chirho()
+                    && self.lookup_scope_chirho(&full_name_chirho).is_some()
+                {
+                    full_name_chirho.as_str()
+                } else {
+                    name_chirho.text_chirho()
+                };
+                let id_chirho = self.resolve_var_chirho(lookup_name_chirho);
                 CoreExprChirho::VarChirho(id_chirho)
             }
             ExprChirho::ConChirho(name_chirho) => {
