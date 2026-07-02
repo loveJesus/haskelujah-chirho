@@ -4261,10 +4261,11 @@ fn frontend_instance_methods_stay_nested_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_chirho = "\
 module InstanceShapeMiniChirho where
+import Control.Applicative (liftA2)
 import Control.Monad.Zip (MonadZip(mzipWith))
 newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }
 instance (MonadZip m) => MonadZip (ExceptTChirho e m) where
-  mzipWith fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith fChirho aChirho bChirho
+  mzipWith fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith (liftA2 fChirho) aChirho bChirho
 ";
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
         &mut source_map_chirho,
