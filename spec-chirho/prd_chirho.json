@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.46",
+    "prd_version_chirho": "2.2.47",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -57,7 +57,8 @@
       "gpt_chirho (Codex) — base class `Class(..)` method export metadata for Functor/Applicative/Alternative/Semigroup/Monoid/Foldable/Traversable v2.2.43",
       "gpt_chirho (Codex) — central interface class-method normalizer extended for MonadPlus/MonadIO/MonadTrans/MonadZip/Contravariant/NFData/RandomGen/SplitGen v2.2.44",
       "gpt_chirho (Codex) — central interface class-method normalizer extended for standard Eq/Ord/Show/Read/Num/Enum/Bounded/Bits-style classes v2.2.45",
-      "gpt_chirho (Codex) — central interface class-method normalizer extended for Floating v2.2.46"
+      "gpt_chirho (Codex) — central interface class-method normalizer extended for Floating v2.2.46",
+      "gpt_chirho (Codex) — WI-004 Min/Max Monoid row plus WI-007 primitive wrapper-payload force hardening v2.2.47"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -109,15 +110,15 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "Naming/interface cleanup: `Floating` now participates in the central class-method normalizer with the methods currently seeded in typing, so `GHC.Float (Floating(..))` imports expose `pi`, `exp`, `log`, `sqrt`, `sin`, `cos`, `tan`, `asin`, `acos`, and `atan` consistently.",
+      "scope_chirho": "WI-004/WI-007 targeted row: `Min`/`Max` now have body-backed Monoid `mempty`/`mconcat` over erased Int payloads, `Data.Monoid` exports their constructors/accessors, and STG primitive forcing now recursively forces one-field wrapper payload thunks before dispatching strict primops.",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_normalized_class_dot_imports_expose_floating_methods_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_normalized_class_dot_imports_expose_standard_methods_chirho -- --test-threads=1",
-        "rustfmt --edition 2024 --check crates/haskelujah-driver-chirho/src/tests_chirho/compile_chirho.rs",
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib monoid -- --test-threads=1",
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib semigroup -- --test-threads=1",
+        "rustfmt --edition 2024 --check crates/haskelujah-runtime-chirho/src/eval_chirho.rs crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho.rs crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs crates/haskelujah-driver-chirho/src/tests_chirho/eval_typeclass_chirho.rs",
         "jq empty spec-chirho/prd_chirho.json",
         "git diff --check"
       ],
-      "result_chirho": "Targeted compile tests and lightweight checks pass. Change is naming/interface metadata only; no runtime/dict/type-inference changes."
+      "result_chirho": "Targeted Monoid and Semigroup filters passed under resource guard. Broader probe/full driver impact remains unmeasured until Claude or L.J. requests a probe gate; no heavy suite was run."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -475,7 +476,7 @@
       "title_chirho": "Per-type instance completion matrix (turn-the-crank recipe)",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed v2.2.46 — Sum/Product/All/Any/Ordering/Unit Semigroup/Monoid rows, Endo function-payload Semigroup/Monoid row, First/Last Maybe-payload Semigroup/Monoid rows, Min/Max Semigroup rows, Identity/Down/Proxy/Product Functor/Applicative/Monad rows, Const Functor fmap-only row, Alternative []/Maybe rows, MonadPlus []/Maybe rows, MonadFail []/Maybe rows, and Monoid.mappend slots for body-backed Semigroup rows are pinned; continue Wave A for remaining rows.",
+      "status_chirho": "partially landed v2.2.47 — Sum/Product/All/Any/Ordering/Min/Max/Unit Semigroup/Monoid rows, Endo function-payload Semigroup/Monoid row, First/Last Maybe-payload Semigroup/Monoid rows, Identity/Down/Proxy/Product Functor/Applicative/Monad rows, Const Functor fmap-only row, Alternative []/Maybe rows, MonadPlus []/Maybe rows, MonadFail []/Maybe rows, and Monoid.mappend slots for body-backed Semigroup rows are pinned; continue Wave A for remaining rows.",
       "owner_chirho": "gpt_chirho/claude_chirho; future fleet may take individual rows after recipe review (gemini currently removed from session)",
       "problem_chirho": "Many types are class-REGISTERED (class_chirho.rs ~2448-2528, ~2963-2976: STM, Proxy, First, Last, Sum, Product, Identity, transformers...) but lack built instance dicts and/or $prim bodies, so their methods fall to wrong-typed fallbacks or dead dict lambdas. GPT #1388: also audit existing dict fields for placeholders.",
       "fix_design_chirho": [
@@ -504,7 +505,8 @@
         "LANDED v2.2.43: Interface stubs now attach method export lists to existing base class exports for Functor/Applicative/Alternative/Semigroup/Monoid/Foldable/Traversable where those methods are already present in the class environment; targeted minimal-Prelude Class(..) import compile coverage pins the naming behavior without adding runtime rows.",
         "LANDED v2.2.44: The central interface class-method normalizer now covers MonadPlus/MonadIO/MonadTrans/MonadZip/Contravariant/NFData/RandomGen/SplitGen, reducing per-stub drift for Class(..) method visibility while keeping the change naming-only.",
         "LANDED v2.2.45: The central interface class-method normalizer now covers standard Prelude-style method-bearing classes (Eq/Ord/Show/Read/Num/Fractional/Integral/Enum/Bounded/IsString/IsList/Bits/FiniteBits), giving Class(..) imports consistent method visibility without runtime or dispatch changes.",
-        "LANDED v2.2.46: The central interface class-method normalizer now covers `Floating` with the methods seeded in class_chirho.rs, completing the obvious standard numeric Class(..) method export gap."
+        "LANDED v2.2.46: The central interface class-method normalizer now covers `Floating` with the methods seeded in class_chirho.rs, completing the obvious standard numeric Class(..) method export gap.",
+        "LANDED v2.2.47: Data.Monoid now exposes Min/Max constructors and getMin/getMax accessors; Min/Max have body-backed Monoid mempty/mconcat bodies over erased Int payloads, with mappend reusing the existing Semigroup body via the v2.2.35 slot. This row required the WI-007 primitive-force hardening because wrapper payloads can arrive at strict primops as one-field constructor thunks."
       ],
       "acceptance_tests_chirho": [
         {
@@ -580,6 +582,12 @@
           "landed_chirho": "v2.2.21"
         },
         {
+          "test_name_chirho": "eval_min_max_monoid_chirho",
+          "program_chirho": "import Data.Monoid\nmain = getMin (mempty <> Min 7) + getMin (mconcat [Min 8, Min 3, Min 5]) + getMin (mappend (Min 6) (Min 4)) + getMax (mempty <> Max 7) + getMax (mconcat [Max 8, Max 3, Max 12]) + getMax (mappend (Max 6) (Max 4)); plus direct getMin/getMax mempty identity checks against Int bounds",
+          "expected_stdout_chirho": "39 plus direct i64::MAX/i64::MIN identity assertions",
+          "landed_chirho": "v2.2.47"
+        },
+        {
           "test_name_chirho": "eval_first_last_monoid_chirho",
           "program_chirho": "import Data.Monoid\nscoreMaybe m = case m of { Nothing -> 0; Just x -> x }\nmain = scoreMaybe (getFirst (First Nothing <> First (Just 4))) + scoreMaybe (getFirst (First (Just 7) <> First (Just 9))) + scoreMaybe (getFirst (mempty <> First (Just 5))) + scoreMaybe (getFirst (mconcat [First Nothing, First (Just 6), First (Just 8)])) + scoreMaybe (getLast (Last Nothing <> Last (Just 4))) + scoreMaybe (getLast (Last (Just 7) <> Last (Just 9))) + scoreMaybe (getLast (mempty <> Last (Just 5))) + scoreMaybe (getLast (mconcat [Last (Just 6), Last Nothing, Last (Just 8)]))",
           "expected_stdout_chirho": "48",
@@ -646,7 +654,10 @@
           "Maybe",
           "[]"
         ],
-        "complete_semigroup_only_bodies_chirho": [
+        "complete_semigroup_only_bodies_chirho": [],
+        "complete_int_payload_semigroup_monoid_bodies_chirho": [
+          "Sum",
+          "Product",
           "Min",
           "Max"
         ],
@@ -669,8 +680,6 @@
           "Dual",
           "Down",
           "Const",
-          "Min",
-          "Max",
           "Q",
           "ReadP",
           "ReadPrec",
@@ -769,7 +778,7 @@
       "title_chirho": "Universal forcing — complete lazy evaluation semantics",
       "pillar_chirho": "PILLAR-3",
       "priority_chirho": "P1",
-      "status_chirho": "todo — AUDIT MERGED; split STG interpreter GC roots from native forcing/header work",
+      "status_chirho": "partially landed v2.2.47 — STG primitive operands now recursively force one-field wrapper payload thunks before strict primop dispatch; larger GC-root/update-frame/native forcing work remains.",
       "owner_chirho": "gpt_chirho/claude_chirho; risky machine-semantics item, not solo fleet work",
       "problem_chirho": "Audit found the STG interpreter already creates/forces thunks at many strict sites; its major red is GC roots at allocation scale. Native LLVM laziness remains incomplete: primop operands, seq#/deepseq lowering, thunk indirection encoding, RTS list printers, and blackhole behavior diverge from GHC.",
       "fix_design_chirho": [
@@ -777,7 +786,8 @@
         "LLVM: route primop operands through emit_force_thunk_chirho with static-WHNF skips; fix seq#/deepseq branch ordering.",
         "RTS: replace header-packed indirection results with a GC-visible payload representation; preserve negative and >2^56 values.",
         "RTS printers/string shims: force thunked list heads/tails and computed string arguments before C-string dereference.",
-        "Interpreter: fix GC root extraction for code-table/static closures before using large lazy programs as acceptance gates."
+        "Interpreter: fix GC root extraction for code-table/static closures before using large lazy programs as acceptance gates.",
+        "LANDED v2.2.47: STG `force_to_prim_chirho` now forces a resolved one-field wrapper payload if unboxing a WHNF wrapper exposes a distinct heap thunk. This fixes strict primops receiving erased-wrapper payloads such as Min/Max list elements without eagerly forcing arbitrary constructor fields."
       ],
       "acceptance_tests_chirho": [
         {
@@ -798,6 +808,7 @@
         "stg_interpreter_present_chirho": [
           "case scrutinees",
           "primop arguments",
+          "one-field wrapper payload thunks exposed while preparing primop arguments",
           "thunk blackhole/update frames",
           "letrec indirections"
         ],

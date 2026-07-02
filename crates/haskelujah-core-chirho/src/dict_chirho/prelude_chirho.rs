@@ -15490,7 +15490,7 @@ impl DictPassCtxChirho {
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
                     id_chirho: fn_id_chirho,
-                    name_chirho: semigroup_name_chirho,
+                    name_chirho: semigroup_name_chirho.clone(),
                     ty_chirho: TyChirho::fun_chirho(
                         TyChirho::int_chirho(),
                         TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho()),
@@ -15499,6 +15499,84 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+
+            let identity_chirho = if pick_first_chirho {
+                i64::MAX
+            } else {
+                i64::MIN
+            };
+            let mempty_name_chirho = format!("$prim_Monoid_mempty_{}", type_key_chirho);
+            let fn_id_chirho = self.resolve_or_fresh_id_chirho(&mempty_name_chirho);
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: fn_id_chirho,
+                    name_chirho: mempty_name_chirho,
+                    ty_chirho: TyChirho::int_chirho(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(identity_chirho)),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+
+            let mconcat_name_chirho = format!("$prim_Monoid_mconcat_{}", type_key_chirho);
+            let fn_id_chirho = self.resolve_or_fresh_id_chirho(&mconcat_name_chirho);
+            let semigroup_id_chirho = self.resolve_or_fresh_id_chirho(&semigroup_name_chirho);
+            let xs_chirho = self
+                .fresh_binder_chirho("xs", TyChirho::ListChirho(Box::new(TyChirho::int_chirho())));
+            let x_chirho = self.fresh_binder_chirho("x", TyChirho::int_chirho());
+            let rest_chirho = self.fresh_binder_chirho(
+                "rest",
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+            );
+            let wild_chirho = self.fresh_binder_chirho("wild", TyChirho::int_chirho());
+            let rec_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(fn_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(rest_chirho.id_chirho)),
+            };
+            let append_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(semigroup_id_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+                }),
+                arg_chirho: Box::new(rec_call_chirho),
+            };
+            let body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(xs_chirho.id_chirho)),
+                bind_chirho: wild_chirho,
+                result_ty_chirho: TyChirho::int_chirho(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("[]".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                            identity_chirho,
+                        )),
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho(":".to_string()),
+                        binders_chirho: vec![x_chirho, rest_chirho],
+                        rhs_chirho: append_chirho,
+                    },
+                ],
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: fn_id_chirho,
+                    name_chirho: mconcat_name_chirho,
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                        TyChirho::int_chirho(),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: xs_chirho,
+                    body_chirho: Box::new(body_chirho),
+                },
+                is_rec_chirho: true,
                 inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }

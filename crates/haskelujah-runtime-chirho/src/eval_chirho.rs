@@ -21,11 +21,11 @@
 use std::collections::HashMap;
 
 use crate::gc_chirho::{
-    extract_roots_from_stack_chirho, extract_roots_from_values_chirho, GcConfigChirho,
-    GcStateChirho, GcStatsChirho,
+    GcConfigChirho, GcStateChirho, GcStatsChirho, extract_roots_from_stack_chirho,
+    extract_roots_from_values_chirho,
 };
 use crate::heap_chirho::HeapChirho;
-use crate::prim_chirho::{apply_prim_binop_chirho, PrimErrorChirho};
+use crate::prim_chirho::{PrimErrorChirho, apply_prim_binop_chirho};
 use crate::stack_chirho::{FrameChirho, PrimOpKindChirho, StackChirho};
 use crate::value_chirho::{
     ClosureChirho, CodePtrChirho, DataConTagChirho, HeapAddrChirho, InfoTagChirho, ValueChirho,
@@ -4623,7 +4623,20 @@ impl MachineChirho {
                     Err(_) => return ValueChirho::HeapPtrChirho(addr_chirho),
                 };
                 // Now resolve through indirections and unbox wrapper constructors
-                self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(whnf_addr_chirho))
+                let resolved_chirho =
+                    self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(whnf_addr_chirho));
+                match resolved_chirho {
+                    ValueChirho::HeapPtrChirho(inner_addr_chirho) => {
+                        let inner_addr_chirho =
+                            self.heap_chirho.follow_ind_chirho(inner_addr_chirho);
+                        if inner_addr_chirho == whnf_addr_chirho {
+                            ValueChirho::HeapPtrChirho(inner_addr_chirho)
+                        } else {
+                            self.force_to_prim_chirho(ValueChirho::HeapPtrChirho(inner_addr_chirho))
+                        }
+                    }
+                    other_chirho => other_chirho,
+                }
             }
             other_chirho => other_chirho,
         }

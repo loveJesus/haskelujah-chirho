@@ -1095,6 +1095,71 @@ main =
 }
 
 #[test]
+fn eval_min_max_monoid_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import Data.Monoid
+main =
+  getMin (mempty <> Min 7)
+  + getMin (mconcat [Min 8, Min 3, Min 5])
+  + getMin (mappend (Min 6) (Min 4))
+  + getMax (mempty <> Max 7)
+  + getMax (mconcat [Max 8, Max 3, Max 12])
+  + getMax (mappend (Max 6) (Max 4))
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(39)
+        ),
+        Err(e_chirho) => panic!("min/max monoid: {}", e_chirho),
+    }
+
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let min_identity_src_chirho = "\
+module Test where
+import Data.Monoid
+main = getMin (mempty :: Min Int)
+";
+    let result_chirho = eval_source_chirho(
+        min_identity_src_chirho,
+        &mut sm_chirho,
+        "TestChirho.hs",
+        None,
+    );
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(i64::MAX)
+        ),
+        Err(e_chirho) => panic!("min monoid identity: {}", e_chirho),
+    }
+
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let max_identity_src_chirho = "\
+module Test where
+import Data.Monoid
+main = getMax (mempty :: Max Int)
+";
+    let result_chirho = eval_source_chirho(
+        max_identity_src_chirho,
+        &mut sm_chirho,
+        "TestChirho.hs",
+        None,
+    );
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(i64::MIN)
+        ),
+        Err(e_chirho) => panic!("max monoid identity: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_first_last_monoid_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();

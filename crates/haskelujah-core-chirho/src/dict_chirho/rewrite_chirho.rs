@@ -1928,6 +1928,8 @@ impl DictPassCtxChirho {
                                             | "Product"
                                             | "All"
                                             | "Any"
+                                            | "Min"
+                                            | "Max"
                                             | "First"
                                             | "Last"
                                             | "Endo"

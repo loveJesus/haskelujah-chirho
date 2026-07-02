@@ -2440,6 +2440,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "getLast",
             "getAny",
             "getAll",
+            "getMin",
+            "getMax",
             "getDual",
             "getEndo",
             "appEndo",
@@ -2461,6 +2463,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             ("Last", &["Last", "getLast"][..]),
             ("Any", &["Any", "getAny"][..]),
             ("All", &["All", "getAll"][..]),
+            ("Min", &["Min", "getMin"][..]),
+            ("Max", &["Max", "getMax"][..]),
             ("Dual", &["Dual", "getDual"][..]),
             ("Ap", &["Ap", "getAp"][..]),
             ("Alt", &["Alt", "getAlt"][..]),
@@ -11462,7 +11466,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "Monoid", "Dual", "Endo", "All", "Any", "Sum", "Product", "First", "Last", "Ap", "Alt",
+            "Monoid", "Dual", "Endo", "All", "Any", "Sum", "Product", "Min", "Max", "First",
+            "Last", "Ap", "Alt",
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -11483,6 +11488,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "getSum",
             "Product",
             "getProduct",
+            "Min",
+            "getMin",
+            "Max",
+            "getMax",
             "First",
             "getFirst",
             "Last",
