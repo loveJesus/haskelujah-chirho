@@ -7009,6 +7009,18 @@ fn llvm_round_trip_where_sibling_cross_reference_output_chirho() {
 }
 
 #[test]
+fn llvm_round_trip_higher_order_on_function_output_chirho() {
+    let src_chirho = "module Main where\nonChirho fChirho gChirho xChirho yChirho = fChirho (gChirho xChirho) (gChirho yChirho)\nmain = print (((+) `onChirho` abs) (-3) 3)";
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(src_chirho).expect("higher-order on LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "higher-order on executable should exit successfully"
+    );
+    assert_eq!(stdout_chirho, "6\n");
+}
+
+#[test]
 fn llvm_round_trip_let_inside_where_output_chirho() {
     let src_chirho =
         "module Main where\nf x = a where a = let sq = x * x in sq + 1\nmain = print (f 5)";

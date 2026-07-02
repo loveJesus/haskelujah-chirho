@@ -307,9 +307,15 @@ fn run_command_chirho(
             // Suppress clang stderr for the try-LLVM path
             let link_result_chirho = {
                 let ll_path_chirho = exe_path_chirho.with_extension("ll");
-                let _ = fs::write(&ll_path_chirho, &result_chirho.llvm_ir_chirho);
-                let link_result_chirho =
-                    link_llvm_file_chirho(&ll_path_chirho, &exe_path_chirho, "-O2", true);
+                let exec_ir_chirho =
+                    compile_core_to_llvm_executable_chirho(&result_chirho.core_chirho);
+                let _ = fs::write(&ll_path_chirho, &exec_ir_chirho);
+                let link_result_chirho = link_llvm_file_chirho(
+                    &ll_path_chirho,
+                    &exe_path_chirho,
+                    CLANG_OPT_LEVEL_CHIRHO,
+                    true,
+                );
                 let _ = fs::remove_file(&ll_path_chirho);
                 link_result_chirho.map_err(|_| ())
             };

@@ -1362,6 +1362,42 @@ impl LlvmCodegenChirho {
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
+                "+" => {
+                    writeln!(
+                        def_chirho,
+                        "define i64 @{fn_name_chirho}(i64 %v0, i64 %v1) {{"
+                    )
+                    .unwrap();
+                    writeln!(def_chirho, "entry:").unwrap();
+                    writeln!(def_chirho, "  %result = add i64 %v0, %v1").unwrap();
+                    writeln!(def_chirho, "  ret i64 %result").unwrap();
+                    writeln!(def_chirho, "}}").unwrap();
+                    writeln!(def_chirho).unwrap();
+                }
+                "-" => {
+                    writeln!(
+                        def_chirho,
+                        "define i64 @{fn_name_chirho}(i64 %v0, i64 %v1) {{"
+                    )
+                    .unwrap();
+                    writeln!(def_chirho, "entry:").unwrap();
+                    writeln!(def_chirho, "  %result = sub i64 %v0, %v1").unwrap();
+                    writeln!(def_chirho, "  ret i64 %result").unwrap();
+                    writeln!(def_chirho, "}}").unwrap();
+                    writeln!(def_chirho).unwrap();
+                }
+                "*" => {
+                    writeln!(
+                        def_chirho,
+                        "define i64 @{fn_name_chirho}(i64 %v0, i64 %v1) {{"
+                    )
+                    .unwrap();
+                    writeln!(def_chirho, "entry:").unwrap();
+                    writeln!(def_chirho, "  %result = mul i64 %v0, %v1").unwrap();
+                    writeln!(def_chirho, "  ret i64 %result").unwrap();
+                    writeln!(def_chirho, "}}").unwrap();
+                    writeln!(def_chirho).unwrap();
+                }
                 "return" | "pure" | "returnIO#" => {
                     writeln!(def_chirho, "define i64 @{fn_name_chirho}(i64 %v0) {{").unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
@@ -4352,6 +4388,7 @@ fn builtin_runtime_arity_by_name_chirho(name_chirho: &str) -> Option<usize> {
         ">>=" | "bindIO#" => Some(2),
         "undefined" | "undefined#" => Some(0),
         "error" | "error#" => Some(1),
+        "+" | "-" | "*" => Some(2),
         _ => None,
     }
 }
