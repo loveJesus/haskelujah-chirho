@@ -4169,8 +4169,20 @@ impl DesugarCtxChirho {
 
             ExprChirho::AnnChirho {
                 expr_chirho: inner_chirho,
+                ty_chirho,
                 ..
-            } => self.desugar_expr_chirho(inner_chirho),
+            } => {
+                let inner_core_chirho = self.desugar_expr_chirho(inner_chirho);
+                let type_key_chirho = Self::type_key_from_ast_chirho(ty_chirho);
+                if type_key_chirho == "_" {
+                    inner_core_chirho
+                } else {
+                    CoreExprChirho::TyAppChirho {
+                        expr_chirho: Box::new(inner_core_chirho),
+                        ty_chirho: TyChirho::ConChirho(type_key_chirho),
+                    }
+                }
+            }
 
             ExprChirho::ListCompChirho {
                 body_chirho,

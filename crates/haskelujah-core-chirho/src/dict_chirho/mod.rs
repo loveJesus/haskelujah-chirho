@@ -157,16 +157,6 @@ impl DictPassCtxChirho {
         id_chirho
     }
 
-    /// Look up an existing CoreId by name. Returns None if not found.
-    fn lookup_name_id_chirho(&self, name_chirho: &str) -> Option<CoreIdChirho> {
-        for (id_chirho, existing_name_chirho) in &self.names_chirho {
-            if existing_name_chirho == name_chirho {
-                return Some(*id_chirho);
-            }
-        }
-        None
-    }
-
     /// Look up an existing CoreId by name, or create a fresh one.
     /// This is used when generating references to bindings that may
     /// already exist (e.g. `$prim_` bindings from desugaring).
@@ -204,6 +194,43 @@ impl DictPassCtxChirho {
             .iter()
             .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == name_chirho)
             .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho)
+    }
+
+    fn lookup_dispatch_body_name_id_chirho(&self, name_chirho: &str) -> Option<CoreIdChirho> {
+        let id_chirho = self.lookup_body_backed_name_id_chirho(name_chirho)?;
+        if let Some(binding_chirho) = self
+            .generated_bindings_chirho
+            .iter()
+            .find(|binding_chirho| binding_chirho.binder_chirho.id_chirho == id_chirho)
+        {
+            if Self::is_generated_missing_method_body_chirho(&binding_chirho.rhs_chirho) {
+                return None;
+            }
+        }
+        Some(id_chirho)
+    }
+
+    fn is_generated_missing_method_body_chirho(expr_chirho: &CoreExprChirho) -> bool {
+        match expr_chirho {
+            CoreExprChirho::LamChirho { body_chirho, .. }
+            | CoreExprChirho::TyLamChirho { body_chirho, .. }
+            | CoreExprChirho::TyAppChirho {
+                expr_chirho: body_chirho,
+                ..
+            } => Self::is_generated_missing_method_body_chirho(body_chirho),
+            CoreExprChirho::PrimOpChirho {
+                name_chirho,
+                args_chirho,
+            } if name_chirho == "error" => args_chirho.iter().any(|arg_chirho| {
+                matches!(
+                    arg_chirho,
+                    CoreExprChirho::LitChirho(crate::expr_chirho::CoreLitChirho::StringChirho(
+                        msg_chirho
+                    )) if msg_chirho.contains("missing method ")
+                )
+            }),
+            _ => false,
+        }
     }
 
     /// Check whether a predicate's type variable is "defaultable" in the
@@ -976,18 +1003,14 @@ mod tests_chirho {
         assert!(!ctx_chirho.instance_dicts_chirho.is_empty());
 
         // Check Eq Int dict exists
-        assert!(
-            ctx_chirho
-                .instance_dicts_chirho
-                .contains_key(&("Eq".to_string(), "Int".to_string()))
-        );
+        assert!(ctx_chirho
+            .instance_dicts_chirho
+            .contains_key(&("Eq".to_string(), "Int".to_string())));
 
         // Check Num Int dict exists
-        assert!(
-            ctx_chirho
-                .instance_dicts_chirho
-                .contains_key(&("Num".to_string(), "Int".to_string()))
-        );
+        assert!(ctx_chirho
+            .instance_dicts_chirho
+            .contains_key(&("Num".to_string(), "Int".to_string())));
 
         // Find the $fEqInt binding
         let eq_int_binding_chirho = ctx_chirho

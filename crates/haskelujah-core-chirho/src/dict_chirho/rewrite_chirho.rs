@@ -405,6 +405,78 @@ impl DictPassCtxChirho {
         }
     }
 
+    fn annotated_monad_head_key_chirho(&self, ty_chirho: &TyChirho) -> Option<String> {
+        self.body_backed_monad_head_key_for_ty_chirho(ty_chirho, false)
+    }
+
+    fn body_backed_monad_head_key_for_ty_chirho(
+        &self,
+        ty_chirho: &TyChirho,
+        follow_fun_result_chirho: bool,
+    ) -> Option<String> {
+        let head_key_chirho = Self::raw_type_head_key_chirho(ty_chirho, follow_fun_result_chirho)?;
+        let prim_name_chirho = format!("$prim_Applicative_pure_{head_key_chirho}");
+        self.lookup_dispatch_body_name_id_chirho(&prim_name_chirho)
+            .map(|_| head_key_chirho)
+    }
+
+    fn raw_type_head_key_chirho(
+        ty_chirho: &TyChirho,
+        follow_fun_result_chirho: bool,
+    ) -> Option<String> {
+        match ty_chirho {
+            TyChirho::ForallChirho { body_chirho, .. } => {
+                Self::raw_type_head_key_chirho(body_chirho, follow_fun_result_chirho)
+            }
+            TyChirho::FunChirho(_, result_ty_chirho, _) if follow_fun_result_chirho => {
+                Self::raw_type_head_key_chirho(result_ty_chirho, true)
+            }
+            TyChirho::FunChirho(_, _, _) => None,
+            TyChirho::ListChirho(_) => Some("[]".to_string()),
+            TyChirho::AppChirho(fun_chirho, _) => Self::raw_type_head_key_chirho(fun_chirho, false),
+            TyChirho::ConChirho(name_chirho) => {
+                Some(Self::normalize_instance_head_key_chirho(name_chirho))
+            }
+            _ => None,
+        }
+    }
+
+    fn strip_value_lams_chirho<'a>(mut expr_chirho: &'a CoreExprChirho) -> &'a CoreExprChirho {
+        loop {
+            match expr_chirho {
+                CoreExprChirho::LamChirho { body_chirho, .. }
+                | CoreExprChirho::TyLamChirho { body_chirho, .. }
+                | CoreExprChirho::TyAppChirho {
+                    expr_chirho: body_chirho,
+                    ..
+                } => expr_chirho = body_chirho,
+                _ => return expr_chirho,
+            }
+        }
+    }
+
+    fn has_direct_return_or_pure_head_chirho(&self, expr_chirho: &CoreExprChirho) -> bool {
+        let mut cur_chirho = expr_chirho;
+        loop {
+            match cur_chirho {
+                CoreExprChirho::AppChirho { fun_chirho, .. } => {
+                    cur_chirho = fun_chirho;
+                }
+                CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
+                    cur_chirho = expr_chirho;
+                }
+                CoreExprChirho::VarChirho(id_chirho) => {
+                    return self
+                        .names_chirho
+                        .get(id_chirho)
+                        .map(|name_chirho| name_chirho == "return" || name_chirho == "pure")
+                        .unwrap_or(false);
+                }
+                _ => return false,
+            }
+        }
+    }
+
     fn should_normalize_instance_head_for_class_chirho(class_name_chirho: &str) -> bool {
         matches!(
             class_name_chirho,
@@ -459,8 +531,13 @@ impl DictPassCtxChirho {
         match expr_chirho {
             CoreExprChirho::TyAppChirho {
                 expr_chirho: inner_chirho,
-                ..
-            } => self.infer_monad_dispatch_key_chirho(inner_chirho, local_type_keys_chirho),
+                ty_chirho,
+            } => self
+                .annotated_monad_head_key_chirho(ty_chirho)
+                .filter(|_| self.has_direct_return_or_pure_head_chirho(inner_chirho))
+                .or_else(|| {
+                    self.infer_monad_dispatch_key_chirho(inner_chirho, local_type_keys_chirho)
+                }),
             CoreExprChirho::VarChirho(id_chirho) => local_type_keys_chirho
                 .get(id_chirho)
                 .cloned()
@@ -554,9 +631,9 @@ impl DictPassCtxChirho {
                     local_instance_dicts_chirho,
                 ));
             };
-            let Some(inst_id_chirho) =
-                self.lookup_name_id_chirho(&format!("$prim_Applicative_pure_{context_key_chirho}"))
-            else {
+            let Some(inst_id_chirho) = self.lookup_dispatch_body_name_id_chirho(&format!(
+                "$prim_Applicative_pure_{context_key_chirho}"
+            )) else {
                 return Some(self.rebuild_preserved_method_app_chirho(
                     head_id_chirho,
                     &args_chirho,
@@ -613,7 +690,7 @@ impl DictPassCtxChirho {
         };
         let head_key_chirho = Self::normalize_instance_head_key_chirho(&value_key_chirho);
         let Some(inst_id_chirho) =
-            self.lookup_name_id_chirho(&format!("{prefix_chirho}{head_key_chirho}"))
+            self.lookup_dispatch_body_name_id_chirho(&format!("{prefix_chirho}{head_key_chirho}"))
         else {
             if matches!(head_name_chirho.as_str(), ">>=" | ">>") {
                 return Some(self.rebuild_preserved_method_app_chirho(
@@ -1066,16 +1143,30 @@ impl DictPassCtxChirho {
             CoreExprChirho::TyAppChirho {
                 expr_chirho: inner_chirho,
                 ty_chirho,
-            } => CoreExprChirho::TyAppChirho {
-                expr_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
+            } => {
+                let annotated_monad_key_chirho = self
+                    .annotated_monad_head_key_chirho(ty_chirho)
+                    .filter(|_| self.has_direct_return_or_pure_head_chirho(inner_chirho));
+                if let Some(monad_key_chirho) = annotated_monad_key_chirho.clone() {
+                    self.monad_context_stack_chirho
+                        .borrow_mut()
+                        .push(monad_key_chirho);
+                }
+                let rewritten_inner_chirho = self.rewrite_method_refs_with_locals_chirho(
                     inner_chirho,
                     dict_vars_chirho,
                     evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
-                )),
-                ty_chirho: ty_chirho.clone(),
-            },
+                );
+                if annotated_monad_key_chirho.is_some() {
+                    self.monad_context_stack_chirho.borrow_mut().pop();
+                }
+                CoreExprChirho::TyAppChirho {
+                    expr_chirho: Box::new(rewritten_inner_chirho),
+                    ty_chirho: ty_chirho.clone(),
+                }
+            }
             CoreExprChirho::PrimOpChirho {
                 name_chirho,
                 args_chirho,
@@ -1378,7 +1469,21 @@ impl DictPassCtxChirho {
             }
         }
 
-        // Rewrite method references in the original body
+        // Rewrite method references in the original body. For a binding whose
+        // signature proves a concrete result monad, only push that context when
+        // the RHS is directly return/pure after value lambdas.
+        let signature_monad_key_chirho = self
+            .body_backed_monad_head_key_for_ty_chirho(&scheme_chirho.ty_chirho, true)
+            .filter(|_| {
+                self.has_direct_return_or_pure_head_chirho(Self::strip_value_lams_chirho(
+                    &binding_chirho.rhs_chirho,
+                ))
+            });
+        if let Some(monad_key_chirho) = signature_monad_key_chirho.clone() {
+            self.monad_context_stack_chirho
+                .borrow_mut()
+                .push(monad_key_chirho);
+        }
         let mut rhs_chirho = self.rewrite_method_refs_with_locals_chirho(
             &binding_chirho.rhs_chirho,
             &dict_vars_chirho,
@@ -1386,6 +1491,9 @@ impl DictPassCtxChirho {
             &local_type_keys_chirho,
             &local_instance_dicts_chirho,
         );
+        if signature_monad_key_chirho.is_some() {
+            self.monad_context_stack_chirho.borrow_mut().pop();
+        }
 
         // Wrap in only the superclass extraction let-bindings that the
         // rewritten body actually references. Unused extraction lets can keep

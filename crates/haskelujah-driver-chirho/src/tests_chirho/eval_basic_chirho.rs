@@ -6308,6 +6308,71 @@ fn eval_io_bind_unchanged_chirho() {
     }
 }
 
+// workflow: monadic-dispatch-chirho — WI-003 annotation-driven return/pure
+// dispatch. Result-position annotations can prove the monad head for direct
+// return/pure expressions; function-shaped annotations and embedded IO returns
+// must keep the IO primop fallback.
+#[test]
+fn eval_annotated_pure_return_dispatch_chirho() {
+    use crate::{eval_source_chirho, eval_source_with_machine_chirho};
+    let value_cases_chirho: [(&str, i64); 4] = [
+        (
+            "main = case (pure 7 :: Maybe Int) of { Just x -> x; Nothing -> 0 }\n",
+            7,
+        ),
+        (
+            "main = case (pure 7 :: Either String Int) of { Right x -> x; Left _ -> 0 }\n",
+            7,
+        ),
+        (
+            "f :: Int -> Maybe Int\nf x = return (x + 1)\nmain = case f 4 of { Just x -> x; Nothing -> 0 }\n",
+            5,
+        ),
+        (
+            "main = case ((return 1 :: Maybe Int) >>= (\\x -> Just (x + 1))) of { Just x -> x; Nothing -> 0 }\n",
+            2,
+        ),
+    ];
+    for (body_chirho, want_chirho) in value_cases_chirho {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = format!("module Test where\n{body_chirho}");
+        let result_chirho = eval_source_chirho(&src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(
+                val_chirho,
+                haskelujah_runtime_chirho::ValueChirho::IntChirho(want_chirho),
+                "unexpected annotated return/pure result for: {body_chirho}"
+            ),
+            Err(e_chirho) => {
+                panic!("annotated return/pure should dispatch for {body_chirho}: {e_chirho}")
+            }
+        }
+    }
+
+    let stdout_cases_chirho: [(&str, &str); 2] = [
+        ("main = (return :: Int -> IO Int) 5 >>= print\n", "5\n"),
+        (
+            "acts :: [IO Int]\nacts = [return 1, return 2]\nmain = head acts >>= print\n",
+            "1\n",
+        ),
+    ];
+    for (body_chirho, want_chirho) in stdout_cases_chirho {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = format!("module Test where\n{body_chirho}");
+        let result_chirho =
+            eval_source_with_machine_chirho(&src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok((_, machine_chirho)) => assert_eq!(
+                machine_chirho.io_output_chirho, want_chirho,
+                "annotated IO fallback changed for: {body_chirho}"
+            ),
+            Err(e_chirho) => {
+                panic!("annotated IO fallback should evaluate for {body_chirho}: {e_chirho}")
+            }
+        }
+    }
+}
+
 #[test]
 fn eval_applicative_either_dispatch_chirho() {
     use crate::eval_source_chirho;
