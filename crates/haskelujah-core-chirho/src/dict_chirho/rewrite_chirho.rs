@@ -311,6 +311,25 @@ impl DictPassCtxChirho {
                 if is_con_head_chirho {
                     return self.infer_type_key_chirho(expr_chirho);
                 }
+                if self.dict_param_bindings_chirho.contains_key(head_id_chirho) {
+                    let mut args_chirho = Vec::new();
+                    let mut app_chirho = expr_chirho;
+                    while let CoreExprChirho::AppChirho {
+                        fun_chirho,
+                        arg_chirho,
+                    } = app_chirho
+                    {
+                        args_chirho.push(arg_chirho.as_ref());
+                        app_chirho = fun_chirho.as_ref();
+                    }
+                    args_chirho.reverse();
+                    return args_chirho.iter().find_map(|arg_chirho| {
+                        self.infer_strict_dispatch_key_for_rewrite_chirho(
+                            arg_chirho,
+                            local_type_keys_chirho,
+                        )
+                    });
+                }
                 None
             }
             _ => None,
@@ -842,6 +861,81 @@ impl DictPassCtxChirho {
         }
     }
 
+    fn try_rewrite_typed_dict_param_arg_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+        type_key_chirho: &str,
+    ) -> Option<CoreExprChirho> {
+        let (fn_id_chirho, classes_chirho, args_chirho) =
+            self.collect_dict_param_app_chirho(expr_chirho)?;
+
+        let mut result_chirho = CoreExprChirho::VarChirho(fn_id_chirho);
+        let mut inserted_dict_chirho = false;
+        let classes_chirho = classes_chirho.to_vec();
+        for class_name_chirho in &classes_chirho {
+            let dict_id_chirho = self
+                .instance_dicts_chirho
+                .get(&(class_name_chirho.clone(), type_key_chirho.to_string()))
+                .copied()
+                .or_else(|| {
+                    Self::fallback_dict_for_class_chirho(
+                        class_name_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                    )
+                });
+            if let Some(dict_id_chirho) = dict_id_chirho {
+                inserted_dict_chirho = true;
+                result_chirho = CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(result_chirho),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
+                };
+            }
+        }
+        if !inserted_dict_chirho {
+            return None;
+        }
+
+        for a_chirho in &args_chirho {
+            let rewritten_arg_chirho = self
+                .try_rewrite_typed_dict_param_arg_chirho(
+                    a_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                    type_key_chirho,
+                )
+                .or_else(|| {
+                    self.try_rewrite_typed_method_arg_chirho(
+                        a_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_instance_dicts_chirho,
+                        type_key_chirho,
+                    )
+                })
+                .unwrap_or_else(|| {
+                    self.rewrite_method_refs_with_locals_chirho(
+                        a_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_type_keys_chirho,
+                        local_instance_dicts_chirho,
+                    )
+                });
+            result_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(result_chirho),
+                arg_chirho: Box::new(rewritten_arg_chirho),
+            };
+        }
+        Some(result_chirho)
+    }
+
     fn fallback_dict_for_class_chirho(
         class_name_chirho: &str,
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
@@ -1045,8 +1139,15 @@ impl DictPassCtxChirho {
                 let is_con_head_chirho = self.con_types_chirho.contains_key(name_chirho)
                     || matches!(
                         name_chirho.as_str(),
-                        "Just" | "Left" | "Right" | "Down" | "Endo" | ":" | "(,)" | "(,,)"
-                        | "(,,,)"
+                        "Just"
+                            | "Left"
+                            | "Right"
+                            | "Down"
+                            | "Endo"
+                            | ":"
+                            | "(,)"
+                            | "(,,)"
+                            | "(,,,)"
                     )
                     || name_chirho.starts_with("$tuple");
                 if is_con_head_chirho {
@@ -1505,6 +1606,41 @@ impl DictPassCtxChirho {
                 fun_chirho,
                 arg_chirho,
             } => {
+                if let CoreExprChirho::LamChirho { binder_chirho, .. } = fun_chirho.as_ref() {
+                    let arg_key_chirho = self
+                        .infer_strict_dispatch_key_for_rewrite_chirho(
+                            arg_chirho,
+                            local_type_keys_chirho,
+                        )
+                        .or_else(|| {
+                            if self.expr_contains_numeric_default_marker_chirho(arg_chirho) {
+                                Some("Int".to_string())
+                            } else {
+                                None
+                            }
+                        });
+                    if let Some(arg_key_chirho) = arg_key_chirho {
+                        let mut app_type_keys_chirho = local_type_keys_chirho.clone();
+                        app_type_keys_chirho.insert(binder_chirho.id_chirho, arg_key_chirho);
+                        return CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
+                                fun_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                                &app_type_keys_chirho,
+                                local_instance_dicts_chirho,
+                            )),
+                            arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
+                                arg_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                                local_type_keys_chirho,
+                                local_instance_dicts_chirho,
+                            )),
+                        };
+                    }
+                }
+
                 if let CoreExprChirho::VarChirho(fun_id_chirho) = fun_chirho.as_ref() {
                     if self
                         .names_chirho
@@ -1743,15 +1879,46 @@ impl DictPassCtxChirho {
 
                     // Rebuild the application chain with rewritten args
                     for a_chirho in &args_chirho {
+                        let rewritten_arg_chirho =
+                            if let Some(type_key_chirho) = type_key_chirho.as_deref() {
+                                self.try_rewrite_typed_dict_param_arg_chirho(
+                                    a_chirho,
+                                    dict_vars_chirho,
+                                    evidence_classes_chirho,
+                                    local_type_keys_chirho,
+                                    local_instance_dicts_chirho,
+                                    type_key_chirho,
+                                )
+                                .or_else(|| {
+                                    self.try_rewrite_typed_method_arg_chirho(
+                                        a_chirho,
+                                        dict_vars_chirho,
+                                        evidence_classes_chirho,
+                                        local_instance_dicts_chirho,
+                                        type_key_chirho,
+                                    )
+                                })
+                                .unwrap_or_else(|| {
+                                    self.rewrite_method_refs_with_locals_chirho(
+                                        a_chirho,
+                                        dict_vars_chirho,
+                                        evidence_classes_chirho,
+                                        local_type_keys_chirho,
+                                        local_instance_dicts_chirho,
+                                    )
+                                })
+                            } else {
+                                self.rewrite_method_refs_with_locals_chirho(
+                                    a_chirho,
+                                    dict_vars_chirho,
+                                    evidence_classes_chirho,
+                                    local_type_keys_chirho,
+                                    local_instance_dicts_chirho,
+                                )
+                            };
                         result_chirho = CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(result_chirho),
-                            arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
-                                a_chirho,
-                                dict_vars_chirho,
-                                evidence_classes_chirho,
-                                local_type_keys_chirho,
-                                local_instance_dicts_chirho,
-                            )),
+                            arg_chirho: Box::new(rewritten_arg_chirho),
                         };
                     }
                     return result_chirho;
