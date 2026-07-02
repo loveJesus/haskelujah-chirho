@@ -11,5 +11,7 @@
 - [x] println blocker: gpt disclaimed, gemini removed by L.J. (#1396), stashed under stale-file authority — tree clean
 - [x] WI-001/002 LANDED: claude patch + gpt IO-fallback completion = b5203335 (probe 70/70); claude strict-key hardening fixes putStrLn-headed chains (io2/io5/iodo green, all repros pass)
 - [x] L.J. continuity directive → memory feedback_handoff_continuity_chirho + PRD continuity_protocol_chirho
-- [ ] Commit strict-key fix + tests + PRD v2.1 + AGENTS.md (L.J.'s cleanup); push; broker landing note; log step
-- [ ] AUDIT-MERGE: fold resumed workflow designs/verifies/catalog + post-b5203335 driver delta + sweep numbers into PRD; then PRD-TOKEN-FREE + SLOT-FREE
+- [x] Commit strict-key fix + tests + PRD v2.1 + AGENTS.md → 29d9f262 pushed; landing note #1404
+- [x] Resource-guard incident: two overlapping test runs SIGTERMed by gpt on L.J. flag; protocol codified in PRD machine_safety (heavy sweeps need L.J. approval, test-threads cap)
+- [x] Audit workflow COMPLETE 25/25 (maps+designs+verifies+catalog)
+- [x] HANDED OFF to gpt per L.J. (claude credits out): AUDIT-MERGE into PRD + write token + builder slot transferred (broker msg); claude resumes from gpt's posts per continuity protocol

@@ -34,7 +34,8 @@
 
   "current_state_chirho": {
     "measured_date_chirho": "2026-07-01 (late, post-b5203335)",
-    "driver_lib_tests_chirho": { "passed_chirho": 1609, "failed_chirho": 73, "runtime_seconds_chirho": 466, "note_chirho": "baseline at 626ab0a4 (pre-b5203335); post-landing delta run in progress — update this entry from driver_lib_tests_post_b5203335.log when it lands" },
+    "driver_lib_tests_chirho": { "passed_chirho": 1609, "failed_chirho": 73, "runtime_seconds_chirho": 466, "note_chirho": "baseline at 626ab0a4. At b5203335 alone: 1569 passed / 117 failed (44 net regressions — putStrLn-chain class; completed run, valid). At 29d9f262 (strict-key fix): full delta NOT MEASURED — the run was SIGTERMed by the resource guard (two overlapping suites, L.J. flag); gates that DID run at 29d9f262: probe 70/70, 10 CLI repros green, 9/9 targeted monadic/fmap/applicative/stdout eval tests. Full re-run awaits L.J. approval per RESOURCE GUARD.",
+      "partial_ghc_sweep_at_b5203335_chirho": "parser/should_compile 120/158 (75.9%), parser/should_fail 65/233 correctly rejected (27.9%) — partial capture before SIGTERM; treat as the only fresh per-category data, incomplete" },
     "probe_harness_chirho": { "passed_chirho": 70, "total_chirho": 70, "note_chirho": "at b5203335 with FRESH binary — maybe-do flipped green, zero regressions. KNOWN probe coverage hole: multi-statement IO do-blocks starting with putStrLn were not in the harness and crashed at b5203335 (list-monad mis-dispatch via blind key inference); strict-key fix + eval_io_do_effect_chains_chirho pin landed next" },
     "ghc_suite_chirho": { "status_chirho": "first full sweep at 626ab0a4 PASSED as a tracking run (1992s) but per-category tables were lost to cargo output capture (missing --nocapture) — honest gap; summary-only re-run with --nocapture in progress, results land here" },
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
@@ -45,7 +46,8 @@
     "machine_safety_chirho": [
       "ONE builder machine-wide at any time. The builder slot is coordinated in broker room haskelujah-chirho; announce before building, post SLOT-FREE after. A direct L.J. instruction always wins over agent coordination.",
       "Build with: CARGO_BUILD_JOBS=2 cargo build -j 2 --bin haskelujah (LLVM link is cached; incremental ~20-45s). Never cargo build --workspace casually; prefer cargo test -p <crate>.",
-      "Scout/repro with the prebuilt ./target/debug/haskelujah (target/release is STALE); wrap runs in a perl-alarm timeout.",
+      "RESOURCE GUARD (added 2026-07-02 after gpt SIGTERMed two overlapping claude test runs at load ~32): the cargo build LOCK does NOT serialize test EXECUTION — two 'queued' chains overlap once compiled, and libtest defaults test-threads to ALL cores. Heavy suites (driver --lib full, ghc_bulk) require L.J.'s explicit approval, run ONE at a time inside a single sequential command, capped with -- --test-threads=4 (or fewer), nice'd, and with a timeout. Targeted tests/probes (filtered cargo test, CLI repros, probe harness) are the default validation currency.",
+      "Scout/repro with the prebuilt ./target/debug/haskelujah — and CHECK ITS MTIME against the latest commit first (cargo test does not rebuild the CLI binary); wrap runs in a perl-alarm timeout.",
       "Read-only audit agents must never invoke cargo/rustc."
     ],
     "tree_etiquette_chirho": [
