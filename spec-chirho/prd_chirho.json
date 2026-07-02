@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.28",
+    "prd_version_chirho": "2.2.29",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -39,7 +39,8 @@
       "gpt_chirho (Codex) — WI-008 native higher-order operator and CLI executable-IR run path v2.2.25",
       "gpt_chirho (Codex) — WI-008 restore STG-backed CLI run after native-default probe regression v2.2.26",
       "gpt_chirho (Codex) — WI-008/WI-014 higher-order numeric print STG-run parity + Product/Enum Integer body-backed rows v2.2.27",
-      "gpt_chirho (Codex) — WI-005 mapFoldlWithKey' wiring + WI-014 fromEnum(chr) regression fix v2.2.28"
+      "gpt_chirho (Codex) — WI-005 mapFoldlWithKey' wiring + WI-014 fromEnum(chr) regression fix v2.2.28",
+      "gpt_chirho (Codex) — WI-005 mapIntersectionWith runtime/Core/scheme wiring v2.2.29"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -81,9 +82,9 @@
       "partial_ghc_sweep_at_b5203335_chirho": "parser/should_compile 120/158 (75.9%), parser/should_fail 65/233 correctly rejected (27.9%) — partial capture before SIGTERM; treat as the only fresh per-category data, incomplete"
     },
     "probe_harness_chirho": {
-      "passed_chirho": 69,
+      "passed_chirho": 70,
       "total_chirho": 70,
-      "note_chirho": "Claude full-probe acceptance at 8abc36ab after v2.2.27: PASS=69 FAIL=1. onfn is fixed, but the residual swapped to fromEnumChar: `print (fromEnum (chr 97))` printed `a` instead of `97` because print-default rewrote Enum/fromEnum to Int. v2.2.28 removes Enum from the numeric-under-print rewrite and pins the repro in eval_to_from_enum_chirho; full probe acceptance is pending Claude's follow-up gate per the broker QA loop."
+      "note_chirho": "Claude full-probe acceptance at f820ff0d after v2.2.28: PASS=70 FAIL=0. This is the first clean probe baseline after the onfn/fromEnumChar/run-path saga. v2.2.29 adds mapIntersectionWith targeted wiring after that accepted baseline; full probe acceptance for v2.2.29 is pending Claude's follow-up gate per the broker QA loop."
     },
     "ghc_suite_chirho": {
       "status_chirho": "No fresh full run after 29d9f262 due resource guard. Audit catalog uses baseline 1609/73, completed b5203335 delta 1569/117, and incomplete 29d9f262 logs; full ghc_bulk/driver sweeps require explicit L.J. approval."
@@ -91,16 +92,15 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "WI-005/WI-014 targeted follow-up: mapFoldlWithKey' now has a Core body reusing mapFoldlWithKey# and a real Map k v type scheme; the v2.2.27 fromEnum(chr) probe-swap regression is fixed by keeping Enum methods out of ambiguous numeric print-default rewriting. No full suites or full probe run by gpt_chirho per resource guard; Claude owns the holistic full-probe acceptance window after SLOT-FREE.",
+      "scope_chirho": "WI-005 mapIntersectionWith completion: the final loud-placeholder Map builtin now has a runtime primop, STG lowering, Core Prelude wrapper, real Map k v scheme, and targeted eval coverage. No full suites or full probe run by gpt_chirho per resource guard; Claude owns the holistic full-probe acceptance window after SLOT-FREE.",
       "commands_chirho": [
-        "rustfmt crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho.rs crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs crates/haskelujah-typing-chirho/src/infer_chirho.rs crates/haskelujah-driver-chirho/src/tests_chirho/eval_basic_chirho.rs",
+        "rustfmt crates/haskelujah-runtime-chirho/src/stack_chirho.rs crates/haskelujah-runtime-chirho/src/prim_chirho.rs crates/haskelujah-runtime-chirho/src/eval_chirho.rs crates/haskelujah-driver-chirho/src/stg_lower_chirho.rs crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho.rs crates/haskelujah-typing-chirho/src/infer_chirho.rs crates/haskelujah-driver-chirho/src/tests_chirho/eval_data_chirho.rs",
         "git diff --check",
-        "CARGO_BUILD_JOBS=1 timeout 360 cargo test -p haskelujah-driver --lib eval_map_foldl_with_key_strict_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 360 cargo test -p haskelujah-driver --lib eval_to_from_enum_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 360 cargo test -p haskelujah-driver --lib eval_higher_order_on_function_print_output_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=1 timeout 360 cargo test -p haskelujah-driver --lib eval_higher_order_on_function_dispatch_chirho -- --test-threads=1"
+        "CARGO_BUILD_JOBS=1 timeout 360 cargo test -p haskelujah-driver --lib eval_map_intersection_with_sum_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 360 cargo test -p haskelujah-driver --lib eval_map_union_with_sum_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 360 cargo test -p haskelujah-driver --lib eval_map_foldl_with_key_strict_chirho -- --test-threads=1"
       ],
-      "result_chirho": "All targeted gates passed. mapFoldlWithKey' evaluates through the strict left-fold runtime path; eval_to_from_enum_chirho now pins `print (fromEnum (chr 97))` => `97\\n`; onfn print remains green. Cargo still emits the pre-existing typing dead_code warning for instantiate_instance_method_expected_ty_chirho. No driver --lib full suite, ghc_bulk, package scan, or full probe run by gpt_chirho (resource guard); Claude will run the full probe acceptance gate after SLOT-FREE."
+      "result_chirho": "All targeted gates passed. mapIntersectionWith keeps only shared keys and combines their values; adjacent mapUnionWith and mapFoldlWithKey' targeted tests remain green. Cargo still emits the pre-existing typing dead_code warning for instantiate_instance_method_expected_ty_chirho. No driver --lib full suite, ghc_bulk, package scan, or full probe run by gpt_chirho (resource guard); Claude will run the full probe acceptance gate after SLOT-FREE."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -610,12 +610,12 @@
       "title_chirho": "Map builtin scheme migration and qualified surface correctness",
       "pillar_chirho": "PILLAR-2",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed v2.2.28: 14 of 15 seed_builtins_chirho Data.Map schemes migrated from Int placeholders to real Map k v via map_ty_chirho helper; v2.2.28 wires mapFoldlWithKey' as a Core wrapper over existing mapFoldlWithKey# and restores its real Map k v scheme. eval_map 47->66 of 68 in v2.2.15, with v2.2.28 adding a targeted strict-fold pin. VAPORWARE HELD: mapIntersectionWith remains a loud Int placeholder because it still has no combining Core body / primop / runtime variant. REMAINING WI-005: (a) wire a combining mapIntersectionWith in dict_chirho/prelude_chirho.rs, then restore its real Map k v scheme; (b) the qualified Data.Map M.* surface is still a separate silent-wrong problem (acceptance test eval_data_map_roundtrip_chirho); (c) make missing-global STG lowering loud instead of defaulting to IntChirho(0).",
+      "status_chirho": "partially landed v2.2.29: all 15 named seed_builtins_chirho Data.Map schemes in this bucket now use real Map k v types and have corresponding wired bodies. v2.2.28 wired mapFoldlWithKey'; v2.2.29 adds mapIntersectionWith# as a combining-intersection runtime primop, plus STG lowering, Core Prelude wrapper, and targeted eval coverage. REMAINING WI-005: (a) the qualified Data.Map M.* surface is still a separate silent-wrong problem (acceptance test eval_data_map_roundtrip_chirho); (b) make missing-global STG lowering loud instead of defaulting to IntChirho(0).",
       "owner_chirho": "claude_chirho per gpt scaffold (wave B); gpt_chirho on typing review",
       "problem_chirho": "Audit refuted the original Data.Map framing: the 20-driver-red cluster is mostly unqualified builtin map* functions whose seed_builtins_chirho schemes are half migrated from Int placeholders to Map k v. Qualified M.* adds a separate silent-wrong surface because desugar drops qualifiers and missing globals lower to Int 0.",
       "fix_design_chirho": [
-        "Finish Map k v schemes in seed_builtins_chirho for mapFindWithDefault, mapAdjust, mapUnion, mapDifference, mapUnionWith, mapIntersectionWith, mapFilter, mapInsertWith, mapFoldlWithKey, mapFoldrWithKey, mapFoldlWithKey', mapInsertStr, mapLookupStr, mapMemberStr, mapFindWithDefaultStr. v2.2.28 completed mapFoldlWithKey'.",
-        "Wire or loudly reject vaporware runtime ops mapIntersectionWith and mapFoldlWithKey' before exposing their schemes. v2.2.28 wired mapFoldlWithKey' by reusing mapFoldlWithKey#; mapIntersectionWith remains unwired.",
+        "Finish Map k v schemes in seed_builtins_chirho for mapFindWithDefault, mapAdjust, mapUnion, mapDifference, mapUnionWith, mapIntersectionWith, mapFilter, mapInsertWith, mapFoldlWithKey, mapFoldrWithKey, mapFoldlWithKey', mapInsertStr, mapLookupStr, mapMemberStr, mapFindWithDefaultStr. v2.2.28 completed mapFoldlWithKey'; v2.2.29 completed mapIntersectionWith.",
+        "Wire or loudly reject vaporware runtime ops mapIntersectionWith and mapFoldlWithKey' before exposing their schemes. v2.2.28 wired mapFoldlWithKey' by reusing mapFoldlWithKey#; v2.2.29 wired mapIntersectionWith# as a combining-intersection runtime primop.",
         "Canonicalize qualified Data.Map names to builtin map* ops without erasing semantics, or add real interface/value bindings for the qualified surface.",
         "Make missing-global STG lowering loud enough for tests to catch, rather than defaulting to IntChirho(0)."
       ],
@@ -1082,7 +1082,7 @@
       {
         "bucket_chirho": "map-builtin-mistyping",
         "count_chirho": 20,
-      "resolved_chirho": "RESOLVED v2.2.15/v2.2.28 (claude_chirho + gpt_chirho, WI-005): all 19 original E0200 typing reds flipped green by migrating wired seed_builtins_chirho Map schemes from Int placeholders to real Map k v (map_ty_chirho helper). v2.2.28 additionally wired mapFoldlWithKey' by reusing mapFoldlWithKey# and restored its real Map k v scheme. 1 unwired op (mapIntersectionWith) remains a loud Int placeholder pending runtime wiring. eval_map targeted at v2.2.15: 47->66 of 68; the 2 residual are OTHER buckets (eval_map_basic runtime IO-output, eval_map_maybe user-defined mapMaybe).",
+      "resolved_chirho": "RESOLVED v2.2.15/v2.2.28/v2.2.29 (claude_chirho + gpt_chirho, WI-005): all 19 original E0200 typing reds flipped green by migrating wired seed_builtins_chirho Map schemes from Int placeholders to real Map k v (map_ty_chirho helper). v2.2.28 wired mapFoldlWithKey' by reusing mapFoldlWithKey#; v2.2.29 wired mapIntersectionWith# and restored its real Map k v scheme. No WI-005 vaporware Map op remains in this bucket. eval_map targeted at v2.2.15: 47->66 of 68; the 2 residual are OTHER buckets (eval_map_basic runtime IO-output, eval_map_maybe user-defined mapMaybe).",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "typing",
         "representative_tests_chirho": [

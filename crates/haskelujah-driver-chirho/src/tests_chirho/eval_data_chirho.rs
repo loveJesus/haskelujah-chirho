@@ -1456,6 +1456,26 @@ main = sum (mapElems (mapUnionWith (+) m1 m2))
     );
 }
 
+#[test]
+fn eval_map_intersection_with_sum_chirho() {
+    // mapIntersectionWith (+) keeps only shared keys and combines their values.
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+m1 = mapFromList [(1,10),(2,20),(4,40)]
+m2 = mapFromList [(2,5),(3,30),(4,7)]
+main = sum (mapElems (mapIntersectionWith (+) m1 m2))
+";
+    // Shared keys: 2 -> 25 and 4 -> 47. Non-overlapping keys are omitted.
+    let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
+        .unwrap_or_else(|e_chirho| panic!("mapIntersectionWith sum failed: {}", e_chirho));
+    assert_eq!(
+        val_chirho,
+        haskelujah_runtime_chirho::ValueChirho::IntChirho(72)
+    );
+}
+
 // ── Data.List: find ───────────────────────────────────────────────────
 
 // John 3:16 - For God so loved the world, that he gave his only begotten Son,

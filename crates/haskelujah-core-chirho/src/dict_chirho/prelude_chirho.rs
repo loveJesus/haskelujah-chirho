@@ -11968,6 +11968,49 @@ impl DictPassCtxChirho {
             });
         }
 
+        // mapIntersectionWith :: (v -> v -> v) -> Map k v -> Map k v -> Map k v
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("mapIntersectionWith");
+            let f_chirho = self.fresh_binder_chirho("f", any_b_chirho.clone());
+            let m1_chirho = self.fresh_binder_chirho("m1", map_ty_chirho.clone());
+            let m2_chirho = self.fresh_binder_chirho("m2", map_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: f_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: m1_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::LamChirho {
+                        binder_chirho: m2_chirho.clone(),
+                        body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                            name_chirho: "mapIntersectionWith#".to_string(),
+                            args_chirho: vec![
+                                CoreExprChirho::VarChirho(f_chirho.id_chirho),
+                                CoreExprChirho::VarChirho(m1_chirho.id_chirho),
+                                CoreExprChirho::VarChirho(m2_chirho.id_chirho),
+                            ],
+                        }),
+                    }),
+                }),
+            };
+            let ty_chirho = TyChirho::fun_chirho(
+                any_b_chirho.clone(),
+                TyChirho::fun_chirho(
+                    map_ty_chirho.clone(),
+                    TyChirho::fun_chirho(map_ty_chirho.clone(), map_ty_chirho.clone()),
+                ),
+            );
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "mapIntersectionWith".to_string(),
+                    ty_chirho,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
         // mapInsertWith :: (v -> v -> v) -> k -> v -> Map k v -> Map k v
         {
             let id_chirho = self.resolve_or_fresh_id_chirho("mapInsertWith");

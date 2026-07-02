@@ -3356,6 +3356,40 @@ impl MachineChirho {
                     .collect();
                 return Ok(ValueChirho::MapChirho(result_chirho));
             }
+            PrimOpKindChirho::MapIntersectionWithChirho => {
+                // mapIntersectionWith# f left right — combine values only for shared keys
+                let func_val_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let left_arg_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
+                let right_arg_chirho = args_chirho
+                    .get(2)
+                    .cloned()
+                    .unwrap_or(ValueChirho::MapChirho(vec![]));
+                let left_pairs_chirho = self.extract_map_pairs_chirho(left_arg_chirho);
+                let right_pairs_chirho = self.extract_map_pairs_chirho(right_arg_chirho);
+                let mut result_chirho = Vec::new();
+                for (k_chirho, v_left_chirho) in left_pairs_chirho {
+                    if let Ok(pos_chirho) = right_pairs_chirho.binary_search_by(|(ek_chirho, _)| {
+                        compare_values_chirho(ek_chirho, &k_chirho)
+                    }) {
+                        let v_right_chirho = right_pairs_chirho[pos_chirho].1.clone();
+                        let combined_chirho = {
+                            let af_chirho = self
+                                .apply_fn_to_value_chirho(func_val_chirho.clone(), v_left_chirho)?;
+                            let raw_chirho =
+                                self.apply_fn_to_value_chirho(af_chirho, v_right_chirho)?;
+                            self.force_to_prim_chirho(raw_chirho)
+                        };
+                        result_chirho.push((k_chirho, combined_chirho));
+                    }
+                }
+                return Ok(ValueChirho::MapChirho(result_chirho));
+            }
             PrimOpKindChirho::MapInsertWithChirho => {
                 // mapInsertWith# f k v map — insert with combiner f
                 let func_val_chirho = args_chirho

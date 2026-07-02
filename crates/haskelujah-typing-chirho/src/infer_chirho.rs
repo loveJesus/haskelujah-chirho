@@ -11854,30 +11854,28 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     }
 
     // mapIntersectionWith :: Ord k => (v -> v -> v) -> Map k v -> Map k v -> Map k v
-    // NOTE (WI-005): the combining-intersection runtime op is NOT wired — the
-    // runtime only has plain MapIntersectionChirho (no combining function), and
-    // grep confirms nothing but this scheme references mapIntersectionWith. It is
-    // deliberately kept as the `Int` placeholder so a genuine `Map` argument fails
-    // loudly at type-check (E0200) rather than lowering to a silent `IntChirho(0)`.
-    // Restore the real `Map k v` scheme once a combining-intersection body/primop
-    // is wired in dict_chirho/prelude_chirho.rs.
     {
+        let k_chirho = TyVarChirho(3868);
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3234));
         env_chirho.bind_chirho(
             "mapIntersectionWith".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3234)],
-                preds_chirho: vec![],
+                vars_chirho: vec![TyVarChirho(3234), k_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         TyChirho::fun_chirho(
                             v_chirho.clone(),
-                            TyChirho::fun_chirho(v_chirho.clone(), v_chirho),
+                            TyChirho::fun_chirho(v_chirho.clone(), v_chirho.clone()),
                         ),
-                        TyChirho::int_chirho(),
-                        TyChirho::int_chirho(),
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho.clone()),
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho.clone()),
                     ],
-                    TyChirho::int_chirho(),
+                    map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho),
                 ),
             },
         );

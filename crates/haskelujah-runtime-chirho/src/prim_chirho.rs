@@ -709,6 +709,7 @@ pub fn apply_prim_binop_chirho(
         | PrimOpKindChirho::MapUnionChirho
         | PrimOpKindChirho::MapDifferenceChirho
         | PrimOpKindChirho::MapIntersectionChirho
+        | PrimOpKindChirho::MapIntersectionWithChirho
         | PrimOpKindChirho::MapInsertWithChirho
         | PrimOpKindChirho::MapFindWithDefaultChirho
         | PrimOpKindChirho::MapAdjustChirho

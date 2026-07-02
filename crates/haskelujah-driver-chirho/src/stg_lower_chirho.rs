@@ -1861,6 +1861,9 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "mapUnion#" | "mapUnion" => PrimOpKindChirho::MapUnionChirho,
         "mapDifference#" | "mapDifference" => PrimOpKindChirho::MapDifferenceChirho,
         "mapIntersection#" | "mapIntersection" => PrimOpKindChirho::MapIntersectionChirho,
+        "mapIntersectionWith#" | "mapIntersectionWith" => {
+            PrimOpKindChirho::MapIntersectionWithChirho
+        }
         "mapInsertWith#" | "mapInsertWith" => PrimOpKindChirho::MapInsertWithChirho,
         "mapFindWithDefault#" | "mapFindWithDefault" => PrimOpKindChirho::MapFindWithDefaultChirho,
         "mapAdjust#" | "mapAdjust" => PrimOpKindChirho::MapAdjustChirho,

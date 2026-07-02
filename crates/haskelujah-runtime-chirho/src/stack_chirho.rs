@@ -363,6 +363,8 @@ pub enum PrimOpKindChirho {
     MapDifferenceChirho,
     /// mapIntersection# :: Map k v -> Map k w -> Map k v — keys in both maps
     MapIntersectionChirho,
+    /// mapIntersectionWith# :: (v -> v -> v) -> Map k v -> Map k v -> Map k v — combine shared keys only
+    MapIntersectionWithChirho,
     /// mapInsertWith# :: (v -> v -> v) -> k -> v -> Map k v -> Map k v — insert with combiner
     MapInsertWithChirho,
     /// mapFindWithDefault# :: v -> k -> Map k v -> v — lookup with default value
