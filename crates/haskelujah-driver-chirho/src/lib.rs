@@ -4713,6 +4713,12 @@ fn scan_dependency_package_ifaces_chirho(project_dir_chirho: &Path) -> Vec<Modul
         return ifaces_chirho;
     };
 
+    // Seed the current package first when the caller itself lives under
+    // .haskelujah-packages-chirho/. This gives tests and package-scan callers
+    // forward module stubs for same-package imports such as containers'
+    // Utils.Containers.Internal.BitUtil.
+    scan_package_hs_files_chirho(project_dir_chirho, project_dir_chirho, &mut ifaces_chirho);
+
     // Scan each package directory
     let entries_chirho = match std::fs::read_dir(&packages_dir_chirho) {
         Ok(e_chirho) => e_chirho,
@@ -6144,12 +6150,62 @@ pub fn discover_modules_chirho(
         }
     }
 
-    // Skip test-suite modules — they require test dependencies (tasty,
-    // QuickCheck, etc.) which are rarely available. Only compile library
-    // and executable components.
+    for test_chirho in &package_chirho.test_suites_chirho {
+        let src_dirs_chirho = if test_chirho
+            .build_info_chirho
+            .hs_source_dirs_chirho
+            .is_empty()
+        {
+            vec![".".to_string()]
+        } else {
+            test_chirho.build_info_chirho.hs_source_dirs_chirho.clone()
+        };
 
-    // Skip Setup.hs / Setup.lhs — these are Cabal build system files
-    // that import Distribution.Simple and are not part of the package itself.
+        for mod_name_chirho in &test_chirho.other_modules_chirho {
+            if seen_chirho.insert(format!(
+                "test:{}:{}",
+                test_chirho.name_chirho, mod_name_chirho
+            )) {
+                if let Some(path_chirho) =
+                    find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
+                {
+                    modules_chirho.push((mod_name_chirho.clone(), path_chirho));
+                }
+            }
+        }
+
+        if let Some(main_is_chirho) = &test_chirho.main_is_chirho {
+            let main_path_chirho = src_dirs_chirho
+                .iter()
+                .map(|d_chirho| project_dir_chirho.join(d_chirho).join(main_is_chirho))
+                .find(|p_chirho| p_chirho.exists());
+
+            if let Some(path_chirho) = main_path_chirho {
+                let mod_name_chirho = "Main".to_string();
+                if seen_chirho.insert(format!(
+                    "test:{}:{}",
+                    test_chirho.name_chirho, mod_name_chirho
+                )) {
+                    modules_chirho.push((mod_name_chirho, path_chirho));
+                }
+            }
+        }
+    }
+
+    if package_chirho.library_chirho.is_none()
+        && package_chirho.internal_libraries_chirho.is_empty()
+        && package_chirho.executables_chirho.is_empty()
+        && package_chirho.test_suites_chirho.is_empty()
+        && package_chirho.benchmarks_chirho.is_empty()
+    {
+        for setup_file_chirho in ["Setup.hs", "Setup.lhs"] {
+            let setup_path_chirho = project_dir_chirho.join(setup_file_chirho);
+            if setup_path_chirho.exists() && seen_chirho.insert("setup:Setup".to_string()) {
+                modules_chirho.push(("Setup".to_string(), setup_path_chirho));
+                break;
+            }
+        }
+    }
 
     modules_chirho
 }
