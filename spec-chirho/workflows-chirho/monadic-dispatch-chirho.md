@@ -1,7 +1,7 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
-# Workflow: typeclass method dispatch (Functor/Applicative/Monad)
+# Workflow: typeclass method dispatch (Functor/Applicative/Monad/Alternative)
 
-How a class-method use (`fmap`, `<*>`, `>>=`, `>>`, `return`/`pure`) travels the pipeline,
+How a class-method use (`fmap`, `<*>`, `<|>`, `>>=`, `>>`, `return`/`pure`) travels the pipeline,
 and where per-type dispatch happens. Functions on this DAG carry a
 `// workflow: monadic-dispatch-chirho` comment in code.
 
@@ -9,8 +9,10 @@ and where per-type dispatch happens. Functions on this DAG carry a
 flowchart TD
     SRC["Haskell source\ndo-block / operator use"] --> DESUGAR["desugar_chirho.rs\ndesugar_expr_chirho (ops ~3886-3900)\ndesugar_do_chirho (~4913)"]
     DESUGAR -->|"do stmts → >>= / >> chains (WI-002)\noperators → Var apps (WI-001)"| CORE["Core IR"]
-    CORE --> DICTPASS["dict_chirho/rewrite_chirho.rs\nrewrite_method_refs_with_locals_chirho (~483)"]
+    CORE --> DICTPASS["dict_chirho/rewrite_chirho.rs\nrewrite_method_refs_with_locals_chirho"]
     DICTPASS -->|"App spine, head is class method"| HK["try_dispatch_hk_method_chirho (~409)\ninfer arg type key →\nnormalize_instance_head_key_chirho (~380)"]
+    HK -->|"typed method argument\n(e.g. empty :: [Int])"| TYPEDARG["try_rewrite_typed_method_arg_chirho\nreuse selected instance key"]
+    TYPEDARG --> PRIM
     HK -->|"key resolved, body exists"| PRIM["$prim_Class_method_Type body\ndict_chirho/prelude_chirho.rs\n(e.g. $prim_Monad_>>=_Maybe)"]
     HK -->|"no key / no body"| SEL["try_rewrite_method_var_chirho (~316)\n$sel_Class_method $dClass_Type\n(dict selector path — GPT-owned)"]
     SEL -->|"no dict either: Var survives untouched"| FALLBACK["Var keeps original name"]

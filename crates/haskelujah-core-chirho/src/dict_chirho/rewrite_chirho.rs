@@ -436,6 +436,39 @@ impl DictPassCtxChirho {
         CoreExprChirho::VarChirho(id_chirho)
     }
 
+    // Rewrites typed method arguments such as `(empty :: [Int])` after an
+    // outer method application has selected a concrete instance key.
+    // workflow: monadic-dispatch-chirho
+    fn try_rewrite_typed_method_arg_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+        type_key_chirho: &str,
+    ) -> Option<CoreExprChirho> {
+        match expr_chirho {
+            CoreExprChirho::VarChirho(arg_id_chirho) => Some(self.try_rewrite_method_var_chirho(
+                *arg_id_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_instance_dicts_chirho,
+                Some(type_key_chirho),
+            )),
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => self.try_rewrite_typed_method_arg_chirho(
+                inner_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_instance_dicts_chirho,
+                type_key_chirho,
+            ),
+            _ => None,
+        }
+    }
+
     fn fallback_dict_for_class_chirho(
         class_name_chirho: &str,
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
@@ -887,21 +920,30 @@ impl DictPassCtxChirho {
             return Some(result_chirho);
         }
 
-        // (instance-body name prefix, index of the dispatch argument)
-        let (prefix_chirho, dispatch_idx_chirho) = match head_name_chirho.as_str() {
-            "fmap" => ("$prim_Functor_fmap_", 1usize),
-            ">>=" => ("$prim_Monad_>>=_", 0usize),
-            ">>" => ("$prim_Monad_>>_", 0usize),
-            _ => return None,
-        };
-        let dispatch_arg_chirho = args_chirho.get(dispatch_idx_chirho)?;
+        // (instance-body name prefix, candidate dispatch-argument indexes)
+        let (prefix_chirho, dispatch_indices_chirho): (&str, &[usize]) =
+            match head_name_chirho.as_str() {
+                "fmap" => ("$prim_Functor_fmap_", &[1usize]),
+                ">>=" => ("$prim_Monad_>>=_", &[0usize]),
+                ">>" => ("$prim_Monad_>>_", &[0usize]),
+                "<|>" => ("$prim_Alternative_<|>_", &[1usize, 0usize]),
+                _ => return None,
+            };
+        let dispatch_arg_chirho = dispatch_indices_chirho
+            .iter()
+            .find_map(|idx_chirho| args_chirho.get(*idx_chirho))?;
         // >>= / >> use the conservative key: a wrong positive key sends an IO
-        // chain into another monad's body (worse than no dispatch). fmap keeps
-        // the permissive inference its existing tests pin.
+        // chain into another monad's body (worse than no dispatch). fmap and
+        // <|> keep permissive value-shape inference because their dispatch
+        // operands are plain values, not effectful IO chains.
         let value_key_opt_chirho = if matches!(head_name_chirho.as_str(), ">>=" | ">>") {
             self.infer_monad_dispatch_key_chirho(dispatch_arg_chirho, local_type_keys_chirho)
         } else {
-            self.infer_type_key_for_rewrite_chirho(dispatch_arg_chirho, local_type_keys_chirho)
+            dispatch_indices_chirho.iter().find_map(|idx_chirho| {
+                args_chirho.get(*idx_chirho).and_then(|arg_chirho| {
+                    self.infer_type_key_for_rewrite_chirho(arg_chirho, local_type_keys_chirho)
+                })
+            })
         };
         let Some(value_key_chirho) = value_key_opt_chirho else {
             if matches!(head_name_chirho.as_str(), ">>=" | ">>") {
@@ -953,7 +995,25 @@ impl DictPassCtxChirho {
         // Rebuild the application with the instance body as head; rewrite args.
         let mut result_chirho = CoreExprChirho::VarChirho(inst_id_chirho);
         for (idx_chirho, a_chirho) in args_chirho.iter().enumerate() {
-            let rewritten_arg_chirho = if idx_chirho == 1 && head_name_chirho == ">>=" {
+            let rewritten_arg_chirho = if head_name_chirho == "<|>" {
+                if let Some(rewritten_chirho) = self.try_rewrite_typed_method_arg_chirho(
+                    a_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_instance_dicts_chirho,
+                    &head_key_chirho,
+                ) {
+                    rewritten_chirho
+                } else {
+                    self.rewrite_method_refs_with_locals_chirho(
+                        a_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_type_keys_chirho,
+                        local_instance_dicts_chirho,
+                    )
+                }
+            } else if idx_chirho == 1 && head_name_chirho == ">>=" {
                 if let Some(payload_key_chirho) = bind_payload_key_chirho.as_deref() {
                     let continuation_type_keys_chirho = Self::extend_first_lambda_type_key_chirho(
                         a_chirho,
@@ -1176,14 +1236,16 @@ impl DictPassCtxChirho {
                     for a_chirho in &args_chirho {
                         let rewritten_arg_chirho =
                             if let Some(type_key_chirho) = type_key_override_chirho {
-                                if let CoreExprChirho::VarChirho(arg_id_chirho) = a_chirho {
-                                    self.try_rewrite_method_var_chirho(
-                                        *arg_id_chirho,
+                                if let Some(rewritten_chirho) = self
+                                    .try_rewrite_typed_method_arg_chirho(
+                                        a_chirho,
                                         dict_vars_chirho,
                                         evidence_classes_chirho,
                                         local_instance_dicts_chirho,
-                                        Some(type_key_chirho),
+                                        type_key_chirho,
                                     )
+                                {
+                                    rewritten_chirho
                                 } else {
                                     self.rewrite_method_refs_with_locals_chirho(
                                         a_chirho,

@@ -942,6 +942,33 @@ main = getConst (fmap (+1) (Const 41 :: Const Int Int))
 }
 
 #[test]
+fn eval_alternative_maybe_list_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import Control.Applicative
+scoreMaybe m = case m of
+  Nothing -> 0
+  Just x -> x
+main =
+  length ((empty :: [Int]) <|> [1,2])
+  + length ([3] <|> [4,5])
+  + scoreMaybe ((empty :: Maybe Int) <|> Just 7)
+  + scoreMaybe (Nothing <|> Just 11)
+  + scoreMaybe (Just 13 <|> Just 17)
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(36)
+        ),
+        Err(e_chirho) => panic!("alternative maybe/list: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_ordering_monoid_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
