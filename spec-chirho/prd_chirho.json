@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.49",
+    "prd_version_chirho": "2.2.50",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -60,7 +60,8 @@
       "gpt_chirho (Codex) — central interface class-method normalizer extended for Floating v2.2.46",
       "gpt_chirho (Codex) — WI-004 Min/Max Monoid row plus WI-007 primitive wrapper-payload force hardening v2.2.47",
       "gpt_chirho (Codex) — WI-002 refutable do-patterns route failed matches through contextual MonadFail v2.2.48",
-      "gpt_chirho (Codex) — test-harness/CLI parity audit resolved frontend WriterT case as Rust string-layout artifact v2.2.49"
+      "gpt_chirho (Codex) — test-harness/CLI parity audit resolved frontend WriterT case as Rust string-layout artifact v2.2.49",
+      "gpt_chirho (Codex) — failure catalog cleanup after WriterT test-literal fix v2.2.50"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -1228,7 +1229,8 @@
       },
       {
         "bucket_chirho": "maybe-shadow-nominal-mismatch",
-        "count_chirho": 5,
+        "count_chirho": 4,
+        "resolved_chirho": "1 of 5 RESOLVED in v2.2.49/c815ef17: the nested WriterT `$`/callCC `mempty` E0202 case was a Rust string-continuation layout artifact in `frontend_writer_t_nested_dollar_callcc_chirho`. The test source intended `mempty :: w` to be indented under `class Monoid w where`, but the runtime string stripped that indentation. Keeping `class Monoid w where\\n  mempty :: w` in one Rust string segment restored the intended in-memory source; fresh CLI check/compile and targeted unit gates pass.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "typing",
         "representative_tests_chirho": [
@@ -1273,7 +1275,7 @@
           "tests_chirho::compile_chirho::frontend_constraints_package_regression_chirho",
           "tests_chirho::extensions_chirho::iface_data_typeable_rnf_exports_chirho"
         ],
-        "notes_chirho": "Heterogeneous frontend typecheck failures, one test each: E0201 'infinite type: `t12` occurs in `((Either t10) t12)`' (compile_chirho.rs:4078); E0202 'unbound variable: `mempty`' in nested $ callCC lifting (compile_chirho.rs:3665); E0200 '[Int]' vs '(t240 -> t241)' plus a bogus unbound EMPTY-name `` diagnostic at a synthetic span (compile_chirho.rs:1497); E0200 'expected `Dict`, found `(-> t455)`' compiling real Data.Constraint; E0300 kind mismatch in Data.Typeable rnfTyCon/rnfTypeRep exports (kind-infer/iface interaction)."
+        "notes_chirho": "Heterogeneous frontend typecheck failures, one test each after removing the resolved WriterT test-literal artifact: E0201 'infinite type: `t12` occurs in `((Either t10) t12)`' (compile_chirho.rs:4078); E0200 '[Int]' vs '(t240 -> t241)' plus a bogus unbound EMPTY-name `` diagnostic at a synthetic span (compile_chirho.rs:1497); E0200 'expected `Dict`, found `(-> t455)`' compiling real Data.Constraint; E0300 kind mismatch in Data.Typeable rnfTyCon/rnfTypeRep exports (kind-infer/iface interaction)."
       },
       {
         "bucket_chirho": "stg-eval-thunk-forcing",
