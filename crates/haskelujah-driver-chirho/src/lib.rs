@@ -3983,9 +3983,11 @@ fn filter_seeded_imported_types_for_source_chirho(
         return std::collections::HashMap::new();
     }
 
-    let mut unique_bare_names_chirho: std::collections::HashMap<String, usize> =
-        std::collections::HashMap::new();
-    for qualified_name_chirho in imported_types_chirho.keys() {
+    let mut qualified_bare_schemes_chirho: std::collections::HashMap<
+        String,
+        Vec<haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
+    > = std::collections::HashMap::new();
+    for (qualified_name_chirho, qualified_scheme_chirho) in imported_types_chirho {
         for module_name_chirho in &imported_modules_chirho {
             let Some(suffix_chirho) = qualified_name_chirho.strip_prefix(module_name_chirho) else {
                 continue;
@@ -4004,18 +4006,28 @@ fn filter_seeded_imported_types_for_source_chirho(
                 }
             }
             if !remainder_chirho.is_empty() && !remainder_chirho.contains('.') {
-                *unique_bare_names_chirho
+                qualified_bare_schemes_chirho
                     .entry(remainder_chirho.to_string())
-                    .or_insert(0) += 1;
+                    .or_default()
+                    .push(qualified_scheme_chirho.clone());
             }
         }
     }
 
     imported_types_chirho
         .iter()
-        .filter(|(name_chirho, _scheme_chirho)| {
+        .filter(|(name_chirho, scheme_chirho)| {
             if !name_chirho.contains('.') {
-                return unique_bare_names_chirho.get(*name_chirho) == Some(&1);
+                return qualified_bare_schemes_chirho.get(*name_chirho).is_some_and(
+                    |schemes_chirho| {
+                        schemes_chirho.len() == 1
+                            && schemes_chirho
+                                .first()
+                                .is_some_and(|qualified_scheme_chirho| {
+                                    qualified_scheme_chirho == *scheme_chirho
+                                })
+                    },
+                );
             }
             imported_modules_chirho.iter().any(|module_name_chirho| {
                 name_chirho

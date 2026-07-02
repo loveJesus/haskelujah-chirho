@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.61",
+    "prd_version_chirho": "2.2.62",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -72,7 +72,8 @@
       "gpt_chirho (Codex) — narrowed imported dict-param metadata to an explicit cross-module allowlist after d09a4735 probe regression v2.2.58",
       "gpt_chirho (Codex) — PRD consistency cleanup for fully resolved Map and HSC/CPP bucket counts v2.2.59",
       "gpt_chirho (Codex) — PRD consistency cleanup for list-instance remaining-count accuracy v2.2.60",
-      "gpt_chirho (Codex) — project discovery now includes test-suite modules, setup-only Setup.hs, and current-package dependency stubs for BitUtil v2.2.61"
+      "gpt_chirho (Codex) — project discovery now includes test-suite modules, setup-only Setup.hs, and current-package dependency stubs for BitUtil v2.2.61",
+      "gpt_chirho (Codex) — project discovery seeded-type filter keeps qualified choice while dropping mismatched bare choice v2.2.62"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -1227,7 +1228,7 @@
       },
       {
         "bucket_chirho": "project-discovery-iface-seeding",
-        "count_chirho": 3,
+        "count_chirho": 2,
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "module-iface",
         "representative_tests_chirho": [
@@ -1235,7 +1236,7 @@
           "tests_chirho::project_chirho::tests_chirho::real_containers_dependency_seed_includes_bitutil_iface_chirho",
           "tests_chirho::project_chirho::tests_chirho::real_containers_loop_has_bitutil_iface_before_inttreecommons_chirho"
         ],
-        "notes_chirho": "PARTIALLY RESOLVED v2.2.61: discover_modules_chirho now includes test-suite other-modules/main-is and setup-only Setup.hs; scan_dependency_package_ifaces_chirho seeds the current package before sibling dependency packages so the real-containers dependency seed includes Utils.Containers.Internal.BitUtil instead of only unrelated packages. Targeted gates passed discover_setup_hs_chirho, discover_test_suite_modules_chirho, and real_containers_dependency_seed_includes_bitutil_iface_chirho. Remaining: real_containers_package_seed_still_resolves_bitutil_before_inttreecommons_chirho now has_bitutil=true and advances to a separate Data.IntSet.Internal Key-vs-Int typing frontier; filter_seeded_imported_types still keeps 'choice' unexpectedly."
+        "notes_chirho": "PARTIALLY RESOLVED v2.2.61/v2.2.62: discover_modules_chirho now includes test-suite other-modules/main-is and setup-only Setup.hs; scan_dependency_package_ifaces_chirho seeds the current package before sibling dependency packages so the real-containers dependency seed includes Utils.Containers.Internal.BitUtil instead of only unrelated packages. v2.2.62 tightens filter_seeded_imported_types_for_source_chirho so bare seeded names survive only when their scheme matches exactly one imported qualified export; `Text.Parsec.choice` remains seeded while mismatched bare `choice` is dropped. Targeted gates passed discover_setup_hs_chirho, discover_test_suite_modules_chirho, real_containers_dependency_seed_includes_bitutil_iface_chirho, filter_seeded_imported_types_only_keeps_explicit_modules_chirho, filter_seeded_imported_types_keeps_unique_bare_local_export_names_chirho, and real_parsec_reexport_module_seeds_choice_scheme_chirho. Remaining: real_containers_package_seed_still_resolves_bitutil_before_inttreecommons_chirho and real_containers_loop_has_bitutil_iface_before_inttreecommons_chirho now both have/see BitUtil and advance to the separate Data.IntSet.Internal Key-vs-Int typing frontier."
       },
       {
         "bucket_chirho": "maybe-shadow-nominal-mismatch",
