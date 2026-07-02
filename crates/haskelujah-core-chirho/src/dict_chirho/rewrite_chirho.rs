@@ -317,6 +317,7 @@ impl DictPassCtxChirho {
         &self,
         id_chirho: CoreIdChirho,
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
         type_key_override_chirho: Option<&str>,
     ) -> CoreExprChirho {
@@ -362,16 +363,32 @@ impl DictPassCtxChirho {
                     }
                 }
 
-                // Fall back to default dict_vars mapping
-                if let Some(dict_id_chirho) = dict_vars_chirho.get(class_name_chirho) {
-                    return CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(*sel_id_chirho)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
-                    };
+                // Fall back only to dictionaries backed by real local evidence.
+                // Ambient seeded defaults are not proof for an unresolved method
+                // use and used to pick arbitrary semantics.
+                if evidence_classes_chirho.contains(class_name_chirho) {
+                    if let Some(dict_id_chirho) = dict_vars_chirho.get(class_name_chirho) {
+                        return CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(*sel_id_chirho)),
+                            arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
+                        };
+                    }
                 }
             }
         }
         CoreExprChirho::VarChirho(id_chirho)
+    }
+
+    fn fallback_dict_for_class_chirho(
+        class_name_chirho: &str,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+    ) -> Option<CoreIdChirho> {
+        if evidence_classes_chirho.contains(class_name_chirho) {
+            dict_vars_chirho.get(class_name_chirho).copied()
+        } else {
+            None
+        }
     }
 
     /// Normalize a value-shaped type key (`Maybe Int`, `Either e a`, `[Char]`)
@@ -406,6 +423,7 @@ impl DictPassCtxChirho {
         head_id_chirho: CoreIdChirho,
         args_chirho: &[&CoreExprChirho],
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
         local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> CoreExprChirho {
@@ -416,6 +434,7 @@ impl DictPassCtxChirho {
                 arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                     a_chirho,
                     dict_vars_chirho,
+                    evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
                 )),
@@ -489,6 +508,7 @@ impl DictPassCtxChirho {
         &self,
         expr_chirho: &CoreExprChirho,
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
         local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> Option<CoreExprChirho> {
@@ -529,6 +549,7 @@ impl DictPassCtxChirho {
                     head_id_chirho,
                     &args_chirho,
                     dict_vars_chirho,
+                    evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
                 ));
@@ -540,6 +561,7 @@ impl DictPassCtxChirho {
                     head_id_chirho,
                     &args_chirho,
                     dict_vars_chirho,
+                    evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
                 ));
@@ -551,6 +573,7 @@ impl DictPassCtxChirho {
                     arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                         a_chirho,
                         dict_vars_chirho,
+                        evidence_classes_chirho,
                         local_type_keys_chirho,
                         local_instance_dicts_chirho,
                     )),
@@ -581,6 +604,7 @@ impl DictPassCtxChirho {
                     head_id_chirho,
                     &args_chirho,
                     dict_vars_chirho,
+                    evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
                 ));
@@ -596,6 +620,7 @@ impl DictPassCtxChirho {
                     head_id_chirho,
                     &args_chirho,
                     dict_vars_chirho,
+                    evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
                 ));
@@ -619,6 +644,7 @@ impl DictPassCtxChirho {
                 arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                     a_chirho,
                     dict_vars_chirho,
+                    evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
                 )),
@@ -648,6 +674,7 @@ impl DictPassCtxChirho {
         self.rewrite_method_refs_with_locals_chirho(
             expr_chirho,
             dict_vars_chirho,
+            &HashSet::new(),
             &HashMap::new(),
             &HashMap::new(),
         )
@@ -657,6 +684,7 @@ impl DictPassCtxChirho {
         &self,
         expr_chirho: &CoreExprChirho,
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
         local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> CoreExprChirho {
@@ -667,10 +695,14 @@ impl DictPassCtxChirho {
                 if let Some(classes_chirho) = self.dict_param_bindings_chirho.get(id_chirho) {
                     let mut result_chirho = CoreExprChirho::VarChirho(*id_chirho);
                     for class_name_chirho in classes_chirho {
-                        if let Some(dict_id_chirho) = dict_vars_chirho.get(class_name_chirho) {
+                        if let Some(dict_id_chirho) = Self::fallback_dict_for_class_chirho(
+                            class_name_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                        ) {
                             result_chirho = CoreExprChirho::AppChirho {
                                 fun_chirho: Box::new(result_chirho),
-                                arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
+                                arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
                             };
                         }
                     }
@@ -681,6 +713,7 @@ impl DictPassCtxChirho {
                     self.try_rewrite_method_var_chirho(
                         *id_chirho,
                         dict_vars_chirho,
+                        evidence_classes_chirho,
                         local_instance_dicts_chirho,
                         None,
                     )
@@ -698,6 +731,7 @@ impl DictPassCtxChirho {
                 if let Some(dispatched_chirho) = self.try_dispatch_hk_method_chirho(
                     expr_chirho,
                     dict_vars_chirho,
+                    evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
                 ) {
@@ -754,6 +788,7 @@ impl DictPassCtxChirho {
                     let rewritten_method_chirho = self.try_rewrite_method_var_chirho(
                         method_id_chirho,
                         dict_vars_chirho,
+                        evidence_classes_chirho,
                         local_instance_dicts_chirho,
                         type_key_chirho.as_deref(),
                     );
@@ -766,6 +801,7 @@ impl DictPassCtxChirho {
                             arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                                 a_chirho,
                                 dict_vars_chirho,
+                                evidence_classes_chirho,
                                 local_type_keys_chirho,
                                 local_instance_dicts_chirho,
                             )),
@@ -794,14 +830,25 @@ impl DictPassCtxChirho {
                             // Try type-specific dict
                             self.instance_dicts_chirho
                                 .get(&(class_name_chirho.clone(), tk_chirho.clone()))
-                                .or_else(|| dict_vars_chirho.get(class_name_chirho))
+                                .copied()
+                                .or_else(|| {
+                                    Self::fallback_dict_for_class_chirho(
+                                        class_name_chirho,
+                                        dict_vars_chirho,
+                                        evidence_classes_chirho,
+                                    )
+                                })
                         } else {
-                            dict_vars_chirho.get(class_name_chirho)
+                            Self::fallback_dict_for_class_chirho(
+                                class_name_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                            )
                         };
                         if let Some(dict_id_chirho) = dict_id_chirho {
                             result_chirho = CoreExprChirho::AppChirho {
                                 fun_chirho: Box::new(result_chirho),
-                                arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
+                                arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
                             };
                         }
                     }
@@ -813,6 +860,7 @@ impl DictPassCtxChirho {
                             arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                                 a_chirho,
                                 dict_vars_chirho,
+                                evidence_classes_chirho,
                                 local_type_keys_chirho,
                                 local_instance_dicts_chirho,
                             )),
@@ -826,12 +874,14 @@ impl DictPassCtxChirho {
                     fun_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                         fun_chirho,
                         dict_vars_chirho,
+                        evidence_classes_chirho,
                         local_type_keys_chirho,
                         local_instance_dicts_chirho,
                     )),
                     arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                         arg_chirho,
                         dict_vars_chirho,
+                        evidence_classes_chirho,
                         local_type_keys_chirho,
                         local_instance_dicts_chirho,
                     )),
@@ -847,13 +897,16 @@ impl DictPassCtxChirho {
                     .insert(binder_chirho.id_chirho);
                 let mut lam_type_keys_chirho = local_type_keys_chirho.clone();
                 if let Some(type_key_chirho) = self.binder_type_key_chirho(binder_chirho) {
-                    lam_type_keys_chirho.insert(binder_chirho.id_chirho, type_key_chirho);
+                    lam_type_keys_chirho
+                        .entry(binder_chirho.id_chirho)
+                        .or_insert(type_key_chirho);
                 }
                 let result_chirho = CoreExprChirho::LamChirho {
                     binder_chirho: binder_chirho.clone(),
                     body_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                         body_chirho,
                         dict_vars_chirho,
+                        evidence_classes_chirho,
                         &lam_type_keys_chirho,
                         local_instance_dicts_chirho,
                     )),
@@ -885,7 +938,9 @@ impl DictPassCtxChirho {
                         added_chirho.push(b_chirho.id_chirho);
                     }
                     if let Some(type_key_chirho) = self.binder_type_key_chirho(b_chirho) {
-                        let_type_keys_chirho.insert(b_chirho.id_chirho, type_key_chirho);
+                        let_type_keys_chirho
+                            .entry(b_chirho.id_chirho)
+                            .or_insert(type_key_chirho);
                     }
                 }
                 let result_chirho = CoreExprChirho::LetChirho {
@@ -898,6 +953,7 @@ impl DictPassCtxChirho {
                                 self.rewrite_method_refs_with_locals_chirho(
                                     r_chirho,
                                     dict_vars_chirho,
+                                    evidence_classes_chirho,
                                     &let_type_keys_chirho,
                                     local_instance_dicts_chirho,
                                 ),
@@ -907,6 +963,7 @@ impl DictPassCtxChirho {
                     body_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                         body_chirho,
                         dict_vars_chirho,
+                        evidence_classes_chirho,
                         &let_type_keys_chirho,
                         local_instance_dicts_chirho,
                     )),
@@ -926,6 +983,7 @@ impl DictPassCtxChirho {
                 scrutinee_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                     scrutinee_chirho,
                     dict_vars_chirho,
+                    evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
                 )),
@@ -984,6 +1042,7 @@ impl DictPassCtxChirho {
                             rhs_chirho: self.rewrite_method_refs_with_locals_chirho(
                                 &alt_chirho.rhs_chirho,
                                 dict_vars_chirho,
+                                evidence_classes_chirho,
                                 &alt_type_keys_chirho,
                                 local_instance_dicts_chirho,
                             ),
@@ -999,6 +1058,7 @@ impl DictPassCtxChirho {
                 body_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                     body_chirho,
                     dict_vars_chirho,
+                    evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
                 )),
@@ -1010,6 +1070,7 @@ impl DictPassCtxChirho {
                 expr_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
                     inner_chirho,
                     dict_vars_chirho,
+                    evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
                 )),
@@ -1026,6 +1087,7 @@ impl DictPassCtxChirho {
                         self.rewrite_method_refs_with_locals_chirho(
                             a_chirho,
                             dict_vars_chirho,
+                            evidence_classes_chirho,
                             local_type_keys_chirho,
                             local_instance_dicts_chirho,
                         )
@@ -1043,6 +1105,7 @@ impl DictPassCtxChirho {
                         self.rewrite_method_refs_with_locals_chirho(
                             a_chirho,
                             dict_vars_chirho,
+                            evidence_classes_chirho,
                             local_type_keys_chirho,
                             local_instance_dicts_chirho,
                         )
@@ -1073,6 +1136,7 @@ impl DictPassCtxChirho {
         // dict_vars map seeded with all known ground instance dicts and
         // then rewrite method references in the body.
         let mut dict_vars_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
+        let mut evidence_classes_chirho: HashSet<String> = HashSet::new();
 
         // Seed with ground instance dictionaries. Prefer Int instances as
         // the default dict for numeric/comparison classes, since integer
@@ -1093,6 +1157,7 @@ impl DictPassCtxChirho {
         let mut dict_binders_chirho = Vec::new();
 
         for pred_chirho in &scheme_chirho.preds_chirho {
+            evidence_classes_chirho.insert(pred_chirho.class_name_chirho.clone());
             let is_ground_chirho = !matches!(pred_chirho.ty_chirho, TyChirho::VarChirho(_));
             let resolved_chirho = if is_ground_chirho {
                 let type_key_chirho = format!("{}", pred_chirho.ty_chirho);
@@ -1307,6 +1372,7 @@ impl DictPassCtxChirho {
                     fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
                     arg_chirho: Box::new(CoreExprChirho::VarChirho(sub_dict_id_chirho)),
                 };
+                evidence_classes_chirho.insert(super_name_chirho.clone());
                 dict_vars_chirho.insert(super_name_chirho, super_dict_binder_chirho.id_chirho);
                 super_let_binds_chirho.push((super_dict_binder_chirho, extraction_chirho));
             }
@@ -1316,6 +1382,7 @@ impl DictPassCtxChirho {
         let mut rhs_chirho = self.rewrite_method_refs_with_locals_chirho(
             &binding_chirho.rhs_chirho,
             &dict_vars_chirho,
+            &evidence_classes_chirho,
             &local_type_keys_chirho,
             &local_instance_dicts_chirho,
         );
@@ -1456,6 +1523,7 @@ impl DictPassCtxChirho {
                 // bodies).  Still rewrite class-method references in the
                 // body so that Var(+) etc. are resolved to selectors.
                 let mut dict_vars_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
+                let mut evidence_classes_chirho: HashSet<String> = HashSet::new();
                 for ((class_name_chirho, type_key_chirho), dict_id_chirho) in
                     &self.instance_dicts_chirho
                 {
@@ -1484,6 +1552,7 @@ impl DictPassCtxChirho {
                                 &format!("$d{}", context_class_chirho),
                                 TyChirho::ConChirho(format!("$Dict_{}", context_class_chirho)),
                             );
+                            evidence_classes_chirho.insert(context_class_chirho.clone());
                             dict_vars_chirho
                                 .insert(context_class_chirho, dict_binder_chirho.id_chirho);
                             dict_binders_chirho.push(dict_binder_chirho);
@@ -1576,6 +1645,7 @@ impl DictPassCtxChirho {
                         let mut rewritten_rhs_chirho = self.rewrite_method_refs_with_locals_chirho(
                             &binding_chirho.rhs_chirho,
                             &dict_vars_chirho,
+                            &evidence_classes_chirho,
                             &local_type_keys_chirho,
                             &local_instance_dicts_chirho,
                         );
@@ -1616,8 +1686,32 @@ impl DictPassCtxChirho {
                     }
                 }
 
-                let rewritten_rhs_chirho =
-                    self.rewrite_method_refs_chirho(&binding_chirho.rhs_chirho, &dict_vars_chirho);
+                let rewritten_rhs_chirho = if let Some((
+                    _class_name_chirho,
+                    _method_name_chirho,
+                    parsed_type_key_chirho,
+                )) = self.parse_prim_binding_info_chirho(name_chirho)
+                {
+                    let mut local_type_keys_chirho: HashMap<CoreIdChirho, String> = HashMap::new();
+                    let mut current_expr_chirho = &binding_chirho.rhs_chirho;
+                    while let CoreExprChirho::TyLamChirho { body_chirho, .. } = current_expr_chirho
+                    {
+                        current_expr_chirho = body_chirho;
+                    }
+                    if let CoreExprChirho::LamChirho { binder_chirho, .. } = current_expr_chirho {
+                        local_type_keys_chirho
+                            .insert(binder_chirho.id_chirho, parsed_type_key_chirho);
+                    }
+                    self.rewrite_method_refs_with_locals_chirho(
+                        &binding_chirho.rhs_chirho,
+                        &dict_vars_chirho,
+                        &evidence_classes_chirho,
+                        &local_type_keys_chirho,
+                        &HashMap::new(),
+                    )
+                } else {
+                    self.rewrite_method_refs_chirho(&binding_chirho.rhs_chirho, &dict_vars_chirho)
+                };
                 bindings_chirho.push(CoreBindingChirho {
                     binder_chirho: binding_chirho.binder_chirho.clone(),
                     rhs_chirho: rewritten_rhs_chirho,

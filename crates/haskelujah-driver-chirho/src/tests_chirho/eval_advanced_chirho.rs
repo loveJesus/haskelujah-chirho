@@ -1808,6 +1808,73 @@ main = needed (MkAge 1)
     );
 }
 
+#[test]
+fn unresolved_method_value_does_not_use_arbitrary_default_dict_chirho() {
+    use crate::compile_source_chirho;
+    use haskelujah_core_chirho::simplify_chirho::free_vars_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Main where
+class Flag a where
+  flag :: a -> Int
+instance Flag Int where
+  flag x = 1
+instance Flag Bool where
+  flag x = 2
+use :: (Bool -> Int) -> Int
+use h = h True
+main = use flag
+";
+    let result_chirho = compile_source_chirho(
+        src_chirho,
+        &mut sm_chirho,
+        "ArbitraryFallbackMethodValue.hs",
+    )
+    .unwrap();
+    let core_chirho = &result_chirho.core_chirho;
+    let main_binding_chirho = core_chirho
+        .bindings_chirho
+        .iter()
+        .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == "main")
+        .expect("main binding should exist");
+    let free_names_chirho: Vec<String> = free_vars_chirho(&main_binding_chirho.rhs_chirho)
+        .iter()
+        .filter_map(|id_chirho| core_chirho.names_chirho.get(id_chirho).cloned())
+        .collect();
+    assert!(
+        !free_names_chirho
+            .iter()
+            .any(|name_chirho| name_chirho == "$fFlagInt" || name_chirho == "$prim_Flag_flag_Int"),
+        "unresolved method value must not pick arbitrary Int dict: {free_names_chirho:?}"
+    );
+}
+
+#[test]
+fn constrained_method_value_uses_evidence_dict_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Main where
+class Flag a where
+  flag :: a -> Int
+instance Flag Int where
+  flag x = 1
+instance Flag Bool where
+  flag x = 2
+useFlag :: Flag a => a -> Int
+useFlag = flag
+main = useFlag True
+";
+    let result_chirho = eval_source_chirho(
+        src_chirho,
+        &mut sm_chirho,
+        "ConstrainedMethodValue.hs",
+        None,
+    )
+    .unwrap();
+    assert_eq!(result_chirho, ValueChirho::IntChirho(2));
+}
+
 // ── Shared let-bound variable bug reproduction ───────────────────────
 
 #[test]
