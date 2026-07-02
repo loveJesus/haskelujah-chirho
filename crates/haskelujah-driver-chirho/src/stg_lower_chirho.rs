@@ -198,13 +198,22 @@ impl LowerCtxChirho {
                         index_chirho: idx_chirho,
                     });
                 }
-                // Check for nullary IO primops (getLine, getChar)
-                if let Some(io_name_chirho) = self.is_io_primop_chirho(*id_chirho) {
-                    let prim_op_chirho = primop_name_to_kind_chirho(io_name_chirho);
-                    return self.emit_chirho(CodeChirho::PrimChirho {
-                        op_chirho: prim_op_chirho,
-                        args_chirho: vec![],
-                    });
+                // Check for IO primops. Nullary actions execute when entered;
+                // non-nullary primops used as values need real function
+                // closures, e.g. `f :: Int -> IO Int; f = return`.
+                if let Some(io_name_chirho) =
+                    self.is_io_primop_chirho(*id_chirho).map(str::to_string)
+                {
+                    if Self::io_primop_value_arity_chirho(&io_name_chirho) == Some(0) {
+                        let prim_op_chirho = primop_name_to_kind_chirho(&io_name_chirho);
+                        return self.emit_chirho(CodeChirho::PrimChirho {
+                            op_chirho: prim_op_chirho,
+                            args_chirho: vec![],
+                        });
+                    }
+                    if let Some(value_chirho) = self.lower_io_primop_value_chirho(&io_name_chirho) {
+                        return self.emit_chirho(CodeChirho::LitChirho(value_chirho));
+                    }
                 }
                 let val_chirho = self.lookup_chirho(*id_chirho);
                 match val_chirho {
@@ -2110,11 +2119,9 @@ mod tests_chirho {
 
         let result_chirho = lower_and_run_chirho(&module_chirho, None, HashSet::new());
         assert!(result_chirho.is_err());
-        assert!(
-            result_chirho
-                .unwrap_err()
-                .contains("no binding named 'main'")
-        );
+        assert!(result_chirho
+            .unwrap_err()
+            .contains("no binding named 'main'"));
     }
 
     #[test]

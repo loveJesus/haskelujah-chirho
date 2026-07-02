@@ -6357,8 +6357,13 @@ fn eval_annotated_pure_return_dispatch_chirho() {
         }
     }
 
-    let stdout_cases_chirho: [(&str, &str); 2] = [
+    let stdout_cases_chirho: [(&str, &str); 4] = [
         ("main = (return :: Int -> IO Int) 5 >>= print\n", "5\n"),
+        (
+            "f :: Int -> IO Int\nf = return\nmain = f 4 >>= print\n",
+            "4\n",
+        ),
+        ("say = putStrLn\nmain = say \"aliased\"\n", "aliased\n"),
         (
             "acts :: [IO Int]\nacts = [return 1, return 2]\nmain = head acts >>= print\n",
             "1\n",
