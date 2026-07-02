@@ -10398,6 +10398,33 @@ impl DictPassCtxChirho {
                 inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
+
+        // ── instance MonadPlus [] / Maybe ──
+        // MonadPlus is Monad plus Alternative; reuse the backed Alternative
+        // bodies so mzero/mplus stay consistent with empty/<|>.
+        for (prim_name_chirho, alt_name_chirho) in [
+            ("$prim_MonadPlus_mzero_[]", "$prim_Alternative_empty_[]"),
+            ("$prim_MonadPlus_mplus_[]", "$prim_Alternative_<|>_[]"),
+            (
+                "$prim_MonadPlus_mzero_Maybe",
+                "$prim_Alternative_empty_Maybe",
+            ),
+            ("$prim_MonadPlus_mplus_Maybe", "$prim_Alternative_<|>_Maybe"),
+        ] {
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let alt_id_chirho = self.resolve_or_fresh_id_chirho(alt_name_chirho);
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: any_ty_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::VarChirho(alt_id_chirho),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
     }
 
     /// Generate IO control flow Prelude functions:

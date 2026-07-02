@@ -2832,7 +2832,42 @@ impl ClassEnvChirho {
             name_chirho: "MonadPlus".to_string(),
             supers_chirho: vec!["Monad".to_string(), "Alternative".to_string()],
             var_chirho: mp_var_chirho,
-            methods_chirho: HashMap::new(),
+            methods_chirho: HashMap::from([
+                (
+                    "mzero".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![mp_var_chirho, alt_a_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::AppChirho(
+                            Box::new(TyChirho::VarChirho(mp_var_chirho)),
+                            Box::new(TyChirho::VarChirho(alt_a_chirho)),
+                        ),
+                    },
+                ),
+                (
+                    "mplus".to_string(),
+                    SchemeChirho {
+                        vars_chirho: vec![mp_var_chirho, alt_a_chirho],
+                        preds_chirho: vec![],
+                        ty_chirho: TyChirho::fun_n_chirho(
+                            [
+                                TyChirho::AppChirho(
+                                    Box::new(TyChirho::VarChirho(mp_var_chirho)),
+                                    Box::new(TyChirho::VarChirho(alt_a_chirho)),
+                                ),
+                                TyChirho::AppChirho(
+                                    Box::new(TyChirho::VarChirho(mp_var_chirho)),
+                                    Box::new(TyChirho::VarChirho(alt_a_chirho)),
+                                ),
+                            ],
+                            TyChirho::AppChirho(
+                                Box::new(TyChirho::VarChirho(mp_var_chirho)),
+                                Box::new(TyChirho::VarChirho(alt_a_chirho)),
+                            ),
+                        ),
+                    },
+                ),
+            ]),
             extra_vars_chirho: vec![],
             fundeps_chirho: vec![],
             defaults_chirho: HashMap::new(),

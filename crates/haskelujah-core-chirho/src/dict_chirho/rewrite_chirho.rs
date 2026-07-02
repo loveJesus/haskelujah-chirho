@@ -1495,16 +1495,17 @@ impl DictPassCtxChirho {
                 ">>=" => ("$prim_Monad_>>=_", &[0usize]),
                 ">>" => ("$prim_Monad_>>_", &[0usize]),
                 "<|>" => ("$prim_Alternative_<|>_", &[1usize, 0usize]),
+                "mplus" => ("$prim_MonadPlus_mplus_", &[1usize, 0usize]),
                 _ => return None,
             };
         let dispatch_arg_chirho = dispatch_indices_chirho
             .iter()
             .find_map(|idx_chirho| args_chirho.get(*idx_chirho))?;
-        // >>= / >> use the conservative key: a wrong positive key sends an IO
+        // >>= / >> / mplus use the conservative key: a wrong positive key sends an IO
         // chain into another monad's body (worse than no dispatch). fmap and
         // <|> keep permissive value-shape inference because their dispatch
         // operands are plain values, not effectful IO chains.
-        let value_key_opt_chirho = if matches!(head_name_chirho.as_str(), ">>=" | ">>") {
+        let value_key_opt_chirho = if matches!(head_name_chirho.as_str(), ">>=" | ">>" | "mplus") {
             self.infer_monad_dispatch_key_chirho(dispatch_arg_chirho, local_type_keys_chirho)
         } else {
             dispatch_indices_chirho.iter().find_map(|idx_chirho| {
@@ -1514,7 +1515,7 @@ impl DictPassCtxChirho {
             })
         };
         let Some(value_key_chirho) = value_key_opt_chirho else {
-            if matches!(head_name_chirho.as_str(), ">>=" | ">>") {
+            if matches!(head_name_chirho.as_str(), ">>=" | ">>" | "mplus") {
                 return Some(self.rebuild_preserved_method_app_chirho(
                     head_id_chirho,
                     &args_chirho,
@@ -1530,7 +1531,7 @@ impl DictPassCtxChirho {
         let Some(inst_id_chirho) =
             self.lookup_dispatch_body_name_id_chirho(&format!("{prefix_chirho}{head_key_chirho}"))
         else {
-            if matches!(head_name_chirho.as_str(), ">>=" | ">>") {
+            if matches!(head_name_chirho.as_str(), ">>=" | ">>" | "mplus") {
                 return Some(self.rebuild_preserved_method_app_chirho(
                     head_id_chirho,
                     &args_chirho,
@@ -1563,7 +1564,7 @@ impl DictPassCtxChirho {
         // Rebuild the application with the instance body as head; rewrite args.
         let mut result_chirho = CoreExprChirho::VarChirho(inst_id_chirho);
         for (idx_chirho, a_chirho) in args_chirho.iter().enumerate() {
-            let rewritten_arg_chirho = if head_name_chirho == "<|>" {
+            let rewritten_arg_chirho = if matches!(head_name_chirho.as_str(), "<|>" | "mplus") {
                 if let Some(rewritten_chirho) = self.try_rewrite_typed_method_arg_chirho(
                     a_chirho,
                     dict_vars_chirho,
@@ -2223,6 +2224,30 @@ impl DictPassCtxChirho {
                 expr_chirho: inner_chirho,
                 ty_chirho,
             } => {
+                if let CoreExprChirho::VarChirho(inner_id_chirho) = inner_chirho.as_ref() {
+                    if let Some(type_key_chirho) = Self::raw_type_head_key_chirho(ty_chirho, false)
+                    {
+                        if self
+                            .names_chirho
+                            .get(inner_id_chirho)
+                            .and_then(|name_chirho| {
+                                self.class_method_selector_for_name_chirho(name_chirho)
+                            })
+                            .is_some()
+                        {
+                            return CoreExprChirho::TyAppChirho {
+                                expr_chirho: Box::new(self.try_rewrite_method_var_chirho(
+                                    *inner_id_chirho,
+                                    dict_vars_chirho,
+                                    evidence_classes_chirho,
+                                    local_instance_dicts_chirho,
+                                    Some(&type_key_chirho),
+                                )),
+                                ty_chirho: ty_chirho.clone(),
+                            };
+                        }
+                    }
+                }
                 let annotated_monad_key_chirho = self
                     .annotated_monad_head_key_chirho(ty_chirho)
                     .filter(|_| self.has_direct_return_or_pure_head_chirho(inner_chirho));

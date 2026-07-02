@@ -1017,6 +1017,35 @@ main =
 }
 
 #[test]
+fn eval_monadplus_maybe_list_chirho() {
+    use crate::eval_source_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+module Test where
+import Control.Monad
+scoreMaybe m = case m of
+  Nothing -> 0
+  Just x -> x
+main =
+  length (mzero :: [Int])
+  + scoreMaybe (mzero :: Maybe Int)
+  + length (mplus (mzero :: [Int]) [1,2])
+  + length (mplus [3] [4,5])
+  + scoreMaybe (mplus (mzero :: Maybe Int) (Just 7))
+  + scoreMaybe (mplus Nothing (Just 11))
+  + scoreMaybe (mplus (Just 13) (Just 17))
+";
+    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+    match result_chirho {
+        Ok(val_chirho) => assert_eq!(
+            val_chirho,
+            haskelujah_runtime_chirho::ValueChirho::IntChirho(36)
+        ),
+        Err(e_chirho) => panic!("monadplus maybe/list: {}", e_chirho),
+    }
+}
+
+#[test]
 fn eval_min_max_semigroup_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
