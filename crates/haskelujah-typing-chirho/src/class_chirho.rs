@@ -2189,15 +2189,21 @@ impl ClassEnvChirho {
         // Bulk instances for Word/Int/C FFI types: Eq, Ord, Show, Bounded,
         // Enum, Real, Integral for all fixed-width numeric and C types.
         let ffi_numeric_types_chirho: &[&str] = &[
-            "Word8", "Word16", "Word32", "Word64",
-            "Int8", "Int16", "Int32", "Int64",
-            "Natural",
-            "CSize", "CInt", "CChar", "CLong", "CUInt", "CULong",
-            "Float",
+            "Word8", "Word16", "Word32", "Word64", "Int8", "Int16", "Int32", "Int64", "Natural",
+            "CSize", "CInt", "CChar", "CLong", "CUInt", "CULong", "Float",
         ];
         let ffi_classes_chirho: &[&str] = &[
-            "Eq", "Ord", "Show", "Bounded", "Enum", "Real", "Integral",
-            "Read", "Bits", "FiniteBits", "Storable",
+            "Eq",
+            "Ord",
+            "Show",
+            "Bounded",
+            "Enum",
+            "Real",
+            "Integral",
+            "Read",
+            "Bits",
+            "FiniteBits",
+            "Storable",
         ];
         for &ty_name_chirho in ffi_numeric_types_chirho {
             for &class_name_chirho in ffi_classes_chirho {
@@ -2873,6 +2879,7 @@ impl ClassEnvChirho {
         // Semigroup ground instances for concrete list types
         for elem_chirho in &[
             TyChirho::ConChirho("Int".to_string()),
+            TyChirho::ConChirho("Integer".to_string()),
             TyChirho::ConChirho("Char".to_string()),
             TyChirho::ConChirho("Double".to_string()),
             TyChirho::ConChirho("Bool".to_string()),
@@ -2895,6 +2902,7 @@ impl ClassEnvChirho {
         // Monoid ground instances for concrete list types
         for elem_chirho in &[
             TyChirho::ConChirho("Int".to_string()),
+            TyChirho::ConChirho("Integer".to_string()),
             TyChirho::ConChirho("Char".to_string()),
             TyChirho::ConChirho("Double".to_string()),
             TyChirho::ConChirho("Bool".to_string()),
@@ -2961,8 +2969,8 @@ impl ClassEnvChirho {
         // Functor/Applicative/Monad for STM, Either, Proxy, First, Last,
         // Sum, Product, Dual, Down, Const, and other common types
         let common_monad_types_chirho: &[&str] = &[
-            "STM", "Either", "Proxy", "First", "Last", "Sum", "Product",
-            "Dual", "Down", "Const", "Min", "Max",
+            "STM", "Either", "Proxy", "First", "Last", "Sum", "Product", "Dual", "Down", "Const",
+            "Min", "Max",
         ];
         for &ty_name_chirho in common_monad_types_chirho {
             for class_chirho in ["Functor", "Applicative", "Monad"] {
@@ -3026,7 +3034,7 @@ impl ClassEnvChirho {
         let mt_t_chirho = TyVarChirho(9060); // the transformer type constructor
         let mt_m_chirho = TyVarChirho(9061); // the inner monad
         let mt_a_chirho = TyVarChirho(9062); // the value type
-        // m a
+                                             // m a
         let mt_ma_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::VarChirho(mt_m_chirho)),
             Box::new(TyChirho::VarChirho(mt_a_chirho)),
@@ -3232,14 +3240,10 @@ fn match_ty_chirho(pattern_chirho: &TyChirho, target_chirho: &TyChirho) -> Optio
         }
 
         // Cross-representation: ListChirho ↔ AppChirho(ConChirho("[]"), elem)
-        (TyChirho::ListChirho(p_chirho), TyChirho::AppChirho(f_chirho, t_chirho))
-            if matches!(f_chirho.as_ref(), TyChirho::ConChirho(n) if n == "[]") =>
-        {
+        (TyChirho::ListChirho(p_chirho), TyChirho::AppChirho(f_chirho, t_chirho)) if matches!(f_chirho.as_ref(), TyChirho::ConChirho(n) if n == "[]") => {
             match_ty_chirho(p_chirho, t_chirho)
         }
-        (TyChirho::AppChirho(f_chirho, p_chirho), TyChirho::ListChirho(t_chirho))
-            if matches!(f_chirho.as_ref(), TyChirho::ConChirho(n) if n == "[]") =>
-        {
+        (TyChirho::AppChirho(f_chirho, p_chirho), TyChirho::ListChirho(t_chirho)) if matches!(f_chirho.as_ref(), TyChirho::ConChirho(n) if n == "[]") => {
             match_ty_chirho(p_chirho, t_chirho)
         }
 
@@ -3392,9 +3396,7 @@ mod tests_chirho {
         env_chirho.seed_standard_chirho();
 
         // No instance Num Bool
-        assert!(
-            !env_chirho.entails_chirho(&PredChirho::new_chirho("Num", TyChirho::bool_chirho()))
-        );
+        assert!(!env_chirho.entails_chirho(&PredChirho::new_chirho("Num", TyChirho::bool_chirho())));
     }
 
     #[test]

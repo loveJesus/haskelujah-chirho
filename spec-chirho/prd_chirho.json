@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.11",
+    "prd_version_chirho": "2.2.12",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -21,7 +21,8 @@
       "gpt_chirho (Codex) — WI-003 annotated/signature direct return-pure dispatch v2.2.8",
       "gpt_chirho (Codex) — WI-003 eta-reduced body-backed return-pure dispatch v2.2.9",
       "gpt_chirho (Codex) — WI-003 eta-reduced IO primop value lowering v2.2.10",
-      "gpt_chirho (Codex) — WI-003 IO bind nested Maybe pure sentinel coverage v2.2.11"
+      "gpt_chirho (Codex) — WI-003 IO bind nested Maybe pure sentinel coverage v2.2.11",
+      "gpt_chirho (Codex) — WI-004 Sum Monoid body-backed row and contextual mempty argument dispatch v2.2.12"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -73,11 +74,15 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "WI-003 return/pure return-position dispatch: added IO bind plus nested annotated Maybe pure sentinel coverage; no full suites run per resource guard",
+      "scope_chirho": "WI-004 per-type instance completion: Sum Semigroup/Monoid body-backed row, Data.Monoid wrapper newtype erasure/type keys, [Integer] list Semigroup/Monoid coverage, and contextual mempty argument dispatch; no full suites run per resource guard",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_annotated_pure_return_dispatch_chirho -- --test-threads=1"
+        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_sum_monoid_chirho -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_monoid -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_semigroup_append -- --test-threads=1",
+        "rustfmt --check --config skip_children=true crates/haskelujah-core-chirho/src/dict_chirho/mod.rs crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho.rs crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs crates/haskelujah-driver-chirho/src/lib.rs crates/haskelujah-driver-chirho/src/tests_chirho/eval_typeclass_chirho.rs crates/haskelujah-typing-chirho/src/class_chirho.rs",
+        "git diff --check"
       ],
-      "result_chirho": "Annotated return/pure dispatch test passed with the added sentinel `return 5 :: IO Int` feeding an IO bind whose continuation contains `pure x :: Maybe Int`. This covers the prior audit sentinel without relying on runtime Show (Maybe Int) formatting. Pre-existing warning remained: haskelujah-typing instantiate_instance_method_expected_ty_chirho is unused."
+      "result_chirho": "All targeted WI-004 gates passed: eval_sum_monoid_chirho 1/1, eval_monoid 2/2, eval_semigroup_append 2/2, touched-root rustfmt --check with skip_children=true, and git diff --check. Pre-existing warning remained: haskelujah-typing instantiate_instance_method_expected_ty_chirho is unused. Whole-tree cargo fmt --check and recursive rustfmt over driver lib are not valid gates because unrelated child modules are not rustfmt-clean."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -434,11 +439,12 @@
       "title_chirho": "Per-type instance completion matrix (turn-the-crank recipe)",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P1",
-      "status_chirho": "todo — AUDIT MERGED; execute as body-backed per-type waves, not by registering more dangling dicts",
+      "status_chirho": "partially landed v2.2.12 — Sum Semigroup/Monoid row is body-backed and pinned; continue Wave A for Product/All/Any/Identity/etc.",
       "owner_chirho": "gpt_chirho/claude_chirho; future fleet may take individual rows after recipe review (gemini currently removed from session)",
       "problem_chirho": "Many types are class-REGISTERED (class_chirho.rs ~2448-2528, ~2963-2976: STM, Proxy, First, Last, Sum, Product, Identity, transformers...) but lack built instance dicts and/or $prim bodies, so their methods fall to wrong-typed fallbacks or dead dict lambdas. GPT #1388: also audit existing dict fields for placeholders.",
       "fix_design_chirho": [
         "Recipe per (type,class): add real $prim_Class_method_Type bodies in dict_chirho/prelude_chirho.rs, wire $d/$f dict slots to those bodies, add type-key/accessor support, add one eval pin, and verify no dangling ids are minted for that row.",
+        "LANDED v2.2.12: Data.Monoid Sum/getSum and sibling wrapper accessors now have body-backed identity wrappers; interface wrapper constructors Sum/Product/All/Any feed newtype erasure and type-key inference; Sum has $prim_Semigroup_<>_Sum, $prim_Monoid_mempty_Sum, and $prim_Monoid_mconcat_Sum bodies; [Integer] list Semigroup/Monoid rows are seeded/body-backed; method-application rebuilding propagates a proven outer type key to nullary method arguments such as `mempty`.",
         "Wave A: accessors and type-key arms for Identity, Sum, Product, All, Any, Min, Max, Down, Proxy, Const(fmap only), Ordering; Alternative []/Maybe; mconcat element-key fix.",
         "Corrected audit rule: First and Last wrap Maybe (`First (Maybe a)`, `Last (Maybe a)`), so they are not bare-value newtypes; do not implement fmap/pure/bind as if First a = First a.",
         "Out of mechanical scope until evidence threading: Foldable/Traversable, Dual, context-dependent Semigroup/Monoid bodies, transformer stacks with constrained instances.",
@@ -448,7 +454,8 @@
         {
           "test_name_chirho": "eval_sum_monoid_chirho",
           "program_chirho": "import Data.Monoid\nmain = print (getSum (Sum 3 <> Sum 4))",
-          "expected_stdout_chirho": "7"
+          "expected_stdout_chirho": "7",
+          "landed_chirho": "v2.2.12"
         }
       ],
       "dependencies_chirho": [

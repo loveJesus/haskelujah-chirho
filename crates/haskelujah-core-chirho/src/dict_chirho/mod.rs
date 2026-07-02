@@ -306,6 +306,10 @@ impl DictPassCtxChirho {
                     match con_name_chirho.as_str() {
                         "True" | "False" => Some("Bool".to_string()),
                         "LT" | "EQ" | "GT" => Some("Ordering".to_string()),
+                        "Sum" => Some("Sum".to_string()),
+                        "Product" => Some("Product".to_string()),
+                        "All" => Some("All".to_string()),
+                        "Any" => Some("Any".to_string()),
                         "Nothing" => Some("Maybe Int".to_string()),
                         "Left" => {
                             if let Some(inner_chirho) = args_chirho.first() {
@@ -394,6 +398,10 @@ impl DictPassCtxChirho {
                         "True" | "False" => return Some("Bool".to_string()),
                         "Nothing" => return Some("Maybe Int".to_string()),
                         "LT" | "EQ" | "GT" => return Some("Ordering".to_string()),
+                        "Sum" => return Some("Sum".to_string()),
+                        "Product" => return Some("Product".to_string()),
+                        "All" => return Some("All".to_string()),
+                        "Any" => return Some("Any".to_string()),
                         _ => {}
                     }
                 }

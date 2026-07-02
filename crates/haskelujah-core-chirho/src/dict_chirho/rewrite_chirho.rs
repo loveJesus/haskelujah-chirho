@@ -238,39 +238,78 @@ impl DictPassCtxChirho {
     fn collect_method_app_chirho<'a>(
         &self,
         expr_chirho: &'a CoreExprChirho,
-    ) -> Option<(CoreIdChirho, Vec<&'a CoreExprChirho>)> {
+    ) -> Option<(CoreIdChirho, Vec<&'a CoreExprChirho>, Option<String>)> {
         let mut args_chirho = Vec::new();
         let mut current_chirho = expr_chirho;
+        let mut type_key_hint_chirho = None;
 
-        // Peel off App layers, collecting arguments right-to-left
-        while let CoreExprChirho::AppChirho {
-            fun_chirho,
-            arg_chirho,
-        } = current_chirho
-        {
-            args_chirho.push(arg_chirho.as_ref());
-            current_chirho = fun_chirho.as_ref();
-        }
-
-        while let CoreExprChirho::TyAppChirho {
-            expr_chirho: inner_chirho,
-            ..
-        } = current_chirho
-        {
-            current_chirho = inner_chirho.as_ref();
+        // Peel off value applications and interleaved type applications.
+        // Interface-imported overloaded methods can arrive as
+        // `v @Sum arg1 @Sum arg2`; the type app is the reliable instance key
+        // when interface newtype erasure makes the value args look like Ints.
+        loop {
+            match current_chirho {
+                CoreExprChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                } => {
+                    args_chirho.push(arg_chirho.as_ref());
+                    current_chirho = fun_chirho.as_ref();
+                }
+                CoreExprChirho::TyAppChirho {
+                    expr_chirho: inner_chirho,
+                    ty_chirho,
+                } => {
+                    type_key_hint_chirho = Some(format!("{}", ty_chirho));
+                    current_chirho = inner_chirho.as_ref();
+                }
+                _ => break,
+            }
         }
 
         // Check if the innermost function is a class method Var
         if let CoreExprChirho::VarChirho(id_chirho) = current_chirho {
             if let Some(name_chirho) = self.names_chirho.get(id_chirho) {
-                if self.method_selectors_chirho.contains_key(name_chirho) {
+                if self
+                    .class_method_selector_for_name_chirho(name_chirho)
+                    .is_some()
+                {
                     args_chirho.reverse(); // Now [arg1, arg2, ...]
-                    return Some((*id_chirho, args_chirho));
+                    return Some((*id_chirho, args_chirho, type_key_hint_chirho));
                 }
             }
         }
 
         None
+    }
+
+    fn class_method_selector_for_name_chirho(
+        &self,
+        name_chirho: &str,
+    ) -> Option<(String, CoreIdChirho)> {
+        if let Some((class_name_chirho, sel_id_chirho)) =
+            self.method_selectors_chirho.get(name_chirho)
+        {
+            return Some((class_name_chirho.clone(), *sel_id_chirho));
+        }
+
+        let short_name_chirho = name_chirho.rsplit('.').next()?;
+        if let Some(stripped_chirho) = short_name_chirho
+            .strip_prefix('(')
+            .and_then(|n_chirho| n_chirho.strip_suffix(')'))
+        {
+            if let Some((class_name_chirho, sel_id_chirho)) =
+                self.method_selectors_chirho.get(stripped_chirho)
+            {
+                return Some((class_name_chirho.clone(), *sel_id_chirho));
+            }
+        }
+        if short_name_chirho == name_chirho {
+            return None;
+        }
+        self.method_selectors_chirho
+            .get(short_name_chirho)
+            .map(|(class_name_chirho, sel_id_chirho)| (class_name_chirho.clone(), *sel_id_chirho))
     }
 
     /// Collect a dict-parameterized function application chain: if `expr_chirho`
@@ -327,7 +366,7 @@ impl DictPassCtxChirho {
         }
         if let Some(name_chirho) = self.names_chirho.get(&id_chirho) {
             if let Some((class_name_chirho, sel_id_chirho)) =
-                self.method_selectors_chirho.get(name_chirho)
+                self.class_method_selector_for_name_chirho(name_chirho)
             {
                 // Try type-specific instance dict first. For higher-kinded
                 // classes, value inference sees keys like `Either Int Int`
@@ -335,7 +374,7 @@ impl DictPassCtxChirho {
                 // (`Either`, `Maybe`, `[]`).
                 if let Some(type_key_chirho) = type_key_override_chirho {
                     let mut candidate_keys_chirho = vec![type_key_chirho.to_string()];
-                    if Self::should_normalize_instance_head_for_class_chirho(class_name_chirho) {
+                    if Self::should_normalize_instance_head_for_class_chirho(&class_name_chirho) {
                         let normalized_chirho =
                             Self::normalize_instance_head_key_chirho(type_key_chirho);
                         if normalized_chirho != type_key_chirho {
@@ -347,7 +386,7 @@ impl DictPassCtxChirho {
                             .get(&(class_name_chirho.clone(), candidate_key_chirho.clone()))
                         {
                             return CoreExprChirho::AppChirho {
-                                fun_chirho: Box::new(CoreExprChirho::VarChirho(*sel_id_chirho)),
+                                fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
                                 arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
                             };
                         }
@@ -356,7 +395,7 @@ impl DictPassCtxChirho {
                             .get(&(class_name_chirho.clone(), candidate_key_chirho))
                         {
                             return CoreExprChirho::AppChirho {
-                                fun_chirho: Box::new(CoreExprChirho::VarChirho(*sel_id_chirho)),
+                                fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
                                 arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
                             };
                         }
@@ -366,10 +405,10 @@ impl DictPassCtxChirho {
                 // Fall back only to dictionaries backed by real local evidence.
                 // Ambient seeded defaults are not proof for an unresolved method
                 // use and used to pick arbitrary semantics.
-                if evidence_classes_chirho.contains(class_name_chirho) {
-                    if let Some(dict_id_chirho) = dict_vars_chirho.get(class_name_chirho) {
+                if evidence_classes_chirho.contains(&class_name_chirho) {
+                    if let Some(dict_id_chirho) = dict_vars_chirho.get(&class_name_chirho) {
                         return CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(CoreExprChirho::VarChirho(*sel_id_chirho)),
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
                             arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
                         };
                     }
@@ -841,17 +880,18 @@ impl DictPassCtxChirho {
                 // Detect the pattern App(Var(method), arg) or
                 // App(App(Var(method), arg1), arg2) to determine the
                 // argument type for type-aware dictionary selection.
-                if let Some((method_id_chirho, args_chirho)) =
+                if let Some((method_id_chirho, args_chirho, type_key_hint_chirho)) =
                     self.collect_method_app_chirho(expr_chirho)
                 {
                     // Infer the type key, combining multiple argument types
                     // for multi-parameter type classes.
                     let type_key_chirho = {
                         let method_name_chirho = self.names_chirho.get(&method_id_chirho).cloned();
-                        let class_name_chirho = method_name_chirho
-                            .as_deref()
-                            .and_then(|n_chirho| self.method_selectors_chirho.get(n_chirho))
-                            .map(|(c_chirho, _)| c_chirho.clone());
+                        let class_name_chirho =
+                            method_name_chirho.as_deref().and_then(|n_chirho| {
+                                self.class_method_selector_for_name_chirho(n_chirho)
+                                    .map(|(c_chirho, _)| c_chirho)
+                            });
                         let param_count_chirho = class_name_chirho
                             .as_deref()
                             .and_then(|cn_chirho| self.class_param_count_chirho.get(cn_chirho))
@@ -876,35 +916,60 @@ impl DictPassCtxChirho {
                                 keys_chirho.first().cloned()
                             }
                         } else {
-                            args_chirho.iter().find_map(|a_chirho| {
-                                self.infer_type_key_for_rewrite_chirho(
-                                    a_chirho,
-                                    local_type_keys_chirho,
-                                )
+                            type_key_hint_chirho.or_else(|| {
+                                args_chirho.iter().find_map(|a_chirho| {
+                                    self.infer_type_key_for_rewrite_chirho(
+                                        a_chirho,
+                                        local_type_keys_chirho,
+                                    )
+                                })
                             })
                         }
                     };
 
+                    let type_key_override_chirho = type_key_chirho.as_deref();
                     let rewritten_method_chirho = self.try_rewrite_method_var_chirho(
                         method_id_chirho,
                         dict_vars_chirho,
                         evidence_classes_chirho,
                         local_instance_dicts_chirho,
-                        type_key_chirho.as_deref(),
+                        type_key_override_chirho,
                     );
 
                     // Rebuild the application chain with rewritten args
                     let mut result_chirho = rewritten_method_chirho;
                     for a_chirho in &args_chirho {
+                        let rewritten_arg_chirho =
+                            if let Some(type_key_chirho) = type_key_override_chirho {
+                                if let CoreExprChirho::VarChirho(arg_id_chirho) = a_chirho {
+                                    self.try_rewrite_method_var_chirho(
+                                        *arg_id_chirho,
+                                        dict_vars_chirho,
+                                        evidence_classes_chirho,
+                                        local_instance_dicts_chirho,
+                                        Some(type_key_chirho),
+                                    )
+                                } else {
+                                    self.rewrite_method_refs_with_locals_chirho(
+                                        a_chirho,
+                                        dict_vars_chirho,
+                                        evidence_classes_chirho,
+                                        local_type_keys_chirho,
+                                        local_instance_dicts_chirho,
+                                    )
+                                }
+                            } else {
+                                self.rewrite_method_refs_with_locals_chirho(
+                                    a_chirho,
+                                    dict_vars_chirho,
+                                    evidence_classes_chirho,
+                                    local_type_keys_chirho,
+                                    local_instance_dicts_chirho,
+                                )
+                            };
                         result_chirho = CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(result_chirho),
-                            arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
-                                a_chirho,
-                                dict_vars_chirho,
-                                evidence_classes_chirho,
-                                local_type_keys_chirho,
-                                local_instance_dicts_chirho,
-                            )),
+                            arg_chirho: Box::new(rewritten_arg_chirho),
                         };
                     }
                     return result_chirho;

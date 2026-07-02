@@ -15,19 +15,19 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use haskelujah_ast_chirho::ModuleChirho;
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
+use haskelujah_ast_chirho::ModuleChirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_chirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_chirho;
 use haskelujah_backend_wasm_chirho::compile_to_wasm_stub_chirho;
 use haskelujah_core_chirho::{
-    CoreModuleChirho, SimplifyConfigChirho, desugar_module_chirho, simplify_module_chirho,
+    desugar_module_chirho, simplify_module_chirho, CoreModuleChirho, SimplifyConfigChirho,
 };
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
-use haskelujah_naming_chirho::iface_chirho::{ModuleIfaceChirho, build_iface_with_imports_chirho};
+use haskelujah_naming_chirho::iface_chirho::{build_iface_with_imports_chirho, ModuleIfaceChirho};
 use haskelujah_naming_chirho::resolve_chirho::resolve_module_with_imports_chirho;
 use haskelujah_parser_chirho::cst_parser_chirho::ParserChirho;
 use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
@@ -35,8 +35,8 @@ use haskelujah_runtime_chirho::{ExecutionModeChirho, RuntimePlanChirho};
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 use haskelujah_typing_chirho::infer_chirho::{
-    InferResultChirho, TypeFamilyEnvChirho, infer_module_chirho,
-    infer_module_with_imports_type_synonyms_families_and_class_env_chirho,
+    infer_module_chirho, infer_module_with_imports_type_synonyms_families_and_class_env_chirho,
+    InferResultChirho, TypeFamilyEnvChirho,
 };
 
 type ImportedTypeSynonymsChirho = std::collections::HashMap<String, (Vec<String>, TypeChirho)>;
@@ -587,8 +587,8 @@ fn insert_cpp_package_version_chirho(
     }
 }
 
-fn seed_cpp_package_versions_chirho()
--> std::collections::BTreeMap<String, haskelujah_package_chirho::VersionChirho> {
+fn seed_cpp_package_versions_chirho(
+) -> std::collections::BTreeMap<String, haskelujah_package_chirho::VersionChirho> {
     let mut package_versions_chirho = std::collections::BTreeMap::new();
     for (package_name_chirho, version_text_chirho) in [
         ("base", "4.14.0"),
@@ -1827,7 +1827,8 @@ pub fn run_frontend_with_type_synonyms_and_type_families_chirho(
     imported_type_synonyms_chirho: &ImportedTypeSynonymsChirho,
     imported_type_families_chirho: &ImportedTypeFamiliesChirho,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
-    let imported_class_env_chirho = haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
+    let imported_class_env_chirho =
+        haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
     run_frontend_with_type_synonyms_families_and_class_env_chirho(
         source_chirho,
         file_id_chirho,
@@ -2540,6 +2541,16 @@ fn build_newtype_info_chirho(
             };
             map_chirho.insert(type_name_chirho, con_name_chirho);
         }
+    }
+    for (type_name_chirho, con_name_chirho, underlying_chirho) in [
+        ("Sum", "Sum", "Int"),
+        ("Product", "Product", "Int"),
+        ("All", "All", "Bool"),
+        ("Any", "Any", "Bool"),
+    ] {
+        map_chirho
+            .entry(type_name_chirho.to_string())
+            .or_insert((con_name_chirho.to_string(), underlying_chirho.to_string()));
     }
     map_chirho
 }
@@ -5157,16 +5168,19 @@ fn collect_frontend_artifacts_from_module_sources_chirho(
                     &imported_type_synonyms_chirho,
                 );
 
-            let frontend_result_chirho = run_frontend_with_type_synonyms_families_and_class_env_chirho(
-                source_chirho,
-                file_id_chirho,
-                &ifaces_chirho,
-                &filtered_imported_types_chirho,
-                &filtered_imported_type_synonyms_chirho,
-                &imported_type_families_chirho,
-                &imported_class_env_chirho,
-            )
-            .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
+            let frontend_result_chirho =
+                run_frontend_with_type_synonyms_families_and_class_env_chirho(
+                    source_chirho,
+                    file_id_chirho,
+                    &ifaces_chirho,
+                    &filtered_imported_types_chirho,
+                    &filtered_imported_type_synonyms_chirho,
+                    &imported_type_families_chirho,
+                    &imported_class_env_chirho,
+                )
+                .map_err(|e_chirho| {
+                    format!("Error compiling {}: {}", module_name_chirho, e_chirho)
+                })?;
 
             let FrontendResultChirho {
                 module_chirho,
@@ -5285,16 +5299,19 @@ fn compile_module_sources_with_extra_ifaces_chirho(
                     &imported_type_synonyms_chirho,
                 );
 
-            let frontend_result_chirho = run_frontend_with_type_synonyms_families_and_class_env_chirho(
-                source_chirho,
-                file_id_chirho,
-                &ifaces_chirho,
-                &filtered_imported_types_chirho,
-                &filtered_imported_type_synonyms_chirho,
-                &imported_type_families_chirho,
-                &imported_class_env_chirho,
-            )
-            .map_err(|e_chirho| format!("Error compiling {}: {}", module_name_chirho, e_chirho))?;
+            let frontend_result_chirho =
+                run_frontend_with_type_synonyms_families_and_class_env_chirho(
+                    source_chirho,
+                    file_id_chirho,
+                    &ifaces_chirho,
+                    &filtered_imported_types_chirho,
+                    &filtered_imported_type_synonyms_chirho,
+                    &imported_type_families_chirho,
+                    &imported_class_env_chirho,
+                )
+                .map_err(|e_chirho| {
+                    format!("Error compiling {}: {}", module_name_chirho, e_chirho)
+                })?;
 
             let FrontendResultChirho {
                 module_chirho,

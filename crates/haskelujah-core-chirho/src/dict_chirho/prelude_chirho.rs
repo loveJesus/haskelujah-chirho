@@ -239,6 +239,38 @@ impl DictPassCtxChirho {
             });
         }
 
+        // Data.Monoid exposes these newtypes through interface stubs. Interface
+        // declarations do not currently feed the local newtype-erasure table, so
+        // give their constructor/accessor names body-backed identity functions.
+        for name_chirho in [
+            "Sum",
+            "getSum",
+            "Product",
+            "getProduct",
+            "All",
+            "getAll",
+            "Any",
+            "getAny",
+        ] {
+            let a_chirho = TyChirho::VarChirho(TyVarChirho(9980));
+            let x_chirho = self.fresh_binder_chirho("x", a_chirho.clone());
+            let id_chirho = self.resolve_or_fresh_id_chirho(name_chirho);
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(a_chirho, x_chirho.ty_chirho.clone()),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: x_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
         // even :: Int -> Bool
         // even n = n `mod` 2 == 0
         {
@@ -14138,7 +14170,7 @@ impl DictPassCtxChirho {
 
         // ── $prim_Semigroup_<>_[Int] etc.: delegates to `append` (list-level) ──
         let append_id_chirho = self.resolve_or_fresh_id_chirho("append");
-        for type_key_chirho in &["[Int]", "[Double]", "[Bool]"] {
+        for type_key_chirho in &["[Int]", "[Integer]", "[Double]", "[Bool]"] {
             let fn_id_chirho =
                 self.resolve_or_fresh_id_chirho(&format!("$prim_Semigroup_<>_{}", type_key_chirho));
             let a_chirho = self.fresh_binder_chirho("a", TyChirho::string_chirho());
@@ -14170,7 +14202,7 @@ impl DictPassCtxChirho {
         }
 
         // ── $prim_Monoid_mempty_[Int] etc.: returns [] ──
-        for type_key_chirho in &["[Int]", "[Char]", "[Double]", "[Bool]"] {
+        for type_key_chirho in &["[Int]", "[Integer]", "[Char]", "[Double]", "[Bool]"] {
             let fn_id_chirho = self
                 .resolve_or_fresh_id_chirho(&format!("$prim_Monoid_mempty_{}", type_key_chirho));
             let rhs_chirho = CoreExprChirho::ConAppChirho {
@@ -14186,6 +14218,111 @@ impl DictPassCtxChirho {
                 },
                 rhs_chirho,
                 is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        // ── Data.Monoid.Sum: interface newtype is erased to its payload ──
+        {
+            let fn_id_chirho = self.resolve_or_fresh_id_chirho("$prim_Semigroup_<>_Sum");
+            let a_chirho = self.fresh_binder_chirho("a", TyChirho::int_chirho());
+            let b_chirho = self.fresh_binder_chirho("b", TyChirho::int_chirho());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: a_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: b_chirho.clone(),
+                    body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                        name_chirho: "+#".to_string(),
+                        args_chirho: vec![
+                            CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                            CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                        ],
+                    }),
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: fn_id_chirho,
+                    name_chirho: "$prim_Semigroup_<>_Sum".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::int_chirho(),
+                        TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho()),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        {
+            let fn_id_chirho = self.resolve_or_fresh_id_chirho("$prim_Monoid_mempty_Sum");
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: fn_id_chirho,
+                    name_chirho: "$prim_Monoid_mempty_Sum".to_string(),
+                    ty_chirho: TyChirho::int_chirho(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
+        {
+            let fn_id_chirho = self.resolve_or_fresh_id_chirho("$prim_Monoid_mconcat_Sum");
+            let xs_chirho = self
+                .fresh_binder_chirho("xs", TyChirho::ListChirho(Box::new(TyChirho::int_chirho())));
+            let x_chirho = self.fresh_binder_chirho("x", TyChirho::int_chirho());
+            let rest_chirho = self.fresh_binder_chirho(
+                "rest",
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+            );
+            let wild_chirho = self.fresh_binder_chirho("wild", TyChirho::int_chirho());
+            let rec_call_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(fn_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(rest_chirho.id_chirho)),
+            };
+            let body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(xs_chirho.id_chirho)),
+                bind_chirho: wild_chirho,
+                result_ty_chirho: TyChirho::int_chirho(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("[]".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho(":".to_string()),
+                        binders_chirho: vec![x_chirho.clone(), rest_chirho.clone()],
+                        rhs_chirho: CoreExprChirho::PrimOpChirho {
+                            name_chirho: "+#".to_string(),
+                            args_chirho: vec![
+                                CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                                rec_call_chirho,
+                            ],
+                        },
+                    },
+                ],
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: fn_id_chirho,
+                    name_chirho: "$prim_Monoid_mconcat_Sum".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                        TyChirho::int_chirho(),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: xs_chirho,
+                    body_chirho: Box::new(body_chirho),
+                },
+                is_rec_chirho: true,
                 inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
@@ -14275,7 +14412,7 @@ impl DictPassCtxChirho {
         // For [Char] (strings): uses ++# primop.
         // For other list types: uses append function.
         let mconcat_append_id_chirho = self.resolve_or_fresh_id_chirho("append");
-        for type_key_chirho in &["[Int]", "[Char]", "[Double]", "[Bool]"] {
+        for type_key_chirho in &["[Int]", "[Integer]", "[Char]", "[Double]", "[Bool]"] {
             let fn_id_chirho = self
                 .resolve_or_fresh_id_chirho(&format!("$prim_Monoid_mconcat_{}", type_key_chirho));
             // mconcat xss = case xss of { [] -> []; (x:xs) -> x <> mconcat xs }
