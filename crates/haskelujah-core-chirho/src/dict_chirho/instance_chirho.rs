@@ -1073,7 +1073,13 @@ impl DictPassCtxChirho {
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, underlying_key_chirho
                 );
-                let underlying_id_chirho = self.resolve_or_fresh_id_chirho(&underlying_prim_chirho);
+                let underlying_id_chirho = self.resolve_or_missing_method_id_chirho(
+                    class_env_chirho,
+                    &class_name_chirho,
+                    method_name_chirho,
+                    &underlying_key_chirho,
+                    &underlying_prim_chirho,
+                );
                 let alias_binder_chirho = self.fresh_binder_chirho(
                     &newtype_prim_chirho,
                     TyChirho::VarChirho(TyVarChirho(self.next_id_chirho)),
