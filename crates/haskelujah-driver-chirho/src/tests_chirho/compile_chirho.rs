@@ -4005,6 +4005,47 @@ instance (MonadZip m) => MonadZip (ExceptTChirho e m) where
 }
 
 #[test]
+fn frontend_class_dot_imports_expose_monad_methods_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ClassDotMonadMethodsChirho where
+import Control.Monad (MonadPlus(..), MonadFail(..))
+import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Class (MonadTrans(..))
+import Control.Monad.Zip (MonadZip(..))
+import GHC.Base (Monad(..))
+
+listPlusChirho :: [Int]
+listPlusChirho = mzero `mplus` [1]
+
+maybeFailChirho :: Maybe Int
+maybeFailChirho = fail \"nope\"
+
+liftIOAliasChirho :: IO Int -> IO Int
+liftIOAliasChirho = liftIO
+
+liftAliasChirho :: MonadTrans t => m a -> t m a
+liftAliasChirho = lift
+
+zipAliasChirho :: MonadZip m => m Int -> m Int -> m Int
+zipAliasChirho = mzipWith (+)
+
+baseMonadAliasChirho :: Maybe Int
+baseMonadAliasChirho = return 1 >>= \\xChirho -> Just xChirho
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ClassDotMonadMethodsChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "class `(..)` imports should expose associated monad methods: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_exceptt_single_contravariant_instance_method_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_chirho = "\

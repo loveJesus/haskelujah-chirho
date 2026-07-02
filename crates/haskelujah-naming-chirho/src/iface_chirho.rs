@@ -1950,8 +1950,12 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Monad", "MonadPlus", "MonadFail"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+        for (name_chirho, methods_chirho) in [
+            ("Monad", &["return", ">>=", ">>"][..]),
+            ("MonadPlus", &["mzero", "mplus"][..]),
+            ("MonadFail", &["fail"][..]),
+        ] {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, methods_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
@@ -2568,7 +2572,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         let (k_chirho, v_chirho) = mk_val_chirho("liftIO");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("MonadIO", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("MonadIO", &["liftIO"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Control.Monad.IO.Class".to_string(),
@@ -2615,7 +2619,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         let (k_chirho, v_chirho) = mk_val_chirho("lift");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("MonadTrans", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("MonadTrans", &["lift"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Control.Monad.Trans.Class".to_string(),
@@ -5631,7 +5635,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("MonadZip", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("MonadZip", &["mzipWith"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Control.Monad.Zip".to_string(),
@@ -8700,7 +8704,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("Applicative", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("Monad", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Monad", &["return", ">>=", ">>"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("NonEmpty", &["(:|)"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -9433,7 +9437,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Monad.Trans.Class
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("MonadTrans", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("MonadTrans", &["lift"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_val_chirho("lift");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -10437,8 +10441,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["MonadTrans", "MonadIO"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+        for (name_chirho, methods_chirho) in
+            [("MonadTrans", &["lift"][..]), ("MonadIO", &["liftIO"][..])]
+        {
+            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, methods_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
@@ -10524,7 +10530,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         let mut exports_chirho = IfaceExportsChirho::default();
         let (k_chirho, v_chirho) = mk_val_chirho("fail");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("MonadFail", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("MonadFail", &["fail"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Control.Monad.Fail".to_string(),
