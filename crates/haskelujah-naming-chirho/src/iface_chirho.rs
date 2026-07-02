@@ -3700,7 +3700,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Functor", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Functor", &["fmap"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Functor".to_string(),
@@ -3743,7 +3743,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Foldable", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Foldable", &["foldMap"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Foldable".to_string(),
@@ -3767,7 +3767,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Traversable", &[]);
+        let (k_chirho, v_chirho) =
+            mk_type_chirho("Traversable", &["traverse", "sequenceA", "mapM", "sequence"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Traversable".to_string(),
@@ -3813,7 +3814,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Alternative", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Alternative", &["empty", "<|>"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("Const", &["Const"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -8616,9 +8617,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Applicative (17 imports in GHC test suite)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Applicative", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Applicative", &["pure", "<*>"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("Alternative", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Alternative", &["empty", "<|>"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, mut v_chirho) = mk_type_chirho("Const", &["Const"]);
         v_chirho.methods_chirho.push("getConst".to_string());
@@ -8696,13 +8697,14 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.Base (7 imports in GHC test suite)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Semigroup", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Semigroup", &["<>"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("Monoid", &[]);
+        let (k_chirho, v_chirho) =
+            mk_type_chirho("Monoid", &["mappend", "mempty", "mconcat"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("Functor", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Functor", &["fmap"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("Applicative", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Applicative", &["pure", "<*>"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("Monad", &["return", ">>=", ">>"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -8828,7 +8830,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Semigroup (used by some test files)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Semigroup", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Semigroup", &["<>"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("Min", &["Min"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -8856,7 +8858,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Monoid
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Monoid", &[]);
+        let (k_chirho, v_chirho) =
+            mk_type_chirho("Monoid", &["mappend", "mempty", "mconcat"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("Dual", &["Dual"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -8907,7 +8910,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Functor (common import)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Functor", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Functor", &["fmap"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &["fmap", "<$>", "<$", "$>", "void", "<&>"] {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
@@ -9049,7 +9052,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Foldable
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Foldable", &[]);
+        let (k_chirho, v_chirho) = mk_type_chirho("Foldable", &["foldMap"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
             "fold",
@@ -9094,7 +9097,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Traversable
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Traversable", &[]);
+        let (k_chirho, v_chirho) =
+            mk_type_chirho("Traversable", &["traverse", "sequenceA", "mapM", "sequence"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
             "traverse",

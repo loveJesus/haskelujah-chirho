@@ -4046,6 +4046,61 @@ baseMonadAliasChirho = return 1 >>= \\xChirho -> Just xChirho
 }
 
 #[test]
+fn frontend_class_dot_imports_expose_base_methods_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ClassDotBaseMethodsChirho where
+import Prelude (Int, Maybe(..), (+))
+import Control.Applicative (Applicative(..), Alternative(..))
+import Data.Foldable (Foldable(..))
+import Data.Functor (Functor(..))
+import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
+import Data.Traversable (Traversable(..))
+
+functorDotChirho :: Maybe Int
+functorDotChirho = fmap (+1) (Just 1)
+
+applicativeDotChirho :: Maybe Int
+applicativeDotChirho = pure (+1) <*> Just 2
+
+alternativeDotChirho :: Maybe Int
+alternativeDotChirho = empty <|> Just 3
+
+semigroupDotChirho :: [Int]
+semigroupDotChirho = [1] <> [2]
+
+monoidDotChirho :: [Int]
+monoidDotChirho = mappend mempty (mconcat [[1], [2]])
+
+foldableDotChirho :: [Int]
+foldableDotChirho = foldMap (\\xChirho -> [xChirho]) [1, 2]
+
+traversableDotChirho :: Maybe [Int]
+traversableDotChirho = traverse Just [1, 2]
+
+sequenceADotChirho :: Maybe [Int]
+sequenceADotChirho = sequenceA [Just 1, Just 2]
+
+mapMDotChirho :: Maybe [Int]
+mapMDotChirho = mapM Just [1, 2]
+
+sequenceDotChirho :: Maybe [Int]
+sequenceDotChirho = sequence [Just 1, Just 2]
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ClassDotBaseMethodsChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "class `(..)` imports should expose associated base methods: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_exceptt_single_contravariant_instance_method_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_chirho = "\
