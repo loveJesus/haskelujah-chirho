@@ -4101,6 +4101,39 @@ sequenceDotChirho = sequence [Just 1, Just 2]
 }
 
 #[test]
+fn frontend_normalized_class_dot_imports_expose_extra_methods_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "\
+module ClassDotExtraMethodsChirho where
+import Control.DeepSeq (NFData(..))
+import Data.Functor.Contravariant (Contravariant(..))
+import System.Random (RandomGen(..), SplitGen(..))
+
+contramapAliasChirho :: Contravariant f => (a -> b) -> f b -> f a
+contramapAliasChirho = contramap
+
+rnfAliasChirho :: NFData a => a -> ()
+rnfAliasChirho = rnf
+
+splitAliasChirho :: RandomGen g => g -> (g, g)
+splitAliasChirho = split
+
+splitGenAliasChirho :: SplitGen g => g -> (g, g)
+splitGenAliasChirho = splitGen
+";
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "ClassDotExtraMethodsChirho.hs",
+    );
+    assert!(
+        result_chirho.is_ok(),
+        "normalized class `(..)` imports should expose extra associated methods: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_exceptt_single_contravariant_instance_method_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_chirho = "\

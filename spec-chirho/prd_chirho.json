@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.43",
+    "prd_version_chirho": "2.2.44",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -54,7 +54,8 @@
       "gpt_chirho (Codex) — WI-004 MonadPlus []/Maybe mzero/mplus body-backed row and typed method annotation dispatch v2.2.40",
       "gpt_chirho (Codex) — WI-004 MonadFail []/Maybe fail body-backed row and applied annotation-key dispatch v2.2.41",
       "gpt_chirho (Codex) — module interface `Class(..)` method export metadata for Monad/MonadPlus/MonadFail/MonadIO/MonadTrans/MonadZip v2.2.42",
-      "gpt_chirho (Codex) — base class `Class(..)` method export metadata for Functor/Applicative/Alternative/Semigroup/Monoid/Foldable/Traversable v2.2.43"
+      "gpt_chirho (Codex) — base class `Class(..)` method export metadata for Functor/Applicative/Alternative/Semigroup/Monoid/Foldable/Traversable v2.2.43",
+      "gpt_chirho (Codex) — central interface class-method normalizer extended for MonadPlus/MonadIO/MonadTrans/MonadZip/Contravariant/NFData/RandomGen/SplitGen v2.2.44"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -106,15 +107,16 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "Naming/interface compatibility: common base module stubs now attach associated method export lists for `Functor(..)`, `Applicative(..)`, `Alternative(..)`, `Semigroup(..)`, `Monoid(..)`, `Foldable(..)`, and `Traversable(..)` where those methods already exist in the class environment. This fixes `Class(..)` method visibility without changing runtime or dict dispatch.",
+      "scope_chirho": "Naming/interface cleanup: the central `builtin_class_methods_chirho` normalizer now covers missing method-bearing classes (MonadPlus, MonadIO, MonadTrans, MonadZip, Contravariant, NFData, RandomGen, SplitGen), so future stubs with those class exports get `Class(..)` method visibility without hand-maintained per-module lists.",
       "commands_chirho": [
+        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_normalized_class_dot_imports_expose_extra_methods_chirho -- --test-threads=1",
         "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_class_dot_imports_expose_base_methods_chirho -- --test-threads=1",
         "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_class_dot_imports_expose_monad_methods_chirho -- --test-threads=1",
         "rustfmt --edition 2024 --check crates/haskelujah-driver-chirho/src/tests_chirho/compile_chirho.rs",
         "jq empty spec-chirho/prd_chirho.json",
         "git diff --check"
       ],
-      "result_chirho": "Targeted compile tests pass and lightweight checks are clean. iface_chirho.rs still has unrelated pre-existing rustfmt drift, so this batch did not format that file."
+      "result_chirho": "All targeted compile tests and lightweight checks pass. No runtime/dict/type-inference changes."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -472,7 +474,7 @@
       "title_chirho": "Per-type instance completion matrix (turn-the-crank recipe)",
       "pillar_chirho": "PILLAR-1",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed v2.2.43 — Sum/Product/All/Any/Ordering/Unit Semigroup/Monoid rows, Endo function-payload Semigroup/Monoid row, First/Last Maybe-payload Semigroup/Monoid rows, Min/Max Semigroup rows, Identity/Down/Proxy/Product Functor/Applicative/Monad rows, Const Functor fmap-only row, Alternative []/Maybe rows, MonadPlus []/Maybe rows, MonadFail []/Maybe rows, and Monoid.mappend slots for body-backed Semigroup rows are pinned; continue Wave A for remaining rows.",
+      "status_chirho": "partially landed v2.2.44 — Sum/Product/All/Any/Ordering/Unit Semigroup/Monoid rows, Endo function-payload Semigroup/Monoid row, First/Last Maybe-payload Semigroup/Monoid rows, Min/Max Semigroup rows, Identity/Down/Proxy/Product Functor/Applicative/Monad rows, Const Functor fmap-only row, Alternative []/Maybe rows, MonadPlus []/Maybe rows, MonadFail []/Maybe rows, and Monoid.mappend slots for body-backed Semigroup rows are pinned; continue Wave A for remaining rows.",
       "owner_chirho": "gpt_chirho/claude_chirho; future fleet may take individual rows after recipe review (gemini currently removed from session)",
       "problem_chirho": "Many types are class-REGISTERED (class_chirho.rs ~2448-2528, ~2963-2976: STM, Proxy, First, Last, Sum, Product, Identity, transformers...) but lack built instance dicts and/or $prim bodies, so their methods fall to wrong-typed fallbacks or dead dict lambdas. GPT #1388: also audit existing dict fields for placeholders.",
       "fix_design_chirho": [
@@ -498,7 +500,8 @@
         "Out of mechanical scope until evidence threading: Foldable/Traversable, Dual, context-dependent Semigroup/Monoid bodies, transformer stacks with constrained instances.",
         "For every built instance dict, missing method slots should be loud or name-preserved per WI-014, never silently fresh-id/literal-0.",
         "LANDED v2.2.42: Interface stubs now attach method export lists to existing class exports for Monad/MonadPlus/MonadFail/MonadIO/MonadTrans/MonadZip where the methods were already seeded as values; targeted Class(..) import compile coverage pins the naming behavior without adding new runtime rows.",
-        "LANDED v2.2.43: Interface stubs now attach method export lists to existing base class exports for Functor/Applicative/Alternative/Semigroup/Monoid/Foldable/Traversable where those methods are already present in the class environment; targeted minimal-Prelude Class(..) import compile coverage pins the naming behavior without adding runtime rows."
+        "LANDED v2.2.43: Interface stubs now attach method export lists to existing base class exports for Functor/Applicative/Alternative/Semigroup/Monoid/Foldable/Traversable where those methods are already present in the class environment; targeted minimal-Prelude Class(..) import compile coverage pins the naming behavior without adding runtime rows.",
+        "LANDED v2.2.44: The central interface class-method normalizer now covers MonadPlus/MonadIO/MonadTrans/MonadZip/Contravariant/NFData/RandomGen/SplitGen, reducing per-stub drift for Class(..) method visibility while keeping the change naming-only."
       ],
       "acceptance_tests_chirho": [
         {
