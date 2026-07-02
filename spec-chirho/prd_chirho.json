@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.53",
+    "prd_version_chirho": "2.2.54",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -64,7 +64,8 @@
       "gpt_chirho (Codex) — failure catalog cleanup after WriterT test-literal fix v2.2.50",
       "gpt_chirho (Codex) — frontend instance-method fixture corrected to type-valid ExceptT mzipWith body v2.2.51",
       "gpt_chirho (Codex) — Data.Typeable rnf export fixture aligned with poly-kinded TypeRep v2.2.52",
-      "gpt_chirho (Codex) — LLVM divInt#/modInt# aliases now use floor div/mod helper v2.2.53"
+      "gpt_chirho (Codex) — LLVM divInt#/modInt# aliases now use floor div/mod helper v2.2.53",
+      "gpt_chirho (Codex) — LLVM native numeric residual recheck narrowed bucket to qsort/list nondeterminism v2.2.54"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -116,14 +117,17 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "LLVM native numeric compatibility: `divInt#` and `modInt#` now route through the existing floor div/mod helper instead of falling through to the generic primop fallback, while `quotInt#` and `remInt#` remain truncating `sdiv`/`srem`.",
+      "scope_chirho": "LLVM native numeric residual recheck after v2.2.53: `comprehensive_demo` is green, `qsort_random_500` remains red, and temp native repros show LCG arithmetic/sum is correct while the same compiled qsort/filter/append binary returns nondeterministic wrong sums.",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib llvm_round_trip_floor_div_mod_negative_operands_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-backend-llvm --lib compile_executable_int_div_mod_aliases_use_floor_helper_chirho -- --test-threads=1",
-        "CARGO_BUILD_JOBS=2 cargo test -p haskelujah-backend-llvm --lib compile_executable_with_all_basic_arithmetic_primops_chirho -- --test-threads=1",
-        "rustfmt --edition 2024 --check crates/haskelujah-backend-llvm-chirho/src/codegen_chirho.rs"
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib llvm_round_trip_comprehensive_demo_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib llvm_round_trip_qsort_random_500_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib llvm_round_trip_quicksort_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib llvm_round_trip_merge_sort_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib llvm_round_trip_foldl_at_scale_chirho -- --test-threads=1",
+        "target/debug/haskelujah compile /tmp/llvm-lcg-chirho-*/Lcg.hs -o /tmp/llvm-lcg-chirho-*/lcg && /tmp/llvm-lcg-chirho-*/lcg",
+        "target/debug/haskelujah compile /tmp/llvm-qsort-chirho-*/Qsort.hs -o /tmp/llvm-qsort-chirho-*/qsort && repeated /tmp/llvm-qsort-chirho-*/qsort"
       ],
-      "result_chirho": "`llvm_round_trip_floor_div_mod_negative_operands_chirho` now passes, proving native LLVM floor `div`/`mod` with negative operands while preserving `quot`/`rem` truncation. Cranelift already routed `divInt#`/`modInt#` through its floor helper. Broader probe/full driver impact remains unmeasured by this targeted pass."
+      "result_chirho": "`llvm_round_trip_comprehensive_demo_chirho`, small LLVM quicksort, merge sort, foldl-at-scale, and native LCG sum pass. `llvm_round_trip_qsort_random_500_chirho` remains the only representative in this bucket; the same compiled qsort binary printed different wrong sums (`27`, `2066`, `2615`), pointing to LLVM native list/closure/runtime nondeterminism rather than arithmetic lowering. Broader probe/full driver impact remains unmeasured by this targeted pass."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1328,15 +1332,14 @@
       },
       {
         "bucket_chirho": "llvm-native-numeric-regressions",
-        "count_chirho": 2,
-        "resolved_chirho": "1 of 3 RESOLVED in v2.2.53: `llvm_round_trip_floor_div_mod_negative_operands_chirho` now passes. Root cause was LLVM codegen handling `div#`/`mod#` with floor semantics but not the simplified-core aliases `divInt#`/`modInt#`; those aliases fell through to the generic add fallback. LLVM now routes `divInt#`/`modInt#` through `emit_floor_div_mod_chirho`, while `quotInt#`/`remInt#` keep truncating `sdiv`/`srem`. Cranelift already handled these aliases with `lower_floor_div_mod_chirho`.",
+        "count_chirho": 1,
+        "resolved_chirho": "2 of 3 RESOLVED/cleared by v2.2.54. v2.2.53 fixed `llvm_round_trip_floor_div_mod_negative_operands_chirho`: LLVM now routes `divInt#`/`modInt#` through `emit_floor_div_mod_chirho`, while `quotInt#`/`remInt#` keep truncating `sdiv`/`srem`. v2.2.54 rechecked `llvm_round_trip_comprehensive_demo_chirho` and confirmed it is green at current HEAD.",
         "preexisting_chirho": false,
-        "suspected_subsystem_chirho": "other",
+        "suspected_subsystem_chirho": "llvm-native-list-closure-runtime",
         "representative_tests_chirho": [
-          "tests_chirho::compile_chirho::llvm_round_trip_qsort_random_500_chirho",
-          "tests_chirho::compile_chirho::llvm_round_trip_comprehensive_demo_chirho"
+          "tests_chirho::compile_chirho::llvm_round_trip_qsort_random_500_chirho"
         ],
-        "notes_chirho": "NOT in the 103-red run at aa80f631 (all three were 'ok' there) — regressed inside the aa80f631..626ab0a4 window (candidates: 2ab7b587 fmap dict dispatch, 38111b4e LLVM show fallback, 626ab0a4 Either applicative dicts). Remaining wrong native numeric output: qsort_random_500 sum 2976 vs 256218; comprehensive_demo sumsq 4353372609 vs 385. Same window FIXED 14 other llvm_round_trip tests plus 19 float/Double eval tests (33 total greens vs the 103-run). comprehensive_demo flipped green again in the post-b5203335 run, so this catalog entry needs a fresh targeted recheck before deeper work."
+        "notes_chirho": "NOT in the 103-red run at aa80f631 (all three were 'ok' there) — regressed inside the aa80f631..626ab0a4 window (candidates: 2ab7b587 fmap dict dispatch, 38111b4e LLVM show fallback, 626ab0a4 Either applicative dicts). Fresh v2.2.54 signal: `llvm_round_trip_qsort_random_500_chirho` still fails, but not with stable arithmetic output: cargo runs returned `27` and `2244`; a single manually compiled qsort/filter/append/LCG native binary returned `27`, `2066`, then `2615` across repeated executions. Native `mySum (lcg 42 500)` alone returns the expected `256218`, and small LLVM quicksort, merge sort, and foldl-at-scale pass. Remaining bug is therefore likely native list/closure heap/runtime nondeterminism under recursive filter/append/qsort over a generated list, not `mod`/`div` arithmetic."
       },
       {
         "bucket_chirho": "th-makelenses-splice",
