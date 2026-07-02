@@ -2059,6 +2059,7 @@ impl InferCtxChirho {
         )
     }
 
+    #[cfg(test)]
     fn instantiate_instance_method_expected_ty_chirho(
         &mut self,
         class_decl_chirho: &ClassDeclChirho,
