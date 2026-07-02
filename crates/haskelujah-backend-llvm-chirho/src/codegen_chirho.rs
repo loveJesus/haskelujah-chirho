@@ -2512,14 +2512,14 @@ impl LlvmCodegenChirho {
                         "+#" => "add",
                         "-#" => "sub",
                         "*#" => "mul",
-                        "div#" => {
+                        "div#" | "divInt#" => {
                             return self.emit_floor_div_mod_chirho(&lhs_chirho, &rhs_chirho, false);
                         }
-                        "mod#" => {
+                        "mod#" | "modInt#" => {
                             return self.emit_floor_div_mod_chirho(&lhs_chirho, &rhs_chirho, true);
                         }
-                        "quot#" => "sdiv",
-                        "rem#" => "srem",
+                        "quot#" | "quotInt#" => "sdiv",
+                        "rem#" | "remInt#" => "srem",
                         "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" => {
                             let cmp_pred_chirho = match name_chirho.as_str() {
                                 "==#" => "eq",
@@ -5717,6 +5717,35 @@ mod tests_chirho {
             assert!(
                 ir_chirho.contains(&format!("{llvm_op_chirho} i64 {lhs_chirho}, {rhs_chirho}")),
                 "expected {prim_name_chirho} to lower to {llvm_op_chirho}, got:\n{ir_chirho}"
+            );
+        }
+    }
+
+    #[test]
+    fn compile_executable_int_div_mod_aliases_use_floor_helper_chirho() {
+        for prim_name_chirho in ["divInt#", "modInt#"] {
+            let module_chirho = CoreModuleChirho {
+                name_chirho: format!("PrimOp{}", prim_name_chirho),
+                bindings_chirho: vec![CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("main", 10),
+                    rhs_chirho: CoreExprChirho::PrimOpChirho {
+                        name_chirho: prim_name_chirho.to_string(),
+                        args_chirho: vec![int_lit_chirho(-7), int_lit_chirho(2)],
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                }],
+                names_chirho: HashMap::new(),
+                specialize_pragmas_chirho: HashMap::new(),
+                foreign_exports_chirho: vec![],
+            };
+
+            let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+            assert!(
+                ir_chirho.contains("sdiv i64 -7, 2")
+                    && ir_chirho.contains("srem i64 -7, 2")
+                    && ir_chirho.contains("select i1"),
+                "expected {prim_name_chirho} to use floor div/mod helper, got:\n{ir_chirho}"
             );
         }
     }
