@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.14",
+    "prd_version_chirho": "2.2.15",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -24,7 +24,9 @@
       "gpt_chirho (Codex) — WI-003 IO bind nested Maybe pure sentinel coverage v2.2.11",
       "gpt_chirho (Codex) — WI-004 Sum Monoid body-backed row and contextual mempty argument dispatch v2.2.12",
       "gpt_chirho (Codex) — WI-004 Product/All/Any Monoid rows and mconcat element-key dispatch v2.2.13",
-      "gpt_chirho (Codex) — WI-004 Ordering Monoid row and mconcat element-key dispatch v2.2.14"
+      "gpt_chirho (Codex) — WI-004 Ordering Monoid row and mconcat element-key dispatch v2.2.14",
+      "claude_chirho (Opus 4.8) — WI-005 Data.Map builtin scheme migration: 13 wired seed_builtins_chirho schemes moved from Int placeholders to real Map k v via map_ty_chirho helper; mapFoldlWithKey'/mapIntersectionWith held as loud int placeholders (unwired runtime) v2.2.15",
+      "gpt_chirho (Codex) — stale-handoff preservation, targeted revalidation, formatting, and commit of Claude WI-005 v2.2.15"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -76,13 +78,16 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "WI-004 per-type instance completion: Ordering Semigroup/Monoid body-backed row, [Ordering] list type-key inference, and Ordering mconcat element-key dispatch; no full suites run per resource guard",
+      "scope_chirho": "WI-005 Data.Map builtin scheme migration (claude_chirho): 13 wired seed_builtins_chirho Map schemes moved from Int placeholders to real Map k v via a new module-level map_ty_chirho helper; mapFoldlWithKey' and mapIntersectionWith held as loud Int placeholders (unwired runtime). Typing-only change in infer_chirho.rs; Core primop bodies already carry the real map type. No full suites run per resource guard.",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=1 timeout 180 cargo test -p haskelujah-driver --lib eval_ordering_monoid_chirho -- --test-threads=1",
-        "rustfmt --check --config skip_children=true crates/haskelujah-core-chirho/src/dict_chirho/mod.rs crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho.rs crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs crates/haskelujah-driver-chirho/src/tests_chirho/eval_typeclass_chirho.rs",
-        "git diff --check"
+        "claude_chirho reported before stale handoff: CARGO_BUILD_JOBS=2 cargo build -j2 --bin haskelujah",
+        "claude_chirho reported before stale handoff: CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_map -- --test-threads=2",
+        "gpt_chirho takeover verification: CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_map_find_with_default_chirho -- --test-threads=1",
+        "gpt_chirho takeover verification: CARGO_BUILD_JOBS=1 timeout 240 cargo test -p haskelujah-driver --lib eval_map_adjust_chirho -- --test-threads=1",
+        "rustfmt --check --config skip_children=true crates/haskelujah-typing-chirho/src/infer_chirho.rs",
+        "jq empty spec-chirho/prd_chirho.json && git diff --check"
       ],
-      "result_chirho": "Targeted WI-004 Ordering gate passed: eval_ordering_monoid_chirho 1/1, touched-root rustfmt --check with skip_children=true, and git diff --check. Pre-existing warning remained: haskelujah-typing instantiate_instance_method_expected_ty_chirho is unused. No broad suites, package scans, or ghc_bulk runs were used."
+      "result_chirho": "Claude reported eval_map 66/68 pass (was 47/68 at ec39ed2f): all 19 E0200 'expected Int found ((Map k) v)' typing reds flipped green, 0 regressions among the 47 previously-green. gpt_chirho took over after stale handoff, preserved Claude's diffs under /tmp/haskelujah-stale-handoff-chirho, formatted infer_chirho.rs, and revalidated representative migrated schemes: eval_map_find_with_default_chirho 1/1 and eval_map_adjust_chirho 1/1 passed with CARGO_BUILD_JOBS=1 and --test-threads=1. DIRTY-TREE CAVEAT: validation ran with gpt's uncommitted WI-004 Identity row present (orthogonal to Map typing). rustfmt --check clean for infer_chirho.rs; jq empty valid; git diff --check clean. Cargo still emits the pre-existing typing dead_code warning for instantiate_instance_method_expected_ty_chirho. No driver --lib full suite, ghc_bulk, or broad package scan run (resource guard). Claude reported the 2 residual eval_map reds (eval_map_basic runtime IO-output, eval_map_maybe user-defined mapMaybe) are other buckets, not WI-005."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -526,7 +531,7 @@
       "title_chirho": "Map builtin scheme migration and qualified surface correctness",
       "pillar_chirho": "PILLAR-2",
       "priority_chirho": "P1",
-      "status_chirho": "todo — AUDIT MERGED; not primarily Data.Map import inference",
+      "status_chirho": "partially landed v2.2.15 (claude_chirho): 13 of 15 seed_builtins_chirho Data.Map schemes migrated from Int placeholders to real Map k v via new map_ty_chirho helper (mapFoldlWithKey, mapFoldrWithKey, mapInsertWith, mapFindWithDefault, mapAdjust, mapUnionWith, mapUnion, mapDifference, mapFilter, mapInsertStr, mapLookupStr, mapMemberStr, mapFindWithDefaultStr). eval_map 47->66 of 68 pass: all 19 E0200 'expected Int found ((Map k) v)' reds flipped green, 0 regressions (the 2 residual eval_map reds are OTHER buckets — eval_map_basic is a runtime IO-output assert, eval_map_maybe is a user-defined recursive mapMaybe hitting 'no matching alternative'). VAPORWARE HELD: mapFoldlWithKey' and mapIntersectionWith deliberately kept as loud Int placeholders — grep-verified they have NO Core body / primop / runtime variant, so correcting their type without wiring would swap a loud E0200 for a silent IntChirho(0) missing-global trap. REMAINING WI-005: (a) wire mapFoldlWithKey' (a strict left fold can reuse the existing mapFoldlWithKey# op) and a combining mapIntersectionWith in dict_chirho/prelude_chirho.rs, then restore their real Map k v schemes; (b) the qualified Data.Map M.* surface is still a separate silent-wrong problem (acceptance test eval_data_map_roundtrip_chirho); (c) make missing-global STG lowering loud instead of defaulting to IntChirho(0).",
       "owner_chirho": "claude_chirho per gpt scaffold (wave B); gpt_chirho on typing review",
       "problem_chirho": "Audit refuted the original Data.Map framing: the 20-driver-red cluster is mostly unqualified builtin map* functions whose seed_builtins_chirho schemes are half migrated from Int placeholders to Map k v. Qualified M.* adds a separate silent-wrong surface because desugar drops qualifiers and missing globals lower to Int 0.",
       "fix_design_chirho": [
@@ -996,6 +1001,7 @@
       {
         "bucket_chirho": "map-builtin-mistyping",
         "count_chirho": 20,
+        "resolved_chirho": "RESOLVED v2.2.15 (claude_chirho, WI-005): all 19 E0200 typing reds flipped green by migrating the 13 WIRED seed_builtins_chirho Map schemes from Int placeholders to real Map k v (map_ty_chirho helper). 2 unwired ops (mapFoldlWithKey', mapIntersectionWith) held as loud Int placeholders pending runtime wiring. eval_map targeted: 47->66 of 68; the 2 residual are OTHER buckets (eval_map_basic runtime IO-output, eval_map_maybe user-defined mapMaybe). Validated on a dirty tree = HEAD ec39ed2f + gpt's uncommitted WI-004 Identity row (orthogonal to Map typing).",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "typing",
         "representative_tests_chirho": [

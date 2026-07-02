@@ -22,7 +22,7 @@ use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredC
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
-use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
+use crate::unify_chirho::{unify_chirho, UnifyErrorChirho};
 
 /// Error code range for type inference diagnostics.
 const TYPE_MISMATCH_CODE_CHIRHO: u16 = 200;
@@ -2517,12 +2517,17 @@ impl InferCtxChirho {
                             if pred_chirho.ty_chirho == TyChirho::bool_chirho()
                                 && matches!(
                                     pred_chirho.class_name_chirho.as_str(),
-                                    "Num" | "Integral" | "Fractional" | "Floating"
-                                        | "Real" | "RealFrac" | "RealFloat"
+                                    "Num"
+                                        | "Integral"
+                                        | "Fractional"
+                                        | "Floating"
+                                        | "Real"
+                                        | "RealFrac"
+                                        | "RealFloat"
                                 )
                             {
-                                self.diagnostics_chirho
-                                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                                self.diagnostics_chirho.push_chirho(
+                                    DiagnosticChirho::error_with_code_chirho(
                                         ErrorCodeChirho::error_chirho(
                                             UNSATISFIED_CONSTRAINT_CODE_CHIRHO,
                                         ),
@@ -2531,7 +2536,8 @@ impl InferCtxChirho {
                                             pred_chirho.class_name_chirho
                                         ),
                                         *pred_span_chirho,
-                                    ));
+                                    ),
+                                );
                             }
                         }
                     }
@@ -6098,6 +6104,23 @@ fn subst_named_var_chirho(
         },
         _ => ty_chirho.clone(),
     }
+}
+
+/// Build the applied type `Map k v` for Data.Map builtin signatures. (WI-005)
+///
+/// The Core primop bodies (dict_chirho/prelude_chirho.rs) already carry the real
+/// map type; several builtin schemes historically faked the map argument/result
+/// as `Int`, which typechecks in isolation but rejects any genuine `Map` value
+/// (E0200 "expected `Int`, found `((Map k) v)`"). This keeps the type-env schemes
+/// in agreement with the real map representation.
+fn map_ty_chirho(k_chirho: TyChirho, v_chirho: TyChirho) -> TyChirho {
+    TyChirho::AppChirho(
+        Box::new(TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Map".to_string())),
+            Box::new(k_chirho),
+        )),
+        Box::new(v_chirho),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -11600,23 +11623,24 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // mapFoldlWithKey :: (b -> Int -> v -> b) -> b -> Map -> b
+    // mapFoldlWithKey :: (b -> k -> v -> b) -> b -> Map k v -> b
     {
+        let k_chirho = TyChirho::VarChirho(TyVarChirho(3860));
         let b_chirho = TyChirho::VarChirho(TyVarChirho(3226));
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3227));
         env_chirho.bind_chirho(
             "mapFoldlWithKey".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3226), TyVarChirho(3227)],
+                vars_chirho: vec![TyVarChirho(3226), TyVarChirho(3227), TyVarChirho(3860)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         TyChirho::fun_n_chirho(
-                            vec![b_chirho.clone(), TyChirho::int_chirho(), v_chirho],
+                            vec![b_chirho.clone(), k_chirho.clone(), v_chirho.clone()],
                             b_chirho.clone(),
                         ),
                         b_chirho.clone(),
-                        TyChirho::int_chirho(),
+                        map_ty_chirho(k_chirho, v_chirho),
                     ],
                     b_chirho,
                 ),
@@ -11626,21 +11650,22 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
 
     // mapFoldrWithKey :: (k -> v -> b -> b) -> b -> Map k v -> b
     {
+        let k_chirho = TyChirho::VarChirho(TyVarChirho(3861));
         let b_chirho = TyChirho::VarChirho(TyVarChirho(3840));
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3841));
         env_chirho.bind_chirho(
             "mapFoldrWithKey".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3840), TyVarChirho(3841)],
+                vars_chirho: vec![TyVarChirho(3840), TyVarChirho(3841), TyVarChirho(3861)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         TyChirho::fun_n_chirho(
-                            vec![TyChirho::int_chirho(), v_chirho, b_chirho.clone()],
+                            vec![k_chirho.clone(), v_chirho.clone(), b_chirho.clone()],
                             b_chirho.clone(),
                         ),
                         b_chirho.clone(),
-                        TyChirho::int_chirho(),
+                        map_ty_chirho(k_chirho, v_chirho),
                     ],
                     b_chirho,
                 ),
@@ -11649,7 +11674,13 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     }
 
     // mapFoldlWithKey' :: (b -> k -> v -> b) -> b -> Map k v -> b
-    // Strict variant — same signature as mapFoldlWithKey in our strict runtime.
+    // NOTE (WI-005): the strict runtime op is NOT wired — there is no Core body or
+    // primop for it (grep-verified: only this scheme references the name). It is
+    // deliberately kept as the `Int` placeholder so that a genuine `Map` argument
+    // fails loudly at type-check (E0200) rather than lowering to a silent
+    // `IntChirho(0)` via the missing-global path. Restore the real `Map k v` scheme
+    // once a body is wired in dict_chirho/prelude_chirho.rs (a strict left fold can
+    // reuse the existing mapFoldlWithKey# op in our strict runtime).
     {
         let b_chirho = TyChirho::VarChirho(TyVarChirho(3845));
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3846));
@@ -11693,10 +11724,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                             TyChirho::fun_chirho(v_chirho.clone(), v_chirho.clone()),
                         ),
                         TyChirho::VarChirho(k_chirho),
-                        v_chirho,
-                        TyChirho::int_chirho(),
+                        v_chirho.clone(),
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho.clone()),
                     ],
-                    TyChirho::int_chirho(),
+                    map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho),
                 ),
             },
         );
@@ -11719,7 +11750,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     vec![
                         v_chirho.clone(),
                         TyChirho::VarChirho(k_chirho),
-                        TyChirho::int_chirho(),
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho.clone()),
                     ],
                     v_chirho,
                 ),
@@ -11742,58 +11773,100 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
-                        TyChirho::fun_chirho(v_chirho.clone(), v_chirho),
+                        TyChirho::fun_chirho(v_chirho.clone(), v_chirho.clone()),
                         TyChirho::VarChirho(k_chirho),
-                        TyChirho::int_chirho(),
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho.clone()),
                     ],
-                    TyChirho::int_chirho(),
+                    map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho),
                 ),
             },
         );
     }
 
-    // mapUnionWith :: (v -> v -> v) -> Map -> Map -> Map
+    // mapUnionWith :: Ord k => (v -> v -> v) -> Map k v -> Map k v -> Map k v
     {
+        let k_chirho = TyVarChirho(3863);
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3233));
         env_chirho.bind_chirho(
             "mapUnionWith".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3233)],
-                preds_chirho: vec![],
+                vars_chirho: vec![TyVarChirho(3233), k_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         TyChirho::fun_chirho(
                             v_chirho.clone(),
-                            TyChirho::fun_chirho(v_chirho.clone(), v_chirho),
+                            TyChirho::fun_chirho(v_chirho.clone(), v_chirho.clone()),
                         ),
-                        TyChirho::int_chirho(),
-                        TyChirho::int_chirho(),
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho.clone()),
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho.clone()),
                     ],
-                    TyChirho::int_chirho(),
+                    map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho),
                 ),
             },
         );
     }
 
-    // mapUnion :: Map -> Map -> Map
-    env_chirho.bind_chirho(
-        "mapUnion".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
-            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
-            TyChirho::int_chirho(),
-        )),
-    );
+    // mapUnion :: Ord k => Map k v -> Map k v -> Map k v
+    {
+        let k_chirho = TyVarChirho(3864);
+        let v_chirho = TyVarChirho(3865);
+        env_chirho.bind_chirho(
+            "mapUnion".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![k_chirho, v_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), TyChirho::VarChirho(v_chirho)),
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), TyChirho::VarChirho(v_chirho)),
+                    ],
+                    map_ty_chirho(TyChirho::VarChirho(k_chirho), TyChirho::VarChirho(v_chirho)),
+                ),
+            },
+        );
+    }
 
-    // mapDifference :: Map -> Map -> Map
-    env_chirho.bind_chirho(
-        "mapDifference".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_n_chirho(
-            vec![TyChirho::int_chirho(), TyChirho::int_chirho()],
-            TyChirho::int_chirho(),
-        )),
-    );
+    // mapDifference :: Ord k => Map k v -> Map k v -> Map k v
+    {
+        let k_chirho = TyVarChirho(3866);
+        let v_chirho = TyVarChirho(3867);
+        env_chirho.bind_chirho(
+            "mapDifference".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![k_chirho, v_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Ord".to_string(),
+                    ty_chirho: TyChirho::VarChirho(k_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), TyChirho::VarChirho(v_chirho)),
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), TyChirho::VarChirho(v_chirho)),
+                    ],
+                    map_ty_chirho(TyChirho::VarChirho(k_chirho), TyChirho::VarChirho(v_chirho)),
+                ),
+            },
+        );
+    }
 
-    // mapIntersectionWith :: (v -> v -> v) -> Map -> Map -> Map
+    // mapIntersectionWith :: Ord k => (v -> v -> v) -> Map k v -> Map k v -> Map k v
+    // NOTE (WI-005): the combining-intersection runtime op is NOT wired — the
+    // runtime only has plain MapIntersectionChirho (no combining function), and
+    // grep confirms nothing but this scheme references mapIntersectionWith. It is
+    // deliberately kept as the `Int` placeholder so a genuine `Map` argument fails
+    // loudly at type-check (E0200) rather than lowering to a silent `IntChirho(0)`.
+    // Restore the real `Map k v` scheme once a combining-intersection body/primop
+    // is wired in dict_chirho/prelude_chirho.rs.
     {
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3234));
         env_chirho.bind_chirho(
@@ -11816,20 +11889,21 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // mapFilter :: (v -> Bool) -> Map -> Map
+    // mapFilter :: (v -> Bool) -> Map k v -> Map k v
     {
+        let k_chirho = TyVarChirho(3869);
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3235));
         env_chirho.bind_chirho(
             "mapFilter".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3235)],
+                vars_chirho: vec![TyVarChirho(3235), k_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
-                        TyChirho::fun_chirho(v_chirho, TyChirho::bool_chirho()),
-                        TyChirho::int_chirho(),
+                        TyChirho::fun_chirho(v_chirho.clone(), TyChirho::bool_chirho()),
+                        map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho.clone()),
                     ],
-                    TyChirho::int_chirho(),
+                    map_ty_chirho(TyChirho::VarChirho(k_chirho), v_chirho),
                 ),
             },
         );
@@ -13541,7 +13615,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // mapInsertStr :: String -> v -> Map -> Map
+    // mapInsertStr :: String -> v -> Map String v -> Map String v
     {
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3240));
         env_chirho.bind_chirho(
@@ -13550,14 +13624,18 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 vars_chirho: vec![TyVarChirho(3240)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
-                    vec![TyChirho::string_chirho(), v_chirho, TyChirho::int_chirho()],
-                    TyChirho::int_chirho(),
+                    vec![
+                        TyChirho::string_chirho(),
+                        v_chirho.clone(),
+                        map_ty_chirho(TyChirho::string_chirho(), v_chirho.clone()),
+                    ],
+                    map_ty_chirho(TyChirho::string_chirho(), v_chirho),
                 ),
             },
         );
     }
 
-    // mapLookupStr :: String -> Map -> Maybe v
+    // mapLookupStr :: String -> Map String v -> v
     {
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3241));
         env_chirho.bind_chirho(
@@ -13567,22 +13645,35 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::string_chirho(),
-                    TyChirho::fun_chirho(TyChirho::int_chirho(), v_chirho),
+                    TyChirho::fun_chirho(
+                        map_ty_chirho(TyChirho::string_chirho(), v_chirho.clone()),
+                        v_chirho,
+                    ),
                 ),
             },
         );
     }
 
-    // mapMemberStr :: String -> Map -> Bool
-    env_chirho.bind_chirho(
-        "mapMemberStr".to_string(),
-        SchemeChirho::mono_chirho(TyChirho::fun_chirho(
-            TyChirho::string_chirho(),
-            TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::bool_chirho()),
-        )),
-    );
+    // mapMemberStr :: String -> Map String v -> Bool
+    {
+        let v_chirho = TyVarChirho(3870);
+        env_chirho.bind_chirho(
+            "mapMemberStr".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![v_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::string_chirho(),
+                    TyChirho::fun_chirho(
+                        map_ty_chirho(TyChirho::string_chirho(), TyChirho::VarChirho(v_chirho)),
+                        TyChirho::bool_chirho(),
+                    ),
+                ),
+            },
+        );
+    }
 
-    // mapFindWithDefaultStr :: v -> String -> Map -> v
+    // mapFindWithDefaultStr :: v -> String -> Map String v -> v
     {
         let v_chirho = TyChirho::VarChirho(TyVarChirho(3242));
         env_chirho.bind_chirho(
@@ -13594,7 +13685,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     vec![
                         v_chirho.clone(),
                         TyChirho::string_chirho(),
-                        TyChirho::int_chirho(),
+                        map_ty_chirho(TyChirho::string_chirho(), v_chirho.clone()),
                     ],
                     v_chirho,
                 ),
@@ -19506,12 +19597,10 @@ mod tests_chirho {
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
         assert!(matches!(final_ty_chirho, TyChirho::VarChirho(_)));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 2);
-        assert!(
-            ctx_chirho
-                .deferred_preds_chirho
-                .iter()
-                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
-        );
+        assert!(ctx_chirho
+            .deferred_preds_chirho
+            .iter()
+            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
     }
 
     #[test]
@@ -19758,12 +19847,10 @@ mod tests_chirho {
                 if matches!(elem_chirho.as_ref(), TyChirho::VarChirho(_))
         ));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 3);
-        assert!(
-            ctx_chirho
-                .deferred_preds_chirho
-                .iter()
-                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
-        );
+        assert!(ctx_chirho
+            .deferred_preds_chirho
+            .iter()
+            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
     }
 
     // -----------------------------------------------------------------------
@@ -20391,11 +20478,9 @@ mod tests_chirho {
             "Class with superclass should not error: {:?}",
             result_chirho.diagnostics_chirho
         );
-        assert!(
-            result_chirho
-                .class_env_chirho
-                .has_class_chirho("MyOrdChirho")
-        );
+        assert!(result_chirho
+            .class_env_chirho
+            .has_class_chirho("MyOrdChirho"));
         let supers_chirho = result_chirho
             .class_env_chirho
             .superclasses_chirho("MyOrdChirho");
