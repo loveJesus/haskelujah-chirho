@@ -6127,6 +6127,134 @@ fn eval_fmap_dispatch_chirho() {
     }
 }
 
+// workflow: monadic-dispatch-chirho — WI-001 acceptance (prd_chirho.json)
+#[test]
+fn eval_monad_bind_dispatch_chirho() {
+    use crate::eval_source_chirho;
+    // Explicit >>= dispatches to $prim_Monad_>>=_<Head> by the first
+    // argument's type: Either (Right binds, Left short-circuits), Maybe, [].
+    let cases_chirho: [(&str, i64); 4] = [
+        (
+            "main = case ((Right 3 :: Either Int Int) >>= (\\x -> Right (x * 2))) of { Right x -> x; Left e -> e }\n",
+            6,
+        ),
+        (
+            "main = case (Just 10 >>= (\\x -> Just (x - 1))) of { Just x -> x; Nothing -> 0 }\n",
+            9,
+        ),
+        (
+            "main = sum ([1,2,3] >>= (\\x -> [x, x * 10]))\n",
+            66,
+        ),
+        (
+            "main = case ((Left 7 :: Either Int Int) >>= (\\x -> Right (x * 2))) of { Right x -> x; Left e -> e }\n",
+            7,
+        ),
+    ];
+    for (body_chirho, want_chirho) in cases_chirho {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = format!("module Test where\n{body_chirho}");
+        let result_chirho = eval_source_chirho(&src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(
+                val_chirho,
+                haskelujah_runtime_chirho::ValueChirho::IntChirho(want_chirho),
+                "unexpected >>= result for: {body_chirho}"
+            ),
+            Err(e_chirho) => panic!(">>= should dispatch by monad type: {e_chirho}"),
+        }
+    }
+}
+
+// workflow: monadic-dispatch-chirho — WI-001 acceptance (prd_chirho.json)
+#[test]
+fn eval_monad_then_dispatch_chirho() {
+    use crate::eval_source_chirho;
+    let cases_chirho: [(&str, i64); 2] = [
+        (
+            "main = case (Just 1 >> Just 5) of { Just x -> x; Nothing -> 0 }\n",
+            5,
+        ),
+        (
+            "main = case ((Nothing >> Just 5) :: Maybe Int) of { Just x -> x; Nothing -> 0 }\n",
+            0,
+        ),
+    ];
+    for (body_chirho, want_chirho) in cases_chirho {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = format!("module Test where\n{body_chirho}");
+        let result_chirho = eval_source_chirho(&src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(
+                val_chirho,
+                haskelujah_runtime_chirho::ValueChirho::IntChirho(want_chirho),
+                "unexpected >> result for: {body_chirho}"
+            ),
+            Err(e_chirho) => panic!(">> should dispatch by monad type: {e_chirho}"),
+        }
+    }
+}
+
+// workflow: monadic-dispatch-chirho — WI-002 acceptance (prd_chirho.json)
+#[test]
+fn eval_maybe_do_dispatch_chirho() {
+    use crate::eval_source_chirho;
+    // do-notation now desugars to real >>= chains: Maybe do-blocks bind the
+    // wrapped value (not the whole Just) and Nothing short-circuits.
+    let cases_chirho: [(&str, i64); 3] = [
+        (
+            "maybeSum :: Maybe Int\nmaybeSum = do\n  x <- Just 1\n  y <- Just 2\n  return (x + y)\nmain = case maybeSum of { Just n -> n; Nothing -> 0 }\n",
+            3,
+        ),
+        (
+            "f :: Maybe Int\nf = do\n  x <- Just 1\n  _ <- Nothing\n  return x\nmain = case f of { Just n -> n; Nothing -> 99 }\n",
+            99,
+        ),
+        (
+            "pairSum :: Maybe Int\npairSum = do\n  (a, b) <- Just (3, 4)\n  return (a + b)\nmain = case pairSum of { Just n -> n; Nothing -> 0 }\n",
+            7,
+        ),
+    ];
+    for (body_chirho, want_chirho) in cases_chirho {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = format!("module Test where\n{body_chirho}");
+        let result_chirho = eval_source_chirho(&src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(
+                val_chirho,
+                haskelujah_runtime_chirho::ValueChirho::IntChirho(want_chirho),
+                "unexpected maybe-do result for: {body_chirho}"
+            ),
+            Err(e_chirho) => panic!("maybe-do should ride >>= dispatch: {e_chirho}"),
+        }
+    }
+}
+
+// workflow: monadic-dispatch-chirho — INV-001 regression pin (prd_chirho.json)
+#[test]
+fn eval_io_bind_unchanged_chirho() {
+    use crate::eval_source_chirho;
+    // IO return/>>= keep their primop fast path (ReturnIOChirho/BindIOChirho)
+    // because no $prim_Monad_*_IO body exists — the names fall through.
+    let cases_chirho: [(&str, i64); 2] = [
+        ("main = return (3 + 4)\n", 7),
+        ("main = return 3 >>= (\\x -> return (x + 4))\n", 7),
+    ];
+    for (body_chirho, want_chirho) in cases_chirho {
+        let mut sm_chirho = SourceMapChirho::new_chirho();
+        let src_chirho = format!("module Test where\n{body_chirho}");
+        let result_chirho = eval_source_chirho(&src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        match result_chirho {
+            Ok(val_chirho) => assert_eq!(
+                val_chirho,
+                haskelujah_runtime_chirho::ValueChirho::IntChirho(want_chirho),
+                "IO bind fast path changed for: {body_chirho}"
+            ),
+            Err(e_chirho) => panic!("IO bind fast path must not regress: {e_chirho}"),
+        }
+    }
+}
+
 #[test]
 fn eval_applicative_either_dispatch_chirho() {
     use crate::eval_source_chirho;

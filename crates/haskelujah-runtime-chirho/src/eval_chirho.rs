@@ -21,11 +21,11 @@
 use std::collections::HashMap;
 
 use crate::gc_chirho::{
-    GcConfigChirho, GcStateChirho, GcStatsChirho, extract_roots_from_stack_chirho,
-    extract_roots_from_values_chirho,
+    extract_roots_from_stack_chirho, extract_roots_from_values_chirho, GcConfigChirho,
+    GcStateChirho, GcStatsChirho,
 };
 use crate::heap_chirho::HeapChirho;
-use crate::prim_chirho::{PrimErrorChirho, apply_prim_binop_chirho};
+use crate::prim_chirho::{apply_prim_binop_chirho, PrimErrorChirho};
 use crate::stack_chirho::{FrameChirho, PrimOpKindChirho, StackChirho};
 use crate::value_chirho::{
     ClosureChirho, CodePtrChirho, DataConTagChirho, HeapAddrChirho, InfoTagChirho, ValueChirho,
@@ -1895,9 +1895,22 @@ impl MachineChirho {
                     .cloned()
                     .unwrap_or(ValueChirho::IntChirho(0)));
             }
-            PrimOpKindChirho::BindIOChirho | PrimOpKindChirho::ThenIOChirho => {
-                // For now these are handled at the lowering level
-                return Ok(ValueChirho::IntChirho(0));
+            PrimOpKindChirho::BindIOChirho => {
+                let value_chirho = args_chirho
+                    .first()
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                let cont_chirho = args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0));
+                return self.apply_fn_to_value_chirho(cont_chirho, value_chirho);
+            }
+            PrimOpKindChirho::ThenIOChirho => {
+                return Ok(args_chirho
+                    .get(1)
+                    .cloned()
+                    .unwrap_or(ValueChirho::IntChirho(0)));
             }
             PrimOpKindChirho::GetContentsChirho => {
                 // Read all remaining stdin as a single String (newline-joined)

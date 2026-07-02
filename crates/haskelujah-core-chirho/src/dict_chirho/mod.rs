@@ -112,6 +112,12 @@ pub struct DictPassCtxChirho {
     /// `try_rewrite_method_var_chirho` skips it.
     /// Uses RefCell for interior mutability during the recursive rewrite pass.
     local_shadow_ids_chirho: RefCell<HashSet<CoreIdChirho>>,
+    /// Stack of monad head keys (e.g. "Maybe") for chains currently being
+    /// positively dispatched (`>>=`/`>>`); `return`/`pure` inside those
+    /// continuations dispatch to `$prim_Applicative_pure_<key>`. Without a
+    /// context they keep their name and fall back to ReturnIOChirho (INV-001).
+    /// workflow: monadic-dispatch-chirho
+    monad_context_stack_chirho: RefCell<Vec<String>>,
 }
 
 impl DictPassCtxChirho {
@@ -134,6 +140,7 @@ impl DictPassCtxChirho {
             newtype_info_chirho: HashMap::new(),
             class_param_count_chirho: HashMap::new(),
             local_shadow_ids_chirho: RefCell::new(HashSet::new()),
+            monad_context_stack_chirho: RefCell::new(Vec::new()),
         }
     }
 
@@ -939,18 +946,14 @@ mod tests_chirho {
         assert!(!ctx_chirho.instance_dicts_chirho.is_empty());
 
         // Check Eq Int dict exists
-        assert!(
-            ctx_chirho
-                .instance_dicts_chirho
-                .contains_key(&("Eq".to_string(), "Int".to_string()))
-        );
+        assert!(ctx_chirho
+            .instance_dicts_chirho
+            .contains_key(&("Eq".to_string(), "Int".to_string())));
 
         // Check Num Int dict exists
-        assert!(
-            ctx_chirho
-                .instance_dicts_chirho
-                .contains_key(&("Num".to_string(), "Int".to_string()))
-        );
+        assert!(ctx_chirho
+            .instance_dicts_chirho
+            .contains_key(&("Num".to_string(), "Int".to_string())));
 
         // Find the $fEqInt binding
         let eq_int_binding_chirho = ctx_chirho

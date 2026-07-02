@@ -401,6 +401,29 @@ impl DictPassCtxChirho {
         )
     }
 
+    fn rebuild_preserved_method_app_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        args_chirho: &[&CoreExprChirho],
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> CoreExprChirho {
+        let mut result_chirho = CoreExprChirho::VarChirho(head_id_chirho);
+        for a_chirho in args_chirho {
+            result_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(result_chirho),
+                arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
+                    a_chirho,
+                    dict_vars_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                )),
+            };
+        }
+        result_chirho
+    }
+
     /// Dispatch a higher-kinded class method to the correct per-type instance
     /// body based on the type key of its dispatch argument.
     /// The method otherwise resolves to a monomorphic default binding, which is
@@ -428,19 +451,92 @@ impl DictPassCtxChirho {
             CoreExprChirho::VarChirho(id_chirho) => *id_chirho,
             _ => return None,
         };
-        // (instance-body name prefix, index of the dispatch argument)
-        let (prefix_chirho, dispatch_idx_chirho) =
-            match self.names_chirho.get(&head_id_chirho)?.as_str() {
-                "fmap" => ("$prim_Functor_fmap_", 1usize),
-                _ => return None,
-            };
+        // Locally-shadowed names (`let (>>=) = ...`) are never intercepted.
+        if self
+            .local_shadow_ids_chirho
+            .borrow()
+            .contains(&head_id_chirho)
+        {
+            return None;
+        }
+        let head_name_chirho = self.names_chirho.get(&head_id_chirho)?.clone();
         let args_chirho: Vec<&CoreExprChirho> = args_rev_chirho.iter().rev().copied().collect();
+
+        // return/pure are return-position polymorphic: no argument carries the
+        // monad, so dispatch from the innermost positively-dispatched chain
+        // context; with no context they keep their name (ReturnIOChirho
+        // fallback, INV-001). workflow: monadic-dispatch-chirho
+        if head_name_chirho == "return" || head_name_chirho == "pure" {
+            let Some(context_key_chirho) = self.monad_context_stack_chirho.borrow().last().cloned()
+            else {
+                return Some(self.rebuild_preserved_method_app_chirho(
+                    head_id_chirho,
+                    &args_chirho,
+                    dict_vars_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ));
+            };
+            let Some(inst_id_chirho) =
+                self.lookup_name_id_chirho(&format!("$prim_Applicative_pure_{context_key_chirho}"))
+            else {
+                return Some(self.rebuild_preserved_method_app_chirho(
+                    head_id_chirho,
+                    &args_chirho,
+                    dict_vars_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ));
+            };
+            let mut result_chirho = CoreExprChirho::VarChirho(inst_id_chirho);
+            for a_chirho in &args_chirho {
+                result_chirho = CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(result_chirho),
+                    arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
+                        a_chirho,
+                        dict_vars_chirho,
+                        local_type_keys_chirho,
+                        local_instance_dicts_chirho,
+                    )),
+                };
+            }
+            return Some(result_chirho);
+        }
+
+        // (instance-body name prefix, index of the dispatch argument)
+        let (prefix_chirho, dispatch_idx_chirho) = match head_name_chirho.as_str() {
+            "fmap" => ("$prim_Functor_fmap_", 1usize),
+            ">>=" => ("$prim_Monad_>>=_", 0usize),
+            ">>" => ("$prim_Monad_>>_", 0usize),
+            _ => return None,
+        };
         let dispatch_arg_chirho = args_chirho.get(dispatch_idx_chirho)?;
         let value_key_chirho =
             self.infer_type_key_for_rewrite_chirho(dispatch_arg_chirho, local_type_keys_chirho)?;
         let head_key_chirho = Self::normalize_instance_head_key_chirho(&value_key_chirho);
-        let inst_id_chirho =
-            self.lookup_name_id_chirho(&format!("{prefix_chirho}{head_key_chirho}"))?;
+        let Some(inst_id_chirho) =
+            self.lookup_name_id_chirho(&format!("{prefix_chirho}{head_key_chirho}"))
+        else {
+            if matches!(head_name_chirho.as_str(), ">>=" | ">>") {
+                return Some(self.rebuild_preserved_method_app_chirho(
+                    head_id_chirho,
+                    &args_chirho,
+                    dict_vars_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ));
+            }
+            return None;
+        };
+        // Monad chains carry their head key while their arguments are
+        // rewritten so return/pure in the continuation dispatch to the same
+        // monad. workflow: monadic-dispatch-chirho
+        let is_monad_chain_chirho = matches!(head_name_chirho.as_str(), ">>=" | ">>");
+        if is_monad_chain_chirho {
+            self.monad_context_stack_chirho
+                .borrow_mut()
+                .push(head_key_chirho.clone());
+        }
         // Rebuild the application with the instance body as head; rewrite args.
         let mut result_chirho = CoreExprChirho::VarChirho(inst_id_chirho);
         for a_chirho in &args_chirho {
@@ -453,6 +549,9 @@ impl DictPassCtxChirho {
                     local_instance_dicts_chirho,
                 )),
             };
+        }
+        if is_monad_chain_chirho {
+            self.monad_context_stack_chirho.borrow_mut().pop();
         }
         Some(result_chirho)
     }

@@ -3883,19 +3883,32 @@ impl DesugarCtxChirho {
                     };
                 }
 
-                // (>>) is monadic then: a >> b → PrimOp >>
+                // (>>) is monadic then: a >> b → (>>) a b as a Var app so the
+                // dict pass dispatches it per-type ($prim_Monad_>>_<Head>);
+                // unresolved names still lower to ThenIOChirho at STG (INV-001).
+                // workflow: monadic-dispatch-chirho
                 if op_name_chirho == ">>" {
-                    return CoreExprChirho::PrimOpChirho {
-                        name_chirho: ">>".to_string(),
-                        args_chirho: vec![left_core_chirho, right_core_chirho],
+                    let then_id_chirho = self.resolve_var_chirho(">>");
+                    return CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(then_id_chirho)),
+                            arg_chirho: Box::new(left_core_chirho),
+                        }),
+                        arg_chirho: Box::new(right_core_chirho),
                     };
                 }
 
-                // (>>=) is monadic bind: a >>= f → PrimOp >>=
+                // (>>=) is monadic bind: a >>= f → (>>=) a f as a Var app;
+                // same dispatch/fallback contract as (>>) above.
+                // workflow: monadic-dispatch-chirho
                 if op_name_chirho == ">>=" {
-                    return CoreExprChirho::PrimOpChirho {
-                        name_chirho: ">>=".to_string(),
-                        args_chirho: vec![left_core_chirho, right_core_chirho],
+                    let bind_id_chirho = self.resolve_var_chirho(">>=");
+                    return CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(bind_id_chirho)),
+                            arg_chirho: Box::new(left_core_chirho),
+                        }),
+                        arg_chirho: Box::new(right_core_chirho),
                     };
                 }
 
@@ -4932,28 +4945,18 @@ impl DesugarCtxChirho {
 
         match &stmts_chirho[0] {
             StmtChirho::ExprChirho(expr_chirho) => {
-                // e; stmts → case e of { _ -> do stmts }
-                // Using case forces evaluation of e (for side effects)
+                // e; stmts → (>>) e (do stmts) — rides the per-type dispatch;
+                // IO falls back to ThenIOChirho by name at STG (INV-001).
+                // workflow: monadic-dispatch-chirho
                 let e_chirho = self.desugar_expr_chirho(expr_chirho);
                 let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..]);
-                let seq_binder_chirho = self.fresh_binder_chirho(
-                    "_seq",
-                    TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                        self.next_id_chirho,
-                    )),
-                    SpanChirho::DUMMY_CHIRHO,
-                );
-                CoreExprChirho::CaseChirho {
-                    scrutinee_chirho: Box::new(e_chirho),
-                    bind_chirho: seq_binder_chirho,
-                    result_ty_chirho: TyChirho::VarChirho(
-                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
-                    ),
-                    alts_chirho: vec![CoreAltChirho {
-                        con_chirho: AltConChirho::DefaultChirho,
-                        binders_chirho: vec![],
-                        rhs_chirho: rest_chirho,
-                    }],
+                let then_id_chirho = self.resolve_var_chirho(">>");
+                CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(then_id_chirho)),
+                        arg_chirho: Box::new(e_chirho),
+                    }),
+                    arg_chirho: Box::new(rest_chirho),
                 }
             }
             StmtChirho::BindChirho {
@@ -4961,27 +4964,103 @@ impl DesugarCtxChirho {
                 expr_chirho,
                 ..
             } => {
-                // p <- e; stmts → let p = e in (do stmts)
+                // p <- e; stmts → (>>=) e (\p -> do stmts). Non-Var patterns
+                // destructure through a fresh lambda binder + case (they were
+                // previously bound whole and silently never matched). IO keeps
+                // BindIOChirho via the STG name fallback (INV-001).
+                // workflow: monadic-dispatch-chirho
                 let e_chirho = self.desugar_expr_chirho(expr_chirho);
-                let var_name_chirho = match pat_chirho {
-                    PatChirho::VarChirho(n_chirho) => n_chirho.text_chirho().to_string(),
-                    _ => "_bind".to_string(),
+                let bind_id_chirho = self.resolve_var_chirho(">>=");
+                let lam_chirho = match pat_chirho {
+                    PatChirho::VarChirho(n_chirho) => {
+                        let var_name_chirho = n_chirho.text_chirho().to_string();
+                        let binder_chirho = self.fresh_binder_chirho(
+                            &var_name_chirho,
+                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                self.next_id_chirho,
+                            )),
+                            SpanChirho::DUMMY_CHIRHO,
+                        );
+                        self.bind_in_scope_chirho(&var_name_chirho, binder_chirho.id_chirho);
+                        // Compute rest AFTER binding is in scope so subsequent
+                        // statements can reference the bound variable.
+                        let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..]);
+                        CoreExprChirho::LamChirho {
+                            binder_chirho,
+                            body_chirho: Box::new(rest_chirho),
+                        }
+                    }
+                    PatChirho::WildcardChirho(_) => {
+                        let binder_chirho = self.fresh_binder_chirho(
+                            "_bind",
+                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                self.next_id_chirho,
+                            )),
+                            SpanChirho::DUMMY_CHIRHO,
+                        );
+                        let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..]);
+                        CoreExprChirho::LamChirho {
+                            binder_chirho,
+                            body_chirho: Box::new(rest_chirho),
+                        }
+                    }
+                    _ => {
+                        // Constructor/tuple/literal pattern: \$bindpat ->
+                        // case $bindpat of { pat -> do stmts }
+                        self.prebind_all_pat_vars_chirho(pat_chirho);
+                        let top_binders_chirho = self.pat_to_binders_chirho(pat_chirho);
+                        for b_chirho in &top_binders_chirho {
+                            self.bind_in_scope_chirho(&b_chirho.name_chirho, b_chirho.id_chirho);
+                        }
+                        let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..]);
+                        let scrut_binder_chirho = self.fresh_binder_chirho(
+                            "$bindpat",
+                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                self.next_id_chirho,
+                            )),
+                            SpanChirho::DUMMY_CHIRHO,
+                        );
+                        let scrut_id_chirho = scrut_binder_chirho.id_chirho;
+                        let con_chirho = self.pat_to_alt_con_chirho(pat_chirho);
+                        let wrapped_chirho = self.wrap_nested_cases_chirho(
+                            rest_chirho,
+                            &top_binders_chirho,
+                            pat_chirho,
+                            None,
+                        );
+                        let case_wild_chirho = self.fresh_binder_chirho(
+                            "_bindwild",
+                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                self.next_id_chirho,
+                            )),
+                            SpanChirho::DUMMY_CHIRHO,
+                        );
+                        let case_chirho = CoreExprChirho::CaseChirho {
+                            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(scrut_id_chirho)),
+                            bind_chirho: case_wild_chirho,
+                            result_ty_chirho: TyChirho::VarChirho(
+                                haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                    self.next_id_chirho,
+                                ),
+                            ),
+                            alts_chirho: vec![CoreAltChirho {
+                                con_chirho,
+                                binders_chirho: top_binders_chirho,
+                                rhs_chirho: wrapped_chirho,
+                            }],
+                        };
+                        CoreExprChirho::LamChirho {
+                            binder_chirho: scrut_binder_chirho,
+                            body_chirho: Box::new(case_chirho),
+                        }
+                    }
                 };
-                let binder_chirho = self.fresh_binder_chirho(
-                    &var_name_chirho,
-                    TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                        self.next_id_chirho,
-                    )),
-                    SpanChirho::DUMMY_CHIRHO,
-                );
-                self.bind_in_scope_chirho(&var_name_chirho, binder_chirho.id_chirho);
-                // Compute rest AFTER binding is in scope so subsequent
-                // statements can reference the bound variable.
-                let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..]);
-                CoreExprChirho::LetChirho {
-                    rec_chirho: false,
-                    binds_chirho: vec![(binder_chirho, e_chirho)],
-                    body_chirho: Box::new(rest_chirho),
+                CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(bind_id_chirho)),
+                        arg_chirho: Box::new(e_chirho),
+                    }),
+                    arg_chirho: Box::new(lam_chirho),
                 }
             }
             StmtChirho::LetChirho { binds_chirho, .. } => {
@@ -5308,12 +5387,10 @@ mod tests_chirho {
             CoreExprChirho::LamChirho { .. }
         ));
         // Name map should contain the binder's name
-        assert!(
-            output_chirho
-                .names_chirho
-                .values()
-                .any(|n_chirho| n_chirho == "f")
-        );
+        assert!(output_chirho
+            .names_chirho
+            .values()
+            .any(|n_chirho| n_chirho == "f"));
     }
 
     #[test]
@@ -5552,7 +5629,7 @@ mod tests_chirho {
         assert!(matches!(core_chirho, CoreExprChirho::CaseChirho { .. }));
         if let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho {
             assert_eq!(alts_chirho.len(), 2); // True branch + default
-            // Default branch should be another case
+                                              // Default branch should be another case
             assert!(matches!(
                 alts_chirho[1].rhs_chirho,
                 CoreExprChirho::CaseChirho { .. }
