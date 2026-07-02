@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.66",
+    "prd_version_chirho": "2.2.67",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -77,7 +77,8 @@
       "gpt_chirho (Codex) — frontend TH abstraction local signature case fixed by lexing Data.List (\\\\) as a symbol and exporting/seeding its Eq-list scheme v2.2.63",
       "gpt_chirho (Codex) — PRD bucket rebaseline: containers project tests now mirror production current-package type-synonym accumulation; stale STG forcing bucket reduced to the real fix recursion residual v2.2.64",
       "gpt_chirho (Codex) — constraint type aliases now expand to real scheme predicates and constrained numeric-literal calls receive Int dictionaries v2.2.65",
-      "gpt_chirho (Codex) — constraints package frontier advanced through Test.Hspec, KnownChar/charVal, and Data.Typeable proxy typeRep stubs; remaining frontend one-off is Data.Constraint.Forall quantified-constraint kinding v2.2.66"
+      "gpt_chirho (Codex) — constraints package frontier advanced through Test.Hspec, KnownChar/charVal, and Data.Typeable proxy typeRep stubs; remaining frontend one-off is Data.Constraint.Forall quantified-constraint kinding v2.2.66",
+      "gpt_chirho (Codex) — quantified constraints now lower to QuantifiedChirho instead of synthetic `$Dict_?`, closing the simple quantified signature PAP residual v2.2.67"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -129,14 +130,13 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "Constraints package interface/type-scheme frontier advances.",
+      "scope_chirho": "Quantified constraint lowering and constraints package frontier recheck.",
       "commands_chirho": [
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib iface_data_typeable_type_rep_proxy_arg_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib iface_ghc_typelits_charval_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib iface_test_hspec_minimal_spec_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib lower_quantified_constraint_type_sig_keeps_quantified_constraint_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib quantified_constraint_type_sig_parses_chirho -- --test-threads=1",
         "timeout 240 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_constraints_package_regression_chirho -- --test-threads=1"
       ],
-      "result_chirho": "Reduced regressions pass for the Hspec DSL stub, GHC.TypeLits charVal/KnownChar, and Data.Typeable proxy-argument typeRep. The real constraints package now advances past the prior Test.Hspec module-not-found, Spec/return mismatch, charVal unbound, and Data.Typeable.typeRep proxy mismatch frontiers, then stops in Data.Constraint.Forall with E0300 quantified-constraint kind mismatches for `Forall (ComposeC p f)` / `Forall (Q p t)`. Bucket count stays 1 but the residual is now the deeper Forall kinding case."
+      "result_chirho": "The reduced lowerer regression confirms `(forall a. Show a) => Int` now lowers through `ConstraintChirho::QuantifiedChirho` instead of synthetic class `?`, and `quantified_constraint_type_sig_parses_chirho` now evaluates to Int 42. The real constraints package still fails in Data.Constraint.Forall with E0300 higher-kinded quantified-constraint mismatches for `Forall (ComposeC p f)` / `Forall (Q p t)`, so `constraint-alias-dict-pap` is closed and `frontend-typing-one-offs` remains count 1."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1329,14 +1329,14 @@
       },
       {
         "bucket_chirho": "constraint-alias-dict-pap",
-        "count_chirho": 1,
-        "resolved_chirho": "2 of 3 RESOLVED v2.2.65: type-scheme construction expands constraint type aliases into real predicates before the dict pass sees them, so `type Printable a = Show a` and `type ShowEq a = (Show a, Eq a)` no longer synthesize unusable `$Dict_Printable`/`$Dict_ShowEq` dictionaries. Dict-param call-site insertion also treats numeric-default marker arguments as Int when selecting dictionaries for constrained user functions, so `f 42` supplies `Show Int`/`Eq Int` instead of leaving `$PAP f 42`.",
+        "count_chirho": 0,
+        "resolved_chirho": "RESOLVED v2.2.65 + v2.2.67: type-scheme construction expands constraint type aliases into real predicates before the dict pass sees them, so `type Printable a = Show a` and `type ShowEq a = (Show a, Eq a)` no longer synthesize unusable `$Dict_Printable`/`$Dict_ShowEq` dictionaries. Dict-param call-site insertion also treats numeric-default marker arguments as Int when selecting dictionaries for constrained user functions, so `f 42` supplies `Show Int`/`Eq Int` instead of leaving `$PAP f 42`. QuantifiedConstraints lowering now preserves `forall ...` contexts as `ConstraintChirho::QuantifiedChirho`; the simple `foo :: (forall a. Show a) => Int` case no longer emits `$Dict_?` and evaluates to 42.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "dict-pass",
         "representative_tests_chirho": [
           "tests_chirho::extensions_chirho::quantified_constraint_type_sig_parses_chirho"
         ],
-        "notes_chirho": "Remaining: quantified constraints still lower to a placeholder `$Dict_?`/undischarged dictionary shape; `foo :: (forall a. Show a) => Int; foo = 42` still evaluates to HeapPtrChirho instead of IntChirho(42) (extensions_chirho.rs:195). This is separate from ordinary constraint type aliases and needs real quantified-constraint evidence handling or erasure."
+        "notes_chirho": "Closed as a distinct bucket. The remaining real package work is tracked under `frontend-typing-one-offs`: Data.Constraint.Forall still needs higher-kinded quantified-constraint kinding for `Forall (ComposeC p f)` and `Forall (Q p t)`."
       },
       {
         "bucket_chirho": "llvm-native-numeric-regressions",

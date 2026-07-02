@@ -4157,6 +4157,33 @@ impl LowerCtxChirho {
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 Self::type_to_constraints_chirho(inner_chirho, span_chirho)
             }
+            // QuantifiedConstraints: preserve `forall a. C a` as quantified
+            // evidence rather than falling through to the synthetic `?` class.
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                span_chirho: forall_span_chirho,
+            } => {
+                let (context_chirho, quantified_body_chirho) = match body_chirho.as_ref() {
+                    TypeChirho::QualChirho {
+                        context_chirho,
+                        body_chirho,
+                        ..
+                    } => (context_chirho.clone(), body_chirho.as_ref()),
+                    other_chirho => (Vec::new(), other_chirho),
+                };
+                Self::type_to_constraints_chirho(quantified_body_chirho, *forall_span_chirho)
+                    .into_iter()
+                    .map(
+                        |body_constraint_chirho| ConstraintChirho::QuantifiedChirho {
+                            vars_chirho: vars_chirho.clone(),
+                            context_chirho: context_chirho.clone(),
+                            body_chirho: Box::new(body_constraint_chirho),
+                            span_chirho: *forall_span_chirho,
+                        },
+                    )
+                    .collect()
+            }
             // Application: Eq a, Monad m, etc. — collect class name and args
             TypeChirho::AppChirho {
                 fun_chirho,
@@ -11045,6 +11072,45 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                         "constraint should be simple (~) with 2 args, got {:?}",
                         c_chirho
                     );
+                }
+                other_chirho => panic!("expected QualChirho, got: {:?}", other_chirho),
+            }
+        }
+    }
+
+    #[test]
+    fn lower_quantified_constraint_type_sig_keeps_quantified_constraint_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE QuantifiedConstraints #-}\nmodule M where\nfoo :: (forall a. Show a) => Int\n",
+        );
+        let ty_sig_chirho = module_chirho.decls_chirho.iter().find(|d_chirho| {
+            matches!(d_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "foo")
+        });
+        assert!(ty_sig_chirho.is_some(), "should have a TypeSig for foo");
+        if let Some(DeclChirho::TypeSigChirho { ty_chirho, .. }) = ty_sig_chirho {
+            match ty_chirho {
+                TypeChirho::QualChirho { context_chirho, .. } => {
+                    assert_eq!(context_chirho.len(), 1, "should have 1 constraint");
+                    match &context_chirho[0] {
+                        ConstraintChirho::QuantifiedChirho {
+                            vars_chirho,
+                            body_chirho,
+                            ..
+                        } => {
+                            assert_eq!(vars_chirho.len(), 1);
+                            assert!(matches!(
+                                body_chirho.as_ref(),
+                                ConstraintChirho::ClassChirho {
+                                    class_chirho,
+                                    args_chirho,
+                                    ..
+                                } if class_chirho.text_chirho() == "Show" && args_chirho.len() == 1
+                            ));
+                        }
+                        other_chirho => {
+                            panic!("expected quantified constraint, got {:?}", other_chirho)
+                        }
+                    }
                 }
                 other_chirho => panic!("expected QualChirho, got: {:?}", other_chirho),
             }
