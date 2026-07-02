@@ -1625,6 +1625,77 @@ impl DictPassCtxChirho {
         Some(result_chirho)
     }
 
+    fn try_rewrite_annotated_method_app_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        ty_chirho: &TyChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let type_key_chirho = Self::raw_type_head_key_chirho(ty_chirho, false)?;
+        let mut args_chirho = Vec::new();
+        let mut head_chirho = expr_chirho;
+        while let CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } = head_chirho
+        {
+            args_chirho.push(arg_chirho.as_ref());
+            head_chirho = fun_chirho.as_ref();
+        }
+        args_chirho.reverse();
+        let CoreExprChirho::VarChirho(head_id_chirho) = head_chirho else {
+            return None;
+        };
+        let method_name_chirho = self.names_chirho.get(head_id_chirho)?;
+        let short_method_name_chirho = method_name_chirho
+            .rsplit('.')
+            .next()
+            .unwrap_or(method_name_chirho);
+        if short_method_name_chirho != "fail" {
+            return None;
+        }
+        self.class_method_selector_for_name_chirho(method_name_chirho)?;
+
+        let mut result_chirho = self.try_rewrite_method_var_chirho(
+            *head_id_chirho,
+            dict_vars_chirho,
+            evidence_classes_chirho,
+            local_instance_dicts_chirho,
+            Some(&type_key_chirho),
+        );
+        if matches!(result_chirho, CoreExprChirho::VarChirho(id_chirho) if id_chirho == *head_id_chirho)
+        {
+            return None;
+        }
+        for arg_chirho in args_chirho {
+            let rewritten_arg_chirho = self
+                .try_rewrite_typed_method_arg_chirho(
+                    arg_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_instance_dicts_chirho,
+                    &type_key_chirho,
+                )
+                .unwrap_or_else(|| {
+                    self.rewrite_method_refs_with_locals_chirho(
+                        arg_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_type_keys_chirho,
+                        local_instance_dicts_chirho,
+                    )
+                });
+            result_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(result_chirho),
+                arg_chirho: Box::new(rewritten_arg_chirho),
+            };
+        }
+        Some(result_chirho)
+    }
+
     /// Rewrite method references in an expression body.
     ///
     /// Given a mapping of in-scope dictionary variables
@@ -2224,6 +2295,19 @@ impl DictPassCtxChirho {
                 expr_chirho: inner_chirho,
                 ty_chirho,
             } => {
+                if let Some(rewritten_chirho) = self.try_rewrite_annotated_method_app_chirho(
+                    inner_chirho,
+                    ty_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ) {
+                    return CoreExprChirho::TyAppChirho {
+                        expr_chirho: Box::new(rewritten_chirho),
+                        ty_chirho: ty_chirho.clone(),
+                    };
+                }
                 if let CoreExprChirho::VarChirho(inner_id_chirho) = inner_chirho.as_ref() {
                     if let Some(type_key_chirho) = Self::raw_type_head_key_chirho(ty_chirho, false)
                     {

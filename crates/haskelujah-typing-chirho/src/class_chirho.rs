@@ -1545,13 +1545,15 @@ impl ClassEnvChirho {
             defaults_chirho: HashMap::new(),
         });
 
-        // instance MonadFail IO
-        self.add_instance_chirho(InstDeclChirho {
-            class_name_chirho: "MonadFail".to_string(),
-            head_ty_chirho: TyChirho::ConChirho("IO".to_string()),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![],
-        });
+        // instance MonadFail IO / Maybe / []
+        for ty_chirho in ["IO", "Maybe", "[]"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "MonadFail".to_string(),
+                head_ty_chirho: TyChirho::ConChirho(ty_chirho.to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
 
         let format_time_var_chirho = TyVarChirho(9065);
         self.add_class_chirho(ClassDeclChirho {

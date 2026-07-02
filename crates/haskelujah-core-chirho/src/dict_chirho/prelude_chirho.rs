@@ -10425,6 +10425,32 @@ impl DictPassCtxChirho {
                 inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
+
+        // ── instance MonadFail [] / Maybe ──
+        for (prim_name_chirho, con_name_chirho) in [
+            ("$prim_MonadFail_fail_[]", "[]"),
+            ("$prim_MonadFail_fail_Maybe", "Nothing"),
+        ] {
+            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+            let msg_chirho = self.fresh_binder_chirho("msg", any_ty_chirho.clone());
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: prim_id_chirho,
+                    name_chirho: prim_name_chirho.to_string(),
+                    ty_chirho: any_ty_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: msg_chirho,
+                    body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                        con_name_chirho: con_name_chirho.to_string(),
+                        args_chirho: vec![],
+                    }),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
     }
 
     /// Generate IO control flow Prelude functions:
