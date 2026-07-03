@@ -2921,8 +2921,26 @@ impl LowerCtxChirho {
             let child_chirho = &children_chirho[idx_chirho];
             if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
                 if tok_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
+                    if saw_class_chirho && !saw_where_chirho && !saw_pipe_chirho {
+                        let s_chirho =
+                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                        if saw_fat_arrow_chirho {
+                            post_arrow_tokens_chirho.push((tok_chirho, s_chirho, idx_chirho));
+                        } else {
+                            pre_arrow_tokens_chirho.push((tok_chirho, s_chirho, idx_chirho));
+                        }
+                    }
                     paren_depth_chirho += 1;
                 } else if tok_chirho.kind_chirho() == TokenKindChirho::RightParenChirho {
+                    if saw_class_chirho && !saw_where_chirho && !saw_pipe_chirho {
+                        let s_chirho =
+                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                        if saw_fat_arrow_chirho {
+                            post_arrow_tokens_chirho.push((tok_chirho, s_chirho, idx_chirho));
+                        } else {
+                            pre_arrow_tokens_chirho.push((tok_chirho, s_chirho, idx_chirho));
+                        }
+                    }
                     paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
                 } else if tok_chirho.kind_chirho() == TokenKindChirho::ClassKeywordChirho {
                     saw_class_chirho = true;
@@ -3008,16 +3026,31 @@ impl LowerCtxChirho {
         // Extract class name and type variables from head tokens.
         let mut name_chirho = None;
         let mut type_vars_chirho = Vec::new();
+        let mut skip_until_child_idx_chirho: Option<usize> = None;
         for (tok_chirho, s_chirho, tok_idx_chirho) in head_tokens_chirho {
-            if tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho && name_chirho.is_none() {
+            if skip_until_child_idx_chirho
+                .is_some_and(|skip_idx_chirho| *tok_idx_chirho < skip_idx_chirho)
+            {
+                continue;
+            }
+            if (tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                || (tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
+                    && tok_chirho
+                        .text_chirho()
+                        .chars()
+                        .next()
+                        .is_some_and(|c_chirho| c_chirho.is_uppercase())))
+                && name_chirho.is_none()
+            {
                 name_chirho = Some(self.name_from_token_chirho(tok_chirho, *s_chirho));
             } else if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
                 type_vars_chirho.push(self.name_from_token_chirho(tok_chirho, *s_chirho).into());
             } else if tok_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
-                if let Some((tv_chirho, _skip_chirho)) =
+                if let Some((tv_chirho, consumed_chirho)) =
                     self.try_parse_kind_annotated_tyvar_chirho(&children_chirho, *tok_idx_chirho)
                 {
                     type_vars_chirho.push(tv_chirho);
+                    skip_until_child_idx_chirho = Some(*tok_idx_chirho + consumed_chirho);
                 }
             }
         }
@@ -11200,6 +11233,38 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
     }
 
     #[test]
+    fn lower_imported_infix_type_operator_keeps_left_application_spine_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE TypeOperators #-}\nmodule M where\nimport Data.Constraint\ninstF :: forall p f a . ForallF p f :- p (f a)\n",
+        );
+        let ty_sig_chirho = module_chirho.decls_chirho.iter().find(|decl_chirho| {
+            matches!(decl_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "instF")
+        });
+        assert!(ty_sig_chirho.is_some(), "should have a TypeSig for instF");
+        if let Some(DeclChirho::TypeSigChirho { ty_chirho, .. }) = ty_sig_chirho {
+            let body_chirho = match ty_chirho {
+                TypeChirho::ForallChirho { body_chirho, .. } => body_chirho.as_ref(),
+                other_chirho => panic!("expected forall type, got {other_chirho:?}"),
+            };
+            let lhs_chirho = match body_chirho {
+                TypeChirho::AppChirho { fun_chirho, .. } => match fun_chirho.as_ref() {
+                    TypeChirho::AppChirho { arg_chirho, .. } => arg_chirho.as_ref(),
+                    other_chirho => panic!("expected operator application, got {other_chirho:?}"),
+                },
+                other_chirho => panic!("expected infix type application, got {other_chirho:?}"),
+            };
+            assert!(
+                matches!(lhs_chirho, TypeChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                    if matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "f")
+                        && matches!(fun_chirho.as_ref(), TypeChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                            if matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "p")
+                                && matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "ForallF"))),
+                "imported infix operator should keep ForallF p f as lhs, got {lhs_chirho:?}"
+            );
+        }
+    }
+
+    #[test]
     fn lower_where_local_sig_preserves_qualified_tycon_spine_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M where\nimport qualified Control.Monad.Trans.State.Lazy as LazyS\nf a = g a where\n  q :: (m (a, s) -> m (a, s)) -> LazyS.StateT s m a -> LazyS.StateT s m a\n  q u (LazyS.StateT b) = LazyS.StateT (u . b)\n  g x = x\n",
@@ -13465,6 +13530,81 @@ foo = 1
                 );
             }
             other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_class_kind_annotation_does_not_collect_kind_vars_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE ConstraintKinds #-}\n{-# LANGUAGE PolyKinds #-}\n{-# LANGUAGE QuantifiedConstraints #-}\nmodule M where\nclass (forall a. p a) => Forall (p :: k -> Constraint)\nclass ForallF (p :: k2 -> Constraint) (f :: k1 -> k2)\nclass ForallV' p => ForallV_ (p :: k)\n",
+        );
+
+        let forall_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::ClassDeclChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "Forall"
+                )
+            })
+            .expect("expected Forall class declaration");
+        match forall_decl_chirho {
+            DeclChirho::ClassDeclChirho {
+                type_vars_chirho, ..
+            } => {
+                assert_eq!(type_vars_chirho.len(), 1);
+                assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "p");
+                assert!(type_vars_chirho[0].kind_annotation_chirho.is_some());
+            }
+            other_chirho => panic!("expected class declaration, got {:?}", other_chirho),
+        }
+
+        let forall_f_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::ClassDeclChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "ForallF"
+                )
+            })
+            .expect("expected ForallF class declaration");
+        match forall_f_decl_chirho {
+            DeclChirho::ClassDeclChirho {
+                type_vars_chirho, ..
+            } => {
+                assert_eq!(type_vars_chirho.len(), 2);
+                assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "p");
+                assert_eq!(type_vars_chirho[1].name_chirho.text_chirho(), "f");
+                assert!(type_vars_chirho[0].kind_annotation_chirho.is_some());
+                assert!(type_vars_chirho[1].kind_annotation_chirho.is_some());
+            }
+            other_chirho => panic!("expected class declaration, got {:?}", other_chirho),
+        }
+
+        let forall_v_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::ClassDeclChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "ForallV_"
+                )
+            })
+            .expect("expected ForallV_ class declaration");
+        match forall_v_decl_chirho {
+            DeclChirho::ClassDeclChirho {
+                type_vars_chirho, ..
+            } => {
+                assert_eq!(type_vars_chirho.len(), 1);
+                assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "p");
+                assert!(type_vars_chirho[0].kind_annotation_chirho.is_some());
+            }
+            other_chirho => panic!("expected class declaration, got {:?}", other_chirho),
         }
     }
 
