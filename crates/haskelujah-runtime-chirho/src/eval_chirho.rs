@@ -21,11 +21,11 @@
 use std::collections::HashMap;
 
 use crate::gc_chirho::{
-    GcConfigChirho, GcStateChirho, GcStatsChirho, extract_roots_from_stack_chirho,
-    extract_roots_from_values_chirho,
+    extract_roots_from_stack_chirho, extract_roots_from_values_chirho, GcConfigChirho,
+    GcStateChirho, GcStatsChirho,
 };
 use crate::heap_chirho::HeapChirho;
-use crate::prim_chirho::{PrimErrorChirho, apply_prim_binop_chirho};
+use crate::prim_chirho::{apply_prim_binop_chirho, PrimErrorChirho};
 use crate::stack_chirho::{FrameChirho, PrimOpKindChirho, StackChirho};
 use crate::value_chirho::{
     ClosureChirho, CodePtrChirho, DataConTagChirho, HeapAddrChirho, InfoTagChirho, ValueChirho,
@@ -1450,7 +1450,7 @@ impl MachineChirho {
                         let pap_chirho =
                             ClosureChirho::pap_chirho(remaining_chirho, addr_chirho, args_chirho);
                         let pap_addr_chirho = self.heap_chirho.alloc_chirho(pap_chirho);
-                        return self.return_con_chirho(pap_addr_chirho);
+                        return self.return_heap_ptr_chirho(pap_addr_chirho);
                     }
                 }
                 Some(FrameChirho::UpdateChirho { thunk_addr_chirho }) => {
@@ -1502,6 +1502,16 @@ impl MachineChirho {
                             });
                         }
                     };
+                    let fun_addr_chirho = self.heap_chirho.follow_ind_chirho(fun_addr_chirho);
+                    let fun_closure_chirho = self.heap_chirho.read_chirho(fun_addr_chirho).clone();
+                    if fun_closure_chirho.info_chirho.tag_chirho != InfoTagChirho::FunChirho {
+                        return Err(EvalErrorChirho::TypeErrorChirho {
+                            message_chirho: format!(
+                                "PAP target is not a function: {:?}",
+                                fun_closure_chirho.info_chirho.tag_chirho
+                            ),
+                        });
+                    }
 
                     if n_args_chirho > remaining_chirho {
                         // Over-application: push extra args
@@ -1513,13 +1523,13 @@ impl MachineChirho {
 
                     // Load PAP's pre-applied args + new args into registers
                     let mut all_regs_chirho: Vec<ValueChirho> =
-                        closure_chirho.payload_chirho[1..].to_vec();
+                        fun_closure_chirho.payload_chirho.clone();
+                    all_regs_chirho.extend_from_slice(&closure_chirho.payload_chirho[1..]);
                     let take_chirho = remaining_chirho.min(n_args_chirho);
                     all_regs_chirho.extend_from_slice(&args_chirho[..take_chirho]);
                     self.arg_regs_chirho = all_regs_chirho;
 
                     // Enter the original function
-                    let fun_closure_chirho = self.heap_chirho.read_chirho(fun_addr_chirho).clone();
                     Ok(ReturnActionChirho::ContinueChirho(
                         fun_closure_chirho.info_chirho.entry_chirho.0,
                     ))
@@ -1545,13 +1555,13 @@ impl MachineChirho {
                         all_args_chirho,
                     );
                     let pap_addr_chirho = self.heap_chirho.alloc_chirho(new_pap_chirho);
-                    self.return_con_chirho(pap_addr_chirho)
+                    self.return_heap_ptr_chirho(pap_addr_chirho)
                 }
             }
             Some(FrameChirho::UpdateChirho { thunk_addr_chirho }) => {
                 self.heap_chirho
                     .update_to_ind_chirho(thunk_addr_chirho, addr_chirho);
-                self.return_con_chirho(addr_chirho)
+                self.return_heap_ptr_chirho(addr_chirho)
             }
             Some(other_chirho) => {
                 self.stack_chirho.push_chirho(other_chirho);
@@ -5320,5 +5330,43 @@ mod tests_chirho {
                 )
             }
         }
+    }
+
+    #[test]
+    fn enter_pap_preserves_function_payload_chirho() {
+        let mut machine_chirho = MachineChirho::new_chirho(vec![
+            CodeChirho::PrimChirho {
+                op_chirho: PrimOpKindChirho::AddIntChirho,
+                args_chirho: vec![
+                    ArgSourceChirho::ArgRegChirho(0),
+                    ArgSourceChirho::ArgRegChirho(2),
+                ],
+            },
+            CodeChirho::LitChirho(ValueChirho::IntChirho(0)),
+        ]);
+
+        let fun_addr_chirho = machine_chirho
+            .heap_chirho
+            .alloc_chirho(ClosureChirho::fun_chirho(
+                2,
+                CodePtrChirho(0),
+                "captured_add_chirho",
+                vec![ValueChirho::IntChirho(10)],
+            ));
+        let pap_addr_chirho = machine_chirho
+            .heap_chirho
+            .alloc_chirho(ClosureChirho::pap_chirho(
+                1,
+                fun_addr_chirho,
+                vec![ValueChirho::IntChirho(20)],
+            ));
+
+        machine_chirho.code_table_chirho[1] = CodeChirho::AppChirho {
+            fun_chirho: pap_addr_chirho,
+            args_chirho: vec![ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(32))],
+        };
+
+        let result_chirho = machine_chirho.run_chirho(1).unwrap();
+        assert_eq!(result_chirho, ValueChirho::IntChirho(42));
     }
 }
