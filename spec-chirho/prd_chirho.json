@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.74",
+    "prd_version_chirho": "2.2.75",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -85,7 +85,8 @@
       "gpt_chirho (Codex) — chained type-operator RHS parsing and value/type namespace shadow separation; constraints advances through Data.Constraint.Nat arithmetic proofs and Symbol (++) to GH55Spec v2.2.71",
       "gpt_chirho (Codex) — GH55Spec symbolic minus instance methods now keep as-pattern binders; constraints remaining frontier is proof-driven (\\\\) entailment/coercion in bar v2.2.72",
       "gpt_chirho (Codex) — imported symbolic constructor exports, qualified scheme propagation, and named visible type application close the constraints GH55Spec (\\\\) entailment frontier v2.2.73",
-      "gpt_chirho (Codex) — body-backed Prelude show fallback resolves current IORef/STM missing-STG-show representatives while preserving 70/70 probe v2.2.74"
+      "gpt_chirho (Codex) — body-backed Prelude show fallback resolves current IORef/STM missing-STG-show representatives while preserving 70/70 probe v2.2.74",
+      "gpt_chirho (Codex) — WI-015 bounded Int defaulting for show arguments and numeric modifyIORef update functions closes IORef/STM arithmetic-PAP residuals v2.2.75"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -137,17 +138,14 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-03",
-      "scope_chirho": "post-b520 IORef/STM missing `show` representative failures.",
+      "scope_chirho": "post-b520 IORef/STM arithmetic and modifyIORef PAP residuals.",
       "commands_chirho": [
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_conditional_instance_chirho -- --test-threads=1 (expected design-gated red)",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_do_multi_print_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_ioref_write_read_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_stm_new_read_tvar_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_ioref_ -- --test-threads=1 (exploratory adjacent sweep: 5 pass / 5 residual arithmetic-PAP failures)",
-        "timeout 240 env CARGO_BUILD_JOBS=2 cargo build -j2 --bin haskelujah",
+        "env CARGO_BUILD_JOBS=2 cargo test -j2 -p haskelujah-driver --lib eval_ioref -- --test-threads=1 --nocapture",
+        "env CARGO_BUILD_JOBS=2 cargo test -j2 -p haskelujah-driver --lib eval_stm -- --test-threads=1 --nocapture",
+        "env CARGO_BUILD_JOBS=2 cargo build -j2 --bin haskelujah",
         "B=./target/debug/haskelujah timeout 240 bash .../scratchpad/probe_chirho.sh"
       ],
-      "result_chirho": "The conditional list-headed user-class test is confirmed design-gated: it fails as `Describable [Integer]` and would require non-GHC user-class literal defaulting to Int, so no leniency was landed. Current post-b520 representatives have shifted from literal-0 failures: `eval_do_multi_print_chirho` is green, while IORef/STM show cases failed as loud missing STG binding `show`. A generated Prelude `show = \\x -> showInt# x` fallback now gives unresolved `show` the same universal runtime-show path already used by `print`; `eval_ioref_write_read_chirho` and `eval_stm_new_read_tvar_chirho` pass, and the fresh 70-case probe remains PASS=70 FAIL=0. Adjacent IORef arithmetic/PAP tests still expose separate unresolved `+` / closure-application residuals."
+      "result_chirho": "Bounded WI-015 dict-specialization landed in rewrite_chirho.rs: numeric expressions passed to Prelude `show` now receive Int method dictionaries before the fallback show body runs, and visibly numeric/dict-parameterized update functions passed to `modifyIORef` are specialized to Int instead of storing unresolved `+` calls or PAPs. Targeted IORef sweep is now 10/10 (was 5/10); STM sweep is 4/4; fresh CLI rebuild plus 70-case probe remains PASS=70 FAIL=0."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1103,7 +1101,7 @@
       "title_chirho": "Type-key inference hardening (blind App-arg propagation)",
       "pillar_chirho": "PILLAR-2",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed for monad >>=/>> only (29d9f262), v2.2.16 bind-continuation payload propagation, v2.2.37 higher-order dict-param composition specialization, and v2.2.38 forward-reference dict-param predeclaration/specialization; AUDIT MERGED for remaining consumers",
+      "status_chirho": "partially landed for monad >>=/>> only (29d9f262), v2.2.16 bind-continuation payload propagation, v2.2.37 higher-order dict-param composition specialization, and v2.2.38 forward-reference dict-param predeclaration/specialization; AUDIT MERGED for remaining consumers; v2.2.75 bounded show/modifyIORef numeric defaulting landed for post-b520 IORef/STM residuals",
       "owner_chirho": "claude_chirho",
       "problem_chirho": "infer_type_key_chirho's App fallthrough (mod.rs ~539-551 pre-landing) blindly returns the ARGUMENT's type key for any function application — `print 1` infers 'Int', `putStrLn \"a\"` infers '[Char]' (which normalizes to '[]' and routed IO chains into the list monad before the strict-key fix). It also never produces an IO key. Consumers beyond >>=: fmap dispatch, MPTC key assembly, Show/Eq dict selection.",
       "fix_design_chirho": [
@@ -1113,7 +1111,8 @@
         "LANDED v2.2.37: when a lambda application has a proven argument key, carry that key into the lambda binder while rewriting the body; when a dict-parameterized user-function application has typed value arguments, infer its result key from those arguments and rewrite nested dict-parameterized/method arguments with the selected key. This fixes `(double . succ) 20` without widening blind App-argument propagation.",
         "LANDED v2.2.38: predeclare dict-parameterized binding metadata for every module binding before rewriting any body, so forward references such as `main = compose incr incr 40` can specialize later constrained functions. Also specialize higher-order dict-param arguments in general application chains when a later value argument proves the type key.",
         "If IO keys are added, scope them first to infer_monad_dispatch_key_chirho and require body-backed IO method support before positive dispatch.",
-        "Migrate fmap to stricter keying only after adding tests that catch function-application false positives."
+        "Migrate fmap to stricter keying only after adding tests that catch function-application false positives.",
+        "LANDED v2.2.75: do not widen blind App inference; instead, default numeric class methods to Int only in bounded contexts that already need a concrete value: the argument to generated Prelude `show`, and visibly numeric or dict-parameterized update functions passed to `modifyIORef`. This fixes IORef/STM arithmetic and PAP residuals while preserving the 70/70 probe."
       ],
       "acceptance_tests_chirho": [],
       "dependencies_chirho": [],
@@ -1213,7 +1212,7 @@
           "tests_chirho::eval_io_chirho::eval_stm_new_read_tvar_chirho",
           "tests_chirho::compile_chirho::llvm_round_trip_get_line_output_chirho"
         ],
-        "notes_chirho": "driver_lib_tests_post_b5203335.log is complete: 1569 passed / 117 failed of 1686 (baseline 1609/73 of 1682). Delta: 1 flipped green (llvm_round_trip_comprehensive_demo_chirho); 45 flipped red, ALL of which passed at baseline (verified none are new tests); 4 brand-new tests added by b5203335 all pass (eval_io_bind_unchanged/eval_maybe_do_dispatch/eval_monad_bind_dispatch/eval_monad_then_dispatch_chirho). Signature split of the 45: 33x runtime 'type error: cannot apply arguments to literal 0#' (raised at crates/haskelujah-runtime-chirho/src/eval_chirho.rs:1288) across IO do-chains (getLine, IORef, STM, putStr, interact, throw/catch, mapM/forM); 4x 'no matching alternative for tag' (eval_do_getline_bind, eval_ioref_write_overwrite, eval_stm_write_read_tvar, prelude_list_expanded); 8x compiled-backend round-trip wrong output (5 LLVM IO tests + 3 cranelift). b5203335 'dispatch monadic binds without breaking IO fallback' touched desugar_chirho.rs (do-notation), dict_chirho/rewrite_chirho.rs, runtime eval_chirho.rs — IO binds got dispatched into a wrong monad dict whose method slots are literal-0 placeholders. Follow-up 29d9f262 'strict monad-dispatch keys — stop IO chains entering the list monad' targets exactly this; its driver-lib log (driver_lib_tests_post_29d9f262.log) is INCOMPLETE (no final 'test result:' line) at audit time, but probe_post_b5203335.log and probe_strictkey.log both read PASS=70 FAIL=0 (baseline probe maybe-do AddIntChirho failure flipped green). Current v2.2.74 targeted recheck: `eval_do_multi_print_chirho` is now green; `eval_ioref_write_read_chirho` and `eval_stm_new_read_tvar_chirho` had become loud `missing STG binding show` failures after missing-global loudness, and are fixed by a body-backed generated Prelude `show` fallback using `showInt#`. A 10-test exploratory IORef sweep is 5/10: read/show/write-overwrite cases pass, while multiple-ref/modify/counter cases still fail on unresolved `+` or unapplied function PAPs, so those remain separate dict/STG residuals."
+        "notes_chirho": "driver_lib_tests_post_b5203335.log is complete: 1569 passed / 117 failed of 1686 (baseline 1609/73 of 1682). Delta: 1 flipped green (llvm_round_trip_comprehensive_demo_chirho); 45 flipped red, ALL of which passed at baseline (verified none are new tests); 4 brand-new tests added by b5203335 all pass (eval_io_bind_unchanged/eval_maybe_do_dispatch/eval_monad_bind_dispatch/eval_monad_then_dispatch_chirho). Signature split of the 45: 33x runtime 'type error: cannot apply arguments to literal 0#' (raised at crates/haskelujah-runtime-chirho/src/eval_chirho.rs:1288) across IO do-chains (getLine, IORef, STM, putStr, interact, throw/catch, mapM/forM); 4x 'no matching alternative for tag' (eval_do_getline_bind, eval_ioref_write_overwrite, eval_stm_write_read_tvar, prelude_list_expanded); 8x compiled-backend round-trip wrong output (5 LLVM IO tests + 3 cranelift). b5203335 'dispatch monadic binds without breaking IO fallback' touched desugar_chirho.rs (do-notation), dict_chirho/rewrite_chirho.rs, runtime eval_chirho.rs — IO binds got dispatched into a wrong monad dict whose method slots are literal-0 placeholders. Follow-up 29d9f262 'strict monad-dispatch keys — stop IO chains entering the list monad' targets exactly this; its driver-lib log (driver_lib_tests_post_29d9f262.log) is INCOMPLETE (no final 'test result:' line) at audit time, but probe_post_b5203335.log and probe_strictkey.log both read PASS=70 FAIL=0 (baseline probe maybe-do AddIntChirho failure flipped green). Current v2.2.74 targeted recheck: `eval_do_multi_print_chirho` is now green; `eval_ioref_write_read_chirho` and `eval_stm_new_read_tvar_chirho` had become loud `missing STG binding show` failures after missing-global loudness, and are fixed by a body-backed generated Prelude `show` fallback using `showInt#`. A 10-test exploratory IORef sweep is 5/10: read/show/write-overwrite cases pass, while multiple-ref/modify/counter cases still fail on unresolved `+` or unapplied function PAPs, so those remain separate dict/STG residuals. v2.2.75 targeted recheck closes the adjacent IORef arithmetic/PAP residuals: `eval_ioref_` is now 10/10 after bounded Int defaulting for `show` arguments and numeric `modifyIORef` update functions; `eval_stm` is 4/4; fresh probe remains 70/70. The historical 45-red b5203335 delta count is retained as the original complete-run measurement, not a current red count."
       },
       {
         "bucket_chirho": "map-builtin-mistyping",

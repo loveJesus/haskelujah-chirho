@@ -356,6 +356,183 @@ impl DictPassCtxChirho {
         self.expr_contains_numeric_default_marker_chirho(expr_chirho)
     }
 
+    fn is_numeric_dict_param_expr_chirho(&self, expr_chirho: &CoreExprChirho) -> bool {
+        let Some((_fn_id_chirho, classes_chirho, _args_chirho)) =
+            self.collect_dict_param_app_chirho(expr_chirho)
+        else {
+            return false;
+        };
+        classes_chirho.iter().any(|class_name_chirho| {
+            matches!(
+                class_name_chirho.as_str(),
+                "Num" | "Integral" | "Real" | "Eq" | "Ord" | "Show"
+            )
+        })
+    }
+
+    fn expr_needs_int_numeric_default_chirho(&self, expr_chirho: &CoreExprChirho) -> bool {
+        self.expr_contains_numeric_default_marker_chirho(expr_chirho)
+            || self.is_numeric_dict_param_expr_chirho(expr_chirho)
+    }
+
+    fn collect_app_head_var_chirho<'a>(
+        expr_chirho: &'a CoreExprChirho,
+    ) -> Option<(CoreIdChirho, Vec<&'a CoreExprChirho>)> {
+        let mut args_chirho = Vec::new();
+        let mut current_chirho = expr_chirho;
+        while let CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } = current_chirho
+        {
+            args_chirho.push(arg_chirho.as_ref());
+            current_chirho = fun_chirho.as_ref();
+        }
+        while let CoreExprChirho::TyAppChirho {
+            expr_chirho: inner_chirho,
+            ..
+        } = current_chirho
+        {
+            current_chirho = inner_chirho.as_ref();
+        }
+        let CoreExprChirho::VarChirho(head_id_chirho) = current_chirho else {
+            return None;
+        };
+        args_chirho.reverse();
+        Some((*head_id_chirho, args_chirho))
+    }
+
+    fn short_name_for_id_chirho(&self, id_chirho: CoreIdChirho) -> Option<&str> {
+        self.names_chirho
+            .get(&id_chirho)
+            .map(|name_chirho| name_chirho.rsplit('.').next().unwrap_or(name_chirho))
+    }
+
+    fn rewrite_expr_with_int_numeric_default_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> CoreExprChirho {
+        self.try_rewrite_typed_dict_param_arg_chirho(
+            expr_chirho,
+            dict_vars_chirho,
+            evidence_classes_chirho,
+            local_type_keys_chirho,
+            local_instance_dicts_chirho,
+            "Int",
+        )
+        .or_else(|| {
+            self.try_rewrite_typed_method_arg_chirho(
+                expr_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_instance_dicts_chirho,
+                "Int",
+            )
+        })
+        .unwrap_or_else(|| {
+            let defaulted_chirho = self.rewrite_numeric_methods_with_type_key_chirho(
+                expr_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_instance_dicts_chirho,
+                "Int",
+            );
+            self.rewrite_method_refs_with_locals_chirho(
+                &defaulted_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_type_keys_chirho,
+                local_instance_dicts_chirho,
+            )
+        })
+    }
+
+    fn try_rewrite_show_numeric_default_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        args_chirho: &[&CoreExprChirho],
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        if self.short_name_for_id_chirho(head_id_chirho)? != "show" || args_chirho.len() != 1 {
+            return None;
+        }
+        let arg_chirho = args_chirho[0];
+        if !self.print_arg_needs_int_default_chirho(arg_chirho) {
+            return None;
+        }
+        let rewritten_fun_chirho = self.rewrite_method_refs_with_locals_chirho(
+            &CoreExprChirho::VarChirho(head_id_chirho),
+            dict_vars_chirho,
+            evidence_classes_chirho,
+            local_type_keys_chirho,
+            local_instance_dicts_chirho,
+        );
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(rewritten_fun_chirho),
+            arg_chirho: Box::new(self.rewrite_expr_with_int_numeric_default_chirho(
+                arg_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_type_keys_chirho,
+                local_instance_dicts_chirho,
+            )),
+        })
+    }
+
+    fn try_rewrite_modify_ioref_numeric_default_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        args_chirho: &[&CoreExprChirho],
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        if self.short_name_for_id_chirho(head_id_chirho)? != "modifyIORef" || args_chirho.len() != 2
+        {
+            return None;
+        }
+        let update_fn_chirho = args_chirho[1];
+        if !self.expr_needs_int_numeric_default_chirho(update_fn_chirho) {
+            return None;
+        }
+
+        let mut result_chirho = self.rewrite_method_refs_with_locals_chirho(
+            &CoreExprChirho::VarChirho(head_id_chirho),
+            dict_vars_chirho,
+            evidence_classes_chirho,
+            local_type_keys_chirho,
+            local_instance_dicts_chirho,
+        );
+        result_chirho = CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(result_chirho),
+            arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
+                args_chirho[0],
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_type_keys_chirho,
+                local_instance_dicts_chirho,
+            )),
+        };
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(result_chirho),
+            arg_chirho: Box::new(self.rewrite_expr_with_int_numeric_default_chirho(
+                update_fn_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_type_keys_chirho,
+                local_instance_dicts_chirho,
+            )),
+        })
+    }
+
     fn is_constructor_headed_app_chirho(&self, expr_chirho: &CoreExprChirho) -> bool {
         let mut cur_chirho = expr_chirho;
         while let CoreExprChirho::AppChirho { fun_chirho, .. } = cur_chirho {
@@ -1809,6 +1986,33 @@ impl DictPassCtxChirho {
                 fun_chirho,
                 arg_chirho,
             } => {
+                if let Some((head_id_chirho, args_chirho)) =
+                    Self::collect_app_head_var_chirho(expr_chirho)
+                {
+                    if let Some(rewritten_chirho) = self
+                        .try_rewrite_show_numeric_default_chirho(
+                            head_id_chirho,
+                            &args_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_type_keys_chirho,
+                            local_instance_dicts_chirho,
+                        )
+                        .or_else(|| {
+                            self.try_rewrite_modify_ioref_numeric_default_chirho(
+                                head_id_chirho,
+                                &args_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                                local_type_keys_chirho,
+                                local_instance_dicts_chirho,
+                            )
+                        })
+                    {
+                        return rewritten_chirho;
+                    }
+                }
+
                 if let CoreExprChirho::LamChirho { binder_chirho, .. } = fun_chirho.as_ref() {
                     let arg_key_chirho = self
                         .infer_strict_dispatch_key_for_rewrite_chirho(
