@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.81",
+    "prd_version_chirho": "2.2.82",
     "date_chirho": "2026-07-03",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -92,7 +92,8 @@
       "gpt_chirho (Codex) — WI-006 makeLenses recognizer accepts mkName-shaped quoted type names, closing the TH makeLenses splice bucket while holding the 70/70 probe v2.2.78",
       "gpt_chirho (Codex) — WI-008 LLVM native qsort/list regression fixed by rooting produced heap values from known calls and boxed constructors; qsort/foldl/merge-sort pass and the rebuilt probe remains 70/70 v2.2.79",
       "gpt_chirho (Codex) — WI-008 LLVM native closure headers now carry function-object kind bits and indirect calls mask them, fixing returned-closure partial application while holding qsort and 70/70 probe v2.2.80",
-      "gpt_chirho (Codex) — WI-013 TH TyVarBndrSpec/Specificity compatibility surface for modern GHC TH binder helpers v2.2.81"
+      "gpt_chirho (Codex) — WI-013 TH TyVarBndrSpec/Specificity compatibility surface for modern GHC TH binder helpers v2.2.81",
+      "gpt_chirho (Codex) — WI-010 T11348 representative: top-level type-family kind registration and same-name promoted constructor kind freshening v2.2.82"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -125,7 +126,7 @@
     ]
   },
   "current_state_chirho": {
-    "measured_date_chirho": "2026-07-02 (audit-merged after e4d636ce; no new heavy sweeps)",
+    "measured_date_chirho": "2026-07-03 (targeted WI-010 representative gate; no heavy sweeps)",
     "driver_lib_tests_chirho": {
       "passed_chirho": 1609,
       "failed_chirho": 73,
@@ -136,7 +137,7 @@
     "probe_harness_chirho": {
       "passed_chirho": 70,
       "total_chirho": 70,
-      "note_chirho": "Local full-probe gate after v2.2.81 TH TyVarBndrSpec compatibility: PASS=70 FAIL=0. Claude's acceptance probe at d09a4735/v2.2.57 caught PASS=7 FAIL=63 from broad dict_param_bindings seeding that treated Prelude class methods such as `show` as constrained user functions; v2.2.58 confines extra seeding to explicit cross-module imported export names, and subsequent cross-cutting gates through the v2.2.81 TH compatibility surface preserve the 70/70 probe baseline."
+      "note_chirho": "Local full-probe gate after v2.2.82 WI-010 T11348 kind-registration fix: PASS=70 FAIL=0. The probe baseline has held through the v2.2.81 TH compatibility surface and this kind-inference change; broad ghc_bulk/driver sweeps remain gated by the resource guard."
     },
     "ghc_suite_chirho": {
       "status_chirho": "No fresh full run after 29d9f262 due resource guard. Audit catalog uses baseline 1609/73, completed b5203335 delta 1569/117, and incomplete 29d9f262 logs; full ghc_bulk/driver sweeps require explicit L.J. approval."
@@ -144,18 +145,16 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-03",
-      "scope_chirho": "WI-013 Template Haskell TyVarBndrSpec/Specificity compatibility surface.",
+      "scope_chirho": "WI-010 GHC typecheck representative T11348: top-level type-family declaration kind registration plus same-name promoted constructor freshening.",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-driver --lib frontend_template_haskell_tyvar_bndr_spec_compat_chirho -- --test-threads=1 --nocapture",
-        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-driver --lib frontend_template_haskell -- --test-threads=1 --nocapture",
-        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-driver --lib cpp_extension_min_version_template_haskell_chirho -- --test-threads=1 --nocapture",
+        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-typing --lib kind_chirho::tests_chirho -- --test-threads=1 --nocapture",
         "CARGO_BUILD_JOBS=1 nice -n 10 cargo build -j1 --bin haskelujah",
-        "./target/debug/haskelujah check /tmp/test_tyvar_bndr_spec_chirho.hs",
-        "timeout 120 ./target/debug/haskelujah check .haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype/TyVarBndr.hs",
-        "timeout 120 ./target/debug/haskelujah build .haskelujah-packages-chirho/th-abstraction-0.7.2.0/ 2>&1 | tail -40",
+        "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T11348.hs",
+        "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T12734a.hs",
+        "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T15807a.hs",
         "B=./target/debug/haskelujah bash /private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/scratchpad/probe_chirho.sh"
       ],
-      "result_chirho": "Modern `PlainTV n SpecifiedSpec` / `KindedTV n InferredSpec k` and helper-returned `TyVarBndrSpec`/`TyVarBndrUnit` now typecheck via focused TH builtin schemes and iface exports. Existing TH frontend tests and the CPP template-haskell 2.16 version gate still pass; `Language.Haskell.TH.Datatype.TyVarBndr` from th-abstraction checks standalone. Full th-abstraction package build remains blocked later by unrelated unbound test names, so no package win is claimed. Rebuilt full probe remains PASS=70 FAIL=0."
+      "result_chirho": "T11348 now checks: type family declarations register their parameter/result kind before later type applications, and same-name promoted constructors no longer reuse the type constructor `*` kind. Kind unit tests pass (36/36) and the full probe remains PASS=70 FAIL=0. Neighboring PolyKinds representatives T12734a and T15807a still fail with their prior kind mismatches and are tracked as separate WI-010 work."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -169,7 +168,7 @@
       "catalog_totals_chirho": {
         "driver_lib_passed_chirho": 1609,
         "driver_lib_failed_chirho": 73,
-        "probe_pass_chirho": 69,
+        "probe_pass_chirho": 70,
         "probe_total_chirho": 70
       }
     }
@@ -927,7 +926,7 @@
       "title_chirho": "GHC-suite burn-down by bucket (typecheck/should_compile toward >95%)",
       "pillar_chirho": "PILLAR-4",
       "priority_chirho": "P1-rolling",
-      "status_chirho": "todo — AUDIT MERGED; scoreboard truth and per-bucket single tests required",
+      "status_chirho": "partially landed v2.2.82: T11348 representative now checks via top-level type-family declaration kind registration and fresh promoted-constructor kinding for same-name data constructors. Remaining PolyKinds representatives T12734a and T15807a still fail with separate visible-kind/type-list mismatches; no broad bucket-count reduction claimed without a resource-approved sweep.",
       "owner_chirho": "gpt_chirho/claude_chirho triage for now; future fleet can take one bucket per agent only if L.J. re-adds it. Parser bucket includes gpt scaffold notes: green-tree checkpoint-stack panic hardening, layout-in-closes intervening contexts",
       "problem_chirho": "The GHC suite scoreboard is currently not a trustworthy generated artifact: no persisted results, no threshold, no timeout, hand-edited public numbers disagree, and some audit numbers were measured on a binary behind HEAD. Resource guard forbids broad re-runs without L.J. approval.",
       "fix_design_chirho": [
@@ -955,7 +954,7 @@
             "T12734a",
             "T15807a"
           ],
-          "action_chirho": "Kind generalization and promoted/type-application kind handling."
+          "action_chirho": "T11348 fixed in v2.2.82 by registering type-family declaration kinds and freshening same-name promoted constructors. Continue with remaining PolyKinds reps T12734a/T15807a before changing the bucket count."
         },
         {
           "bucket_chirho": "type-family / type-level reduction",

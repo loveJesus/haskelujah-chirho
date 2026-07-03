@@ -964,7 +964,12 @@ impl KindInferCtxChirho {
             TypeChirho::PromotedConChirho { name_chirho, .. } => {
                 let text_chirho = name_chirho.text_chirho();
                 if let Some(k_chirho) = self.env_chirho.lookup_chirho(text_chirho) {
-                    k_chirho.clone()
+                    let k_chirho = k_chirho.clone();
+                    if k_chirho == KindChirho::StarChirho {
+                        self.fresh_kind_chirho()
+                    } else {
+                        k_chirho
+                    }
                 } else {
                     let k_chirho = self.fresh_kind_chirho();
                     self.env_chirho
@@ -1121,6 +1126,44 @@ impl KindInferCtxChirho {
         if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
             let existing_chirho = existing_chirho.clone();
             self.unify_chirho(&existing_chirho, &kind_chirho, "type alias", span_chirho);
+        }
+        self.env_chirho
+            .bind_chirho(name_chirho.to_string(), kind_chirho);
+    }
+
+    /// Process a type family declaration to determine the kind of the family.
+    fn infer_type_family_decl_kind_chirho(
+        &mut self,
+        name_chirho: &str,
+        type_vars_chirho: &[TyVarChirho],
+        result_kind_chirho: Option<&TypeChirho>,
+        span_chirho: SpanChirho,
+    ) {
+        let mut param_kinds_chirho = Vec::new();
+        for tv_chirho in type_vars_chirho {
+            let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
+                self.ast_kind_to_kind_ctx_chirho(ann_chirho)
+            } else {
+                self.fresh_kind_chirho()
+            };
+            self.env_chirho
+                .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
+            param_kinds_chirho.push(k_chirho);
+        }
+
+        let result_kind_chirho = result_kind_chirho
+            .map(|kind_ty_chirho| self.type_to_kind_chirho(kind_ty_chirho))
+            .unwrap_or(KindChirho::StarChirho);
+        let kind_chirho = KindChirho::arrow_n_chirho(param_kinds_chirho, result_kind_chirho);
+
+        if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
+            let existing_chirho = existing_chirho.clone();
+            self.unify_chirho(
+                &existing_chirho,
+                &kind_chirho,
+                "type family declaration",
+                span_chirho,
+            );
         }
         self.env_chirho
             .bind_chirho(name_chirho.to_string(), kind_chirho);
@@ -1357,6 +1400,20 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                     name_chirho.text_chirho(),
                     type_vars_chirho,
                     rhs_chirho,
+                    *span_chirho,
+                );
+            }
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                result_kind_chirho,
+                span_chirho,
+                ..
+            } => {
+                ctx_chirho.infer_type_family_decl_kind_chirho(
+                    name_chirho.text_chirho(),
+                    type_vars_chirho,
+                    result_kind_chirho.as_ref(),
                     *span_chirho,
                 );
             }
@@ -2254,6 +2311,89 @@ mod tests_chirho {
         assert_eq!(
             result_chirho.env_chirho.lookup_chirho("Typeable1Chirho"),
             Some(&KindChirho::ConstraintChirho)
+        );
+    }
+
+    #[test]
+    fn type_family_decl_result_kind_guides_later_applications_chirho() {
+        let t_var_chirho = TyVarChirho::plain_chirho(mk_name_chirho("t"));
+        let mut module_chirho = mk_module_chirho(vec![
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho: mk_name_chirho("TrivialFamily"),
+                type_vars_chirho: vec![t_var_chirho.clone()],
+                result_kind_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Type"))),
+                equations_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::TypeAliasDeclChirho {
+                name_chirho: mk_name_chirho("ProblemTypeChirho"),
+                type_vars_chirho: vec![t_var_chirho],
+                rhs_chirho: mk_app_chirho(
+                    TypeChirho::ConChirho(mk_name_chirho("Proxy")),
+                    mk_app_chirho(
+                        TypeChirho::ConChirho(mk_name_chirho("TrivialFamily")),
+                        TypeChirho::VarChirho(mk_name_chirho("t")),
+                    ),
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ]);
+        module_chirho
+            .extensions_chirho
+            .push("PolyKinds".to_string());
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "type family result kind should make later applications kind-check: {:?}",
+            result_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .iter()
+                .map(|diagnostic_chirho| diagnostic_chirho.to_string())
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn promoted_constructor_does_not_reuse_same_name_type_constructor_kind_chirho() {
+        let module_chirho = mk_module_chirho(vec![
+            DeclChirho::DataDeclChirho {
+                name_chirho: mk_name_chirho("R"),
+                type_vars_chirho: vec![],
+                constructors_chirho: vec![],
+                deriving_chirho: vec![],
+                kind_sig_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::TypeAliasDeclChirho {
+                name_chirho: mk_name_chirho("PromotedRAppChirho"),
+                type_vars_chirho: vec![],
+                rhs_chirho: mk_app_chirho(
+                    TypeChirho::PromotedConChirho {
+                        name_chirho: mk_name_chirho("R"),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    TypeChirho::ConChirho(mk_name_chirho("Int")),
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ]);
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "promoted constructor should not reuse its same-name type constructor's `*` kind: {:?}",
+            result_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .iter()
+                .map(|diagnostic_chirho| diagnostic_chirho.to_string())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            result_chirho.env_chirho.lookup_chirho("R"),
+            Some(&KindChirho::StarChirho)
         );
     }
 
