@@ -2506,7 +2506,7 @@ impl<'src> ParserChirho<'src> {
         self.eat_trivia_chirho();
 
         let mut count_chirho = 1u32;
-        while self.can_start_atype_chirho() {
+        while self.can_start_atype_chirho() || self.at_visible_type_application_chirho() {
             if self.at_promoted_constructor_operator_chirho() {
                 break;
             }
@@ -2519,7 +2519,13 @@ impl<'src> ParserChirho<'src> {
                     .start_node_at_chirho(cp_chirho, SyntaxKindChirho::AppTypeChirho);
             }
             count_chirho += 1;
-            self.parse_atype_chirho();
+            if self.at_visible_type_application_chirho() {
+                self.bump_chirho(); // @
+                self.eat_trivia_chirho();
+                self.parse_atype_chirho();
+            } else {
+                self.parse_atype_chirho();
+            }
             self.eat_trivia_chirho();
             if self.pos_chirho == before_chirho {
                 break;
@@ -4837,6 +4843,14 @@ impl<'src> ParserChirho<'src> {
     /// Can the current token start an atomic type?
     fn can_start_atype_chirho(&self) -> bool {
         self.can_start_atype_idx_chirho(self.pos_chirho)
+    }
+
+    fn at_visible_type_application_chirho(&self) -> bool {
+        if !self.at_chirho(RawTokenKindChirho::AtChirho) {
+            return false;
+        }
+        let next_idx_chirho = self.skip_trivia_idx_chirho(self.pos_chirho + 1);
+        self.can_start_atype_idx_chirho(next_idx_chirho)
     }
 
     fn can_start_atype_idx_chirho(&self, idx_chirho: usize) -> bool {

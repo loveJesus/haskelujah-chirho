@@ -750,6 +750,22 @@ impl KindInferCtxChirho {
                 result_chirho
             }
             TypeChirho::ParenChirho { inner_chirho, .. } => self.type_to_kind_chirho(inner_chirho),
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => {
+                for v_chirho in vars_chirho {
+                    let k_chirho = if let Some(ann_chirho) = &v_chirho.kind_annotation_chirho {
+                        self.ast_kind_to_kind_ctx_chirho(ann_chirho)
+                    } else {
+                        self.fresh_kind_chirho()
+                    };
+                    self.env_chirho
+                        .bind_chirho(v_chirho.text_chirho().to_string(), k_chirho);
+                }
+                self.type_to_kind_chirho(body_chirho)
+            }
             _ => {
                 // Fallback: treat unknown shapes as *.
                 KindChirho::StarChirho
@@ -2335,6 +2351,50 @@ mod tests_chirho {
         assert_eq!(
             result_chirho.env_chirho.lookup_chirho("Typeable1Chirho"),
             Some(&KindChirho::ConstraintChirho)
+        );
+    }
+
+    #[test]
+    fn standalone_forall_kind_signature_preserves_arrow_kind_chirho() {
+        let module_chirho = mk_module_chirho(vec![DeclChirho::DataDeclChirho {
+            name_chirho: mk_name_chirho("AppChirho"),
+            type_vars_chirho: vec![],
+            constructors_chirho: vec![],
+            deriving_chirho: vec![],
+            kind_sig_chirho: Some(TypeChirho::ForallChirho {
+                vars_chirho: vec![TyVarChirho::annotated_chirho(
+                    mk_name_chirho("fChirho"),
+                    AstKindChirho::ArrowChirho(
+                        Box::new(AstKindChirho::StarChirho),
+                        Box::new(AstKindChirho::StarChirho),
+                    ),
+                )],
+                body_chirho: Box::new(mk_fun_chirho(
+                    TypeChirho::ConChirho(mk_name_chirho("Type")),
+                    TypeChirho::ConChirho(mk_name_chirho("Type")),
+                )),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }]);
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "forall standalone kind signature should kind-check: {:?}",
+            result_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .iter()
+                .map(|diagnostic_chirho| diagnostic_chirho.to_string())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            result_chirho.env_chirho.lookup_chirho("AppChirho"),
+            Some(&KindChirho::arrow_chirho(
+                KindChirho::StarChirho,
+                KindChirho::StarChirho
+            ))
         );
     }
 
