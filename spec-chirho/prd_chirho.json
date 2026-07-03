@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.75",
+    "prd_version_chirho": "2.2.76",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -86,7 +86,8 @@
       "gpt_chirho (Codex) — GH55Spec symbolic minus instance methods now keep as-pattern binders; constraints remaining frontier is proof-driven (\\\\) entailment/coercion in bar v2.2.72",
       "gpt_chirho (Codex) — imported symbolic constructor exports, qualified scheme propagation, and named visible type application close the constraints GH55Spec (\\\\) entailment frontier v2.2.73",
       "gpt_chirho (Codex) — body-backed Prelude show fallback resolves current IORef/STM missing-STG-show representatives while preserving 70/70 probe v2.2.74",
-      "gpt_chirho (Codex) — WI-015 bounded Int defaulting for show arguments and numeric modifyIORef update functions closes IORef/STM arithmetic-PAP residuals v2.2.75"
+      "gpt_chirho (Codex) — WI-015 bounded Int defaulting for show arguments and numeric modifyIORef update functions closes IORef/STM arithmetic-PAP residuals v2.2.75",
+      "gpt_chirho (Codex) — deepseq-1.5.2.0 package recheck now compiles after quantified-constraint/NFData work; WI-011 deepseq blocker resolved as package evidence v2.2.76"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -138,14 +139,11 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-03",
-      "scope_chirho": "post-b520 IORef/STM arithmetic and modifyIORef PAP residuals.",
+      "scope_chirho": "deepseq package smoke after quantified-constraint and NFData progress.",
       "commands_chirho": [
-        "env CARGO_BUILD_JOBS=2 cargo test -j2 -p haskelujah-driver --lib eval_ioref -- --test-threads=1 --nocapture",
-        "env CARGO_BUILD_JOBS=2 cargo test -j2 -p haskelujah-driver --lib eval_stm -- --test-threads=1 --nocapture",
-        "env CARGO_BUILD_JOBS=2 cargo build -j2 --bin haskelujah",
-        "B=./target/debug/haskelujah timeout 240 bash .../scratchpad/probe_chirho.sh"
+        "timeout 180 ./target/debug/haskelujah build .haskelujah-packages-chirho/deepseq-1.5.2.0/ 2>&1 | tee /tmp/deepseq-build-cc126775-chirho.log | tail -80"
       ],
-      "result_chirho": "Bounded WI-015 dict-specialization landed in rewrite_chirho.rs: numeric expressions passed to Prelude `show` now receive Int method dictionaries before the fallback show body runs, and visibly numeric/dict-parameterized update functions passed to `modifyIORef` are specialized to Int instead of storing unresolved `+` calls or PAPs. Targeted IORef sweep is now 10/10 (was 5/10); STM sweep is 4/4; fresh CLI rebuild plus 70-case probe remains PASS=70 FAIL=0."
+      "result_chirho": "deepseq-1.5.2.0 now compiles: 2 modules built, no errors, one warning that deriving Generic1 is not yet supported for Case4. No code changed after cc126775; the previous independent full-probe gate on cc126775 remained PASS=70 FAIL=0."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -990,12 +988,18 @@
       "title_chirho": "Quantified constraints (deepseq blocker) — real AST/kind/type support",
       "pillar_chirho": "PILLAR-2",
       "priority_chirho": "P2",
-      "status_chirho": "todo",
+      "status_chirho": "deepseq package blocker resolved by current quantified-constraint/NFData line; broader quantified-constraint completeness remains package/test-suite driven",
       "owner_chirho": "gpt_chirho (from #1388: 'needs AST + kind/type support in class contexts, not a builtin hack')",
-      "problem_chirho": "deepseq and friends need QuantifiedConstraints in class contexts; current handling is absent/hacky.",
+      "problem_chirho": "deepseq previously needed QuantifiedConstraints/NFData facts in class contexts. The package build now passes at cc126775, so deepseq is no longer a current package blocker; retain quantified-constraint work as broader compatibility hardening driven by remaining packages/tests.",
       "dependencies_chirho": [],
       "risk_chirho": "medium",
-      "estimated_size_chirho": "medium"
+      "estimated_size_chirho": "medium",
+      "verified_evidence_chirho": {
+        "date_chirho": "2026-07-03",
+        "commit_chirho": "cc126775",
+        "command_chirho": "timeout 180 ./target/debug/haskelujah build .haskelujah-packages-chirho/deepseq-1.5.2.0/",
+        "result_chirho": "Compiled 2 modules from package deepseq; warning only: deriving Generic1 not yet supported for Case4."
+      }
     },
     {
       "id_chirho": "WI-012",
@@ -1279,7 +1283,7 @@
       {
         "bucket_chirho": "list-instance-resolution",
         "count_chirho": 1,
-        "resolved_chirho": "4 of 5 RESOLVED. gpt's Semigroup/Monoid dispatch work fixed the Semigroup/Monoid list cases (eval_semigroup_append_lists, eval_monoid_mempty_list). claude v2.2.23 fixed eval_deepseq_list by registering standard NFData instances (Integer + scalars + instance NFData a => NFData [a]) in seed_standard_chirho (class_chirho.rs) — deepseq/rnf are seq-based (type-agnostic), so this is a pure type-checker fact with no runtime/dict change. REMAINING (1): eval_conditional_instance_chirho — `Describable [Integer]` where the user class declares only `Describable Int` and the literal element defaults to Integer; GHC also rejects this (user classes do not participate in defaulting), so it is a DESIGN call (defaulting / GHC-fidelity), deferred to L.J. alongside maybe-shadow, NOT a bug.",
+        "resolved_chirho": "4 of 5 RESOLVED. gpt's Semigroup/Monoid dispatch work fixed the Semigroup/Monoid list cases (eval_semigroup_append_lists, eval_monoid_mempty_list). claude v2.2.23 fixed eval_deepseq_list by registering standard NFData instances (Integer + scalars + instance NFData a => NFData [a]) in seed_standard_chirho (class_chirho.rs) — deepseq/rnf are seq-based (type-agnostic), so this is a pure type-checker fact with no runtime/dict change. REMAINING (1): eval_conditional_instance_chirho — `Describable [Integer]` where the user class declares only `Describable Int` and the literal element defaults to Integer; GHC also rejects this (user classes do not participate in defaulting), so it is a DESIGN call (defaulting / GHC-fidelity), deferred to L.J. alongside maybe-shadow, NOT a bug. Package-level recheck v2.2.76 confirms deepseq-1.5.2.0 itself now compiles (2 modules, warning only), so deepseq is no longer a package blocker.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "typing",
         "representative_tests_chirho": [
@@ -1287,7 +1291,7 @@
           "tests_chirho::eval_advanced_chirho::eval_deepseq_list_chirho",
           "tests_chirho::eval_basic_chirho::eval_conditional_instance_chirho"
         ],
-        "notes_chirho": "E0204 'no instance for `C [Integer]`' with C in {Semigroup x2, Monoid, NFData, Describable}. The Describable case is a USER-DEFINED conditional instance `instance Describable a => Describable [a]` with `desc [42]` (crates/haskelujah-driver-chirho/src/tests_chirho/eval_basic_chirho.rs:2067) — so this is conditional/list-headed instance resolution failing at defaulted-Integer element type in the class env (crates/haskelujah-typing-chirho/src/class_chirho.rs), not merely missing prelude instances."
+        "notes_chirho": "E0204 'no instance for `C [Integer]`' with C in {Semigroup x2, Monoid, NFData, Describable}. The Describable case is a USER-DEFINED conditional instance `instance Describable a => Describable [a]` with `desc [42]` (crates/haskelujah-driver-chirho/src/tests_chirho/eval_basic_chirho.rs:2067) — so this is conditional/list-headed instance resolution failing at defaulted-Integer element type in the class env (crates/haskelujah-typing-chirho/src/class_chirho.rs), not merely missing prelude instances. v2.2.76 package smoke confirms the real deepseq-1.5.2.0 package build now succeeds; the remaining Describable case is still a GHC-fidelity design call, not deepseq-related."
       },
       {
         "bucket_chirho": "frontend-typing-one-offs",
