@@ -320,6 +320,17 @@ impl KindEnvChirho {
         for name_chirho in &["Either", "(,)", "Map"] {
             env_chirho.bind_chirho(name_chirho.to_string(), star2_chirho.clone());
         }
+        let promoted_cons_elem_kind_chirho = KindVarChirho(10_009);
+        let promoted_cons_kind_chirho = KindChirho::arrow_n_chirho(
+            vec![
+                KindChirho::VarChirho(promoted_cons_elem_kind_chirho),
+                KindChirho::StarChirho,
+            ],
+            KindChirho::StarChirho,
+        );
+        for name_chirho in &[":", "':"] {
+            env_chirho.bind_chirho(name_chirho.to_string(), promoted_cons_kind_chirho.clone());
+        }
         env_chirho.bind_chirho("ST".to_string(), star2_chirho.clone());
         env_chirho.bind_chirho(
             "StateT".to_string(),
@@ -1763,6 +1774,19 @@ mod tests_chirho {
                 KindChirho::StarChirho
             ))
         );
+        assert!(
+            matches!(
+                env_chirho.lookup_chirho(":"),
+                Some(KindChirho::ArrowChirho(_, tail_chirho))
+                    if matches!(
+                        tail_chirho.as_ref(),
+                        KindChirho::ArrowChirho(tail_arg_chirho, result_chirho)
+                            if matches!(tail_arg_chirho.as_ref(), KindChirho::StarChirho)
+                                && matches!(result_chirho.as_ref(), KindChirho::StarChirho)
+                    )
+            ),
+            "promoted list cons should accept an element and flattened tail"
+        );
     }
 
     // -- Module-level kind inference tests --
@@ -2394,6 +2418,98 @@ mod tests_chirho {
         assert_eq!(
             result_chirho.env_chirho.lookup_chirho("R"),
             Some(&KindChirho::StarChirho)
+        );
+    }
+
+    #[test]
+    fn promoted_list_cons_accepts_polykinded_head_chirho() {
+        let mut module_chirho = mk_module_chirho(vec![DeclChirho::TypeAliasDeclChirho {
+            name_chirho: mk_name_chirho("ConsMaybeChirho"),
+            type_vars_chirho: vec![],
+            rhs_chirho: mk_app_chirho(
+                mk_app_chirho(
+                    TypeChirho::ConChirho(mk_name_chirho(":")),
+                    TypeChirho::ConChirho(mk_name_chirho("Maybe")),
+                ),
+                TypeChirho::PromotedListChirho {
+                    elements_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }]);
+        module_chirho
+            .extensions_chirho
+            .push("PolyKinds".to_string());
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "promoted list cons should not force its head to kind `*`: {:?}",
+            result_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .iter()
+                .map(|diagnostic_chirho| diagnostic_chirho.to_string())
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn gadt_return_type_accepts_promoted_list_cons_chirho() {
+        let l_chirho = TypeChirho::VarChirho(mk_name_chirho("l"));
+        let ls_chirho = TypeChirho::VarChirho(mk_name_chirho("ls"));
+        let t_chirho = TypeChirho::VarChirho(mk_name_chirho("t"));
+        let promoted_cons_chirho = mk_app_chirho(
+            mk_app_chirho(TypeChirho::ConChirho(mk_name_chirho(":")), l_chirho.clone()),
+            ls_chirho.clone(),
+        );
+        let stack_ls_t_chirho = mk_app_chirho(
+            mk_app_chirho(TypeChirho::ConChirho(mk_name_chirho("Stack")), ls_chirho),
+            t_chirho.clone(),
+        );
+        let stack_cons_t_chirho = mk_app_chirho(
+            mk_app_chirho(
+                TypeChirho::ConChirho(mk_name_chirho("Stack")),
+                promoted_cons_chirho,
+            ),
+            t_chirho.clone(),
+        );
+        let module_chirho = mk_module_chirho(vec![DeclChirho::DataDeclChirho {
+            name_chirho: mk_name_chirho("Stack"),
+            type_vars_chirho: vec![
+                TyVarChirho::plain_chirho(mk_name_chirho("lrs")),
+                TyVarChirho::annotated_chirho(
+                    mk_name_chirho("t"),
+                    AstKindChirho::ArrowChirho(
+                        Box::new(AstKindChirho::StarChirho),
+                        Box::new(AstKindChirho::StarChirho),
+                    ),
+                ),
+            ],
+            constructors_chirho: vec![ConDeclChirho::GadtChirho {
+                name_chirho: mk_name_chirho("SLayer"),
+                ty_chirho: mk_fun_chirho(
+                    mk_app_chirho(t_chirho, l_chirho),
+                    mk_fun_chirho(stack_ls_t_chirho, stack_cons_t_chirho),
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            deriving_chirho: vec![],
+            kind_sig_chirho: None,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }]);
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "GADT return type should accept `Stack (l ': ls) t`: {:?}",
+            result_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .iter()
+                .map(|diagnostic_chirho| diagnostic_chirho.to_string())
+                .collect::<Vec<_>>()
         );
     }
 

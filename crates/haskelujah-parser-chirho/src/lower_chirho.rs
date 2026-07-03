@@ -5306,13 +5306,15 @@ impl LowerCtxChirho {
                 }
             }
             SyntaxKindChirho::PromotedConTypeChirho => {
-                // DataKinds promoted constructor: 'True, 'Just, etc.
-                // Children: Tick token, ConId token
+                // DataKinds promoted constructor: 'True, 'Just, ':, etc.
+                // Children: Tick token, ConId/ConSym token
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
                 let con_child_chirho = children_chirho.iter().find(|c_chirho| {
                     matches!(c_chirho.element_chirho, GreenElementChirho::TokenChirho(t_chirho)
                         if t_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
-                           || t_chirho.kind_chirho() == TokenKindChirho::QualifiedConIdChirho)
+                           || t_chirho.kind_chirho() == TokenKindChirho::QualifiedConIdChirho
+                           || t_chirho.kind_chirho() == TokenKindChirho::ConSymChirho
+                           || t_chirho.kind_chirho() == TokenKindChirho::QualifiedConSymChirho)
                 });
                 if let Some(child_chirho) = con_child_chirho {
                     if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho
@@ -14201,6 +14203,75 @@ class Describable a where
             }
             _ => unreachable!(),
         }
+    }
+
+    #[test]
+    fn lower_promoted_list_cons_type_operator_keeps_tail_chirho() {
+        fn app_head_and_args_chirho<'a>(
+            ty_chirho: &'a TypeChirho,
+            args_chirho: &mut Vec<&'a TypeChirho>,
+        ) -> &'a TypeChirho {
+            match ty_chirho {
+                TypeChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    args_chirho.push(arg_chirho);
+                    app_head_and_args_chirho(fun_chirho, args_chirho)
+                }
+                TypeChirho::ParenChirho { inner_chirho, .. } => {
+                    app_head_and_args_chirho(inner_chirho, args_chirho)
+                }
+                other_chirho => other_chirho,
+            }
+        }
+
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE DataKinds #-}\n\
+{-# LANGUAGE TypeOperators #-}\n\
+module M where\n\
+type Consed l ls = l ': ls\n",
+        );
+        let alias_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "Consed"
+                )
+            })
+            .expect("expected Consed type alias");
+        let DeclChirho::TypeAliasDeclChirho { rhs_chirho, .. } = alias_chirho else {
+            panic!("expected Consed type alias");
+        };
+
+        let mut cons_args_chirho = Vec::new();
+        let cons_head_chirho = app_head_and_args_chirho(rhs_chirho, &mut cons_args_chirho);
+        cons_args_chirho.reverse();
+        assert!(
+            matches!(cons_head_chirho, TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == ":" || name_chirho.text_chirho() == "':"),
+            "expected promoted cons head, got {:?}",
+            rhs_chirho
+        );
+        assert_eq!(
+            cons_args_chirho.len(),
+            2,
+            "promoted cons should keep both head and tail args, got {:?}",
+            rhs_chirho
+        );
+        assert!(
+            matches!(cons_args_chirho[0], TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "l"),
+            "promoted cons head arg should be l, got {:?}",
+            cons_args_chirho[0]
+        );
+        assert!(
+            matches!(cons_args_chirho[1], TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "ls"),
+            "promoted cons tail arg should be ls, got {:?}",
+            cons_args_chirho[1]
+        );
     }
 
     #[test]

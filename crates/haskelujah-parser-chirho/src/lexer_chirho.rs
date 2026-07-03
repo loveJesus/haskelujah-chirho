@@ -962,14 +962,16 @@ impl<'src> LexerChirho<'src> {
         }
 
         // DataKinds: if `'` is followed by an uppercase letter (promoted
-        // constructor like 'True, 'Just) or `[` (promoted list like '[Int]),
-        // emit a Tick token and let the parser handle it.
-        // BUT: `'A'`, `'('`, and `'['` are char literals, not promoted names
-        // — check that the next character is not followed immediately by a
-        // closing `'`.
+        // constructor like 'True, 'Just), `[` (promoted list like '[Int]),
+        // `(` (promoted tuple), or `:` (promoted constructor operator like
+        // `':`), emit a Tick token and let the parser handle it. BUT: `'A'`,
+        // `'('`, `'['`, and `':'` are char literals when followed immediately
+        // by a closing `'`.
         if let Some(next_chirho) = self.peek_at_chirho(1) {
             let is_single_char_literal_chirho = self.peek_at_chirho(2) == Some(b'\'');
-            if (next_chirho == b'[' || next_chirho == b'(') && !is_single_char_literal_chirho {
+            if (next_chirho == b'[' || next_chirho == b'(' || next_chirho == b':')
+                && !is_single_char_literal_chirho
+            {
                 self.pos_chirho += 1; // consume just the tick
                 return self.make_token_chirho(RawTokenKindChirho::TickChirho, start_chirho);
             }
@@ -1744,6 +1746,28 @@ mod tests_chirho {
             vec![
                 RawTokenKindChirho::TickChirho,
                 RawTokenKindChirho::LeftBracketChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_promoted_cons_symbol_chirho() {
+        let kinds_chirho = non_trivia_kinds_chirho("':");
+        assert_eq!(
+            kinds_chirho,
+            vec![
+                RawTokenKindChirho::TickChirho,
+                RawTokenKindChirho::ConSymChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+
+        let char_kinds_chirho = non_trivia_kinds_chirho("':'");
+        assert_eq!(
+            char_kinds_chirho,
+            vec![
+                RawTokenKindChirho::CharLitChirho,
                 RawTokenKindChirho::EofChirho,
             ]
         );

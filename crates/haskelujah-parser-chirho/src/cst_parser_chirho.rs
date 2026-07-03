@@ -2387,13 +2387,10 @@ impl<'src> ParserChirho<'src> {
         // VarSym or ConSym that isn't a special symbol like %, !, @
         // Use btype for the right operand so that `->` binds looser than
         // type operators: `a :~: b -> ()` parses as `(a :~: b) -> ()`.
-        if (self.at_chirho(RawTokenKindChirho::VarSymChirho)
-            || self.at_chirho(RawTokenKindChirho::ConSymChirho))
-            && !matches!(self.current_text_chirho(), "%" | "!" | "@" | "|")
-        {
+        if self.at_type_operator_chirho() {
             self.builder_chirho
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::InfixTypeChirho);
-            self.bump_chirho(); // operator
+            self.bump_type_operator_chirho();
             self.eat_trivia_chirho();
             self.parse_type_operator_rhs_chirho(); // right operand without consuming -> / =>
             self.builder_chirho.finish_node_chirho();
@@ -2460,9 +2457,27 @@ impl<'src> ParserChirho<'src> {
 
     fn at_type_operator_chirho(&self) -> bool {
         self.at_chirho(RawTokenKindChirho::TildeChirho)
+            || self.at_promoted_constructor_operator_chirho()
             || ((self.at_chirho(RawTokenKindChirho::VarSymChirho)
                 || self.at_chirho(RawTokenKindChirho::ConSymChirho))
                 && !matches!(self.current_text_chirho(), "%" | "!" | "@" | "|"))
+    }
+
+    fn at_promoted_constructor_operator_chirho(&self) -> bool {
+        self.at_chirho(RawTokenKindChirho::TickChirho)
+            && self.peek_after_tick_chirho() == Some(RawTokenKindChirho::ConSymChirho)
+    }
+
+    fn bump_type_operator_chirho(&mut self) {
+        if self.at_promoted_constructor_operator_chirho() {
+            self.bump_chirho(); // tick
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::ConSymChirho) {
+                self.bump_chirho(); // promoted constructor symbol
+            }
+        } else {
+            self.bump_chirho();
+        }
     }
 
     fn parse_type_operator_rhs_chirho(&mut self) {
@@ -2473,7 +2488,7 @@ impl<'src> ParserChirho<'src> {
         if self.at_type_operator_chirho() {
             self.builder_chirho
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::InfixTypeChirho);
-            self.bump_chirho();
+            self.bump_type_operator_chirho();
             self.eat_trivia_chirho();
             self.parse_type_operator_rhs_chirho();
             self.builder_chirho.finish_node_chirho();
@@ -2492,6 +2507,9 @@ impl<'src> ParserChirho<'src> {
 
         let mut count_chirho = 1u32;
         while self.can_start_atype_chirho() {
+            if self.at_promoted_constructor_operator_chirho() {
+                break;
+            }
             if self.current_starts_unseparated_value_decl_chirho() {
                 break;
             }
@@ -2671,12 +2689,14 @@ impl<'src> ParserChirho<'src> {
     /// Parse a DataKinds promoted type: `'Constructor` or `'[Type, ...]`.
     fn parse_promoted_type_chirho(&mut self) {
         match self.peek_after_tick_chirho() {
-            Some(RawTokenKindChirho::ConIdChirho) | Some(RawTokenKindChirho::QualifiedIdChirho) => {
+            Some(RawTokenKindChirho::ConIdChirho)
+            | Some(RawTokenKindChirho::QualifiedIdChirho)
+            | Some(RawTokenKindChirho::ConSymChirho) => {
                 // Promoted constructor: 'True, 'Just, 'Nothing
                 self.builder_chirho
                     .start_node_chirho(SyntaxKindChirho::PromotedConTypeChirho);
                 self.bump_chirho(); // tick
-                self.bump_chirho(); // ConId
+                self.bump_chirho(); // ConId or constructor symbol
                 self.builder_chirho.finish_node_chirho();
             }
             Some(RawTokenKindChirho::LeftBracketChirho) => {
@@ -2764,7 +2784,7 @@ impl<'src> ParserChirho<'src> {
     /// Returns false for complex kinds like `Either x y` or `forall k. k -> Type`.
     fn is_simple_kind_annotated_binder_chirho(&self) -> bool {
         let mut i_chirho = self.pos_chirho + 1; // skip `(`
-                                                // Skip trivia after `(`
+        // Skip trivia after `(`
         while i_chirho < self.tokens_chirho.len()
             && self.tokens_chirho[i_chirho].kind_chirho.is_trivia_chirho()
         {
