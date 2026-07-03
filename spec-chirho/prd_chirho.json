@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.80",
+    "prd_version_chirho": "2.2.81",
     "date_chirho": "2026-07-03",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -91,7 +91,8 @@
       "gpt_chirho (Codex) — WI-007 STG PAP entry now preserves target closure payloads, fixing eval_fix_factorial_chirho while holding the 70/70 probe v2.2.77",
       "gpt_chirho (Codex) — WI-006 makeLenses recognizer accepts mkName-shaped quoted type names, closing the TH makeLenses splice bucket while holding the 70/70 probe v2.2.78",
       "gpt_chirho (Codex) — WI-008 LLVM native qsort/list regression fixed by rooting produced heap values from known calls and boxed constructors; qsort/foldl/merge-sort pass and the rebuilt probe remains 70/70 v2.2.79",
-      "gpt_chirho (Codex) — WI-008 LLVM native closure headers now carry function-object kind bits and indirect calls mask them, fixing returned-closure partial application while holding qsort and 70/70 probe v2.2.80"
+      "gpt_chirho (Codex) — WI-008 LLVM native closure headers now carry function-object kind bits and indirect calls mask them, fixing returned-closure partial application while holding qsort and 70/70 probe v2.2.80",
+      "gpt_chirho (Codex) — WI-013 TH TyVarBndrSpec/Specificity compatibility surface for modern GHC TH binder helpers v2.2.81"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -135,7 +136,7 @@
     "probe_harness_chirho": {
       "passed_chirho": 70,
       "total_chirho": 70,
-      "note_chirho": "Local full-probe gate after v2.2.80 LLVM native closure-header fix: PASS=70 FAIL=0. Claude's acceptance probe at d09a4735/v2.2.57 caught PASS=7 FAIL=63 from broad dict_param_bindings seeding that treated Prelude class methods such as `show` as constrained user functions; v2.2.58 confines extra seeding to explicit cross-module imported export names, and subsequent cross-cutting gates through the v2.2.80 LLVM closure-header fix preserve the 70/70 probe baseline."
+      "note_chirho": "Local full-probe gate after v2.2.81 TH TyVarBndrSpec compatibility: PASS=70 FAIL=0. Claude's acceptance probe at d09a4735/v2.2.57 caught PASS=7 FAIL=63 from broad dict_param_bindings seeding that treated Prelude class methods such as `show` as constrained user functions; v2.2.58 confines extra seeding to explicit cross-module imported export names, and subsequent cross-cutting gates through the v2.2.81 TH compatibility surface preserve the 70/70 probe baseline."
     },
     "ghc_suite_chirho": {
       "status_chirho": "No fresh full run after 29d9f262 due resource guard. Audit catalog uses baseline 1609/73, completed b5203335 delta 1569/117, and incomplete 29d9f262 logs; full ghc_bulk/driver sweeps require explicit L.J. approval."
@@ -143,17 +144,18 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-03",
-      "scope_chirho": "WI-008 LLVM native closure object headers for returned partial applications.",
+      "scope_chirho": "WI-013 Template Haskell TyVarBndrSpec/Specificity compatibility surface.",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-backend-llvm --lib run_executable_partial_application_of_lambda_function_outputs_value_chirho -- --test-threads=1 --nocapture",
-        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-driver --lib llvm_round_trip_qsort_random_500_chirho -- --test-threads=1 --nocapture",
-        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-driver --lib llvm_round_trip_foldl_at_scale_chirho -- --test-threads=1 --nocapture",
-        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-driver --lib llvm_round_trip_merge_sort_chirho -- --test-threads=1 --nocapture",
-        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-backend-llvm --lib -- --test-threads=1",
+        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-driver --lib frontend_template_haskell_tyvar_bndr_spec_compat_chirho -- --test-threads=1 --nocapture",
+        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-driver --lib frontend_template_haskell -- --test-threads=1 --nocapture",
+        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-driver --lib cpp_extension_min_version_template_haskell_chirho -- --test-threads=1 --nocapture",
         "CARGO_BUILD_JOBS=1 nice -n 10 cargo build -j1 --bin haskelujah",
+        "./target/debug/haskelujah check /tmp/test_tyvar_bndr_spec_chirho.hs",
+        "timeout 120 ./target/debug/haskelujah check .haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype/TyVarBndr.hs",
+        "timeout 120 ./target/debug/haskelujah build .haskelujah-packages-chirho/th-abstraction-0.7.2.0/ 2>&1 | tail -40",
         "B=./target/debug/haskelujah bash /private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/scratchpad/probe_chirho.sh"
       ],
-      "result_chirho": "Returned native closures now store function-object kind bits in word 0, and indirect calls mask those low bits before converting back to function pointers. `run_executable_partial_application_of_lambda_function_outputs_value_chirho` now passes; the full LLVM backend crate passes 42/42; qsort/foldl/merge-sort remain green; rebuilt full probe remains PASS=70 FAIL=0."
+      "result_chirho": "Modern `PlainTV n SpecifiedSpec` / `KindedTV n InferredSpec k` and helper-returned `TyVarBndrSpec`/`TyVarBndrUnit` now typecheck via focused TH builtin schemes and iface exports. Existing TH frontend tests and the CPP template-haskell 2.16 version gate still pass; `Language.Haskell.TH.Datatype.TyVarBndr` from th-abstraction checks standalone. Full th-abstraction package build remains blocked later by unrelated unbound test names, so no package win is claimed. Rebuilt full probe remains PASS=70 FAIL=0."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1030,7 +1032,7 @@
       "title_chirho": "Template Haskell GHC 9.0+ TyVarBndr Spec compatibility",
       "pillar_chirho": "PILLAR-4",
       "priority_chirho": "P2",
-      "status_chirho": "todo",
+      "status_chirho": "partially landed v2.2.81: typing builtins and module ifaces now expose modern `Specificity`, `SpecifiedSpec`/`InferredSpec`, `TyVarBndrSpec`/`TyVarBndrUnit`/`TyVarBndrVis`, plus permissive constructor/helper schemes that allow both old CPP-selected `PlainTV n`/`KindedTV n k` and modern flagged `PlainTV n flag`/`KindedTV n flag k` shapes. Remaining work: carry binder flags in the internal TH AST/reification/evaluation path instead of erasing them.",
       "owner_chirho": "claude_chirho per gpt scaffold proposal",
       "problem_chirho": "Type mismatches between TyVarBndrSpec and TyVarBndr in modern GHC TH ASTs block modern template-haskell libraries.",
       "fix_design_chirho": [

@@ -483,6 +483,39 @@ typedWildPatChirho = sigP wildP (conT (mkName \"Int\"))\n",
 }
 
 #[test]
+fn frontend_template_haskell_tyvar_bndr_spec_compat_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        "module TemplateTyVarBndrSpecMiniChirho where\n\
+import Language.Haskell.TH\n\
+\n\
+nameOfSpecChirho :: TyVarBndrSpec -> Name\n\
+nameOfSpecChirho (PlainTV nChirho _) = nChirho\n\
+nameOfSpecChirho (KindedTV nChirho _ _) = nChirho\n\
+\n\
+mkPlainSpecChirho :: Name -> TyVarBndrSpec\n\
+mkPlainSpecChirho nChirho = PlainTV nChirho SpecifiedSpec\n\
+\n\
+mkKindedSpecChirho :: Name -> TyVarBndrSpec\n\
+mkKindedSpecChirho nChirho = KindedTV nChirho InferredSpec starK\n\
+\n\
+mkPlainUnitChirho :: Name -> TyVarBndrUnit\n\
+mkPlainUnitChirho nChirho = plainTV nChirho\n\
+\n\
+mkKindedUnitChirho :: Name -> TyVarBndrUnit\n\
+mkKindedUnitChirho nChirho = kindedTV nChirho starK\n",
+        &mut source_map_chirho,
+        "TemplateTyVarBndrSpecMiniChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "Language.Haskell.TH should support GHC 9-style TyVarBndrSpec constructors and compatibility helpers: {:?}",
+        result_chirho.err()
+    );
+}
+
+#[test]
 fn frontend_type_equality_hrefl_keeps_heterogeneous_witnesses_in_scope_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(

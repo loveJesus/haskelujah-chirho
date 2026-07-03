@@ -6313,7 +6313,10 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     let th_kind_ty_chirho = TyChirho::ConChirho("Kind".to_string());
     let th_pred_ty_chirho = TyChirho::ConChirho("Pred".to_string());
     let th_cxt_ty_chirho = TyChirho::ConChirho("Cxt".to_string());
-    let th_tyvar_bndr_ty_chirho = TyChirho::ConChirho("TyVarBndr".to_string());
+    let th_tyvar_bndr_unit_ty_chirho = TyChirho::ConChirho("TyVarBndrUnit".to_string());
+    let th_tyvar_bndr_spec_ty_chirho = TyChirho::ConChirho("TyVarBndrSpec".to_string());
+    let th_tyvar_bndr_vis_ty_chirho = TyChirho::ConChirho("TyVarBndrVis".to_string());
+    let th_specificity_ty_chirho = TyChirho::ConChirho("Specificity".to_string());
     let th_q_tycon_ty_chirho = TyChirho::ConChirho("Q".to_string());
 
     env_chirho.bind_chirho(
@@ -6441,7 +6444,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             "ForallT",
             TyChirho::fun_n_chirho(
                 vec![
-                    TyChirho::ListChirho(Box::new(th_tyvar_bndr_ty_chirho.clone())),
+                    TyChirho::ListChirho(Box::new(th_tyvar_bndr_spec_ty_chirho.clone())),
                     th_cxt_ty_chirho.clone(),
                     th_type_ty_chirho.clone(),
                 ],
@@ -6476,13 +6479,16 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         ),
         (
             "PlainTV",
-            TyChirho::fun_chirho(th_name_ty_chirho.clone(), th_tyvar_bndr_ty_chirho.clone()),
+            TyChirho::fun_chirho(
+                th_name_ty_chirho.clone(),
+                th_tyvar_bndr_unit_ty_chirho.clone(),
+            ),
         ),
         (
             "KindedTV",
             TyChirho::fun_n_chirho(
                 vec![th_name_ty_chirho.clone(), th_kind_ty_chirho.clone()],
-                th_tyvar_bndr_ty_chirho.clone(),
+                th_tyvar_bndr_unit_ty_chirho.clone(),
             ),
         ),
         (
@@ -6504,12 +6510,182 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         ),
         ("arrowK", th_kind_ty_chirho.clone()),
         ("starK", th_kind_ty_chirho.clone()),
+        ("SpecifiedSpec", th_specificity_ty_chirho.clone()),
+        ("InferredSpec", th_specificity_ty_chirho.clone()),
+        (
+            "plainTV",
+            TyChirho::fun_chirho(
+                th_name_ty_chirho.clone(),
+                th_tyvar_bndr_unit_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "kindedTV",
+            TyChirho::fun_n_chirho(
+                vec![th_name_ty_chirho.clone(), th_kind_ty_chirho.clone()],
+                th_tyvar_bndr_unit_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "plainTVSpecified",
+            TyChirho::fun_chirho(
+                th_name_ty_chirho.clone(),
+                th_tyvar_bndr_spec_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "plainTVInferred",
+            TyChirho::fun_chirho(
+                th_name_ty_chirho.clone(),
+                th_tyvar_bndr_spec_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "kindedTVSpecified",
+            TyChirho::fun_n_chirho(
+                vec![th_name_ty_chirho.clone(), th_kind_ty_chirho.clone()],
+                th_tyvar_bndr_spec_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "kindedTVInferred",
+            TyChirho::fun_n_chirho(
+                vec![th_name_ty_chirho.clone(), th_kind_ty_chirho.clone()],
+                th_tyvar_bndr_spec_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "kindedTVReq",
+            TyChirho::fun_n_chirho(
+                vec![th_name_ty_chirho.clone(), th_kind_ty_chirho.clone()],
+                th_tyvar_bndr_vis_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "elimTV",
+            TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(th_name_ty_chirho.clone(), th_name_ty_chirho.clone()),
+                    TyChirho::fun_n_chirho(
+                        vec![th_name_ty_chirho.clone(), th_kind_ty_chirho.clone()],
+                        th_name_ty_chirho.clone(),
+                    ),
+                    th_tyvar_bndr_unit_ty_chirho.clone(),
+                ],
+                th_name_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "tvName",
+            TyChirho::fun_chirho(
+                th_tyvar_bndr_unit_ty_chirho.clone(),
+                th_name_ty_chirho.clone(),
+            ),
+        ),
+        (
+            "tvKind",
+            TyChirho::fun_chirho(
+                th_tyvar_bndr_unit_ty_chirho.clone(),
+                th_kind_ty_chirho.clone(),
+            ),
+        ),
     ] {
         env_chirho.bind_chirho(
             name_chirho.to_string(),
             SchemeChirho::mono_chirho(ty_chirho),
         );
     }
+    let forall_tvb_chirho = TyVarChirho(6316);
+    env_chirho.bind_chirho(
+        "ForallT".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![forall_tvb_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(forall_tvb_chirho))),
+                    th_cxt_ty_chirho.clone(),
+                    th_type_ty_chirho.clone(),
+                ],
+                th_type_ty_chirho.clone(),
+            ),
+        },
+    );
+    let plain_result_chirho = TyVarChirho(6317);
+    env_chirho.bind_chirho(
+        "PlainTV".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![plain_result_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                th_name_ty_chirho.clone(),
+                TyChirho::VarChirho(plain_result_chirho),
+            ),
+        },
+    );
+    let kinded_flag_chirho = TyVarChirho(6318);
+    let kinded_result_chirho = TyVarChirho(6319);
+    env_chirho.bind_chirho(
+        "KindedTV".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![kinded_flag_chirho, kinded_result_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    th_name_ty_chirho.clone(),
+                    TyChirho::VarChirho(kinded_flag_chirho),
+                ],
+                TyChirho::VarChirho(kinded_result_chirho),
+            ),
+        },
+    );
+    let elim_tvb_chirho = TyVarChirho(6320);
+    let elim_result_chirho = TyVarChirho(6321);
+    env_chirho.bind_chirho(
+        "elimTV".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![elim_tvb_chirho, elim_result_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::fun_chirho(
+                        th_name_ty_chirho.clone(),
+                        TyChirho::VarChirho(elim_result_chirho),
+                    ),
+                    TyChirho::fun_n_chirho(
+                        vec![th_name_ty_chirho.clone(), th_kind_ty_chirho.clone()],
+                        TyChirho::VarChirho(elim_result_chirho),
+                    ),
+                    TyChirho::VarChirho(elim_tvb_chirho),
+                ],
+                TyChirho::VarChirho(elim_result_chirho),
+            ),
+        },
+    );
+    let tv_name_tvb_chirho = TyVarChirho(6322);
+    env_chirho.bind_chirho(
+        "tvName".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![tv_name_tvb_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(tv_name_tvb_chirho),
+                th_name_ty_chirho.clone(),
+            ),
+        },
+    );
+    let tv_kind_tvb_chirho = TyVarChirho(6323);
+    env_chirho.bind_chirho(
+        "tvKind".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![tv_kind_tvb_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(tv_kind_tvb_chirho),
+                th_kind_ty_chirho.clone(),
+            ),
+        },
+    );
 
     // not :: Bool -> Bool
     env_chirho.bind_chirho(
