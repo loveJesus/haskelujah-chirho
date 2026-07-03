@@ -2544,6 +2544,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         for name_chirho in &[
             "Natural", "Nat", "KnownNat", "SomeNat", "SNat", "CmpNat", "Div", "Mod", "Log2",
+            "<=?",
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -9390,7 +9391,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // GHC.TypeNats (re-exports from GHC.TypeLits plus extras)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Nat", "KnownNat", "SomeNat"] {
+        for name_chirho in &["Nat", "KnownNat", "SomeNat", "<=?"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -10894,7 +10895,7 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Nat", "KnownNat", "SomeNat", "CmpNat"] {
+        for name_chirho in &["Nat", "KnownNat", "SomeNat", "CmpNat", "<=?"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }

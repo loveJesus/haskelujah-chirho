@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.69",
+    "prd_version_chirho": "2.2.70",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -80,7 +80,8 @@
       "gpt_chirho (Codex) — constraints package frontier advanced through Test.Hspec, KnownChar/charVal, and Data.Typeable proxy typeRep stubs; remaining frontend one-off is Data.Constraint.Forall quantified-constraint kinding v2.2.66",
       "gpt_chirho (Codex) — quantified constraints now lower to QuantifiedChirho instead of synthetic `$Dict_?`, closing the simple quantified signature PAP residual v2.2.67",
       "gpt_chirho (Codex) — Data.Constraint.Forall prerequisites: local poly-kinded constructors instantiate per use and infix type-operator lowering preserves left application spines; real constraints package remains blocked at higher-kinded quantified-constraint kinding v2.2.68",
-      "gpt_chirho (Codex) — Data.Constraint.Forall class-head kind annotations no longer collect annotation-only kind variables as class parameters; reduced constraints package compiles and real constraints advances past ForallF/ForallT to a later Forall1/ForallV kind frontier v2.2.69"
+      "gpt_chirho (Codex) — Data.Constraint.Forall class-head kind annotations no longer collect annotation-only kind variables as class parameters; reduced constraints package compiles and real constraints advances past ForallF/ForallT to a later Forall1/ForallV kind frontier v2.2.69",
+      "gpt_chirho (Codex) — parser recovery for unseparated type alias/signature boundaries and closed type-family kind-annotated headers; constraints advances past Forall1 and TypeNats <=? to Data.Constraint.Nat arithmetic Dict proof mismatches v2.2.70"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -132,15 +133,20 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-02",
-      "scope_chirho": "Data.Constraint.Forall class-head kind-annotation lowering fix.",
+      "scope_chirho": "Data.Constraint.Forall/Nat parser-boundary recovery.",
       "commands_chirho": [
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib lower_class_kind_annotation_does_not_collect_kind_vars_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib infix_type_operator -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib lower_type_alias_rhs_stops_before_next_signature_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib lower_closed_type_family_operator_rhs_does_not_leak_value_binds_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib lower_closed_type_family_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib lower_type_family_with_kind_sig_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib lower_type_alias_chirho -- --test-threads=1",
         "timeout 180 env CARGO_BUILD_JOBS=2 cargo build -j2 --bin haskelujah",
-        "timeout 120 target/debug/haskelujah build /tmp/constraints-mini-chirho/",
-        "timeout 180 target/debug/haskelujah build .haskelujah-packages-chirho/constraints-0.14.4/ (expected red frontier)"
+        "timeout 120 target/debug/haskelujah build /tmp/constraints-nat-reduce-chirho/",
+        "timeout 180 target/debug/haskelujah build .haskelujah-packages-chirho/constraints-0.14.4/ (expected red frontier)",
+        "timeout 120 target/debug/haskelujah build .haskelujah-packages-chirho/transformers-0.6.3.0/",
+        "timeout 120 target/debug/haskelujah build .haskelujah-packages-chirho/mtl-2.3.2/"
       ],
-      "result_chirho": "Class-head lowering now keeps parenthesized kind-annotated binders intact while extracting class parameters, so annotation-only kind variables such as `k`, `k1`, and `k2` are not collected as real class arguments. The `/tmp/constraints-mini-chirho` reducer compiles, proving the original Forall/ForallF/ForallT arity bug is closed. The real constraints package advances to a later Data.Constraint.Forall E0300 frontier: `expected Constraint, found k74 -> k75` at 2952..3085, around the Forall1/ForallV section, so `frontend-typing-one-offs` remains count 1."
+      "result_chirho": "Parser recovery now stops type application before unseparated following value signatures/bindings, so the `Forall1` alias and `inst1` signature in Data.Constraint.Forall no longer swallow each other after the nested `instT` case body. Closed type-family headers now scan `where`/result `::` only at top level, so kind-annotated parameters such as `(m :: Nat)` do not split `Min`/`Max` into bogus value bindings; GHC.TypeNats exports `<=?`. The reducer `/tmp/constraints-nat-reduce-chirho` compiles, transformers and mtl still compile, and the real constraints package advances to Data.Constraint.Nat arithmetic proof mismatches around `maxDistributesOverPlus`/`maxDistributesOverTimes` rather than Forall or `<=?`."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1286,13 +1292,13 @@
       {
         "bucket_chirho": "frontend-typing-one-offs",
         "count_chirho": 1,
-        "resolved_chirho": "4 of 5 RESOLVED. v2.2.49/c815ef17 resolved the nested WriterT `$`/callCC `mempty` E0202 case as a Rust string-continuation layout artifact in `frontend_writer_t_nested_dollar_callcc_chirho`. v2.2.51 resolved `frontend_instance_methods_stay_nested_chirho` as an invalid fixture: after unwrapping `ExceptT`, inner `mzipWith` operates on `m (Either e a)`/`m (Either e b)`, so the method body must use `mzipWith (liftA2 fChirho) aChirho bChirho`, matching the already-passing complex sibling. v2.2.52 resolved `iface_data_typeable_rnf_exports_chirho` as a fixture mismatch with the current poly-kinded `TypeRep :: k -> *` model; `g :: TypeRep a -> ()` preserves the export check without weakening kind inference. v2.2.63 resolved `frontend_th_abstraction_style_local_sig_in_instance_typechecks_chirho`: `(\\\\)` was lexed as lambda/backslash tokens and then lacked a Data.List export/type scheme; it now lexes as `VarSymChirho` when followed by a symbol and resolves as `Eq a => [a] -> [a] -> [a]`. v2.2.66 advanced the real constraints package through three shallow frontiers: Test.Hspec module/scheme stubs, GHC.TypeLits charVal/KnownChar, and Data.Typeable proxy-argument typeRep. v2.2.68 landed prerequisite fixes for the remaining Data.Constraint.Forall frontier: local poly-kinded constructors instantiate per use and infix type-operator lowering keeps left application spines such as `ForallF p f`. v2.2.69 fixed class-head kind annotation lowering so annotation-only kind variables are not collected as real class parameters; the reduced ForallF/ForallT constraints package now compiles.",
+        "resolved_chirho": "4 of 5 RESOLVED. v2.2.49/c815ef17 resolved the nested WriterT `$`/callCC `mempty` E0202 case as a Rust string-continuation layout artifact in `frontend_writer_t_nested_dollar_callcc_chirho`. v2.2.51 resolved `frontend_instance_methods_stay_nested_chirho` as an invalid fixture: after unwrapping `ExceptT`, inner `mzipWith` operates on `m (Either e a)`/`m (Either e b)`, so the method body must use `mzipWith (liftA2 fChirho) aChirho bChirho`, matching the already-passing complex sibling. v2.2.52 resolved `iface_data_typeable_rnf_exports_chirho` as a fixture mismatch with the current poly-kinded `TypeRep :: k -> *` model; `g :: TypeRep a -> ()` preserves the export check without weakening kind inference. v2.2.63 resolved `frontend_th_abstraction_style_local_sig_in_instance_typechecks_chirho`: `(\\\\)` was lexed as lambda/backslash tokens and then lacked a Data.List export/type scheme; it now lexes as `VarSymChirho` when followed by a symbol and resolves as `Eq a => [a] -> [a] -> [a]`. v2.2.66 advanced the real constraints package through three shallow frontiers: Test.Hspec module/scheme stubs, GHC.TypeLits charVal/KnownChar, and Data.Typeable proxy-argument typeRep. v2.2.68 landed prerequisite fixes for the remaining Data.Constraint.Forall frontier: local poly-kinded constructors instantiate per use and infix type-operator lowering keeps left application spines such as `ForallF p f`. v2.2.69 fixed class-head kind annotation lowering so annotation-only kind variables are not collected as real class parameters; the reduced ForallF/ForallT constraints package now compiles. v2.2.70 fixed two parser-boundary leaks: `Forall1`/`inst1` no longer overrun after nested case expressions, and closed type-family headers with kind-annotated parameters no longer split into value bindings; the real constraints package now reaches Data.Constraint.Nat arithmetic proof mismatches.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "typing",
         "representative_tests_chirho": [
           "tests_chirho::compile_chirho::frontend_constraints_package_regression_chirho"
         ],
-        "notes_chirho": "Remaining real package frontier: Data.Constraint.Forall now fails later with E0300 `expected Constraint, found k74 -> k75` at 2952..3085, around the Forall1/ForallV section. The older E0200 `Dict`/function mismatch, Test.Hspec module-not-found, Hspec Spec/return mismatch, charVal unbound, Data.Typeable.typeRep proxy mismatch, local poly-kind constructor monomorphization, infix type-operator left-spine dropping, and class-head kind annotation arity inflation are no longer the active frontier."
+        "notes_chirho": "Remaining real package frontier: Data.Constraint.Nat now fails with E0200 `Dict` mismatches in arithmetic type-level proof signatures around `maxDistributesOverPlus` and `maxDistributesOverTimes`. The older Test.Hspec module-not-found, Hspec Spec/return mismatch, charVal unbound, Data.Typeable.typeRep proxy mismatch, local poly-kind constructor monomorphization, infix type-operator left-spine dropping, class-head kind annotation arity inflation, Forall1 alias/signature overrun, and `<=?` unbound closed-family leak are no longer the active frontier."
       },
       {
         "bucket_chirho": "stg-eval-thunk-forcing",
@@ -1340,7 +1346,7 @@
         "representative_tests_chirho": [
           "tests_chirho::extensions_chirho::quantified_constraint_type_sig_parses_chirho"
         ],
-        "notes_chirho": "Closed as a distinct bucket. The remaining real package work is tracked under `frontend-typing-one-offs`: Data.Constraint.Forall still needs higher-kinded quantified-constraint kinding/reduction around the later Forall1/ForallV frontier."
+        "notes_chirho": "Closed as a distinct bucket. The remaining real package work is tracked under `frontend-typing-one-offs`: Data.Constraint.Nat now needs arithmetic type-family/proof typing for `Dict` equalities after the Forall and TypeNats parser frontiers were cleared."
       },
       {
         "bucket_chirho": "llvm-native-numeric-regressions",

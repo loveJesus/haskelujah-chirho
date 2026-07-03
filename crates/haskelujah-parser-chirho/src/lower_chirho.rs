@@ -12228,6 +12228,146 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
     }
 
     #[test]
+    fn lower_type_alias_rhs_stops_before_next_signature_chirho() {
+        fn constraint_contains_name_chirho(
+            constraint_chirho: &ConstraintChirho,
+            wanted_chirho: &str,
+        ) -> bool {
+            match constraint_chirho {
+                ConstraintChirho::ClassChirho {
+                    class_chirho,
+                    args_chirho,
+                    ..
+                } => {
+                    class_chirho.text_chirho() == wanted_chirho
+                        || args_chirho
+                            .iter()
+                            .any(|arg_chirho| type_contains_name_chirho(arg_chirho, wanted_chirho))
+                }
+                ConstraintChirho::QuantifiedChirho {
+                    context_chirho,
+                    body_chirho,
+                    ..
+                } => {
+                    context_chirho.iter().any(|constraint_chirho| {
+                        constraint_contains_name_chirho(constraint_chirho, wanted_chirho)
+                    }) || constraint_contains_name_chirho(body_chirho, wanted_chirho)
+                }
+            }
+        }
+
+        fn type_contains_name_chirho(ty_chirho: &TypeChirho, wanted_chirho: &str) -> bool {
+            match ty_chirho {
+                TypeChirho::VarChirho(name_chirho)
+                | TypeChirho::ConChirho(name_chirho)
+                | TypeChirho::PromotedConChirho { name_chirho, .. } => {
+                    name_chirho.text_chirho() == wanted_chirho
+                }
+                TypeChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    type_contains_name_chirho(fun_chirho, wanted_chirho)
+                        || type_contains_name_chirho(arg_chirho, wanted_chirho)
+                }
+                TypeChirho::FunChirho {
+                    arg_chirho,
+                    result_chirho,
+                    ..
+                } => {
+                    type_contains_name_chirho(arg_chirho, wanted_chirho)
+                        || type_contains_name_chirho(result_chirho, wanted_chirho)
+                }
+                TypeChirho::TupleChirho {
+                    elements_chirho, ..
+                }
+                | TypeChirho::PromotedListChirho {
+                    elements_chirho, ..
+                } => elements_chirho
+                    .iter()
+                    .any(|element_chirho| type_contains_name_chirho(element_chirho, wanted_chirho)),
+                TypeChirho::ListChirho { element_chirho, .. }
+                | TypeChirho::ParenChirho {
+                    inner_chirho: element_chirho,
+                    ..
+                } => type_contains_name_chirho(element_chirho, wanted_chirho),
+                TypeChirho::QualChirho {
+                    context_chirho,
+                    body_chirho,
+                    ..
+                } => {
+                    context_chirho.iter().any(|constraint_chirho| {
+                        constraint_contains_name_chirho(constraint_chirho, wanted_chirho)
+                    }) || type_contains_name_chirho(body_chirho, wanted_chirho)
+                }
+                TypeChirho::ForallChirho { body_chirho, .. } => {
+                    type_contains_name_chirho(body_chirho, wanted_chirho)
+                }
+                TypeChirho::WildcardChirho { .. } | TypeChirho::LitChirho { .. } => false,
+            }
+        }
+
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE ConstraintKinds #-}\n{-# LANGUAGE PolyKinds #-}\n{-# LANGUAGE TypeOperators #-}\nmodule M where\nclass Forall p\nclass ForallT p t\nclass p (t a b) => R p t a b\nclass Forall (R p t a) => Q p t a\ninstT :: forall k1 k2 k3 k4 (p :: k4 -> Constraint) (t :: (k1 -> k2) -> k3 -> k4) (f :: k1 -> k2) (a :: k3). ForallT p t :- p (t f a)\ninstT = Sub $\n  case inst :: Forall (Q p t) :- Q p t f of { Sub Dict ->\n  case inst :: Forall (R p t f) :- R p t f a of\n    Sub Dict -> Dict }\ntype Forall1 p = Forall p\ninst1 :: forall (p :: (* -> *) -> Constraint) (f :: * -> *). Forall p :- p f\ninst1 = inst\n",
+        );
+        let alias_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "Forall1"
+                )
+            })
+            .expect("expected Forall1 type alias");
+        match alias_chirho {
+            DeclChirho::TypeAliasDeclChirho {
+                rhs_chirho,
+                type_vars_chirho,
+                ..
+            } => {
+                assert_eq!(type_vars_chirho.len(), 1);
+                assert!(
+                    matches!(rhs_chirho, TypeChirho::AppChirho { fun_chirho, arg_chirho, .. }
+                        if matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Forall")
+                            && matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "p")),
+                    "Forall1 RHS should stop at `Forall p`, got {:?}",
+                    rhs_chirho
+                );
+            }
+            other_chirho => panic!("expected type alias declaration, got {:?}", other_chirho),
+        }
+        let inst1_sig_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::TypeSigChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "inst1"
+                )
+            })
+            .expect("expected inst1 type signature");
+        if let DeclChirho::TypeSigChirho { ty_chirho, .. } = inst1_sig_chirho {
+            assert!(
+                !type_contains_name_chirho(ty_chirho, "inst1"),
+                "inst1 signature type should not swallow following binding, got {:?}",
+                ty_chirho
+            );
+        }
+        assert!(
+            module_chirho.decls_chirho.iter().any(|decl_chirho| matches!(
+                decl_chirho,
+                DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "inst1"
+            )),
+            "expected inst1 function binding after its type signature"
+        );
+    }
+
+    #[test]
     fn lower_foreign_import_basic_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M where\nforeign import ccall unsafe \"sin\" sinChirho :: Double -> Double\n",
@@ -13890,6 +14030,39 @@ class Describable a where
             }
             _ => unreachable!(),
         }
+    }
+
+    #[test]
+    fn lower_closed_type_family_operator_rhs_does_not_leak_value_binds_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE DataKinds #-}\n{-# LANGUAGE TypeFamilies #-}\n{-# LANGUAGE TypeOperators #-}\nmodule M where\nimport Data.Type.Bool\nimport GHC.TypeNats\ntype family Min (m :: Nat) (n :: Nat) :: Nat where\n  Min m n = If (n <=? m) n m\ntype family Max (m :: Nat) (n :: Nat) :: Nat where\n  Max m n = If (n <=? m) m n\n",
+        );
+        let family_names_chirho: Vec<&str> = module_chirho
+            .decls_chirho
+            .iter()
+            .filter_map(|decl_chirho| match decl_chirho {
+                DeclChirho::TypeFamilyDeclChirho {
+                    name_chirho,
+                    equations_chirho,
+                    ..
+                } if equations_chirho.len() == 1 => Some(name_chirho.text_chirho()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            family_names_chirho.contains(&"Min") && family_names_chirho.contains(&"Max"),
+            "expected Min and Max closed type families, got {:?}",
+            module_chirho.decls_chirho
+        );
+        assert!(
+            !module_chirho.decls_chirho.iter().any(|decl_chirho| matches!(
+                decl_chirho,
+                DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "Min" || name_chirho.text_chirho() == "Max"
+            )),
+            "closed type-family equations should not lower as value bindings: {:?}",
+            module_chirho.decls_chirho
+        );
     }
 
     #[test]

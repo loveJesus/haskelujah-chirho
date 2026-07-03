@@ -1135,7 +1135,7 @@ impl<'src> ParserChirho<'src> {
         self.eat_trivia_chirho();
 
         // Family name and type variables until `where`, `::`, or end of decl
-        self.eat_until_any_chirho(&[
+        self.eat_until_any_top_level_chirho(&[
             RawTokenKindChirho::WhereChirho,
             RawTokenKindChirho::ColonColonChirho,
             RawTokenKindChirho::VirtualSemicolonChirho,
@@ -2463,6 +2463,9 @@ impl<'src> ParserChirho<'src> {
 
         let mut count_chirho = 1u32;
         while self.can_start_atype_chirho() {
+            if self.current_starts_unseparated_value_decl_chirho() {
+                break;
+            }
             let before_chirho = self.pos_chirho;
             if count_chirho == 1 {
                 self.builder_chirho
@@ -2479,6 +2482,22 @@ impl<'src> ParserChirho<'src> {
         if count_chirho > 1 {
             self.builder_chirho.finish_node_chirho(); // AppType
         }
+    }
+
+    fn current_starts_unseparated_value_decl_chirho(&self) -> bool {
+        if self.current_kind_chirho() != Some(RawTokenKindChirho::VarIdChirho) {
+            return false;
+        }
+
+        let next_idx_chirho = self.skip_trivia_idx_chirho(self.pos_chirho + 1);
+        self.tokens_chirho
+            .get(next_idx_chirho)
+            .is_some_and(|token_chirho| {
+                matches!(
+                    token_chirho.kind_chirho,
+                    RawTokenKindChirho::ColonColonChirho | RawTokenKindChirho::EqualsChirho
+                )
+            })
     }
 
     /// Parse an atomic type: variable, constructor, parenthesized, tuple,
@@ -5235,6 +5254,42 @@ impl<'src> ParserChirho<'src> {
         while let Some(kind_chirho) = self.current_kind_chirho() {
             if stops_chirho.contains(&kind_chirho) || kind_chirho == RawTokenKindChirho::EofChirho {
                 break;
+            }
+            self.bump_chirho();
+        }
+    }
+
+    fn eat_until_any_top_level_chirho(&mut self, stops_chirho: &[RawTokenKindChirho]) {
+        let mut paren_depth_chirho = 0usize;
+        let mut bracket_depth_chirho = 0usize;
+        let mut brace_depth_chirho = 0usize;
+        while let Some(kind_chirho) = self.current_kind_chirho() {
+            if kind_chirho == RawTokenKindChirho::EofChirho {
+                break;
+            }
+            if paren_depth_chirho == 0
+                && bracket_depth_chirho == 0
+                && brace_depth_chirho == 0
+                && stops_chirho.contains(&kind_chirho)
+            {
+                break;
+            }
+            match kind_chirho {
+                RawTokenKindChirho::LeftParenChirho => paren_depth_chirho += 1,
+                RawTokenKindChirho::RightParenChirho => {
+                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                }
+                RawTokenKindChirho::LeftBracketChirho => bracket_depth_chirho += 1,
+                RawTokenKindChirho::RightBracketChirho => {
+                    bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
+                }
+                RawTokenKindChirho::LeftBraceChirho
+                | RawTokenKindChirho::VirtualLeftBraceChirho => brace_depth_chirho += 1,
+                RawTokenKindChirho::RightBraceChirho
+                | RawTokenKindChirho::VirtualRightBraceChirho => {
+                    brace_depth_chirho = brace_depth_chirho.saturating_sub(1);
+                }
+                _ => {}
             }
             self.bump_chirho();
         }
