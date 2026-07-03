@@ -26,7 +26,7 @@ use haskelujah_core_chirho::{
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 #[cfg(test)]
-use haskelujah_rts_chirho::{ObjectKindChirho, pack_native_header_chirho};
+use haskelujah_rts_chirho::{pack_native_header_chirho, ObjectKindChirho};
 
 const BOXED_CONSTRUCTOR_TAG_MASK_CHIRHO: i64 = 1;
 const BOXED_CONSTRUCTOR_PTR_MASK_CHIRHO: i64 = !1_i64;
@@ -332,6 +332,34 @@ impl LlvmCodegenChirho {
             "  call void @haskelujah_gc_root_push_chirho(ptr {root_ptr_tmp_chirho})"
         )
         .unwrap();
+    }
+
+    // Native LLVM currently uses conservative process-lifetime roots for
+    // produced heap values; popping here can race callee-installed roots.
+    fn emit_gc_root_push_heap_i64_chirho(&mut self, value_chirho: &str) {
+        let is_heap_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {is_heap_tmp_chirho} = call i64 @haskelujah_is_heap_ptr_chirho(i64 {value_chirho})"
+        )
+        .unwrap();
+        let should_push_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {should_push_tmp_chirho} = icmp ne i64 {is_heap_tmp_chirho}, 0"
+        )
+        .unwrap();
+        let push_label_chirho = self.fresh_label_chirho("gc.root.push");
+        let done_label_chirho = self.fresh_label_chirho("gc.root.done");
+        writeln!(
+            self.output_chirho,
+            "  br i1 {should_push_tmp_chirho}, label %{push_label_chirho}, label %{done_label_chirho}"
+        )
+        .unwrap();
+        writeln!(self.output_chirho, "{push_label_chirho}:").unwrap();
+        self.emit_gc_root_push_i64_chirho(value_chirho);
+        writeln!(self.output_chirho, "  br label %{done_label_chirho}").unwrap();
+        writeln!(self.output_chirho, "{done_label_chirho}:").unwrap();
     }
 
     fn emit_gc_root_pop_count_chirho(&mut self, count_chirho: usize) {
@@ -2961,6 +2989,7 @@ impl LlvmCodegenChirho {
                 "  {tmp_chirho} = tail call i64 {fn_ref_chirho}()"
             )
             .unwrap();
+            self.emit_gc_root_push_heap_i64_chirho(&tmp_chirho);
             return Some(self.compile_curried_indirect_apps_chirho(&tmp_chirho, arg_vals_chirho));
         }
 
@@ -2984,6 +3013,7 @@ impl LlvmCodegenChirho {
             "  {tmp_chirho} = tail call i64 {fn_ref_chirho}({direct_args_str_chirho})"
         )
         .unwrap();
+        self.emit_gc_root_push_heap_i64_chirho(&tmp_chirho);
         if arg_vals_chirho.len() == arity_chirho {
             return Some(tmp_chirho);
         }
@@ -3029,6 +3059,7 @@ impl LlvmCodegenChirho {
             direct_args_chirho.join(", ")
         )
         .unwrap();
+        self.emit_gc_root_push_heap_i64_chirho(&tmp_chirho);
         if arg_vals_chirho.len() == arity_chirho {
             return Some(tmp_chirho);
         }
@@ -3355,6 +3386,7 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         self.emit_gc_root_pop_count_chirho(field_vals_chirho.len());
+        self.emit_gc_root_push_i64_chirho(&tagged_ptr_tmp_chirho);
         tagged_ptr_tmp_chirho
     }
 
