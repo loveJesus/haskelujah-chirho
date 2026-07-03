@@ -2362,7 +2362,7 @@ impl<'src> ParserChirho<'src> {
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::InfixTypeChirho);
             self.bump_chirho(); // ~
             self.eat_trivia_chirho();
-            self.parse_btype_chirho(); // right operand (btype, not full type, to avoid consuming =>)
+            self.parse_type_operator_rhs_chirho(); // right operand without consuming -> / =>
             self.builder_chirho.finish_node_chirho();
             // After the infix ~ type, check if this is part of a qualified type
             self.eat_trivia_chirho();
@@ -2388,7 +2388,7 @@ impl<'src> ParserChirho<'src> {
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::InfixTypeChirho);
             self.bump_chirho(); // operator
             self.eat_trivia_chirho();
-            self.parse_btype_chirho(); // right operand (btype, not full type)
+            self.parse_type_operator_rhs_chirho(); // right operand without consuming -> / =>
             self.builder_chirho.finish_node_chirho();
             // After the infix type, check for -> / => to continue
             self.eat_trivia_chirho();
@@ -2427,7 +2427,7 @@ impl<'src> ParserChirho<'src> {
                 self.bump_chirho(); // closing `
                 self.eat_trivia_chirho();
             }
-            self.parse_btype_chirho(); // right operand (btype, not full type)
+            self.parse_type_operator_rhs_chirho(); // right operand without consuming -> / =>
             self.builder_chirho.finish_node_chirho();
             // After backtick infix, check for -> / =>
             self.eat_trivia_chirho();
@@ -2449,6 +2449,28 @@ impl<'src> ParserChirho<'src> {
             return;
         }
         // Otherwise, just the btype stands as-is (no wrapping needed).
+    }
+
+    fn at_type_operator_chirho(&self) -> bool {
+        self.at_chirho(RawTokenKindChirho::TildeChirho)
+            || ((self.at_chirho(RawTokenKindChirho::VarSymChirho)
+                || self.at_chirho(RawTokenKindChirho::ConSymChirho))
+                && !matches!(self.current_text_chirho(), "%" | "!" | "@" | "|"))
+    }
+
+    fn parse_type_operator_rhs_chirho(&mut self) {
+        let cp_chirho = self.builder_chirho.checkpoint_chirho();
+        self.parse_btype_chirho();
+        self.eat_trivia_chirho();
+
+        if self.at_type_operator_chirho() {
+            self.builder_chirho
+                .start_node_at_chirho(cp_chirho, SyntaxKindChirho::InfixTypeChirho);
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+            self.parse_type_operator_rhs_chirho();
+            self.builder_chirho.finish_node_chirho();
+        }
     }
 
     /// Parse a "btype" — type application (juxtaposition of atomic types).
@@ -2735,7 +2757,7 @@ impl<'src> ParserChirho<'src> {
     /// Returns false for complex kinds like `Either x y` or `forall k. k -> Type`.
     fn is_simple_kind_annotated_binder_chirho(&self) -> bool {
         let mut i_chirho = self.pos_chirho + 1; // skip `(`
-        // Skip trivia after `(`
+                                                // Skip trivia after `(`
         while i_chirho < self.tokens_chirho.len()
             && self.tokens_chirho[i_chirho].kind_chirho.is_trivia_chirho()
         {

@@ -36,10 +36,8 @@ fn builds_a_check_summary_for_batch_mode_chirho() {
             .runtime_plan_chirho
             .incremental_session_chirho
     );
-    assert!(
-        render_summary_chirho(&check_summary_chirho)
-            .contains("llvm_preview: ; haskelujah llvm stub")
-    );
+    assert!(render_summary_chirho(&check_summary_chirho)
+        .contains("llvm_preview: ; haskelujah llvm stub"));
 }
 
 #[test]
@@ -64,6 +62,20 @@ fn full_pipeline_parses_and_resolves_chirho() {
     // Backend output was produced
     assert!(result_chirho.llvm_ir_chirho.contains("; ModuleID = 'Test'"));
     assert_eq!(&result_chirho.wasm_bytes_chirho[0..4], b"\0asm");
+}
+
+#[test]
+fn frontend_type_operator_alias_does_not_shadow_value_operator_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    compile_source_chirho(
+        "{-# LANGUAGE TypeOperators #-}\n\
+module TypeOperatorAliasValueNamespaceChirho where\n\
+type (mChirho :: Symbol) ++ (nChirho :: Symbol) = AppendSymbol mChirho nChirho\n\
+appendValueChirho = (++)\n",
+        &mut source_map_chirho,
+        "TypeOperatorAliasValueNamespaceChirho.hs",
+    )
+    .expect("type-level operator alias should not shadow value-level Prelude operator");
 }
 
 #[test]
@@ -397,9 +409,9 @@ tupleShowsMiniChirho sp1Chirho sp2Chirho xChirho yChirho =
 #[test]
 fn frontend_scanned_transformers_iface_keeps_liftcallcc_prime_in_scope_chirho() {
     use crate::{
-        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
         collect_frontend_artifacts_from_module_sources_chirho,
-        scan_dependency_package_ifaces_chirho,
+        scan_dependency_package_ifaces_chirho, ImportedTypeFamiliesChirho,
+        ImportedTypeSynonymsChirho,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -511,8 +523,8 @@ type HeteroEqPrefixChirho (a :: k1) = ((:~~:) (a :: k1) :: k2 -> Type)\n",
 }
 
 #[test]
-fn frontend_preprocessed_transformers_functor_classes_keeps_building_block_helpers_top_level_chirho()
- {
+fn frontend_preprocessed_transformers_functor_classes_keeps_building_block_helpers_top_level_chirho(
+) {
     let path_chirho = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join(".haskelujah-packages-chirho/transformers-0.6.3.0/legacy/pre711/Data/Functor/Classes.hs");
@@ -5418,9 +5430,10 @@ fn frontend_text_case_mapping_parse_and_lower_survives_generated_module_size_chi
 #[test]
 fn frontend_text_case_mapping_frontend_survives_generated_module_size_chirho() {
     use crate::{
-        ImportedTypeSynonymsChirho, merge_stdlib_frontend_artifacts_chirho,
-        read_haskell_source_file_chirho, run_frontend_with_type_synonyms_and_type_families_chirho,
+        merge_stdlib_frontend_artifacts_chirho, read_haskell_source_file_chirho,
+        run_frontend_with_type_synonyms_and_type_families_chirho,
         seed_builtin_type_families_chirho, source_imports_stdlib_chirho,
+        ImportedTypeSynonymsChirho,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -5903,22 +5916,16 @@ executable hello-app
         result_chirho.executables_chirho[0].compilation_order_chirho,
         vec!["Lib".to_string(), "Main".to_string()]
     );
-    assert!(
-        !result_chirho.executables_chirho[0]
-            .core_chirho
-            .bindings_chirho
-            .is_empty()
-    );
-    assert!(
-        result_chirho.executables_chirho[0]
-            .llvm_ir_chirho
-            .contains("define i32 @main()")
-    );
-    assert!(
-        result_chirho.executables_chirho[0]
-            .llvm_ir_chirho
-            .contains("@haskelujah_main")
-    );
+    assert!(!result_chirho.executables_chirho[0]
+        .core_chirho
+        .bindings_chirho
+        .is_empty());
+    assert!(result_chirho.executables_chirho[0]
+        .llvm_ir_chirho
+        .contains("define i32 @main()"));
+    assert!(result_chirho.executables_chirho[0]
+        .llvm_ir_chirho
+        .contains("@haskelujah_main"));
 
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
 }
@@ -5927,7 +5934,7 @@ executable hello-app
 fn cabal_project_cranelift_dedups_duplicate_prelude_bindings_chirho() {
     use crate::build_cabal_project_chirho;
     use haskelujah_backend_cranelift_chirho::{
-        TargetConfigChirho, compile_core_to_object_executable_chirho,
+        compile_core_to_object_executable_chirho, TargetConfigChirho,
     };
     use std::io::Write;
 
@@ -9575,9 +9582,9 @@ main = do
 #[test]
 fn frontend_hashable_ffi_exports_seed_qualified_io_results_chirho() {
     use crate::{
-        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
         collect_frontend_artifacts_from_module_sources_chirho,
-        scan_dependency_package_ifaces_chirho,
+        scan_dependency_package_ifaces_chirho, ImportedTypeFamiliesChirho,
+        ImportedTypeSynonymsChirho,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -9678,9 +9685,9 @@ fn frontend_constraints_package_regression_chirho() {
 #[test]
 fn frontend_hashable_ffi_pair_typechecks_with_dependency_stubs_chirho() {
     use crate::{
-        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
         collect_frontend_artifacts_from_module_sources_chirho,
         run_frontend_with_type_synonyms_chirho, scan_dependency_package_ifaces_chirho,
+        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -9734,8 +9741,8 @@ fn frontend_hashable_ffi_pair_typechecks_with_dependency_stubs_chirho() {
 #[test]
 fn frontend_hashable_mix_collects_with_stdlib_seed_chirho() {
     use crate::{
-        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
         collect_frontend_artifacts_from_module_sources_chirho, read_haskell_source_file_chirho,
+        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -9774,8 +9781,8 @@ fn frontend_hashable_mix_collects_with_stdlib_seed_chirho() {
 #[test]
 fn frontend_package_local_empty_and_insert_override_builtins_chirho() {
     use crate::{
-        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
-        collect_frontend_artifacts_from_module_sources_chirho,
+        collect_frontend_artifacts_from_module_sources_chirho, ImportedTypeFamiliesChirho,
+        ImportedTypeSynonymsChirho,
     };
     use std::collections::HashMap;
 
@@ -9813,9 +9820,9 @@ fn frontend_package_local_empty_and_insert_override_builtins_chirho() {
 #[test]
 fn frontend_warp_multimap_exports_seed_insert_and_empty_chirho() {
     use crate::{
-        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
         collect_frontend_artifacts_from_module_sources_chirho, read_haskell_source_file_chirho,
-        scan_dependency_package_ifaces_chirho,
+        scan_dependency_package_ifaces_chirho, ImportedTypeFamiliesChirho,
+        ImportedTypeSynonymsChirho,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -9889,9 +9896,9 @@ fn frontend_warp_multimap_exports_seed_insert_and_empty_chirho() {
 #[test]
 fn frontend_warp_fdcache_typechecks_after_multimap_seed_chirho() {
     use crate::{
-        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
         collect_frontend_artifacts_from_module_sources_chirho, read_haskell_source_file_chirho,
-        scan_dependency_package_ifaces_chirho,
+        scan_dependency_package_ifaces_chirho, ImportedTypeFamiliesChirho,
+        ImportedTypeSynonymsChirho,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -9939,10 +9946,10 @@ fn frontend_warp_fdcache_typechecks_after_multimap_seed_chirho() {
 #[test]
 fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
     use crate::{
-        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
         collect_frontend_artifacts_from_module_sources_chirho, read_haskell_source_file_chirho,
         run_frontend_with_type_synonyms_and_type_families_chirho,
-        scan_dependency_package_ifaces_chirho,
+        scan_dependency_package_ifaces_chirho, ImportedTypeFamiliesChirho,
+        ImportedTypeSynonymsChirho,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -9998,12 +10005,12 @@ fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
 #[test]
 fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
     use crate::{
-        ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
         collect_frontend_artifacts_from_module_sources_chirho,
         collect_preferred_qualified_type_names_chirho,
         collect_safe_unqualified_imported_type_names_chirho,
         qualify_imported_scheme_for_iface_chirho, read_haskell_source_file_chirho,
-        scan_dependency_package_ifaces_chirho,
+        scan_dependency_package_ifaces_chirho, ImportedTypeFamiliesChirho,
+        ImportedTypeSynonymsChirho,
     };
     use haskelujah_naming_chirho::iface_chirho::build_iface_with_imports_chirho;
     use haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho;

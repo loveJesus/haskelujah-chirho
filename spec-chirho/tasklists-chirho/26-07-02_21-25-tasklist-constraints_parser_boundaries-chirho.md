@@ -10,4 +10,6 @@
 - [x] Export the GHC.TypeNats `<=?` type-level operator in builtin interfaces.
 - [x] Verify the reduced Nat package compiles and real `constraints` advances.
 - [x] Smoke-test `transformers` and `mtl` after parser changes.
-- [ ] Remaining frontier: Data.Constraint.Nat arithmetic `Dict` proof mismatches around `maxDistributesOverPlus` and `maxDistributesOverTimes`.
+- [x] Fix chained type-operator RHS parsing so Data.Constraint.Nat arithmetic `Dict` proofs do not leak `+`/`*` outside the `Dict` argument.
+- [x] Keep type-level operator aliases such as Data.Constraint.Symbol `type (++)` from shadowing value-level Prelude operators.
+- [ ] Remaining frontier: GH55Spec `xf` as-pattern binding in infix `Num` methods and the `(\\)` entailment chain in `bar`.

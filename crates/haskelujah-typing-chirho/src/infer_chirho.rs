@@ -22,7 +22,7 @@ use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredC
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
-use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
+use crate::unify_chirho::{unify_chirho, UnifyErrorChirho};
 
 /// Error code range for type inference diagnostics.
 const TYPE_MISMATCH_CODE_CHIRHO: u16 = 200;
@@ -5909,21 +5909,15 @@ fn collect_module_shadowed_names_chirho(
             | DeclChirho::TypeSigChirho { name_chirho, .. } => {
                 names_chirho.insert(canonical_value_name_text_chirho(name_chirho.text_chirho()));
             }
-            DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
-            | DeclChirho::ClassDeclChirho { name_chirho, .. } => {
-                names_chirho.insert(name_chirho.text_chirho().to_string());
-            }
             DeclChirho::PatBindChirho { pat_chirho, .. } => {
                 for name_chirho in crate::linearity_chirho::pat_bound_names_chirho(pat_chirho) {
                     names_chirho.insert(name_chirho);
                 }
             }
             DeclChirho::DataDeclChirho {
-                name_chirho,
                 constructors_chirho,
                 ..
             } => {
-                names_chirho.insert(name_chirho.text_chirho().to_string());
                 for constructor_chirho in constructors_chirho {
                     match constructor_chirho {
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
@@ -5953,36 +5947,31 @@ fn collect_module_shadowed_names_chirho(
                 }
             }
             DeclChirho::NewtypeDeclChirho {
-                name_chirho,
-                constructor_chirho,
-                ..
-            } => {
-                names_chirho.insert(name_chirho.text_chirho().to_string());
-                match constructor_chirho {
-                    haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
-                        name_chirho,
-                        ..
-                    }
-                    | haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
-                        name_chirho,
-                        ..
-                    } => {
-                        names_chirho.insert(name_chirho.text_chirho().to_string());
-                    }
-                    haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
-                        name_chirho,
-                        fields_chirho,
-                        ..
-                    } => {
-                        names_chirho.insert(name_chirho.text_chirho().to_string());
-                        for field_decl_chirho in fields_chirho {
-                            for field_name_chirho in &field_decl_chirho.names_chirho {
-                                names_chirho.insert(field_name_chirho.text_chirho().to_string());
-                            }
+                constructor_chirho, ..
+            } => match constructor_chirho {
+                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
+                    name_chirho,
+                    ..
+                }
+                | haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
+                    name_chirho,
+                    ..
+                } => {
+                    names_chirho.insert(name_chirho.text_chirho().to_string());
+                }
+                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
+                    name_chirho,
+                    fields_chirho,
+                    ..
+                } => {
+                    names_chirho.insert(name_chirho.text_chirho().to_string());
+                    for field_decl_chirho in fields_chirho {
+                        for field_name_chirho in &field_decl_chirho.names_chirho {
+                            names_chirho.insert(field_name_chirho.text_chirho().to_string());
                         }
                     }
                 }
-            }
+            },
             _ => {}
         }
     }
@@ -19747,12 +19736,10 @@ mod tests_chirho {
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
         assert!(matches!(final_ty_chirho, TyChirho::VarChirho(_)));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 2);
-        assert!(
-            ctx_chirho
-                .deferred_preds_chirho
-                .iter()
-                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
-        );
+        assert!(ctx_chirho
+            .deferred_preds_chirho
+            .iter()
+            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
     }
 
     #[test]
@@ -19999,12 +19986,10 @@ mod tests_chirho {
                 if matches!(elem_chirho.as_ref(), TyChirho::VarChirho(_))
         ));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 3);
-        assert!(
-            ctx_chirho
-                .deferred_preds_chirho
-                .iter()
-                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
-        );
+        assert!(ctx_chirho
+            .deferred_preds_chirho
+            .iter()
+            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
     }
 
     // -----------------------------------------------------------------------
@@ -20632,11 +20617,9 @@ mod tests_chirho {
             "Class with superclass should not error: {:?}",
             result_chirho.diagnostics_chirho
         );
-        assert!(
-            result_chirho
-                .class_env_chirho
-                .has_class_chirho("MyOrdChirho")
-        );
+        assert!(result_chirho
+            .class_env_chirho
+            .has_class_chirho("MyOrdChirho"));
         let supers_chirho = result_chirho
             .class_env_chirho
             .superclasses_chirho("MyOrdChirho");
