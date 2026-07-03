@@ -30,6 +30,8 @@ use haskelujah_rts_chirho::{pack_native_header_chirho, ObjectKindChirho};
 
 const BOXED_CONSTRUCTOR_TAG_MASK_CHIRHO: i64 = 1;
 const BOXED_CONSTRUCTOR_PTR_MASK_CHIRHO: i64 = !1_i64;
+const NATIVE_OBJECT_HEADER_PTR_MASK_CHIRHO: i64 = !0b11_i64;
+const NATIVE_FUNCTION_HEADER_KIND_CHIRHO: i64 = 0b01;
 
 /// LLVM IR generation context.
 pub struct LlvmCodegenChirho {
@@ -2900,10 +2902,16 @@ impl LlvmCodegenChirho {
         writeln!(self.output_chirho, "{boxed_label_chirho}:").unwrap();
         let closure_fun_bits_tmp_chirho =
             self.load_boxed_constructor_field_chirho(fun_val_chirho, 0);
+        let closure_entry_bits_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {closure_entry_bits_tmp_chirho} = and i64 {closure_fun_bits_tmp_chirho}, {NATIVE_OBJECT_HEADER_PTR_MASK_CHIRHO}"
+        )
+        .unwrap();
         let closure_fun_ptr_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
             self.output_chirho,
-            "  {closure_fun_ptr_tmp_chirho} = inttoptr i64 {closure_fun_bits_tmp_chirho} to ptr"
+            "  {closure_fun_ptr_tmp_chirho} = inttoptr i64 {closure_entry_bits_tmp_chirho} to ptr"
         )
         .unwrap();
         let closure_result_tmp_chirho = self.fresh_tmp_chirho();
@@ -3171,6 +3179,12 @@ impl LlvmCodegenChirho {
             "  {fun_bits_tmp_chirho} = ptrtoint ptr @{lifted_name_chirho} to i64"
         )
         .unwrap();
+        let fun_header_tmp_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {fun_header_tmp_chirho} = or i64 {fun_bits_tmp_chirho}, {NATIVE_FUNCTION_HEADER_KIND_CHIRHO}"
+        )
+        .unwrap();
         let fun_slot_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
             self.output_chirho,
@@ -3179,7 +3193,7 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(
             self.output_chirho,
-            "  store i64 {fun_bits_tmp_chirho}, ptr {fun_slot_tmp_chirho}"
+            "  store i64 {fun_header_tmp_chirho}, ptr {fun_slot_tmp_chirho}"
         )
         .unwrap();
         for (capture_idx_chirho, capture_value_chirho) in captured_vals_chirho.iter().enumerate() {
