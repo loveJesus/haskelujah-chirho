@@ -10962,6 +10962,36 @@ impl DictPassCtxChirho {
             });
         }
 
+        // show :: a -> String
+        // Fallback for cases where dict selection cannot prove a concrete Show
+        // key. showInt# delegates to universal runtime showing for mismatched
+        // or heap values, matching the existing print fallback below.
+        {
+            let id_chirho = self.resolve_or_fresh_id_chirho("show");
+            let x_chirho = self.fresh_binder_chirho("x", any_ty_chirho.clone());
+            let rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: x_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "showInt#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
+                }),
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: "show".to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        any_ty_chirho.clone(),
+                        TyChirho::string_chirho(),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
         // print :: a -> IO ()
         // Simplified: print x = putStrLn (show x)
         // Uses showInt# as default; the dict pass handles type-specific dispatch

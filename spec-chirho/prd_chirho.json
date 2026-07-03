@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.73",
+    "prd_version_chirho": "2.2.74",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -84,7 +84,8 @@
       "gpt_chirho (Codex) — parser recovery for unseparated type alias/signature boundaries and closed type-family kind-annotated headers; constraints advances past Forall1 and TypeNats <=? to Data.Constraint.Nat arithmetic Dict proof mismatches v2.2.70",
       "gpt_chirho (Codex) — chained type-operator RHS parsing and value/type namespace shadow separation; constraints advances through Data.Constraint.Nat arithmetic proofs and Symbol (++) to GH55Spec v2.2.71",
       "gpt_chirho (Codex) — GH55Spec symbolic minus instance methods now keep as-pattern binders; constraints remaining frontier is proof-driven (\\\\) entailment/coercion in bar v2.2.72",
-      "gpt_chirho (Codex) — imported symbolic constructor exports, qualified scheme propagation, and named visible type application close the constraints GH55Spec (\\\\) entailment frontier v2.2.73"
+      "gpt_chirho (Codex) — imported symbolic constructor exports, qualified scheme propagation, and named visible type application close the constraints GH55Spec (\\\\) entailment frontier v2.2.73",
+      "gpt_chirho (Codex) — body-backed Prelude show fallback resolves current IORef/STM missing-STG-show representatives while preserving 70/70 probe v2.2.74"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -136,18 +137,17 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-03",
-      "scope_chirho": "constraints GH55Spec imported `(\\\\)` entailment frontier.",
+      "scope_chirho": "post-b520 IORef/STM missing `show` representative failures.",
       "commands_chirho": [
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib lower_export_list_operator_tycon_all_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-naming --lib export_parenthesized_operator_type_with_constructor_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-typing --lib visible_type_application -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_conditional_instance_chirho -- --test-threads=1 (expected design-gated red)",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_do_multi_print_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_ioref_write_read_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_stm_new_read_tvar_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib eval_ioref_ -- --test-threads=1 (exploratory adjacent sweep: 5 pass / 5 residual arithmetic-PAP failures)",
         "timeout 240 env CARGO_BUILD_JOBS=2 cargo build -j2 --bin haskelujah",
-        "timeout 180 target/debug/haskelujah build /tmp/gh55-mini-import-chirho/",
-        "timeout 180 target/debug/haskelujah build .haskelujah-packages-chirho/constraints-0.14.4/",
-        "timeout 180 target/debug/haskelujah build .haskelujah-packages-chirho/transformers-0.6.3.0/",
-        "timeout 180 target/debug/haskelujah build .haskelujah-packages-chirho/mtl-2.3.2/"
+        "B=./target/debug/haskelujah timeout 240 bash .../scratchpad/probe_chirho.sh"
       ],
-      "result_chirho": "Parenthesized symbolic type-constructor exports such as `(:-)(..)` now lower and filter through interface exports as TyCon exports, package builds propagate exported schemes through the canonical helper, and named visible type application instantiates imported schemes with explicit type arguments and scoped type variables. The reduced imported-evidence package compiles, the real constraints-0.14.4 package builds successfully, and transformers/mtl still compile."
+      "result_chirho": "The conditional list-headed user-class test is confirmed design-gated: it fails as `Describable [Integer]` and would require non-GHC user-class literal defaulting to Int, so no leniency was landed. Current post-b520 representatives have shifted from literal-0 failures: `eval_do_multi_print_chirho` is green, while IORef/STM show cases failed as loud missing STG binding `show`. A generated Prelude `show = \\x -> showInt# x` fallback now gives unresolved `show` the same universal runtime-show path already used by `print`; `eval_ioref_write_read_chirho` and `eval_stm_new_read_tvar_chirho` pass, and the fresh 70-case probe remains PASS=70 FAIL=0. Adjacent IORef arithmetic/PAP tests still expose separate unresolved `+` / closure-application residuals."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1213,7 +1213,7 @@
           "tests_chirho::eval_io_chirho::eval_stm_new_read_tvar_chirho",
           "tests_chirho::compile_chirho::llvm_round_trip_get_line_output_chirho"
         ],
-        "notes_chirho": "driver_lib_tests_post_b5203335.log is complete: 1569 passed / 117 failed of 1686 (baseline 1609/73 of 1682). Delta: 1 flipped green (llvm_round_trip_comprehensive_demo_chirho); 45 flipped red, ALL of which passed at baseline (verified none are new tests); 4 brand-new tests added by b5203335 all pass (eval_io_bind_unchanged/eval_maybe_do_dispatch/eval_monad_bind_dispatch/eval_monad_then_dispatch_chirho). Signature split of the 45: 33x runtime 'type error: cannot apply arguments to literal 0#' (raised at crates/haskelujah-runtime-chirho/src/eval_chirho.rs:1288) across IO do-chains (getLine, IORef, STM, putStr, interact, throw/catch, mapM/forM); 4x 'no matching alternative for tag' (eval_do_getline_bind, eval_ioref_write_overwrite, eval_stm_write_read_tvar, prelude_list_expanded); 8x compiled-backend round-trip wrong output (5 LLVM IO tests + 3 cranelift). b5203335 'dispatch monadic binds without breaking IO fallback' touched desugar_chirho.rs (do-notation), dict_chirho/rewrite_chirho.rs, runtime eval_chirho.rs — IO binds got dispatched into a wrong monad dict whose method slots are literal-0 placeholders. Follow-up 29d9f262 'strict monad-dispatch keys — stop IO chains entering the list monad' targets exactly this; its driver-lib log (driver_lib_tests_post_29d9f262.log) is INCOMPLETE (no final 'test result:' line) at audit time, but probe_post_b5203335.log and probe_strictkey.log both read PASS=70 FAIL=0 (baseline probe maybe-do AddIntChirho failure flipped green)."
+        "notes_chirho": "driver_lib_tests_post_b5203335.log is complete: 1569 passed / 117 failed of 1686 (baseline 1609/73 of 1682). Delta: 1 flipped green (llvm_round_trip_comprehensive_demo_chirho); 45 flipped red, ALL of which passed at baseline (verified none are new tests); 4 brand-new tests added by b5203335 all pass (eval_io_bind_unchanged/eval_maybe_do_dispatch/eval_monad_bind_dispatch/eval_monad_then_dispatch_chirho). Signature split of the 45: 33x runtime 'type error: cannot apply arguments to literal 0#' (raised at crates/haskelujah-runtime-chirho/src/eval_chirho.rs:1288) across IO do-chains (getLine, IORef, STM, putStr, interact, throw/catch, mapM/forM); 4x 'no matching alternative for tag' (eval_do_getline_bind, eval_ioref_write_overwrite, eval_stm_write_read_tvar, prelude_list_expanded); 8x compiled-backend round-trip wrong output (5 LLVM IO tests + 3 cranelift). b5203335 'dispatch monadic binds without breaking IO fallback' touched desugar_chirho.rs (do-notation), dict_chirho/rewrite_chirho.rs, runtime eval_chirho.rs — IO binds got dispatched into a wrong monad dict whose method slots are literal-0 placeholders. Follow-up 29d9f262 'strict monad-dispatch keys — stop IO chains entering the list monad' targets exactly this; its driver-lib log (driver_lib_tests_post_29d9f262.log) is INCOMPLETE (no final 'test result:' line) at audit time, but probe_post_b5203335.log and probe_strictkey.log both read PASS=70 FAIL=0 (baseline probe maybe-do AddIntChirho failure flipped green). Current v2.2.74 targeted recheck: `eval_do_multi_print_chirho` is now green; `eval_ioref_write_read_chirho` and `eval_stm_new_read_tvar_chirho` had become loud `missing STG binding show` failures after missing-global loudness, and are fixed by a body-backed generated Prelude `show` fallback using `showInt#`. A 10-test exploratory IORef sweep is 5/10: read/show/write-overwrite cases pass, while multiple-ref/modify/counter cases still fail on unresolved `+` or unapplied function PAPs, so those remain separate dict/STG residuals."
       },
       {
         "bucket_chirho": "map-builtin-mistyping",
