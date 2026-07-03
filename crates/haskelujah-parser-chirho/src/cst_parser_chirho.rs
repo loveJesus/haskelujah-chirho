@@ -1801,7 +1801,14 @@ impl<'src> ParserChirho<'src> {
                 == RawTokenKindChirho::VarSymChirho
         {
             let op_text_chirho = self.token_text_chirho(&self.tokens_chirho[lookahead_idx_chirho]);
-            if op_text_chirho == "!" || op_text_chirho == "-" {
+            let head_continues_as_pattern_chirho = self
+                .tokens_chirho
+                .get(self.skip_trivia_idx_chirho(self.pos_chirho + 1))
+                .is_some_and(|token_chirho| {
+                    token_chirho.kind_chirho == RawTokenKindChirho::AtChirho
+                });
+            if (op_text_chirho == "!" || op_text_chirho == "-") && !head_continues_as_pattern_chirho
+            {
                 // Prefer prefix function bindings with bang / negated argument
                 // patterns (e.g. `f !x !y = ...`, `g -1 y = ...`) over the rare
                 // bare infix declaration shape `x ! y = ...`.

@@ -10950,6 +10950,65 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
     }
 
     #[test]
+    fn lower_symbolic_minus_instance_method_with_as_pattern_lhs_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\ndata GFChirho = GFChirho Int\nclass MinusLikeChirho aChirho where\n  (-) :: aChirho -> aChirho -> aChirho\ninstance MinusLikeChirho GFChirho where\n  xChirho@(GFChirho aChirho) - GFChirho bChirho = xChirho\n",
+        );
+        let inst_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
+            .expect("expected instance declaration");
+        match inst_decl_chirho {
+            DeclChirho::InstanceDeclChirho { methods_chirho, .. } => {
+                assert_eq!(methods_chirho.len(), 1);
+                match &methods_chirho[0] {
+                    LocalBindChirho::FunBindChirho {
+                        name_chirho,
+                        matches_chirho,
+                        ..
+                    } => {
+                        assert_eq!(name_chirho.text_chirho(), "-");
+                        assert_eq!(matches_chirho.len(), 1);
+                        assert_eq!(matches_chirho[0].pats_chirho.len(), 2);
+                        match &matches_chirho[0].pats_chirho[0] {
+                            PatChirho::AsChirho {
+                                name_chirho,
+                                pattern_chirho,
+                                ..
+                            } => {
+                                assert_eq!(name_chirho.text_chirho(), "xChirho");
+                                assert!(
+                                    matches!(
+                                        pattern_chirho.as_ref(),
+                                        PatChirho::ParenChirho { inner_chirho, .. }
+                                            if matches!(
+                                                inner_chirho.as_ref(),
+                                                PatChirho::ConChirho { con_chirho, args_chirho, .. }
+                                                    if con_chirho.text_chirho() == "GFChirho"
+                                                        && args_chirho.len() == 1
+                                            )
+                                    ),
+                                    "expected as-pattern over parenthesized constructor pattern, got {:?}",
+                                    pattern_chirho
+                                );
+                            }
+                            other_chirho => panic!(
+                                "expected lhs to lower as an as-pattern, got {:?}",
+                                other_chirho
+                            ),
+                        }
+                    }
+                    other_chirho => {
+                        panic!("expected instance method funbind, got {:?}", other_chirho)
+                    }
+                }
+            }
+            other_chirho => panic!("expected instance declaration, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
     fn lower_symbolic_infix_fun_bind_with_var_operands_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "module M where\ninfixr 0 ~:\n(~:) :: [Char] -> Int -> ([Char], Int)\nlabelChirho ~: valueChirho = (labelChirho, valueChirho)\n",

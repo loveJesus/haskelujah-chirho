@@ -12,4 +12,5 @@
 - [x] Smoke-test `transformers` and `mtl` after parser changes.
 - [x] Fix chained type-operator RHS parsing so Data.Constraint.Nat arithmetic `Dict` proofs do not leak `+`/`*` outside the `Dict` argument.
 - [x] Keep type-level operator aliases such as Data.Constraint.Symbol `type (++)` from shadowing value-level Prelude operators.
-- [ ] Remaining frontier: GH55Spec `xf` as-pattern binding in infix `Num` methods and the `(\\)` entailment chain in `bar`.
+- [x] Fix GH55Spec `xf` as-pattern binding in symbolic infix `Num` methods.
+- [ ] Remaining frontier: GH55Spec proof-driven `(\\)` entailment/coercion chain in `bar`.
