@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.72",
+    "prd_version_chirho": "2.2.73",
     "date_chirho": "2026-07-02",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -83,7 +83,8 @@
       "gpt_chirho (Codex) — Data.Constraint.Forall class-head kind annotations no longer collect annotation-only kind variables as class parameters; reduced constraints package compiles and real constraints advances past ForallF/ForallT to a later Forall1/ForallV kind frontier v2.2.69",
       "gpt_chirho (Codex) — parser recovery for unseparated type alias/signature boundaries and closed type-family kind-annotated headers; constraints advances past Forall1 and TypeNats <=? to Data.Constraint.Nat arithmetic Dict proof mismatches v2.2.70",
       "gpt_chirho (Codex) — chained type-operator RHS parsing and value/type namespace shadow separation; constraints advances through Data.Constraint.Nat arithmetic proofs and Symbol (++) to GH55Spec v2.2.71",
-      "gpt_chirho (Codex) — GH55Spec symbolic minus instance methods now keep as-pattern binders; constraints remaining frontier is proof-driven (\\\\) entailment/coercion in bar v2.2.72"
+      "gpt_chirho (Codex) — GH55Spec symbolic minus instance methods now keep as-pattern binders; constraints remaining frontier is proof-driven (\\\\) entailment/coercion in bar v2.2.72",
+      "gpt_chirho (Codex) — imported symbolic constructor exports, qualified scheme propagation, and named visible type application close the constraints GH55Spec (\\\\) entailment frontier v2.2.73"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -135,18 +136,18 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-03",
-      "scope_chirho": "Data.Constraint.Nat/Symbol frontier advancement.",
+      "scope_chirho": "constraints GH55Spec imported `(\\\\)` entailment frontier.",
       "commands_chirho": [
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib lower_type_operator_chain_stays_inside_dict_argument_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-driver --lib frontend_type_operator_alias_does_not_shadow_value_operator_chirho -- --test-threads=1",
-        "timeout 180 env CARGO_BUILD_JOBS=2 cargo build -j2 --bin haskelujah",
-        "timeout 120 target/debug/haskelujah build /tmp/constraints-nat-arith-chirho/",
-        "timeout 60 target/debug/haskelujah check /tmp/test-plusplus-shadow-chirho.hs",
-        "timeout 180 target/debug/haskelujah build .haskelujah-packages-chirho/constraints-0.14.4/ (expected red frontier)",
-        "timeout 120 target/debug/haskelujah build .haskelujah-packages-chirho/transformers-0.6.3.0/",
-        "timeout 120 target/debug/haskelujah build .haskelujah-packages-chirho/mtl-2.3.2/"
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-parser --lib lower_export_list_operator_tycon_all_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-naming --lib export_parenthesized_operator_type_with_constructor_chirho -- --test-threads=1",
+        "timeout 180 env CARGO_BUILD_JOBS=2 cargo test -p haskelujah-typing --lib visible_type_application -- --test-threads=1",
+        "timeout 240 env CARGO_BUILD_JOBS=2 cargo build -j2 --bin haskelujah",
+        "timeout 180 target/debug/haskelujah build /tmp/gh55-mini-import-chirho/",
+        "timeout 180 target/debug/haskelujah build .haskelujah-packages-chirho/constraints-0.14.4/",
+        "timeout 180 target/debug/haskelujah build .haskelujah-packages-chirho/transformers-0.6.3.0/",
+        "timeout 180 target/debug/haskelujah build .haskelujah-packages-chirho/mtl-2.3.2/"
       ],
-      "result_chirho": "Type-operator RHS parsing now consumes chained type operators under the current RHS without swallowing `->`/`=>`, so `Dict ((n * (m + o)) ~ (n * m + n * o))` stays a one-argument `Dict` proof instead of leaking `+` outside the `Dict` application. Value-environment shadow pruning now respects Haskell namespaces: local type aliases/classes/type constructors no longer remove same-spelled Prelude values, so a type-level `(++)` alias in Data.Constraint.Symbol does not hide value-level `(++)`. The arithmetic reducer and `(++)` shadow reducer compile, transformers and mtl still compile, and the real constraints package advances through Data.Constraint.Nat/Symbol to GH55Spec (`xf` as-pattern in infix Num methods plus constraints `(\\\\)` entailment frontier)."
+      "result_chirho": "Parenthesized symbolic type-constructor exports such as `(:-)(..)` now lower and filter through interface exports as TyCon exports, package builds propagate exported schemes through the canonical helper, and named visible type application instantiates imported schemes with explicit type arguments and scoped type variables. The reduced imported-evidence package compiles, the real constraints-0.14.4 package builds successfully, and transformers/mtl still compile."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -1291,14 +1292,14 @@
       },
       {
         "bucket_chirho": "frontend-typing-one-offs",
-        "count_chirho": 1,
-        "resolved_chirho": "4 of 5 RESOLVED. v2.2.49/c815ef17 resolved the nested WriterT `$`/callCC `mempty` E0202 case as a Rust string-continuation layout artifact in `frontend_writer_t_nested_dollar_callcc_chirho`. v2.2.51 resolved `frontend_instance_methods_stay_nested_chirho` as an invalid fixture: after unwrapping `ExceptT`, inner `mzipWith` operates on `m (Either e a)`/`m (Either e b)`, so the method body must use `mzipWith (liftA2 fChirho) aChirho bChirho`, matching the already-passing complex sibling. v2.2.52 resolved `iface_data_typeable_rnf_exports_chirho` as a fixture mismatch with the current poly-kinded `TypeRep :: k -> *` model; `g :: TypeRep a -> ()` preserves the export check without weakening kind inference. v2.2.63 resolved `frontend_th_abstraction_style_local_sig_in_instance_typechecks_chirho`: `(\\\\)` was lexed as lambda/backslash tokens and then lacked a Data.List export/type scheme; it now lexes as `VarSymChirho` when followed by a symbol and resolves as `Eq a => [a] -> [a] -> [a]`. v2.2.66 advanced the real constraints package through three shallow frontiers: Test.Hspec module/scheme stubs, GHC.TypeLits charVal/KnownChar, and Data.Typeable proxy-argument typeRep. v2.2.68 landed prerequisite fixes for the remaining Data.Constraint.Forall frontier: local poly-kinded constructors instantiate per use and infix type-operator lowering keeps left application spines such as `ForallF p f`. v2.2.69 fixed class-head kind annotation lowering so annotation-only kind variables are not collected as real class parameters; the reduced ForallF/ForallT constraints package now compiles. v2.2.70 fixed two parser-boundary leaks: `Forall1`/`inst1` no longer overrun after nested case expressions, and closed type-family headers with kind-annotated parameters no longer split into value bindings. v2.2.71 fixed chained type-operator RHS parsing for arithmetic Dict proofs and value/type namespace shadow pruning for the Data.Constraint.Symbol type-level `(++)` alias. v2.2.72 fixed GH55Spec symbolic `(-)` instance methods whose left operand is an as-pattern, so `xf@(GF a) - GF b = ...` now binds `xf` correctly.",
+        "count_chirho": 0,
+        "resolved_chirho": "5 of 5 RESOLVED. v2.2.49/c815ef17 resolved the nested WriterT `$`/callCC `mempty` E0202 case as a Rust string-continuation layout artifact in `frontend_writer_t_nested_dollar_callcc_chirho`. v2.2.51 resolved `frontend_instance_methods_stay_nested_chirho` as an invalid fixture: after unwrapping `ExceptT`, inner `mzipWith` operates on `m (Either e a)`/`m (Either e b)`, so the method body must use `mzipWith (liftA2 fChirho) aChirho bChirho`, matching the already-passing complex sibling. v2.2.52 resolved `iface_data_typeable_rnf_exports_chirho` as a fixture mismatch with the current poly-kinded `TypeRep :: k -> *` model; `g :: TypeRep a -> ()` preserves the export check without weakening kind inference. v2.2.63 resolved `frontend_th_abstraction_style_local_sig_in_instance_typechecks_chirho`: `(\\\\)` was lexed as lambda/backslash tokens and then lacked a Data.List export/type scheme; it now lexes as `VarSymChirho` when followed by a symbol and resolves as `Eq a => [a] -> [a] -> [a]`. v2.2.66 advanced the real constraints package through three shallow frontiers: Test.Hspec module/scheme stubs, GHC.TypeLits charVal/KnownChar, and Data.Typeable proxy-argument typeRep. v2.2.68 landed prerequisite fixes for the remaining Data.Constraint.Forall frontier: local poly-kinded constructors instantiate per use and infix type-operator lowering keeps left application spines such as `ForallF p f`. v2.2.69 fixed class-head kind annotation lowering so annotation-only kind variables are not collected as real class parameters; the reduced ForallF/ForallT constraints package now compiles. v2.2.70 fixed two parser-boundary leaks: `Forall1`/`inst1` no longer overrun after nested case expressions, and closed type-family headers with kind-annotated parameters no longer split into value bindings. v2.2.71 fixed chained type-operator RHS parsing for arithmetic Dict proofs and value/type namespace shadow pruning for the Data.Constraint.Symbol type-level `(++)` alias. v2.2.72 fixed GH55Spec symbolic `(-)` instance methods whose left operand is an as-pattern, so `xf@(GF a) - GF b = ...` now binds `xf` correctly. v2.2.73 closed the final GH55Spec frontier: imported `(:-)(..)` now exports the `Sub` constructor as a type-constructor member, module builds carry canonical exported schemes forward, and named visible type application specializes imported evidence constructors/functions like `Sub @()` and `lcmIsIdempotent @m` instead of falling back to placeholder types.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "typing",
         "representative_tests_chirho": [
           "tests_chirho::compile_chirho::frontend_constraints_package_regression_chirho"
         ],
-        "notes_chirho": "Remaining real package frontier: GH55Spec now fails in the constraints test-suite module only at the proof-driven `(\\\\)` entailment/coercion chain in `bar`, where `foo a b - foo b a` needs the `lcmIsIdempotent` / `lcmNat` evidence to type as `GF m`. The older Test.Hspec module-not-found, Hspec Spec/return mismatch, charVal unbound, Data.Typeable.typeRep proxy mismatch, local poly-kind constructor monomorphization, infix type-operator left-spine dropping, class-head kind annotation arity inflation, Forall1 alias/signature overrun, `<=?` unbound closed-family leak, Data.Constraint.Nat arithmetic Dict leak, Data.Constraint.Symbol `(++)` value shadowing, and GH55Spec `xf` as-pattern unbound failure are no longer the active frontier."
+        "notes_chirho": "RESOLVED: constraints-0.14.4 now compiles. The former Test.Hspec, TypeLits, Typeable, Forall, TypeNats, Nat arithmetic Dict, Symbol `(++)`, GH55Spec `xf`, and GH55Spec `(\\\\)` entailment frontiers are no longer active."
       },
       {
         "bucket_chirho": "stg-eval-thunk-forcing",

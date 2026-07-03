@@ -15,19 +15,19 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use haskelujah_ast_chirho::ModuleChirho;
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
-use haskelujah_ast_chirho::ModuleChirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_chirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_chirho;
 use haskelujah_backend_wasm_chirho::compile_to_wasm_stub_chirho;
 use haskelujah_core_chirho::{
-    desugar_module_chirho, simplify_module_chirho, CoreModuleChirho, SimplifyConfigChirho,
+    CoreModuleChirho, SimplifyConfigChirho, desugar_module_chirho, simplify_module_chirho,
 };
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
-use haskelujah_naming_chirho::iface_chirho::{build_iface_with_imports_chirho, ModuleIfaceChirho};
+use haskelujah_naming_chirho::iface_chirho::{ModuleIfaceChirho, build_iface_with_imports_chirho};
 use haskelujah_naming_chirho::resolve_chirho::resolve_module_with_imports_chirho;
 use haskelujah_parser_chirho::cst_parser_chirho::ParserChirho;
 use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
@@ -35,8 +35,8 @@ use haskelujah_runtime_chirho::{ExecutionModeChirho, RuntimePlanChirho};
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 use haskelujah_typing_chirho::infer_chirho::{
-    infer_module_chirho, infer_module_with_imports_type_synonyms_families_and_class_env_chirho,
-    InferResultChirho, TypeFamilyEnvChirho,
+    InferResultChirho, TypeFamilyEnvChirho, infer_module_chirho,
+    infer_module_with_imports_type_synonyms_families_and_class_env_chirho,
 };
 
 type ImportedTypeSynonymsChirho = std::collections::HashMap<String, (Vec<String>, TypeChirho)>;
@@ -587,8 +587,8 @@ fn insert_cpp_package_version_chirho(
     }
 }
 
-fn seed_cpp_package_versions_chirho(
-) -> std::collections::BTreeMap<String, haskelujah_package_chirho::VersionChirho> {
+fn seed_cpp_package_versions_chirho()
+-> std::collections::BTreeMap<String, haskelujah_package_chirho::VersionChirho> {
     let mut package_versions_chirho = std::collections::BTreeMap::new();
     for (package_name_chirho, version_text_chirho) in [
         ("base", "4.14.0"),
@@ -3066,14 +3066,14 @@ fn compile_backend_chirho(
     }
     let dict_result_chirho =
         haskelujah_core_chirho::dict_pass_module_full_with_extra_dict_param_names_chirho(
-        &desugar_output_chirho.module_chirho,
-        desugar_output_chirho.names_chirho,
-        &infer_result_chirho.env_chirho,
-        &infer_result_chirho.class_env_chirho,
-        con_types_chirho,
-        newtype_info_chirho,
-        extra_dict_param_names_chirho,
-    );
+            &desugar_output_chirho.module_chirho,
+            desugar_output_chirho.names_chirho,
+            &infer_result_chirho.env_chirho,
+            &infer_result_chirho.class_env_chirho,
+            con_types_chirho,
+            newtype_info_chirho,
+            extra_dict_param_names_chirho,
+        );
     let core_chirho = dict_result_chirho.module_chirho;
 
     // Phase 6: Core-to-Core simplification (beta reduction, dead code, case-of-known)
@@ -4313,15 +4313,14 @@ pub fn compile_project_dir_chirho(
             let extra_dict_param_names_chirho: std::collections::HashSet<String> =
                 imported_types_chirho.keys().cloned().collect();
 
-            // Accumulate exported type schemes
-            for (name_chirho, val_chirho) in &iface_chirho.exports_chirho.values_chirho {
-                if let Some(scheme_chirho) =
-                    infer_result_chirho.env_chirho.lookup_chirho(name_chirho)
-                {
-                    imported_types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
-                }
-                let _ = val_chirho;
-            }
+            // Carry both bare and module-qualified export names forward so
+            // downstream package modules can resolve imported signatures without
+            // falling back to polymorphic placeholders.
+            insert_exported_schemes_into_imports_chirho(
+                &iface_chirho,
+                &infer_result_chirho,
+                &mut imported_types_chirho,
+            );
 
             imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
                 &module_chirho,
@@ -4338,9 +4337,9 @@ pub fn compile_project_dir_chirho(
                 infer_result_chirho,
                 extra_dict_param_names_chirho,
             )
-                .map_err(|e_chirho| {
-                    format!("Backend error for {}: {}", module_name_chirho, e_chirho)
-                })?;
+            .map_err(|e_chirho| {
+                format!("Backend error for {}: {}", module_name_chirho, e_chirho)
+            })?;
 
             results_chirho.push(compile_result_chirho);
             order_chirho.push(module_name_chirho.clone());
@@ -5511,9 +5510,9 @@ fn compile_module_sources_with_extra_ifaces_chirho(
                 infer_result_chirho,
                 extra_dict_param_names_chirho,
             )
-                .map_err(|e_chirho| {
-                    format!("Backend error for {}: {}", module_name_chirho, e_chirho)
-                })?;
+            .map_err(|e_chirho| {
+                format!("Backend error for {}: {}", module_name_chirho, e_chirho)
+            })?;
 
             results_chirho.push(compile_result_chirho);
             order_chirho.push(module_name_chirho.clone());

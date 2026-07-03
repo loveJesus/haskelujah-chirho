@@ -612,9 +612,16 @@ impl LowerCtxChirho {
             self.name_from_text_chirho(&text_chirho, span_chirho)
         };
 
+        let symbolic_member_export_chirho = !is_con_chirho
+            && has_parens_chirho
+            && (has_dotdot_chirho || !members_chirho.is_empty())
+            && text_chirho
+                .chars()
+                .all(|char_chirho| !char_chirho.is_alphanumeric() && char_chirho != '_');
+
         if is_module_reexport_chirho {
             Some(ExportSpecChirho::ModuleChirho(name_chirho))
-        } else if is_con_chirho && has_parens_chirho {
+        } else if (is_con_chirho && has_parens_chirho) || symbolic_member_export_chirho {
             let members_spec_chirho = if has_dotdot_chirho {
                 ExportMembersChirho::AllChirho
             } else if members_chirho.is_empty() {
@@ -12828,7 +12835,10 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                                             assert_eq!(name_chirho.text_chirho(), "a");
                                         }
                                         other_chirho => {
-                                            panic!("expected annotated argument to lower to `a`, got {:?}", other_chirho)
+                                            panic!(
+                                                "expected annotated argument to lower to `a`, got {:?}",
+                                                other_chirho
+                                            )
                                         }
                                     }
                                 }
@@ -13001,25 +13011,26 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
             })
             .expect("expected fooChirho type signature");
         match sig_chirho {
-            TypeChirho::FunChirho { arg_chirho, .. } => match arg_chirho.as_ref() {
-                TypeChirho::AppChirho {
-                    fun_chirho,
-                    arg_chirho,
-                    ..
-                } => {
-                    match fun_chirho.as_ref() {
-                        TypeChirho::AppChirho {
-                            fun_chirho,
-                            arg_chirho,
-                            ..
-                        } => {
-                            match fun_chirho.as_ref() {
-                                TypeChirho::AppChirho {
-                                    fun_chirho,
-                                    arg_chirho,
-                                    ..
-                                } => {
-                                    match fun_chirho.as_ref() {
+            TypeChirho::FunChirho { arg_chirho, .. } => {
+                match arg_chirho.as_ref() {
+                    TypeChirho::AppChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    } => {
+                        match fun_chirho.as_ref() {
+                            TypeChirho::AppChirho {
+                                fun_chirho,
+                                arg_chirho,
+                                ..
+                            } => {
+                                match fun_chirho.as_ref() {
+                                    TypeChirho::AppChirho {
+                                        fun_chirho,
+                                        arg_chirho,
+                                        ..
+                                    } => {
+                                        match fun_chirho.as_ref() {
                                             TypeChirho::AppChirho {
                                                 fun_chirho,
                                                 arg_chirho,
@@ -13101,27 +13112,30 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                                                 "expected OverChirho application spine, got {other_chirho:?}"
                                             ),
                                         }
-                                    assert!(matches!(
-                                        arg_chirho.as_ref(),
-                                        TypeChirho::VarChirho(_)
-                                    ));
+                                        assert!(matches!(
+                                            arg_chirho.as_ref(),
+                                            TypeChirho::VarChirho(_)
+                                        ));
+                                    }
+                                    other_chirho => panic!(
+                                        "expected OverChirho application spine, got {other_chirho:?}"
+                                    ),
                                 }
-                                other_chirho => panic!(
-                                    "expected OverChirho application spine, got {other_chirho:?}"
-                                ),
+                                assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
                             }
-                            assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
+                            other_chirho => {
+                                panic!(
+                                    "expected OverChirho application spine, got {other_chirho:?}"
+                                )
+                            }
                         }
-                        other_chirho => {
-                            panic!("expected OverChirho application spine, got {other_chirho:?}")
-                        }
+                        assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
                     }
-                    assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
+                    other_chirho => {
+                        panic!("expected OverChirho application argument, got {other_chirho:?}")
+                    }
                 }
-                other_chirho => {
-                    panic!("expected OverChirho application argument, got {other_chirho:?}")
-                }
-            },
+            }
             other_chirho => panic!("expected function type signature, got {other_chirho:?}"),
         }
     }
@@ -13342,6 +13356,30 @@ data Color = Red | Green | Blue
                 assert_eq!(*members_chirho, ExportMembersChirho::AllChirho);
             }
             other_chirho => panic!("expected TyConChirho, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_export_list_operator_tycon_all_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "module M ((:-)(..)) where
+newtype a :- b = Sub Int
+",
+        );
+        let exports_chirho = module_chirho
+            .exports_chirho
+            .as_ref()
+            .expect("expected an export list");
+        assert_eq!(exports_chirho.len(), 1, "expected 1 export");
+        match &exports_chirho[0] {
+            ExportSpecChirho::TyConChirho {
+                name_chirho,
+                members_chirho,
+            } => {
+                assert_eq!(name_chirho.text_chirho(), ":-");
+                assert_eq!(*members_chirho, ExportMembersChirho::AllChirho);
+            }
+            other_chirho => panic!("expected operator TyConChirho, got {:?}", other_chirho),
         }
     }
 
@@ -14272,52 +14310,53 @@ class Describable a where
             .find(|decl_chirho| matches!(decl_chirho, DeclChirho::TypeAliasDeclChirho { .. }))
             .expect("should have TypeAliasDecl");
         match decl_chirho {
-            DeclChirho::TypeAliasDeclChirho { rhs_chirho, .. } => {
-                match rhs_chirho {
-                    TypeChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
-                        TypeChirho::AppChirho {
-                            fun_chirho,
-                            arg_chirho,
-                            ..
-                        } => {
-                            assert!(
-                                matches!(
-                                    fun_chirho.as_ref(),
-                                    TypeChirho::ParenChirho { .. } | TypeChirho::ConChirho(_)
-                                ),
-                                "expected preserved :~~: prefix head, got {:?}",
-                                fun_chirho
-                            );
-                            match arg_chirho.as_ref() {
-                                TypeChirho::ParenChirho { inner_chirho, .. } => {
-                                    match inner_chirho.as_ref() {
-                                        TypeChirho::VarChirho(name_chirho) => {
-                                            assert_eq!(name_chirho.text_chirho(), "a");
-                                        }
-                                        other_chirho => {
-                                            panic!("expected annotated argument to lower to `a`, got {:?}", other_chirho)
-                                        }
+            DeclChirho::TypeAliasDeclChirho { rhs_chirho, .. } => match rhs_chirho {
+                TypeChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
+                    TypeChirho::AppChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    } => {
+                        assert!(
+                            matches!(
+                                fun_chirho.as_ref(),
+                                TypeChirho::ParenChirho { .. } | TypeChirho::ConChirho(_)
+                            ),
+                            "expected preserved :~~: prefix head, got {:?}",
+                            fun_chirho
+                        );
+                        match arg_chirho.as_ref() {
+                            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                                match inner_chirho.as_ref() {
+                                    TypeChirho::VarChirho(name_chirho) => {
+                                        assert_eq!(name_chirho.text_chirho(), "a");
+                                    }
+                                    other_chirho => {
+                                        panic!(
+                                            "expected annotated argument to lower to `a`, got {:?}",
+                                            other_chirho
+                                        )
                                     }
                                 }
-                                other_chirho => {
-                                    panic!(
-                                        "expected preserved parenthesized argument, got {:?}",
-                                        other_chirho
-                                    )
-                                }
+                            }
+                            other_chirho => {
+                                panic!(
+                                    "expected preserved parenthesized argument, got {:?}",
+                                    other_chirho
+                                )
                             }
                         }
-                        other_chirho => panic!(
+                    }
+                    other_chirho => panic!(
                         "expected prefix application before top-level kind annotation, got {:?}",
                         other_chirho
                     ),
-                    },
-                    other_chirho => panic!(
-                        "expected parenthesized rhs for kind-annotated type, got {:?}",
-                        other_chirho
-                    ),
-                }
-            }
+                },
+                other_chirho => panic!(
+                    "expected parenthesized rhs for kind-annotated type, got {:?}",
+                    other_chirho
+                ),
+            },
             _ => unreachable!(),
         }
     }
