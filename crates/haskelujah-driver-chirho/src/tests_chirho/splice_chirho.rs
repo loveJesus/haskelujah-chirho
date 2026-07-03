@@ -98,6 +98,27 @@ $(makeLenses ''Person)
 }
 
 #[test]
+fn splice_make_lenses_mk_name_in_pipeline_chirho() {
+    let source_chirho = r#"
+module LensTest where
+
+data Person = Person { _name :: String, _age :: Int }
+
+$(makeLenses (mkName "Person"))
+"#;
+
+    let warnings_chirho = frontend_warnings_for_chirho(source_chirho);
+    let has_unrecognized_chirho = warnings_chirho
+        .iter()
+        .any(|w_chirho| w_chirho.contains("not recognized"));
+    assert!(
+        !has_unrecognized_chirho,
+        "makeLenses with mkName should be recognized, got warnings: {:?}",
+        warnings_chirho
+    );
+}
+
+#[test]
 fn splice_derive_json_warning_chirho() {
     // deriveJSON is recognized but not implemented — should produce
     // a specific warning.

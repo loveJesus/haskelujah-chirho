@@ -22,6 +22,7 @@
 
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, FieldDeclChirho};
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
+use haskelujah_ast_chirho::lit_chirho::LitChirho;
 
 use haskelujah_th_chirho::convert_chirho::th_dec_to_ast_chirho;
 use haskelujah_th_chirho::th_ast_chirho::*;
@@ -196,19 +197,55 @@ fn flatten_app_spine_chirho(expr_chirho: &ExprChirho) -> (&ExprChirho, Vec<&Expr
 fn extract_type_name_from_args_chirho(args_chirho: &[&ExprChirho]) -> Option<String> {
     // Walk from the last arg backwards looking for a usable name.
     for arg_chirho in args_chirho.iter().rev() {
-        if let Some(name_chirho) =
-            extract_var_name_chirho(arg_chirho).or_else(|| extract_con_name_chirho(arg_chirho))
-        {
-            let stripped_chirho = name_chirho
-                .strip_prefix("''")
-                .unwrap_or(&name_chirho)
-                .to_string();
-            if !stripped_chirho.is_empty() {
-                return Some(stripped_chirho);
-            }
+        if let Some(type_name_chirho) = extract_type_name_arg_chirho(arg_chirho) {
+            return Some(type_name_chirho);
         }
     }
     None
+}
+
+fn extract_type_name_arg_chirho(arg_chirho: &ExprChirho) -> Option<String> {
+    if let ExprChirho::ParenChirho { inner_chirho, .. } = arg_chirho {
+        return extract_type_name_arg_chirho(inner_chirho);
+    }
+
+    if let Some(name_chirho) =
+        extract_var_name_chirho(arg_chirho).or_else(|| extract_con_name_chirho(arg_chirho))
+    {
+        return normalize_th_type_name_chirho(&name_chirho);
+    }
+
+    let ExprChirho::AppChirho {
+        fun_chirho,
+        arg_chirho: mk_name_arg_chirho,
+        ..
+    } = arg_chirho
+    else {
+        return None;
+    };
+
+    if !matches!(
+        extract_var_name_chirho(fun_chirho.as_ref()).as_deref(),
+        Some("mkName")
+    ) {
+        return None;
+    }
+
+    match mk_name_arg_chirho.as_ref() {
+        ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _)) => {
+            normalize_th_type_name_chirho(text_chirho)
+        }
+        _ => None,
+    }
+}
+
+fn normalize_th_type_name_chirho(name_chirho: &str) -> Option<String> {
+    let stripped_chirho = name_chirho.strip_prefix("''").unwrap_or(name_chirho);
+    if stripped_chirho.is_empty() {
+        None
+    } else {
+        Some(stripped_chirho.to_string())
+    }
 }
 
 /// Extract a variable name from a Var expression.
@@ -661,6 +698,43 @@ mod tests_chirho {
         assert!(has_name_fun_chirho, "should have FunBind for 'name'");
         assert!(has_age_sig_chirho, "should have TypeSig for 'age'");
         assert!(has_age_fun_chirho, "should have FunBind for 'age'");
+    }
+
+    #[test]
+    fn make_lenses_accepts_mk_name_argument_chirho() {
+        let decls_chirho = vec![
+            person_data_decl_chirho(),
+            DeclChirho::SpliceDeclChirho {
+                expr_chirho: ExprChirho::AppChirho {
+                    fun_chirho: Box::new(mk_var_chirho("makeLenses")),
+                    arg_chirho: Box::new(ExprChirho::AppChirho {
+                        fun_chirho: Box::new(mk_var_chirho("mkName")),
+                        arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::StringChirho(
+                            "Person".to_string(),
+                            SpanChirho::DUMMY_CHIRHO,
+                        ))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ];
+
+        let result_chirho = expand_splices_chirho(decls_chirho);
+
+        assert!(
+            result_chirho.warnings_chirho.is_empty(),
+            "mkName-shaped makeLenses argument should be recognized, got {:?}",
+            result_chirho.warnings_chirho
+        );
+        assert_eq!(result_chirho.decls_chirho.len(), 5);
+        assert!(result_chirho.decls_chirho.iter().any(|d_chirho| {
+            matches!(d_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "name")
+        }));
+        assert!(result_chirho.decls_chirho.iter().any(|d_chirho| {
+            matches!(d_chirho, DeclChirho::FunBindChirho { name_chirho, .. } if name_chirho.text_chirho() == "age")
+        }));
     }
 
     #[test]

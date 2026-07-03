@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.77",
+    "prd_version_chirho": "2.2.78",
     "date_chirho": "2026-07-03",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -88,7 +88,8 @@
       "gpt_chirho (Codex) — body-backed Prelude show fallback resolves current IORef/STM missing-STG-show representatives while preserving 70/70 probe v2.2.74",
       "gpt_chirho (Codex) — WI-015 bounded Int defaulting for show arguments and numeric modifyIORef update functions closes IORef/STM arithmetic-PAP residuals v2.2.75",
       "gpt_chirho (Codex) — deepseq-1.5.2.0 package recheck now compiles after quantified-constraint/NFData work; WI-011 deepseq blocker resolved as package evidence v2.2.76",
-      "gpt_chirho (Codex) — WI-007 STG PAP entry now preserves target closure payloads, fixing eval_fix_factorial_chirho while holding the 70/70 probe v2.2.77"
+      "gpt_chirho (Codex) — WI-007 STG PAP entry now preserves target closure payloads, fixing eval_fix_factorial_chirho while holding the 70/70 probe v2.2.77",
+      "gpt_chirho (Codex) — WI-006 makeLenses recognizer accepts mkName-shaped quoted type names, closing the TH makeLenses splice bucket while holding the 70/70 probe v2.2.78"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -132,7 +133,7 @@
     "probe_harness_chirho": {
       "passed_chirho": 70,
       "total_chirho": 70,
-      "note_chirho": "Local full-probe gate after v2.2.77 PAP payload preservation: PASS=70 FAIL=0. Claude's acceptance probe at d09a4735/v2.2.57 caught PASS=7 FAIL=63 from broad dict_param_bindings seeding that treated Prelude class methods such as `show` as constrained user functions; v2.2.58 confines extra seeding to explicit cross-module imported export names, and subsequent cross-cutting gates through the v2.2.77 PAP fix preserve the 70/70 probe baseline."
+      "note_chirho": "Local full-probe gate after v2.2.78 TH mkName splice recognizer fix: PASS=70 FAIL=0. Claude's acceptance probe at d09a4735/v2.2.57 caught PASS=7 FAIL=63 from broad dict_param_bindings seeding that treated Prelude class methods such as `show` as constrained user functions; v2.2.58 confines extra seeding to explicit cross-module imported export names, and subsequent cross-cutting gates through the v2.2.78 TH recognizer fix preserve the 70/70 probe baseline."
     },
     "ghc_suite_chirho": {
       "status_chirho": "No fresh full run after 29d9f262 due resource guard. Audit catalog uses baseline 1609/73, completed b5203335 delta 1569/117, and incomplete 29d9f262 logs; full ghc_bulk/driver sweeps require explicit L.J. approval."
@@ -140,17 +141,14 @@
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
       "date_chirho": "2026-07-03",
-      "scope_chirho": "WI-007 STG PAP payload preservation for recursive fix/factorial.",
+      "scope_chirho": "WI-006 Template Haskell makeLenses recognizer for mkName-shaped quoted type names.",
       "commands_chirho": [
-        "CARGO_BUILD_JOBS=2 cargo test -j2 -p haskelujah-driver --lib eval_fix_factorial_chirho -- --test-threads=1 --nocapture",
-        "CARGO_BUILD_JOBS=2 cargo test -j2 -p haskelujah-runtime --lib enter_pap_preserves_function_payload_chirho -- --test-threads=1 --nocapture",
-        "CARGO_BUILD_JOBS=2 cargo test -j2 -p haskelujah-driver --lib eval_recursive_factorial_chirho -- --test-threads=1 --nocapture",
-        "CARGO_BUILD_JOBS=2 cargo test -j2 -p haskelujah-runtime --lib under_application_builds_pap_chirho -- --test-threads=1 --nocapture",
-        "CARGO_BUILD_JOBS=2 cargo test -j2 -p haskelujah-runtime --lib enter_pap_flows_through_primop_frames_chirho -- --test-threads=1 --nocapture",
-        "CARGO_BUILD_JOBS=2 cargo build -j2 --bin haskelujah",
+        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-driver --lib make_lenses_accepts_mk_name_argument_chirho -- --test-threads=1 --nocapture",
+        "CARGO_BUILD_JOBS=1 nice -n 10 cargo test -j1 -p haskelujah-driver --lib splice_chirho -- --test-threads=1 --nocapture",
+        "CARGO_BUILD_JOBS=1 nice -n 10 cargo build -j1 --bin haskelujah",
         "B=./target/debug/haskelujah timeout 240 bash /private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/scratchpad/probe_chirho.sh"
       ],
-      "result_chirho": "eval_fix_factorial_chirho now passes after PAP entry preserves the original target function payload before pre-applied and new arguments. Runtime PAP regression tests and recursive factorial coverage pass; CLI rebuild succeeds; full 70-case probe remains PASS=70 FAIL=0. Separate local letrec tests still fail on missing `==` and remain a dict-rewrite residual, not part of this PAP fix."
+      "result_chirho": "The splice recognizer now extracts type names from `mkName \"Type\"` applications as well as bare vars/constructors. The new mkName regressions pass; the full splice module passes 13/13; CLI rebuild succeeds; full 70-case probe remains PASS=70 FAIL=0."
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -779,11 +777,11 @@
       "title_chirho": "Template Haskell STG bridge (user-written splices; lens milestone)",
       "pillar_chirho": "PILLAR-4",
       "priority_chirho": "P2",
-      "status_chirho": "todo — AUDIT MERGED; staged design requires corrections before implementation",
+      "status_chirho": "partially landed v2.2.78 — Stage 0 makeLenses recognizer now accepts mkName-shaped quoted names; real user-written TH splice evaluation remains.",
       "owner_chirho": "gpt_chirho per its scaffold claim; NOT fleet fodder",
       "problem_chirho": "Template Haskell currently has syntax and recognizer simulation, not real splice evaluation. `expand_splices_chirho` pattern-matches a few built-ins; expression splices survive to desugar as literal 0; the makeLenses recognizer regressed on mkName-shaped quoted names.",
       "fix_design_chirho": [
-        "Stage 0: repair makeLenses/makeLenses' recognizer for `App (Var \"mkName\") (Lit \"T\")` and add pipeline tests that build from parsed source, not hand-built AST.",
+        "Stage 0: repair makeLenses/makeLenses' recognizer for `App (Var \"mkName\") (Lit \"T\")` and add pipeline tests that build from parsed source, not hand-built AST. LANDED v2.2.78: `extract_type_name_from_args_chirho` now handles `mkName \"Type\"` string-literal applications and the driver splice tests cover the mkName shape plus full pipeline makeLenses expansion.",
         "Stage 1: expression splices: lower quotes to TH constructor-building code, run splice expressions through the existing frontend/Core/STG machine in a synthetic module, marshal ValueChirho back to AST, and make any unexpanded TH node loud instead of literal 0.",
         "Stage 2: declaration splices through ThDecChirho -> AST conversion, with coverage for instance/class/newtype/pragmas called out explicitly.",
         "Stage 3: reify/newName/Q primitives via the existing haskelujah-th QStateChirho scaffolding and a host callback; imported TH functions need cross-module Core linking.",
@@ -1371,14 +1369,15 @@
       },
       {
         "bucket_chirho": "th-makelenses-splice",
-        "count_chirho": 2,
+        "count_chirho": 0,
+        "resolved_chirho": "RESOLVED v2.2.78: makeLenses/makeLenses' recognizer now accepts `mkName \"Type\"` arguments in addition to bare quoted names. Targeted splice module passes 13/13, including `splice_make_lenses_mk_name_in_pipeline_chirho`, `splice_make_lenses_in_pipeline_chirho`, and `make_lenses_e2e_full_pipeline_chirho`; the rebuilt CLI probe remains 70/70.",
         "preexisting_chirho": true,
         "suspected_subsystem_chirho": "other",
         "representative_tests_chirho": [
           "tests_chirho::splice_chirho::splice_make_lenses_in_pipeline_chirho",
           "tests_chirho::splice_chirho::make_lenses_e2e_full_pipeline_chirho"
         ],
-        "notes_chirho": "Template Haskell splice pipeline: warning 'Template Haskell splice not recognized, skipping: application of variable makeLenses' and missing generated TypeSig for the 'name' lens. Known WIP — CLAUDE.md Phase 3 In-Progress #1 (STG bridge for user-written TH); earlier triage cluster 4."
+        "notes_chirho": "Former symptom: Template Haskell splice pipeline warned 'Template Haskell splice not recognized, skipping: application of variable makeLenses' and then missed the generated TypeSig for the 'name' lens. Root cause was that quoted names can lower as `mkName \"Person\"`, while the recognizer only scanned bare Var/Con args. Real user-written TH splice evaluation remains WI-006 Stage 1+, but this concrete makeLenses recognizer bucket is closed."
       },
       {
         "bucket_chirho": "cranelift-string-truncation",
