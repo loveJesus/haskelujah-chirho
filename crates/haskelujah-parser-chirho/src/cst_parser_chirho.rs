@@ -2542,6 +2542,29 @@ impl<'src> ParserChirho<'src> {
             return false;
         }
 
+        let mut prev_idx_chirho = self.pos_chirho;
+        let mut saw_newline_trivia_chirho = false;
+        while prev_idx_chirho > 0 {
+            prev_idx_chirho -= 1;
+            let token_chirho = &self.tokens_chirho[prev_idx_chirho];
+            match token_chirho.kind_chirho {
+                RawTokenKindChirho::WhitespaceChirho
+                | RawTokenKindChirho::LineCommentChirho
+                | RawTokenKindChirho::BlockCommentChirho => {
+                    if self.token_text_chirho(token_chirho).contains('\n') {
+                        saw_newline_trivia_chirho = true;
+                    }
+                    continue;
+                }
+                RawTokenKindChirho::VirtualSemicolonChirho
+                | RawTokenKindChirho::SemicolonChirho
+                | RawTokenKindChirho::VirtualLeftBraceChirho
+                | RawTokenKindChirho::LeftBraceChirho => break,
+                _ if saw_newline_trivia_chirho => break,
+                _ => return false,
+            }
+        }
+
         let next_idx_chirho = self.skip_trivia_idx_chirho(self.pos_chirho + 1);
         self.tokens_chirho
             .get(next_idx_chirho)

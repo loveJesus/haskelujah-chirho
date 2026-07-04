@@ -14471,6 +14471,40 @@ type VisibleChirho fChirho aChirho = AppChirho @fChirho aChirho\n",
     }
 
     #[test]
+    fn lower_type_alias_rhs_kind_annotation_keeps_full_function_rhs_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE TypeAbstractions #-}\n\
+{-# LANGUAGE TypeFamilies #-}\n\
+{-# LANGUAGE CUSKs #-}\n\
+module M where\n\
+import Data.Kind\n\
+import Data.Proxy\n\
+type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
+        );
+        let alias_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "S"
+                )
+            })
+            .expect("expected S type alias");
+        let DeclChirho::TypeAliasDeclChirho { rhs_chirho, .. } = alias_chirho else {
+            panic!("expected type alias declaration");
+        };
+
+        assert_eq!(
+            type_shape_chirho(rhs_chirho),
+            "((Proxy a) -> (Proxy k))",
+            "RHS kind annotation should not drop the `k` argument: {:?}",
+            rhs_chirho
+        );
+    }
+
+    #[test]
     fn lower_closed_type_family_operator_rhs_does_not_leak_value_binds_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "{-# LANGUAGE DataKinds #-}\n{-# LANGUAGE TypeFamilies #-}\n{-# LANGUAGE TypeOperators #-}\nmodule M where\nimport Data.Type.Bool\nimport GHC.TypeNats\ntype family Min (m :: Nat) (n :: Nat) :: Nat where\n  Min m n = If (n <=? m) n m\ntype family Max (m :: Nat) (n :: Nat) :: Nat where\n  Max m n = If (n <=? m) m n\n",

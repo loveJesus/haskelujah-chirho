@@ -2277,6 +2277,38 @@ mod tests_chirho {
     }
 
     #[test]
+    fn type_alias_visible_kind_binder_proxy_function_rhs_chirho() {
+        let module_chirho = mk_module_chirho(vec![DeclChirho::TypeAliasDeclChirho {
+            name_chirho: mk_name_chirho("S"),
+            type_vars_chirho: vec![
+                TyVarChirho::annotated_chirho(mk_name_chirho("k"), AstKindChirho::StarChirho),
+                TyVarChirho::annotated_chirho(
+                    mk_name_chirho("a"),
+                    AstKindChirho::VarChirho("k".to_string()),
+                ),
+            ],
+            rhs_chirho: mk_fun_chirho(
+                mk_app_chirho(
+                    TypeChirho::ConChirho(mk_name_chirho("Proxy")),
+                    TypeChirho::VarChirho(mk_name_chirho("a")),
+                ),
+                mk_app_chirho(
+                    TypeChirho::ConChirho(mk_name_chirho("Proxy")),
+                    TypeChirho::VarChirho(mk_name_chirho("k")),
+                ),
+            ),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }]);
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "proxy function alias should kind-check: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+    }
+
+    #[test]
     fn newtype_kind_chirho() {
         // newtype Wrapper a = Wrap a
         let module_chirho = mk_module_chirho(vec![DeclChirho::NewtypeDeclChirho {
